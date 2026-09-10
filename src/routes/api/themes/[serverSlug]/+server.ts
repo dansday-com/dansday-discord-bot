@@ -7,8 +7,8 @@ import { resolveMemberByCardToken } from '$lib/frontend/public/items/index.js';
 import { MEMBER_THEME_MAX_BYTES } from '$lib/images.js';
 import { readUploadedImage, uploadFilename } from '$lib/backend/storage/imageUpload.js';
 import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
-import { removeMemberTheme, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
-import { normalizeAccent, resolveMemberTheme } from '$lib/themes.js';
+import { removeMemberTheme, resolveMemberThemeForClient, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
+import { normalizeAccent } from '$lib/themes.js';
 
 async function resolveActor(serverSlug: string, card: any) {
 	const resolved = await resolvePublicServerBySlug(String(serverSlug || '').trim());
@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			if (!accent) return json({ success: false, error: 'Invalid colour' }, { status: 400 });
 
 			const row = await db.setMemberTheme(actor.member.id, { accentColor: accent, accentAuto: body.accent_auto === true });
-			return json({ success: true, theme: resolveMemberTheme(row) });
+			return json({ success: true, theme: resolveMemberThemeForClient(row) });
 		}
 
 		const upload = await readUploadedImage(request, MEMBER_THEME_MAX_BYTES);
@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 		if (previous?.image && previous.image !== filename) await removeMemberTheme(previous.image);
 
-		return json({ success: true, theme: resolveMemberTheme(row) });
+		return json({ success: true, theme: resolveMemberThemeForClient(row) });
 	} catch (error: any) {
 		logger.log(`❌ Error saving member theme: ${error.message}`);
 		return json({ success: false, error: 'Could not save your theme.' }, { status: 500 });

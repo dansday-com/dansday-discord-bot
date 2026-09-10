@@ -4,7 +4,7 @@
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { EmptyState, RankAvatar, rankStyle } from '$lib/frontend/components/public';
-	import { normalizeAccent, themeImageUrl } from '$lib/themes.js';
+	import { normalizeAccent } from '$lib/themes.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -202,7 +202,7 @@
 			{@const rs = rankStyle(member.rank)}
 			{@const topRole = highestRole(member)}
 			{@const memberAccent = normalizeAccent(member.theme_accent)}
-			{@const memberImage = themeImageUrl(member.theme_image)}
+			{@const memberImage = member.theme_image ?? null}
 			<li
 				class="card border-base-300 bg-base-100 relative isolate overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
 					? 'translate-y-0 opacity-100'

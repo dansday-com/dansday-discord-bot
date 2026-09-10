@@ -1,5 +1,5 @@
 import db from '../../database.js';
-import { resolveMemberTheme } from '../../themes.js';
+import { resolveMemberThemeForClient } from '../../backend/storage/memberThemes.js';
 
 export type RowTheme = { theme_image: string | null; theme_accent: string | null };
 
@@ -7,7 +7,7 @@ export async function memberThemeMap(serverId: number): Promise<Map<string, RowT
 	const rows = await db.getMemberThemesForServer(serverId).catch(() => []);
 	const map = new Map<string, RowTheme>();
 	for (const row of rows as any[]) {
-		const theme = resolveMemberTheme(row);
+		const theme = resolveMemberThemeForClient(row);
 		if (theme) map.set(String(row.discord_member_id), { theme_image: theme.image, theme_accent: theme.accent });
 	}
 	return map;

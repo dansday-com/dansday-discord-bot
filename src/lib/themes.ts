@@ -81,11 +81,6 @@ export function resolveMemberTheme(row: MemberThemeRow | null | undefined): Memb
 	};
 }
 
-export function themeImageUrl(image: any): string | null {
-	if (!image) return null;
-	return `/api/uploads/member-themes/${String(image)}`;
-}
-
 export function themeVars(theme: MemberTheme | null | undefined): string {
 	if (!theme) return '';
 	const accent = normalizeAccent(theme.accent) ?? DEFAULT_ACCENT;

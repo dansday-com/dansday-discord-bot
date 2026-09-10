@@ -2,13 +2,13 @@
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import { BRAND_PRIMARY } from '$lib/brand.js';
-	import { type MemberTheme, themeImageUrl, themeVars } from '$lib/themes.js';
+	import { type MemberTheme, themeVars } from '$lib/themes.js';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 	import { registerScroller } from '../../scrollLock.js';
 
 	const memberTheme = $derived(((page.data as any)?.memberTheme ?? null) as MemberTheme | null);
-	const themeBackdrop = $derived(themeImageUrl(memberTheme?.image));
+	const themeBackdrop = $derived(memberTheme?.image ?? null);
 
 	let {
 		trailing = 'login',

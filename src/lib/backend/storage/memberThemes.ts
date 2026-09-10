@@ -1,6 +1,6 @@
-import { deleteObject, getObject, putObject } from './index.js';
+import { deleteObject, getObject, publicUrl, putObject } from './index.js';
 import { imageContentType } from '../../images.js';
-import { themeImageUrl } from '../../themes.js';
+import { type MemberTheme, type MemberThemeRow, resolveMemberTheme } from '../../themes.js';
 
 const FOLDER = 'member-themes';
 
@@ -16,7 +16,13 @@ function memberThemeKey(filename: string): string {
 }
 
 export function memberThemeUrl(filename: string): string {
-	return themeImageUrl(filename) ?? '';
+	return publicUrl(memberThemeKey(filename));
+}
+
+export function resolveMemberThemeForClient(row: MemberThemeRow | null | undefined): MemberTheme | null {
+	const theme = resolveMemberTheme(row);
+	if (!theme) return null;
+	return { ...theme, image: theme.image ? memberThemeUrl(theme.image) : null };
 }
 
 export async function saveMemberTheme(filename: string, data: Buffer): Promise<void> {

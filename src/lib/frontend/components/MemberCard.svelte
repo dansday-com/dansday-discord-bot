@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
-	import { type MemberTheme, normalizeAccent, themeImageUrl } from '$lib/themes.js';
+	import { type MemberTheme, normalizeAccent } from '$lib/themes.js';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -35,7 +35,7 @@
 	let { member, serverName, serverIcon, onclose, mode = 'level', assets = null, theme = null }: Props = $props();
 	const isAssets = $derived(mode === 'assets' && !!assets);
 	const themeAccent = $derived(normalizeAccent(theme?.accent));
-	const themeBanner = $derived(themeImageUrl(theme?.image));
+	const themeBanner = $derived(theme?.image ?? null);
 
 	let visible = $state(false);
 

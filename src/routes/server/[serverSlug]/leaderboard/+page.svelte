@@ -2,7 +2,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
-	import { normalizeAccent, themeImageUrl } from '$lib/themes.js';
+	import { normalizeAccent } from '$lib/themes.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -415,7 +415,7 @@
 						style="height: {PODIUM_HEIGHT[rank]}; background: {RANK_STYLES[rank].gradient};"
 					>
 						{#if rowAccent(r)}
-							{@const podiumImage = themeImageUrl(r.theme_image)}
+							{@const podiumImage = r.theme_image ?? null}
 							{#if podiumImage}
 								<div
 									class="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center opacity-45"
@@ -450,7 +450,7 @@
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
 				>
 					{#if rowAccent(r)}
-						{@const rowImage = themeImageUrl(r.theme_image)}
+						{@const rowImage = r.theme_image ?? null}
 						{#if rowImage}
 							<div
 								class="pointer-events-none absolute inset-0 -z-20 bg-cover bg-center opacity-16"

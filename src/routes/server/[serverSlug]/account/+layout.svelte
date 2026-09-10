@@ -7,7 +7,7 @@
 	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
-	import { type MemberTheme, themeImageUrl } from '$lib/themes.js';
+	import type { MemberTheme } from '$lib/themes.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -116,7 +116,7 @@
 	const memberAvatar = $derived(pd.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(pd.memberDiscordId) % 5 || 0}.png`);
 
 	const memberTheme = $derived((pd.memberTheme ?? null) as MemberTheme | null);
-	const heroImage = $derived(themeImageUrl(memberTheme?.image));
+	const heroImage = $derived(memberTheme?.image ?? null);
 
 	const joinedDate = $derived.by(() => {
 		const joined = pd.profile?.joined;

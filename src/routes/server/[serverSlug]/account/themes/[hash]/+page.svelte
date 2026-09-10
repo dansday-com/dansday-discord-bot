@@ -2,13 +2,13 @@
 	import { invalidateAll } from '$app/navigation';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
-	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload, themeImageUrl } from '$lib/themes.js';
+	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const theme = $derived((data.memberTheme ?? null) as MemberTheme | null);
-	const savedImage = $derived(themeImageUrl(theme?.image));
+	const savedImage = $derived(theme?.image ?? null);
 
 	let pendingFile = $state<File | null>(null);
 	let pendingPreview = $state<string | null>(null);

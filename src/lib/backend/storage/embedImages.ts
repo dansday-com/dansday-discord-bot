@@ -1,76 +1,61 @@
-import { deleteObject, getObject, listObjectKeys, publicUrl, putObject } from './index.js';
-import { imageContentType } from '../../images.js';
+import { NUMERIC_SCOPE, createUploadStore, uploadFilename, uploadTimestampMs } from './uploadStore.js';
 
-const FOLDER = 'embed-images';
 const MAX_AGE_MS = 30 * 60 * 1000;
 
-export function embedImageContentType(filename: string): string {
-	return imageContentType(filename);
+const store = createUploadStore('embed', [/admin(?:-[1-9]\d*)?|[1-9]\d*/]);
+
+export const EMBED_FILENAME_PATTERN = /^\d+-[a-z0-9]+\.[a-z0-9]+$/i;
+
+export function embedScope(serverId: any): string {
+	const id = Math.trunc(Number(serverId));
+	if (!Number.isFinite(id) || id <= 0) throw new Error(`Invalid embed scope: ${serverId}`);
+	return String(id);
 }
 
-function embedImageKey(filename: string): string {
-	if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
-		throw new Error(`Invalid embed image filename: ${filename}`);
-	}
-	return `${FOLDER}/${filename}`;
+export function embedAdminScope(panelId: any): string {
+	const id = Math.trunc(Number(panelId));
+	return Number.isFinite(id) && id > 0 ? `admin-${id}` : 'admin';
 }
 
-export function embedImageUrl(filename: string): string {
-	return publicUrl(embedImageKey(filename));
+export function embedImageKey(scope: string, filename: string): string {
+	return store.key([scope], filename);
 }
 
-export async function saveEmbedImage(filename: string, data: Buffer): Promise<void> {
-	await putObject(embedImageKey(filename), data, embedImageContentType(filename));
+export function embedImageFilename(extension: string): string {
+	return uploadFilename(extension);
 }
 
-export async function readEmbedImage(filename: string): Promise<Buffer | null> {
-	try {
-		return await getObject(embedImageKey(filename));
-	} catch {
-		return null;
-	}
+export function embedImageContentType(key: string): string {
+	return store.contentType(key);
 }
 
-export async function removeEmbedImage(filename: string): Promise<void> {
-	try {
-		await deleteObject(embedImageKey(filename));
-	} catch {}
+export function embedKeyBelongsTo(key: unknown, scope: string): boolean {
+	return store.belongsTo(key, scope);
 }
 
-function uploadTimestampMs(filename: string): number | null {
-	const base = filename.replace(/\.[^.]+$/, '');
-	const parts = base.split('-');
+export function embedImageUrl(key: string): string {
+	return store.url(key);
+}
 
-	if (parts[0] === 'global' && parts.length === 4) {
-		const ts = Number(parts[2]);
-		return Number.isFinite(ts) ? ts : null;
-	}
+export async function saveEmbedImage(key: string, data: Buffer): Promise<void> {
+	await store.save(key, data);
+}
 
-	if (parts.length >= 3) {
-		const ts = Number(parts[1]);
-		return Number.isFinite(ts) ? ts : null;
-	}
-	if (parts.length === 2) {
-		const ts = Number(parts[0]);
-		return Number.isFinite(ts) ? ts : null;
-	}
-	return null;
+export async function readEmbedImage(key: string): Promise<Buffer | null> {
+	return store.read(key);
+}
+
+export async function removeEmbedImage(key: string): Promise<void> {
+	await store.remove(key);
 }
 
 export async function pruneExpiredEmbedImages(): Promise<void> {
-	let keys: string[];
-	try {
-		keys = await listObjectKeys(FOLDER);
-	} catch {
-		return;
-	}
-
 	const now = Date.now();
-	for (const key of keys) {
-		const filename = key.slice(FOLDER.length + 1);
-		const ts = uploadTimestampMs(filename);
-		if (ts == null) continue;
-		if (now - ts <= MAX_AGE_MS) continue;
-		await removeEmbedImage(filename);
+	for (const key of await store.list()) {
+		const ts = uploadTimestampMs(key);
+		if (ts == null || now - ts <= MAX_AGE_MS) continue;
+		await store.remove(key);
 	}
 }
+
+export { NUMERIC_SCOPE };

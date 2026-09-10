@@ -1,44 +1,72 @@
-import { deleteObject, getObject, publicUrl, putObject } from './index.js';
-import { imageContentType } from '../../images.js';
+import { publicUrl } from './index.js';
+import { NUMERIC_SCOPE, createUploadStore, uploadFilename } from './uploadStore.js';
 import { type MemberTheme, type MemberThemeRow, resolveMemberTheme } from '../../themes.js';
 
-const FOLDER = 'member-themes';
+const LEGACY_FOLDER = 'member-themes';
 
-export function memberThemeContentType(filename: string): string {
-	return imageContentType(filename);
+const store = createUploadStore('themes', [NUMERIC_SCOPE, NUMERIC_SCOPE]);
+
+export function memberThemeFilename(extension: string): string {
+	return uploadFilename(extension);
 }
 
-function memberThemeKey(filename: string): string {
-	if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
-		throw new Error(`Invalid member theme filename: ${filename}`);
-	}
-	return `${FOLDER}/${filename}`;
+export function memberThemeKey(serverId: any, memberId: any, filename: string): string {
+	return store.key([serverId, memberId], filename);
 }
 
-export function memberThemeUrl(filename: string): string {
-	return publicUrl(memberThemeKey(filename));
+export function memberThemeContentType(key: string): string {
+	return store.contentType(key);
+}
+
+function isLegacyKey(value: string): boolean {
+	return !value.includes('/') && /^[\w.-]+$/.test(value) && !value.includes('..');
+}
+
+export function memberThemeStorageKey(stored: string): string {
+	const value = String(stored ?? '');
+	if (isLegacyKey(value)) return `${LEGACY_FOLDER}/${value}`;
+	return store.assertKey(value);
+}
+
+export function memberThemeUrl(stored: string): string {
+	const key = memberThemeStorageKey(stored);
+	return store.isKey(key) ? store.url(key) : publicUrl(key);
 }
 
 export function resolveMemberThemeForClient(row: MemberThemeRow | null | undefined): MemberTheme | null {
 	const theme = resolveMemberTheme(row);
 	if (!theme) return null;
-	return { ...theme, image: theme.image ? memberThemeUrl(theme.image) : null };
-}
-
-export async function saveMemberTheme(filename: string, data: Buffer): Promise<void> {
-	await putObject(memberThemeKey(filename), data, memberThemeContentType(filename));
-}
-
-export async function readMemberTheme(filename: string): Promise<Buffer | null> {
+	if (!theme.image) return theme;
 	try {
-		return await getObject(memberThemeKey(filename));
+		return { ...theme, image: memberThemeUrl(theme.image) };
+	} catch {
+		return { ...theme, image: null };
+	}
+}
+
+export async function saveMemberTheme(key: string, data: Buffer): Promise<void> {
+	await store.save(key, data);
+}
+
+export async function readMemberTheme(stored: string): Promise<Buffer | null> {
+	const key = memberThemeStorageKey(stored);
+	if (store.isKey(key)) return store.read(key);
+	const { getObject } = await import('./index.js');
+	try {
+		return await getObject(key);
 	} catch {
 		return null;
 	}
 }
 
-export async function removeMemberTheme(filename: string): Promise<void> {
+export async function removeMemberTheme(stored: string): Promise<void> {
+	const key = memberThemeStorageKey(stored);
+	if (store.isKey(key)) {
+		await store.remove(key);
+		return;
+	}
+	const { deleteObject } = await import('./index.js');
 	try {
-		await deleteObject(memberThemeKey(filename));
+		await deleteObject(key);
 	} catch {}
 }

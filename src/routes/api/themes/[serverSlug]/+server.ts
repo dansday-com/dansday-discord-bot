@@ -5,9 +5,9 @@ import { logger } from '$lib/utils/index.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { resolveMemberByCardToken } from '$lib/frontend/public/items/index.js';
 import { MEMBER_THEME_MAX_BYTES } from '$lib/images.js';
-import { readUploadedImage, uploadFilename } from '$lib/backend/storage/imageUpload.js';
+import { readUploadedImage } from '$lib/backend/storage/imageUpload.js';
 import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
-import { removeMemberTheme, resolveMemberThemeForClient, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
+import { memberThemeFilename, memberThemeKey, removeMemberTheme, resolveMemberThemeForClient, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
 import { normalizeAccent } from '$lib/themes.js';
 
 async function resolveActor(serverSlug: string, card: any) {
@@ -16,7 +16,7 @@ async function resolveActor(serverSlug: string, card: any) {
 	if (!card) return { error: 'Missing card', status: 400 } as const;
 	const member = await resolveMemberByCardToken(resolved.server.id, String(card));
 	if (!member) return { error: 'Member not found', status: 404 } as const;
-	return { member } as const;
+	return { member, serverId: resolved.server.id } as const;
 }
 
 export const POST: RequestHandler = async ({ params, request }) => {
@@ -47,15 +47,15 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const previous = await db.getMemberTheme(actor.member.id).catch(() => null);
 
 		const converted = await themeImageToWebp(upload.data, upload.extension);
-		const filename = uploadFilename(String(actor.member.id), converted.extension);
-		await saveMemberTheme(filename, converted.data);
+		const key = memberThemeKey(actor.serverId, actor.member.id, memberThemeFilename(converted.extension));
+		await saveMemberTheme(key, converted.data);
 
 		const row = await db.setMemberTheme(actor.member.id, {
-			image: filename,
+			image: key,
 			...(accent ? { accentColor: accent, accentAuto: true } : {})
 		});
 
-		if (previous?.image && previous.image !== filename) await removeMemberTheme(previous.image);
+		if (previous?.image && previous.image !== key) await removeMemberTheme(previous.image);
 
 		return json({ success: true, theme: resolveMemberThemeForClient(row) });
 	} catch (error: any) {

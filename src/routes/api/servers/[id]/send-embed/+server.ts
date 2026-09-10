@@ -6,13 +6,7 @@ import { basename } from 'path';
 import { request as httpRequest } from 'http';
 import { canUseEmbedBuilder, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
-import { readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
-
-function embedFilenameBelongsToServer(filename: string, serverId: number): boolean {
-	const safe = basename(filename);
-	const m = safe.match(/^(\d+)-(\d+)-[a-z0-9]+\.[a-z0-9]+$/i);
-	return m != null && Number(m[1]) === serverId;
-}
+import { embedKeyBelongsTo, embedScope, readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
@@ -69,15 +63,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		let imageBuffer: Buffer | null = null;
 		let imageFilename: string | null = null;
-		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
-		if (uploadedBasename) {
-			if (!embedFilenameBelongsToServer(uploadedBasename, serverId)) {
+		const uploadedKey = uploaded_image_path ? String(uploaded_image_path) : null;
+		if (uploadedKey) {
+			if (!embedKeyBelongsTo(uploadedKey, embedScope(serverId))) {
 				return json({ success: false, error: 'Invalid or unsupported image path' }, { status: 400 });
 			}
-			const stored = await readEmbedImage(uploadedBasename);
+			const stored = await readEmbedImage(uploadedKey);
 			if (stored) {
 				imageBuffer = stored;
-				imageFilename = uploadedBasename;
+				imageFilename = basename(uploadedKey);
 			}
 		}
 
@@ -87,8 +81,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 
 		async function removeTempUpload() {
-			if (!uploadedBasename) return;
-			await removeEmbedImage(uploadedBasename);
+			if (!uploadedKey) return;
+			await removeEmbedImage(uploadedKey);
 		}
 
 		const payload = JSON.stringify({
@@ -149,7 +143,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 	} catch (error: any) {
 		if (uploaded_image_path) {
-			await removeEmbedImage(basename(uploaded_image_path));
+			await removeEmbedImage(String(uploaded_image_path));
 		}
 		logger.log(`❌ Error sending embed: ${error.message}`);
 		return json({ success: false, error: error.message }, { status: 500 });

@@ -4,7 +4,7 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { basename } from 'path';
 import { request as httpRequest } from 'http';
-import { readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
+import { embedAdminScope, embedKeyBelongsTo, readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
@@ -34,16 +34,15 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		let imageBuffer: Buffer | null = null;
 		let imageFilename: string | null = null;
-		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
-		if (uploadedBasename) {
-			const prefix = locals.user.panel_id ? `global-${locals.user.panel_id}-` : 'global-';
-			if (!uploadedBasename.startsWith(prefix) || !/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
+		const uploadedKey = uploaded_image_path ? String(uploaded_image_path) : null;
+		if (uploadedKey) {
+			if (!embedKeyBelongsTo(uploadedKey, embedAdminScope(locals.user.panel_id))) {
 				return json({ success: false, error: 'Invalid uploaded image filename' }, { status: 400 });
 			}
-			const stored = await readEmbedImage(uploadedBasename);
+			const stored = await readEmbedImage(uploadedKey);
 			if (stored) {
 				imageBuffer = stored;
-				imageFilename = uploadedBasename;
+				imageFilename = basename(uploadedKey);
 			}
 		}
 
@@ -53,8 +52,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		}
 
 		async function removeTempUpload() {
-			if (!uploadedBasename) return;
-			await removeEmbedImage(uploadedBasename);
+			if (!uploadedKey) return;
+			await removeEmbedImage(uploadedKey);
 		}
 
 		const payload = JSON.stringify({

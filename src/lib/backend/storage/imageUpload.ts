@@ -34,7 +34,3 @@ export async function readUploadedImage(request: Request, maxBytes: number): Pro
 	if (data.length > maxBytes) return { ok: false, error: tooLargeMessage(maxBytes), status: 400 };
 	return { ok: true, data, extension, form: null, body };
 }
-
-export function uploadFilename(prefix: string, extension: ImageFormat): string {
-	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-}

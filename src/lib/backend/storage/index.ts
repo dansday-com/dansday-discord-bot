@@ -169,6 +169,25 @@ export async function deleteObject(key: string): Promise<void> {
 	}
 }
 
+function listLocalKeys(dir: string, prefix: string): string[] {
+	const out: string[] = [];
+	let entries: string[];
+	try {
+		entries = readdirSync(dir);
+	} catch {
+		return out;
+	}
+	for (const name of entries) {
+		const full = join(dir, name);
+		try {
+			const stat = statSync(full);
+			if (stat.isDirectory()) out.push(...listLocalKeys(full, `${prefix}/${name}`));
+			else if (stat.isFile()) out.push(`${prefix}/${name}`);
+		} catch {}
+	}
+	return out;
+}
+
 export async function listObjectKeys(folder: string): Promise<string[]> {
 	const settings = s3Settings();
 	const cleaned = safeKey(folder);
@@ -176,19 +195,7 @@ export async function listObjectKeys(folder: string): Promise<string[]> {
 	if (!settings) {
 		const dir = localPath(cleaned);
 		if (!existsSync(dir)) return [];
-		try {
-			return readdirSync(dir)
-				.filter((name) => {
-					try {
-						return statSync(join(dir, name)).isFile();
-					} catch {
-						return false;
-					}
-				})
-				.map((name) => `${cleaned}/${name}`);
-		} catch {
-			return [];
-		}
+		return listLocalKeys(dir, cleaned);
 	}
 
 	const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');

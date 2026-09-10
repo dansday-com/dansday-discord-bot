@@ -1,14 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { basename } from 'path';
 import { logger } from '$lib/utils/index.js';
-import { removeEmbedImage } from '$lib/backend/storage/embedImages.js';
-
-function embedFilenameBelongsToServer(filename: string, serverId: number): boolean {
-	const safe = basename(filename);
-	const m = safe.match(/^(\d+)-(\d+)-[a-z0-9]+\.[a-z0-9]+$/i);
-	return m != null && Number(m[1]) === serverId;
-}
+import { embedKeyBelongsTo, embedScope, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverId = parseInt(params.id ?? '', 10);
@@ -22,11 +15,11 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			return json({ success: false, error: 'No filename provided' }, { status: 400 });
 		}
 
-		if (!embedFilenameBelongsToServer(filename, serverId)) {
+		if (!embedKeyBelongsTo(filename, embedScope(serverId))) {
 			return json({ success: false, error: 'Invalid or unsupported image path' }, { status: 400 });
 		}
 
-		await removeEmbedImage(basename(filename));
+		await removeEmbedImage(filename);
 
 		return json({ success: true });
 	} catch (error: any) {

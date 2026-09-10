@@ -5842,6 +5842,63 @@ export async function removeAFKStatus(serverId: any, discordMemberId: string) {
 	return true;
 }
 
+export async function getMemberTheme(memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({
+			image: schema.serverMemberThemes.image,
+			accent_color: schema.serverMemberThemes.accent_color,
+			accent_auto: schema.serverMemberThemes.accent_auto
+		})
+		.from(schema.serverMemberThemes)
+		.where(eq(schema.serverMemberThemes.member_id, Number(memberId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
+export async function getMemberThemesForServer(serverId: any) {
+	await initializeDatabase();
+	return db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			image: schema.serverMemberThemes.image,
+			accent_color: schema.serverMemberThemes.accent_color,
+			accent_auto: schema.serverMemberThemes.accent_auto
+		})
+		.from(schema.serverMemberThemes)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberThemes.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)));
+}
+
+export async function setMemberTheme(memberId: any, updates: { image?: string | null; accentColor?: string | null; accentAuto?: boolean }) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const set: Record<string, any> = { updated_at: now };
+	if (updates.image !== undefined) set.image = updates.image;
+	if (updates.accentColor !== undefined) set.accent_color = updates.accentColor;
+	if (updates.accentAuto !== undefined) set.accent_auto = updates.accentAuto;
+
+	await db
+		.insert(schema.serverMemberThemes)
+		.values({
+			member_id: Number(memberId),
+			image: updates.image ?? null,
+			accent_color: updates.accentColor ?? null,
+			accent_auto: updates.accentAuto ?? true,
+			created_at: now as any,
+			updated_at: now as any
+		})
+		.onDuplicateKeyUpdate({ set });
+
+	return getMemberTheme(memberId);
+}
+
+export async function clearMemberTheme(memberId: any) {
+	await initializeDatabase();
+	await db.delete(schema.serverMemberThemes).where(eq(schema.serverMemberThemes.member_id, Number(memberId)));
+	return true;
+}
+
 export async function serversNeedSync(botId: number) {
 	await initializeDatabase();
 	const servers = await getServersForBot(botId);
@@ -6843,6 +6900,10 @@ export default {
 	getAFKStatus,
 	setAFKStatus,
 	removeAFKStatus,
+	getMemberTheme,
+	getMemberThemesForServer,
+	setMemberTheme,
+	clearMemberTheme,
 	createGiveaway,
 	updateGiveawayMessageId,
 	getEndedGiveaways,

@@ -2,6 +2,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
+	import { normalizeAccent, themeImageUrl } from '$lib/themes.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -57,6 +58,10 @@
 		const raw = String(r.server_display_name || r.display_name || r.username || r.discord_member_id || '');
 		const cleaned = cleanName(raw);
 		return cleaned || raw || 'Unknown';
+	}
+
+	function rowAccent(r: any): string | null {
+		return normalizeAccent(r.theme_accent);
 	}
 
 	function metricLabel(m: string) {
@@ -372,10 +377,23 @@
 		<div class="flex items-end justify-center">
 			{#each podiumOrder as { r, rank }}
 				<div
-					class="relative flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {mounted
+					class="relative isolate flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {mounted
 						? 'translate-y-0 opacity-100'
 						: 'translate-y-6 opacity-0'}"
+					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
 				>
+					{#if rowAccent(r)}
+						{@const podiumImage = themeImageUrl(r.theme_image)}
+						<div class="pointer-events-none absolute inset-x-1 top-0 bottom-8 -z-20 overflow-hidden rounded-xl" aria-hidden="true">
+							{#if podiumImage}
+								<div class="size-full bg-cover bg-center opacity-14" style="background-image: url('{podiumImage}')"></div>
+							{/if}
+						</div>
+						<div
+							class="pointer-events-none absolute inset-x-1 top-0 bottom-8 -z-10 rounded-xl bg-linear-to-b from-[color-mix(in_srgb,var(--row-accent)_18%,transparent)] to-transparent"
+							aria-hidden="true"
+						></div>
+					{/if}
 					{#if rank === 1}
 						<div class="animate-crown-float relative z-10 -mb-1.5 w-11 drop-shadow-[0_2px_8px_rgba(255,215,0,0.6)]">
 							<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -424,7 +442,26 @@
 		</div>
 		<ul class="list">
 			{#each rest as r, i (r.discord_member_id)}
-				<li class="list-row border-base-300 items-center gap-3 rounded-none border-b px-3 py-2.5 sm:px-4">
+				<li
+					class="list-row border-base-300 relative isolate items-center gap-3 rounded-none border-b px-3 py-2.5 sm:px-4"
+					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
+				>
+					{#if rowAccent(r)}
+						{@const rowImage = themeImageUrl(r.theme_image)}
+						{#if rowImage}
+							<div
+								class="pointer-events-none absolute inset-0 -z-20 bg-cover bg-center opacity-16"
+								style="background-image: url('{rowImage}')"
+								aria-hidden="true"
+							></div>
+						{/if}
+						<div
+							class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-[color-mix(in_srgb,var(--row-accent)_20%,transparent)] to-transparent"
+							aria-hidden="true"
+						></div>
+						<div class="pointer-events-none absolute inset-y-0 left-0 -z-10 w-[3px] bg-(--row-accent)" aria-hidden="true"></div>
+					{/if}
+
 					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>
 
 					<div class="border-base-300 bg-base-300 size-10 shrink-0 overflow-hidden rounded-full border">
@@ -442,7 +479,9 @@
 						<div class="text-base-content/45 mb-1.5 text-[10px]">{rowSub(r)}</div>
 						<div class="bg-base-content/15 h-[3px] overflow-hidden rounded-full">
 							<div
-								class="from-secondary to-primary h-full rounded-full bg-linear-to-r transition-[width] duration-700 ease-out"
+								class="h-full rounded-full transition-[width] duration-700 ease-out {rowAccent(r)
+									? 'bg-(--row-accent)'
+									: 'from-secondary to-primary bg-linear-to-r'}"
 								style="width: {barWidthPct(r, metric)}%"
 							></div>
 						</div>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
+	import { type MemberTheme, normalizeAccent, themeImageUrl } from '$lib/themes.js';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -28,10 +29,13 @@
 		onclose: () => void;
 		mode?: 'level' | 'assets';
 		assets?: AssetsData | null;
+		theme?: MemberTheme | null;
 	};
 
-	let { member, serverName, serverIcon, onclose, mode = 'level', assets = null }: Props = $props();
+	let { member, serverName, serverIcon, onclose, mode = 'level', assets = null, theme = null }: Props = $props();
 	const isAssets = $derived(mode === 'assets' && !!assets);
+	const themeAccent = $derived(normalizeAccent(theme?.accent));
+	const themeBanner = $derived(themeImageUrl(theme?.image));
 
 	let visible = $state(false);
 
@@ -88,7 +92,7 @@
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
-	const accentColor = $derived(roleColor);
+	const accentColor = $derived(themeAccent ?? roleColor);
 
 	onMount(() => {
 		document.body.style.overflow = 'hidden';
@@ -294,7 +298,7 @@
 	}
 
 	async function captureCardBlob(): Promise<Blob> {
-		const rc = roleColor;
+		const rc = accentColor;
 		const name = memberName(member);
 		const role = highestRole;
 		const level = String(member.level ?? 0);
@@ -335,6 +339,12 @@
 				serverImg = await loadImg(serverIcon);
 			} catch {}
 		}
+		let bannerImg: HTMLImageElement | null = null;
+		if (themeBanner) {
+			try {
+				bannerImg = await loadImg(themeBanner);
+			} catch {}
+		}
 
 		const headerH = 24;
 		const avatarSize = 88;
@@ -366,6 +376,24 @@
 		roundRect(ctx, 0, 0, CW, CH, RADIUS);
 		ctx.fillStyle = bgGrad;
 		ctx.fill();
+
+		if (bannerImg) {
+			const bandH = CH * 0.46;
+			ctx.save();
+			roundRect(ctx, 0, 0, CW, CH, RADIUS);
+			ctx.clip();
+			const scale = Math.max(CW / bannerImg.width, bandH / bannerImg.height);
+			const dw = bannerImg.width * scale;
+			const dh = bannerImg.height * scale;
+			ctx.drawImage(bannerImg, (CW - dw) / 2, (bandH - dh) / 2, dw, dh);
+			const fade = ctx.createLinearGradient(0, 0, 0, bandH);
+			fade.addColorStop(0, colorMix('#ebe9e1', 0.28));
+			fade.addColorStop(0.55, colorMix('#ebe9e1', 0.72));
+			fade.addColorStop(1, 'rgb(235,233,225)');
+			ctx.fillStyle = fade;
+			ctx.fillRect(0, 0, CW, bandH);
+			ctx.restore();
+		}
 
 		ctx.save();
 		roundRect(ctx, 0, 0, CW, CH, RADIUS);
@@ -701,6 +729,10 @@
 			bind:this={cardEl}
 		>
 			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px]">
+				{#if themeBanner}
+					<div class="absolute inset-x-0 top-0 h-[46%] bg-cover bg-center" style="background-image: url('{themeBanner}')"></div>
+					<div class="absolute inset-x-0 top-0 h-[46%] bg-linear-to-b from-[#ebe9e1]/30 via-[#ebe9e1]/75 to-[#ebe9e1]"></div>
+				{/if}
 				<div
 					class="absolute -top-[40%] -left-[20%] h-[80%] w-[140%] opacity-10"
 					style="background: radial-gradient(closest-side at 42% 62%, {accentColor}, color-mix(in srgb, #e43d12 65%, transparent) 55%, transparent 78%);"

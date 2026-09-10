@@ -1,8 +1,8 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { imageFilenamePattern } from '$lib/images.js';
-import { embedImageContentType, readEmbedImage } from '$lib/backend/storage/embedImages.js';
+import { memberThemeContentType, readMemberTheme } from '$lib/backend/storage/memberThemes.js';
 
-const FILENAME_PATTERN = imageFilenamePattern('global-\\d+-\\d+-[a-z0-9]+|global-\\d+-[a-z0-9]+|\\d+-\\d+-[a-z0-9]+|\\d+-[a-z0-9]+');
+const FILENAME_PATTERN = imageFilenamePattern('\\d+-\\d+-[a-z0-9]+');
 
 export const GET: RequestHandler = async ({ params }) => {
 	const filename = params.filename ?? '';
@@ -15,14 +15,15 @@ export const GET: RequestHandler = async ({ params }) => {
 		return new Response(JSON.stringify({ error: 'Invalid filename format' }), { status: 400 });
 	}
 
-	const data = await readEmbedImage(filename);
+	const data = await readMemberTheme(filename);
 	if (!data) {
 		return new Response(JSON.stringify({ error: 'File not found' }), { status: 404 });
 	}
 
 	return new Response(data, {
 		headers: {
-			'Content-Type': embedImageContentType(filename),
+			'Content-Type': memberThemeContentType(filename),
+			'Cache-Control': 'public, max-age=31536000, immutable',
 			'X-Content-Type-Options': 'nosniff'
 		}
 	});

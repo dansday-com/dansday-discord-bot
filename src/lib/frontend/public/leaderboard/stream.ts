@@ -8,6 +8,7 @@ import {
 	getCachedLeaderboard,
 	setCachedLeaderboard
 } from './cache.js';
+import { resolveMemberTheme } from '../../../themes.js';
 
 export type MembersListEntry = {
 	discord_member_id: string;
@@ -344,9 +345,28 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 		const members = (await db.getServerMembersList(serverId)).filter((m: any) => !disguisedIds.has(Number(m.id)));
 		rows = buildLeaderboardRowsFromMembersList(members, metric, limit);
 	}
-	const snap: LeaderboardSnapshot = { metric, period, limit, updated_at: Date.now(), rows };
+	const snap: LeaderboardSnapshot = { metric, period, limit, updated_at: Date.now(), rows: await applyThemes(serverId, rows) };
 	setCachedLeaderboard(serverId, metric, period, limit, snap).catch(() => {});
 	return snap;
+}
+
+async function applyThemes(serverId: number, rows: LeaderboardRow[]): Promise<LeaderboardRow[]> {
+	if (rows.length === 0) return rows;
+	const themeRows = await db.getMemberThemesForServer(serverId).catch(() => []);
+	if ((themeRows as any[]).length === 0) return rows;
+
+	const byMember = new Map<string, { image: string | null; accent: string }>();
+	for (const row of themeRows as any[]) {
+		const theme = resolveMemberTheme(row);
+		if (theme) byMember.set(String(row.discord_member_id), { image: theme.image, accent: theme.accent });
+	}
+	if (byMember.size === 0) return rows;
+
+	return rows.map((r) => {
+		const theme = byMember.get(String(r.discord_member_id));
+		if (!theme) return r;
+		return { ...r, theme_image: theme.image, theme_accent: theme.accent };
+	});
 }
 
 export type ResolveLeaderboardSnapshotOpts = { bypassCache?: boolean };

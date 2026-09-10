@@ -1,9 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { page } from '$app/state';
 	import { BRAND_PRIMARY } from '$lib/brand.js';
+	import { type MemberTheme, themeImageUrl, themeVars } from '$lib/themes.js';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 	import { registerScroller } from '../../scrollLock.js';
+
+	const memberTheme = $derived(((page.data as any)?.memberTheme ?? null) as MemberTheme | null);
+	const themeBackdrop = $derived(themeImageUrl(memberTheme?.image));
 
 	let {
 		trailing = 'login',
@@ -62,16 +67,25 @@
 	<meta name="theme-color" content={BRAND_PRIMARY} />
 </svelte:head>
 
-<div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday">
-	<div
-		class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"
-	></div>
-	<div
-		class="bg-secondary animate-blob-drift pointer-events-none fixed -right-14 bottom-[10%] -z-10 size-48 rounded-full opacity-10 blur-[60px] [animation-delay:-6s] sm:-right-20 sm:size-80 sm:blur-[80px]"
-	></div>
-	<div
-		class="bg-neutral animate-blob-drift pointer-events-none fixed top-[40%] left-[30%] -z-10 size-40 rounded-full opacity-8 blur-[60px] [animation-delay:-12s] sm:size-65 sm:blur-[80px]"
-	></div>
+<div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday" style={themeVars(memberTheme)}>
+	{#if themeBackdrop}
+		<div
+			class="pointer-events-none fixed inset-0 -z-20 bg-cover bg-scroll bg-center bg-no-repeat sm:bg-fixed"
+			style="background-image: url('{themeBackdrop}')"
+			aria-hidden="true"
+		></div>
+		<div class="bg-canvas/82 pointer-events-none fixed inset-0 -z-10 backdrop-blur-[2px]" aria-hidden="true"></div>
+	{:else}
+		<div
+			class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"
+		></div>
+		<div
+			class="bg-secondary animate-blob-drift pointer-events-none fixed -right-14 bottom-[10%] -z-10 size-48 rounded-full opacity-10 blur-[60px] [animation-delay:-6s] sm:-right-20 sm:size-80 sm:blur-[80px]"
+		></div>
+		<div
+			class="bg-neutral animate-blob-drift pointer-events-none fixed top-[40%] left-[30%] -z-10 size-40 rounded-full opacity-8 blur-[60px] [animation-delay:-12s] sm:size-65 sm:blur-[80px]"
+		></div>
+	{/if}
 
 	<MainHeader {trailing} />
 

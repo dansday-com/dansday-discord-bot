@@ -7,6 +7,7 @@
 	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
+	import { type MemberTheme, themeImageUrl } from '$lib/themes.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -24,7 +25,8 @@
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
 	const isTask = $derived(/\/account\/task\//.test(pathNorm));
-	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask);
+	const isThemes = $derived(/\/account\/themes\//.test(pathNorm));
+	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask && !isThemes);
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
@@ -112,6 +114,9 @@
 	}
 
 	const memberAvatar = $derived(pd.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(pd.memberDiscordId) % 5 || 0}.png`);
+
+	const memberTheme = $derived((pd.memberTheme ?? null) as MemberTheme | null);
+	const heroImage = $derived(themeImageUrl(memberTheme?.image));
 
 	const joinedDate = $derived.by(() => {
 		const joined = pd.profile?.joined;
@@ -216,6 +221,7 @@
 		{ label: 'Minigames', icon: 'fa-dice', href: `${accountBase}/minigames/all/${navHash}`, active: isMinigames },
 		{ label: 'Assets', icon: 'fa-chart-line', href: `${accountBase}/assets/top/${navHash}`, active: isAssets },
 		{ label: 'History', icon: 'fa-clock-rotate-left', href: `${accountBase}/history/all/${navHash}`, active: isHistory },
+		{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/themes/${navHash}`, active: isThemes },
 		{ label: 'Guide', icon: 'fa-circle-question', href: `${accountBase}/guide/${navHash}`, active: isGuide }
 	]);
 
@@ -380,8 +386,18 @@
 <div class="mt-4.5">
 	{#snippet walletHero()}
 		<div
-			class="from-primary relative isolate mb-4 flex h-35 items-center gap-3.5 overflow-hidden rounded-2xl bg-linear-to-br to-[#7a1e06] px-4.5 py-3.5 shadow-[0_10px_26px_-16px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"
+			class="relative isolate mb-4 flex h-35 items-center gap-3.5 overflow-hidden rounded-2xl px-4.5 py-3.5 shadow-[0_10px_26px_-16px_color-mix(in_srgb,var(--color-primary)_80%,transparent)] {memberTheme
+				? 'bg-linear-to-br from-[var(--theme-accent)] to-[var(--theme-accent-deep)]'
+				: 'from-primary bg-linear-to-br to-[#7a1e06]'}"
 		>
+			{#if heroImage}
+				<div
+					class="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center opacity-55"
+					style="background-image: url('{heroImage}')"
+					aria-hidden="true"
+				></div>
+				<div class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-black/55 via-black/30 to-transparent" aria-hidden="true"></div>
+			{/if}
 			<div
 				class="pointer-events-none absolute -top-[60%] -right-[10%] size-55 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.16),transparent_70%)]"
 			></div>
@@ -522,7 +538,7 @@
 		<NavTabs variant="segment" tabs={sectionTabs} />
 	</div>
 
-	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask}
+	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask || isThemes}
 		{@render walletHero()}
 	{/if}
 
@@ -548,6 +564,7 @@
 		assets={{ invested: assetSummary.invested, value: assetSummary.value, pnl: assetSummary.pnl, pnlPct: assetSummary.pnlPct, count: assetSummary.count }}
 		serverName={data.server.name || data.server.slug}
 		serverIcon={data.server.server_icon}
+		theme={memberTheme}
 		onclose={() => (showCard = false)}
 	/>
 {/if}

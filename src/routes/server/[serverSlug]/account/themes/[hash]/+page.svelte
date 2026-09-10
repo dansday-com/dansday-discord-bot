@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
-	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, themeImageUrl } from '$lib/themes.js';
+	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
+	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload, themeImageUrl } from '$lib/themes.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -15,6 +15,8 @@
 	let pendingAccent = $state<string | null>(null);
 	let colorDraft = $state<string | null>(null);
 	let busy = $state(false);
+	let converting = $state(false);
+	let originalSize = $state<number | null>(null);
 	let error = $state<string | null>(null);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
@@ -36,17 +38,29 @@
 			input.value = '';
 			return;
 		}
-		if (file.size > MEMBER_THEME_MAX_BYTES) {
-			error = `That image is ${imageSizeLabel(file.size)}. The limit is ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`;
+		if (file.size > MEMBER_THEME_SOURCE_MAX_BYTES) {
+			error = `That image is ${imageSizeLabel(file.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_SOURCE_MAX_BYTES)}.`;
 			input.value = '';
 			return;
 		}
 
-		if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-		pendingFile = file;
-		pendingPreview = URL.createObjectURL(file);
-		colorDraft = null;
-		pendingAccent = await extractAccentFromFile(file);
+		converting = true;
+		try {
+			const prepared = await prepareThemeUpload(file);
+			if (prepared.file.size > MEMBER_THEME_MAX_BYTES) {
+				error = `Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`;
+				input.value = '';
+				return;
+			}
+			if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+			pendingFile = prepared.file;
+			pendingPreview = URL.createObjectURL(prepared.file);
+			originalSize = file.size;
+			colorDraft = null;
+			pendingAccent = prepared.accent;
+		} finally {
+			converting = false;
+		}
 	}
 
 	function discardPending() {
@@ -54,6 +68,7 @@
 		pendingFile = null;
 		pendingPreview = null;
 		pendingAccent = null;
+		originalSize = null;
 		colorDraft = null;
 		error = null;
 		if (fileInput) fileInput.value = '';
@@ -127,6 +142,13 @@
 		pendingAccent = await extractAccentFromFile(pendingFile);
 	}
 
+	const savedLabel = $derived.by(() => {
+		if (!pendingFile) return '';
+		const now = imageSizeLabel(pendingFile.size);
+		if (originalSize != null && originalSize > pendingFile.size) return `${pendingFile.name} · ${imageSizeLabel(originalSize)} → ${now}`;
+		return `${pendingFile.name} · ${now}`;
+	});
+
 	function onColorInput(event: Event) {
 		colorDraft = normalizeAccent((event.currentTarget as HTMLInputElement).value);
 	}
@@ -140,7 +162,7 @@
 			<span class="text-base-content flex items-center gap-2 text-[13px] font-bold">
 				<i class="fas fa-image text-base-content/45"></i>Background
 			</span>
-			<span class="text-base-content/45 text-[11px] font-medium">{IMAGE_FORMATS_LABEL} · max {imageSizeLabel(MEMBER_THEME_MAX_BYTES)}</span>
+			<span class="text-base-content/45 text-[11px] font-medium">{IMAGE_FORMATS_LABEL} · optimised to WebP · max {imageSizeLabel(MEMBER_THEME_MAX_BYTES)}</span>
 		</div>
 
 		<div class="flex flex-col gap-4 p-4 sm:p-5">
@@ -154,14 +176,16 @@
 					</div>
 				{:else}
 					<div class="w-full bg-linear-to-t from-black/65 to-transparent px-3.5 py-2.5">
-						<span class="text-[11px] font-bold text-white/85">{pendingFile ? `${pendingFile.name} · ${imageSizeLabel(pendingFile.size)}` : 'Saved'}</span>
+						<span class="text-[11px] font-bold text-white/85">{pendingFile ? savedLabel : 'Saved'}</span>
 					</div>
 				{/if}
 			</div>
 
 			<div class="flex flex-wrap gap-2">
-				<button class="btn btn-primary btn-sm" onclick={() => fileInput?.click()} disabled={busy}>
-					<i class="fas fa-arrow-up-from-bracket"></i>{previewImage ? 'Replace image' : 'Choose image'}
+				<button class="btn btn-primary btn-sm" onclick={() => fileInput?.click()} disabled={busy || converting}>
+					{#if converting}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-arrow-up-from-bracket"></i>{/if}{previewImage
+						? 'Replace image'
+						: 'Choose image'}
 				</button>
 				{#if pendingFile}
 					<button class="btn btn-ghost btn-sm" onclick={discardPending} disabled={busy}>Discard</button>

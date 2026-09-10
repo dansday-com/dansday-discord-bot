@@ -4,6 +4,7 @@
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { EmptyState, RankAvatar, rankStyle } from '$lib/frontend/components/public';
+	import { normalizeAccent, themeImageUrl } from '$lib/themes.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -200,12 +201,27 @@
 		{#each paged as member, i (member.discord_member_id)}
 			{@const rs = rankStyle(member.rank)}
 			{@const topRole = highestRole(member)}
+			{@const memberAccent = normalizeAccent(member.theme_accent)}
+			{@const memberImage = themeImageUrl(member.theme_image)}
 			<li
-				class="card border-base-300 bg-base-100 overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
+				class="card border-base-300 bg-base-100 relative isolate overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
 					? 'translate-y-0 opacity-100'
 					: 'translate-y-3 opacity-0'} {rs ? 'border-l-4' : ''}"
-				style="transition-delay: {i * 32}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}"
+				style="transition-delay: {i * 32}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}{memberAccent ? ` --row-accent: ${memberAccent};` : ''}"
 			>
+				{#if memberAccent}
+					{#if memberImage}
+						<div
+							class="pointer-events-none absolute inset-0 -z-20 bg-cover bg-center opacity-18"
+							style="background-image: url('{memberImage}')"
+							aria-hidden="true"
+						></div>
+					{/if}
+					<div
+						class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-[color-mix(in_srgb,var(--row-accent)_22%,transparent)] to-transparent"
+						aria-hidden="true"
+					></div>
+				{/if}
 				<div class="card-body gap-0 p-4">
 					<div class="flex items-start gap-3.5">
 						<div class="flex shrink-0 flex-col items-center gap-2">

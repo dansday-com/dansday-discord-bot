@@ -776,7 +776,7 @@ export const modules = [
 			},
 			{
 				label: 'Themes',
-				desc: 'Always on, nothing to configure. Each member uploads a background image (PNG, JPG, GIF or WEBP, up to 500KB) on their account Themes tab. The accent colour is read from the image and can be overridden by hand. It repaints that member’s account pages, wallet card, shareable card and their own leaderboard row, so every visitor sees it. Themes are per server, and a disguised member is already hidden from the public leaderboard.'
+				desc: 'Always on, nothing to configure. Each member uploads a background image (PNG, JPG, GIF or WEBP) on their account Themes tab. Everything is re-encoded and resized to WebP — animated GIFs become animated WebP, keeping their frames and looping — and the stored result must land under 1MB. The accent colour is read from the image and can be overridden by hand. It repaints that member’s account pages, wallet card, shareable card and their own leaderboard row, so every visitor sees it. Themes are per server, and a disguised member is already hidden from the public leaderboard.'
 			},
 			{ label: 'Public URL', desc: 'The generated public address, derived from the server name.' }
 		]

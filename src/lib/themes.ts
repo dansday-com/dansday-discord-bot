@@ -89,12 +89,71 @@ export function themeImageUrl(image: any): string | null {
 export function themeVars(theme: MemberTheme | null | undefined): string {
 	if (!theme) return '';
 	const accent = normalizeAccent(theme.accent) ?? DEFAULT_ACCENT;
+	const secondary = shiftAccent(accent, 0.2);
+	const deep = shiftAccent(accent, -0.25);
 	return [
 		`--theme-accent: ${accent}`,
 		`--theme-accent-deep: ${shiftAccent(accent, -0.45)}`,
 		`--theme-accent-soft: ${shiftAccent(accent, 0.35)}`,
-		`--theme-ink: ${accentInk(accent)}`
+		`--theme-ink: ${accentInk(accent)}`,
+		`--color-primary: ${accent}`,
+		`--color-primary-content: ${accentInk(accent)}`,
+		`--color-secondary: ${secondary}`,
+		`--color-secondary-content: ${accentInk(secondary)}`,
+		`--color-accent: ${deep}`,
+		`--color-accent-content: ${accentInk(deep)}`
 	].join('; ');
+}
+
+export const THEME_WEBP_MAX_EDGE = 1600;
+export const THEME_WEBP_QUALITY = 0.85;
+
+function loadImageElement(src: string): Promise<HTMLImageElement | null> {
+	return new Promise((resolve) => {
+		const img = new Image();
+		img.crossOrigin = 'anonymous';
+		img.onload = () => resolve(img);
+		img.onerror = () => resolve(null);
+		img.src = src;
+	});
+}
+
+export async function prepareThemeUpload(file: File): Promise<{ file: File; accent: string }> {
+	const url = URL.createObjectURL(file);
+	try {
+		const img = await loadImageElement(url);
+		if (!img) return { file, accent: DEFAULT_ACCENT };
+		const accent = accentFromImage(img);
+		if (file.type === 'image/gif') return { file, accent };
+		return { file: (await encodeWebp(img, file)) ?? file, accent };
+	} catch {
+		return { file, accent: DEFAULT_ACCENT };
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
+
+async function encodeWebp(img: HTMLImageElement, source: File): Promise<File | null> {
+	if (typeof document === 'undefined') return null;
+	const width = img.naturalWidth || img.width;
+	const height = img.naturalHeight || img.height;
+	if (!width || !height) return null;
+
+	const scale = Math.min(1, THEME_WEBP_MAX_EDGE / Math.max(width, height));
+	const canvas = document.createElement('canvas');
+	canvas.width = Math.max(1, Math.round(width * scale));
+	canvas.height = Math.max(1, Math.round(height * scale));
+
+	const ctx = canvas.getContext('2d');
+	if (!ctx) return null;
+	ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+	const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', THEME_WEBP_QUALITY));
+	if (!blob || blob.type !== 'image/webp') return null;
+	if (blob.size >= source.size && scale === 1) return null;
+
+	const name = `${source.name.replace(/\.[^.]+$/, '') || 'theme'}.webp`;
+	return new File([blob], name, { type: 'image/webp' });
 }
 
 export async function extractAccentFromFile(file: File): Promise<string> {
@@ -107,13 +166,7 @@ export async function extractAccentFromFile(file: File): Promise<string> {
 }
 
 export function extractAccentFromUrl(src: string): Promise<string> {
-	return new Promise((resolve) => {
-		const img = new Image();
-		img.crossOrigin = 'anonymous';
-		img.onload = () => resolve(accentFromImage(img));
-		img.onerror = () => resolve(DEFAULT_ACCENT);
-		img.src = src;
-	});
+	return loadImageElement(src).then((img) => (img ? accentFromImage(img) : DEFAULT_ACCENT));
 }
 
 function accentFromImage(img: HTMLImageElement): string {

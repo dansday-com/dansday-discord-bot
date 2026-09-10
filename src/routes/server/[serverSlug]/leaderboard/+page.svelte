@@ -382,18 +382,6 @@
 						: 'translate-y-6 opacity-0'}"
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
 				>
-					{#if rowAccent(r)}
-						{@const podiumImage = themeImageUrl(r.theme_image)}
-						<div class="pointer-events-none absolute inset-x-1 top-0 bottom-8 -z-20 overflow-hidden rounded-xl" aria-hidden="true">
-							{#if podiumImage}
-								<div class="size-full bg-cover bg-center opacity-14" style="background-image: url('{podiumImage}')"></div>
-							{/if}
-						</div>
-						<div
-							class="pointer-events-none absolute inset-x-1 top-0 bottom-8 -z-10 rounded-xl bg-linear-to-b from-[color-mix(in_srgb,var(--row-accent)_18%,transparent)] to-transparent"
-							aria-hidden="true"
-						></div>
-					{/if}
 					{#if rank === 1}
 						<div class="animate-crown-float relative z-10 -mb-1.5 w-11 drop-shadow-[0_2px_8px_rgba(255,215,0,0.6)]">
 							<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -423,10 +411,25 @@
 					</div>
 
 					<div
-						class="flex w-full items-center justify-center rounded-t-[10px] opacity-85"
+						class="relative isolate flex w-full items-center justify-center overflow-hidden rounded-t-[10px] opacity-85"
 						style="height: {PODIUM_HEIGHT[rank]}; background: {RANK_STYLES[rank].gradient};"
 					>
-						<span class="text-[11px] font-black text-black/50">#{rank}</span>
+						{#if rowAccent(r)}
+							{@const podiumImage = themeImageUrl(r.theme_image)}
+							{#if podiumImage}
+								<div
+									class="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center opacity-45"
+									style="background-image: url('{podiumImage}')"
+									aria-hidden="true"
+								></div>
+							{/if}
+							<div
+								class="pointer-events-none absolute inset-0 -z-10"
+								style="background: color-mix(in srgb, {rowAccent(r)} 55%, transparent)"
+								aria-hidden="true"
+							></div>
+						{/if}
+						<span class="relative text-[11px] font-black text-black/50">#{rank}</span>
 					</div>
 				</div>
 			{/each}

@@ -382,6 +382,9 @@
 			ctx.save();
 			roundRect(ctx, 0, 0, CW, CH, RADIUS);
 			ctx.clip();
+			ctx.beginPath();
+			ctx.rect(0, 0, CW, bandH);
+			ctx.clip();
 			const scale = Math.max(CW / bannerImg.width, bandH / bannerImg.height);
 			const dw = bannerImg.width * scale;
 			const dh = bannerImg.height * scale;

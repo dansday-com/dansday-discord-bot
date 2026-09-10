@@ -6,6 +6,7 @@ import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/inde
 import { resolveMemberByCardToken } from '$lib/frontend/public/items/index.js';
 import { MEMBER_THEME_MAX_BYTES } from '$lib/images.js';
 import { readUploadedImage, uploadFilename } from '$lib/backend/storage/imageUpload.js';
+import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
 import { removeMemberTheme, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
 import { normalizeAccent, resolveMemberTheme } from '$lib/themes.js';
 
@@ -45,8 +46,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const accent = normalizeAccent(upload.form?.get('accent'));
 		const previous = await db.getMemberTheme(actor.member.id).catch(() => null);
 
-		const filename = uploadFilename(String(actor.member.id), upload.extension);
-		await saveMemberTheme(filename, upload.data);
+		const converted = await themeImageToWebp(upload.data, upload.extension);
+		const filename = uploadFilename(String(actor.member.id), converted.extension);
+		await saveMemberTheme(filename, converted.data);
 
 		const row = await db.setMemberTheme(actor.member.id, {
 			image: filename,

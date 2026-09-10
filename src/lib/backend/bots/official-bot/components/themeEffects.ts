@@ -4,7 +4,7 @@ import { EFFECT_SPIN_COST, EFFECT_SPIN_GAME, effectMeta, rollEffect } from '../.
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 
-const ANNOUNCE_DELAY_MS = 2500;
+const ANNOUNCE_DELAY_MS = 7000;
 
 async function resolveServerMemberId(serverId: any, discordId: any) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordId)).catch(() => null);

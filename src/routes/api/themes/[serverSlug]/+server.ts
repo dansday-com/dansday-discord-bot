@@ -31,7 +31,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			const actor = await resolveActor(params.serverSlug ?? '', body.card);
 			if ('error' in actor) return json({ success: false, error: actor.error }, { status: actor.status });
 
-			const updates: { accentColor?: string; accentAuto?: boolean; effect?: string; effectSeed?: number; effectEnabled?: boolean } = {};
+			const updates: { image?: string | null; accentColor?: string; accentAuto?: boolean; effect?: string; effectSeed?: number; effectEnabled?: boolean } = {};
+
+			if (body.image === null) updates.image = null;
 
 			if (body.accent !== undefined) {
 				const accent = normalizeAccent(body.accent);
@@ -51,7 +53,10 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 			if (Object.keys(updates).length === 0) return json({ success: false, error: 'Nothing to update' }, { status: 400 });
 
+			const cleared = updates.image === null ? await db.getMemberTheme(actor.member.id).catch(() => null) : null;
 			const row = await db.setMemberTheme(actor.member.id, updates);
+			if (cleared?.image) await removeMemberTheme(cleared.image);
+
 			return json({ success: true, theme: resolveMemberThemeForClient(row) });
 		}
 

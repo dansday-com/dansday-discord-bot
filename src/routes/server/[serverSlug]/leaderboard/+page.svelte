@@ -4,6 +4,7 @@
 	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
 	import { normalizeAccent } from '$lib/themes.js';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
+	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -400,7 +401,16 @@
 					</div>
 
 					<div class="mb-2 w-full min-w-0 overflow-hidden px-1 text-center">
-						<div class="text-base-content mb-0.5 truncate text-xs font-bold" title={displayName(r)}>{displayName(r)}</div>
+						<div class="mb-0.5 truncate text-xs font-bold">
+							<EffectName
+								name={displayName(r)}
+								effect={r.theme_effect}
+								seed={r.theme_effect_seed}
+								accent={r.theme_accent}
+								class="text-base-content"
+								title={displayName(r)}
+							/>
+						</div>
 						<div
 							class="flex items-baseline justify-center gap-[3px] text-lg font-black whitespace-nowrap tabular-nums"
 							style="color: {RANK_STYLES[rank].color};"
@@ -481,7 +491,16 @@
 					</div>
 
 					<div class="list-col-grow min-w-0">
-						<div class="text-base-content truncate text-[13px] font-semibold" title={displayName(r)}>{displayName(r)}</div>
+						<div class="truncate text-[13px] font-semibold">
+							<EffectName
+								name={displayName(r)}
+								effect={r.theme_effect}
+								seed={r.theme_effect_seed}
+								accent={r.theme_accent}
+								class="text-base-content"
+								title={displayName(r)}
+							/>
+						</div>
 						<div class="text-base-content/45 mb-1.5 text-[10px]">{rowSub(r)}</div>
 						<div class="bg-base-content/15 h-[3px] overflow-hidden rounded-full">
 							<div

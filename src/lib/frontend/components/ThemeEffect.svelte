@@ -66,6 +66,8 @@
 		{#if family === 'earthquake'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<path class="fx-ground" d="M0 78 L18 74 L34 79 L52 73 L70 78 L86 74 L100 79 L100 100 L0 100 Z" />
+			</svg>
+			<svg class="fx-piece fx-piece-wide" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 				<path class="fx-chasm" d="M40 78 L46 88 L42 100 L58 100 L54 86 L60 78 Z" />
 				<path class="fx-crack" style="--c-i: 0" d="M2 34 L18 40 L26 31 L41 44 L55 36 L70 49 L84 41 L98 52" />
 				<path class="fx-crack" style="--c-i: 1" d="M26 31 L30 14 L22 6" />
@@ -74,64 +76,90 @@
 				<path class="fx-crack" style="--c-i: 4" d="M55 36 L58 20 L68 10" />
 			</svg>
 		{:else if family === 'thunder'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<svg
+				class="fx-cloudlet fx-cloud fx-cloud-thunder"
+				style="--k-i: 0; --c-left: 6%"
+				viewBox="0 0 110 44"
+				preserveAspectRatio="xMidYMid meet"
+				aria-hidden="true"
+			>
 				<defs>
-					<linearGradient id="fxCloudA{uid}" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxGthunder0{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#4a5160" /><stop offset="100%" stop-color="#1b1f29" />
 					</linearGradient>
-					<linearGradient id="fxCloudB{uid}" x1="0" y1="0" x2="0" y2="1">
+				</defs>
+				<path fill="url(#fxGthunder0{uid})" d="M4 34 Q0 22 12 20 Q9 8 24 7 Q31 -3 48 3 Q64 -5 74 6 Q90 4 92 16 Q104 15 103 26 Q105 34 92 34 Z" />
+			</svg>
+			<svg
+				class="fx-cloudlet fx-cloud fx-cloud-thunder"
+				style="--k-i: 1; --c-left: 52%"
+				viewBox="0 0 110 44"
+				preserveAspectRatio="xMidYMid meet"
+				aria-hidden="true"
+			>
+				<defs>
+					<linearGradient id="fxGthunder1{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#39404e" /><stop offset="100%" stop-color="#12151d" />
 					</linearGradient>
 				</defs>
-				<g class="fx-cloud" style="--k-i: 0"
-					><path fill="url(#fxCloudA{uid})" d="M2 36 Q-1 25 10 23 Q7 10 22 9 Q28 -3 45 3 Q60 -5 70 5 Q86 3 88 16 Q99 15 98 27 Q100 36 88 36 Z" /></g
-				>
-				<g class="fx-cloud" style="--k-i: 1"
-					><path fill="url(#fxCloudB{uid})" d="M30 30 Q28 19 40 18 Q45 8 58 10 Q70 2 80 11 Q94 9 96 20 Q108 20 107 29 Q108 34 97 34 L36 34 Q29 34 30 30 Z" /></g
-				>
-				<path class="fx-strike" style="--s-i: 0" d="M45 33 L36 55 L46 55 L31 88 L40 60 L30 60 L41 33 Z" />
-				<path class="fx-strike" style="--s-i: 1" d="M69 31 L62 49 L70 49 L58 78 L65 54 L57 54 L66 31 Z" />
-				<path class="fx-strike fx-strike-thin" style="--s-i: 2" d="M52 34 L47 52 L54 52 L44 96" />
+				<path fill="url(#fxGthunder1{uid})" d="M4 30 Q2 19 14 18 Q19 8 32 10 Q44 2 54 11 Q68 9 70 20 Q82 20 81 29 Q82 34 71 34 L10 34 Q3 34 4 30 Z" />
+			</svg>
+			<svg class="fx-piece fx-piece-tall" viewBox="0 0 45 100" preserveAspectRatio="xMidYMin meet" aria-hidden="true">
+				<path class="fx-strike" style="--s-i: 0" d="M22 26 L13 52 L23 52 L8 92 L17 58 L7 58 L18 26 Z" />
+				<path class="fx-strike fx-strike-thin" style="--s-i: 2" d="M29 28 L24 50 L31 50 L21 98" />
+				<path class="fx-strike" style="--s-i: 1" d="M38 24 L31 46 L39 46 L27 84 L34 52 L26 52 L35 24 Z" />
 			</svg>
 		{:else if family === 'rain'}
-			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxSkyRain{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
-					</linearGradient>
-				</defs>
-				<g class="fx-cloud fx-cloud-nimbo" style="--k-i: 0"
-					><path fill="url(#fxSkyRain{uid})" d="M0 24 Q3 13 16 14 Q22 4 36 6 Q49 0 58 8 Q72 4 79 15 Q93 14 95 24 Q97 32 86 32 L8 32 Q-2 32 0 24 Z" /></g
+			<div class="fx-skycloud" style="display: contents">
+				<svg
+					class="fx-cloudlet fx-cloud fx-cloud-rain"
+					style="--k-i: 0; --c-left: 18%"
+					viewBox="0 0 110 44"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
 				>
-			</svg>
+					<defs>
+						<linearGradient id="fxGrain0{uid}" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+						</linearGradient>
+					</defs>
+					<path fill="url(#fxGrain0{uid})" d="M2 26 Q5 14 18 15 Q24 5 38 7 Q51 1 60 9 Q74 5 81 16 Q95 15 97 25 Q99 33 88 33 L10 33 Q0 33 2 26 Z" />
+				</svg>
+			</div>
 		{:else if family === 'snow'}
-			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxSkySnow{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
-					</linearGradient>
-				</defs>
-				<g class="fx-cloud fx-cloud-puff" style="--k-i: 0"
-					><path
-						fill="url(#fxSkySnow{uid})"
-						d="M6 29 Q1 18 12 15 Q13 4 26 6 Q33 -4 45 3 Q55 -5 65 4 Q77 1 80 13 Q93 14 92 25 Q94 34 82 34 L14 34 Q4 35 6 29 Z"
-					/></g
+			<div class="fx-skycloud" style="display: contents">
+				<svg
+					class="fx-cloudlet fx-cloud fx-cloud-snow"
+					style="--k-i: 0; --c-left: 22%"
+					viewBox="0 0 110 44"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
 				>
-			</svg>
+					<defs>
+						<linearGradient id="fxGsnow0{uid}" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+						</linearGradient>
+					</defs>
+					<path fill="url(#fxGsnow0{uid})" d="M6 29 Q1 18 12 15 Q13 4 26 6 Q33 -4 45 3 Q55 -5 65 4 Q77 1 80 13 Q93 14 92 25 Q94 34 82 34 L14 34 Q4 35 6 29 Z" />
+				</svg>
+			</div>
 		{:else if family === 'blizzard'}
-			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxSkyBliz{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
-					</linearGradient>
-				</defs>
-				<g class="fx-cloud fx-cloud-shear" style="--k-i: 0"
-					><path
-						fill="url(#fxSkyBliz{uid})"
-						d="M-6 27 Q-2 14 15 14 Q24 1 43 6 Q60 -3 74 6 Q92 3 100 14 Q116 13 116 24 Q116 32 100 32 L60 32 Q40 34 4 32 Q-8 33 -6 27 Z"
-					/></g
+			<div class="fx-skycloud" style="display: contents">
+				<svg
+					class="fx-cloudlet fx-cloud fx-cloud-blizzard"
+					style="--k-i: 0; --c-left: 10%"
+					viewBox="0 0 110 44"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
 				>
-			</svg>
+					<defs>
+						<linearGradient id="fxGblizzard0{uid}" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+						</linearGradient>
+					</defs>
+					<path fill="url(#fxGblizzard0{uid})" d="M0 27 Q4 14 20 14 Q29 1 47 6 Q64 -3 78 6 Q94 3 100 15 Q112 15 110 25 Q108 32 92 32 L20 32 Q2 33 0 27 Z" />
+				</svg>
+			</div>
 		{:else if family === 'tsunami'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
@@ -145,7 +173,8 @@
 
 				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack{uid})" d="M0 100 L0 70 Q22 52 46 58 Q70 64 100 54 L100 100 Z" />
 				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack{uid})" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
-
+			</svg>
+			<svg class="fx-piece fx-piece-tall" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
 				<g class="fx-breaker">
 					<path
 						fill="url(#fxSea{uid})"
@@ -158,17 +187,26 @@
 				</g>
 			</svg>
 		{:else if family === 'tornado'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<svg
+				class="fx-cloudlet fx-cloud fx-cloud-tornado"
+				style="--k-i: 0; --c-left: 26%"
+				viewBox="0 0 110 44"
+				preserveAspectRatio="xMidYMid meet"
+				aria-hidden="true"
+			>
 				<defs>
-					<linearGradient id="fxTorn{uid}" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxGtornado0{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#98a2ae" /><stop offset="100%" stop-color="#4b5563" />
 					</linearGradient>
 				</defs>
-				<g class="fx-cloud" style="--k-i: 0"
-					><path fill="url(#fxTorn{uid})" d="M4 30 Q6 17 19 17 Q23 6 38 8 Q49 -1 58 9 Q73 7 75 20 Q90 20 90 31 Q90 37 81 37 L11 37 Q4 37 4 30 Z" /></g
-				>
-				<path class="fx-funnel" d="M14 34 Q50 44 86 34 Q72 56 63 72 Q56 88 50 100 Q44 88 37 72 Q28 56 14 34 Z" />
-				<ellipse class="fx-dustring" cx="50" cy="98" rx="30" ry="6" />
+				<path
+					fill="url(#fxGtornado0{uid})"
+					d="M4 26 Q1 14 16 13 Q22 2 38 6 Q55 -2 67 8 Q85 6 89 18 Q99 20 97 28 Q97 35 86 35 L63 35 Q59 42 50 42 Q41 42 37 35 L12 35 Q2 35 4 26 Z"
+				/>
+			</svg>
+			<svg class="fx-piece fx-piece-tall" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+				<path class="fx-funnel" d="M14 20 Q50 30 86 20 Q72 46 63 66 Q56 84 50 100 Q44 84 37 66 Q28 46 14 20 Z" />
+				<ellipse class="fx-dustring" cx="50" cy="97" rx="34" ry="5" />
 			</svg>
 		{:else if family === 'meteor'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -178,8 +216,8 @@
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</radialGradient>
 				</defs>
-				<rect class="fx-nightsky" width="100" height="100" />
-				<rect width="100" height="100" fill="url(#fxHorizon{uid})" />
+				<rect class="fx-nightsky fx-nightsky-soft" width="100" height="100" />
+				<rect width="100" height="42" y="58" fill="url(#fxHorizon{uid})" />
 			</svg>
 		{:else if family === 'aurora'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -255,15 +293,6 @@
 					</radialGradient>
 				</defs>
 				<rect width="100" height="100" fill="url(#fxBloom{uid})" />
-				<g class="fx-flare" style="--l-i: 0" transform="translate(26 30)">
-					<path d="M0 -16 L2.6 -2.6 L16 0 L2.6 2.6 L0 16 L-2.6 2.6 L-16 0 L-2.6 -2.6 Z" />
-				</g>
-				<g class="fx-flare" style="--l-i: 1" transform="translate(72 58)">
-					<path d="M0 -11 L1.8 -1.8 L11 0 L1.8 1.8 L0 11 L-1.8 1.8 L-11 0 L-1.8 -1.8 Z" />
-				</g>
-				<g class="fx-flare" style="--l-i: 2" transform="translate(52 76)">
-					<path d="M0 -8 L1.3 -1.3 L8 0 L1.3 1.3 L0 8 L-1.3 1.3 L-8 0 L-1.3 -1.3 Z" />
-				</g>
 			</svg>
 		{:else if family === 'confetti'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">

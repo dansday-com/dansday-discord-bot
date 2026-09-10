@@ -3,6 +3,7 @@
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { type MemberTheme, normalizeAccent } from '$lib/themes.js';
 	import ThemeEffect from './ThemeEffect.svelte';
+	import EffectName from './EffectName.svelte';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -783,7 +784,9 @@
 						</div>
 					</div>
 
-					<h2 class="text-base-content mb-2 max-w-full truncate text-xl font-extrabold tracking-tight">{memberName(member)}</h2>
+					<h2 class="text-base-content mb-2 max-w-full truncate text-xl font-extrabold tracking-tight">
+						<EffectName name={memberName(member)} effect={theme?.effect} seed={theme?.effectSeed} accent={theme?.accent} />
+					</h2>
 
 					{#if highestRole}
 						<div

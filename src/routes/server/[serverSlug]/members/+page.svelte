@@ -6,6 +6,7 @@
 	import { EmptyState, RankAvatar, rankStyle } from '$lib/frontend/components/public';
 	import { normalizeAccent } from '$lib/themes.js';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
+	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -241,7 +242,13 @@
 
 						<div class="min-w-0 flex-1">
 							<div class="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-								<span class="text-base-content truncate text-[clamp(15px,3.8vw,17px)] font-extrabold tracking-tight">{listDisplayName(member)}</span>
+								<EffectName
+									name={listDisplayName(member)}
+									effect={member.theme_effect}
+									seed={member.theme_effect_seed}
+									accent={member.theme_accent}
+									class="text-base-content truncate text-[clamp(15px,3.8vw,17px)] font-extrabold tracking-tight"
+								/>
 								{#if member.is_afk}
 									<span class="badge badge-sm bg-secondary/12 border-secondary/22 text-secondary shrink-0 gap-1 text-[10px] font-bold">
 										<i class="fas fa-moon" aria-hidden="true"></i> AFK

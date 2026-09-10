@@ -9,6 +9,7 @@
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { MemberTheme } from '$lib/themes.js';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
+	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { effectVariant } from '$lib/effects.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
@@ -435,16 +436,13 @@
 				</span>
 
 				{#if pd.memberName}
-					{#if memberTheme?.effect === 'glitch'}
-						<span
-							class="fx-text fx-live mt-px block truncate text-[15px] font-extrabold tracking-tight text-white"
-							data-fx="glitch"
-							data-fx-text={pd.memberName}
-							style={effectVariant('glitch', memberTheme.effectSeed, memberTheme.accent).style}>{pd.memberName}</span
-						>
-					{:else}
-						<span class="mt-px block truncate text-[15px] font-extrabold tracking-tight text-white">{pd.memberName}</span>
-					{/if}
+					<EffectName
+						name={pd.memberName}
+						effect={memberTheme?.effect}
+						seed={memberTheme?.effectSeed}
+						accent={memberTheme?.accent}
+						class="mt-px block truncate text-[15px] font-extrabold tracking-tight text-white"
+					/>
 				{/if}
 
 				{#if isTask}

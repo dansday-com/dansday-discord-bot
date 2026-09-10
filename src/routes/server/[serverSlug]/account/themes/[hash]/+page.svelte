@@ -5,8 +5,8 @@
 	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import { GameModal, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
+	import { showToast } from '$lib/frontend/toast.svelte';
 	import { getContext } from 'svelte';
-	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
 
@@ -32,7 +32,6 @@
 	let spinning = $state(false);
 	let reelWrapEl = $state<HTMLDivElement | undefined>();
 	let playing = $state(false);
-	let error = $state<string | null>(null);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
 	const previewImage = $derived(pendingPreview ?? savedImage);
@@ -50,15 +49,13 @@
 		const file = input.files?.[0] ?? null;
 		if (!file) return;
 
-		error = null;
-
 		if (!file.type.startsWith('image/')) {
-			error = `Use a ${IMAGE_FORMATS_LABEL} image.`;
+			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
 			input.value = '';
 			return;
 		}
 		if (file.size > MEMBER_THEME_SOURCE_MAX_BYTES) {
-			error = `That image is ${imageSizeLabel(file.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_SOURCE_MAX_BYTES)}.`;
+			showToast(`That image is ${imageSizeLabel(file.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_SOURCE_MAX_BYTES)}.`, 'error');
 			input.value = '';
 			return;
 		}
@@ -67,7 +64,7 @@
 		try {
 			const prepared = await prepareThemeUpload(file);
 			if (prepared.file.size > MEMBER_THEME_MAX_BYTES) {
-				error = `Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`;
+				showToast(`Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`, 'error');
 				input.value = '';
 				return;
 			}
@@ -89,14 +86,12 @@
 		pendingAccent = null;
 		originalSize = null;
 		colorDraft = null;
-		error = null;
 		if (fileInput) fileInput.value = '';
 	}
 
 	async function save() {
 		if (busy || !dirty) return;
 		busy = true;
-		error = null;
 
 		try {
 			let response: Response;
@@ -121,14 +116,41 @@
 
 			const body = await response.json().catch(() => null);
 			if (!response.ok || !body?.success) {
-				error = body?.error ?? 'Could not save your theme.';
+				showToast(body?.error ?? 'Could not save your theme.', 'error');
 				return;
 			}
 
 			discardPending();
 			await invalidateAll();
+			showToast('Theme saved', 'success');
 		} catch {
-			error = 'Could not save your theme.';
+			showToast('Could not save your theme.', 'error');
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function removeImage() {
+		if (busy || !savedImage) return;
+		busy = true;
+
+		try {
+			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: data.hash, image: null })
+			});
+			const body = await response.json().catch(() => null);
+			if (!response.ok || !body?.success) {
+				showToast(body?.error ?? 'Could not remove the image.', 'error');
+				return;
+			}
+
+			discardPending();
+			await invalidateAll();
+			showToast('Background removed', 'success');
+		} catch {
+			showToast('Could not remove the image.', 'error');
 		} finally {
 			busy = false;
 		}
@@ -136,22 +158,23 @@
 
 	async function toggleEffect() {
 		if (busy || spinning) return;
+		const next = !effectOn;
 		busy = true;
-		error = null;
 		try {
 			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: data.hash, effect_enabled: !effectOn })
+				body: JSON.stringify({ card: data.hash, effect_enabled: next })
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok || !body?.success) {
-				error = body?.error ?? 'Could not change the effect.';
+				showToast(body?.error ?? 'Could not change the effect.', 'error');
 				return;
 			}
 			await invalidateAll();
+			showToast(next ? 'Effect turned on' : 'Effect turned off', 'success');
 		} catch {
-			error = 'Could not change the effect.';
+			showToast('Could not change the effect.', 'error');
 		} finally {
 			busy = false;
 		}
@@ -160,7 +183,6 @@
 	async function reset() {
 		if (busy) return;
 		busy = true;
-		error = null;
 
 		try {
 			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
@@ -170,14 +192,15 @@
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok || !body?.success) {
-				error = body?.error ?? 'Could not reset your theme.';
+				showToast(body?.error ?? 'Could not reset your theme.', 'error');
 				return;
 			}
 
 			discardPending();
 			await invalidateAll();
+			showToast('Theme reset', 'success');
 		} catch {
-			error = 'Could not reset your theme.';
+			showToast('Could not reset your theme.', 'error');
 		} finally {
 			busy = false;
 		}
@@ -231,7 +254,6 @@
 	async function spin() {
 		if (spinning || busy || !canSpin) return;
 		spinning = true;
-		error = null;
 		reelResult = null;
 
 		try {
@@ -242,7 +264,7 @@
 			});
 			const body = await response.json().catch(() => null);
 			if (!response.ok || !body?.success) {
-				error = body?.error ?? 'Spin failed.';
+				showToast(body?.error ?? 'Spin failed.', 'error');
 				spinning = false;
 				return;
 			}
@@ -270,7 +292,7 @@
 				await invalidateAll();
 			}, 7000);
 		} catch {
-			error = 'Spin failed.';
+			showToast('Spin failed.', 'error');
 			spinning = false;
 		}
 	}
@@ -315,6 +337,10 @@
 				</button>
 				{#if pendingFile}
 					<button class="btn btn-ghost btn-sm" onclick={discardPending} disabled={busy}>Discard</button>
+				{:else if savedImage}
+					<button class="btn btn-ghost btn-sm text-error" onclick={removeImage} disabled={busy}>
+						<i class="fas fa-trash-can"></i>Remove image
+					</button>
 				{/if}
 				<input bind:this={fileInput} type="file" accept={IMAGE_ACCEPT} class="hidden" onchange={pickFile} />
 			</div>
@@ -399,12 +425,6 @@
 		</div>
 	</section>
 
-	{#if error}
-		<div class="alert alert-error text-[13px]">
-			<i class="fas fa-triangle-exclamation"></i><span>{error}</span>
-		</div>
-	{/if}
-
 	<div class="flex flex-wrap items-center gap-2">
 		<button class="btn btn-primary btn-sm" onclick={save} disabled={busy || !dirty}>
 			{#if busy}<span class="loading loading-spinner loading-xs"></span>{/if}Save theme
@@ -435,7 +455,6 @@
 			>
 				{#snippet cell(kind: string, index: number)}
 					<div class="border-base-300 bg-base-200 relative isolate grid size-full place-items-center overflow-hidden rounded-xl border">
-						<ThemeEffect effect={kind} seed={reelSeeds[index] ?? 0} {accent} frozen />
 						<i class="fas {effectMeta(kind)?.icon} text-base-content/70 relative text-[22px]"></i>
 					</div>
 				{/snippet}

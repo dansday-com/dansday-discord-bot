@@ -64,7 +64,7 @@ export const BASICS: GuideCard[] = [
 		icon: 'fa-palette',
 		accent: '#6d5bd0',
 		title: 'Themes',
-		desc: 'Upload a background on Themes; its colour is picked for you and shows on your leaderboard row.'
+		desc: 'Set a background and colour on Themes, then spin 1,000 XP for an animated effect.'
 	}
 ];
 

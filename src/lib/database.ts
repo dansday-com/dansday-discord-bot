@@ -3010,6 +3010,7 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null)
 			schema.serverMemberMinigameLogs,
 			and(
 				eq(schema.serverMemberMinigameLogs.member_id, schema.serverMembers.id),
+				ne(schema.serverMemberMinigameLogs.game, 'effect_spin'),
 				...(since ? [sql`${schema.serverMemberMinigameLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
 			)
 		)
@@ -5848,7 +5849,10 @@ export async function getMemberTheme(memberId: any) {
 		.select({
 			image: schema.serverMemberThemes.image,
 			accent_color: schema.serverMemberThemes.accent_color,
-			accent_auto: schema.serverMemberThemes.accent_auto
+			accent_auto: schema.serverMemberThemes.accent_auto,
+			effect: schema.serverMemberThemes.effect,
+			effect_seed: schema.serverMemberThemes.effect_seed,
+			effect_enabled: schema.serverMemberThemes.effect_enabled
 		})
 		.from(schema.serverMemberThemes)
 		.where(eq(schema.serverMemberThemes.member_id, Number(memberId)))
@@ -5863,20 +5867,29 @@ export async function getMemberThemesForServer(serverId: any) {
 			discord_member_id: schema.serverMembers.discord_member_id,
 			image: schema.serverMemberThemes.image,
 			accent_color: schema.serverMemberThemes.accent_color,
-			accent_auto: schema.serverMemberThemes.accent_auto
+			accent_auto: schema.serverMemberThemes.accent_auto,
+			effect: schema.serverMemberThemes.effect,
+			effect_seed: schema.serverMemberThemes.effect_seed,
+			effect_enabled: schema.serverMemberThemes.effect_enabled
 		})
 		.from(schema.serverMemberThemes)
 		.innerJoin(schema.serverMembers, eq(schema.serverMemberThemes.member_id, schema.serverMembers.id))
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)));
 }
 
-export async function setMemberTheme(memberId: any, updates: { image?: string | null; accentColor?: string | null; accentAuto?: boolean }) {
+export async function setMemberTheme(
+	memberId: any,
+	updates: { image?: string | null; accentColor?: string | null; accentAuto?: boolean; effect?: string; effectSeed?: number; effectEnabled?: boolean }
+) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const set: Record<string, any> = { updated_at: now };
 	if (updates.image !== undefined) set.image = updates.image;
 	if (updates.accentColor !== undefined) set.accent_color = updates.accentColor;
 	if (updates.accentAuto !== undefined) set.accent_auto = updates.accentAuto;
+	if (updates.effect !== undefined) set.effect = updates.effect;
+	if (updates.effectSeed !== undefined) set.effect_seed = updates.effectSeed;
+	if (updates.effectEnabled !== undefined) set.effect_enabled = updates.effectEnabled;
 
 	await db
 		.insert(schema.serverMemberThemes)
@@ -5885,6 +5898,9 @@ export async function setMemberTheme(memberId: any, updates: { image?: string | 
 			image: updates.image ?? null,
 			accent_color: updates.accentColor ?? null,
 			accent_auto: updates.accentAuto ?? true,
+			effect: updates.effect ?? 'none',
+			effect_seed: updates.effectSeed ?? 0,
+			effect_enabled: updates.effectEnabled ?? true,
 			created_at: now as any,
 			updated_at: now as any
 		})

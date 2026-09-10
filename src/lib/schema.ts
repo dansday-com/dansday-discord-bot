@@ -510,6 +510,9 @@ export const serverMemberThemes = mysqlTable(
 		image: varchar('image', { length: 191 }),
 		accent_color: varchar('accent_color', { length: 7 }),
 		accent_auto: boolean('accent_auto').notNull().default(true),
+		effect: varchar('effect', { length: 32 }).notNull().default('none'),
+		effect_seed: int('effect_seed').notNull().default(0),
+		effect_enabled: boolean('effect_enabled').notNull().default(true),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},

@@ -88,6 +88,15 @@
 	}
 
 	function minigameLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
+		if (h.game === 'effect_spin') {
+			return {
+				icon: 'fa-wand-magic-sparkles',
+				title: 'Effect spin',
+				tone: 'win',
+				deltaLabel: `−${fmt(Math.abs(Number(h.wager) || 0))} XP`,
+				badges: [{ icon: 'fa-dice', text: 'Theme effect' }]
+			};
+		}
 		const won = h.outcome === 'win';
 		const net = Number(h.xpAmount) || 0;
 		const badges: Badge[] = [{ icon: 'fa-dice', text: `${Number(h.multiplier).toFixed(2)}×` }];

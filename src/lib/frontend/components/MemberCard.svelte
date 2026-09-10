@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { type MemberTheme, normalizeAccent } from '$lib/themes.js';
+	import ThemeEffect from './ThemeEffect.svelte';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -740,6 +741,9 @@
 					class="absolute -top-[40%] -left-[20%] h-[80%] w-[140%] opacity-10"
 					style="background: radial-gradient(closest-side at 42% 62%, {accentColor}, color-mix(in srgb, #e43d12 65%, transparent) 55%, transparent 78%);"
 				></div>
+				{#if theme}
+					<ThemeEffect effect={theme.effect} seed={theme.effectSeed} accent={theme.accent} always />
+				{/if}
 			</div>
 
 			<div class="relative px-5.5 pt-5 pb-4">

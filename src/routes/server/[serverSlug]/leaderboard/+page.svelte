@@ -3,6 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
 	import { normalizeAccent } from '$lib/themes.js';
+	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -428,6 +429,7 @@
 								style="background: color-mix(in srgb, {rowAccent(r)} 55%, transparent)"
 								aria-hidden="true"
 							></div>
+							<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} />
 						{/if}
 						<span class="relative text-[11px] font-black text-black/50">#{rank}</span>
 					</div>
@@ -463,6 +465,7 @@
 							aria-hidden="true"
 						></div>
 						<div class="pointer-events-none absolute inset-y-0 left-0 -z-10 w-[3px] bg-(--row-accent)" aria-hidden="true"></div>
+						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} />
 					{/if}
 
 					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>

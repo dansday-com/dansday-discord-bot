@@ -57,6 +57,8 @@ export type LeaderboardRow = {
 	rank: number | null;
 	theme_image?: string | null;
 	theme_accent?: string | null;
+	theme_effect?: string | null;
+	theme_effect_seed?: number | null;
 };
 
 export type LeaderboardSnapshot = {

@@ -681,6 +681,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'minigame_play failed', details: shopErr.message }));
 					}
+				} else if (payload.type === 'theme_effect_spin') {
+					try {
+						const { handleThemeEffectSpin } = await import('./themeEffects.js');
+						const result = await handleThemeEffectSpin(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (spinErr: any) {
+						await logger.log(`❌ theme_effect_spin failed: ${spinErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'theme_effect_spin failed', details: spinErr.message }));
+					}
 				} else if (payload.type === 'gift_item_announce') {
 					try {
 						const { handleAdminGiftAnnounce } = await import('./items.js');

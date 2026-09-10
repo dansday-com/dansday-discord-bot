@@ -9,6 +9,7 @@ import { readUploadedImage } from '$lib/backend/storage/imageUpload.js';
 import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
 import { memberThemeFilename, memberThemeKey, removeMemberTheme, resolveMemberThemeForClient, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
 import { normalizeAccent } from '$lib/themes.js';
+import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
 
 async function resolveActor(serverSlug: string, card: any) {
 	const resolved = await resolvePublicServerBySlug(String(serverSlug || '').trim());
@@ -30,10 +31,27 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			const actor = await resolveActor(params.serverSlug ?? '', body.card);
 			if ('error' in actor) return json({ success: false, error: actor.error }, { status: actor.status });
 
-			const accent = normalizeAccent(body.accent);
-			if (!accent) return json({ success: false, error: 'Invalid colour' }, { status: 400 });
+			const updates: { accentColor?: string; accentAuto?: boolean; effect?: string; effectSeed?: number; effectEnabled?: boolean } = {};
 
-			const row = await db.setMemberTheme(actor.member.id, { accentColor: accent, accentAuto: body.accent_auto === true });
+			if (body.accent !== undefined) {
+				const accent = normalizeAccent(body.accent);
+				if (!accent) return json({ success: false, error: 'Invalid colour' }, { status: 400 });
+				updates.accentColor = accent;
+				updates.accentAuto = body.accent_auto === true;
+			}
+
+			if (body.effect !== undefined) {
+				updates.effect = normalizeEffect(body.effect);
+				updates.effectSeed = normalizeSeed(body.effect_seed);
+			}
+
+			if (body.effect_enabled !== undefined) {
+				updates.effectEnabled = body.effect_enabled === true;
+			}
+
+			if (Object.keys(updates).length === 0) return json({ success: false, error: 'Nothing to update' }, { status: 400 });
+
+			const row = await db.setMemberTheme(actor.member.id, updates);
 			return json({ success: true, theme: resolveMemberThemeForClient(row) });
 		}
 
@@ -50,9 +68,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const key = memberThemeKey(actor.serverId, actor.member.id, memberThemeFilename(converted.extension));
 		await saveMemberTheme(key, converted.data);
 
+		const formEffect = upload.form?.get('effect');
+
 		const row = await db.setMemberTheme(actor.member.id, {
 			image: key,
-			...(accent ? { accentColor: accent, accentAuto: true } : {})
+			...(accent ? { accentColor: accent, accentAuto: true } : {}),
+			...(formEffect != null ? { effect: normalizeEffect(formEffect), effectSeed: normalizeSeed(upload.form?.get('effect_seed')) } : {})
 		});
 
 		if (previous?.image && previous.image !== key) await removeMemberTheme(previous.image);

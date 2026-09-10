@@ -131,7 +131,7 @@ Each member signs in to their own account on those same pages.
 ### Public web pages
 
 - **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles, all on by default. Off means everything public goes dark.
-- **Member themes** - Each member sets a background image on their account; the accent colour is read from it, or picked by hand. It repaints their account, cards and their own leaderboard row.
+- **Member themes** - Each member sets a background image and an accent colour read from it, then spins 1,000 XP for an animated effect. It repaints their account, cards, their leaderboard row and their members-list card.
 
 ### Advanced
 

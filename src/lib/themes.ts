@@ -1,15 +1,23 @@
 import { BRAND_PRIMARY } from './brand.js';
+import { type EffectFamily, normalizeEffect, normalizeSeed } from './effects.js';
 
 export type MemberTheme = {
 	image: string | null;
 	accent: string;
 	accentAuto: boolean;
+	effect: EffectFamily;
+	ownedEffect: EffectFamily;
+	effectEnabled: boolean;
+	effectSeed: number;
 };
 
 export type MemberThemeRow = {
 	image?: string | null;
 	accent_color?: string | null;
 	accent_auto?: boolean | number | null;
+	effect?: string | null;
+	effect_seed?: number | null;
+	effect_enabled?: boolean | number | null;
 };
 
 export const DEFAULT_ACCENT = BRAND_PRIMARY;
@@ -73,11 +81,17 @@ export function resolveMemberTheme(row: MemberThemeRow | null | undefined): Memb
 	if (!row) return null;
 	const image = row.image ? String(row.image) : null;
 	const accent = normalizeAccent(row.accent_color);
-	if (!image && !accent) return null;
+	const ownedEffect = normalizeEffect(row.effect);
+	const effectEnabled = row.effect_enabled !== false && row.effect_enabled !== 0;
+	if (!image && !accent && ownedEffect === 'none') return null;
 	return {
 		image,
 		accent: accent ?? DEFAULT_ACCENT,
-		accentAuto: row.accent_auto !== false && row.accent_auto !== 0
+		accentAuto: row.accent_auto !== false && row.accent_auto !== 0,
+		effect: effectEnabled ? ownedEffect : 'none',
+		ownedEffect,
+		effectEnabled,
+		effectSeed: normalizeSeed(row.effect_seed)
 	};
 }
 

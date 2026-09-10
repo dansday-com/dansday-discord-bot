@@ -128,7 +128,7 @@
 			more: 'Applies live, no restart.'
 		},
 		{
-			icon: 'fa-hand-wave',
+			icon: 'fa-hand-sparkles',
 			title: 'Join greeting',
 			desc: 'The bot introduces itself when it joins, with your docs and support links.',
 			more: 'Only the first of your bots greets a shared server. Resend it any time.'

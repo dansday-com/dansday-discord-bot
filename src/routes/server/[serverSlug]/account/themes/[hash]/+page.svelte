@@ -2,6 +2,10 @@
 	import { invalidateAll } from '$app/navigation';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
+	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
+	import { ReelStrip } from '$lib/frontend/components/public';
+	import { getContext } from 'svelte';
+	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
 
@@ -17,12 +21,25 @@
 	let busy = $state(false);
 	let converting = $state(false);
 	let originalSize = $state<number | null>(null);
+	const ctx = getContext('items') as any;
+
+	let reel = $state<string[]>([]);
+	let reelOffset = $state(0);
+	let reelAnimating = $state(false);
+	let reelResult = $state<{ effect: string; seed: number; label: string } | null>(null);
+	let reelSeeds = $state<number[]>([]);
+	let spinning = $state(false);
+	let reelWrapEl = $state<HTMLDivElement | undefined>();
 	let error = $state<string | null>(null);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
 	const previewImage = $derived(pendingPreview ?? savedImage);
 	const accent = $derived(colorDraft ?? pendingAccent ?? theme?.accent ?? DEFAULT_ACCENT);
 	const ink = $derived(accentInk(accent));
+	const owned = $derived(theme?.ownedEffect ?? 'none');
+	const effectOn = $derived(theme?.effectEnabled !== false);
+	const effectSeed = $derived(theme?.effectSeed ?? 0);
+	const canSpin = $derived((ctx?.liveXp ?? 0) >= EFFECT_SPIN_COST);
 	const dirty = $derived(pendingFile != null || (colorDraft != null && colorDraft !== theme?.accent));
 	const hasTheme = $derived(theme != null || pendingFile != null);
 
@@ -88,10 +105,15 @@
 				form.set('accent', colorDraft ?? pendingAccent ?? DEFAULT_ACCENT);
 				response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, { method: 'POST', body: form });
 			} else {
+				const payload: Record<string, unknown> = { card: data.hash };
+				if (colorDraft != null) {
+					payload.accent = colorDraft;
+					payload.accent_auto = false;
+				}
 				response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ card: data.hash, accent: colorDraft, accent_auto: false })
+					body: JSON.stringify(payload)
 				});
 			}
 
@@ -105,6 +127,29 @@
 			await invalidateAll();
 		} catch {
 			error = 'Could not save your theme.';
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function toggleEffect() {
+		if (busy || spinning) return;
+		busy = true;
+		error = null;
+		try {
+			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: data.hash, effect_enabled: !effectOn })
+			});
+			const body = await response.json().catch(() => null);
+			if (!response.ok || !body?.success) {
+				error = body?.error ?? 'Could not change the effect.';
+				return;
+			}
+			await invalidateAll();
+		} catch {
+			error = 'Could not change the effect.';
 		} finally {
 			busy = false;
 		}
@@ -147,6 +192,79 @@
 		const now = imageSizeLabel(pendingFile.size);
 		if (originalSize != null && originalSize > pendingFile.size) return `${pendingFile.name} · ${imageSizeLabel(originalSize)} → ${now}`;
 		return `${pendingFile.name} · ${now}`;
+	});
+
+	function randomCells(n: number): string[] {
+		return Array.from({ length: n }, () => SPINNABLE_EFFECTS[Math.floor(Math.random() * SPINNABLE_EFFECTS.length)]);
+	}
+
+	function centerCell(index: number) {
+		requestAnimationFrame(() => {
+			const wrapW = reelWrapEl?.clientWidth ?? 360;
+			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
+			if (!cell) return;
+			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
+		});
+	}
+
+	function initReel() {
+		reel = randomCells(14);
+		reelSeeds = reel.map(() => randomSeed());
+		reelOffset = 0;
+		reelResult = null;
+		reelAnimating = false;
+		centerCell(2);
+	}
+
+	async function spin() {
+		if (spinning || busy || !canSpin) return;
+		spinning = true;
+		error = null;
+		reelResult = null;
+
+		try {
+			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}/spin`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: data.hash })
+			});
+			const body = await response.json().catch(() => null);
+			if (!response.ok || !body?.success) {
+				error = body?.error ?? 'Spin failed.';
+				spinning = false;
+				return;
+			}
+
+			const won = body.result as { effect: string; seed: number; label: string };
+			reel = randomCells(40);
+			reelSeeds = reel.map(() => randomSeed());
+			const landIndex = 32;
+			reel[landIndex] = won.effect;
+			reelSeeds[landIndex] = won.seed;
+
+			reelAnimating = false;
+			reelOffset = 0;
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			reelWrapEl?.offsetHeight;
+			centerCell(2);
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			reelAnimating = true;
+			centerCell(landIndex);
+
+			setTimeout(async () => {
+				reelResult = won;
+				ctx?.setLiveXp?.(Math.max(0, (ctx?.liveXp ?? 0) - EFFECT_SPIN_COST));
+				spinning = false;
+				await invalidateAll();
+			}, 7000);
+		} catch {
+			error = 'Spin failed.';
+			spinning = false;
+		}
+	}
+
+	$effect(() => {
+		if (reel.length === 0) initReel();
 	});
 
 	function onColorInput(event: Event) {
@@ -238,6 +356,68 @@
 					<i class="fas fa-ranking-star"></i>Rank #3
 				</span>
 			</div>
+		</div>
+	</section>
+
+	<section class="card border-base-300 bg-base-100/85 overflow-hidden border shadow-sm">
+		<div class="border-base-300 flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
+			<span class="text-base-content flex items-center gap-2 text-[13px] font-bold">
+				<i class="fas fa-wand-magic-sparkles text-base-content/45"></i>Effect
+			</span>
+			<span class="text-base-content/45 text-[11px] font-medium">
+				{owned === 'none' ? 'None yet' : effectOn ? effectMeta(owned)?.label : `${effectMeta(owned)?.label} · off`}
+			</span>
+		</div>
+
+		<div class="flex flex-col gap-3.5 p-4 sm:p-5">
+			<ReelStrip
+				bind:wrap={reelWrapEl}
+				items={reel}
+				offset={reelOffset}
+				animating={reelAnimating}
+				frameWidth={88}
+				frameWidthLg={96}
+				padLeft="92px"
+				padLeftLg="100px"
+				cellClass="basis-21 h-[70px] min-[600px]:basis-23 min-[600px]:h-[76px]"
+				tone={reelResult ? 'win' : 'idle'}
+			>
+				{#snippet cell(kind: string, index: number)}
+					<div class="border-base-300 bg-base-200 relative isolate grid size-full place-items-center overflow-hidden rounded-xl border">
+						<ThemeEffect effect={kind} seed={reelSeeds[index] ?? 0} {accent} always />
+						<i class="fas {effectMeta(kind)?.icon} text-base-content/70 relative text-[22px]"></i>
+					</div>
+				{/snippet}
+
+				{#snippet overlay()}
+					{#if reelResult}
+						<div class="animate-game-verdict bg-base-200 pointer-events-none absolute inset-0 z-6 flex flex-col items-center justify-center gap-0.5">
+							<span class="text-success text-[13px] font-black tracking-[0.18em] uppercase">You got</span>
+							<span class="text-base-content text-[24px] font-black">{reelResult.label}</span>
+						</div>
+					{/if}
+				{/snippet}
+			</ReelStrip>
+
+			<div class="flex flex-wrap items-center gap-2">
+				<button
+					class="btn btn-sm flex-1 border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white sm:flex-none"
+					onclick={spin}
+					disabled={spinning || busy || !canSpin}
+				>
+					{#if spinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
+					Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
+				</button>
+				{#if owned !== 'none'}
+					<button class="btn btn-ghost btn-sm" onclick={toggleEffect} disabled={busy || spinning}>
+						<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
+					</button>
+				{/if}
+			</div>
+
+			<p class="text-base-content/45 m-0 text-[11px] font-medium">
+				{canSpin ? 'Every spin rolls a fresh effect and a one-of-a-kind variant.' : `You need ${EFFECT_SPIN_COST.toLocaleString()} XP to spin.`}
+			</p>
 		</div>
 	</section>
 

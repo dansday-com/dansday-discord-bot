@@ -5,6 +5,7 @@
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { EmptyState, RankAvatar, rankStyle } from '$lib/frontend/components/public';
 	import { normalizeAccent } from '$lib/themes.js';
+	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -221,6 +222,7 @@
 						class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-[color-mix(in_srgb,var(--row-accent)_22%,transparent)] to-transparent"
 						aria-hidden="true"
 					></div>
+					<ThemeEffect effect={member.theme_effect} seed={member.theme_effect_seed} accent={member.theme_accent} />
 				{/if}
 				<div class="card-body gap-0 p-4">
 					<div class="flex items-start gap-3.5">

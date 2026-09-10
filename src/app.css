@@ -482,3 +482,442 @@ html.lenis body {
 		animation: none;
 	}
 }
+
+.fx {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+	contain: paint;
+}
+
+.fx::before,
+.fx::after {
+	content: '';
+	position: absolute;
+	inset: -60% 0 -60% 0;
+	opacity: var(--fx-opacity, 0.5);
+	will-change: transform;
+	animation-play-state: paused;
+}
+
+.fx.fx-live::before,
+.fx.fx-live::after {
+	animation-play-state: running;
+}
+
+.fx-dots::before {
+	background-image: radial-gradient(circle at 50% 50%, var(--fx-color) var(--fx-dot), transparent calc(var(--fx-dot) + 0.6px));
+	background-size: var(--fx-tile) var(--fx-tile);
+}
+
+.fx-dots::after {
+	background-image: radial-gradient(circle at 50% 50%, var(--fx-color-2) var(--fx-dot-2), transparent calc(var(--fx-dot-2) + 0.8px));
+	background-size: var(--fx-tile-2) var(--fx-tile-2);
+	opacity: calc(var(--fx-opacity, 0.5) * 0.7);
+}
+
+@keyframes fx-fall {
+	from {
+		transform: translate3d(0, -33.4%, 0);
+	}
+	to {
+		transform: translate3d(var(--fx-drift), 33.4%, 0);
+	}
+}
+
+@keyframes fx-rise {
+	from {
+		transform: translate3d(0, 33.4%, 0);
+	}
+	to {
+		transform: translate3d(var(--fx-drift), -33.4%, 0);
+	}
+}
+
+@keyframes fx-twinkle {
+	0%,
+	100% {
+		opacity: calc(var(--fx-opacity, 0.5) * 0.25);
+		transform: scale(0.94);
+	}
+	50% {
+		opacity: var(--fx-opacity, 0.5);
+		transform: scale(1.06);
+	}
+}
+
+@keyframes fx-sweep {
+	from {
+		transform: translate3d(-60%, 0, 0);
+	}
+	to {
+		transform: translate3d(60%, 0, 0);
+	}
+}
+
+@keyframes fx-jitter {
+	0% {
+		transform: translate3d(0, 0, 0);
+	}
+	25% {
+		transform: translate3d(-1px, 1px, 0);
+	}
+	50% {
+		transform: translate3d(1px, -1px, 0);
+	}
+	75% {
+		transform: translate3d(-1px, -1px, 0);
+	}
+	100% {
+		transform: translate3d(1px, 1px, 0);
+	}
+}
+
+@keyframes fx-breathe {
+	0%,
+	100% {
+		opacity: calc(var(--fx-opacity, 0.5) * 0.3);
+		transform: scale(1);
+	}
+	50% {
+		opacity: var(--fx-opacity, 0.5);
+		transform: scale(1.04);
+	}
+}
+
+@keyframes fx-drift {
+	0% {
+		transform: translate3d(-8%, -4%, 0) scale(1.1);
+	}
+	50% {
+		transform: translate3d(8%, 4%, 0) scale(1.25);
+	}
+	100% {
+		transform: translate3d(-8%, -4%, 0) scale(1.1);
+	}
+}
+
+.fx-snow::before,
+.fx-confetti::before,
+.fx-rain::before {
+	animation: fx-fall var(--fx-speed) linear infinite;
+	animation-delay: var(--fx-delay);
+}
+
+.fx-snow::after,
+.fx-confetti::after,
+.fx-rain::after {
+	animation: fx-fall var(--fx-speed-2) linear infinite;
+}
+
+.fx-bubbles::before {
+	animation: fx-rise var(--fx-speed) linear infinite;
+	animation-delay: var(--fx-delay);
+}
+
+.fx-bubbles::after {
+	animation: fx-rise var(--fx-speed-2) linear infinite;
+}
+
+.fx-ember::before {
+	animation: fx-rise var(--fx-speed) linear infinite;
+	animation-delay: var(--fx-delay);
+	filter: blur(0.4px);
+}
+
+.fx-ember::after {
+	animation: fx-rise var(--fx-speed-2) linear infinite;
+	filter: blur(1px);
+}
+
+.fx-rain::before,
+.fx-rain::after {
+	background-image: repeating-linear-gradient(var(--fx-angle), var(--fx-color) 0, var(--fx-color) 1px, transparent 1px, transparent var(--fx-tile));
+	background-size: auto;
+}
+
+.fx-sparkle::before {
+	animation: fx-twinkle var(--fx-speed) ease-in-out infinite;
+	animation-delay: var(--fx-delay);
+}
+
+.fx-sparkle::after {
+	animation: fx-twinkle var(--fx-speed-2) ease-in-out infinite;
+}
+
+.fx-scanlines::before {
+	background-image: repeating-linear-gradient(to bottom, var(--fx-color) 0, var(--fx-color) 1px, transparent 1px, transparent var(--fx-tile));
+	animation: fx-fall calc(var(--fx-speed) * 6) linear infinite;
+}
+
+.fx-scanlines::after {
+	background: linear-gradient(to bottom, transparent, var(--fx-color-2), transparent);
+	opacity: calc(var(--fx-opacity, 0.5) * 0.22);
+	animation: fx-fall var(--fx-speed) linear infinite;
+}
+
+.fx-grain::before {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	animation: fx-jitter var(--fx-speed) steps(3) infinite;
+	mix-blend-mode: overlay;
+}
+
+.fx-grain::after {
+	display: none;
+}
+
+.fx-holo::before {
+	background: linear-gradient(100deg, transparent 20%, var(--fx-color) 42%, var(--fx-color-2) 52%, transparent 74%);
+	animation: fx-sweep var(--fx-speed) ease-in-out infinite alternate;
+	mix-blend-mode: screen;
+}
+
+.fx-holo::after {
+	display: none;
+}
+
+.fx-aurora::before {
+	background: radial-gradient(closest-side at 30% 35%, var(--fx-color), transparent 70%);
+	filter: blur(28px);
+	animation: fx-drift var(--fx-speed) ease-in-out infinite;
+}
+
+.fx-aurora::after {
+	background: radial-gradient(closest-side at 70% 65%, var(--fx-color-2), transparent 70%);
+	filter: blur(34px);
+	animation: fx-drift var(--fx-speed-2) ease-in-out infinite reverse;
+}
+
+.fx-pulse::before {
+	inset: 0;
+	box-shadow: inset 0 0 42px 6px var(--fx-color);
+	animation: fx-breathe var(--fx-speed) ease-in-out infinite;
+}
+
+.fx-pulse::after {
+	display: none;
+}
+
+.fx-text {
+	position: relative;
+	display: inline-block;
+}
+
+.fx-text[data-fx='glitch']::before,
+.fx-text[data-fx='glitch']::after {
+	content: attr(data-fx-text);
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: var(--fx-opacity, 0.8);
+	animation-play-state: paused;
+}
+
+.fx-text[data-fx='glitch'].fx-live::before,
+.fx-text[data-fx='glitch'].fx-live::after {
+	animation-play-state: running;
+}
+
+.fx-text[data-fx='glitch']::before {
+	color: var(--fx-color);
+	clip-path: inset(0 0 55% 0);
+	animation: fx-glitch-a var(--fx-speed) steps(2, end) infinite;
+}
+
+.fx-text[data-fx='glitch']::after {
+	color: var(--fx-color-2);
+	clip-path: inset(55% 0 0 0);
+	animation: fx-glitch-b var(--fx-speed-2) steps(2, end) infinite;
+}
+
+@keyframes fx-glitch-a {
+	0%,
+	72%,
+	100% {
+		transform: translate3d(0, 0, 0);
+	}
+	74% {
+		transform: translate3d(-2px, -1px, 0);
+	}
+	80% {
+		transform: translate3d(2px, 1px, 0);
+	}
+	86% {
+		transform: translate3d(-1px, 1px, 0);
+	}
+}
+
+@keyframes fx-glitch-b {
+	0%,
+	66%,
+	100% {
+		transform: translate3d(0, 0, 0);
+	}
+	68% {
+		transform: translate3d(2px, 1px, 0);
+	}
+	76% {
+		transform: translate3d(-2px, -1px, 0);
+	}
+	84% {
+		transform: translate3d(1px, -1px, 0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fx::before,
+	.fx::after {
+		animation: none !important;
+	}
+	.fx-text[data-fx='glitch']::before,
+	.fx-text[data-fx='glitch']::after {
+		display: none;
+	}
+}
+
+@keyframes fx-quake {
+	0%,
+	62%,
+	100% {
+		transform: translate3d(0, 0, 0);
+	}
+	64% {
+		transform: translate3d(calc(var(--fx-drift) * -1), 2px, 0);
+	}
+	66% {
+		transform: translate3d(var(--fx-drift), -3px, 0);
+	}
+	68% {
+		transform: translate3d(calc(var(--fx-drift) * -0.6), 3px, 0);
+	}
+	70% {
+		transform: translate3d(calc(var(--fx-drift) * 0.8), -1px, 0);
+	}
+	72% {
+		transform: translate3d(calc(var(--fx-drift) * -0.4), 1px, 0);
+	}
+}
+
+@keyframes fx-flash {
+	0%,
+	86%,
+	100% {
+		opacity: 0;
+	}
+	87% {
+		opacity: var(--fx-opacity);
+	}
+	88.5% {
+		opacity: 0.05;
+	}
+	90% {
+		opacity: calc(var(--fx-opacity) * 0.85);
+	}
+	93% {
+		opacity: 0;
+	}
+}
+
+@keyframes fx-surge {
+	0% {
+		transform: translate3d(0, 38%, 0) scaleY(0.85);
+	}
+	100% {
+		transform: translate3d(0, -12%, 0) scaleY(1.2);
+	}
+}
+
+@keyframes fx-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.fx-earthquake::before {
+	animation: fx-quake var(--fx-speed) ease-in-out infinite;
+	animation-delay: var(--fx-delay);
+}
+
+.fx-earthquake::after {
+	animation: fx-quake var(--fx-speed-2) ease-in-out infinite;
+	filter: blur(1.2px);
+}
+
+.fx-thunder::before {
+	background: linear-gradient(to bottom, var(--fx-color) 0%, transparent 45%, transparent 55%, var(--fx-color-2) 100%);
+	animation: fx-flash var(--fx-speed) linear infinite;
+	animation-delay: var(--fx-delay);
+	mix-blend-mode: screen;
+}
+
+.fx-thunder::after {
+	background: radial-gradient(ellipse at 50% 0%, var(--fx-color) 0%, transparent 60%);
+	animation: fx-flash var(--fx-speed-2) linear infinite;
+	mix-blend-mode: screen;
+}
+
+.fx-tsunami::before {
+	inset: 0;
+	background: radial-gradient(ellipse 140% 60% at 50% 118%, var(--fx-color) 0%, transparent 72%);
+	animation: fx-surge var(--fx-speed) ease-in-out infinite alternate;
+	transform-origin: 50% 100%;
+}
+
+.fx-tsunami::after {
+	inset: 0;
+	background: radial-gradient(ellipse 110% 45% at 40% 124%, var(--fx-color-2) 0%, transparent 70%);
+	animation: fx-surge var(--fx-speed-2) ease-in-out infinite alternate-reverse;
+	transform-origin: 50% 100%;
+	filter: blur(3px);
+}
+
+.fx-tornado::before {
+	inset: -40%;
+	background: conic-gradient(from 0deg, transparent 0deg, var(--fx-color) 55deg, transparent 120deg, var(--fx-color-2) 220deg, transparent 300deg);
+	animation: fx-spin var(--fx-speed) linear infinite;
+	filter: blur(6px);
+}
+
+.fx-tornado::after {
+	inset: -25%;
+	background: conic-gradient(from 180deg, transparent 0deg, var(--fx-color-2) 70deg, transparent 160deg);
+	animation: fx-spin var(--fx-speed-2) linear infinite reverse;
+	filter: blur(10px);
+	opacity: calc(var(--fx-opacity, 0.5) * 0.6);
+}
+
+.fx-meteor::before,
+.fx-meteor::after {
+	background-image: repeating-linear-gradient(
+		68deg,
+		transparent 0,
+		transparent calc(var(--fx-tile) * 0.55),
+		var(--fx-color) calc(var(--fx-tile) * 0.55),
+		var(--fx-color) calc(var(--fx-tile) * 0.58),
+		transparent calc(var(--fx-tile) * 0.62)
+	);
+	filter: drop-shadow(0 0 3px var(--fx-color-2));
+}
+
+.fx-meteor::before {
+	animation: fx-fall var(--fx-speed) linear infinite;
+	animation-delay: var(--fx-delay);
+}
+
+.fx-meteor::after {
+	animation: fx-fall var(--fx-speed-2) linear infinite;
+	opacity: calc(var(--fx-opacity, 0.5) * 0.55);
+}
+
+.fx-blizzard::before {
+	animation: fx-fall var(--fx-speed) linear infinite;
+	animation-delay: var(--fx-delay);
+}
+
+.fx-blizzard::after {
+	animation: fx-fall var(--fx-speed-2) linear infinite;
+	filter: blur(0.8px);
+}

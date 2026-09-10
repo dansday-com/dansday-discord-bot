@@ -1,5 +1,6 @@
 <script lang="ts" generics="T">
 	import type { Snippet } from 'svelte';
+	import { haptic } from '$lib/frontend/haptics.js';
 
 	let {
 		items,
@@ -36,6 +37,44 @@
 	const frameCls = $derived([frameWidthLg ? 'min-[600px]:w-(--fw-lg)' : '', frameWidthSm ? 'max-[680px]:w-(--fw-sm)' : ''].filter(Boolean).join(' '));
 
 	const border = $derived(tone === 'win' ? 'border-success/60' : tone === 'lose' ? 'border-error/60' : 'border-base-300');
+
+	let strip = $state<HTMLDivElement | undefined>();
+
+	function stripShift(node: HTMLElement): number {
+		const value = getComputedStyle(node).transform;
+		if (!value || value === 'none') return 0;
+		try {
+			return Math.abs(new DOMMatrixReadOnly(value).m41);
+		} catch {
+			return 0;
+		}
+	}
+
+	$effect(() => {
+		const node = strip;
+		if (!animating || !node) return;
+
+		const step = (node.querySelector<HTMLElement>('[data-reel-cell]')?.offsetWidth ?? 84) + 8;
+		let lastIndex = Number.NaN;
+		let previous = Number.NaN;
+		let settled = 0;
+		let raf = 0;
+
+		const sample = () => {
+			const shift = stripShift(node);
+			const index = Math.floor(shift / step);
+			if (index !== lastIndex) {
+				lastIndex = index;
+				haptic('tick');
+			}
+			settled = Math.abs(shift - previous) < 0.4 ? settled + 1 : 0;
+			previous = shift;
+			if (settled < 20) raf = requestAnimationFrame(sample);
+		};
+
+		raf = requestAnimationFrame(sample);
+		return () => cancelAnimationFrame(raf);
+	});
 </script>
 
 <div
@@ -53,6 +92,8 @@
 	></div>
 
 	<div
+		bind:this={strip}
+		data-reel-strip
 		class="flex gap-2 pl-(--pl) will-change-transform min-[600px]:pl-(--pl-lg)"
 		style="--pl: {padLeft}; --pl-lg: {padLeftLg ?? padLeft}; transform: translateX({offset}px); transition: {animating
 			? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)'

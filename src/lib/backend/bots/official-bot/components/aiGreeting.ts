@@ -75,9 +75,7 @@ async function writeCache(kind, serverId, lines) {
 	if (!redis) return;
 	try {
 		await redis.set(cacheKey(kind, serverId), JSON.stringify(lines), { EX: CACHE_TTL_SECONDS });
-	} catch {
-		/* cache is best effort */
-	}
+	} catch {}
 }
 
 async function generate(kind, config, serverName) {

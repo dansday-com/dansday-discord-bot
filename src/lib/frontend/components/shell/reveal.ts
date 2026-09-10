@@ -1,10 +1,6 @@
 const HIDDEN = ['opacity-0', 'translate-y-5'];
 const SHOWN = ['opacity-100', 'translate-y-0'];
 
-/**
- * Fades an element up when it scrolls into view. The element must already carry
- * the hidden classes plus a transition in its markup so there is no first-paint flash.
- */
 export function reveal(node: HTMLElement) {
 	const show = () => {
 		node.classList.remove(...HIDDEN);

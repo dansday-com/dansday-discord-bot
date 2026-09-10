@@ -3,9 +3,12 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
+	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { GameModal, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
+	import { haptic } from '$lib/frontend/haptics.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { requestTilt, tilt } from '$lib/frontend/tilt.svelte.js';
 	import { getContext } from 'svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
@@ -287,6 +290,7 @@
 
 			setTimeout(async () => {
 				reelResult = won;
+				haptic('reveal');
 				ctx?.setLiveXp?.(Math.max(0, (ctx?.liveXp ?? 0) - EFFECT_SPIN_COST));
 				spinning = false;
 				await invalidateAll();
@@ -417,11 +421,26 @@
 						<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
 					</button>
 				{/if}
+				{#if owned !== 'none' && effectOn && tilt.needsPermission && tilt.status !== 'granted'}
+					<button class="btn btn-ghost btn-sm" onclick={() => requestTilt()} disabled={tilt.status === 'pending'}>
+						<i class="fas fa-cube"></i>{tilt.status === 'denied' ? 'Depth blocked' : 'Enable depth'}
+					</button>
+				{/if}
 			</div>
 
 			<p class="text-base-content/45 m-0 text-[11px] font-medium">
 				{canSpin ? 'Every spin rolls a fresh effect and a one-of-a-kind variant.' : `You need ${EFFECT_SPIN_COST.toLocaleString()} XP to spin.`}
 			</p>
+
+			{#if owned !== 'none' && effectOn}
+				<p class="text-base-content/45 m-0 text-[11px] font-medium">
+					{tilt.status === 'granted'
+						? 'Tilt your phone — the scene moves in layers.'
+						: tilt.status === 'denied'
+							? 'Motion access is off for this site. Turn it on in browser settings to get depth.'
+							: 'On a phone, tilt to see the scene move in layers.'}
+				</p>
+			{/if}
 		</div>
 	</section>
 
@@ -463,7 +482,7 @@
 					{#if reelResult}
 						<div class="animate-game-verdict bg-base-200 pointer-events-none absolute inset-0 z-6 flex flex-col items-center justify-center gap-0.5">
 							<span class="text-success text-[12px] font-black tracking-[0.18em] uppercase">You got</span>
-							<span class="text-base-content text-[22px] font-black">{reelResult.label}</span>
+							<EffectName name={reelResult.label} effect={reelResult.effect} seed={reelResult.seed} {accent} class="text-base-content text-[22px] font-black" />
 						</div>
 					{/if}
 				{/snippet}

@@ -10,7 +10,6 @@
 		children
 	}: {
 		id?: string;
-		/** Full Font Awesome class, e.g. `fas fa-bolt`. */
 		icon: string;
 		heading: string;
 		lead?: string;

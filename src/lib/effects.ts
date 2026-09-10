@@ -21,7 +21,17 @@ export const EFFECT_FAMILIES = [
 	'meteor',
 	'blizzard',
 	'rainbow',
-	'fire'
+	'fire',
+	'love',
+	'glass',
+	'bullethole',
+	'volcano',
+	'sandstorm',
+	'void',
+	'eclipse',
+	'fallingstar',
+	'milkyway',
+	'blackhole'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -48,7 +58,17 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'meteor', label: 'Meteor', icon: 'fa-meteor', particles: false },
 	{ id: 'blizzard', label: 'Blizzard', icon: 'fa-wind', particles: false },
 	{ id: 'rainbow', label: 'Rainbow', icon: 'fa-rainbow', particles: false },
-	{ id: 'fire', label: 'Fire', icon: 'fa-fire-flame-curved', particles: false }
+	{ id: 'fire', label: 'Fire', icon: 'fa-fire-flame-curved', particles: false },
+	{ id: 'love', label: 'Love', icon: 'fa-heart', particles: false },
+	{ id: 'glass', label: 'Glass', icon: 'fa-gem', particles: false },
+	{ id: 'bullethole', label: 'Bullet Hole', icon: 'fa-crosshairs', particles: false },
+	{ id: 'volcano', label: 'Volcano', icon: 'fa-volcano', particles: false },
+	{ id: 'sandstorm', label: 'Sandstorm', icon: 'fa-smog', particles: false },
+	{ id: 'void', label: 'Void', icon: 'fa-compact-disc', particles: false },
+	{ id: 'eclipse', label: 'Eclipse', icon: 'fa-circle-half-stroke', particles: false },
+	{ id: 'fallingstar', label: 'Falling Star', icon: 'fa-star-half-stroke', particles: false },
+	{ id: 'milkyway', label: 'Milky Way', icon: 'fa-spiral', particles: false },
+	{ id: 'blackhole', label: 'Black Hole', icon: 'fa-circle-notch', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -124,29 +144,46 @@ function hsla(h: number, s: number, l: number, a: number): string {
 	return `hsla(${hue}, ${sat}%, ${lig}%, ${a})`;
 }
 
-type Tuning = { tile: [number, number]; dot: [number, number]; speed: [number, number]; opacity: [number, number]; drift?: [number, number] };
+type Tuning = {
+	tile: [number, number];
+	dot: [number, number];
+	speed: [number, number];
+	opacity: [number, number];
+	drift?: [number, number];
+	tilt: [number, number, number];
+};
 
 const TUNING: Record<string, Tuning> = {
-	sparkle: { tile: [13, 28], dot: [1.3, 2.8], speed: [2.2, 5], opacity: [0.75, 1] },
-	snow: { tile: [17, 38], dot: [1.9, 3.8], speed: [7, 15], opacity: [0.7, 1] },
-	rain: { tile: [7, 16], dot: [0.9, 1.8], speed: [0.8, 1.8], opacity: [0.6, 0.9] },
-	ember: { tile: [15, 34], dot: [1.5, 3.2], speed: [3.5, 9], opacity: [0.8, 1] },
-	confetti: { tile: [17, 36], dot: [2.2, 4.4], speed: [4, 10], opacity: [0.8, 1] },
-	bubbles: { tile: [24, 56], dot: [2.6, 6], speed: [7, 18], opacity: [0.5, 0.8] },
-	scanlines: { tile: [3, 6], dot: [0.5, 1], speed: [3, 8], opacity: [0.32, 0.6] },
-	grain: { tile: [60, 140], dot: [0.5, 1], speed: [0.3, 0.9], opacity: [0.35, 0.6] },
-	holo: { tile: [120, 320], dot: [0.5, 1], speed: [3.5, 9], opacity: [0.55, 0.9] },
-	aurora: { tile: [160, 420], dot: [0.5, 1], speed: [10, 24], opacity: [0.6, 0.95] },
-	pulse: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.65, 1] },
-	glitch: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.8, 1] },
-	earthquake: { tile: [20, 46], dot: [1.3, 2.8], speed: [1.8, 4], opacity: [0.55, 0.85], drift: [-9, 9] },
-	thunder: { tile: [1, 1], dot: [0.5, 1], speed: [3, 7.5], opacity: [0.75, 1] },
-	tsunami: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.9] },
-	tornado: { tile: [1, 1], dot: [0.5, 1], speed: [2.4, 6], opacity: [0.55, 0.88] },
-	meteor: { tile: [24, 56], dot: [1.1, 2.4], speed: [1.1, 2.8], opacity: [0.85, 1], drift: [-300, -150] },
-	rainbow: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.95] },
-	fire: { tile: [1, 1], dot: [0.5, 1], speed: [1.1, 2.4], opacity: [0.8, 1] },
-	blizzard: { tile: [11, 26], dot: [1.5, 3.2], speed: [1.6, 3.8], opacity: [0.75, 1], drift: [120, 260] }
+	sparkle: { tile: [13, 28], dot: [1.3, 2.8], speed: [2.2, 5], opacity: [0.75, 1], tilt: [3, 7, 0] },
+	snow: { tile: [17, 38], dot: [1.9, 3.8], speed: [7, 15], opacity: [0.7, 1], tilt: [2, 9, 11] },
+	rain: { tile: [7, 16], dot: [0.9, 1.8], speed: [0.8, 1.8], opacity: [0.6, 0.9], tilt: [1, 4, 8] },
+	ember: { tile: [15, 34], dot: [1.5, 3.2], speed: [3.5, 9], opacity: [0.8, 1], tilt: [2, 8, 0] },
+	confetti: { tile: [17, 36], dot: [2.2, 4.4], speed: [4, 10], opacity: [0.8, 1], tilt: [3, 11, 0] },
+	bubbles: { tile: [24, 56], dot: [2.6, 6], speed: [7, 18], opacity: [0.5, 0.8], tilt: [2, 6, 0] },
+	scanlines: { tile: [3, 6], dot: [0.5, 1], speed: [3, 8], opacity: [0.32, 0.6], tilt: [5, 0, 0] },
+	grain: { tile: [60, 140], dot: [0.5, 1], speed: [0.3, 0.9], opacity: [0.35, 0.6], tilt: [1, 2, 0] },
+	holo: { tile: [120, 320], dot: [0.5, 1], speed: [3.5, 9], opacity: [0.55, 0.9], tilt: [9, 0, 0] },
+	aurora: { tile: [160, 420], dot: [0.5, 1], speed: [10, 24], opacity: [0.6, 0.95], tilt: [12, 4, 0] },
+	pulse: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.65, 1], tilt: [4, 3, 0] },
+	glitch: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.8, 1], tilt: [7, 5, 0] },
+	earthquake: { tile: [20, 46], dot: [1.3, 2.8], speed: [1.8, 4], opacity: [0.55, 0.85], drift: [-9, 9], tilt: [2, 5, 10] },
+	thunder: { tile: [1, 1], dot: [0.5, 1], speed: [3, 7.5], opacity: [0.75, 1], tilt: [4, 3, 14] },
+	tsunami: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.9], tilt: [3, 6, 12] },
+	tornado: { tile: [1, 1], dot: [0.5, 1], speed: [2.4, 6], opacity: [0.55, 0.88], tilt: [3, 8, 16] },
+	meteor: { tile: [24, 56], dot: [1.1, 2.4], speed: [1.1, 2.8], opacity: [0.85, 1], drift: [-300, -150], tilt: [5, 13, 9] },
+	rainbow: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.95], tilt: [8, 0, 0] },
+	fire: { tile: [1, 1], dot: [0.5, 1], speed: [1.1, 2.4], opacity: [0.8, 1], tilt: [2, 7, 0] },
+	blizzard: { tile: [11, 26], dot: [1.5, 3.2], speed: [1.6, 3.8], opacity: [0.75, 1], drift: [120, 260], tilt: [2, 12, 15] },
+	love: { tile: [18, 40], dot: [2.4, 5.2], speed: [5, 11], opacity: [0.7, 1], drift: [-40, 40], tilt: [4, 10, 0] },
+	glass: { tile: [1, 1], dot: [0.5, 1], speed: [4.5, 9], opacity: [0.6, 0.95], tilt: [6, 2, 7] },
+	bullethole: { tile: [1, 1], dot: [0.5, 1], speed: [2.6, 5.4], opacity: [0.7, 1], tilt: [1, 3, 5] },
+	volcano: { tile: [14, 32], dot: [1.6, 3.4], speed: [2.8, 6], opacity: [0.8, 1], drift: [-70, 70], tilt: [3, 9, 13] },
+	sandstorm: { tile: [9, 21], dot: [1.1, 2.4], speed: [0.9, 2.1], opacity: [0.5, 0.85], drift: [220, 420], tilt: [10, 14, 6] },
+	void: { tile: [20, 46], dot: [1.2, 2.8], speed: [3.2, 7], opacity: [0.65, 1], tilt: [14, 6, 0] },
+	eclipse: { tile: [26, 60], dot: [0.9, 2], speed: [6, 13], opacity: [0.55, 0.95], tilt: [6, 1, 4] },
+	fallingstar: { tile: [30, 70], dot: [1.2, 2.6], speed: [2.4, 5.5], opacity: [0.8, 1], drift: [-220, -120], tilt: [7, 9, 0] },
+	milkyway: { tile: [22, 52], dot: [0.7, 1.8], speed: [7, 16], opacity: [0.5, 0.95], tilt: [11, 3, 0] },
+	blackhole: { tile: [24, 54], dot: [1, 2.2], speed: [3.6, 8], opacity: [0.7, 1], tilt: [13, 7, 4] }
 };
 
 export const PARTICLE_COUNTS: Record<string, number> = {
@@ -162,7 +199,17 @@ export const PARTICLE_COUNTS: Record<string, number> = {
 	bubbles: 14,
 	aurora: 5,
 	pulse: 3,
-	rainbow: 0
+	rainbow: 0,
+	love: 15,
+	glass: 0,
+	bullethole: 0,
+	volcano: 18,
+	sandstorm: 30,
+	void: 20,
+	eclipse: 16,
+	fallingstar: 6,
+	milkyway: 34,
+	blackhole: 22
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -184,7 +231,17 @@ const PALETTE: Record<string, [string, string]> = {
 	scanlines: ['#7dffb0', '#2ad17a'],
 	grain: ['#d4d4d4', '#8f8f8f'],
 	holo: ['#ff8ad4', '#8ad4ff'],
-	glitch: ['#00fff0', '#ff00a8']
+	glitch: ['#00fff0', '#ff00a8'],
+	love: ['#ff5c8a', '#ffd1dc'],
+	glass: ['#cfe9ff', '#8fb6d6'],
+	bullethole: ['#cfc7b6', '#4a423a'],
+	volcano: ['#ff5a1f', '#ffc247'],
+	sandstorm: ['#d9a441', '#f3d9a4'],
+	void: ['#a855f7', '#22d3ee'],
+	eclipse: ['#ffd88a', '#3b3358'],
+	fallingstar: ['#fff6d5', '#8ec6ff'],
+	milkyway: ['#b6a4ff', '#7fd8ff'],
+	blackhole: ['#ffb347', '#7dd3fc']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {
@@ -358,6 +415,109 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 			continue;
 		}
 
+		if (family === 'love') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(4.5 + rand() * 5).toFixed(2)}s`,
+					`--p-w: ${Math.round(7 + rand() * 14)}px`,
+					`--p-rock: ${Math.round(18 + rand() * 34)}deg`,
+					`--p-drift: ${Math.round((rand() - 0.5) * 110)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 22, sat, light + (rand() - 0.5) * 16, 0.95)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'volcano') {
+			out.push(
+				[
+					`--p-x: ${(38 + rand() * 24).toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(1.6 + rand() * 2.4).toFixed(2)}s`,
+					`--p-w: ${(2 + rand() * 5).toFixed(1)}px`,
+					`--p-arc: ${Math.round((rand() - 0.5) * 300)}px`,
+					`--p-lift: ${(0.4 + rand() * 0.55).toFixed(2)}`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 18, sat, light + rand() * 14, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'sandstorm') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-y: ${(rand() * 96).toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(0.7 + rand() * 1.3).toFixed(2)}s`,
+					`--p-w: ${(1.4 + rand() * 3.4).toFixed(1)}px`,
+					`--p-trail: ${Math.round(10 + rand() * 46)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 14, sat, light + (rand() - 0.5) * 18, 0.8)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'void') {
+			out.push(
+				[
+					`--p-orbit: ${Math.round(18 + rand() * 62)}px`,
+					`--p-angle: ${Math.round(rand() * 360)}deg`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(2.4 + rand() * 3.6).toFixed(2)}s`,
+					`--p-w: ${(1.4 + rand() * 3).toFixed(1)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 40, sat, light + rand() * 10, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'eclipse' || family === 'milkyway') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-y: ${(rand() * 100).toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(2 + rand() * 4.5).toFixed(2)}s`,
+					`--p-w: ${(0.9 + rand() * 2.4).toFixed(2)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 46, sat, light + rand() * 12, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'blackhole') {
+			out.push(
+				[
+					`--p-ring: ${Math.round(26 + rand() * 54)}px`,
+					`--p-angle: ${Math.round(rand() * 360)}deg`,
+					`--p-arc: ${Math.round(14 + rand() * 40)}px`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(3.4 + rand() * 5).toFixed(2)}s`,
+					`--p-thick: ${(0.9 + rand() * 1.6).toFixed(2)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 54, sat, light + rand() * 14, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'fallingstar') {
+			out.push(
+				[
+					`--p-x: ${(12 + rand() * 78).toFixed(1)}%`,
+					`--p-y: ${(rand() * 34).toFixed(1)}%`,
+					`--p-delay: ${(-rand() * 14).toFixed(2)}s`,
+					`--p-dur: ${(1.1 + rand() * 1.5).toFixed(2)}s`,
+					`--p-len: ${Math.round(70 + rand() * 150)}px`,
+					`--p-thick: ${(1.1 + rand() * 1.5).toFixed(2)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 26, sat, light, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
 		const dur = (2.5 + rand() * 4).toFixed(2);
 		out.push(
 			[
@@ -369,6 +529,22 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 				`--p-hue: ${hsla(rand() * 360, 85, 62, 1)}`
 			].join('; ')
 		);
+	}
+	return out;
+}
+
+export function spreadPieces(seed: any, count: number, jitter = 0.34, scaleMin = 0.82, scaleMax = 1.18) {
+	const n = Math.max(1, Math.round(count));
+	const rand = mulberry32(normalizeSeed(seed) + n * 104729 + 7);
+	const step = 100 / n;
+	const out: { left: number; scale: number; delay: number; flip: boolean }[] = [];
+	for (let i = 0; i < n; i++) {
+		out.push({
+			left: Number((i * step + (rand() - 0.5) * step * jitter).toFixed(2)),
+			scale: Number((scaleMin + rand() * (scaleMax - scaleMin)).toFixed(3)),
+			delay: Number((rand() * 5).toFixed(2)),
+			flip: rand() > 0.5
+		});
 	}
 	return out;
 }
@@ -411,7 +587,10 @@ export function effectVariant(family: any, seed: any, accent: any): EffectVarian
 		'--fx-angle': `${angle}deg`,
 		'--fx-sway': `${Math.round(8 + rand() * 26)}px`,
 		'--fx-color': hsla(c1[0] + jitter, c1[1], c1[2], 1),
-		'--fx-color-2': hsla(c2[0] + jitter, c2[1], c2[2], 1)
+		'--fx-color-2': hsla(c2[0] + jitter, c2[1], c2[2], 1),
+		'--fx-tilt-far': `${tuning.tilt[0]}px`,
+		'--fx-tilt-mid': `${tuning.tilt[1]}px`,
+		'--fx-tilt-near': `${tuning.tilt[2]}px`
 	};
 
 	return {

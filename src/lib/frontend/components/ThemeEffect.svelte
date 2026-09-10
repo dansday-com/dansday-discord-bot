@@ -1,18 +1,20 @@
 <script lang="ts">
-	import { effectMeta, effectVariant, normalizeEffect } from '$lib/effects.js';
+	import { effectMeta, effectVariant, normalizeEffect, normalizeSeed } from '$lib/effects.js';
 
 	type Props = {
 		effect?: string | null;
 		seed?: number | null;
 		accent?: string | null;
 		always?: boolean;
+		frozen?: boolean;
 	};
 
-	let { effect: effectId = null, seed = 0, accent = null, always = false }: Props = $props();
+	let { effect: effectId = null, seed = 0, accent = null, always = false, frozen = false }: Props = $props();
 
 	const family = $derived(normalizeEffect(effectId));
 	const variant = $derived(effectVariant(family, seed, accent));
 	const dotted = $derived(effectMeta(family)?.particles === true);
+	const uid = $derived(`${family}${normalizeSeed(seed)}`);
 
 	let host = $state<HTMLDivElement | undefined>();
 	let live = $state(false);
@@ -32,7 +34,7 @@
 	});
 
 	$effect(() => {
-		if (family === 'none') return;
+		if (family === 'none' || frozen) return;
 		if (always || typeof IntersectionObserver === 'undefined') {
 			live = true;
 			return;
@@ -51,7 +53,12 @@
 </script>
 
 {#if family !== 'none'}
-	<div bind:this={host} class="fx fx-{family} {dotted ? 'fx-dots' : ''} {live ? 'fx-live' : ''}" style="{variant.style}; --fx-s: {scale}" aria-hidden="true">
+	<div
+		bind:this={host}
+		class="fx fx-{family} {dotted ? 'fx-dots' : ''} {live && !frozen ? 'fx-live' : ''}"
+		style="{variant.style}; --fx-s: {scale}"
+		aria-hidden="true"
+	>
 		{#each variant.particles as p}
 			<span class="fx-p" style={p}></span>
 		{/each}
@@ -69,58 +76,79 @@
 		{:else if family === 'thunder'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxCloudA" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxCloudA{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#4a5160" /><stop offset="100%" stop-color="#1b1f29" />
 					</linearGradient>
-					<linearGradient id="fxCloudB" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxCloudB{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#39404e" /><stop offset="100%" stop-color="#12151d" />
 					</linearGradient>
 				</defs>
 				<g class="fx-cloud" style="--k-i: 0"
-					><path fill="url(#fxCloudA)" d="M4 30 Q6 17 19 17 Q23 6 38 8 Q49 -1 58 9 Q73 7 75 20 Q90 20 90 31 Q90 37 81 37 L11 37 Q4 37 4 30 Z" /></g
+					><path fill="url(#fxCloudA{uid})" d="M2 36 Q-1 25 10 23 Q7 10 22 9 Q28 -3 45 3 Q60 -5 70 5 Q86 3 88 16 Q99 15 98 27 Q100 36 88 36 Z" /></g
 				>
 				<g class="fx-cloud" style="--k-i: 1"
-					><path fill="url(#fxCloudB)" d="M34 26 Q36 15 47 15 Q51 5 64 7 Q74 0 82 9 Q95 7 97 19 Q110 19 110 29 Q110 34 102 34 L40 34 Q34 34 34 26 Z" /></g
+					><path fill="url(#fxCloudB{uid})" d="M30 30 Q28 19 40 18 Q45 8 58 10 Q70 2 80 11 Q94 9 96 20 Q108 20 107 29 Q108 34 97 34 L36 34 Q29 34 30 30 Z" /></g
 				>
 				<path class="fx-strike" style="--s-i: 0" d="M45 33 L36 55 L46 55 L31 88 L40 60 L30 60 L41 33 Z" />
 				<path class="fx-strike" style="--s-i: 1" d="M69 31 L62 49 L70 49 L58 78 L65 54 L57 54 L66 31 Z" />
 				<path class="fx-strike fx-strike-thin" style="--s-i: 2" d="M52 34 L47 52 L54 52 L44 96" />
 			</svg>
-		{:else if family === 'rain' || family === 'snow' || family === 'blizzard'}
+		{:else if family === 'rain'}
 			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxSkyA" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxSkyRain{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
 					</linearGradient>
 				</defs>
-				<g class="fx-cloud" style="--k-i: 0"
-					><path fill="url(#fxSkyA)" d="M4 30 Q6 17 19 17 Q23 6 38 8 Q49 -1 58 9 Q73 7 75 20 Q90 20 90 31 Q90 37 81 37 L11 37 Q4 37 4 30 Z" /></g
+				<g class="fx-cloud fx-cloud-nimbo" style="--k-i: 0"
+					><path fill="url(#fxSkyRain{uid})" d="M0 24 Q3 13 16 14 Q22 4 36 6 Q49 0 58 8 Q72 4 79 15 Q93 14 95 24 Q97 32 86 32 L8 32 Q-2 32 0 24 Z" /></g
 				>
-				<g class="fx-cloud" style="--k-i: 1"
+			</svg>
+		{:else if family === 'snow'}
+			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="fxSkySnow{uid}" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+					</linearGradient>
+				</defs>
+				<g class="fx-cloud fx-cloud-puff" style="--k-i: 0"
 					><path
-						fill="url(#fxSkyA)"
-						opacity="0.75"
-						d="M34 26 Q36 15 47 15 Q51 5 64 7 Q74 0 82 9 Q95 7 97 19 Q110 19 110 29 Q110 34 102 34 L40 34 Q34 34 34 26 Z"
+						fill="url(#fxSkySnow{uid})"
+						d="M6 29 Q1 18 12 15 Q13 4 26 6 Q33 -4 45 3 Q55 -5 65 4 Q77 1 80 13 Q93 14 92 25 Q94 34 82 34 L14 34 Q4 35 6 29 Z"
+					/></g
+				>
+			</svg>
+		{:else if family === 'blizzard'}
+			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="fxSkyBliz{uid}" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+					</linearGradient>
+				</defs>
+				<g class="fx-cloud fx-cloud-shear" style="--k-i: 0"
+					><path
+						fill="url(#fxSkyBliz{uid})"
+						d="M-6 27 Q-2 14 15 14 Q24 1 43 6 Q60 -3 74 6 Q92 3 100 14 Q116 13 116 24 Q116 32 100 32 L60 32 Q40 34 4 32 Q-8 33 -6 27 Z"
 					/></g
 				>
 			</svg>
 		{:else if family === 'tsunami'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxSea" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxSea{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#5fd8ff" /><stop offset="55%" stop-color="#1f7fc4" /><stop offset="100%" stop-color="#0b3f6b" />
 					</linearGradient>
-					<linearGradient id="fxSeaBack" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxSeaBack{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#3fa8dd" /><stop offset="100%" stop-color="#0a3358" />
 					</linearGradient>
 				</defs>
 
-				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack)" d="M0 100 L0 70 Q22 52 46 58 Q70 64 100 54 L100 100 Z" />
-				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack)" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
+				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack{uid})" d="M0 100 L0 70 Q22 52 46 58 Q70 64 100 54 L100 100 Z" />
+				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack{uid})" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
 
 				<g class="fx-breaker">
 					<path
-						fill="url(#fxSea)"
+						fill="url(#fxSea{uid})"
 						d="M0 100 L0 66 C 10 36, 32 22, 54 30 C 72 37, 78 56, 68 66 C 62 72, 52 70, 50 62 C 48 54, 56 50, 60 56 C 56 44, 40 42, 32 54 C 24 66, 30 82, 44 84 L100 84 L100 100 Z"
 					/>
 					<path class="fx-curl" d="M54 30 C 72 37, 78 56, 68 66 C 64 70, 57 69, 54 64 C 62 60, 64 48, 56 40 C 51 35, 46 33, 42 33 C 46 30, 50 29, 54 30 Z" />
@@ -132,12 +160,12 @@
 		{:else if family === 'tornado'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxTorn" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxTorn{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#98a2ae" /><stop offset="100%" stop-color="#4b5563" />
 					</linearGradient>
 				</defs>
 				<g class="fx-cloud" style="--k-i: 0"
-					><path fill="url(#fxTorn)" d="M4 30 Q6 17 19 17 Q23 6 38 8 Q49 -1 58 9 Q73 7 75 20 Q90 20 90 31 Q90 37 81 37 L11 37 Q4 37 4 30 Z" /></g
+					><path fill="url(#fxTorn{uid})" d="M4 30 Q6 17 19 17 Q23 6 38 8 Q49 -1 58 9 Q73 7 75 20 Q90 20 90 31 Q90 37 81 37 L11 37 Q4 37 4 30 Z" /></g
 				>
 				<path class="fx-funnel" d="M14 34 Q50 44 86 34 Q72 56 63 72 Q56 88 50 100 Q44 88 37 72 Q28 56 14 34 Z" />
 				<ellipse class="fx-dustring" cx="50" cy="98" rx="30" ry="6" />
@@ -145,26 +173,26 @@
 		{:else if family === 'meteor'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<radialGradient id="fxHorizon" cx="50%" cy="100%" r="70%">
+					<radialGradient id="fxHorizon{uid}" cx="50%" cy="100%" r="70%">
 						<stop offset="0%" stop-color="var(--fx-color-2)" stop-opacity="0.55" />
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</radialGradient>
 				</defs>
 				<rect class="fx-nightsky" width="100" height="100" />
-				<rect width="100" height="100" fill="url(#fxHorizon)" />
+				<rect width="100" height="100" fill="url(#fxHorizon{uid})" />
 			</svg>
 		{:else if family === 'aurora'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxAur0" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxAur0{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#4ade80" stop-opacity="0" /><stop offset="55%" stop-color="#4ade80" stop-opacity="0.85" />
 						<stop offset="100%" stop-color="#a7f3d0" stop-opacity="0" />
 					</linearGradient>
-					<linearGradient id="fxAur1" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxAur1{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#38bdf8" stop-opacity="0" /><stop offset="50%" stop-color="#38bdf8" stop-opacity="0.8" />
 						<stop offset="100%" stop-color="#c4b5fd" stop-opacity="0" />
 					</linearGradient>
-					<linearGradient id="fxAur2" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxAur2{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#a78bfa" stop-opacity="0" /><stop offset="48%" stop-color="#a78bfa" stop-opacity="0.7" />
 						<stop offset="100%" stop-color="#f0abfc" stop-opacity="0" />
 					</linearGradient>
@@ -177,16 +205,16 @@
 					<circle cx="22" cy="26" r="0.35" /><circle cx="58" cy="29" r="0.4" /><circle cx="76" cy="32" r="0.3" />
 				</g>
 
-				<path class="fx-ribbon" style="--n-i: 0" fill="url(#fxAur0)" d="M-10 22 Q10 8 30 20 T70 16 T110 26 L110 74 Q90 60 70 70 T30 66 T-10 76 Z" />
-				<path class="fx-ribbon" style="--n-i: 1" fill="url(#fxAur1)" d="M-10 30 Q14 14 34 28 T74 22 T110 34 L110 70 Q86 58 66 66 T26 62 T-10 72 Z" />
-				<path class="fx-ribbon" style="--n-i: 2" fill="url(#fxAur2)" d="M-10 38 Q8 24 32 36 T68 30 T110 40 L110 66 Q88 56 64 62 T24 58 T-10 68 Z" />
+				<path class="fx-ribbon" style="--n-i: 0" fill="url(#fxAur0{uid})" d="M-10 22 Q10 8 30 20 T70 16 T110 26 L110 74 Q90 60 70 70 T30 66 T-10 76 Z" />
+				<path class="fx-ribbon" style="--n-i: 1" fill="url(#fxAur1{uid})" d="M-10 30 Q14 14 34 28 T74 22 T110 34 L110 70 Q86 58 66 66 T26 62 T-10 72 Z" />
+				<path class="fx-ribbon" style="--n-i: 2" fill="url(#fxAur2{uid})" d="M-10 38 Q8 24 32 36 T68 30 T110 40 L110 66 Q88 56 64 62 T24 58 T-10 68 Z" />
 
 				<path class="fx-ridge" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 100 L0 100 Z" />
 			</svg>
 		{:else if family === 'rainbow'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet">
 				<defs>
-					<linearGradient id="fxRainCloud" x1="0" y1="0" x2="0" y2="1">
+					<linearGradient id="fxRainCloud{uid}" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#f2f6fb" /><stop offset="100%" stop-color="#b9c6d6" />
 					</linearGradient>
 				</defs>
@@ -198,21 +226,21 @@
 				<path class="fx-arc" style="--a-i: 5; --a-c: #4f6ef7" d="M 24 92 A 26 26 0 0 1 76 92" />
 				<path class="fx-arc" style="--a-i: 6; --a-c: #a78bfa" d="M 28 92 A 22 22 0 0 1 72 92" />
 				<g class="fx-cloud fx-cloud-left" style="--k-i: 0">
-					<path fill="url(#fxRainCloud)" d="M-8 84 Q-6 72 6 72 Q10 62 23 64 Q34 57 41 67 Q52 69 52 79 Q52 86 44 86 L2 86 Q-8 86 -8 84 Z" />
+					<path fill="url(#fxRainCloud{uid})" d="M-8 84 Q-6 72 6 72 Q10 62 23 64 Q34 57 41 67 Q52 69 52 79 Q52 86 44 86 L2 86 Q-8 86 -8 84 Z" />
 				</g>
 				<g class="fx-cloud fx-cloud-right" style="--k-i: 1">
-					<path fill="url(#fxRainCloud)" d="M56 84 Q58 72 70 72 Q74 62 87 64 Q98 57 105 67 Q116 69 116 79 Q116 86 108 86 L62 86 Q56 86 56 84 Z" />
+					<path fill="url(#fxRainCloud{uid})" d="M56 84 Q58 72 70 72 Q74 62 87 64 Q98 57 105 67 Q116 69 116 79 Q116 86 108 86 L62 86 Q56 86 56 84 Z" />
 				</g>
 			</svg>
 		{:else if family === 'fire' || family === 'ember'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxHeat" x1="0" y1="1" x2="0" y2="0">
+					<linearGradient id="fxHeat{uid}" x1="0" y1="1" x2="0" y2="0">
 						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.85" />
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</linearGradient>
 				</defs>
-				<rect class="fx-heat" y="52" width="100" height="48" fill="url(#fxHeat)" />
+				<rect class="fx-heat" y="52" width="100" height="48" fill="url(#fxHeat{uid})" />
 			</svg>
 		{:else if family === 'bubbles'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -221,12 +249,12 @@
 		{:else if family === 'sparkle'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<radialGradient id="fxBloom" cx="50%" cy="42%" r="60%">
+					<radialGradient id="fxBloom{uid}" cx="50%" cy="42%" r="60%">
 						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.5" />
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</radialGradient>
 				</defs>
-				<rect width="100" height="100" fill="url(#fxBloom)" />
+				<rect width="100" height="100" fill="url(#fxBloom{uid})" />
 				<g class="fx-flare" style="--l-i: 0" transform="translate(26 30)">
 					<path d="M0 -16 L2.6 -2.6 L16 0 L2.6 2.6 L0 16 L-2.6 2.6 L-16 0 L-2.6 -2.6 Z" />
 				</g>
@@ -247,13 +275,13 @@
 		{:else if family === 'holo'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxFoil" x1="0" y1="0" x2="1" y2="1">
+					<linearGradient id="fxFoil{uid}" x1="0" y1="0" x2="1" y2="1">
 						<stop offset="0%" stop-color="#ff8ad4" /><stop offset="22%" stop-color="#ffd76a" />
 						<stop offset="44%" stop-color="#7dffb0" /><stop offset="66%" stop-color="#8ad4ff" />
 						<stop offset="88%" stop-color="#c08aff" /><stop offset="100%" stop-color="#ff8ad4" />
 					</linearGradient>
 				</defs>
-				<rect class="fx-foil" width="100" height="100" fill="url(#fxFoil)" />
+				<rect class="fx-foil" width="100" height="100" fill="url(#fxFoil{uid})" />
 				<g class="fx-foilbands">
 					<rect x="-40" y="0" width="10" height="100" /><rect x="-14" y="0" width="5" height="100" />
 					<rect x="6" y="0" width="12" height="100" /><rect x="34" y="0" width="6" height="100" />
@@ -275,11 +303,11 @@
 			</svg>
 		{:else if family === 'scanlines' || family === 'grain'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<radialGradient id="fxVig" cx="50%" cy="50%" r="72%">
+				<radialGradient id="fxVig{uid}" cx="50%" cy="50%" r="72%">
 					<stop offset="55%" stop-color="transparent" stop-opacity="0" />
 					<stop offset="100%" stop-color="#000" stop-opacity="0.55" />
 				</radialGradient>
-				<rect width="100" height="100" fill="url(#fxVig)" />
+				<rect width="100" height="100" fill="url(#fxVig{uid})" />
 			</svg>
 		{/if}
 	</div>

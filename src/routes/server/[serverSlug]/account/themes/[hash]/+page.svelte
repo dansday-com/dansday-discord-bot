@@ -435,7 +435,7 @@
 			>
 				{#snippet cell(kind: string, index: number)}
 					<div class="border-base-300 bg-base-200 relative isolate grid size-full place-items-center overflow-hidden rounded-xl border">
-						<ThemeEffect effect={kind} seed={reelSeeds[index] ?? 0} {accent} always />
+						<ThemeEffect effect={kind} seed={reelSeeds[index] ?? 0} {accent} frozen />
 						<i class="fas {effectMeta(kind)?.icon} text-base-content/70 relative text-[22px]"></i>
 					</div>
 				{/snippet}

@@ -429,7 +429,7 @@
 								style="background: color-mix(in srgb, {rowAccent(r)} 55%, transparent)"
 								aria-hidden="true"
 							></div>
-							<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} />
+							<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} always />
 						{/if}
 						<span class="relative text-[11px] font-black text-black/50">#{rank}</span>
 					</div>
@@ -465,7 +465,7 @@
 							aria-hidden="true"
 						></div>
 						<div class="pointer-events-none absolute inset-y-0 left-0 -z-10 w-[3px] bg-(--row-accent)" aria-hidden="true"></div>
-						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} />
+						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} always />
 					{/if}
 
 					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>

@@ -222,7 +222,7 @@
 						class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-[color-mix(in_srgb,var(--row-accent)_22%,transparent)] to-transparent"
 						aria-hidden="true"
 					></div>
-					<ThemeEffect effect={member.theme_effect} seed={member.theme_effect_seed} accent={member.theme_accent} />
+					<ThemeEffect effect={member.theme_effect} seed={member.theme_effect_seed} accent={member.theme_accent} always />
 				{/if}
 				<div class="card-body gap-0 p-4">
 					<div class="flex items-start gap-3.5">

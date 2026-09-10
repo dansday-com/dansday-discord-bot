@@ -187,14 +187,6 @@ const PALETTE: Record<string, [string, string]> = {
 	glitch: ['#00fff0', '#ff00a8']
 };
 
-export const SHADER_FAMILIES = ['fire', 'tsunami', 'aurora', 'tornado', 'thunder', 'meteor'] as const;
-
-const SHADER_INDEX: Record<string, number> = { fire: 0, tsunami: 1, aurora: 2, tornado: 3, thunder: 4, meteor: 5 };
-
-export function shaderFamilyIndex(family: any): number {
-	return SHADER_INDEX[normalizeEffect(family)] ?? 5;
-}
-
 export function effectPalette(family: any, accent: any): [string, string] {
 	const id = normalizeEffect(family);
 	const pair = PALETTE[id];

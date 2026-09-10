@@ -34,7 +34,7 @@ body:
     attributes:
       label: Version
       description: Self-hosting — the `version` in `package.json`. Hosted — write `hosted`.
-      placeholder: 26.6.1
+      placeholder: 26.7.0
     validations:
       required: true
 

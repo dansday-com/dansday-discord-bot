@@ -131,6 +131,7 @@ Each member signs in to their own account on those same pages.
 ### Public web pages
 
 - **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles, all on by default. Off means everything public goes dark.
+- **Member themes** - Each member sets a background image on their account; the accent colour is read from it, or picked by hand. It repaints their account, cards and their own leaderboard row.
 
 ### Advanced
 
@@ -173,4 +174,4 @@ Found a vulnerability? Email **security@dansday.com** instead of opening an issu
 
 ---
 
-AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.6.1
+AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.7.0

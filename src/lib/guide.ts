@@ -59,6 +59,12 @@ export const BASICS: GuideCard[] = [
 		accent: '#4b6584',
 		title: 'History',
 		desc: 'Every buy, use, attack, trade and reward is logged. Disguised attackers stay anonymous.'
+	},
+	{
+		icon: 'fa-palette',
+		accent: '#6d5bd0',
+		title: 'Themes',
+		desc: 'Upload a background on Themes; its colour is picked for you and shows on your leaderboard row.'
 	}
 ];
 

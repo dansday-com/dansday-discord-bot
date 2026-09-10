@@ -764,7 +764,7 @@ export const modules = [
 		icon: 'fa-chart-pie',
 		accent: '#e43d12',
 		title: 'Public statistics',
-		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Guide) — are always on. Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
+		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Themes, Guide) — are always on. Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
 		fields: [
 			{
 				label: 'Items / Minigames / Assets',
@@ -773,6 +773,10 @@ export const modules = [
 			{
 				label: 'Daily tasks',
 				desc: 'Sub-toggle that adds the Task tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
+			},
+			{
+				label: 'Themes',
+				desc: 'Always on, nothing to configure. Each member uploads a background image (PNG, JPG, GIF or WEBP, up to 500KB) on their account Themes tab. The accent colour is read from the image and can be overridden by hand. It repaints that member’s account pages, wallet card, shareable card and their own leaderboard row, so every visitor sees it. Themes are per server, and a disguised member is already hidden from the public leaderboard.'
 			},
 			{ label: 'Public URL', desc: 'The generated public address, derived from the server name.' }
 		]
@@ -793,5 +797,5 @@ export const discordMenu = [
 	},
 	{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English, Indonesian, German or Spanish).' },
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
-	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Guide).' }
+	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Themes, Guide).' }
 ];

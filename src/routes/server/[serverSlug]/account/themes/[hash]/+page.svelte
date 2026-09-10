@@ -382,7 +382,9 @@
 
 				<div class="min-w-0 flex-1">
 					<div class="text-base-content text-sm font-bold tabular-nums">{accent}</div>
-					<div class="text-base-content/45 mt-0.5 text-[11px] font-medium">Tap the swatch to change it · used on your wallet card, page and leaderboard row</div>
+					<div class="text-base-content/45 mt-0.5 text-[11px] font-medium">
+						Tap the swatch to change it · used on your wallet card, page and leaderboard row
+					</div>
 				</div>
 
 				{#if pendingFile}

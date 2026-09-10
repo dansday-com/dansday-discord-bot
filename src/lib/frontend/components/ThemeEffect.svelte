@@ -16,6 +16,20 @@
 
 	let host = $state<HTMLDivElement | undefined>();
 	let live = $state(false);
+	let scale = $state(1);
+
+	$effect(() => {
+		const node = host;
+		if (!node || typeof ResizeObserver === 'undefined') return;
+		const measure = () => {
+			const h = node.clientHeight || 0;
+			scale = Math.max(0.28, Math.min(1, h / 650));
+		};
+		measure();
+		const ro = new ResizeObserver(measure);
+		ro.observe(node);
+		return () => ro.disconnect();
+	});
 
 	$effect(() => {
 		if (family === 'none') return;
@@ -37,7 +51,7 @@
 </script>
 
 {#if family !== 'none'}
-	<div bind:this={host} class="fx fx-{family} {dotted ? 'fx-dots' : ''} {live ? 'fx-live' : ''}" style={variant.style} aria-hidden="true">
+	<div bind:this={host} class="fx fx-{family} {dotted ? 'fx-dots' : ''} {live ? 'fx-live' : ''}" style="{variant.style}; --fx-s: {scale}" aria-hidden="true">
 		{#each variant.particles as p}
 			<span class="fx-p" style={p}></span>
 		{/each}
@@ -53,7 +67,7 @@
 				<path class="fx-crack" style="--c-i: 4" d="M55 36 L58 20 L68 10" />
 			</svg>
 		{:else if family === 'thunder'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="xMidYMin slice">
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
 					<linearGradient id="fxCloudA" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="#4a5160" /><stop offset="100%" stop-color="#1b1f29" />
@@ -73,7 +87,7 @@
 				<path class="fx-strike fx-strike-thin" style="--s-i: 2" d="M52 34 L47 52 L54 52 L44 96" />
 			</svg>
 		{:else if family === 'rain' || family === 'snow' || family === 'blizzard'}
-			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="xMidYMin slice">
+			<svg class="fx-svg fx-scene fx-skycloud" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
 					<linearGradient id="fxSkyA" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
@@ -91,12 +105,29 @@
 				>
 			</svg>
 		{:else if family === 'tsunami'}
-			<svg class="fx-svg fx-waves" viewBox="0 0 200 100" preserveAspectRatio="none">
-				<path class="fx-wave" style="--w-i: 0" d="M0 62 C 20 52, 30 72, 50 62 S 80 52, 100 62 S 130 72, 150 62 S 180 52, 200 62 L200 100 L0 100 Z" />
-				<path class="fx-wave" style="--w-i: 1" d="M0 70 C 25 60, 35 82, 60 70 S 95 60, 120 70 S 155 82, 180 70 S 195 64, 200 70 L200 100 L0 100 Z" />
-				<path class="fx-wave" style="--w-i: 2" d="M0 80 C 30 72, 45 90, 70 80 S 110 72, 135 80 S 175 90, 200 80 L200 100 L0 100 Z" />
-				<path class="fx-crest" d="M0 62 C 20 52, 30 72, 50 62 S 80 52, 100 62 S 130 72, 150 62 S 180 52, 200 62" />
-				<path class="fx-foam" d="M0 62 C 20 52, 30 72, 50 62 S 80 52, 100 62 S 130 72, 150 62 S 180 52, 200 62" />
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="fxSea" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="#5fd8ff" /><stop offset="55%" stop-color="#1f7fc4" /><stop offset="100%" stop-color="#0b3f6b" />
+					</linearGradient>
+					<linearGradient id="fxSeaBack" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="#3fa8dd" /><stop offset="100%" stop-color="#0a3358" />
+					</linearGradient>
+				</defs>
+
+				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack)" d="M0 100 L0 70 Q22 52 46 58 Q70 64 100 54 L100 100 Z" />
+				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack)" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
+
+				<g class="fx-breaker">
+					<path
+						fill="url(#fxSea)"
+						d="M0 100 L0 66 C 10 36, 32 22, 54 30 C 72 37, 78 56, 68 66 C 62 72, 52 70, 50 62 C 48 54, 56 50, 60 56 C 56 44, 40 42, 32 54 C 24 66, 30 82, 44 84 L100 84 L100 100 Z"
+					/>
+					<path class="fx-curl" d="M54 30 C 72 37, 78 56, 68 66 C 64 70, 57 69, 54 64 C 62 60, 64 48, 56 40 C 51 35, 46 33, 42 33 C 46 30, 50 29, 54 30 Z" />
+					<path class="fx-spray" d="M50 28 Q56 20 64 22 Q58 24 56 30 Z" />
+					<path class="fx-spray" style="--y-i: 1" d="M38 32 Q40 22 48 20 Q42 26 42 33 Z" />
+					<path class="fx-spray" style="--y-i: 2" d="M64 34 Q72 30 78 34 Q70 34 66 40 Z" />
+				</g>
 			</svg>
 		{:else if family === 'tornado'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -124,7 +155,32 @@
 			</svg>
 		{:else if family === 'aurora'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="fxAur0" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="#4ade80" stop-opacity="0" /><stop offset="55%" stop-color="#4ade80" stop-opacity="0.85" />
+						<stop offset="100%" stop-color="#a7f3d0" stop-opacity="0" />
+					</linearGradient>
+					<linearGradient id="fxAur1" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="#38bdf8" stop-opacity="0" /><stop offset="50%" stop-color="#38bdf8" stop-opacity="0.8" />
+						<stop offset="100%" stop-color="#c4b5fd" stop-opacity="0" />
+					</linearGradient>
+					<linearGradient id="fxAur2" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="#a78bfa" stop-opacity="0" /><stop offset="48%" stop-color="#a78bfa" stop-opacity="0.7" />
+						<stop offset="100%" stop-color="#f0abfc" stop-opacity="0" />
+					</linearGradient>
+				</defs>
+
 				<rect class="fx-nightsky" width="100" height="100" />
+				<g class="fx-stars">
+					<circle cx="12" cy="14" r="0.5" /><circle cx="31" cy="8" r="0.4" /><circle cx="49" cy="17" r="0.55" />
+					<circle cx="67" cy="9" r="0.4" /><circle cx="83" cy="19" r="0.5" /><circle cx="94" cy="11" r="0.35" />
+					<circle cx="22" cy="26" r="0.35" /><circle cx="58" cy="29" r="0.4" /><circle cx="76" cy="32" r="0.3" />
+				</g>
+
+				<path class="fx-ribbon" style="--n-i: 0" fill="url(#fxAur0)" d="M-10 22 Q10 8 30 20 T70 16 T110 26 L110 74 Q90 60 70 70 T30 66 T-10 76 Z" />
+				<path class="fx-ribbon" style="--n-i: 1" fill="url(#fxAur1)" d="M-10 30 Q14 14 34 28 T74 22 T110 34 L110 70 Q86 58 66 66 T26 62 T-10 72 Z" />
+				<path class="fx-ribbon" style="--n-i: 2" fill="url(#fxAur2)" d="M-10 38 Q8 24 32 36 T68 30 T110 40 L110 66 Q88 56 64 62 T24 58 T-10 68 Z" />
+
 				<path class="fx-ridge" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 100 L0 100 Z" />
 			</svg>
 		{:else if family === 'rainbow'}

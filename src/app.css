@@ -532,8 +532,8 @@ html.lenis body {
 .fx-snow .fx-p {
 	top: -14%;
 	left: var(--p-x);
-	width: var(--p-w);
-	height: var(--p-w);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
 	filter: blur(var(--p-blur)) drop-shadow(0 0 4px var(--p-hue));
 	background:
 		linear-gradient(0deg, transparent 45%, var(--p-hue) 45%, var(--p-hue) 55%, transparent 55%),
@@ -547,8 +547,8 @@ html.lenis body {
 .fx-blizzard .fx-p {
 	top: -12%;
 	left: var(--p-x);
-	width: calc(var(--p-w) * 2.8);
-	height: calc(var(--p-w) * 0.34);
+	width: max(14px, calc(var(--p-w) * 2.8 * var(--fx-s, 1)));
+	height: max(1.6px, calc(var(--p-w) * 0.34 * var(--fx-s, 1)));
 	border-radius: 999px;
 	background: linear-gradient(90deg, transparent 0%, var(--p-hue) 55%, #ffffff 100%);
 	filter: blur(var(--p-blur)) drop-shadow(0 0 3px var(--p-hue));
@@ -600,8 +600,8 @@ html.lenis body {
 .fx-rain .fx-p {
 	top: var(--p-y);
 	left: var(--p-x);
-	width: var(--p-w);
-	height: calc(var(--p-w) * 1.25);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(3px, calc(var(--p-w) * 1.25 * var(--fx-s, 1)));
 	border-radius: 50% 50% 60% 60%;
 	background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.95) 0%, var(--p-hue) 45%, rgba(255, 255, 255, 0.3) 100%);
 	box-shadow:
@@ -618,7 +618,7 @@ html.lenis body {
 	left: 50%;
 	bottom: 100%;
 	width: 1px;
-	height: var(--p-trail);
+	height: calc(var(--p-trail) * var(--fx-s, 1));
 	transform: translateX(-50%);
 	background: linear-gradient(to top, var(--p-hue), transparent);
 	opacity: 0.5;
@@ -645,8 +645,8 @@ html.lenis body {
 .fx-sparkle .fx-p {
 	top: var(--p-y);
 	left: var(--p-x);
-	width: var(--p-w);
-	height: var(--p-w);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
 	background: var(--p-hue);
 	clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
 	filter: drop-shadow(0 0 6px var(--p-hue));
@@ -688,8 +688,8 @@ html.lenis body {
 .fx-fire .fx-p {
 	bottom: -12%;
 	left: var(--p-x);
-	width: var(--p-w);
-	height: var(--p-h);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: calc(var(--p-h) * var(--fx-s, 1));
 	border-radius: 50% 50% 46% 46% / 70% 70% 30% 30%;
 	background: radial-gradient(ellipse at 50% 88%, #fff4c6 0%, var(--p-hue) 45%, transparent 80%);
 	filter: blur(2px);
@@ -720,8 +720,8 @@ html.lenis body {
 .fx-ember .fx-p {
 	bottom: -8%;
 	left: var(--p-x);
-	width: var(--p-w);
-	height: var(--p-w);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
 	border-radius: 50%;
 	background: radial-gradient(circle, #fff6d0 0%, var(--p-hue) 55%, transparent 80%);
 	box-shadow: 0 0 10px 2px var(--p-hue);
@@ -752,8 +752,8 @@ html.lenis body {
 .fx-bubbles .fx-p {
 	bottom: -12%;
 	left: var(--p-x);
-	width: var(--p-w);
-	height: var(--p-w);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
 	border-radius: 50%;
 	border: 1px solid var(--p-hue);
 	background:
@@ -785,8 +785,8 @@ html.lenis body {
 .fx-confetti .fx-p {
 	top: -12%;
 	left: var(--p-x);
-	width: var(--p-w);
-	height: calc(var(--p-w) * 0.55);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(2px, calc(var(--p-w) * 0.55 * var(--fx-s, 1)));
 	background: var(--p-hue);
 	animation-name: fx-confetti-fall;
 	animation-duration: var(--p-dur);
@@ -822,8 +822,8 @@ html.lenis body {
 .fx-meteor .fx-p {
 	top: -20%;
 	left: var(--p-x);
-	width: var(--p-len);
-	height: var(--p-thick);
+	width: max(26px, calc(var(--p-len) * var(--fx-s, 1)));
+	height: max(1.4px, calc(var(--p-thick) * var(--fx-s, 1)));
 	border-radius: 999px;
 	transform-origin: 100% 50%;
 	rotate: 122deg;
@@ -846,7 +846,7 @@ html.lenis body {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(-320px, 420%, 0);
+		transform: translate3d(calc(-320px * var(--fx-s, 1)), 420%, 0);
 		opacity: 0;
 	}
 }
@@ -855,8 +855,8 @@ html.lenis body {
 .fx-earthquake .fx-p {
 	top: var(--p-y);
 	left: var(--p-x);
-	width: var(--p-w);
-	height: calc(var(--p-w) * 0.8);
+	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(2px, calc(var(--p-w) * 0.8 * var(--fx-s, 1)));
 	background: var(--p-hue);
 	clip-path: polygon(12% 0%, 88% 14%, 100% 62%, 58% 100%, 6% 78%);
 	animation-name: fx-debris;
@@ -966,26 +966,29 @@ html.lenis body {
 
 @keyframes fx-strike-flash {
 	0%,
-	78%,
+	54%,
 	100% {
 		opacity: 0;
 	}
-	79% {
+	55% {
 		opacity: 1;
 	}
-	80.5% {
-		opacity: 0.08;
+	57% {
+		opacity: 0.1;
 	}
-	82% {
+	59% {
 		opacity: 1;
 	}
-	84% {
-		opacity: 0.15;
+	62% {
+		opacity: 0.2;
 	}
-	86% {
-		opacity: 0.85;
+	65% {
+		opacity: 0.95;
 	}
-	89% {
+	72% {
+		opacity: 0.35;
+	}
+	80% {
 		opacity: 0;
 	}
 }
@@ -1000,34 +1003,68 @@ html.lenis body {
 	animation: fx-strike-flash var(--fx-speed) linear infinite;
 }
 
-/* --- tsunami: layered waves --- */
-.fx-waves {
-	width: 200%;
+/* --- tsunami: breaking wave --- */
+.fx-swell {
+	transform-origin: 50% 100%;
+	animation: fx-swell-roll calc(var(--fx-speed) * (1.4 + var(--v-i) * 0.5)) ease-in-out infinite alternate paused;
+	animation-delay: calc(var(--v-i) * -1.4s);
 }
 
-.fx-wave {
-	fill: var(--fx-color);
-	opacity: calc(var(--fx-opacity, 0.6) * (1 - var(--w-i) * 0.2));
-	animation: fx-wave-roll calc(var(--fx-speed) * (1 + var(--w-i) * 0.45)) linear infinite paused;
-	animation-delay: calc(var(--w-i) * -1.3s);
+.fx-breaker {
+	transform-origin: 30% 100%;
+	filter: drop-shadow(0 -4px 12px rgba(6, 40, 70, 0.55));
+	animation: fx-breaker-surge var(--fx-speed) ease-in-out infinite alternate paused;
 }
 
-.fx-foam {
-	fill: none;
-	stroke: #ffffff;
-	stroke-width: 1.6;
-	vector-effect: non-scaling-stroke;
-	opacity: calc(var(--fx-opacity, 0.6) * 0.8);
-	filter: drop-shadow(0 0 5px var(--fx-color-2));
-	animation: fx-wave-roll var(--fx-speed) linear infinite paused;
+.fx-live .fx-swell,
+.fx-live .fx-breaker,
+.fx-live .fx-spray {
+	animation-play-state: running;
 }
 
-@keyframes fx-wave-roll {
-	from {
-		transform: translate3d(0, 0, 0);
+@keyframes fx-swell-roll {
+	0% {
+		transform: translate3d(-6%, 3%, 0);
 	}
-	to {
-		transform: translate3d(-50%, 0, 0);
+	100% {
+		transform: translate3d(6%, -2%, 0);
+	}
+}
+
+@keyframes fx-breaker-surge {
+	0% {
+		transform: translate3d(-8%, 6%, 0) scale(0.94);
+	}
+	100% {
+		transform: translate3d(4%, -3%, 0) scale(1.06);
+	}
+}
+
+.fx-curl {
+	fill: #ffffff;
+	opacity: 0.85;
+	filter: drop-shadow(0 0 4px #ffffff);
+}
+
+.fx-spray {
+	fill: #ffffff;
+	opacity: 0.75;
+	transform-origin: 50% 100%;
+	animation: fx-spray-fly calc(var(--fx-speed) * 0.75) ease-out infinite paused;
+	animation-delay: calc(var(--y-i, 0) * -0.45s);
+}
+
+@keyframes fx-spray-fly {
+	0% {
+		transform: translate3d(0, 4px, 0) scale(0.5);
+		opacity: 0;
+	}
+	35% {
+		opacity: 0.9;
+	}
+	100% {
+		transform: translate3d(6px, -14px, 0) scale(1.25);
+		opacity: 0;
 	}
 }
 
@@ -1049,30 +1086,53 @@ html.lenis body {
 	}
 }
 
-/* --- aurora: curtains --- */
-.fx-aurora .fx-p {
-	top: -25%;
-	left: var(--p-x);
-	width: var(--p-w);
-	height: 150%;
-	background: linear-gradient(to bottom, transparent 0%, var(--p-hue) 35%, var(--p-hue) 62%, transparent 100%);
-	filter: blur(18px);
+/* --- aurora: ribbon curtains --- */
+.fx-ribbon {
+	filter: blur(6px) saturate(1.4);
 	mix-blend-mode: screen;
-	transform-origin: 50% 0%;
-	animation-name: fx-curtain;
-	animation-duration: var(--p-dur);
-	animation-timing-function: ease-in-out;
-	animation-direction: alternate;
+	transform-origin: 50% 50%;
+	animation: fx-ribbon-wave calc(var(--fx-speed) * (1 + var(--n-i) * 0.35)) ease-in-out infinite alternate paused;
+	animation-delay: calc(var(--n-i) * -2.2s);
 }
 
-@keyframes fx-curtain {
+.fx-live .fx-ribbon {
+	animation-play-state: running;
+}
+
+@keyframes fx-ribbon-wave {
 	0% {
-		transform: skewX(calc(var(--p-skew) * -1)) scaleY(0.8) translate3d(-16px, 0, 0);
-		opacity: 0.4;
+		transform: translate3d(-7%, 3%, 0) skewX(-8deg) scaleY(0.85);
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
 	}
 	100% {
-		transform: skewX(var(--p-skew)) scaleY(1.14) translate3d(16px, 0, 0);
-		opacity: 1;
+		transform: translate3d(7%, -4%, 0) skewX(9deg) scaleY(1.18);
+		opacity: 0.75;
+	}
+}
+
+.fx-stars circle {
+	fill: #ffffff;
+	opacity: 0.75;
+	animation: fx-twinkle-star calc(var(--fx-speed) * 0.8) ease-in-out infinite alternate;
+}
+
+.fx-stars circle:nth-child(2n) {
+	animation-delay: -1.3s;
+}
+
+.fx-stars circle:nth-child(3n) {
+	animation-delay: -2.6s;
+}
+
+@keyframes fx-twinkle-star {
+	from {
+		opacity: 0.25;
+	}
+	to {
+		opacity: 0.9;
 	}
 }
 
@@ -1266,8 +1326,8 @@ html.lenis body {
 	position: absolute;
 	inset: 0;
 	background: repeating-linear-gradient(to bottom, transparent 0 3px, var(--fx-color) 3px 4px);
-	opacity: calc(var(--fx-opacity) * 0.35);
-	mix-blend-mode: screen;
+	opacity: calc(var(--fx-opacity) * 0.5);
+	mix-blend-mode: difference;
 	animation: fx-glitch-a var(--fx-speed) steps(2, end) infinite;
 }
 
@@ -1472,7 +1532,7 @@ html.lenis body {
 /* night skies */
 .fx-nightsky {
 	fill: #070b16;
-	opacity: 0.75;
+	opacity: 0.45;
 }
 
 .fx-ridge {
@@ -1618,7 +1678,7 @@ html.lenis body {
 /* --- glitch: horizontal tear bands --- */
 .fx-tear-r,
 .fx-tear-c {
-	mix-blend-mode: screen;
+	mix-blend-mode: difference;
 	animation: fx-tear-slip var(--fx-speed) steps(1, end) infinite paused;
 	animation-delay: calc(var(--t-i) * -0.37s);
 }
@@ -1638,25 +1698,31 @@ html.lenis body {
 
 @keyframes fx-tear-slip {
 	0%,
-	60%,
 	100% {
 		transform: translate3d(0, 0, 0);
 		opacity: 0;
 	}
-	64% {
-		transform: translate3d(-7%, 0, 0);
-		opacity: 0.85;
+	42% {
+		opacity: 0;
 	}
-	70% {
-		transform: translate3d(5%, 0, 0);
-		opacity: 0.6;
-	}
-	76% {
-		transform: translate3d(-3%, 0, 0);
+	46% {
+		transform: translate3d(-9%, 0, 0);
 		opacity: 0.9;
 	}
-	82% {
-		transform: translate3d(2%, 0, 0);
-		opacity: 0.4;
+	54% {
+		transform: translate3d(6%, 0, 0);
+		opacity: 0.7;
+	}
+	62% {
+		transform: translate3d(-4%, 0, 0);
+		opacity: 0.95;
+	}
+	70% {
+		transform: translate3d(3%, 0, 0);
+		opacity: 0.5;
+	}
+	78% {
+		transform: translate3d(0, 0, 0);
+		opacity: 0;
 	}
 }

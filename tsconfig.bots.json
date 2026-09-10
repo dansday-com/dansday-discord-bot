@@ -13,5 +13,16 @@
 		"declaration": false,
 		"isolatedModules": false
 	},
-	"include": ["src/lib/backend/**/*.ts", "src/lib/utils/**/*.ts", "src/lib/database.ts", "src/lib/drizzle.ts", "src/lib/schema.ts", "src/lib/redis.ts"]
+	"include": [
+		"src/lib/backend/**/*.ts",
+		"src/lib/utils/**/*.ts",
+		"src/lib/database.ts",
+		"src/lib/drizzle.ts",
+		"src/lib/schema.ts",
+		"src/lib/redis.ts",
+		"src/lib/effects.ts",
+		"src/lib/brand.ts",
+		"src/lib/themes.ts",
+		"src/lib/images.ts"
+	]
 }

@@ -176,14 +176,12 @@ async function handleMenuButton(interaction) {
 			.setStyle(ButtonStyle.Success)
 	);
 
-	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.discord_quest_notifier)) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId(DISCORD_QUEST_BUTTON_ID)
-				.setLabel(await translate('questEnroll.menuButton', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId(DISCORD_QUEST_BUTTON_ID)
+			.setLabel(await translate('questEnroll.menuButton', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
 	if (buttons.length === 0) {
 		const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);

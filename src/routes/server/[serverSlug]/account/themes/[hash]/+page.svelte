@@ -419,9 +419,9 @@
 		</div>
 
 		<div class="flex flex-col gap-3 p-4 sm:p-5">
-			<div class="flex flex-wrap items-center gap-2">
+			<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
-					class="btn btn-sm flex-1 border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white sm:flex-none"
+					class="btn btn-sm w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black whitespace-nowrap text-white sm:w-auto"
 					onclick={openSpin}
 					disabled={busy || !canSpin}
 					use:hapticTap
@@ -429,14 +429,22 @@
 					<i class="fas fa-dice"></i>Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
 				</button>
 				{#if owned !== 'none'}
-					<button class="btn btn-ghost btn-sm" onclick={toggleEffect} disabled={busy}>
-						<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
-					</button>
-				{/if}
-				{#if owned !== 'none' && effectOn}
-					<button class="btn btn-ghost btn-sm" onclick={() => requestTilt()} disabled={tilt.status === 'pending'} use:hapticTap>
-						<i class="fas fa-cube"></i>{tilt.status === 'granted' ? 'Depth on' : tilt.status === 'pending' ? 'Asking…' : 'Enable depth'}
-					</button>
+					<div class="flex gap-2">
+						<button class="btn btn-ghost btn-sm flex-1 whitespace-nowrap sm:flex-none" onclick={toggleEffect} disabled={busy}>
+							<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
+						</button>
+						{#if effectOn}
+							<button
+								class="btn btn-ghost btn-sm flex-1 whitespace-nowrap sm:flex-none"
+								onclick={() => requestTilt()}
+								disabled={tilt.status === 'pending'}
+								title={tilt.status === 'granted' ? 'Motion depth is on' : 'Enable motion depth'}
+								use:hapticTap
+							>
+								<i class="fas fa-cube"></i>{tilt.status === 'granted' ? 'Depth on' : tilt.status === 'pending' ? 'Asking…' : 'Depth'}
+							</button>
+						{/if}
+					</div>
 				{/if}
 			</div>
 

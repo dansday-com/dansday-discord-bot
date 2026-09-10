@@ -1,4 +1,5 @@
 import db from '../../../../database.js';
+import { logger } from '../../../../utils/index.js';
 import { EFFECT_SPIN_COST, EFFECT_SPIN_GAME, effectMeta, rollEffect } from '../../../../effects.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
@@ -58,6 +59,10 @@ export async function handleThemeEffectSpin(client: any, payload: any) {
 	return { ok: true, result };
 }
 
+function fmtXp(v: any): string {
+	return `${Math.abs(Number(v) || 0).toLocaleString()} XP`;
+}
+
 async function announceEffectSpin(client: any, ctx: any) {
 	const { guildId, actorDiscordId, result } = ctx;
 	if (!result) return;
@@ -80,10 +85,19 @@ async function announceEffectSpin(client: any, ctx: any) {
 
 		const embed = new EmbedBuilder()
 			.setColor(0xc8911a)
-			.setDescription(`✨ ${actorMention} spun a theme effect and landed **${result.label}** for ${result.cost.toLocaleString()} XP.`)
+			.setTitle('✨ Theme Effect Spin')
+			.setDescription(`${actorMention} spun for ${fmtXp(result.cost)} and landed **${result.label}**!`)
+			.addFields(
+				{ name: 'Effect', value: result.label, inline: true },
+				{ name: 'XP spent', value: fmtXp(result.cost), inline: true },
+				{ name: 'Variant', value: `#${result.seed}`, inline: true }
+			)
 			.setFooter({ text: embedConfig.FOOTER || 'Minigames' })
 			.setTimestamp();
 
-		await channel.send({ embeds: [embed] }).catch(() => null);
-	} catch (_) {}
+		const content = actor ? `${actor}` : undefined;
+		await channel.send({ content, embeds: [embed] }).catch(() => null);
+	} catch (err: any) {
+		await logger.log(`⚠️ Theme effect spin announce failed: ${err?.message || String(err)}`);
+	}
 }

@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { BRAND_PRIMARY } from '$lib/brand.js';
 	import { type MemberTheme, themeVars } from '$lib/themes.js';
-	import ThemeEffect from '../ThemeEffect.svelte';
+	import ThemeEffect3D from '../ThemeEffect3D.svelte';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 	import { registerScroller } from '../../scrollLock.js';
@@ -77,7 +77,7 @@
 		></div>
 		<div class="bg-canvas/82 pointer-events-none fixed inset-0 -z-10 backdrop-blur-[2px]" aria-hidden="true"></div>
 		<div class="pointer-events-none fixed inset-0 -z-9" aria-hidden="true">
-			<ThemeEffect effect={memberTheme?.effect} seed={memberTheme?.effectSeed} accent={memberTheme?.accent} always />
+			<ThemeEffect3D effect={memberTheme?.effect} seed={memberTheme?.effectSeed} accent={memberTheme?.accent} />
 		</div>
 	{:else}
 		<div

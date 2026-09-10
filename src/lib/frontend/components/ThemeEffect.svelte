@@ -14,11 +14,9 @@
 
 	let { effect: effectId = null, seed = 0, accent = null, always = false, frozen = false, haptics = false }: Props = $props();
 
-	const QUAKE_TOWERS = [
-		'M8 74 L8 20 L14 20 L14 8 L34 8 L34 20 L40 20 L40 74 Z M18 16 L30 16 L30 12 L18 12 Z',
-		'M12 74 L12 30 L18 24 L18 4 L36 4 L36 26 L44 32 L44 74 Z',
-		'M6 74 L6 38 L16 38 L16 14 L26 6 L36 14 L36 38 L48 38 L48 74 Z',
-		'M14 74 L14 10 L22 2 L30 10 L30 34 L42 34 L42 74 Z'
+	const QUAKE_SLABS = [
+		'M0 40 L0 26 L18 12 L34 22 L36 40 Z M40 40 L44 18 L62 8 L70 24 L68 40 Z M74 40 L80 20 L96 14 L100 28 L100 40 Z',
+		'M0 40 L2 20 L20 10 L30 26 L28 40 Z M34 40 L40 14 L58 6 L66 22 L62 40 Z M70 40 L78 24 L94 18 L100 32 L100 40 Z'
 	];
 
 	const QUAKE_FISSURES = [
@@ -42,11 +40,6 @@
 		'M2 33 Q-2 20 10 17 Q14 5 30 8 Q40 -4 56 4 Q72 -3 82 9 Q97 9 99 21 Q108 24 104 32 Q100 36 88 34 L8 34 Q0 36 2 33 Z'
 	];
 
-	const THUNDER_SKYLINE = [
-		'M0 40 L0 22 L9 22 L9 12 L17 12 L17 26 L26 26 L26 6 L36 6 L36 20 L46 20 L46 14 L55 14 L55 28 L66 28 L66 9 L76 9 L76 24 L86 24 L86 17 L96 17 L96 30 L110 30 L110 40 Z',
-		'M0 40 L0 27 L8 27 L8 15 L15 15 L15 3 L24 3 L24 21 L34 21 L34 11 L44 11 L44 25 L54 25 L54 8 L63 8 L63 22 L74 22 L74 13 L84 13 L84 29 L94 29 L94 19 L110 19 L110 40 Z'
-	];
-
 	const RAINBOW_CLOUDS = [
 		{
 			left: '2%',
@@ -60,9 +53,53 @@
 		}
 	];
 
-	const GLASS_CRACKS = [
-		['M50 50 L18 12', 'M50 50 L84 20', 'M50 50 L92 62', 'M50 50 L58 96', 'M50 50 L12 78', 'M28 31 L66 34 L74 57 L46 73 L23 58 Z'],
-		['M50 50 L10 34', 'M50 50 L46 6', 'M50 50 L88 38', 'M50 50 L76 88', 'M50 50 L20 90', 'M31 40 L62 26 L78 52 L60 79 L30 68 Z']
+	const SAKURA_BOUGHS = [
+		'M0 4 Q22 10 38 8 Q56 6 70 14 Q86 22 104 20 Q114 19 120 24 L120 16 Q108 13 96 14 Q80 15 66 8 Q50 0 30 2 Q14 3 0 0 Z M38 8 L34 22 M70 14 L76 30 M96 14 L92 27',
+		'M0 10 Q18 4 34 6 Q52 8 66 18 Q82 28 100 24 Q112 21 120 14 L120 6 Q106 14 94 16 Q78 18 64 9 Q48 -1 28 0 Q12 1 0 2 Z M34 6 L30 21 M66 18 L70 34 M100 24 L104 38'
+	];
+
+	const SAKURA_BLOSSOMS = [
+		[16, 9, 2.6],
+		[38, 13, 3.1],
+		[54, 8, 2.3],
+		[72, 18, 3],
+		[88, 14, 2.5],
+		[104, 23, 2.8],
+		[30, 24, 2.2],
+		[62, 30, 2.6]
+	];
+
+	const MEADOW_TUFTS = [
+		'M0 30 L4 14 L7 30 L10 9 L13 30 L17 17 L21 30 L26 6 L30 30 L35 15 L39 30 L45 11 L49 30 L55 18 L59 30 L66 8 L70 30 L77 16 L81 30 L88 10 L92 30 L99 19 L103 30 L110 12 L114 30 L120 20 L120 30 Z',
+		'M0 30 L5 18 L9 30 L14 7 L18 30 L24 16 L28 30 L34 10 L38 30 L44 20 L48 30 L54 8 L58 30 L65 17 L69 30 L76 6 L80 30 L87 19 L91 30 L98 11 L102 30 L109 21 L113 30 L120 14 L120 30 Z'
+	];
+
+	const SILK_SASHES = [
+		'M-8 22 Q18 6 42 20 Q66 34 92 16 Q104 8 112 14 L112 30 Q102 24 92 32 Q66 50 42 36 Q18 22 -8 38 Z',
+		'M-8 48 Q16 32 40 46 Q64 60 90 42 Q102 34 112 40 L112 58 Q100 52 90 60 Q64 78 40 64 Q16 50 -8 66 Z',
+		'M-8 74 Q20 60 44 74 Q68 88 94 70 Q104 63 112 68 L112 86 Q102 81 94 88 Q68 106 44 92 Q20 78 -8 94 Z'
+	];
+
+	const CRYSTAL_SPIKES = [
+		['M12 52 L18 14 L24 52 Z', 'M24 52 L32 2 L40 52 Z', 'M40 52 L46 20 L52 52 Z', 'M2 52 L8 30 L14 52 Z'],
+		['M8 52 L14 22 L20 52 Z', 'M20 52 L28 6 L36 52 Z', 'M36 52 L44 16 L50 52 Z', 'M48 52 L54 32 L60 52 Z']
+	];
+
+	const NEON_TUBES = [
+		'M8 30 Q8 10 20 10 Q32 10 32 20 Q32 30 44 30 Q56 30 56 14',
+		'M10 12 L26 12 L18 28 L34 28 L26 12 L46 12 M50 12 L50 30',
+		'M12 28 Q12 12 24 12 Q36 12 36 28 M44 10 L44 30 M44 20 L58 20'
+	];
+
+	const AUTUMN_TREES = [
+		{
+			trunk: 'M56 64 L58 40 L54 30 L58 28 L60 38 L62 26 L66 28 L62 42 L64 64 Z',
+			crown: 'M60 6 Q84 8 90 24 Q104 30 94 42 Q80 50 60 46 Q40 50 26 42 Q16 30 30 24 Q36 8 60 6 Z'
+		},
+		{
+			trunk: 'M58 64 L60 44 L52 32 L57 31 L62 40 L68 30 L72 33 L64 45 L66 64 Z',
+			crown: 'M60 10 Q80 6 88 20 Q102 26 92 38 Q78 48 60 44 Q42 48 28 38 Q18 26 32 20 Q40 6 60 10 Z'
+		}
 	];
 
 	const SAND_DUNES = [
@@ -102,12 +139,9 @@
 		'M50 44 L67 41 L60 40 L69 35 L54 43 Z'
 	];
 
-	const TSUNAMI_TOWN = [
-		'M0 46 L0 32 L8 32 L8 22 L16 16 L24 22 L24 32 L33 32 L33 20 L43 14 L53 20 L53 32 L62 32 L62 25 L71 25 L71 32 L82 32 L82 18 L91 12 L100 18 L100 32 L110 32 L110 26 L120 26 L120 46 Z',
-		'M0 46 L0 28 L10 28 L10 19 L19 13 L28 19 L28 28 L38 28 L38 23 L47 23 L47 28 L57 28 L57 15 L67 9 L77 15 L77 28 L88 28 L88 21 L98 21 L98 28 L108 28 L108 24 L120 24 L120 46 Z'
-	];
-
 	const TSUNAMI_FLOTSAM = ['M28 62 L40 58 L41 62 L29 66 Z', 'M56 70 L68 67 L69 71 L57 74 Z', 'M36 78 L44 72 L48 76 L40 82 Z', 'M62 82 L74 79 L75 83 L63 86 Z'];
+
+	const FRONT_FAMILIES = new Set(['fire', 'thunder', 'neon', 'blackhole', 'volcano', 'glass']);
 
 	const family = $derived(normalizeEffect(effectId));
 	const variant = $derived(effectVariant(family, seed, accent));
@@ -144,6 +178,15 @@
 	$effect(() => {
 		if (family === 'none') return;
 		return startTilt();
+	});
+
+	$effect(() => {
+		const node = host;
+		if (!node || family === 'none' || frozen) return;
+		const parent = node.parentElement;
+		if (!parent) return;
+		parent.setAttribute('data-fx-host', family);
+		return () => parent.removeAttribute('data-fx-host');
 	});
 
 	$effect(() => {
@@ -200,19 +243,7 @@
 				<path class="fx-ground" d="M0 58 L17 53 L33 59 L51 51 L69 57 L85 52 L100 57 L100 100 L0 100 Z" />
 			</svg>
 
-			{#each spreadPieces(seed + 41, pieceCount(60 / 74, 0.56, 2, 14, 1.35), 0.3, 0.72, 1.24) as piece, t}
-				<svg
-					class="fx-tower"
-					style="--o-left: {piece.left}%; --o-scale: {piece.scale}; --o-i: {t}; --o-dir: {piece.flip ? 1 : -1}"
-					viewBox="0 0 60 74"
-					preserveAspectRatio="xMidYMax meet"
-					aria-hidden="true"
-				>
-					<path d={QUAKE_TOWERS[t % QUAKE_TOWERS.length]} />
-				</svg>
-			{/each}
-
-			{#each spreadPieces(seed, pieceCount(120 / 46, 0.34, 3, 14, 0.95), 0.24, 0.88, 1.18) as piece, f}
+			{#each spreadPieces(seed, pieceCount(120 / 46, 0.42, 4, 18, 0.8), 0.24, 0.88, 1.18) as piece, f}
 				<svg
 					class="fx-fissure"
 					style="--s-left: {piece.left}%; --s-scale: {piece.scale}"
@@ -226,7 +257,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 90, pieceCount(1, 0.46, 2, 8, 1.6), 0.44, 0.66, 1.3) as piece, u}
+			{#each spreadPieces(seed + 90, pieceCount(1, 0.52, 3, 12, 1.25), 0.44, 0.66, 1.3) as piece, u}
 				<svg
 					class="fx-plume"
 					style="--u-left: {piece.left}%; --u-scale: {piece.scale}; --u-i: {u}"
@@ -241,33 +272,27 @@
 				</svg>
 			{/each}
 
+			{#each spreadPieces(seed + 63, pieceCount(100 / 40, 0.3, 3, 14, 0.9), 0.3, 0.8, 1.26) as piece, v}
+				<svg
+					class="fx-slab"
+					style="--v-left: {piece.left}%; --v-scale: {piece.scale}; --v-i: {v}; --v-dir: {piece.flip ? 1 : -1}"
+					viewBox="0 0 100 40"
+					preserveAspectRatio="xMidYMax meet"
+					aria-hidden="true"
+				>
+					<path d={QUAKE_SLABS[v % QUAKE_SLABS.length]} />
+				</svg>
+			{/each}
+
 			<svg class="fx-rift" viewBox="0 0 40 46" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
 				<path class="fx-chasm" d="M14 1 L21 16 L16 46 L29 46 L24 15 L30 1 Z" />
 			</svg>
 		{:else if family === 'thunder'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxStorm{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#141824" /><stop offset="62%" stop-color="#232a3a" /><stop offset="100%" stop-color="#0d1017" />
-					</linearGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxStorm{uid})" />
 				<rect class="fx-flash" width="100" height="100" />
 			</svg>
 			<i class="fx-sheet" style="--h-i: 0"></i>
 			<i class="fx-sheet" style="--h-i: 1"></i>
-
-			{#each spreadPieces(seed, pieceCount(110 / 40, 0.26, 3, 16, 1), 0.2, 0.9, 1.25) as piece, i}
-				<svg
-					class="fx-stormline"
-					style="--l-left: {piece.left}%; --l-scale: {piece.scale}; --l-i: {i}"
-					viewBox="0 0 110 40"
-					preserveAspectRatio="xMidYMax meet"
-					aria-hidden="true"
-				>
-					<path d={THUNDER_SKYLINE[i % THUNDER_SKYLINE.length]} />
-				</svg>
-			{/each}
 
 			{#each spreadPieces(seed + 31, pieceCount(110 / 44, 0.34, 2, 14, 0.86), 0.3, 0.86, 1.2) as piece, i}
 				<svg
@@ -286,7 +311,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 77, pieceCount(45 / 100, 1, 2, 6, 3.1), 0.45, 0.85, 1.15) as piece, b}
+			{#each spreadPieces(seed + 77, pieceCount(45 / 100, 1, 3, 10, 1.8), 0.45, 0.78, 1) as piece, b}
 				<svg
 					class="fx-bolt-piece"
 					style="--b-left: {piece.left}%; --b-scale: {piece.scale}"
@@ -367,19 +392,7 @@
 				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack{uid})" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
 			</svg>
 
-			{#each spreadPieces(seed + 21, pieceCount(120 / 46, 0.3, 3, 16, 1), 0.22, 0.86, 1.2) as piece, i}
-				<svg
-					class="fx-township"
-					style="--t-left: {piece.left}%; --t-scale: {piece.scale}; --t-i: {i}"
-					viewBox="0 0 120 46"
-					preserveAspectRatio="xMidYMax meet"
-					aria-hidden="true"
-				>
-					<path d={TSUNAMI_TOWN[i % TSUNAMI_TOWN.length]} />
-				</svg>
-			{/each}
-
-			{#each spreadPieces(seed + 64, pieceCount(1, 0.86, 2, 14, 1.1), 0.26, 0.78, 1.14) as piece, w}
+			{#each spreadPieces(seed + 64, pieceCount(1, 0.98, 3, 16, 0.85), 0.3, 0.6, 0.98) as piece, w}
 				<svg
 					class="fx-breaker-piece"
 					style="--w-left: {piece.left}%; --w-h: {piece.scale}; --w-i: {w}"
@@ -403,17 +416,16 @@
 				</svg>
 			{/each}
 
+			<svg class="fx-whitewater" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
+				<path style="--f-j: 0" d="M0 34 L0 18 Q8 8 17 16 Q26 24 35 14 Q44 4 53 15 Q62 26 71 15 Q80 4 89 16 Q95 22 100 16 L100 34 Z" />
+				<path style="--f-j: 1" d="M0 34 L0 24 Q10 15 20 23 Q30 31 40 21 Q50 11 60 22 Q70 33 80 22 Q88 13 100 23 L100 34 Z" />
+			</svg>
+
 			<svg class="fx-surge" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true">
 				<path d="M0 22 L0 12 Q9 5 18 11 Q27 17 36 10 Q45 3 54 11 Q63 18 72 11 Q81 4 90 11 Q95 15 100 12 L100 22 Z" />
 			</svg>
 		{:else if family === 'tornado'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxGale{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#2f3743" /><stop offset="70%" stop-color="#59636f" /><stop offset="100%" stop-color="#3a3128" />
-					</linearGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxGale{uid})" />
 				<path class="fx-scar" d="M0 100 L0 86 Q14 79 27 85 Q40 91 53 84 Q66 77 79 84 Q90 90 100 85 L100 100 Z" />
 			</svg>
 
@@ -567,15 +579,7 @@
 				<rect class="fx-water" width="100" height="100" />
 			</svg>
 		{:else if family === 'sparkle'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<radialGradient id="fxBloom{uid}" cx="50%" cy="42%" r="60%">
-						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.5" />
-						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
-					</radialGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxBloom{uid})" />
-			</svg>
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none"> </svg>
 		{:else if family === 'confetti'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<path class="fx-streamer" style="--r-i: 0" d="M8 0 Q14 12 6 22 Q0 32 10 44" />
@@ -613,13 +617,7 @@
 				</g>
 			</svg>
 		{:else if family === 'scanlines' || family === 'grain'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<radialGradient id="fxVig{uid}" cx="50%" cy="50%" r="72%">
-					<stop offset="55%" stop-color="transparent" stop-opacity="0" />
-					<stop offset="100%" stop-color="#000" stop-opacity="0.55" />
-				</radialGradient>
-				<rect width="100" height="100" fill="url(#fxVig{uid})" />
-			</svg>
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none"> </svg>
 		{:else if family === 'love'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
@@ -631,7 +629,7 @@
 				<rect class="fx-lovebloom" width="100" height="100" fill="url(#fxLove{uid})" />
 			</svg>
 
-			{#each spreadPieces(seed + 5, pieceCount(1, 0.3, 3, 12, 1.4), 0.46, 0.55, 1.35) as piece, i}
+			{#each spreadPieces(seed + 5, pieceCount(32 / 30, 0.3, 3, 12, 1.4), 0.46, 0.55, 1.3) as piece, i}
 				<svg
 					class="fx-heartglow"
 					style="--q-left: {piece.left}%; --q-scale: {piece.scale}; --q-i: {i}; --q-delay: {piece.delay}s"
@@ -645,32 +643,14 @@
 		{:else if family === 'glass'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxPane{uid}" x1="0" y1="0" x2="1" y2="1">
-						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.16" />
-						<stop offset="50%" stop-color="var(--fx-color-2)" stop-opacity="0.05" />
-						<stop offset="100%" stop-color="var(--fx-color)" stop-opacity="0.18" />
+					<linearGradient id="fxGlassTint{uid}" x1="0" y1="0" x2="1" y2="1">
+						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.2" />
+						<stop offset="52%" stop-color="var(--fx-color-2)" stop-opacity="0.06" />
+						<stop offset="100%" stop-color="var(--fx-color)" stop-opacity="0.22" />
 					</linearGradient>
 				</defs>
-				<rect width="100" height="100" fill="url(#fxPane{uid})" />
-				<rect class="fx-glint" width="16" height="100" />
+				<rect class="fx-glasstint" width="100" height="100" fill="url(#fxGlassTint{uid})" />
 			</svg>
-
-			{#each spreadPieces(seed + 8, pieceCount(1, 0.9, 2, 9, 1.15), 0.2, 0.8, 1.2) as piece, i}
-				<svg
-					class="fx-fracture"
-					style="--x-left: {piece.left}%; --x-scale: {piece.scale}; --x-i: {i}"
-					viewBox="0 0 100 100"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					{#each GLASS_CRACKS[i % GLASS_CRACKS.length] as d, c}
-						<path class="fx-crackline" pathLength="100" style="--z-i: {c}" {d} />
-					{/each}
-					<path class="fx-shard" style="--z-i: 0" d="M50 50 L62 38 L69 52 Z" />
-					<path class="fx-shard" style="--z-i: 1" d="M50 50 L38 40 L33 55 Z" />
-					<path class="fx-shard" style="--z-i: 2" d="M50 50 L57 65 L43 68 Z" />
-				</svg>
-			{/each}
 		{:else if family === 'bullethole'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
@@ -699,7 +679,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 29, pieceCount(1, 0.14, 3, 10, 1.2), 0.5, 0.7, 1.3) as piece, c}
+			{#each spreadPieces(seed + 29, pieceCount(14 / 24, 0.14, 3, 10, 1.2), 0.5, 0.7, 1.3) as piece, c}
 				<svg
 					class="fx-casing"
 					style="--j-left: {piece.left}%; --j-scale: {piece.scale}; --j-i: {c}; --j-delay: {piece.delay}s; --j-dir: {piece.flip ? 1 : -1}"
@@ -712,12 +692,6 @@
 			{/each}
 		{:else if family === 'volcano'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxAshSky{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#2a1c18" /><stop offset="58%" stop-color="#5c3324" /><stop offset="100%" stop-color="#1b1210" />
-					</linearGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxAshSky{uid})" />
 				<rect class="fx-ashsky" width="100" height="100" />
 				<path class="fx-lavaflow" d="M0 100 L0 92 Q16 88 30 93 Q46 98 60 92 Q76 86 88 92 Q95 95 100 92 L100 100 Z" />
 			</svg>
@@ -747,12 +721,6 @@
 			</svg>
 		{:else if family === 'sandstorm'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxSand{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#8a6a3a" /><stop offset="55%" stop-color="#c69a51" /><stop offset="100%" stop-color="#7a5a2f" />
-					</linearGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxSand{uid})" />
 				<rect class="fx-haze" style="--z-j: 0" width="100" height="100" />
 				<rect class="fx-haze" style="--z-j: 1" width="100" height="100" />
 			</svg>
@@ -790,12 +758,6 @@
 			</svg>
 		{:else if family === 'eclipse'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxEcl{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#0e1020" /><stop offset="62%" stop-color="#2a2340" /><stop offset="100%" stop-color="#120f1c" />
-					</linearGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxEcl{uid})" />
 				<rect class="fx-eclipsesky" width="100" height="100" />
 			</svg>
 
@@ -813,12 +775,6 @@
 			</svg>
 		{:else if family === 'fallingstar'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxWish{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#070b1c" /><stop offset="64%" stop-color="#152046" /><stop offset="100%" stop-color="#0a0f24" />
-					</linearGradient>
-				</defs>
-				<rect width="100" height="100" fill="url(#fxWish{uid})" />
 				<rect class="fx-wishsky" width="100" height="100" />
 			</svg>
 
@@ -849,7 +805,6 @@
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</linearGradient>
 				</defs>
-				<rect width="100" height="100" fill="#05060f" />
 				<path class="fx-galaxyband" fill="url(#fxGal{uid})" d="M-20 108 L18 -8 L62 -8 L24 108 Z" />
 				<path class="fx-dustlane" fill="url(#fxLane{uid})" d="M-6 108 L30 -8 L40 -8 L4 108 Z" />
 				<rect class="fx-wispsky" width="100" height="100" />
@@ -866,13 +821,210 @@
 						<stop offset="42%" stop-color="var(--fx-color-2)" stop-opacity="0.9" />
 						<stop offset="100%" stop-color="#ffffff" stop-opacity="0.95" />
 					</linearGradient>
+					<radialGradient id="fxHorizon{uid}" cx="50%" cy="50%" r="50%">
+						<stop offset="0%" stop-color="#01010a" stop-opacity="0.96" />
+						<stop offset="62%" stop-color="#01010a" stop-opacity="0.82" />
+						<stop offset="100%" stop-color="#01010a" stop-opacity="0" />
+					</radialGradient>
 				</defs>
-				<path class="fx-jet" style="--t-j: 0" fill="url(#fxJet{uid})" d="M46 50 L54 50 L52 -46 L48 -46 Z" />
-				<path class="fx-jet" style="--t-j: 1" fill="url(#fxJet{uid})" d="M46 50 L54 50 L52 146 L48 146 Z" />
+				<path class="fx-jet" style="--t-j: 0" fill="url(#fxJet{uid})" d="M46 50 L54 50 L52 2 L48 2 Z" />
+				<path class="fx-jet" style="--t-j: 1" fill="url(#fxJet{uid})" d="M46 50 L54 50 L52 98 L48 98 Z" />
 				<path class="fx-spaghetti" pathLength="100" d="M98 22 Q74 26 62 38 Q54 46 51 50" />
 				<circle class="fx-photonring" cx="50" cy="50" r="20" />
-				<circle class="fx-eventhorizon" cx="50" cy="50" r="17" />
+				<circle class="fx-eventhorizon" cx="50" cy="50" r="19" fill="url(#fxHorizon{uid})" />
 			</svg>
+		{:else if family === 'autumn'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-duskglow" width="100" height="100" />
+				<path class="fx-litter" d="M0 100 L0 94 Q11 90 22 94 Q33 98 44 93 Q55 88 66 93 Q77 98 88 93 Q94 90 100 94 L100 100 Z" />
+			</svg>
+
+			{#each spreadPieces(seed + 71, pieceCount(120 / 64, 0.5, 3, 14, 1.05), 0.28, 0.72, 1.28) as piece, i}
+				<svg
+					class="fx-canopy"
+					style="--w-left: {piece.left}%; --w-scale: {piece.scale}; --w-i: {i}"
+					viewBox="0 0 120 64"
+					preserveAspectRatio="xMidYMax meet"
+					aria-hidden="true"
+				>
+					<path class="fx-trunk" d={AUTUMN_TREES[i % AUTUMN_TREES.length].trunk} />
+					<path class="fx-crown" d={AUTUMN_TREES[i % AUTUMN_TREES.length].crown} />
+				</svg>
+			{/each}
+
+			<i class="fx-gustwave"></i>
+		{:else if family === 'sakura'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-dawnwash" width="100" height="100" />
+				<path class="fx-petaldrift" d="M0 100 L0 95 Q13 91 25 95 Q37 99 49 94 Q61 89 73 94 Q86 99 100 95 L100 100 Z" />
+			</svg>
+
+			{#each spreadPieces(seed + 83, pieceCount(120 / 54, 0.4, 3, 14, 1.05), 0.26, 0.74, 1.3) as piece, i}
+				<svg
+					class="fx-branch"
+					style="--r-left: {piece.left}%; --r-scale: {piece.scale}; --r-i: {i}"
+					viewBox="0 0 120 54"
+					preserveAspectRatio="xMidYMin meet"
+					aria-hidden="true"
+				>
+					<path class="fx-bough" d={SAKURA_BOUGHS[i % SAKURA_BOUGHS.length]} />
+					{#each SAKURA_BLOSSOMS as spot, b}
+						<circle class="fx-blossom" style="--b-i: {b}" cx={spot[0]} cy={spot[1]} r={spot[2]} />
+					{/each}
+				</svg>
+			{/each}
+		{:else if family === 'fireflies'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-duskmeadow" width="100" height="100" />
+			</svg>
+
+			{#each spreadPieces(seed + 96, pieceCount(120 / 30, 0.2, 3, 16, 1), 0.2, 0.86, 1.2) as piece, i}
+				<svg
+					class="fx-grassline"
+					style="--g-left: {piece.left}%; --g-scale: {piece.scale}"
+					viewBox="0 0 120 30"
+					preserveAspectRatio="xMidYMax meet"
+					aria-hidden="true"
+				>
+					<path d={MEADOW_TUFTS[i % MEADOW_TUFTS.length]} />
+				</svg>
+			{/each}
+
+			{#each spreadPieces(seed + 108, pieceCount(20 / 30, 0.28, 2, 7, 2.2), 0.42, 0.7, 1.3) as piece, i}
+				<svg
+					class="fx-lantern"
+					style="--n-left: {piece.left}%; --n-scale: {piece.scale}; --n-i: {i}; --n-delay: {piece.delay}s"
+					viewBox="0 0 20 30"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<path class="fx-lanternglow" d="M4 6 Q10 0 16 6 L18 21 Q10 28 2 21 Z" />
+					<path class="fx-lanternribs" d="M2 12 H18 M3 18 H17" />
+				</svg>
+			{/each}
+		{:else if family === 'koi'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-caustic" style="--c-j: 0" width="100" height="100" />
+				<rect class="fx-caustic" style="--c-j: 1" width="100" height="100" />
+			</svg>
+
+			{#each spreadPieces(seed + 119, pieceCount(1, 0.22, 3, 12, 1.6), 0.44, 0.6, 1.4) as piece, i}
+				<svg
+					class="fx-lilypad"
+					style="--d-left: {piece.left}%; --d-top: {12 + ((i * 41) % 62)}%; --d-scale: {piece.scale}; --d-i: {i}"
+					viewBox="0 0 40 40"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<path d="M20 2 A18 18 0 1 1 17 2 L20 20 Z" />
+				</svg>
+			{/each}
+
+			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.24, 2, 8, 1.7), 0.4, 0.7, 1.35) as piece, i}
+				<svg
+					class="fx-koi"
+					style="--k-left: {piece.left}%; --k-top: {16 + ((i * 53) % 58)}%; --k-scale: {piece.scale}; --k-i: {i}; --k-dir: {piece.flip ? 1 : -1}"
+					viewBox="0 0 48 22"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<path class="fx-koitail" d="M6 11 L0 3 L3 11 L0 19 Z" />
+					<path class="fx-koibody" d="M6 11 Q16 1 30 3 Q44 5 46 11 Q44 17 30 19 Q16 21 6 11 Z" />
+					<circle class="fx-koispot" cx="22" cy="8" r="3" />
+					<circle class="fx-koispot" style="--s-j: 1" cx="33" cy="13" r="2.2" />
+				</svg>
+			{/each}
+
+			{#each spreadPieces(seed + 142, pieceCount(1, 0.3, 2, 8, 2), 0.5, 0.7, 1.3) as piece, i}
+				<svg
+					class="fx-ripple"
+					style="--p-left: {piece.left}%; --p-top: {20 + ((i * 47) % 54)}%; --p-scale: {piece.scale}; --p-i: {i}"
+					viewBox="0 0 40 40"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<circle style="--w-j: 0" cx="20" cy="20" r="18" />
+					<circle style="--w-j: 1" cx="20" cy="20" r="18" />
+				</svg>
+			{/each}
+		{:else if family === 'silk'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="fxSash{uid}" x1="0" y1="0" x2="1" y2="0">
+						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.5" />
+						<stop offset="34%" stop-color="var(--fx-color-2)" stop-opacity="0.95" />
+						<stop offset="58%" stop-color="var(--fx-color)" stop-opacity="0.75" />
+						<stop offset="100%" stop-color="var(--fx-color)" stop-opacity="0.45" />
+					</linearGradient>
+				</defs>
+				{#each SILK_SASHES as sash, i}
+					<path class="fx-sash" style="--h-i: {i}" fill="url(#fxSash{uid})" d={sash} />
+				{/each}
+				<rect class="fx-sheenline" width="18" height="100" />
+			</svg>
+		{:else if family === 'crystal'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-facetlight" style="--f-j: 0" width="100" height="100" />
+				<rect class="fx-facetlight" style="--f-j: 1" width="100" height="100" />
+			</svg>
+
+			{#each spreadPieces(seed + 154, pieceCount(60 / 52, 0.4, 3, 14, 1.1), 0.3, 0.66, 1.34) as piece, i}
+				<svg
+					class="fx-cluster {piece.flip ? 'fx-cluster-top' : ''}"
+					style="--u-left: {piece.left}%; --u-scale: {piece.scale}; --u-i: {i}"
+					viewBox="0 0 60 52"
+					preserveAspectRatio="xMidYMax meet"
+					aria-hidden="true"
+				>
+					{#each CRYSTAL_SPIKES[i % CRYSTAL_SPIKES.length] as d, k}
+						<path class="fx-shardface" style="--k-j: {k}" {d} />
+					{/each}
+				</svg>
+			{/each}
+		{:else if family === 'neon'}
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-brickwall" width="100" height="100" />
+			</svg>
+
+			{#each spreadPieces(seed + 166, pieceCount(64 / 40, 0.44, 2, 9, 1.25), 0.3, 0.7, 1.3) as piece, i}
+				<svg
+					class="fx-neonsign"
+					style="--t-left: {piece.left}%; --t-top: {14 + ((i * 43) % 40)}%; --t-scale: {piece.scale}; --t-i: {i}"
+					viewBox="0 0 64 40"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<ellipse class="fx-neonpool" cx="32" cy="20" rx="31" ry="19" />
+					<path class="fx-tube" d={NEON_TUBES[i % NEON_TUBES.length]} />
+					<path class="fx-tubecore" d={NEON_TUBES[i % NEON_TUBES.length]} />
+				</svg>
+			{/each}
 		{/if}
 	</div>
+	{#if FRONT_FAMILIES.has(family)}
+		<div
+			class="fx-front fx-front-{family} {live && !frozen ? 'fx-live' : ''}"
+			style="{variant.style}; --fx-s: {scale}; --fx-h: {boxH || 120}px; --fx-w: {boxW || 360}px"
+			aria-hidden="true"
+		>
+			{#if family === 'fire' || family === 'volcano'}
+				{#each spreadPieces(seed + 177, pieceCount(1, 0.34, 5, 22, 0.42), 0.5, 0.6, 1.45) as piece, i}
+					<span class="fx-lick" style="--l-left: {piece.left}%; --l-scale: {piece.scale}; --l-delay: {piece.delay}s"></span>
+				{/each}
+				<span class="fx-char"></span>
+			{:else if family === 'glass'}
+				{#each spreadPieces(seed + 8, pieceCount(1, 1, 2, 7, 1.15), 0.16, 1, 1) as piece, i}
+					<span class="fx-facet" style="--x-left: {piece.left}%; --x-i: {i}"></span>
+				{/each}
+				<span class="fx-glasspane"></span>
+				<span class="fx-glint"></span>
+			{:else if family === 'thunder'}
+				<span class="fx-blank"></span>
+			{:else if family === 'neon'}
+				<span class="fx-rim"></span>
+			{:else if family === 'blackhole'}
+				<span class="fx-eventedge"></span>
+			{/if}
+		</div>
+	{/if}
 {/if}

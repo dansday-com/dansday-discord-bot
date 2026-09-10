@@ -6,7 +6,7 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { GameModal, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
-	import { haptic } from '$lib/frontend/haptics.js';
+	import { haptic, hapticTap, supportsHaptics } from '$lib/frontend/haptics.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { requestTilt, tilt } from '$lib/frontend/tilt.svelte.js';
 	import { getContext } from 'svelte';
@@ -256,6 +256,7 @@
 
 	async function spin() {
 		if (spinning || busy || !canSpin) return;
+		haptic('select');
 		spinning = true;
 		reelResult = null;
 
@@ -413,6 +414,7 @@
 					class="btn btn-sm flex-1 border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white sm:flex-none"
 					onclick={openSpin}
 					disabled={busy || !canSpin}
+					use:hapticTap
 				>
 					<i class="fas fa-dice"></i>Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
 				</button>
@@ -421,9 +423,9 @@
 						<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
 					</button>
 				{/if}
-				{#if owned !== 'none' && effectOn && tilt.needsPermission && tilt.status !== 'granted'}
-					<button class="btn btn-ghost btn-sm" onclick={() => requestTilt()} disabled={tilt.status === 'pending'}>
-						<i class="fas fa-cube"></i>{tilt.status === 'denied' ? 'Depth blocked' : 'Enable depth'}
+				{#if owned !== 'none' && effectOn}
+					<button class="btn btn-ghost btn-sm" onclick={() => requestTilt()} disabled={tilt.status === 'pending'} use:hapticTap>
+						<i class="fas fa-cube"></i>{tilt.status === 'granted' ? 'Depth on' : tilt.status === 'pending' ? 'Asking…' : 'Enable depth'}
 					</button>
 				{/if}
 			</div>
@@ -437,8 +439,13 @@
 					{tilt.status === 'granted'
 						? 'Tilt your phone — the scene moves in layers.'
 						: tilt.status === 'denied'
-							? 'Motion access is off for this site. Turn it on in browser settings to get depth.'
-							: 'On a phone, tilt to see the scene move in layers.'}
+							? 'Motion access was blocked. Allow Motion & Orientation for this site, then tap Enable depth again.'
+							: tilt.status === 'unsupported'
+								? 'This device has no motion sensor, so depth stays off.'
+								: 'Tap Enable depth, then tilt your phone.'}
+				</p>
+				<p class="text-base-content/45 m-0 text-[11px] font-medium">
+					{supportsHaptics() ? 'Taps buzz when your phone allows it.' : 'This browser has no haptics.'}
 				</p>
 			{/if}
 		</div>
@@ -490,12 +497,13 @@
 		</div>
 
 		{#if reelResult}
-			<button class="btn btn-sm w-full" onclick={() => (playing = false)}>Done</button>
+			<button class="btn btn-sm w-full" onclick={() => (playing = false)} use:hapticTap>Done</button>
 		{:else}
 			<button
 				class="btn animate-game-charge w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white"
 				onclick={spin}
 				disabled={spinning || !canSpin}
+				use:hapticTap
 			>
 				{#if spinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
 				Spin · {EFFECT_SPIN_COST.toLocaleString()} XP

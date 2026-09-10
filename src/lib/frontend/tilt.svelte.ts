@@ -9,6 +9,7 @@ const EASE = 0.11;
 
 let status = $state<TiltStatus>('idle');
 let canPrompt = $state(false);
+let grantedOnce = false;
 let refs = 0;
 let live = false;
 let listening = false;
@@ -113,6 +114,7 @@ export async function requestTilt(): Promise<TiltStatus> {
 	try {
 		const outcome = await (globalThis as any).DeviceOrientationEvent.requestPermission();
 		if (outcome === 'granted') {
+			grantedOnce = true;
 			attach();
 			return status;
 		}
@@ -150,7 +152,7 @@ export function startTilt(): () => void {
 	} else if (prefersReducedMotion()) {
 		status = 'idle';
 	} else if (needsPermission()) {
-		if (status !== 'denied') armOnGesture();
+		if (grantedOnce) armOnGesture();
 	} else {
 		attach();
 	}

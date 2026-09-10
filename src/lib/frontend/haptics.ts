@@ -18,9 +18,13 @@ export type HapticPattern =
 	| 'gunshot'
 	| 'flutter'
 	| 'drone'
-	| 'shatter'
 	| 'wisp'
-	| 'collapse';
+	| 'collapse'
+	| 'rustle'
+	| 'glimmer'
+	| 'lap'
+	| 'chime'
+	| 'buzz';
 
 const PATTERNS: Record<HapticPattern, number | number[]> = {
 	tick: 7,
@@ -42,9 +46,13 @@ const PATTERNS: Record<HapticPattern, number | number[]> = {
 	gunshot: [3, 12, 46],
 	flutter: [12, 90, 20, 300, 12, 90, 20],
 	drone: [70, 18, 70, 18, 70],
-	shatter: [22, 18, 9, 16, 5, 14, 3],
 	wisp: [6, 26, 11],
-	collapse: [90, 20, 60, 18, 34, 16, 18, 14, 8]
+	collapse: [90, 20, 60, 18, 34, 16, 18, 14, 8],
+	rustle: [5, 22, 4, 18, 6, 24, 4],
+	glimmer: [4, 130, 4, 130, 7],
+	lap: [11, 95, 8],
+	chime: [9, 44, 6, 44, 4, 44, 12],
+	buzz: [3, 9, 3, 9, 3, 9, 3, 9, 26]
 };
 
 export type EffectBeat = { selector: string; pattern: HapticPattern; minGap: number };
@@ -63,13 +71,52 @@ export const EFFECT_BEATS: Record<string, EffectBeat> = {
 	bullethole: { selector: '.fx-hole', pattern: 'gunshot', minGap: 900 },
 	love: { selector: '.fx-heartglow', pattern: 'flutter', minGap: 2600 },
 	void: { selector: '.fx-lens', pattern: 'drone', minGap: 4000 },
-	glass: { selector: '.fx-shard', pattern: 'shatter', minGap: 3000 },
 	fallingstar: { selector: '.fx-p', pattern: 'wisp', minGap: 3800 },
-	blackhole: { selector: '.fx-spaghetti', pattern: 'collapse', minGap: 4400 }
+	blackhole: { selector: '.fx-spaghetti', pattern: 'collapse', minGap: 4400 },
+	autumn: { selector: '.fx-gustwave', pattern: 'rustle', minGap: 4600 },
+	fireflies: { selector: '.fx-lanternglow', pattern: 'glimmer', minGap: 5200 },
+	koi: { selector: '.fx-koitail', pattern: 'lap', minGap: 4800 },
+	crystal: { selector: '.fx-shardface', pattern: 'chime', minGap: 4200 },
+	neon: { selector: '.fx-tube', pattern: 'buzz', minGap: 3600 }
 };
 
-export function supportsHaptics(): boolean {
+export function supportsVibrate(): boolean {
 	return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
+export function supportsTaptic(): boolean {
+	return typeof HTMLInputElement !== 'undefined' && 'switch' in HTMLInputElement.prototype;
+}
+
+export function supportsHaptics(): boolean {
+	return supportsVibrate() || supportsTaptic();
+}
+
+let taptic: HTMLInputElement | null = null;
+
+function tapticSwitch(): HTMLInputElement | null {
+	if (typeof document === 'undefined' || !document.body) return null;
+	if (taptic?.isConnected) return taptic;
+	const el = document.createElement('input');
+	el.type = 'checkbox';
+	el.setAttribute('switch', '');
+	el.tabIndex = -1;
+	el.setAttribute('aria-hidden', 'true');
+	el.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+	document.body.appendChild(el);
+	taptic = el;
+	return el;
+}
+
+function tapticTick(): boolean {
+	const el = tapticSwitch();
+	if (!el) return false;
+	try {
+		el.click();
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 let lastAt = 0;
@@ -77,17 +124,35 @@ let lastAt = 0;
 export function haptic(pattern: HapticPattern): boolean {
 	if (!supportsHaptics()) return false;
 	if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false;
-	if ((navigator as any).userActivation?.hasBeenActive === false) return false;
 
 	const now = Date.now();
 	if (now - lastAt < 45) return false;
 	lastAt = now;
 
-	try {
-		return navigator.vibrate(PATTERNS[pattern] ?? 10);
-	} catch {
-		return false;
+	if (supportsVibrate()) {
+		if ((navigator as any).userActivation?.hasBeenActive === false) return false;
+		try {
+			return navigator.vibrate(PATTERNS[pattern] ?? 10);
+		} catch {
+			return false;
+		}
 	}
+
+	return tapticTick();
+}
+
+export function hapticTap(node: HTMLElement, pattern: HapticPattern = 'select') {
+	let current = pattern;
+	const fire = () => haptic(current);
+	node.addEventListener('pointerdown', fire, { passive: true });
+	return {
+		update(next: HapticPattern) {
+			current = next ?? 'select';
+		},
+		destroy() {
+			node.removeEventListener('pointerdown', fire);
+		}
+	};
 }
 
 export function hapticForTone(tone: 'win' | 'lose' | 'neutral'): boolean {
@@ -97,7 +162,7 @@ export function hapticForTone(tone: 'win' | 'lose' | 'neutral'): boolean {
 }
 
 export function stopHaptics(): boolean {
-	if (!supportsHaptics()) return false;
+	if (!supportsVibrate()) return false;
 	try {
 		return navigator.vibrate(0);
 	} catch {

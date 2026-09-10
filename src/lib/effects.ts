@@ -31,7 +31,14 @@ export const EFFECT_FAMILIES = [
 	'eclipse',
 	'fallingstar',
 	'milkyway',
-	'blackhole'
+	'blackhole',
+	'autumn',
+	'sakura',
+	'fireflies',
+	'koi',
+	'silk',
+	'crystal',
+	'neon'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -68,7 +75,14 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'eclipse', label: 'Eclipse', icon: 'fa-circle-half-stroke', particles: false },
 	{ id: 'fallingstar', label: 'Falling Star', icon: 'fa-star-half-stroke', particles: false },
 	{ id: 'milkyway', label: 'Milky Way', icon: 'fa-spiral', particles: false },
-	{ id: 'blackhole', label: 'Black Hole', icon: 'fa-circle-notch', particles: false }
+	{ id: 'blackhole', label: 'Black Hole', icon: 'fa-circle-notch', particles: false },
+	{ id: 'autumn', label: 'Autumn', icon: 'fa-leaf', particles: false },
+	{ id: 'sakura', label: 'Sakura', icon: 'fa-spa', particles: false },
+	{ id: 'fireflies', label: 'Fireflies', icon: 'fa-hand-sparkles', particles: false },
+	{ id: 'koi', label: 'Koi', icon: 'fa-fish', particles: false },
+	{ id: 'silk', label: 'Silk', icon: 'fa-ribbon', particles: false },
+	{ id: 'crystal', label: 'Crystal', icon: 'fa-diamond', particles: false },
+	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -183,33 +197,47 @@ const TUNING: Record<string, Tuning> = {
 	eclipse: { tile: [26, 60], dot: [0.9, 2], speed: [6, 13], opacity: [0.55, 0.95], tilt: [6, 1, 4] },
 	fallingstar: { tile: [30, 70], dot: [1.2, 2.6], speed: [2.4, 5.5], opacity: [0.8, 1], drift: [-220, -120], tilt: [7, 9, 0] },
 	milkyway: { tile: [22, 52], dot: [0.7, 1.8], speed: [7, 16], opacity: [0.5, 0.95], tilt: [11, 3, 0] },
-	blackhole: { tile: [24, 54], dot: [1, 2.2], speed: [3.6, 8], opacity: [0.7, 1], tilt: [13, 7, 4] }
+	blackhole: { tile: [24, 54], dot: [1, 2.2], speed: [3.6, 8], opacity: [0.7, 1], tilt: [13, 7, 4] },
+	autumn: { tile: [16, 36], dot: [2.2, 4.8], speed: [6, 13], opacity: [0.75, 1], drift: [-90, 90], tilt: [3, 10, 9] },
+	sakura: { tile: [15, 34], dot: [2, 4.4], speed: [7, 15], opacity: [0.7, 1], drift: [-70, 70], tilt: [2, 11, 12] },
+	fireflies: { tile: [22, 50], dot: [1.4, 3], speed: [4, 9], opacity: [0.6, 1], drift: [-50, 50], tilt: [5, 8, 3] },
+	koi: { tile: [28, 62], dot: [1.5, 3.2], speed: [6, 13], opacity: [0.55, 0.9], tilt: [4, 6, 2] },
+	silk: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.65, 1], tilt: [9, 5, 0] },
+	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1], tilt: [7, 2, 6] },
+	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1], tilt: [8, 4, 5] }
 };
 
 export const PARTICLE_COUNTS: Record<string, number> = {
-	meteor: 9,
-	fire: 14,
-	confetti: 16,
-	rain: 20,
-	snow: 22,
-	blizzard: 26,
-	earthquake: 12,
-	sparkle: 16,
-	ember: 18,
-	bubbles: 14,
-	aurora: 5,
+	meteor: 19,
+	fire: 25,
+	confetti: 32,
+	rain: 44,
+	snow: 48,
+	blizzard: 57,
+	earthquake: 28,
+	sparkle: 35,
+	ember: 39,
+	bubbles: 28,
+	aurora: 9,
 	pulse: 3,
 	rainbow: 0,
-	love: 15,
+	love: 33,
 	glass: 0,
 	bullethole: 0,
-	volcano: 18,
-	sandstorm: 30,
-	void: 20,
-	eclipse: 16,
-	fallingstar: 6,
-	milkyway: 34,
-	blackhole: 22
+	volcano: 39,
+	sandstorm: 60,
+	void: 40,
+	eclipse: 35,
+	fallingstar: 15,
+	milkyway: 74,
+	blackhole: 48,
+	autumn: 39,
+	sakura: 44,
+	fireflies: 39,
+	koi: 0,
+	silk: 0,
+	crystal: 33,
+	neon: 0
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -241,7 +269,14 @@ const PALETTE: Record<string, [string, string]> = {
 	eclipse: ['#ffd88a', '#3b3358'],
 	fallingstar: ['#fff6d5', '#8ec6ff'],
 	milkyway: ['#b6a4ff', '#7fd8ff'],
-	blackhole: ['#ffb347', '#7dd3fc']
+	blackhole: ['#ffb347', '#7dd3fc'],
+	autumn: ['#d2691e', '#f4a442'],
+	sakura: ['#ffb7d5', '#fff0f6'],
+	fireflies: ['#ffd97a', '#8fd6a0'],
+	koi: ['#ff7043', '#2b7fa8'],
+	silk: ['#b8438f', '#ffd6ec'],
+	crystal: ['#a78bfa', '#e9d5ff'],
+	neon: ['#ff2d95', '#22d3ee']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {
@@ -483,6 +518,70 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 					`--p-dur: ${(2 + rand() * 4.5).toFixed(2)}s`,
 					`--p-w: ${(0.9 + rand() * 2.4).toFixed(2)}px`,
 					`--p-hue: ${hsla(hue + (rand() - 0.5) * 46, sat, light + rand() * 12, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'sakura') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(6 + rand() * 8).toFixed(2)}s`,
+					`--p-w: ${Math.round(5 + rand() * 9)}px`,
+					`--p-glide: ${Math.round(30 + rand() * 90)}px`,
+					`--p-spin: ${Math.round(120 + rand() * 300)}deg`,
+					`--p-drift: ${Math.round((rand() - 0.5) * 130)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 18, sat - rand() * 10, light + (rand() - 0.5) * 12, 0.95)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'fireflies') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-y: ${(18 + rand() * 74).toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(4 + rand() * 6).toFixed(2)}s`,
+					`--p-w: ${(2 + rand() * 3.2).toFixed(1)}px`,
+					`--p-wander: ${Math.round(18 + rand() * 54)}px`,
+					`--p-rise: ${Math.round(14 + rand() * 46)}px`,
+					`--p-blink: ${(0.4 + rand() * 0.9).toFixed(2)}s`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 26, sat, light + rand() * 12, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'crystal') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-y: ${(rand() * 96).toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(2.6 + rand() * 4).toFixed(2)}s`,
+					`--p-w: ${(1.6 + rand() * 3.4).toFixed(1)}px`,
+					`--p-lift: ${Math.round(10 + rand() * 40)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 40, sat, light + rand() * 16, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'autumn') {
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(5 + rand() * 7).toFixed(2)}s`,
+					`--p-w: ${Math.round(8 + rand() * 16)}px`,
+					`--p-spin: ${Math.round(420 + rand() * 900)}deg`,
+					`--p-flip: ${Math.round(180 + rand() * 720)}deg`,
+					`--p-drift: ${Math.round((rand() - 0.5) * 170)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 34, sat - rand() * 14, light + (rand() - 0.5) * 20, 0.96)}`
 				].join('; ')
 			);
 			continue;

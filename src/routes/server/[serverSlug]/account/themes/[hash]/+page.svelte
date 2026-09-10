@@ -365,16 +365,24 @@
 		<div class="flex flex-col gap-4 p-4 sm:p-5">
 			<div class="flex flex-wrap items-center gap-3">
 				<label
-					class="border-base-300 relative size-13 shrink-0 cursor-pointer overflow-hidden rounded-xl border shadow-sm"
+					class="border-base-300 relative grid size-13 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border shadow-sm transition-transform hover:scale-105"
 					style="background: {accent}"
 					aria-label="Pick accent colour"
+					title="Pick accent colour"
 				>
-					<input type="color" value={accent} class="absolute inset-0 cursor-pointer opacity-0" oninput={onColorInput} disabled={busy} />
+					<i class="fas fa-eye-dropper pointer-events-none text-[15px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]" style="color: {ink}"></i>
+					<span
+						class="pointer-events-none absolute right-0 bottom-0 grid size-4.5 place-items-center rounded-tl-lg text-[9px]"
+						style="background: {ink}; color: {accent}"
+					>
+						<i class="fas fa-pen"></i>
+					</span>
+					<input type="color" value={accent} class="absolute inset-0 cursor-pointer opacity-0" oninput={onColorInput} disabled={busy} use:hapticTap />
 				</label>
 
 				<div class="min-w-0 flex-1">
 					<div class="text-base-content text-sm font-bold tabular-nums">{accent}</div>
-					<div class="text-base-content/45 mt-0.5 text-[11px] font-medium">Used on your wallet card, page and leaderboard row</div>
+					<div class="text-base-content/45 mt-0.5 text-[11px] font-medium">Tap the swatch to change it · used on your wallet card, page and leaderboard row</div>
 				</div>
 
 				{#if pendingFile}

@@ -1098,58 +1098,6 @@
 					<path class="fx-lanternribs" d="M2 12 H18 M3 18 H17" />
 				</svg>
 			{/each}
-		{:else if family === 'koi'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<defs>
-					<linearGradient id="fxPond{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#3e9dc4" /><stop offset="58%" stop-color="#2b7fa8" /><stop offset="100%" stop-color="#0a3348" />
-					</linearGradient>
-				</defs>
-				<rect class="fx-pondwater" width="100" height="100" fill="url(#fxPond{uid})" />
-				<ellipse class="fx-pondfloor" cx="50" cy="92" rx="66" ry="28" />
-				<rect class="fx-caustic" style="--c-j: 0" x="-30" y="-25" width="160" height="150" />
-				<rect class="fx-caustic" style="--c-j: 1" x="-30" y="-25" width="160" height="150" />
-			</svg>
-
-			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.22, 3, 7, 2.6), 0.46, 0.75, 1.15) as piece, i}
-				<svg
-					class="fx-koifish"
-					style="--k-left: {piece.left}%; --k-top: {16 + ((i * 53) % 58)}%; --k-scale: {piece.scale}; --k-i: {i}; --k-dir: {piece.flip ? 1 : -1}"
-					viewBox="0 0 48 22"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<path class="fx-koitail" d="M6 11 L0 3 L3 11 L0 19 Z" />
-					<path class="fx-koibody" d="M6 11 Q16 1 30 3 Q44 5 46 11 Q44 17 30 19 Q16 21 6 11 Z" />
-					<circle class="fx-koispot" cx="22" cy="8" r="3" />
-					<circle class="fx-koispot" style="--s-j: 1" cx="33" cy="13" r="2.2" />
-				</svg>
-			{/each}
-
-			{#each spreadPieces(seed + 119, pieceCount(1, 0.18, 3, 9, 2.4), 0.44, 0.7, 1.25) as piece, i}
-				<svg
-					class="fx-lilypad"
-					style="--d-left: {piece.left}%; --d-top: {12 + ((i * 41) % 62)}%; --d-scale: {piece.scale}; --d-i: {i}"
-					viewBox="0 0 40 40"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<path d="M20 2 A18 18 0 1 1 17 2 L20 20 Z" />
-				</svg>
-			{/each}
-
-			{#each spreadPieces(seed + 142, pieceCount(1, 0.3, 2, 8, 2), 0.5, 0.7, 1.3) as piece, i}
-				<svg
-					class="fx-ripple"
-					style="--p-left: {piece.left}%; --p-top: {20 + ((i * 47) % 54)}%; --p-scale: {piece.scale}; --p-i: {i}"
-					viewBox="0 0 40 40"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<circle style="--w-j: 0" cx="20" cy="20" r="18" />
-					<circle style="--w-j: 1" cx="20" cy="20" r="18" />
-				</svg>
-			{/each}
 		{:else if family === 'silk'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>

@@ -35,7 +35,6 @@ export const EFFECT_FAMILIES = [
 	'autumn',
 	'sakura',
 	'fireflies',
-	'koi',
 	'silk',
 	'crystal',
 	'neon'
@@ -79,7 +78,6 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'autumn', label: 'Autumn', icon: 'fa-leaf', particles: false },
 	{ id: 'sakura', label: 'Sakura', icon: 'fa-spa', particles: false },
 	{ id: 'fireflies', label: 'Fireflies', icon: 'fa-hand-sparkles', particles: false },
-	{ id: 'koi', label: 'Koi', icon: 'fa-fish', particles: false },
 	{ id: 'silk', label: 'Silk', icon: 'fa-ribbon', particles: false },
 	{ id: 'crystal', label: 'Crystal', icon: 'fa-diamond', particles: false },
 	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false }
@@ -200,7 +198,6 @@ const TUNING: Record<string, Tuning> = {
 	autumn: { tile: [16, 36], dot: [2.2, 4.8], speed: [6, 13], opacity: [0.75, 1], drift: [-90, 90] },
 	sakura: { tile: [15, 34], dot: [2, 4.4], speed: [7, 15], opacity: [0.7, 1], drift: [-70, 70] },
 	fireflies: { tile: [22, 50], dot: [1.4, 3], speed: [4, 9], opacity: [0.6, 1], drift: [-50, 50] },
-	koi: { tile: [28, 62], dot: [1.5, 3.2], speed: [6, 13], opacity: [0.55, 0.9] },
 	silk: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.65, 1] },
 	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1] },
 	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] }
@@ -233,7 +230,6 @@ export const PARTICLE_COUNTS: Record<string, number> = {
 	autumn: 39,
 	sakura: 44,
 	fireflies: 39,
-	koi: 0,
 	silk: 0,
 	crystal: 33,
 	neon: 0
@@ -272,7 +268,6 @@ const PALETTE: Record<string, [string, string]> = {
 	autumn: ['#d2691e', '#f4a442'],
 	sakura: ['#ffb7d5', '#fff0f6'],
 	fireflies: ['#ffd97a', '#8fd6a0'],
-	koi: ['#ff7043', '#2b7fa8'],
 	silk: ['#b8438f', '#ffd6ec'],
 	crystal: ['#a78bfa', '#e9d5ff'],
 	neon: ['#ff2d95', '#22d3ee']
@@ -357,7 +352,7 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 					`--p-dur: ${dur}s`,
 					`--p-w: ${Math.round(5 + rand() * 12)}px`,
 					`--p-spin: ${Math.round(180 + rand() * 540)}deg`,
-					`--p-drift: ${Math.round((rand() - 0.5) * (family === 'blizzard' ? 340 : 90))}px`,
+					`--p-drift: ${family === 'blizzard' ? Math.round(150 + rand() * 190) : Math.round((rand() - 0.5) * 90)}px`,
 					`--p-soft: ${Math.round(58 + rand() * 28)}%`,
 					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.95)}`
 				].join('; ')
@@ -685,6 +680,8 @@ export function effectVariant(family: any, seed: any, accent: any): EffectVarian
 	const driftRange = tuning.drift ?? ([-20, 20] as [number, number]);
 	const drift = Math.round(driftRange[0] + rand() * (driftRange[1] - driftRange[0]));
 	const angle = Math.round(6 + rand() * 26);
+	const windRatio = 1.1 + rand() * 1.3;
+	const windRot = ((Math.atan2(1, windRatio) * 180) / Math.PI).toFixed(1);
 	const delay = (rand() * speed).toFixed(2);
 	const layerScale = 1.3 + rand() * 1.5;
 
@@ -699,6 +696,8 @@ export function effectVariant(family: any, seed: any, accent: any): EffectVarian
 		'--fx-opacity': opacity.toFixed(2),
 		'--fx-drift': `${drift}px`,
 		'--fx-angle': `${angle}deg`,
+		'--fx-wind': `${windRatio.toFixed(2)}`,
+		'--fx-wind-rot': `${windRot}deg`,
 		'--fx-sway': `${Math.round(8 + rand() * 26)}px`,
 		'--fx-color': hsla(c1[0] + jitter, c1[1], c1[2], 1),
 		'--fx-color-2': hsla(c2[0] + jitter, c2[1], c2[2], 1)

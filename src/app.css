@@ -639,6 +639,7 @@ html.lenis body {
 
 .fx-rain {
 	backdrop-filter: blur(1.4px) saturate(1.08);
+	-webkit-backdrop-filter: blur(1.4px) saturate(1.08);
 }
 
 .fx-rain .fx-p {
@@ -805,8 +806,6 @@ html.lenis body {
 	inset: auto 0 0 0;
 	height: 26%;
 	background-image: linear-gradient(to top, var(--fx-color-2) 0%, var(--fx-color) 34%, transparent 100%);
-	mix-blend-mode: screen;
-	filter: blur(5px);
 	opacity: calc(var(--fx-opacity) * 0.55);
 	animation: fx-breathe var(--fx-speed) ease-in-out infinite;
 }
@@ -815,7 +814,6 @@ html.lenis body {
 	position: absolute;
 	inset: 0;
 	filter: blur(2.6px);
-	mix-blend-mode: screen;
 }
 
 .fx-fire .fx-p {
@@ -3862,7 +3860,6 @@ html.lenis body {
 	transform-origin: 50% 50%;
 	opacity: 0;
 	filter: blur(1.4px) drop-shadow(0 0 9px var(--fx-color-2));
-	mix-blend-mode: screen;
 	animation: fx-jet-fire calc(var(--fx-speed) * 1.3) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--t-j) * -0.4s);
 }
@@ -5057,7 +5054,6 @@ html.lenis body {
 	transform-box: fill-box;
 	transform-origin: 50% 50%;
 	opacity: 0.62;
-	mix-blend-mode: screen;
 	filter: blur(calc(0.6px + var(--h-i) * 0.8px)) drop-shadow(0 2px 8px rgba(40, 6, 30, 0.4));
 	animation: fx-sash-ripple calc(var(--fx-speed) * (1.3 + var(--h-i) * 0.35)) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--h-i) * -0.9s);
@@ -5386,7 +5382,6 @@ html.lenis body {
 	fill: var(--fx-color);
 	opacity: 0;
 	filter: blur(7px);
-	mix-blend-mode: screen;
 	animation: fx-neon-wash calc(var(--fx-speed) * 1.7) linear infinite paused;
 	animation-delay: calc(var(--t-i) * -0.63s);
 }
@@ -5874,7 +5869,6 @@ html.lenis body {
 	position: absolute;
 	inset: -6% -4% -12% -4%;
 	filter: blur(3.5px) saturate(1.15);
-	mix-blend-mode: screen;
 	opacity: 0.88;
 }
 
@@ -5883,7 +5877,6 @@ html.lenis body {
 	inset: auto 0 0 0;
 	height: 62%;
 	background-image: linear-gradient(to top, rgba(255, 250, 214, 0.5) 0%, rgba(255, 168, 46, 0.28) 34%, rgba(214, 46, 4, 0.1) 66%, transparent 100%);
-	mix-blend-mode: overlay;
 	filter: blur(6px);
 	animation: fx-blaze-heat calc(var(--fx-speed) * 0.42) ease-in-out infinite alternate paused;
 }
@@ -6363,7 +6356,6 @@ html.lenis body {
 		rgba(255, 255, 255, 0.45) 58%,
 		transparent 100%
 	);
-	mix-blend-mode: screen;
 	filter: blur(1px);
 	opacity: 0;
 	animation: fx-glint-sweep calc(var(--fx-speed) * 1.5) cubic-bezier(0.5, 0, 0.4, 1) infinite paused;
@@ -7910,7 +7902,6 @@ html.lenis body {
 	transform-box: fill-box;
 	transform-origin: 50% 50%;
 	filter: blur(1.6px);
-	mix-blend-mode: screen;
 	animation: fx-accrete calc(var(--fx-speed) * 0.8) linear infinite paused;
 }
 
@@ -8198,7 +8189,6 @@ html.lenis body {
 	fill: #7dffb0;
 	opacity: 0.06;
 	filter: blur(16px);
-	mix-blend-mode: screen;
 	transform-box: fill-box;
 	transform-origin: 50% 50%;
 	animation: fx-veil-breathe calc(var(--fx-speed) * 1.4) ease-in-out infinite alternate paused;
@@ -8343,7 +8333,6 @@ html.lenis body {
 	fill: #4ade80;
 	opacity: 0.05;
 	filter: blur(18px);
-	mix-blend-mode: screen;
 	animation: fx-groundglow calc(var(--fx-speed) * 1.7) ease-in-out infinite alternate paused;
 }
 
@@ -9466,7 +9455,6 @@ html.lenis body {
 
 .fx-ribbon {
 	filter: blur(5px) saturate(1.2);
-	mix-blend-mode: screen;
 	transform-origin: 50% 50%;
 	animation: fx-ribbon-wave calc(var(--fx-speed) * (1 + var(--n-i) * 0.35)) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--n-i) * -2.2s);
@@ -11746,7 +11734,6 @@ html.lenis body {
 .fx-heat {
 	opacity: 0.42;
 	filter: blur(7px);
-	mix-blend-mode: screen;
 	transform-origin: 50% 100%;
 	animation: fx-breathe var(--fx-speed) ease-in-out infinite paused;
 }
@@ -12235,4 +12222,19 @@ html.lenis body {
 	left: 50%;
 	translate: -50% 0;
 	aspect-ratio: 40 / 46;
+}
+
+.fx-blend-screen {
+	mix-blend-mode: screen;
+}
+
+.fx-blend-overlay {
+	mix-blend-mode: overlay;
+}
+
+span.fx-blend-screen,
+span.fx-blend-overlay {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
 }

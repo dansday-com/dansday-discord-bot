@@ -970,23 +970,23 @@
 			</svg>
 		{:else if family === 'milkyway'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<rect class="fx-wispsky" width="100" height="100" />
+			</svg>
+
+			<svg class="fx-galaxy" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
 				<defs>
-					<linearGradient id="fxGal{uid}" x1="0" y1="0.34" x2="1" y2="0.66">
-						<stop offset="0%" stop-color="transparent" stop-opacity="0" />
-						<stop offset="34%" stop-color="var(--fx-color)" stop-opacity="0.42" />
-						<stop offset="52%" stop-color="#ffffff" stop-opacity="0.55" />
-						<stop offset="70%" stop-color="var(--fx-color-2)" stop-opacity="0.4" />
-						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
-					</linearGradient>
-					<linearGradient id="fxLane{uid}" x1="0" y1="0.38" x2="1" y2="0.62">
-						<stop offset="0%" stop-color="transparent" stop-opacity="0" />
-						<stop offset="50%" stop-color="#0a0714" stop-opacity="0.75" />
-						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
+					<linearGradient id="fxGal{uid}" gradientUnits="userSpaceOnUse" x1="143.5" y1="24.6" x2="156.5" y2="75.4">
+						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0" />
+						<stop offset="16%" stop-color="var(--fx-color)" stop-opacity="0.26" />
+						<stop offset="34%" stop-color="#ffffff" stop-opacity="0.5" />
+						<stop offset="45%" stop-color="#160e28" stop-opacity="0.55" />
+						<stop offset="54%" stop-color="#160e28" stop-opacity="0.42" />
+						<stop offset="66%" stop-color="#ffffff" stop-opacity="0.44" />
+						<stop offset="84%" stop-color="var(--fx-color-2)" stop-opacity="0.24" />
+						<stop offset="100%" stop-color="var(--fx-color-2)" stop-opacity="0" />
 					</linearGradient>
 				</defs>
-				<path class="fx-galaxyband" fill="url(#fxGal{uid})" d="M-34 112 L10 -12 L74 -12 L30 112 Z" />
-				<path class="fx-dustlane" fill="url(#fxLane{uid})" d="M-14 112 L26 -12 L44 -12 L4 112 Z" />
-				<rect class="fx-wispsky" width="100" height="100" />
+				<path class="fx-galaxyband" fill="url(#fxGal{uid})" d="M-30 69 L330 -23 L330 31 L-30 123 Z" />
 			</svg>
 		{:else if family === 'blackhole'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -1100,21 +1100,16 @@
 			{/each}
 		{:else if family === 'koi'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="fxPond{uid}" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color="#3e9dc4" /><stop offset="58%" stop-color="#2b7fa8" /><stop offset="100%" stop-color="#0a3348" />
+					</linearGradient>
+				</defs>
+				<rect class="fx-pondwater" width="100" height="100" fill="url(#fxPond{uid})" />
+				<ellipse class="fx-pondfloor" cx="50" cy="92" rx="66" ry="28" />
 				<rect class="fx-caustic" style="--c-j: 0" x="-30" y="-25" width="160" height="150" />
 				<rect class="fx-caustic" style="--c-j: 1" x="-30" y="-25" width="160" height="150" />
 			</svg>
-
-			{#each spreadPieces(seed + 119, pieceCount(1, 0.18, 3, 9, 2.4), 0.44, 0.7, 1.25) as piece, i}
-				<svg
-					class="fx-lilypad"
-					style="--d-left: {piece.left}%; --d-top: {12 + ((i * 41) % 62)}%; --d-scale: {piece.scale}; --d-i: {i}"
-					viewBox="0 0 40 40"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<path d="M20 2 A18 18 0 1 1 17 2 L20 20 Z" />
-				</svg>
-			{/each}
 
 			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.22, 3, 7, 2.6), 0.46, 0.75, 1.15) as piece, i}
 				<svg
@@ -1128,6 +1123,18 @@
 					<path class="fx-koibody" d="M6 11 Q16 1 30 3 Q44 5 46 11 Q44 17 30 19 Q16 21 6 11 Z" />
 					<circle class="fx-koispot" cx="22" cy="8" r="3" />
 					<circle class="fx-koispot" style="--s-j: 1" cx="33" cy="13" r="2.2" />
+				</svg>
+			{/each}
+
+			{#each spreadPieces(seed + 119, pieceCount(1, 0.18, 3, 9, 2.4), 0.44, 0.7, 1.25) as piece, i}
+				<svg
+					class="fx-lilypad"
+					style="--d-left: {piece.left}%; --d-top: {12 + ((i * 41) % 62)}%; --d-scale: {piece.scale}; --d-i: {i}"
+					viewBox="0 0 40 40"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<path d="M20 2 A18 18 0 1 1 17 2 L20 20 Z" />
 				</svg>
 			{/each}
 

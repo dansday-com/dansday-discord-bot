@@ -508,7 +508,23 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 			continue;
 		}
 
-		if (family === 'eclipse' || family === 'milkyway') {
+		if (family === 'milkyway') {
+			const band = 88 - 0.766 * x;
+			const y = rand() < 0.72 ? band + (rand() - 0.5) * 46 : rand() * 100;
+			out.push(
+				[
+					`--p-x: ${x.toFixed(1)}%`,
+					`--p-y: ${Math.max(1, Math.min(97, y)).toFixed(1)}%`,
+					`--p-delay: ${delay}s`,
+					`--p-dur: ${(2 + rand() * 4.5).toFixed(2)}s`,
+					`--p-w: ${(0.9 + rand() * 2.4).toFixed(2)}px`,
+					`--p-hue: ${hsla(hue + (rand() - 0.5) * 46, sat, light + rand() * 12, 1)}`
+				].join('; ')
+			);
+			continue;
+		}
+
+		if (family === 'eclipse') {
 			out.push(
 				[
 					`--p-x: ${x.toFixed(1)}%`,

@@ -3769,8 +3769,16 @@ html.lenis body {
 	}
 }
 
+.fx-galaxy {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	pointer-events: none;
+}
+
 .fx-galaxyband {
-	filter: blur(7px);
 	transform-box: fill-box;
 	transform-origin: 50% 50%;
 	animation: fx-galaxy-drift calc(var(--fx-speed) * 3) ease-in-out infinite alternate paused;
@@ -3825,11 +3833,6 @@ html.lenis body {
 		opacity: 0.84;
 		transform: translateX(4%) scaleX(1.03) skewX(0deg);
 	}
-}
-
-.fx-dustlane {
-	opacity: 0.7;
-	filter: blur(9px);
 }
 
 .fx-wispsky {
@@ -5049,6 +5052,15 @@ html.lenis body {
 	}
 }
 
+.fx-pondwater {
+	opacity: 0.78;
+}
+
+.fx-pondfloor {
+	fill: #0b2f3f;
+	opacity: 0.5;
+}
+
 .fx-caustic {
 	fill: #a9e7ff;
 	opacity: calc(0.06 + var(--c-j) * 0.05);
@@ -5189,62 +5201,39 @@ html.lenis body {
 @keyframes fx-koi-glide {
 	0% {
 		opacity: 0;
-		transform: translate(calc(var(--fx-w, 360px) * -0.1 * var(--k-dir)), 0) scaleX(var(--k-dir));
+		transform: translate(calc(var(--fx-w, 360px) * -0.62 * var(--k-dir)), 0) scaleX(var(--k-dir));
 		animation-timing-function: linear;
 	}
-	7% {
+	8% {
 		opacity: 0.95;
-		transform: translate(calc(var(--fx-w, 360px) * -0.07 * var(--k-dir)), calc(var(--fx-h, 120px) * 0.02)) scaleX(var(--k-dir));
+		transform: translate(calc(var(--fx-w, 360px) * -0.48 * var(--k-dir)), calc(var(--fx-h, 120px) * 0.03)) scaleX(var(--k-dir));
 		animation-timing-function: linear;
 	}
 	24% {
+		transform: translate(calc(var(--fx-w, 360px) * -0.25 * var(--k-dir)), calc(var(--fx-h, 120px) * -0.04)) scaleX(var(--k-dir));
+		animation-timing-function: linear;
+	}
+	41% {
+		transform: translate(calc(var(--fx-w, 360px) * -0.02 * var(--k-dir)), calc(var(--fx-h, 120px) * 0.05)) scaleX(var(--k-dir));
+		animation-timing-function: linear;
+	}
+	58% {
+		transform: translate(calc(var(--fx-w, 360px) * 0.2 * var(--k-dir)), calc(var(--fx-h, 120px) * -0.03)) scaleX(var(--k-dir));
+		animation-timing-function: linear;
+	}
+	76% {
+		transform: translate(calc(var(--fx-w, 360px) * 0.42 * var(--k-dir)), calc(var(--fx-h, 120px) * 0.04)) scaleX(var(--k-dir));
+		animation-timing-function: linear;
+	}
+	92% {
 		opacity: 0.95;
-		transform: translate(calc(var(--fx-w, 360px) * -0.02 * var(--k-dir)), calc(var(--fx-h, 120px) * -0.03)) scaleX(var(--k-dir));
-		animation-timing-function: linear;
-	}
-	42% {
-		opacity: 0.95;
-		transform: translate(calc(var(--fx-w, 360px) * 0.03 * var(--k-dir)), calc(var(--fx-h, 120px) * 0.05)) scaleX(var(--k-dir));
-		animation-timing-function: linear;
-	}
-	60% {
-		opacity: 0.92;
-		transform: translate(calc(var(--fx-w, 360px) * 0.07 * var(--k-dir)), calc(var(--fx-h, 120px) * -0.02)) scaleX(var(--k-dir));
-		animation-timing-function: linear;
-	}
-	78% {
-		opacity: 0.9;
-		transform: translate(calc(var(--fx-w, 360px) * 0.11 * var(--k-dir)), calc(var(--fx-h, 120px) * 0.04)) scaleX(var(--k-dir));
-		animation-timing-function: linear;
-	}
-	93% {
-		opacity: 0.5;
-		transform: translate(calc(var(--fx-w, 360px) * 0.14 * var(--k-dir)), 0) scaleX(var(--k-dir));
+		transform: translate(calc(var(--fx-w, 360px) * 0.56 * var(--k-dir)), 0) scaleX(var(--k-dir));
 		animation-timing-function: linear;
 	}
 	100% {
 		opacity: 0;
-		transform: translate(calc(var(--fx-w, 360px) * 0.16 * var(--k-dir)), 0) scaleX(var(--k-dir));
+		transform: translate(calc(var(--fx-w, 360px) * 0.62 * var(--k-dir)), 0) scaleX(var(--k-dir));
 	}
-}
-
-.fx-koibody {
-	fill: var(--fx-color);
-	stroke: #fff2ea;
-	stroke-width: 1.1;
-	filter: drop-shadow(0 3px 7px rgba(4, 30, 44, 0.65));
-}
-
-.fx-koitail {
-	fill: var(--fx-color);
-	opacity: 0.85;
-	transform-box: fill-box;
-	transform-origin: 100% 50%;
-	animation: fx-koi-swish calc(var(--fx-speed) * 0.24) ease-in-out infinite alternate paused;
-}
-
-.fx-live .fx-koitail {
-	animation-play-state: running;
 }
 
 @keyframes fx-koi-swish {

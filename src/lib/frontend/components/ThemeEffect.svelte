@@ -108,9 +108,9 @@
 	];
 
 	const SILK_SASHES = [
-		'M-8 22 Q18 6 42 20 Q66 34 92 16 Q104 8 112 14 L112 30 Q102 24 92 32 Q66 50 42 36 Q18 22 -8 38 Z',
-		'M-8 48 Q16 32 40 46 Q64 60 90 42 Q102 34 112 40 L112 58 Q100 52 90 60 Q64 78 40 64 Q16 50 -8 66 Z',
-		'M-8 74 Q20 60 44 74 Q68 88 94 70 Q104 63 112 68 L112 86 Q102 81 94 88 Q68 106 44 92 Q20 78 -8 94 Z'
+		'M-8 26 Q18 12 42 24 Q66 36 92 20 Q104 13 112 18 L112 25 Q102 21 92 27 Q66 43 42 31 Q18 19 -8 33 Z',
+		'M-8 50 Q16 37 40 49 Q64 61 90 45 Q102 38 112 43 L112 51 Q100 47 90 53 Q64 69 40 57 Q16 45 -8 58 Z',
+		'M-8 74 Q20 62 44 74 Q68 86 94 70 Q104 64 112 69 L112 77 Q102 73 94 79 Q68 95 44 83 Q20 71 -8 84 Z'
 	];
 
 	const CRYSTAL_SPIKES = [
@@ -302,7 +302,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 63, pieceCount(100 / 40, 0.3, 3, 14, 0.9), 0.3, 0.8, 1.26) as piece, v}
+			{#each spreadPieces(seed + 63, pieceCount(100 / 40, 0.3, 3, 8, 1.3), 0.3, 0.8, 1.26) as piece, v}
 				<svg
 					class="fx-slab"
 					style="--v-left: {piece.left}%; --v-scale: {piece.scale}; --v-i: {v}; --v-dir: {piece.flip ? 1 : -1}"
@@ -424,14 +424,20 @@
 					</linearGradient>
 				</defs>
 
-				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack{uid})" d="M0 100 L0 70 Q22 52 46 58 Q70 64 100 54 L100 100 Z" />
-				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack{uid})" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
+				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack{uid})" d="M-30 100 L-30 72 Q-2 52 24 58 Q52 65 78 55 Q104 46 130 56 L130 100 Z" />
+				<path
+					class="fx-swell"
+					style="--v-i: 1"
+					fill="url(#fxSeaBack{uid})"
+					opacity="0.8"
+					d="M-30 100 L-30 80 Q0 64 28 70 Q58 77 86 67 Q110 59 130 68 L130 100 Z"
+				/>
 			</svg>
 
 			{#each spreadPieces(seed + 64, pieceCount(1.45, 0.92, 3, 7, 1.5), 0.18, 0.88, 0.92) as piece, w}
 				<svg
 					class="fx-breaker-piece"
-					style="--w-left: {piece.left}%; --w-h: {(0.24 + (piece.left / 100) * 0.68).toFixed(3)}; --w-i: {w}"
+					style="--w-left: {piece.left}%; --w-h: {(0.3 + (piece.left / 100) * 0.6).toFixed(3)}; --w-i: {w}; --w-delay: {piece.delay}s"
 					viewBox="0 0 100 100"
 					preserveAspectRatio="xMidYMax meet"
 					aria-hidden="true"
@@ -548,15 +554,27 @@
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
 					<linearGradient id="fxAur0{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#4ade80" stop-opacity="0" /><stop offset="55%" stop-color="#4ade80" stop-opacity="0.85" />
+						<stop offset="0%" stop-color="#4ade80" stop-opacity="0" /><stop offset="46%" stop-color="#4ade80" stop-opacity="0.34" /><stop
+							offset="62%"
+							stop-color="#4ade80"
+							stop-opacity="0.18"
+						/>
 						<stop offset="100%" stop-color="#a7f3d0" stop-opacity="0" />
 					</linearGradient>
 					<linearGradient id="fxAur1{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#38bdf8" stop-opacity="0" /><stop offset="50%" stop-color="#38bdf8" stop-opacity="0.8" />
+						<stop offset="0%" stop-color="#38bdf8" stop-opacity="0" /><stop offset="44%" stop-color="#38bdf8" stop-opacity="0.3" /><stop
+							offset="60%"
+							stop-color="#38bdf8"
+							stop-opacity="0.15"
+						/>
 						<stop offset="100%" stop-color="#c4b5fd" stop-opacity="0" />
 					</linearGradient>
 					<linearGradient id="fxAur2{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#a78bfa" stop-opacity="0" /><stop offset="48%" stop-color="#a78bfa" stop-opacity="0.7" />
+						<stop offset="0%" stop-color="#a78bfa" stop-opacity="0" /><stop offset="42%" stop-color="#a78bfa" stop-opacity="0.26" /><stop
+							offset="58%"
+							stop-color="#a78bfa"
+							stop-opacity="0.13"
+						/>
 						<stop offset="100%" stop-color="#f0abfc" stop-opacity="0" />
 					</linearGradient>
 				</defs>
@@ -583,19 +601,19 @@
 				<path class="fx-auroraray" style="--w-j: 2" d="M49 6 L52 66" />
 				<path class="fx-auroraray" style="--w-j: 3" d="M67 2 L70 60" />
 				<path class="fx-auroraray" style="--w-j: 4" d="M84 8 L88 64" />
-				<path class="fx-ridge" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 100 L0 100 Z" />
-				<path class="fx-ridgesnow" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 79 L82 86 L68 76 L55 84 L40 72 L26 85 L14 78 L0 89 Z" />
+				<path class="fx-ridge" d="M-6 88 L10 74 L24 82 L40 66 L56 80 L70 70 L84 82 L106 75 L106 106 L-6 106 Z" />
+				<path class="fx-ridgesnow" d="M-6 88 L10 74 L24 82 L40 66 L56 80 L70 70 L84 82 L106 75 L106 80 L84 88 L70 77 L56 86 L40 73 L24 87 L10 80 L-6 94 Z" />
 				<path class="fx-auroraglow" d="M0 62 Q26 52 52 62 Q78 72 100 60 L100 100 L0 100 Z" />
 			</svg>
 		{:else if family === 'rainbow'}
-			<svg class="fx-bow" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-				<path class="fx-arc" pathLength="100" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 92 A 46 46 0 0 1 96 92" />
-				<path class="fx-arc" pathLength="100" style="--a-i: 1; --a-c: #ff9f45" d="M 8 92 A 42 42 0 0 1 92 92" />
-				<path class="fx-arc" pathLength="100" style="--a-i: 2; --a-c: #ffd93d" d="M 12 92 A 38 38 0 0 1 88 92" />
-				<path class="fx-arc" pathLength="100" style="--a-i: 3; --a-c: #4ade80" d="M 16 92 A 34 34 0 0 1 84 92" />
-				<path class="fx-arc" pathLength="100" style="--a-i: 4; --a-c: #38bdf8" d="M 20 92 A 30 30 0 0 1 80 92" />
-				<path class="fx-arc" pathLength="100" style="--a-i: 5; --a-c: #4f6ef7" d="M 24 92 A 26 26 0 0 1 76 92" />
-				<path class="fx-arc" pathLength="100" style="--a-i: 6; --a-c: #a78bfa" d="M 28 92 A 22 22 0 0 1 72 92" />
+			<svg class="fx-bow" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+				<path class="fx-arc" pathLength="100" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 100 A 96 96 0 0 1 196 100" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 1; --a-c: #ff9f45" d="M 10 100 A 90 90 0 0 1 190 100" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 2; --a-c: #ffd93d" d="M 16 100 A 84 84 0 0 1 184 100" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 3; --a-c: #4ade80" d="M 22 100 A 78 78 0 0 1 178 100" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 4; --a-c: #38bdf8" d="M 28 100 A 72 72 0 0 1 172 100" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 5; --a-c: #4f6ef7" d="M 34 100 A 66 66 0 0 1 166 100" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 6; --a-c: #a78bfa" d="M 40 100 A 60 60 0 0 1 160 100" />
 			</svg>
 			{#each RAINBOW_CLOUDS as puff, c}
 				<svg
@@ -916,14 +934,19 @@
 		{:else if family === 'fallingstar'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<rect class="fx-wishsky" width="100" height="100" />
-				<g class="fx-constellation">
-					<circle cx="14" cy="18" r="0.9" /><circle cx="26" cy="11" r="0.7" /><circle cx="35" cy="22" r="1" />
-					<circle cx="58" cy="14" r="0.8" /><circle cx="69" cy="24" r="0.9" /><circle cx="81" cy="12" r="0.7" />
-					<circle cx="91" cy="26" r="0.85" /><circle cx="46" cy="30" r="0.6" />
-					<path d="M14 18 L26 11 L35 22 M58 14 L69 24 L81 12 L91 26" />
-				</g>
-				<path class="fx-moonrise" d="M84 20 A11 11 0 1 1 76 9 A8.6 8.6 0 1 0 84 20 Z" />
 				<path class="fx-horizonridge" d="M0 100 L0 82 Q9 74 19 80 Q28 86 38 78 Q48 70 57 79 Q67 88 76 79 Q86 70 94 78 Q97 81 100 79 L100 100 Z" />
+			</svg>
+
+			<svg class="fx-starchart" viewBox="0 0 120 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+				<g class="fx-constellation">
+					<circle cx="5" cy="14" r="0.9" /><circle cx="21" cy="7" r="0.7" /><circle cx="33" cy="18" r="1" />
+					<circle cx="62" cy="10" r="0.8" /><circle cx="77" cy="20" r="0.9" /><circle cx="92" cy="8" r="0.7" />
+					<circle cx="105" cy="22" r="0.85" /><circle cx="47" cy="26" r="0.6" />
+					<path d="M5 14 L21 7 L33 18 M62 10 L77 20 L92 8 L105 22" />
+				</g>
+			</svg>
+			<svg class="fx-moonpiece" viewBox="0 0 30 30" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+				<path class="fx-moonrise" d="M21 17 A11 11 0 1 1 13 6 A8.6 8.6 0 1 0 21 17 Z" />
 			</svg>
 		{:else if family === 'milkyway'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -1075,7 +1098,7 @@
 
 			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.42, 6, 16, 0.75), 0.4, 0.8, 1.3) as piece, i}
 				<svg
-					class="fx-koi"
+					class="fx-koifish"
 					style="--k-left: {piece.left}%; --k-top: {16 + ((i * 53) % 58)}%; --k-scale: {piece.scale}; --k-i: {i}; --k-dir: {piece.flip ? 1 : -1}"
 					viewBox="0 0 48 22"
 					preserveAspectRatio="xMidYMid meet"
@@ -1104,10 +1127,12 @@
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
 					<linearGradient id="fxSash{uid}" x1="0" y1="0" x2="1" y2="0">
-						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0.5" />
-						<stop offset="34%" stop-color="var(--fx-color-2)" stop-opacity="0.95" />
-						<stop offset="58%" stop-color="var(--fx-color)" stop-opacity="0.75" />
-						<stop offset="100%" stop-color="var(--fx-color)" stop-opacity="0.45" />
+						<stop offset="0%" stop-color="var(--fx-color)" stop-opacity="0" />
+						<stop offset="18%" stop-color="var(--fx-color)" stop-opacity="0.34" />
+						<stop offset="40%" stop-color="var(--fx-color-2)" stop-opacity="0.62" />
+						<stop offset="62%" stop-color="var(--fx-color)" stop-opacity="0.4" />
+						<stop offset="86%" stop-color="var(--fx-color)" stop-opacity="0.18" />
+						<stop offset="100%" stop-color="var(--fx-color)" stop-opacity="0" />
 					</linearGradient>
 				</defs>
 				{#each SILK_SASHES as sash, i}
@@ -1121,13 +1146,13 @@
 					<path d="M-6 86 Q30 76 66 88 Q92 96 110 86" />
 				</g>
 				<g class="fx-weave">
-					<path d="M6 -8 Q14 40 6 108 M26 -8 Q34 40 26 108 M46 -8 Q54 40 46 108 M66 -8 Q74 40 66 108 M86 -8 Q94 40 86 108" />
+					<path d="M6 -8 Q9 40 6 108 M26 -8 Q29 40 26 108 M46 -8 Q49 40 46 108 M66 -8 Q69 40 66 108 M86 -8 Q89 40 86 108" />
 				</g>
 				{#each SILK_GLINTS as g, i}
 					<circle class="fx-silkglint" style="--g-j: {i}" cx={g[0]} cy={g[1]} r={g[2]} />
 				{/each}
 				<path class="fx-silkfold" d="M-6 18 Q30 6 66 20 Q92 30 110 18 L110 34 Q90 44 66 34 Q30 20 -6 32 Z" />
-				<rect class="fx-sheenline" width="18" height="100" />
+				<rect class="fx-sheenline" width="6" height="100" />
 			</svg>
 		{:else if family === 'crystal'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">

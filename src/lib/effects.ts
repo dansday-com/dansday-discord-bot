@@ -210,7 +210,7 @@ export const PARTICLE_COUNTS: Record<string, number> = {
 	meteor: 19,
 	fire: 25,
 	confetti: 32,
-	rain: 44,
+	rain: 110,
 	snow: 48,
 	blizzard: 57,
 	earthquake: 28,
@@ -442,7 +442,7 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 					`--p-delay: ${delay}s`,
 					`--p-dur: ${dur}s`,
 					`--p-w: ${(2.6 + rand() * 3.4).toFixed(1)}px`,
-					`--p-trail: ${Math.round(14 + rand() * 40)}px`,
+					`--p-trail: ${Math.round(22 + rand() * 62)}px`,
 					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.9)}`
 				].join('; ')
 			);

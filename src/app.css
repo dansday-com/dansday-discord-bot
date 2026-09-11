@@ -5109,7 +5109,7 @@ html.lenis body {
 	position: absolute;
 	top: var(--d-top, 30%);
 	left: var(--d-left, 0%);
-	height: calc(clamp(12px, 30%, 130px) * var(--d-scale, 1));
+	height: calc(clamp(8px, 18%, 56px) * var(--d-scale, 1));
 	width: auto;
 	aspect-ratio: 1;
 	overflow: visible;
@@ -5167,7 +5167,7 @@ html.lenis body {
 	position: absolute;
 	top: var(--k-top, 40%);
 	left: var(--k-left, 0%);
-	height: calc(clamp(20px, 42%, 190px) * var(--k-scale, 1));
+	height: calc(clamp(12px, 22%, 72px) * var(--k-scale, 1));
 	width: auto;
 	aspect-ratio: 48 / 22;
 	overflow: visible;
@@ -6743,16 +6743,14 @@ html.lenis body {
 }
 
 .fx-aurora .fx-p {
-	top: 0;
+	top: -6%;
 	left: var(--p-x);
-	width: max(26px, calc(var(--p-w) * 0.55 * var(--fx-s, 1)));
-	height: 72%;
-	border-radius: 0 0 40% 40% / 0 0 18% 18%;
-	background-image:
-		repeating-linear-gradient(to right, rgba(255, 255, 255, 0.18) 0 1px, transparent 1px 5px),
-		linear-gradient(to bottom, var(--p-hue) 0%, color-mix(in srgb, var(--p-hue) 55%, transparent) 45%, transparent 100%);
-	filter: blur(2.5px);
-	mix-blend-mode: screen;
+	width: max(34px, calc(var(--p-w) * 0.5 * var(--fx-s, 1)));
+	height: 78%;
+	background-image: radial-gradient(ellipse 50% 100% at 50% 0%, var(--p-hue) 0%, color-mix(in srgb, var(--p-hue) 40%, transparent) 42%, transparent 72%);
+	mask-image: linear-gradient(to right, transparent 0%, #000 30%, #000 70%, transparent 100%);
+	-webkit-mask-image: linear-gradient(to right, transparent 0%, #000 30%, #000 70%, transparent 100%);
+	filter: blur(6px);
 	opacity: 0;
 	animation-name: fx-aurora-curtain;
 	animation-duration: var(--p-dur);
@@ -8602,10 +8600,10 @@ html.lenis body {
 .fx-auroraray {
 	fill: none;
 	stroke: #d8fff0;
-	stroke-width: 2.2;
+	stroke-width: 1.2;
 	stroke-linecap: round;
 	opacity: 0;
-	filter: blur(2px);
+	filter: blur(3.5px);
 	transform-box: fill-box;
 	transform-origin: 50% 0;
 	animation: fx-ray-flare calc(var(--fx-speed) * 0.9) ease-in-out infinite paused;
@@ -9521,6 +9519,15 @@ html.lenis body {
 	aspect-ratio: 1;
 	overflow: visible;
 	pointer-events: none;
+}
+
+.fx-rainzone {
+	position: absolute;
+	inset: 38% 0 0 0;
+	overflow: hidden;
+	pointer-events: none;
+	mask-image: linear-gradient(to bottom, transparent 0%, #000 22%);
+	-webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%);
 }
 
 .fx-swell {
@@ -12507,9 +12514,9 @@ html.lenis body {
 
 .fx-bolt-piece {
 	position: absolute;
-	top: 0;
+	top: 30%;
 	left: var(--b-left, 10%);
-	height: calc(100% * var(--b-scale, 1));
+	height: calc(72% * var(--b-scale, 1));
 	width: auto;
 	aspect-ratio: 45 / 100;
 	overflow: visible;

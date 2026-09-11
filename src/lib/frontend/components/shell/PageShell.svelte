@@ -70,11 +70,11 @@
 <div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday" style={themeVars(memberTheme)}>
 	{#if themeBackdrop}
 		<div
-			class="pointer-events-none fixed inset-0 -z-20 bg-cover bg-scroll bg-center bg-no-repeat sm:bg-fixed"
+			class="pointer-events-none fixed top-0 left-0 -z-20 h-lvh w-full bg-cover bg-scroll bg-center bg-no-repeat sm:bg-fixed"
 			style="background-image: url('{themeBackdrop}')"
 			aria-hidden="true"
 		></div>
-		<div class="bg-canvas/55 pointer-events-none fixed inset-0 -z-10 backdrop-blur-[2px]" aria-hidden="true"></div>
+		<div class="bg-canvas/55 pointer-events-none fixed top-0 left-0 -z-10 h-lvh w-full backdrop-blur-[2px]" aria-hidden="true"></div>
 	{:else}
 		<div
 			class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"

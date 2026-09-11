@@ -321,8 +321,10 @@
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<rect class="fx-flash" width="100" height="100" />
 			</svg>
-			<i class="fx-sheet" style="--h-i: 0"></i>
-			<i class="fx-sheet" style="--h-i: 1"></i>
+			<span class="fx-rainzone">
+				<i class="fx-sheet" style="--h-i: 0"></i>
+				<i class="fx-sheet" style="--h-i: 1"></i>
+			</span>
 
 			{#each spreadPieces(seed + 31, pieceCount(110 / 44, 0.34, 2, 14, 0.86), 0.3, 0.86, 1.2) as piece, i}
 				<svg
@@ -341,7 +343,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 77, pieceCount(45 / 100, 1, 3, 10, 1.8), 0.45, 0.78, 1) as piece, b}
+			{#each spreadPieces(seed + 77, pieceCount(45 / 100, 0.72, 3, 10, 1.8), 0.45, 0.78, 1) as piece, b}
 				<svg
 					class="fx-bolt-piece"
 					style="--b-left: {piece.left}%; --b-scale: {piece.scale}"
@@ -1084,7 +1086,7 @@
 				<rect class="fx-caustic" style="--c-j: 1" x="-30" y="-25" width="160" height="150" />
 			</svg>
 
-			{#each spreadPieces(seed + 119, pieceCount(1, 0.3, 4, 14, 1.3), 0.44, 0.7, 1.35) as piece, i}
+			{#each spreadPieces(seed + 119, pieceCount(1, 0.18, 3, 9, 2.4), 0.44, 0.7, 1.25) as piece, i}
 				<svg
 					class="fx-lilypad"
 					style="--d-left: {piece.left}%; --d-top: {12 + ((i * 41) % 62)}%; --d-scale: {piece.scale}; --d-i: {i}"
@@ -1096,7 +1098,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.42, 6, 16, 0.75), 0.4, 0.8, 1.3) as piece, i}
+			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.22, 3, 7, 2.6), 0.46, 0.75, 1.15) as piece, i}
 				<svg
 					class="fx-koifish"
 					style="--k-left: {piece.left}%; --k-top: {16 + ((i * 53) % 58)}%; --k-scale: {piece.scale}; --k-i: {i}; --k-dir: {piece.flip ? 1 : -1}"

@@ -157,3 +157,26 @@ export function hsl(h: number, s: number, l: number): [number, number, number] {
 	};
 	return [f(hh + 1 / 3) * 255, f(hh) * 255, f(hh - 1 / 3) * 255];
 }
+
+/** Blit a pixel mask, optionally squashed horizontally to read as a tumble. */
+export function stamp(
+	s: FxScene,
+	m: { w: number; h: number; bits: Uint8Array },
+	cx: number,
+	cy: number,
+	r: number,
+	g: number,
+	b: number,
+	a: number,
+	squash = 1
+) {
+	if (a <= 0.01) return;
+	const ox = cx - (m.w * squash) / 2;
+	const oy = cy - m.h / 2;
+	for (let y = 0; y < m.h; y++) {
+		for (let x = 0; x < m.w; x++) {
+			if (!m.bits[y * m.w + x]) continue;
+			plot(s, ox + x * squash, oy + y, r, g, b, a);
+		}
+	}
+}

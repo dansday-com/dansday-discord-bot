@@ -1,5 +1,20 @@
 import { blit, clear, hsl, plot, type FxProgram, type FxScene } from './engine.js';
-import { makeBands, makeBolt, makeConfetti, makeFacets, makeNoise, makeRings, makeRise, makeStreak, makeVortex, makeWaves } from './extra.js';
+import {
+	makeArc,
+	makeBands,
+	makeBolt,
+	makeConfetti,
+	makeEcg,
+	makeEclipse,
+	makeFacets,
+	makeNoise,
+	makeSprite,
+	makeStreak,
+	makeVortex,
+	withSky
+} from './extra.js';
+import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
+import { makeBreaker, makeHoles, makeSign, withCone, withFunnel, withGround, withHorizon } from './structure.js';
 
 const P = 6;
 
@@ -19,30 +34,39 @@ function fieldPalette(s: FxScene, steps: number) {
 
 /** Heat propagates upward with random decay — the 1993 Doom fire. */
 function makeFire(rows: number, decay: number, feed: number): FxProgram {
+	const step = (s: FxScene) => {
+		const { w, h, buf } = s;
+		for (let x = 0; x < w; x++) buf[(h - 1) * w + x] = s.rnd() < feed ? 36 : 30;
+		for (let x = 0; x < w; x++) {
+			for (let y = 1; y < h; y++) {
+				const src = y * w + x;
+				const v = buf[src];
+				if (v === 0) {
+					buf[src - w] = 0;
+					continue;
+				}
+				const r = (s.rnd() * 4) | 0;
+				const dst = src - w - r + (s.v.dir > 0 ? 1 : 2);
+				if (dst >= 0 && dst < w * h) buf[dst] = Math.max(0, v - (r < decay ? 1 : 0));
+			}
+		}
+	};
 	return {
 		rows,
 		stride: 0,
 		init(s) {
-			s.buf.fill(0);
 			(s as any).pal = fieldPalette(s, 36);
+			const { w, h, buf } = s;
+			for (let y = 0; y < h; y++) {
+				const heat = 36 * (y / (h - 1));
+				for (let x = 0; x < w; x++) buf[y * w + x] = Math.max(0, Math.round(heat * (0.45 + s.rnd() * 0.9)));
+			}
+			for (let i = 0; i < 14; i++) step(s);
 		},
 		frame(s) {
 			const { w, h, buf } = s;
 			const pal = (s as any).pal as [number, number, number, number][];
-			for (let x = 0; x < w; x++) buf[(h - 1) * w + x] = s.rnd() < feed ? 36 : 30;
-			for (let x = 0; x < w; x++) {
-				for (let y = 1; y < h; y++) {
-					const src = y * w + x;
-					const v = buf[src];
-					if (v === 0) {
-						buf[src - w] = 0;
-						continue;
-					}
-					const r = (s.rnd() * 4) | 0;
-					const dst = src - w - r + (s.v.dir > 0 ? 1 : 2);
-					if (dst >= 0 && dst < w * h) buf[dst] = Math.max(0, v - (r < decay ? 1 : 0));
-				}
-			}
+			step(s);
 			clear(s);
 			for (let y = 0; y < h; y++) {
 				for (let x = 0; x < w; x++) {
@@ -284,45 +308,45 @@ function makeTwinkle(rows: number, stride: number, rise: number): FxProgram {
 export const PROGRAMS: Record<string, FxProgram> = {
 	fire: makeFire(52, 3, 0.86),
 	ember: makeFountain(56, 0.34, 0.012, 1.9),
-	volcano: makeFountain(56, 0.42, 0.028, 0.34),
+	volcano: withCone(makeFountain(56, 0.42, 0.028, 0.34)),
 
-	snow: makeFall(56, 0.5, { len: 1, wind: 0.18, sway: 0.22, size: 1 }),
-	blizzard: makeFall(56, 1.15, { len: 4, wind: 1.35, sway: 0.05, size: 0.6 }),
-	rain: makeFall(56, 1.0, { len: 6, wind: 0.28, sway: 0, size: 0.5 }),
-	sandstorm: makeFall(56, 1.4, { len: 5, wind: 1.9, sway: 0.1, size: 0.5 }),
-	earthquake: makeFall(56, 0.6, { len: 2, wind: 0.5, sway: 0.4, size: 0.7 }),
+	snow: withSky(makeSprite(56, 0.16, FLAKE, { fall: 1, sway: 0.2, tumble: 0.04, wind: 0.16, light: 94, spread: 8 }), 3, 88, 0.4),
+	blizzard: withSky(makeFall(56, 1.15, { len: 4, wind: 1.35, sway: 0.05, size: 0.6 }), 4, 80, 2.4),
+	rain: withSky(makeFall(56, 1.0, { len: 6, wind: 0.28, sway: 0, size: 0.5 }), 3, 54, 0.5),
+	sandstorm: withGround(makeFall(56, 1.4, { len: 5, wind: 1.9, sway: 0.1, size: 0.5 }), 279, 0.22, 0.09, 34),
+	earthquake: withGround(makeFall(56, 0.6, { len: 2, wind: 0.5, sway: 0.4, size: 0.7 }), 293, 0.19, 0.12, 20),
 
 	aurora: makeCurtain(56),
-	blackhole: makeSpiral(56, 0.7, 0.006),
-	void: makeSpiral(56, 0.55, 0.004),
-	tornado: makeVortex(56, 0.8),
+	blackhole: withHorizon(makeSpiral(56, 0.7, 0.006)),
+	void: withHorizon(makeSpiral(56, 0.55, 0.004)),
+	tornado: withSky(withFunnel(makeVortex(56, 0.8)), 4, 48, 1.2),
 
 	milkyway: makeStarfield(56, 0.95, 0.72),
-	eclipse: makeStarfield(56, 0.6, 0.1),
-	sparkle: makeTwinkle(56, 0.5, 0.04),
-	fireflies: makeTwinkle(56, 0.4, 0.05),
-	crystal: makeTwinkle(56, 0.5, 0.12),
+	eclipse: makeEclipse(56),
+	sparkle: makeSprite(56, 0.12, STAR, { fall: -1, sway: 0.18, tumble: 0, wind: 0.06, light: 90, spread: 24 }),
+	fireflies: withGround(makeTwinkle(56, 0.4, 0.05), 211, 0.2, 0.06, 18),
+	crystal: makeSprite(56, 0.12, SHARD, { fall: -1, sway: 0.22, tumble: 0.03, wind: 0.08, light: 78, spread: 36 }),
 
-	meteor: makeStreak(56, 0.34, 1.5, 9),
-	fallingstar: makeStreak(56, 0.2, 2.1, 12),
-	thunder: makeBolt(56, 46),
-	tsunami: makeWaves(56, 3),
-	pulse: makeRings(56, 3),
+	meteor: withGround(makeStreak(56, 0.34, 1.5, 9), 233, 0.17, 0.1, 16),
+	fallingstar: withGround(makeStreak(56, 0.2, 2.1, 12), 257, 0.15, 0.08, 14),
+	thunder: withSky(makeBolt(56, 46), 3, 42, 0.3),
+	tsunami: makeBreaker(56),
+	pulse: makeEcg(56),
+	rainbow: withSky(makeArc(56, 7, 2.4), 2, 92, 0.25),
 
-	bubbles: makeRise(56, 0.5, { wobble: 0.28, size: 2, light: 78 }),
-	love: makeRise(56, 0.55, { wobble: 0.42, size: 2, light: 68 }),
+	bubbles: makeSprite(56, 0.13, BUBBLE, { fall: -1, sway: 0.3, tumble: 0, wind: 0.08, light: 80, spread: 14 }),
+	love: makeSprite(56, 0.13, HEART, { fall: -1, sway: 0.38, tumble: 0.05, wind: 0.1, light: 70, spread: 18 }),
 
 	confetti: makeConfetti(56, 0.7, 300),
-	autumn: makeConfetti(56, 0.6, 48),
-	sakura: makeConfetti(56, 0.55, 22),
+	autumn: makeSprite(56, 0.14, LEAF, { fall: 1, sway: 0.55, tumble: 0.12, wind: 0.4, light: 56, spread: 46 }),
+	sakura: makeSprite(56, 0.14, BLOSSOM, { fall: 1, sway: 0.6, tumble: 0.07, wind: 0.3, light: 82, spread: 20 }),
 
 	glass: makeFacets(56, 0.18, false),
-	bullethole: makeFacets(56, 0.16, true),
+	bullethole: makeHoles(56),
 
 	holo: makeBands(56, { count: 5, slant: 0.6, soft: 9, spread: 1, light: 64 }),
-	rainbow: makeBands(56, { count: 7, slant: 0.2, soft: 7, spread: 1, light: 58 }),
 	silk: makeBands(56, { count: 4, slant: 0.3, soft: 13, spread: 0.6, light: 66 }),
-	neon: makeBands(56, { count: 3, slant: 0.1, soft: 5, spread: 0.9, light: 72 }),
+	neon: makeSign(56),
 	scanlines: makeBands(56, { count: 7, slant: 0, soft: 2, spread: 0.2, light: 70 }),
 	glitch: makeBands(56, { count: 4, slant: 0, soft: 3, spread: 1, light: 66 }),
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
-	import { createScene, fxVariant, runScene } from '$lib/frontend/fx/engine.js';
+	import { createScene, fxVariant, runScene, type FxScene } from '$lib/frontend/fx/engine.js';
 	import { PROGRAMS } from '$lib/frontend/fx/programs.js';
 
 	type Props = {
@@ -20,6 +20,7 @@
 	let canvas = $state<HTMLCanvasElement | undefined>();
 	let live = $state(false);
 	let aspect = $state(3.2);
+	let scene = $state.raw<FxScene | undefined>(undefined);
 
 	$effect(() => {
 		const node = host;
@@ -27,7 +28,9 @@
 		const measure = () => {
 			const w = node.clientWidth || 360;
 			const h = node.clientHeight || 112;
-			aspect = Math.max(0.6, Math.min(7, w / Math.max(1, h)));
+			const next = Math.max(0.6, Math.min(7, w / Math.max(1, h)));
+			const quantised = Math.round(next * 8) / 8;
+			if (quantised !== aspect) aspect = quantised;
 		};
 		measure();
 		const ro = new ResizeObserver(measure);
@@ -75,13 +78,26 @@
 	$effect(() => {
 		const el = canvas;
 		const prog = program;
-		if (!el || !prog || family === 'none') return;
-		const variant = fxVariant(family, seed, accent);
-		const scene = createScene(el, prog, variant, aspect);
-		prog.frame(scene);
-		if (!live || frozen) return;
+		const fam = family;
+		const sd = seed;
+		const ac = accent;
+		const ratio = aspect;
+		if (!el || !prog || fam === 'none') return;
+		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio);
+		prog.frame(built);
+		scene = built;
+	});
+
+	$effect(() => {
+		const el = canvas;
+		const prog = program;
+		const sc = scene;
+		const running = live;
+		const halted = frozen;
+		const fam = family;
+		if (!el || !prog || !sc || !running || halted) return;
 		if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		return runScene(el, prog, scene, family === 'fire' ? 18 : 24);
+		return runScene(el, prog, sc, fam === 'fire' ? 18 : 24);
 	});
 </script>
 

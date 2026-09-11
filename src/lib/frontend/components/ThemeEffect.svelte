@@ -446,7 +446,12 @@
 					</linearGradient>
 				</defs>
 
-				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack{uid})" d="M -96 100 L -96 72 Q -6.4 52 76.8 58 Q 166.4 65 249.6 55 Q 332.8 46 416 56 L 416 100 Z" />
+				<path
+					class="fx-swell"
+					style="--v-i: 0"
+					fill="url(#fxSeaBack{uid})"
+					d="M -96 100 L -96 72 Q -6.4 52 76.8 58 Q 166.4 65 249.6 55 Q 332.8 46 416 56 L 416 100 Z"
+				/>
 				<path
 					class="fx-swell"
 					style="--v-i: 1"
@@ -609,9 +614,24 @@
 				</g>
 
 				<g class="fx-blend-screen">
-					<path class="fx-ribbon" style="--n-i: 0" fill="url(#fxAur0{uid})" d="M -32 22 Q 32 8 96 20 T 224 16 T 352 26 L 352 74 Q 288 60 224 70 T 96 66 T -32 76 Z" />
-					<path class="fx-ribbon" style="--n-i: 1" fill="url(#fxAur1{uid})" d="M -32 30 Q 44.8 14 108.8 28 T 236.8 22 T 352 34 L 352 70 Q 275.2 58 211.2 66 T 83.2 62 T -32 72 Z" />
-					<path class="fx-ribbon" style="--n-i: 2" fill="url(#fxAur2{uid})" d="M -32 38 Q 25.6 24 102.4 36 T 217.6 30 T 352 40 L 352 66 Q 281.6 56 204.8 62 T 76.8 58 T -32 68 Z" />
+					<path
+						class="fx-ribbon"
+						style="--n-i: 0"
+						fill="url(#fxAur0{uid})"
+						d="M -32 22 Q 32 8 96 20 T 224 16 T 352 26 L 352 74 Q 288 60 224 70 T 96 66 T -32 76 Z"
+					/>
+					<path
+						class="fx-ribbon"
+						style="--n-i: 1"
+						fill="url(#fxAur1{uid})"
+						d="M -32 30 Q 44.8 14 108.8 28 T 236.8 22 T 352 34 L 352 70 Q 275.2 58 211.2 66 T 83.2 62 T -32 72 Z"
+					/>
+					<path
+						class="fx-ribbon"
+						style="--n-i: 2"
+						fill="url(#fxAur2{uid})"
+						d="M -32 38 Q 25.6 24 102.4 36 T 217.6 30 T 352 40 L 352 66 Q 281.6 56 204.8 62 T 76.8 58 T -32 68 Z"
+					/>
 				</g>
 
 				<g class="fx-polestar">
@@ -620,7 +640,10 @@
 					<circle cx="281.6" cy="21" r="0.55" /><circle cx="307.2" cy="7" r="0.6" />
 				</g>
 				<g class="fx-blend-screen"
-					><path class="fx-corona-veil" d="M -32 6 Q 51.2 26 134.4 10 Q 217.6 -6 307.2 14 Q 339.2 21 352 16 L 352 46 Q 307.2 38 249.6 46 Q 166.4 58 89.6 44 Q 19.2 32 -32 42 Z" /></g
+					><path
+						class="fx-corona-veil"
+						d="M -32 6 Q 51.2 26 134.4 10 Q 217.6 -6 307.2 14 Q 339.2 21 352 16 L 352 46 Q 307.2 38 249.6 46 Q 166.4 58 89.6 44 Q 19.2 32 -32 42 Z"
+					/></g
 				>
 				<path class="fx-auroraray" style="--w-j: 0" d="M 38.4 4 L 57.6 62" />
 				<path class="fx-auroraray" style="--w-j: 1" d="M 99.2 0 L 108.8 58" />
@@ -628,7 +651,10 @@
 				<path class="fx-auroraray" style="--w-j: 3" d="M 214.4 2 L 224 60" />
 				<path class="fx-auroraray" style="--w-j: 4" d="M 268.8 8 L 281.6 64" />
 				<path class="fx-ridge" d="M -19.2 88 L 32 74 L 76.8 82 L 128 66 L 179.2 80 L 224 70 L 268.8 82 L 339.2 75 L 339.2 106 L -19.2 106 Z" />
-				<path class="fx-ridgesnow" d="M -19.2 88 L 32 74 L 76.8 82 L 128 66 L 179.2 80 L 224 70 L 268.8 82 L 339.2 75 L 339.2 80 L 268.8 88 L 224 77 L 179.2 86 L 128 73 L 76.8 87 L 32 80 L -19.2 94 Z" />
+				<path
+					class="fx-ridgesnow"
+					d="M -19.2 88 L 32 74 L 76.8 82 L 128 66 L 179.2 80 L 224 70 L 268.8 82 L 339.2 75 L 339.2 80 L 268.8 88 L 224 77 L 179.2 86 L 128 73 L 76.8 87 L 32 80 L -19.2 94 Z"
+				/>
 				<g class="fx-blend-screen"><path class="fx-auroraglow" d="M 0 62 Q 83.2 52 166.4 62 Q 249.6 72 320 60 L 320 100 L 0 100 Z" /></g>
 			</svg>
 		{:else if family === 'rainbow'}
@@ -766,8 +792,16 @@
 					<path d="M 38.4 0 V 100 M 96 0 V 100 M 153.6 0 V 100 M 211.2 0 V 100 M 268.8 0 V 100" />
 				</g>
 				<rect class="fx-bpmflash" x="-96" y="-25" width="512" height="150" />
-				<path class="fx-ecgghost" pathLength="100" d="M 0 50 L 70.4 50 L 83.2 34 L 96 66 L 108.8 42 L 121.6 50 L 185.6 50 L 198.4 30 L 211.2 70 L 224 46 L 236.8 50 L 320 50" />
-				<path class="fx-ecg" pathLength="100" d="M 0 50 L 70.4 50 L 83.2 34 L 96 66 L 108.8 42 L 121.6 50 L 185.6 50 L 198.4 30 L 211.2 70 L 224 46 L 236.8 50 L 320 50" />
+				<path
+					class="fx-ecgghost"
+					pathLength="100"
+					d="M 0 50 L 70.4 50 L 83.2 34 L 96 66 L 108.8 42 L 121.6 50 L 185.6 50 L 198.4 30 L 211.2 70 L 224 46 L 236.8 50 L 320 50"
+				/>
+				<path
+					class="fx-ecg"
+					pathLength="100"
+					d="M 0 50 L 70.4 50 L 83.2 34 L 96 66 L 108.8 42 L 121.6 50 L 185.6 50 L 198.4 30 L 211.2 70 L 224 46 L 236.8 50 L 320 50"
+				/>
 			</svg>
 		{:else if family === 'glitch'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -1127,7 +1161,9 @@
 					<path d="M -19.2 86 Q 96 76 211.2 88 Q 294.4 96 352 86" />
 				</g>
 				<g class="fx-weave">
-					<path d="M 19.2 -8 Q 28.8 40 19.2 108 M 83.2 -8 Q 92.8 40 83.2 108 M 147.2 -8 Q 156.8 40 147.2 108 M 211.2 -8 Q 220.8 40 211.2 108 M 275.2 -8 Q 284.8 40 275.2 108" />
+					<path
+						d="M 19.2 -8 Q 28.8 40 19.2 108 M 83.2 -8 Q 92.8 40 83.2 108 M 147.2 -8 Q 156.8 40 147.2 108 M 211.2 -8 Q 220.8 40 211.2 108 M 275.2 -8 Q 284.8 40 275.2 108"
+					/>
 				</g>
 				{#each SILK_GLINTS as g, i}
 					<circle class="fx-silkglint" style="--g-j: {i}" cx={g[0]} cy={g[1]} r={g[2]} />

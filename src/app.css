@@ -2781,6 +2781,8 @@ html.lenis body {
 }
 
 .fx-lavaflow {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	fill: var(--fx-color);
 	opacity: 0.85;
 	filter: blur(1px) drop-shadow(0 0 10px var(--fx-color-2));
@@ -3167,6 +3169,8 @@ html.lenis body {
 }
 
 .fx-haze {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
 	fill: #d9b171;
 	opacity: calc(0.22 + var(--z-j) * 0.12);
 	mix-blend-mode: screen;
@@ -6685,6 +6689,8 @@ html.lenis body {
 }
 
 .fx-dustveil {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
 	fill: #e9d3a8;
 	opacity: 0.1;
 	mix-blend-mode: screen;
@@ -6812,6 +6818,8 @@ html.lenis body {
 }
 
 .fx-emberbed {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	fill: var(--fx-color);
 	opacity: 0.7;
 	filter: blur(3px);
@@ -7051,6 +7059,8 @@ html.lenis body {
 }
 
 .fx-waterline {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	fill: #dff6ff;
 	opacity: 0.5;
 	animation: fx-surface-lap calc(var(--fx-speed) * 1.1) ease-in-out infinite alternate paused;
@@ -7958,6 +7968,8 @@ html.lenis body {
 }
 
 .fx-jetknot {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
 	fill: #ffffff;
 	opacity: 0;
 	filter: drop-shadow(0 0 6px var(--fx-color-2));
@@ -8068,6 +8080,8 @@ html.lenis body {
 }
 
 .fx-silkglint {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
 	fill: #fff2fa;
 	opacity: 0;
 	filter: drop-shadow(0 0 4px var(--fx-color-2));
@@ -8330,6 +8344,8 @@ html.lenis body {
 }
 
 .fx-auroraglow {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	fill: #4ade80;
 	opacity: 0.05;
 	filter: blur(18px);
@@ -9198,6 +9214,7 @@ html.lenis body {
 }
 
 .fx-swell {
+	transform-box: fill-box;
 	transform-origin: 50% 100%;
 	animation: fx-swell-roll calc(var(--fx-speed) * (1.4 + var(--v-i) * 0.5)) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--v-i) * -1.4s);
@@ -9224,8 +9241,9 @@ html.lenis body {
 }
 
 .fx-breaker {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	filter: blur(2.2px) drop-shadow(0 -4px 14px rgba(6, 40, 70, 0.55));
-	transform-origin: 30% 100%;
 	filter: drop-shadow(0 -4px 12px rgba(6, 40, 70, 0.55));
 	animation: fx-breaker-surge var(--fx-speed) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--w-i, 0) * -0.9s);
@@ -9352,9 +9370,10 @@ html.lenis body {
 }
 
 .fx-spray {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	fill: #ffffff;
 	opacity: 0.75;
-	transform-origin: 50% 100%;
 	animation: fx-spray-fly calc(var(--fx-speed) * 0.75) ease-out infinite paused;
 	animation-delay: calc(var(--y-i, 0) * -0.45s);
 }
@@ -9412,10 +9431,11 @@ html.lenis body {
 }
 
 .fx-funnel {
+	transform-box: fill-box;
+	transform-origin: 50% 0%;
 	fill: var(--fx-color);
 	opacity: calc(var(--fx-opacity, 0.6) * 0.85);
 	filter: blur(2px) drop-shadow(0 0 12px var(--fx-color-2));
-	transform-origin: 50% 100%;
 	animation: fx-funnel-wobble var(--fx-speed) ease-in-out infinite alternate paused;
 }
 
@@ -9454,8 +9474,9 @@ html.lenis body {
 }
 
 .fx-ribbon {
-	filter: blur(5px) saturate(1.2);
+	transform-box: fill-box;
 	transform-origin: 50% 50%;
+	filter: blur(5px) saturate(1.2);
 	animation: fx-ribbon-wave calc(var(--fx-speed) * (1 + var(--n-i) * 0.35)) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--n-i) * -2.2s);
 }
@@ -11560,6 +11581,8 @@ html.lenis body {
 }
 
 .fx-chasm {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
 	fill: #14100c;
 	opacity: 0;
 	animation: fx-chasm-open var(--fx-speed) ease-out infinite paused;
@@ -11653,10 +11676,11 @@ html.lenis body {
 }
 
 .fx-dustring {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
 	fill: var(--fx-color-2);
 	opacity: 0.45;
 	filter: blur(4px);
-	transform-origin: 50% 98%;
 	animation: fx-dust-spread calc(var(--fx-speed) * 0.7) ease-in-out infinite alternate paused;
 }
 
@@ -11748,13 +11772,14 @@ html.lenis body {
 }
 
 .fx-streamer {
+	transform-box: fill-box;
+	transform-origin: 50% 0%;
 	fill: none;
 	stroke: var(--fx-color-2);
 	stroke-width: 2.4;
 	stroke-linecap: round;
 	vector-effect: non-scaling-stroke;
 	opacity: calc(var(--fx-opacity) * 0.8);
-	transform-origin: 50% 0%;
 	animation: fx-streamer-sway calc(var(--fx-speed) * 1.6) ease-in-out infinite alternate paused;
 	animation-delay: calc(var(--r-i) * -0.6s);
 }
@@ -11822,9 +11847,10 @@ html.lenis body {
 }
 
 .fx-foil {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
 	opacity: calc(var(--fx-opacity) * 0.45);
 	mix-blend-mode: screen;
-	transform-origin: 50% 50%;
 	animation: fx-foil-shift calc(var(--fx-speed) * 2) ease-in-out infinite alternate;
 }
 

@@ -235,17 +235,27 @@
 		const parent = node.parentElement;
 		if (!parent) return;
 		parent.setAttribute('data-fx-host', family);
-		return () => parent.removeAttribute('data-fx-host');
+		return () => {
+			parent.removeAttribute('data-fx-host');
+			parent.removeAttribute('data-fx-run');
+		};
+	});
+
+	$effect(() => {
+		const parent = host?.parentElement;
+		if (!parent) return;
+		parent.toggleAttribute('data-fx-run', live && !frozen && family !== 'none');
 	});
 
 	$effect(() => {
 		if (family === 'none' || frozen) return;
-		if (always || typeof IntersectionObserver === 'undefined') {
+		const node = host;
+		if (!node) return;
+		if (typeof IntersectionObserver === 'undefined') {
 			live = true;
 			return;
 		}
-		const node = host;
-		if (!node) return;
+		live = always;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) live = entry.isIntersecting;
@@ -264,9 +274,17 @@
 		style="{variant.style}; --fx-s: {scale}; --fx-h: {boxH || 120}px; --fx-w: {boxW || 360}px"
 		aria-hidden="true"
 	>
-		{#each variant.particles as p}
-			<span class="fx-p" style={p}></span>
-		{/each}
+		{#if family === 'fire'}
+			<span class="fx-flamebed">
+				{#each variant.particles as p}
+					<span class="fx-p" style={p}></span>
+				{/each}
+			</span>
+		{:else}
+			{#each variant.particles as p}
+				<span class="fx-p" style={p}></span>
+			{/each}
+		{/if}
 
 		{#if family === 'earthquake'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">

@@ -358,7 +358,7 @@ function buildParticles(family: EffectFamily, rand: () => number, c1: [number, n
 					`--p-w: ${Math.round(5 + rand() * 12)}px`,
 					`--p-spin: ${Math.round(180 + rand() * 540)}deg`,
 					`--p-drift: ${Math.round((rand() - 0.5) * (family === 'blizzard' ? 340 : 90))}px`,
-					`--p-blur: ${(rand() * 1.4).toFixed(2)}px`,
+					`--p-soft: ${Math.round(58 + rand() * 28)}%`,
 					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.95)}`
 				].join('; ')
 			);

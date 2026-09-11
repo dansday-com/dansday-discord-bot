@@ -669,36 +669,57 @@ html.lenis body {
 
 @keyframes fx-drip {
 	0% {
-		transform: translate3d(0, calc(var(--fx-h, 120px) * -0.3), 0) scale(0.7);
+		transform: translate3d(0, calc(var(--fx-h, 120px) * -0.3), 0);
 		opacity: 0;
 		animation-timing-function: linear;
 	}
-	12% {
+	10% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * -0.148), 0);
 		opacity: 1;
 		animation-timing-function: linear;
 	}
-	26% {
-		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.16), 0) scale(1);
-		animation-timing-function: linear;
-	}
-	34% {
-		transform: translate3d(2px, calc(var(--fx-h, 120px) * 0.21), 0) scale(0.96);
-		animation-timing-function: linear;
-	}
-	58% {
-		transform: translate3d(-2px, calc(var(--fx-h, 120px) * 0.66), 0) scale(1.08);
-		animation-timing-function: linear;
-	}
-	68% {
-		transform: translate3d(-2px, calc(var(--fx-h, 120px) * 0.74), 0) scale(1.02);
-		animation-timing-function: linear;
-	}
-	85% {
+	20% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.004), 0);
 		opacity: 1;
+		animation-timing-function: linear;
+	}
+	30% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.156), 0);
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	40% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.308), 0);
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	50% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.46), 0);
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	60% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.612), 0);
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	70% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.764), 0);
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	80% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.916), 0);
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	90% {
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 1.068), 0);
+		opacity: 0.55;
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: translate3d(1px, calc(var(--fx-h, 120px) * 1.22), 0) scale(1.15);
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 1.22), 0);
 		opacity: 0;
 	}
 }
@@ -2195,17 +2216,17 @@ html.lenis body {
 @keyframes fx-band-spin {
 	0% {
 		transform: scaleX(1) translateY(0) skewX(0deg);
-		opacity: 0.1;
+		opacity: 0;
 		animation-timing-function: linear;
 	}
-	18% {
-		transform: scaleX(0.66) translateY(-3%) skewX(-9deg);
+	10% {
+		transform: scaleX(0.82) translateY(-2%) skewX(-5deg);
+		opacity: 0.42;
+		animation-timing-function: linear;
+	}
+	22% {
+		transform: scaleX(0.62) translateY(-4%) skewX(-9deg);
 		opacity: 0.7;
-		animation-timing-function: linear;
-	}
-	28% {
-		transform: scaleX(0.5) translateY(-5%) skewX(-2.5deg);
-		opacity: 0.66;
 		animation-timing-function: linear;
 	}
 	38% {
@@ -2213,29 +2234,24 @@ html.lenis body {
 		opacity: 0.62;
 		animation-timing-function: linear;
 	}
-	49.5% {
-		transform: scaleX(0.53) translateY(-9%) skewX(-1deg);
-		opacity: 0.51;
+	52% {
+		transform: scaleX(0.54) translateY(-9%) skewX(-2deg);
+		opacity: 0.5;
 		animation-timing-function: linear;
 	}
-	61% {
-		transform: scaleX(0.72) translateY(-11%) skewX(-6deg);
-		opacity: 0.4;
+	66% {
+		transform: scaleX(0.78) translateY(-11%) skewX(-6deg);
+		opacity: 0.36;
 		animation-timing-function: linear;
 	}
-	72.5% {
-		transform: scaleX(0.885) translateY(-12.5%) skewX(-1.5deg);
-		opacity: 0.27;
+	80% {
+		transform: scaleX(0.98) translateY(-13%) skewX(1deg);
+		opacity: 0.2;
 		animation-timing-function: linear;
 	}
-	84% {
-		transform: scaleX(1.05) translateY(-14%) skewX(3deg);
-		opacity: 0.14;
-		animation-timing-function: linear;
-	}
-	92% {
-		transform: scaleX(1.125) translateY(-15.5%) skewX(1.5deg);
-		opacity: 0.07;
+	91% {
+		transform: scaleX(1.1) translateY(-15%) skewX(2deg);
+		opacity: 0.08;
 		animation-timing-function: linear;
 	}
 	100% {
@@ -2567,8 +2583,32 @@ html.lenis body {
 		opacity: 1;
 		animation-timing-function: linear;
 	}
-	100% {
+	88% {
 		opacity: 1;
+		animation-timing-function: linear;
+	}
+	90.5% {
+		opacity: 0.8;
+		animation-timing-function: linear;
+	}
+	93% {
+		opacity: 0.6;
+		animation-timing-function: linear;
+	}
+	95% {
+		opacity: 0.4;
+		animation-timing-function: linear;
+	}
+	97% {
+		opacity: 0.2;
+		animation-timing-function: linear;
+	}
+	98.5% {
+		opacity: 0.1;
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
 	}
 }
 
@@ -3205,7 +3245,15 @@ html.lenis body {
 	position: absolute;
 	inset: 0 -30% 0 -30%;
 	pointer-events: none;
-	background-image: radial-gradient(ellipse 44% 130% at 18% 50%, rgba(196, 148, 76, 0.94) 0%, rgba(196, 148, 76, 0.6) 42%, transparent 74%);
+	background-image: radial-gradient(
+		ellipse 62% 150% at 22% 50%,
+		rgba(196, 148, 76, 0.86) 0%,
+		rgba(196, 148, 76, 0.52) 34%,
+		rgba(196, 148, 76, 0.2) 62%,
+		rgba(196, 148, 76, 0.06) 82%,
+		transparent 100%
+	);
+	filter: blur(14px);
 	animation: fx-dustwall-advance calc(var(--fx-speed) * 5) linear infinite paused;
 }
 
@@ -3492,22 +3540,22 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	58% {
-		transform: scale(1.07) rotate(8deg);
+		transform: scale(1.07) rotate(6deg);
 		opacity: 0.88;
 		animation-timing-function: linear;
 	}
 	72% {
-		transform: scale(0.99) rotate(10deg);
+		transform: scale(0.99) rotate(4deg);
 		opacity: 0.66;
 		animation-timing-function: linear;
 	}
 	88% {
-		transform: scale(0.93) rotate(12deg);
+		transform: scale(0.93) rotate(2deg);
 		opacity: 0.5;
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: scale(0.9) rotate(14deg);
+		transform: scale(0.9) rotate(0deg);
 		opacity: 0.42;
 	}
 }
@@ -3526,38 +3574,47 @@ html.lenis body {
 
 @keyframes fx-occlude-slide {
 	0% {
+		opacity: 0;
 		transform: translate(-72px, 9px) scale(1.02);
 		animation-timing-function: linear;
 	}
-	14% {
-		transform: translate(-50px, 6px) scale(1.02);
+	8% {
+		opacity: 1;
+		transform: translate(-58px, 7px) scale(1.02);
 		animation-timing-function: linear;
 	}
-	28% {
-		transform: translate(-30px, 4px) scale(1.01);
+	22% {
+		opacity: 1;
+		transform: translate(-38px, 5px) scale(1.01);
 		animation-timing-function: linear;
 	}
-	40% {
-		transform: translate(-13px, 2px) scale(1.01);
+	36% {
+		opacity: 1;
+		transform: translate(-19px, 3px) scale(1.01);
 		animation-timing-function: linear;
 	}
 	50% {
+		opacity: 1;
 		transform: translate(0, 0) scale(1.03);
 		animation-timing-function: linear;
 	}
-	60% {
-		transform: translate(13px, -2px) scale(1.01);
+	64% {
+		opacity: 1;
+		transform: translate(19px, -3px) scale(1.01);
 		animation-timing-function: linear;
 	}
-	72% {
-		transform: translate(30px, -4px) scale(1.01);
+	78% {
+		opacity: 1;
+		transform: translate(40px, -5px) scale(1.01);
 		animation-timing-function: linear;
 	}
-	86% {
-		transform: translate(52px, -7px) scale(1.02);
+	92% {
+		opacity: 1;
+		transform: translate(60px, -8px) scale(1.02);
 		animation-timing-function: linear;
 	}
 	100% {
+		opacity: 0;
 		transform: translate(74px, -9px) scale(1.02);
 	}
 }
@@ -3645,13 +3702,26 @@ html.lenis body {
 	mix-blend-mode: screen;
 }
 
+.fx-fallingstar .fx-p::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: -6%;
+	width: max(6px, calc(var(--fx-h, 120px) * 0.05));
+	height: max(6px, calc(var(--fx-h, 120px) * 0.05));
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+	background-image: radial-gradient(circle, #ffffff 0%, var(--p-hue) 44%, transparent 72%);
+	box-shadow: 0 0 12px 3px var(--p-hue);
+}
+
 .fx-fallingstar .fx-p {
 	top: var(--p-y);
 	left: var(--p-x);
 	width: max(2.6px, calc(var(--p-thick) * var(--fx-s, 1) * 1.6));
 	height: clamp(70px, calc(var(--p-len) * var(--fx-s, 1)), 620px);
 	border-radius: 999px;
-	background-image: linear-gradient(to bottom, transparent, var(--p-hue));
+	background-image: linear-gradient(to top, rgba(255, 255, 255, 0) 0%, var(--p-hue) 62%, #ffffff 100%);
 	transform-origin: 50% 0;
 	opacity: 0;
 	filter: drop-shadow(0 0 5px var(--p-hue));
@@ -3784,9 +3854,9 @@ html.lenis body {
 	position: absolute;
 	inset: 0;
 	margin: auto;
-	height: clamp(20px, 68%, 260px);
+	height: clamp(24px, 96%, 380px);
 	width: auto;
-	aspect-ratio: 1;
+	aspect-ratio: 3.2;
 	overflow: hidden;
 	pointer-events: none;
 }
@@ -4020,8 +4090,8 @@ html.lenis body {
 .fx-blackhole .fx-p {
 	top: 50%;
 	left: 50%;
-	width: max(14px, calc(var(--p-arc) * 1.6 * var(--fx-s, 1)));
-	height: max(2.4px, calc(var(--p-thick) * 1.5 * var(--fx-s, 1)));
+	width: max(5px, calc(var(--p-arc) * 0.34 * var(--fx-s, 1)));
+	height: max(1.6px, calc(var(--p-thick) * var(--fx-s, 1)));
 	border-radius: 999px;
 	background-image: linear-gradient(to right, transparent, var(--p-hue), transparent);
 	transform-origin: 50% 50%;
@@ -5659,35 +5729,39 @@ html.lenis body {
 
 @keyframes fx-neon-wash {
 	0% {
-		opacity: 0.06;
+		opacity: 0.28;
 		animation-timing-function: linear;
 	}
 	3% {
-		opacity: 0.06;
-		animation-timing-function: linear;
-	}
-	4% {
-		opacity: 0.2;
+		opacity: 0.28;
 		animation-timing-function: linear;
 	}
 	5% {
-		opacity: 0.34;
-		animation-timing-function: linear;
-	}
-	6% {
-		opacity: 0.21;
+		opacity: 0.06;
 		animation-timing-function: linear;
 	}
 	7% {
-		opacity: 0.08;
+		opacity: 0.34;
 		animation-timing-function: linear;
 	}
 	9% {
-		opacity: 0.18;
+		opacity: 0.08;
 		animation-timing-function: linear;
 	}
-	11% {
+	13% {
 		opacity: 0.28;
+		animation-timing-function: linear;
+	}
+	62% {
+		opacity: 0.28;
+		animation-timing-function: linear;
+	}
+	64% {
+		opacity: 0.12;
+		animation-timing-function: linear;
+	}
+	66% {
+		opacity: 0.3;
 		animation-timing-function: linear;
 	}
 	100% {
@@ -5713,30 +5787,34 @@ html.lenis body {
 
 @keyframes fx-neon-strike {
 	0% {
-		opacity: 0.1;
+		opacity: 0.95;
 		animation-timing-function: linear;
 	}
 	2% {
-		opacity: 0.1;
+		opacity: 0.95;
 		animation-timing-function: linear;
 	}
 	4% {
+		opacity: 0.1;
+		animation-timing-function: linear;
+	}
+	5% {
 		opacity: 1;
 		animation-timing-function: linear;
 	}
-	6% {
+	7% {
 		opacity: 0.14;
 		animation-timing-function: linear;
 	}
-	8% {
+	9% {
 		opacity: 0.92;
 		animation-timing-function: linear;
 	}
-	10% {
+	11% {
 		opacity: 0.2;
 		animation-timing-function: linear;
 	}
-	13% {
+	14% {
 		opacity: 0.95;
 		animation-timing-function: linear;
 	}
@@ -5744,12 +5822,8 @@ html.lenis body {
 		opacity: 0.95;
 		animation-timing-function: linear;
 	}
-	64% {
+	65% {
 		opacity: 0.42;
-		animation-timing-function: linear;
-	}
-	66% {
-		opacity: 0.98;
 		animation-timing-function: linear;
 	}
 	100% {
@@ -5929,18 +6003,22 @@ html.lenis body {
 
 @keyframes fx-name-buzz {
 	0% {
-		opacity: 0.16;
-		animation-timing-function: linear;
-	}
-	2% {
-		opacity: 0.16;
-		animation-timing-function: linear;
-	}
-	4% {
 		opacity: 1;
 		animation-timing-function: linear;
 	}
-	6% {
+	2% {
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	4% {
+		opacity: 0.16;
+		animation-timing-function: linear;
+	}
+	5% {
+		opacity: 1;
+		animation-timing-function: linear;
+	}
+	7% {
 		opacity: 0.2;
 		animation-timing-function: linear;
 	}
@@ -5960,12 +6038,8 @@ html.lenis body {
 		opacity: 1;
 		animation-timing-function: linear;
 	}
-	65% {
+	66% {
 		opacity: 0.44;
-		animation-timing-function: linear;
-	}
-	67% {
-		opacity: 0.99;
 		animation-timing-function: linear;
 	}
 	100% {
@@ -6135,38 +6209,38 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	14% {
-		transform: scale(0.995) rotate(-0.14deg);
-		filter: contrast(1.012) brightness(0.988);
+		transform: scale(0.986) rotate(-0.336deg);
+		filter: contrast(1.029) brightness(0.971);
 		animation-timing-function: linear;
 	}
 	28% {
-		transform: scale(0.988) rotate(-0.32deg);
-		filter: contrast(1.026) brightness(0.973);
+		transform: scale(0.966) rotate(-0.768deg);
+		filter: contrast(1.062) brightness(0.935);
 		animation-timing-function: linear;
 	}
 	40% {
-		transform: scale(0.98) rotate(-0.52deg);
-		filter: contrast(1.042) brightness(0.957);
+		transform: scale(0.944) rotate(-1.248deg);
+		filter: contrast(1.101) brightness(0.897);
 		animation-timing-function: linear;
 	}
 	50% {
-		transform: scale(0.972) rotate(-0.7deg);
-		filter: contrast(1.06) brightness(0.94);
+		transform: scale(0.922) rotate(-1.68deg);
+		filter: contrast(1.144) brightness(0.856);
 		animation-timing-function: linear;
 	}
 	62% {
-		transform: scale(0.979) rotate(-0.34deg);
-		filter: contrast(1.04) brightness(0.958);
+		transform: scale(0.941) rotate(-0.816deg);
+		filter: contrast(1.096) brightness(0.899);
 		animation-timing-function: linear;
 	}
 	74% {
-		transform: scale(0.987) rotate(0.06deg);
-		filter: contrast(1.024) brightness(0.975);
+		transform: scale(0.964) rotate(0.144deg);
+		filter: contrast(1.058) brightness(0.94);
 		animation-timing-function: linear;
 	}
 	87% {
-		transform: scale(0.994) rotate(0.2deg);
-		filter: contrast(1.01) brightness(0.99);
+		transform: scale(0.983) rotate(0.48deg);
+		filter: contrast(1.024) brightness(0.976);
 		animation-timing-function: linear;
 	}
 	100% {
@@ -6186,43 +6260,43 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	11% {
-		transform: scale(0.998) rotate(-0.05deg);
+		transform: scale(0.994) rotate(-0.12deg);
 		animation-timing-function: linear;
 	}
 	22% {
-		transform: scale(0.995) rotate(-0.1deg);
+		transform: scale(0.986) rotate(-0.24deg);
 		animation-timing-function: linear;
 	}
 	33% {
-		transform: scale(0.992) rotate(-0.01deg);
+		transform: scale(0.978) rotate(-0.024deg);
 		animation-timing-function: linear;
 	}
 	44% {
-		transform: scale(0.988) rotate(0.08deg);
+		transform: scale(0.966) rotate(0.192deg);
 		animation-timing-function: linear;
 	}
 	55.5% {
-		transform: scale(0.99) rotate(0.01deg);
+		transform: scale(0.972) rotate(0.024deg);
 		animation-timing-function: linear;
 	}
 	67% {
-		transform: scale(0.992) rotate(-0.06deg);
+		transform: scale(0.978) rotate(-0.144deg);
 		animation-timing-function: linear;
 	}
 	76% {
-		transform: scale(0.987) rotate(0.03deg);
+		transform: scale(0.964) rotate(0.072deg);
 		animation-timing-function: linear;
 	}
 	85% {
-		transform: scale(0.982) rotate(0.12deg);
+		transform: scale(0.95) rotate(0.288deg);
 		animation-timing-function: linear;
 	}
 	92.5% {
-		transform: scale(0.984) rotate(0.06deg);
+		transform: scale(0.955) rotate(0.144deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: scale(0.986) rotate(0deg);
+		transform: scale(0.961) rotate(0deg);
 	}
 }
 
@@ -6232,39 +6306,39 @@ html.lenis body {
 
 @keyframes fx-host-shake {
 	0% {
-		transform: translate3d(-1.5px, 0.5px, 0);
+		transform: translate3d(-3.9px, 1.3px, 0);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		transform: translate3d(0px, -0.25px, 0);
+		transform: translate3d(0px, -0.65px, 0);
 		animation-timing-function: linear;
 	}
 	25% {
-		transform: translate3d(1.5px, -1px, 0);
+		transform: translate3d(3.9px, -2.6px, 0);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		transform: translate3d(0.25px, -1.25px, 0);
+		transform: translate3d(0.65px, -3.25px, 0);
 		animation-timing-function: linear;
 	}
 	50% {
-		transform: translate3d(-1px, -1.5px, 0);
+		transform: translate3d(-2.6px, -3.9px, 0);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		transform: translate3d(0px, -0.25px, 0);
+		transform: translate3d(0px, -0.65px, 0);
 		animation-timing-function: linear;
 	}
 	75% {
-		transform: translate3d(1px, 1px, 0);
+		transform: translate3d(2.6px, 2.6px, 0);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		transform: translate3d(-0.25px, 0.75px, 0);
+		transform: translate3d(-0.65px, 1.95px, 0);
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: translate3d(-1.5px, 0.5px, 0);
+		transform: translate3d(-3.9px, 1.3px, 0);
 	}
 }
 
@@ -6275,47 +6349,47 @@ html.lenis body {
 
 @keyframes fx-host-lean {
 	0% {
-		transform: rotate(-0.6deg) skewX(-0.8deg);
+		transform: rotate(-1.44deg) skewX(-1.92deg);
 		animation-timing-function: linear;
 	}
 	10.5% {
-		transform: rotate(-0.375deg) skewX(-0.5deg);
+		transform: rotate(-0.9deg) skewX(-1.2deg);
 		animation-timing-function: linear;
 	}
 	21% {
-		transform: rotate(-0.15deg) skewX(-0.2deg);
+		transform: rotate(-0.36deg) skewX(-0.48deg);
 		animation-timing-function: linear;
 	}
 	32% {
-		transform: rotate(0.1deg) skewX(0.15deg);
+		transform: rotate(0.24deg) skewX(0.36deg);
 		animation-timing-function: linear;
 	}
 	43% {
-		transform: rotate(0.35deg) skewX(0.5deg);
+		transform: rotate(0.84deg) skewX(1.2deg);
 		animation-timing-function: linear;
 	}
 	53.5% {
-		transform: rotate(0.225deg) skewX(0.3deg);
+		transform: rotate(0.54deg) skewX(0.72deg);
 		animation-timing-function: linear;
 	}
 	64% {
-		transform: rotate(0.1deg) skewX(0.1deg);
+		transform: rotate(0.24deg) skewX(0.24deg);
 		animation-timing-function: linear;
 	}
 	73% {
-		transform: rotate(0.325deg) skewX(0.425deg);
+		transform: rotate(0.78deg) skewX(1.02deg);
 		animation-timing-function: linear;
 	}
 	82% {
-		transform: rotate(0.55deg) skewX(0.75deg);
+		transform: rotate(1.32deg) skewX(1.8deg);
 		animation-timing-function: linear;
 	}
 	91% {
-		transform: rotate(0.6deg) skewX(0.8deg);
+		transform: rotate(1.44deg) skewX(1.92deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: rotate(0.65deg) skewX(0.85deg);
+		transform: rotate(1.56deg) skewX(2.04deg);
 	}
 }
 
@@ -6326,47 +6400,47 @@ html.lenis body {
 
 @keyframes fx-host-rock {
 	0% {
-		transform: rotate(-0.55deg) translateY(1.2px);
+		transform: rotate(-1.32deg) translateY(3.12px);
 		animation-timing-function: linear;
 	}
 	11.5% {
-		transform: rotate(-0.375deg) translateY(0.8px);
+		transform: rotate(-0.9deg) translateY(2.08px);
 		animation-timing-function: linear;
 	}
 	23% {
-		transform: rotate(-0.2deg) translateY(0.4px);
+		transform: rotate(-0.48deg) translateY(1.04px);
 		animation-timing-function: linear;
 	}
 	34.5% {
-		transform: rotate(-0.01deg) translateY(0.05px);
+		transform: rotate(-0.024deg) translateY(0.13px);
 		animation-timing-function: linear;
 	}
 	46% {
-		transform: rotate(0.18deg) translateY(-0.3px);
+		transform: rotate(0.432deg) translateY(-0.78px);
 		animation-timing-function: linear;
 	}
 	57% {
-		transform: rotate(0.115deg) translateY(-0.05px);
+		transform: rotate(0.276deg) translateY(-0.13px);
 		animation-timing-function: linear;
 	}
 	68% {
-		transform: rotate(0.05deg) translateY(0.2px);
+		transform: rotate(0.12deg) translateY(0.52px);
 		animation-timing-function: linear;
 	}
 	77% {
-		transform: rotate(0.235deg) translateY(-0.35px);
+		transform: rotate(0.564deg) translateY(-0.91px);
 		animation-timing-function: linear;
 	}
 	86% {
-		transform: rotate(0.42deg) translateY(-0.9px);
+		transform: rotate(1.008deg) translateY(-2.34px);
 		animation-timing-function: linear;
 	}
 	93% {
-		transform: rotate(0.485deg) translateY(-1.05px);
+		transform: rotate(1.164deg) translateY(-2.73px);
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: rotate(0.55deg) translateY(-1.2px);
+		transform: rotate(1.32deg) translateY(-3.12px);
 	}
 }
 
@@ -6375,38 +6449,50 @@ html.lenis body {
 }
 
 @keyframes fx-host-tear {
-	0%,
+	0% {
+		transform: translate3d(0, 0, 0);
+		filter: none;
+		animation-timing-function: linear;
+	}
 	62% {
 		transform: translate3d(0, 0, 0);
 		filter: none;
+		animation-timing-function: linear;
 	}
 	63% {
-		transform: translate3d(-3px, 0, 0);
-		filter: hue-rotate(12deg);
+		transform: translate3d(-7.8px, 0, 0);
+		filter: hue-rotate(63.36deg);
+		animation-timing-function: linear;
 	}
 	64.5% {
-		transform: translate3d(2px, 1px, 0);
-		filter: hue-rotate(4deg);
+		transform: translate3d(5.2px, 2.6px, 0);
+		filter: hue-rotate(21.12deg);
+		animation-timing-function: linear;
 	}
 	66% {
-		transform: translate3d(-1px, -1px, 0);
-		filter: hue-rotate(-10deg);
+		transform: translate3d(-2.6px, -2.6px, 0);
+		filter: hue-rotate(-52.8deg);
+		animation-timing-function: linear;
 	}
 	67.5% {
-		transform: translate3d(3px, 1px, 0);
-		filter: hue-rotate(8deg);
+		transform: translate3d(7.8px, 2.6px, 0);
+		filter: hue-rotate(42.24deg);
+		animation-timing-function: linear;
 	}
 	69% {
-		transform: translate3d(-2px, 0, 0);
-		filter: hue-rotate(-6deg);
+		transform: translate3d(-5.2px, 0, 0);
+		filter: hue-rotate(-31.68deg);
+		animation-timing-function: linear;
 	}
 	70.5% {
-		transform: translate3d(1px, -1px, 0);
-		filter: hue-rotate(3deg);
+		transform: translate3d(2.6px, -2.6px, 0);
+		filter: hue-rotate(15.84deg);
+		animation-timing-function: linear;
 	}
 	72% {
 		transform: translate3d(0, 0, 0);
 		filter: none;
+		animation-timing-function: linear;
 	}
 	100% {
 		transform: translate3d(0, 0, 0);
@@ -6761,39 +6847,39 @@ html.lenis body {
 
 @keyframes fx-host-scorch {
 	0% {
-		filter: brightness(0.98) saturate(1.04);
+		filter: brightness(0.952) saturate(1.096);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: brightness(0.991) saturate(1.058);
+		filter: brightness(0.978) saturate(1.139);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: brightness(1.003) saturate(1.075);
+		filter: brightness(1.007) saturate(1.18);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: brightness(1.014) saturate(1.093);
+		filter: brightness(1.034) saturate(1.223);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: brightness(1.025) saturate(1.11);
+		filter: brightness(1.06) saturate(1.264);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: brightness(1.036) saturate(1.128);
+		filter: brightness(1.086) saturate(1.307);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: brightness(1.047) saturate(1.145);
+		filter: brightness(1.113) saturate(1.348);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: brightness(1.059) saturate(1.163);
+		filter: brightness(1.142) saturate(1.391);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(1.07) saturate(1.18);
+		filter: brightness(1.168) saturate(1.432);
 	}
 }
 
@@ -6811,27 +6897,27 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	4% {
-		filter: brightness(1.14);
+		filter: brightness(1.336);
 		animation-timing-function: linear;
 	}
 	5% {
-		filter: brightness(1.05);
+		filter: brightness(1.12);
 		animation-timing-function: linear;
 	}
 	6% {
-		filter: brightness(0.96);
+		filter: brightness(0.904);
 		animation-timing-function: linear;
 	}
 	7.5% {
-		filter: brightness(1.03);
+		filter: brightness(1.072);
 		animation-timing-function: linear;
 	}
 	9% {
-		filter: brightness(1.1);
+		filter: brightness(1.24);
 		animation-timing-function: linear;
 	}
 	54.5% {
-		filter: brightness(1.05);
+		filter: brightness(1.12);
 		animation-timing-function: linear;
 	}
 	100% {
@@ -7072,39 +7158,39 @@ html.lenis body {
 
 @keyframes fx-host-chill {
 	0% {
-		filter: saturate(0.96) brightness(1);
+		filter: saturate(0.904) brightness(1);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: saturate(0.975) brightness(1.005);
+		filter: saturate(0.94) brightness(1.012);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: saturate(0.99) brightness(1.01);
+		filter: saturate(0.976) brightness(1.024);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: saturate(1.005) brightness(1.015);
+		filter: saturate(1.012) brightness(1.036);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: saturate(1.02) brightness(1.02);
+		filter: saturate(1.048) brightness(1.048);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: saturate(1.035) brightness(1.025);
+		filter: saturate(1.084) brightness(1.06);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: saturate(1.05) brightness(1.03);
+		filter: saturate(1.12) brightness(1.072);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: saturate(1.065) brightness(1.035);
+		filter: saturate(1.156) brightness(1.084);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: saturate(1.08) brightness(1.04);
+		filter: saturate(1.192) brightness(1.096);
 	}
 }
 
@@ -7119,53 +7205,53 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	9.5% {
-		filter: brightness(1.025) saturate(1.03);
-		transform: scale(1.002);
-		animation-timing-function: linear;
-	}
-	19% {
-		filter: brightness(1.05) saturate(1.06);
-		transform: scale(1.003);
-		animation-timing-function: linear;
-	}
-	28.5% {
-		filter: brightness(1.03) saturate(1.04);
-		transform: scale(1.002);
-		animation-timing-function: linear;
-	}
-	38% {
-		filter: brightness(1.01) saturate(1.02);
-		transform: scale(1.001);
-		animation-timing-function: linear;
-	}
-	48% {
-		filter: brightness(1.05) saturate(1.075);
-		transform: scale(1.003);
-		animation-timing-function: linear;
-	}
-	58% {
-		filter: brightness(1.09) saturate(1.13);
+		filter: brightness(1.06) saturate(1.072);
 		transform: scale(1.006);
 		animation-timing-function: linear;
 	}
+	19% {
+		filter: brightness(1.12) saturate(1.144);
+		transform: scale(1.008);
+		animation-timing-function: linear;
+	}
+	28.5% {
+		filter: brightness(1.072) saturate(1.096);
+		transform: scale(1.006);
+		animation-timing-function: linear;
+	}
+	38% {
+		filter: brightness(1.024) saturate(1.048);
+		transform: scale(1.003);
+		animation-timing-function: linear;
+	}
+	48% {
+		filter: brightness(1.12) saturate(1.18);
+		transform: scale(1.008);
+		animation-timing-function: linear;
+	}
+	58% {
+		filter: brightness(1.216) saturate(1.312);
+		transform: scale(1.017);
+		animation-timing-function: linear;
+	}
 	68.5% {
-		filter: brightness(1.06) saturate(1.09);
-		transform: scale(1.004);
+		filter: brightness(1.144) saturate(1.216);
+		transform: scale(1.011);
 		animation-timing-function: linear;
 	}
 	79% {
-		filter: brightness(1.03) saturate(1.05);
-		transform: scale(1.002);
+		filter: brightness(1.072) saturate(1.12);
+		transform: scale(1.006);
 		animation-timing-function: linear;
 	}
 	89.5% {
-		filter: brightness(1.07) saturate(1.1);
-		transform: scale(1.005);
+		filter: brightness(1.168) saturate(1.24);
+		transform: scale(1.014);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(1.11) saturate(1.15);
-		transform: scale(1.007);
+		filter: brightness(1.264) saturate(1.36);
+		transform: scale(1.02);
 	}
 }
 
@@ -7175,43 +7261,43 @@ html.lenis body {
 
 @keyframes fx-host-settle {
 	0% {
-		filter: brightness(1.02) saturate(0.94) hue-rotate(-4deg);
+		filter: brightness(1.048) saturate(0.856) hue-rotate(-21.12deg);
 		transform: translateY(0);
 		animation-timing-function: linear;
 	}
 	24% {
-		filter: brightness(1.04) saturate(0.92) hue-rotate(-6deg);
-		transform: translateY(0.4px);
+		filter: brightness(1.096) saturate(0.808) hue-rotate(-31.68deg);
+		transform: translateY(1.04px);
 		animation-timing-function: linear;
 	}
 	36% {
-		filter: brightness(1.035) saturate(0.91) hue-rotate(-5.5deg);
-		transform: translateY(0.3px);
+		filter: brightness(1.084) saturate(0.784) hue-rotate(-29.04deg);
+		transform: translateY(0.78px);
 		animation-timing-function: linear;
 	}
 	48% {
-		filter: brightness(1.03) saturate(0.9) hue-rotate(-5deg);
-		transform: translateY(0.2px);
+		filter: brightness(1.072) saturate(0.76) hue-rotate(-26.4deg);
+		transform: translateY(0.52px);
 		animation-timing-function: linear;
 	}
 	59.5% {
-		filter: brightness(1.04) saturate(0.895) hue-rotate(-6.5deg);
-		transform: translateY(0.5px);
+		filter: brightness(1.096) saturate(0.748) hue-rotate(-34.32deg);
+		transform: translateY(1.3px);
 		animation-timing-function: linear;
 	}
 	71% {
-		filter: brightness(1.05) saturate(0.89) hue-rotate(-8deg);
-		transform: translateY(0.8px);
+		filter: brightness(1.12) saturate(0.736) hue-rotate(-42.24deg);
+		transform: translateY(2.08px);
 		animation-timing-function: linear;
 	}
 	85.5% {
-		filter: brightness(1.055) saturate(0.885) hue-rotate(-8.5deg);
-		transform: translateY(0.9px);
+		filter: brightness(1.132) saturate(0.724) hue-rotate(-44.88deg);
+		transform: translateY(2.34px);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(1.06) saturate(0.88) hue-rotate(-9deg);
-		transform: translateY(1px);
+		filter: brightness(1.144) saturate(0.712) hue-rotate(-47.52deg);
+		transform: translateY(2.6px);
 	}
 }
 
@@ -7221,39 +7307,39 @@ html.lenis body {
 
 @keyframes fx-host-damp {
 	0% {
-		filter: saturate(0.9) brightness(0.98) contrast(1.02);
+		filter: saturate(0.76) brightness(0.952) contrast(1.048);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: saturate(0.888) brightness(0.974) contrast(1.025);
+		filter: saturate(0.731) brightness(0.938) contrast(1.06);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: saturate(0.875) brightness(0.968) contrast(1.03);
+		filter: saturate(0.7) brightness(0.923) contrast(1.072);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: saturate(0.863) brightness(0.962) contrast(1.035);
+		filter: saturate(0.671) brightness(0.909) contrast(1.084);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: saturate(0.85) brightness(0.955) contrast(1.04);
+		filter: saturate(0.64) brightness(0.892) contrast(1.096);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: saturate(0.837) brightness(0.949) contrast(1.045);
+		filter: saturate(0.609) brightness(0.878) contrast(1.108);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: saturate(0.825) brightness(0.943) contrast(1.05);
+		filter: saturate(0.58) brightness(0.863) contrast(1.12);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: saturate(0.813) brightness(0.937) contrast(1.055);
+		filter: saturate(0.551) brightness(0.849) contrast(1.132);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: saturate(0.8) brightness(0.93) contrast(1.06);
+		filter: saturate(0.52) brightness(0.832) contrast(1.144);
 	}
 }
 
@@ -7263,39 +7349,39 @@ html.lenis body {
 
 @keyframes fx-host-smoulder {
 	0% {
-		filter: brightness(1) sepia(0.06) saturate(1.06);
+		filter: brightness(1) sepia(0.132) saturate(1.144);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: brightness(1.01) sepia(0.073) saturate(1.083);
+		filter: brightness(1.024) sepia(0.161) saturate(1.199);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: brightness(1.02) sepia(0.085) saturate(1.105);
+		filter: brightness(1.048) sepia(0.187) saturate(1.252);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: brightness(1.03) sepia(0.098) saturate(1.128);
+		filter: brightness(1.072) sepia(0.216) saturate(1.307);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: brightness(1.04) sepia(0.11) saturate(1.15);
+		filter: brightness(1.096) sepia(0.242) saturate(1.36);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: brightness(1.05) sepia(0.123) saturate(1.172);
+		filter: brightness(1.12) sepia(0.271) saturate(1.413);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: brightness(1.06) sepia(0.135) saturate(1.195);
+		filter: brightness(1.144) sepia(0.297) saturate(1.468);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: brightness(1.07) sepia(0.148) saturate(1.218);
+		filter: brightness(1.168) sepia(0.326) saturate(1.523);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(1.08) sepia(0.16) saturate(1.24);
+		filter: brightness(1.192) sepia(0.352) saturate(1.576);
 	}
 }
 
@@ -7313,23 +7399,23 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	66% {
-		transform: scale(1.006) rotate(-0.175deg);
+		transform: scale(1.017) rotate(-0.42deg);
 		animation-timing-function: linear;
 	}
 	70% {
-		transform: scale(1.012) rotate(-0.35deg);
+		transform: scale(1.034) rotate(-0.84deg);
 		animation-timing-function: linear;
 	}
 	75% {
-		transform: scale(1.004) rotate(-0.025deg);
+		transform: scale(1.011) rotate(-0.06deg);
 		animation-timing-function: linear;
 	}
 	80% {
-		transform: scale(0.995) rotate(0.3deg);
+		transform: scale(0.986) rotate(0.72deg);
 		animation-timing-function: linear;
 	}
 	90% {
-		transform: scale(0.998) rotate(0.15deg);
+		transform: scale(0.994) rotate(0.36deg);
 		animation-timing-function: linear;
 	}
 	100% {
@@ -7343,48 +7429,48 @@ html.lenis body {
 
 @keyframes fx-host-float {
 	0% {
-		transform: translateY(1.6px) scale(0.998) rotate(-0.1deg);
-		filter: hue-rotate(-3deg);
+		transform: translateY(4.16px) scale(0.994) rotate(-0.24deg);
+		filter: hue-rotate(-15.84deg);
 		animation-timing-function: linear;
 	}
 	11% {
-		transform: translateY(1.1px) scale(1) rotate(-0.025deg);
-		filter: hue-rotate(-2deg);
+		transform: translateY(2.86px) scale(1) rotate(-0.06deg);
+		filter: hue-rotate(-10.56deg);
 		animation-timing-function: linear;
 	}
 	22% {
-		transform: translateY(0.6px) scale(1.001) rotate(0.05deg);
-		filter: hue-rotate(-1deg);
+		transform: translateY(1.56px) scale(1.003) rotate(0.12deg);
+		filter: hue-rotate(-5.28deg);
 		animation-timing-function: linear;
 	}
 	33.5% {
-		transform: translateY(0.1px) scale(1.002) rotate(0.075deg);
+		transform: translateY(0.26px) scale(1.006) rotate(0.18deg);
 		filter: hue-rotate(0deg);
 		animation-timing-function: linear;
 	}
 	45% {
-		transform: translateY(-0.4px) scale(1.002) rotate(0.1deg);
-		filter: hue-rotate(1deg);
+		transform: translateY(-1.04px) scale(1.006) rotate(0.24deg);
+		filter: hue-rotate(5.28deg);
 		animation-timing-function: linear;
 	}
 	56.5% {
-		transform: translateY(-0.7px) scale(1.003) rotate(0.025deg);
-		filter: hue-rotate(2deg);
+		transform: translateY(-1.82px) scale(1.008) rotate(0.06deg);
+		filter: hue-rotate(10.56deg);
 		animation-timing-function: linear;
 	}
 	68% {
-		transform: translateY(-1px) scale(1.003) rotate(-0.05deg);
-		filter: hue-rotate(3deg);
+		transform: translateY(-2.6px) scale(1.008) rotate(-0.12deg);
+		filter: hue-rotate(15.84deg);
 		animation-timing-function: linear;
 	}
 	84% {
-		transform: translateY(-1.3px) scale(1.003) rotate(0.035deg);
-		filter: hue-rotate(3.5deg);
+		transform: translateY(-3.38px) scale(1.008) rotate(0.084deg);
+		filter: hue-rotate(18.48deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: translateY(-1.6px) scale(1.004) rotate(0.12deg);
-		filter: hue-rotate(4deg);
+		transform: translateY(-4.16px) scale(1.011) rotate(0.288deg);
+		filter: hue-rotate(21.12deg);
 	}
 }
 
@@ -7394,55 +7480,55 @@ html.lenis body {
 
 @keyframes fx-host-crt {
 	0% {
-		filter: contrast(1.04) brightness(1);
+		filter: contrast(1.096) brightness(1);
 		animation-timing-function: linear;
 	}
 	12% {
-		filter: contrast(1.06) brightness(0.99);
+		filter: contrast(1.144) brightness(0.976);
 		animation-timing-function: linear;
 	}
 	24% {
-		filter: contrast(1.08) brightness(0.98);
+		filter: contrast(1.192) brightness(0.952);
 		animation-timing-function: linear;
 	}
 	36% {
-		filter: contrast(1.1) brightness(0.97);
+		filter: contrast(1.24) brightness(0.928);
 		animation-timing-function: linear;
 	}
 	48% {
-		filter: contrast(1.12) brightness(0.96);
+		filter: contrast(1.288) brightness(0.904);
 		animation-timing-function: linear;
 	}
 	49% {
-		filter: contrast(1.09) brightness(0.985);
+		filter: contrast(1.216) brightness(0.964);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: contrast(1.06) brightness(1.01);
+		filter: contrast(1.144) brightness(1.024);
 		animation-timing-function: linear;
 	}
 	51% {
-		filter: contrast(1.03) brightness(1.035);
+		filter: contrast(1.072) brightness(1.084);
 		animation-timing-function: linear;
 	}
 	52% {
-		filter: contrast(1) brightness(1.06);
+		filter: contrast(1) brightness(1.144);
 		animation-timing-function: linear;
 	}
 	64% {
-		filter: contrast(1.01) brightness(1.045);
+		filter: contrast(1.024) brightness(1.108);
 		animation-timing-function: linear;
 	}
 	76% {
-		filter: contrast(1.02) brightness(1.03);
+		filter: contrast(1.048) brightness(1.072);
 		animation-timing-function: linear;
 	}
 	88% {
-		filter: contrast(1.03) brightness(1.015);
+		filter: contrast(1.072) brightness(1.036);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: contrast(1.04) brightness(1);
+		filter: contrast(1.096) brightness(1);
 	}
 }
 
@@ -7452,57 +7538,57 @@ html.lenis body {
 
 @keyframes fx-host-flutter {
 	0% {
-		filter: contrast(1.03) brightness(1);
+		filter: contrast(1.072) brightness(1);
 		transform: translate3d(0, 0, 0);
 		animation-timing-function: linear;
 	}
 	33% {
-		filter: contrast(1.07) brightness(0.98);
-		transform: translate3d(0.4px, -0.3px, 0);
+		filter: contrast(1.168) brightness(0.952);
+		transform: translate3d(1.04px, -0.78px, 0);
 		animation-timing-function: linear;
 	}
 	37.2% {
-		filter: contrast(1.063) brightness(0.985);
-		transform: translate3d(0.313px, -0.212px, 0);
+		filter: contrast(1.151) brightness(0.964);
+		transform: translate3d(0.814px, -0.551px, 0);
 		animation-timing-function: linear;
 	}
 	41.3% {
-		filter: contrast(1.055) brightness(0.99);
-		transform: translate3d(0.225px, -0.125px, 0);
+		filter: contrast(1.132) brightness(0.976);
+		transform: translate3d(0.585px, -0.325px, 0);
 		animation-timing-function: linear;
 	}
 	45.4% {
-		filter: contrast(1.047) brightness(0.995);
-		transform: translate3d(0.138px, -0.038px, 0);
+		filter: contrast(1.113) brightness(0.988);
+		transform: translate3d(0.359px, -0.099px, 0);
 		animation-timing-function: linear;
 	}
 	49.5% {
-		filter: contrast(1.04) brightness(1);
-		transform: translate3d(0.05px, 0.05px, 0);
+		filter: contrast(1.096) brightness(1);
+		transform: translate3d(0.13px, 0.13px, 0);
 		animation-timing-function: linear;
 	}
 	53.7% {
-		filter: contrast(1.033) brightness(1.005);
-		transform: translate3d(-0.037px, 0.138px, 0);
+		filter: contrast(1.079) brightness(1.012);
+		transform: translate3d(-0.096px, 0.359px, 0);
 		animation-timing-function: linear;
 	}
 	57.8% {
-		filter: contrast(1.025) brightness(1.01);
-		transform: translate3d(-0.125px, 0.225px, 0);
+		filter: contrast(1.06) brightness(1.024);
+		transform: translate3d(-0.325px, 0.585px, 0);
 		animation-timing-function: linear;
 	}
 	61.9% {
-		filter: contrast(1.018) brightness(1.015);
-		transform: translate3d(-0.212px, 0.313px, 0);
+		filter: contrast(1.043) brightness(1.036);
+		transform: translate3d(-0.551px, 0.814px, 0);
 		animation-timing-function: linear;
 	}
 	66% {
-		filter: contrast(1.01) brightness(1.02);
-		transform: translate3d(-0.3px, 0.4px, 0);
+		filter: contrast(1.024) brightness(1.048);
+		transform: translate3d(-0.78px, 1.04px, 0);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: contrast(1.03) brightness(1);
+		filter: contrast(1.072) brightness(1);
 		transform: translate3d(0, 0, 0);
 	}
 }
@@ -7513,39 +7599,39 @@ html.lenis body {
 
 @keyframes fx-host-iridesce {
 	0% {
-		filter: hue-rotate(0deg) saturate(1.1);
+		filter: hue-rotate(0deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: hue-rotate(45deg) saturate(1.1);
+		filter: hue-rotate(237.6deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: hue-rotate(90deg) saturate(1.1);
+		filter: hue-rotate(475.2deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: hue-rotate(135deg) saturate(1.1);
+		filter: hue-rotate(712.8deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: hue-rotate(180deg) saturate(1.1);
+		filter: hue-rotate(950.4deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: hue-rotate(225deg) saturate(1.1);
+		filter: hue-rotate(1188deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: hue-rotate(270deg) saturate(1.1);
+		filter: hue-rotate(1425.6deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: hue-rotate(315deg) saturate(1.1);
+		filter: hue-rotate(1663.2deg) saturate(1.24);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: hue-rotate(360deg) saturate(1.1);
+		filter: hue-rotate(1900.8deg) saturate(1.24);
 	}
 }
 
@@ -7555,39 +7641,39 @@ html.lenis body {
 
 @keyframes fx-host-veil {
 	0% {
-		filter: hue-rotate(-12deg) brightness(1) saturate(1.06);
+		filter: hue-rotate(-63.36deg) brightness(1) saturate(1.144);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: hue-rotate(-8.5deg) brightness(1.009) saturate(1.078);
+		filter: hue-rotate(-44.88deg) brightness(1.022) saturate(1.187);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: hue-rotate(-5deg) brightness(1.018) saturate(1.095);
+		filter: hue-rotate(-26.4deg) brightness(1.043) saturate(1.228);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: hue-rotate(-1.5deg) brightness(1.027) saturate(1.112);
+		filter: hue-rotate(-7.92deg) brightness(1.065) saturate(1.269);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: hue-rotate(2deg) brightness(1.035) saturate(1.13);
+		filter: hue-rotate(10.56deg) brightness(1.084) saturate(1.312);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: hue-rotate(5.5deg) brightness(1.044) saturate(1.148);
+		filter: hue-rotate(29.04deg) brightness(1.106) saturate(1.355);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: hue-rotate(9deg) brightness(1.053) saturate(1.165);
+		filter: hue-rotate(47.52deg) brightness(1.127) saturate(1.396);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: hue-rotate(12.5deg) brightness(1.062) saturate(1.183);
+		filter: hue-rotate(66deg) brightness(1.149) saturate(1.439);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: hue-rotate(16deg) brightness(1.07) saturate(1.2);
+		filter: hue-rotate(84.48deg) brightness(1.168) saturate(1.48);
 	}
 }
 
@@ -7601,31 +7687,31 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	6% {
-		transform: scale(1.007);
+		transform: scale(1.02);
 		animation-timing-function: linear;
 	}
 	12% {
-		transform: scale(1.014);
+		transform: scale(1.039);
 		animation-timing-function: linear;
 	}
 	18% {
-		transform: scale(1.008);
+		transform: scale(1.022);
 		animation-timing-function: linear;
 	}
 	24% {
-		transform: scale(1.002);
-		animation-timing-function: linear;
-	}
-	30% {
 		transform: scale(1.006);
 		animation-timing-function: linear;
 	}
+	30% {
+		transform: scale(1.017);
+		animation-timing-function: linear;
+	}
 	36% {
-		transform: scale(1.009);
+		transform: scale(1.025);
 		animation-timing-function: linear;
 	}
 	44% {
-		transform: scale(1.005);
+		transform: scale(1.014);
 		animation-timing-function: linear;
 	}
 	52% {
@@ -7653,27 +7739,27 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	55% {
-		filter: brightness(1.3);
-		transform: translate3d(1px, -1px, 0);
+		filter: brightness(1.72);
+		transform: translate3d(2.6px, -2.6px, 0);
 		animation-timing-function: linear;
 	}
 	58% {
-		filter: brightness(1.02);
-		transform: translate3d(-1px, 0, 0);
+		filter: brightness(1.048);
+		transform: translate3d(-2.6px, 0, 0);
 		animation-timing-function: linear;
 	}
 	61% {
-		filter: brightness(1.16);
+		filter: brightness(1.384);
 		transform: translate3d(0, 0, 0);
 		animation-timing-function: linear;
 	}
 	70.8% {
-		filter: brightness(1.12);
+		filter: brightness(1.288);
 		transform: translate3d(0, 0, 0);
 		animation-timing-function: linear;
 	}
 	80.5% {
-		filter: brightness(1.08);
+		filter: brightness(1.192);
 		transform: translate3d(0, 0, 0);
 		animation-timing-function: linear;
 	}
@@ -7688,38 +7774,50 @@ html.lenis body {
 }
 
 @keyframes fx-host-impactjolt {
-	0%,
+	0% {
+		transform: translate3d(0, 0, 0);
+		filter: brightness(1);
+		animation-timing-function: linear;
+	}
 	62% {
 		transform: translate3d(0, 0, 0);
 		filter: brightness(1);
+		animation-timing-function: linear;
 	}
 	63.5% {
-		transform: translate3d(0, 2px, 0);
-		filter: brightness(1.18);
+		transform: translate3d(0, 5.2px, 0);
+		filter: brightness(1.432);
+		animation-timing-function: linear;
 	}
 	65% {
-		transform: translate3d(0, 1.4px, 0);
-		filter: brightness(1.12);
+		transform: translate3d(0, 3.64px, 0);
+		filter: brightness(1.288);
+		animation-timing-function: linear;
 	}
 	66.5% {
-		transform: translate3d(0, -1px, 0);
-		filter: brightness(1.06);
+		transform: translate3d(0, -2.6px, 0);
+		filter: brightness(1.144);
+		animation-timing-function: linear;
 	}
 	68% {
-		transform: translate3d(0, -0.4px, 0);
-		filter: brightness(1.03);
+		transform: translate3d(0, -1.04px, 0);
+		filter: brightness(1.072);
+		animation-timing-function: linear;
 	}
 	69.5% {
-		transform: translate3d(0, 0.5px, 0);
-		filter: brightness(1.01);
+		transform: translate3d(0, 1.3px, 0);
+		filter: brightness(1.024);
+		animation-timing-function: linear;
 	}
 	71% {
-		transform: translate3d(0, 0.2px, 0);
+		transform: translate3d(0, 0.52px, 0);
 		filter: brightness(1);
+		animation-timing-function: linear;
 	}
 	73% {
 		transform: translate3d(0, 0, 0);
 		filter: brightness(1);
+		animation-timing-function: linear;
 	}
 	100% {
 		transform: translate3d(0, 0, 0);
@@ -7733,48 +7831,48 @@ html.lenis body {
 
 @keyframes fx-host-whiteout {
 	0% {
-		filter: saturate(0.8) brightness(1.02);
-		transform: skewX(-0.55deg) translateX(-0.6px);
+		filter: saturate(0.52) brightness(1.048);
+		transform: skewX(-1.32deg) translateX(-1.56px);
 		animation-timing-function: linear;
 	}
 	10.5% {
-		filter: saturate(0.77) brightness(1.035);
-		transform: skewX(-0.375deg) translateX(-0.4px);
+		filter: saturate(0.448) brightness(1.084);
+		transform: skewX(-0.9deg) translateX(-1.04px);
 		animation-timing-function: linear;
 	}
 	21% {
-		filter: saturate(0.74) brightness(1.05);
-		transform: skewX(-0.2deg) translateX(-0.2px);
+		filter: saturate(0.376) brightness(1.12);
+		transform: skewX(-0.48deg) translateX(-0.52px);
 		animation-timing-function: linear;
 	}
 	32.5% {
-		filter: saturate(0.72) brightness(1.045);
-		transform: skewX(-0.025deg) translateX(0px);
+		filter: saturate(0.328) brightness(1.108);
+		transform: skewX(-0.06deg) translateX(0px);
 		animation-timing-function: linear;
 	}
 	44% {
-		filter: saturate(0.7) brightness(1.04);
-		transform: skewX(0.15deg) translateX(0.2px);
+		filter: saturate(0.28) brightness(1.096);
+		transform: skewX(0.36deg) translateX(0.52px);
 		animation-timing-function: linear;
 	}
 	55.5% {
-		filter: saturate(0.68) brightness(1.06);
-		transform: skewX(0.275deg) translateX(0.35px);
+		filter: saturate(0.232) brightness(1.144);
+		transform: skewX(0.66deg) translateX(0.91px);
 		animation-timing-function: linear;
 	}
 	67% {
-		filter: saturate(0.66) brightness(1.08);
-		transform: skewX(0.4deg) translateX(0.5px);
+		filter: saturate(0.184) brightness(1.192);
+		transform: skewX(0.96deg) translateX(1.3px);
 		animation-timing-function: linear;
 	}
 	83.5% {
-		filter: saturate(0.63) brightness(1.095);
-		transform: skewX(0.525deg) translateX(0.65px);
+		filter: saturate(0.112) brightness(1.228);
+		transform: skewX(1.26deg) translateX(1.69px);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: saturate(0.6) brightness(1.11);
-		transform: skewX(0.65deg) translateX(0.8px);
+		filter: saturate(0.04) brightness(1.264);
+		transform: skewX(1.56deg) translateX(2.08px);
 	}
 }
 
@@ -7784,39 +7882,39 @@ html.lenis body {
 
 @keyframes fx-host-prism {
 	0% {
-		filter: saturate(1.05) hue-rotate(-8deg);
+		filter: saturate(1.12) hue-rotate(-42.24deg);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: saturate(1.084) hue-rotate(-5.75deg);
+		filter: saturate(1.202) hue-rotate(-30.36deg);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: saturate(1.118) hue-rotate(-3.5deg);
+		filter: saturate(1.283) hue-rotate(-18.48deg);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: saturate(1.152) hue-rotate(-1.25deg);
+		filter: saturate(1.365) hue-rotate(-6.6deg);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: saturate(1.185) hue-rotate(1deg);
+		filter: saturate(1.444) hue-rotate(5.28deg);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: saturate(1.219) hue-rotate(3.25deg);
+		filter: saturate(1.526) hue-rotate(17.16deg);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: saturate(1.253) hue-rotate(5.5deg);
+		filter: saturate(1.607) hue-rotate(29.04deg);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: saturate(1.287) hue-rotate(7.75deg);
+		filter: saturate(1.689) hue-rotate(40.92deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: saturate(1.32) hue-rotate(10deg);
+		filter: saturate(1.768) hue-rotate(52.8deg);
 	}
 }
 
@@ -7827,39 +7925,39 @@ html.lenis body {
 @keyframes fx-host-swoon {
 	0% {
 		transform: scale(1);
-		filter: saturate(1.04);
+		filter: saturate(1.096);
 		animation-timing-function: linear;
 	}
 	5% {
-		transform: scale(1.006);
-		filter: saturate(1.1);
+		transform: scale(1.017);
+		filter: saturate(1.24);
 		animation-timing-function: linear;
 	}
 	10% {
-		transform: scale(1.011);
-		filter: saturate(1.16);
+		transform: scale(1.031);
+		filter: saturate(1.384);
 		animation-timing-function: linear;
 	}
 	20% {
-		transform: scale(1.001);
+		transform: scale(1.003);
 		animation-timing-function: linear;
 	}
 	25% {
-		transform: scale(1.004);
+		transform: scale(1.011);
 		animation-timing-function: linear;
 	}
 	30% {
-		transform: scale(1.007);
+		transform: scale(1.02);
 		animation-timing-function: linear;
 	}
 	46% {
 		transform: scale(1);
-		filter: saturate(1.04);
+		filter: saturate(1.096);
 		animation-timing-function: linear;
 	}
 	100% {
 		transform: scale(1);
-		filter: saturate(1.04);
+		filter: saturate(1.096);
 	}
 }
 
@@ -7868,30 +7966,41 @@ html.lenis body {
 }
 
 @keyframes fx-host-recoil {
-	0%,
+	0% {
+		transform: translate3d(0, 0, 0);
+		animation-timing-function: linear;
+	}
 	40% {
 		transform: translate3d(0, 0, 0);
+		animation-timing-function: linear;
 	}
 	41.5% {
-		transform: translate3d(-2px, 1px, 0);
+		transform: translate3d(-5.2px, 2.6px, 0);
+		animation-timing-function: linear;
 	}
 	43% {
-		transform: translate3d(-1.2px, 0.6px, 0);
+		transform: translate3d(-3.12px, 1.56px, 0);
+		animation-timing-function: linear;
 	}
 	44.5% {
-		transform: translate3d(1.5px, -0.5px, 0);
+		transform: translate3d(3.9px, -1.3px, 0);
+		animation-timing-function: linear;
 	}
 	46% {
-		transform: translate3d(0.8px, -0.2px, 0);
+		transform: translate3d(2.08px, -0.52px, 0);
+		animation-timing-function: linear;
 	}
 	47.5% {
-		transform: translate3d(-0.5px, 0.2px, 0);
+		transform: translate3d(-1.3px, 0.52px, 0);
+		animation-timing-function: linear;
 	}
 	49% {
-		transform: translate3d(0.2px, 0, 0);
+		transform: translate3d(0.52px, 0, 0);
+		animation-timing-function: linear;
 	}
 	51% {
 		transform: translate3d(0, 0, 0);
+		animation-timing-function: linear;
 	}
 	100% {
 		transform: translate3d(0, 0, 0);
@@ -7904,48 +8013,48 @@ html.lenis body {
 
 @keyframes fx-host-scour {
 	0% {
-		filter: sepia(0.14) saturate(1.1) brightness(0.98);
-		transform: translateX(-1.1px) skewX(-0.3deg);
+		filter: sepia(0.308) saturate(1.24) brightness(0.952);
+		transform: translateX(-2.86px) skewX(-0.72deg);
 		animation-timing-function: linear;
 	}
 	11.5% {
-		filter: sepia(0.17) saturate(1.12) brightness(0.99);
-		transform: translateX(-0.75px) skewX(-0.2deg);
+		filter: sepia(0.374) saturate(1.288) brightness(0.976);
+		transform: translateX(-1.95px) skewX(-0.48deg);
 		animation-timing-function: linear;
 	}
 	23% {
-		filter: sepia(0.2) saturate(1.14) brightness(1);
-		transform: translateX(-0.4px) skewX(-0.1deg);
+		filter: sepia(0.44) saturate(1.336) brightness(1);
+		transform: translateX(-1.04px) skewX(-0.24deg);
 		animation-timing-function: linear;
 	}
 	35% {
-		filter: sepia(0.22) saturate(1.15) brightness(1.005);
-		transform: translateX(-0.1px) skewX(0.025deg);
+		filter: sepia(0.484) saturate(1.36) brightness(1.012);
+		transform: translateX(-0.26px) skewX(0.06deg);
 		animation-timing-function: linear;
 	}
 	47% {
-		filter: sepia(0.24) saturate(1.16) brightness(1.01);
-		transform: translateX(0.2px) skewX(0.15deg);
+		filter: sepia(0.528) saturate(1.384) brightness(1.024);
+		transform: translateX(0.52px) skewX(0.36deg);
 		animation-timing-function: linear;
 	}
 	59% {
-		filter: sepia(0.26) saturate(1.175) brightness(1.02);
-		transform: translateX(0.45px) skewX(0.225deg);
+		filter: sepia(0.572) saturate(1.42) brightness(1.048);
+		transform: translateX(1.17px) skewX(0.54deg);
 		animation-timing-function: linear;
 	}
 	71% {
-		filter: sepia(0.28) saturate(1.19) brightness(1.03);
-		transform: translateX(0.7px) skewX(0.3deg);
+		filter: sepia(0.616) saturate(1.456) brightness(1.072);
+		transform: translateX(1.82px) skewX(0.72deg);
 		animation-timing-function: linear;
 	}
 	85.5% {
-		filter: sepia(0.3) saturate(1.205) brightness(1.04);
-		transform: translateX(0.9px) skewX(0.35deg);
+		filter: sepia(0.66) saturate(1.492) brightness(1.096);
+		transform: translateX(2.34px) skewX(0.84deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: sepia(0.32) saturate(1.22) brightness(1.05);
-		transform: translateX(1.1px) skewX(0.4deg);
+		filter: sepia(0.704) saturate(1.528) brightness(1.12);
+		transform: translateX(2.86px) skewX(0.96deg);
 	}
 }
 
@@ -7959,35 +8068,35 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: brightness(0.982) contrast(1.015);
+		filter: brightness(0.957) contrast(1.036);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: brightness(0.965) contrast(1.03);
+		filter: brightness(0.916) contrast(1.072);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: brightness(0.948) contrast(1.045);
+		filter: brightness(0.875) contrast(1.108);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: brightness(0.93) contrast(1.06);
+		filter: brightness(0.832) contrast(1.144);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: brightness(0.913) contrast(1.075);
+		filter: brightness(0.791) contrast(1.18);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: brightness(0.895) contrast(1.09);
+		filter: brightness(0.748) contrast(1.216);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: brightness(0.878) contrast(1.105);
+		filter: brightness(0.707) contrast(1.252);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(0.86) contrast(1.12);
+		filter: brightness(0.664) contrast(1.288);
 	}
 }
 
@@ -8005,23 +8114,23 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	73% {
-		filter: brightness(1.07);
+		filter: brightness(1.168);
 		animation-timing-function: linear;
 	}
 	76% {
-		filter: brightness(1.14);
+		filter: brightness(1.336);
 		animation-timing-function: linear;
 	}
 	80% {
-		filter: brightness(1.08);
+		filter: brightness(1.192);
 		animation-timing-function: linear;
 	}
 	84% {
-		filter: brightness(1.02);
+		filter: brightness(1.048);
 		animation-timing-function: linear;
 	}
 	92% {
-		filter: brightness(1.01);
+		filter: brightness(1.024);
 		animation-timing-function: linear;
 	}
 	100% {
@@ -8035,48 +8144,48 @@ html.lenis body {
 
 @keyframes fx-host-driftfield {
 	0% {
-		filter: saturate(1.08) hue-rotate(-6deg);
-		transform: translateX(-1.1px) scale(1);
+		filter: saturate(1.192) hue-rotate(-31.68deg);
+		transform: translateX(-2.86px) scale(1);
 		animation-timing-function: linear;
 	}
 	13% {
-		filter: saturate(1.105) hue-rotate(-4deg);
-		transform: translateX(-0.75px) scale(1.001);
+		filter: saturate(1.252) hue-rotate(-21.12deg);
+		transform: translateX(-1.95px) scale(1.003);
 		animation-timing-function: linear;
 	}
 	26% {
-		filter: saturate(1.13) hue-rotate(-2deg);
-		transform: translateX(-0.4px) scale(1.001);
+		filter: saturate(1.312) hue-rotate(-10.56deg);
+		transform: translateX(-1.04px) scale(1.003);
 		animation-timing-function: linear;
 	}
 	39% {
-		filter: saturate(1.15) hue-rotate(0deg);
-		transform: translateX(-0.1px) scale(1.002);
+		filter: saturate(1.36) hue-rotate(0deg);
+		transform: translateX(-0.26px) scale(1.006);
 		animation-timing-function: linear;
 	}
 	52% {
-		filter: saturate(1.17) hue-rotate(2deg);
-		transform: translateX(0.2px) scale(1.002);
+		filter: saturate(1.408) hue-rotate(10.56deg);
+		transform: translateX(0.52px) scale(1.006);
 		animation-timing-function: linear;
 	}
 	64.5% {
-		filter: saturate(1.19) hue-rotate(3.5deg);
-		transform: translateX(0.45px) scale(1.003);
+		filter: saturate(1.456) hue-rotate(18.48deg);
+		transform: translateX(1.17px) scale(1.008);
 		animation-timing-function: linear;
 	}
 	77% {
-		filter: saturate(1.21) hue-rotate(5deg);
-		transform: translateX(0.7px) scale(1.003);
+		filter: saturate(1.504) hue-rotate(26.4deg);
+		transform: translateX(1.82px) scale(1.008);
 		animation-timing-function: linear;
 	}
 	88.5% {
-		filter: saturate(1.235) hue-rotate(7deg);
-		transform: translateX(0.9px) scale(1.003);
+		filter: saturate(1.564) hue-rotate(36.96deg);
+		transform: translateX(2.34px) scale(1.008);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: saturate(1.26) hue-rotate(9deg);
-		transform: translateX(1.1px) scale(1.004);
+		filter: saturate(1.624) hue-rotate(47.52deg);
+		transform: translateX(2.86px) scale(1.011);
 	}
 }
 
@@ -8086,48 +8195,48 @@ html.lenis body {
 
 @keyframes fx-host-fallwarm {
 	0% {
-		filter: sepia(0.1) saturate(1.08);
-		transform: rotate(-0.28deg) skewX(-0.2deg);
+		filter: sepia(0.22) saturate(1.192);
+		transform: rotate(-0.672deg) skewX(-0.48deg);
 		animation-timing-function: linear;
 	}
 	12% {
-		filter: sepia(0.125) saturate(1.105);
-		transform: rotate(-0.165deg) skewX(-0.1deg);
+		filter: sepia(0.275) saturate(1.252);
+		transform: rotate(-0.396deg) skewX(-0.24deg);
 		animation-timing-function: linear;
 	}
 	24% {
-		filter: sepia(0.15) saturate(1.13);
-		transform: rotate(-0.05deg) skewX(0deg);
+		filter: sepia(0.33) saturate(1.312);
+		transform: rotate(-0.12deg) skewX(0deg);
 		animation-timing-function: linear;
 	}
 	36.5% {
-		filter: sepia(0.17) saturate(1.15);
-		transform: rotate(0.035deg) skewX(0.075deg);
+		filter: sepia(0.374) saturate(1.36);
+		transform: rotate(0.084deg) skewX(0.18deg);
 		animation-timing-function: linear;
 	}
 	49% {
-		filter: sepia(0.19) saturate(1.17);
-		transform: rotate(0.12deg) skewX(0.15deg);
+		filter: sepia(0.418) saturate(1.408);
+		transform: rotate(0.288deg) skewX(0.36deg);
 		animation-timing-function: linear;
 	}
 	61% {
-		filter: sepia(0.205) saturate(1.185);
-		transform: rotate(0.085deg) skewX(0.1deg);
+		filter: sepia(0.451) saturate(1.444);
+		transform: rotate(0.204deg) skewX(0.24deg);
 		animation-timing-function: linear;
 	}
 	73% {
-		filter: sepia(0.22) saturate(1.2);
-		transform: rotate(0.05deg) skewX(0.05deg);
+		filter: sepia(0.484) saturate(1.48);
+		transform: rotate(0.12deg) skewX(0.12deg);
 		animation-timing-function: linear;
 	}
 	86.5% {
-		filter: sepia(0.24) saturate(1.22);
-		transform: rotate(0.185deg) skewX(0.15deg);
+		filter: sepia(0.528) saturate(1.528);
+		transform: rotate(0.444deg) skewX(0.36deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: sepia(0.26) saturate(1.24);
-		transform: rotate(0.32deg) skewX(0.25deg);
+		filter: sepia(0.572) saturate(1.576);
+		transform: rotate(0.768deg) skewX(0.6deg);
 	}
 }
 
@@ -8137,48 +8246,48 @@ html.lenis body {
 
 @keyframes fx-host-blush {
 	0% {
-		filter: brightness(1) saturate(1.04) hue-rotate(-3deg);
-		transform: rotate(-0.22deg) scale(1);
+		filter: brightness(1) saturate(1.096) hue-rotate(-15.84deg);
+		transform: rotate(-0.528deg) scale(1);
 		animation-timing-function: linear;
 	}
 	11.5% {
-		filter: brightness(1.01) saturate(1.06) hue-rotate(-2deg);
-		transform: rotate(-0.14deg) scale(1.001);
+		filter: brightness(1.024) saturate(1.144) hue-rotate(-10.56deg);
+		transform: rotate(-0.336deg) scale(1.003);
 		animation-timing-function: linear;
 	}
 	23% {
-		filter: brightness(1.02) saturate(1.08) hue-rotate(-1deg);
-		transform: rotate(-0.06deg) scale(1.001);
+		filter: brightness(1.048) saturate(1.192) hue-rotate(-5.28deg);
+		transform: rotate(-0.144deg) scale(1.003);
 		animation-timing-function: linear;
 	}
 	35% {
-		filter: brightness(1.025) saturate(1.095) hue-rotate(0deg);
-		transform: rotate(0.01deg) scale(1.002);
+		filter: brightness(1.06) saturate(1.228) hue-rotate(0deg);
+		transform: rotate(0.024deg) scale(1.006);
 		animation-timing-function: linear;
 	}
 	47% {
-		filter: brightness(1.03) saturate(1.11) hue-rotate(1deg);
-		transform: rotate(0.08deg) scale(1.002);
+		filter: brightness(1.072) saturate(1.264) hue-rotate(5.28deg);
+		transform: rotate(0.192deg) scale(1.006);
 		animation-timing-function: linear;
 	}
 	59.5% {
-		filter: brightness(1.035) saturate(1.125) hue-rotate(2deg);
-		transform: rotate(0.13deg) scale(1.002);
+		filter: brightness(1.084) saturate(1.3) hue-rotate(10.56deg);
+		transform: rotate(0.312deg) scale(1.006);
 		animation-timing-function: linear;
 	}
 	72% {
-		filter: brightness(1.04) saturate(1.14) hue-rotate(3deg);
-		transform: rotate(0.18deg) scale(1.002);
+		filter: brightness(1.096) saturate(1.336) hue-rotate(15.84deg);
+		transform: rotate(0.432deg) scale(1.006);
 		animation-timing-function: linear;
 	}
 	86% {
-		filter: brightness(1.05) saturate(1.16) hue-rotate(4.5deg);
-		transform: rotate(0.23deg) scale(1.003);
+		filter: brightness(1.12) saturate(1.384) hue-rotate(23.76deg);
+		transform: rotate(0.552deg) scale(1.008);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(1.06) saturate(1.18) hue-rotate(6deg);
-		transform: rotate(0.28deg) scale(1.003);
+		filter: brightness(1.144) saturate(1.432) hue-rotate(31.68deg);
+		transform: rotate(0.672deg) scale(1.008);
 	}
 }
 
@@ -8188,39 +8297,39 @@ html.lenis body {
 
 @keyframes fx-host-blink {
 	0% {
-		filter: brightness(0.97);
+		filter: brightness(0.928);
 		animation-timing-function: linear;
 	}
 	14% {
-		filter: brightness(1.03);
+		filter: brightness(1.072);
 		animation-timing-function: linear;
 	}
 	28% {
-		filter: brightness(1.09);
+		filter: brightness(1.216);
 		animation-timing-function: linear;
 	}
 	36% {
-		filter: brightness(1.04);
+		filter: brightness(1.096);
 		animation-timing-function: linear;
 	}
 	44% {
-		filter: brightness(0.99);
+		filter: brightness(0.976);
 		animation-timing-function: linear;
 	}
 	55% {
-		filter: brightness(1.025);
-		animation-timing-function: linear;
-	}
-	66% {
 		filter: brightness(1.06);
 		animation-timing-function: linear;
 	}
+	66% {
+		filter: brightness(1.144);
+		animation-timing-function: linear;
+	}
 	83% {
-		filter: brightness(1.015);
+		filter: brightness(1.036);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(0.97);
+		filter: brightness(0.928);
 	}
 }
 
@@ -8230,48 +8339,48 @@ html.lenis body {
 
 @keyframes fx-host-ripplecard {
 	0% {
-		transform: skewY(-0.38deg) translateY(0.6px) scaleX(1);
-		filter: hue-rotate(-4deg);
+		transform: skewY(-0.912deg) translateY(1.56px) scaleX(1);
+		filter: hue-rotate(-21.12deg);
 		animation-timing-function: linear;
 	}
 	11% {
-		transform: skewY(-0.25deg) translateY(0.4px) scaleX(1.001);
-		filter: hue-rotate(-2.5deg);
+		transform: skewY(-0.6deg) translateY(1.04px) scaleX(1.003);
+		filter: hue-rotate(-13.2deg);
 		animation-timing-function: linear;
 	}
 	22% {
-		transform: skewY(-0.12deg) translateY(0.2px) scaleX(1.001);
-		filter: hue-rotate(-1deg);
+		transform: skewY(-0.288deg) translateY(0.52px) scaleX(1.003);
+		filter: hue-rotate(-5.28deg);
 		animation-timing-function: linear;
 	}
 	33.5% {
-		transform: skewY(-0.01deg) translateY(0.05px) scaleX(1);
+		transform: skewY(-0.024deg) translateY(0.13px) scaleX(1);
 		filter: hue-rotate(0deg);
 		animation-timing-function: linear;
 	}
 	45% {
-		transform: skewY(0.1deg) translateY(-0.1px) scaleX(0.999);
-		filter: hue-rotate(1deg);
+		transform: skewY(0.24deg) translateY(-0.26px) scaleX(0.997);
+		filter: hue-rotate(5.28deg);
 		animation-timing-function: linear;
 	}
 	57% {
-		transform: skewY(0.18deg) translateY(-0.25px) scaleX(1.001);
-		filter: hue-rotate(2deg);
+		transform: skewY(0.432deg) translateY(-0.65px) scaleX(1.003);
+		filter: hue-rotate(10.56deg);
 		animation-timing-function: linear;
 	}
 	69% {
-		transform: skewY(0.26deg) translateY(-0.4px) scaleX(1.002);
-		filter: hue-rotate(3deg);
+		transform: skewY(0.624deg) translateY(-1.04px) scaleX(1.006);
+		filter: hue-rotate(15.84deg);
 		animation-timing-function: linear;
 	}
 	84.5% {
-		transform: skewY(0.33deg) translateY(-0.5px) scaleX(1.001);
-		filter: hue-rotate(4.5deg);
+		transform: skewY(0.792deg) translateY(-1.3px) scaleX(1.003);
+		filter: hue-rotate(23.76deg);
 		animation-timing-function: linear;
 	}
 	100% {
-		transform: skewY(0.4deg) translateY(-0.6px) scaleX(1);
-		filter: hue-rotate(6deg);
+		transform: skewY(0.96deg) translateY(-1.56px) scaleX(1);
+		filter: hue-rotate(31.68deg);
 	}
 }
 
@@ -8281,48 +8390,48 @@ html.lenis body {
 
 @keyframes fx-host-sheen {
 	0% {
-		filter: brightness(0.99) saturate(1.06);
-		transform: skewX(-0.45deg) scaleX(1);
+		filter: brightness(0.976) saturate(1.144);
+		transform: skewX(-1.08deg) scaleX(1);
 		animation-timing-function: linear;
 	}
 	10.5% {
-		filter: brightness(1.01) saturate(1.08);
-		transform: skewX(-0.3deg) scaleX(1.001);
+		filter: brightness(1.024) saturate(1.192);
+		transform: skewX(-0.72deg) scaleX(1.003);
 		animation-timing-function: linear;
 	}
 	21% {
-		filter: brightness(1.03) saturate(1.1);
-		transform: skewX(-0.15deg) scaleX(1.001);
+		filter: brightness(1.072) saturate(1.24);
+		transform: skewX(-0.36deg) scaleX(1.003);
 		animation-timing-function: linear;
 	}
 	32% {
-		filter: brightness(1.02) saturate(1.09);
-		transform: skewX(-0.025deg) scaleX(1);
+		filter: brightness(1.048) saturate(1.216);
+		transform: skewX(-0.06deg) scaleX(1);
 		animation-timing-function: linear;
 	}
 	43% {
-		filter: brightness(1.01) saturate(1.08);
-		transform: skewX(0.1deg) scaleX(0.999);
+		filter: brightness(1.024) saturate(1.192);
+		transform: skewX(0.24deg) scaleX(0.997);
 		animation-timing-function: linear;
 	}
 	54.5% {
-		filter: brightness(1.035) saturate(1.12);
-		transform: skewX(0.2deg) scaleX(1.001);
+		filter: brightness(1.084) saturate(1.288);
+		transform: skewX(0.48deg) scaleX(1.003);
 		animation-timing-function: linear;
 	}
 	66% {
-		filter: brightness(1.06) saturate(1.16);
-		transform: skewX(0.3deg) scaleX(1.002);
+		filter: brightness(1.144) saturate(1.384);
+		transform: skewX(0.72deg) scaleX(1.006);
 		animation-timing-function: linear;
 	}
 	83% {
-		filter: brightness(1.075) saturate(1.185);
-		transform: skewX(0.4deg) scaleX(1.002);
+		filter: brightness(1.18) saturate(1.444);
+		transform: skewX(0.96deg) scaleX(1.006);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: brightness(1.09) saturate(1.21);
-		transform: skewX(0.5deg) scaleX(1.001);
+		filter: brightness(1.216) saturate(1.504);
+		transform: skewX(1.2deg) scaleX(1.003);
 	}
 }
 
@@ -8332,39 +8441,39 @@ html.lenis body {
 
 @keyframes fx-host-facet {
 	0% {
-		filter: hue-rotate(-6deg) contrast(1.02) brightness(1);
+		filter: hue-rotate(-31.68deg) contrast(1.048) brightness(1);
 		animation-timing-function: linear;
 	}
 	12.5% {
-		filter: hue-rotate(-2.5deg) contrast(1.04) brightness(1.018);
+		filter: hue-rotate(-13.2deg) contrast(1.096) brightness(1.043);
 		animation-timing-function: linear;
 	}
 	25% {
-		filter: hue-rotate(1deg) contrast(1.06) brightness(1.035);
+		filter: hue-rotate(5.28deg) contrast(1.144) brightness(1.084);
 		animation-timing-function: linear;
 	}
 	37.5% {
-		filter: hue-rotate(4.5deg) contrast(1.08) brightness(1.053);
+		filter: hue-rotate(23.76deg) contrast(1.192) brightness(1.127);
 		animation-timing-function: linear;
 	}
 	50% {
-		filter: hue-rotate(8deg) contrast(1.1) brightness(1.07);
+		filter: hue-rotate(42.24deg) contrast(1.24) brightness(1.168);
 		animation-timing-function: linear;
 	}
 	62.5% {
-		filter: hue-rotate(4.5deg) contrast(1.08) brightness(1.053);
+		filter: hue-rotate(23.76deg) contrast(1.192) brightness(1.127);
 		animation-timing-function: linear;
 	}
 	75% {
-		filter: hue-rotate(1deg) contrast(1.06) brightness(1.035);
+		filter: hue-rotate(5.28deg) contrast(1.144) brightness(1.084);
 		animation-timing-function: linear;
 	}
 	87.5% {
-		filter: hue-rotate(-2.5deg) contrast(1.04) brightness(1.018);
+		filter: hue-rotate(-13.2deg) contrast(1.096) brightness(1.043);
 		animation-timing-function: linear;
 	}
 	100% {
-		filter: hue-rotate(-6deg) contrast(1.02) brightness(1);
+		filter: hue-rotate(-31.68deg) contrast(1.048) brightness(1);
 	}
 }
 
@@ -8445,9 +8554,9 @@ html.lenis body {
 	position: absolute;
 	inset: 0;
 	margin: auto;
-	height: clamp(26px, 88%, 340px);
+	height: clamp(26px, 96%, 380px);
 	width: auto;
-	aspect-ratio: 1;
+	aspect-ratio: 3.2;
 	overflow: visible;
 	pointer-events: none;
 }
@@ -8671,6 +8780,1750 @@ html.lenis body {
 	pointer-events: none;
 }
 
+.fx-dustveil {
+	fill: #e9d3a8;
+	opacity: 0.1;
+	mix-blend-mode: screen;
+	animation: fx-dust-veil calc(var(--fx-speed) * 3) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-dustveil {
+	animation-play-state: running;
+}
+
+@keyframes fx-dust-veil {
+	0% {
+		opacity: 0.05;
+		transform: translate(-2%, 1%) scale(1.02);
+		animation-timing-function: linear;
+	}
+	12.5% {
+		opacity: 0.073;
+		transform: translate(-1.25%, 0.5%) scale(1.03);
+		animation-timing-function: linear;
+	}
+	25% {
+		opacity: 0.095;
+		transform: translate(-0.5%, 0%) scale(1.04);
+		animation-timing-function: linear;
+	}
+	37.5% {
+		opacity: 0.118;
+		transform: translate(0.25%, -0.5%) scale(1.05);
+		animation-timing-function: linear;
+	}
+	50% {
+		opacity: 0.14;
+		transform: translate(1%, -1%) scale(1.06);
+		animation-timing-function: linear;
+	}
+	62.5% {
+		opacity: 0.128;
+		transform: translate(1.5%, -0.25%) scale(1.053);
+		animation-timing-function: linear;
+	}
+	75% {
+		opacity: 0.115;
+		transform: translate(2%, 0.5%) scale(1.045);
+		animation-timing-function: linear;
+	}
+	87.5% {
+		opacity: 0.103;
+		transform: translate(2.5%, 1.25%) scale(1.038);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.09;
+		transform: translate(3%, 2%) scale(1.03);
+	}
+}
+
+.fx-starburst {
+	position: absolute;
+	top: var(--y-top, 30%);
+	left: var(--y-left, 0%);
+	height: calc(clamp(14px, 44%, 190px) * var(--y-scale, 1));
+	width: auto;
+	aspect-ratio: 1;
+	overflow: visible;
+	pointer-events: none;
+	opacity: 0;
+	animation: fx-burst-flash calc(var(--fx-speed) * 1.8) ease-out infinite paused;
+	animation-delay: calc(var(--y-i) * -0.63s);
+}
+
+.fx-live .fx-starburst {
+	animation-play-state: running;
+}
+
+@keyframes fx-burst-flash {
+	0% {
+		opacity: 0;
+		transform: scale(0.2) rotate(0deg);
+		animation-timing-function: linear;
+	}
+	9% {
+		opacity: 1;
+		transform: scale(1.05) rotate(18deg);
+		animation-timing-function: linear;
+	}
+	20% {
+		opacity: 0.72;
+		transform: scale(0.86) rotate(34deg);
+		animation-timing-function: linear;
+	}
+	33% {
+		opacity: 0.9;
+		transform: scale(1.12) rotate(52deg);
+		animation-timing-function: linear;
+	}
+	48% {
+		opacity: 0.5;
+		transform: scale(0.94) rotate(70deg);
+		animation-timing-function: linear;
+	}
+	64% {
+		opacity: 0.26;
+		transform: scale(1.06) rotate(88deg);
+		animation-timing-function: linear;
+	}
+	80% {
+		opacity: 0.1;
+		transform: scale(0.8) rotate(104deg);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.4) rotate(122deg);
+	}
+}
+
+.fx-burstarm {
+	fill: var(--fx-color);
+	filter: drop-shadow(0 0 7px var(--fx-color-2));
+}
+
+.fx-burstcore {
+	fill: #ffffff;
+}
+
+.fx-emberbed {
+	fill: var(--fx-color);
+	opacity: 0.7;
+	filter: blur(3px);
+	animation: fx-bed-glow calc(var(--fx-speed) * 0.6) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-emberbed {
+	animation-play-state: running;
+}
+
+@keyframes fx-bed-glow {
+	0% {
+		opacity: 0.4;
+		transform: scaleY(0.9);
+		animation-timing-function: linear;
+	}
+	8.5% {
+		opacity: 0.48;
+		transform: scaleY(0.935);
+		animation-timing-function: linear;
+	}
+	17% {
+		opacity: 0.56;
+		transform: scaleY(0.97);
+		animation-timing-function: linear;
+	}
+	25.5% {
+		opacity: 0.64;
+		transform: scaleY(1.005);
+		animation-timing-function: linear;
+	}
+	34% {
+		opacity: 0.72;
+		transform: scaleY(1.04);
+		animation-timing-function: linear;
+	}
+	41% {
+		opacity: 0.675;
+		transform: scaleY(1.02);
+		animation-timing-function: linear;
+	}
+	48% {
+		opacity: 0.63;
+		transform: scaleY(1);
+		animation-timing-function: linear;
+	}
+	55% {
+		opacity: 0.585;
+		transform: scaleY(0.98);
+		animation-timing-function: linear;
+	}
+	62% {
+		opacity: 0.54;
+		transform: scaleY(0.96);
+		animation-timing-function: linear;
+	}
+	71.5% {
+		opacity: 0.62;
+		transform: scaleY(0.995);
+		animation-timing-function: linear;
+	}
+	81% {
+		opacity: 0.7;
+		transform: scaleY(1.03);
+		animation-timing-function: linear;
+	}
+	90.5% {
+		opacity: 0.78;
+		transform: scaleY(1.065);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.86;
+		transform: scaleY(1.1);
+	}
+}
+
+.fx-smokewisp {
+	position: absolute;
+	bottom: 0;
+	left: var(--m-left, 0%);
+	height: calc(clamp(18px, 50%, 220px) * var(--m-scale, 1));
+	width: auto;
+	aspect-ratio: 60 / 100;
+	overflow: visible;
+	pointer-events: none;
+	fill: #6b5748;
+	opacity: 0;
+	filter: blur(6px);
+	transform-origin: 50% 100%;
+	animation: fx-wisp-rise calc(var(--fx-speed) * 2.2) ease-out infinite paused;
+	animation-delay: calc(var(--m-i) * -0.8s);
+}
+
+.fx-live .fx-smokewisp {
+	animation-play-state: running;
+}
+
+@keyframes fx-wisp-rise {
+	0% {
+		opacity: 0;
+		transform: translateY(14%) scale(0.5) skewX(0deg);
+		animation-timing-function: linear;
+	}
+	8% {
+		opacity: 0.2;
+		transform: translateY(8%) scale(0.61) skewX(-2deg);
+		animation-timing-function: linear;
+	}
+	16% {
+		opacity: 0.4;
+		transform: translateY(2%) scale(0.72) skewX(-4deg);
+		animation-timing-function: linear;
+	}
+	25% {
+		opacity: 0.45;
+		transform: translateY(-5%) scale(0.82) skewX(0.5deg);
+		animation-timing-function: linear;
+	}
+	34% {
+		opacity: 0.5;
+		transform: translateY(-12%) scale(0.92) skewX(5deg);
+		animation-timing-function: linear;
+	}
+	43% {
+		opacity: 0.45;
+		transform: translateY(-19%) scale(1) skewX(-0.5deg);
+		animation-timing-function: linear;
+	}
+	52% {
+		opacity: 0.4;
+		transform: translateY(-26%) scale(1.08) skewX(-6deg);
+		animation-timing-function: linear;
+	}
+	61% {
+		opacity: 0.33;
+		transform: translateY(-33%) scale(1.15) skewX(-1deg);
+		animation-timing-function: linear;
+	}
+	70% {
+		opacity: 0.26;
+		transform: translateY(-40%) scale(1.22) skewX(4deg);
+		animation-timing-function: linear;
+	}
+	78% {
+		opacity: 0.19;
+		transform: translateY(-46%) scale(1.28) skewX(1deg);
+		animation-timing-function: linear;
+	}
+	86% {
+		opacity: 0.12;
+		transform: translateY(-52%) scale(1.34) skewX(-2deg);
+		animation-timing-function: linear;
+	}
+	93% {
+		opacity: 0.06;
+		transform: translateY(-57%) scale(1.39) skewX(-0.5deg);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-62%) scale(1.44) skewX(1deg);
+	}
+}
+
+.fx-popburst {
+	position: absolute;
+	top: var(--b-top, 30%);
+	left: var(--b-left, 0%);
+	height: calc(clamp(12px, 40%, 170px) * var(--b-scale, 1));
+	width: auto;
+	aspect-ratio: 1;
+	overflow: visible;
+	pointer-events: none;
+	opacity: 0;
+	animation: fx-pop-out calc(var(--fx-speed) * 1.6) cubic-bezier(0.2, 0.7, 0.3, 1) infinite paused;
+	animation-delay: calc(var(--b-j) * -0.55s);
+}
+
+.fx-live .fx-popburst {
+	animation-play-state: running;
+}
+
+@keyframes fx-pop-out {
+	0% {
+		opacity: 0;
+		transform: scale(0.1);
+		animation-timing-function: linear;
+	}
+	8% {
+		opacity: 1;
+		transform: scale(0.4);
+		animation-timing-function: linear;
+	}
+	20% {
+		opacity: 0.9;
+		transform: scale(0.7);
+		animation-timing-function: linear;
+	}
+	34% {
+		opacity: 0.7;
+		transform: scale(1);
+		animation-timing-function: linear;
+	}
+	50% {
+		opacity: 0.5;
+		transform: scale(1.26);
+		animation-timing-function: linear;
+	}
+	66% {
+		opacity: 0.3;
+		transform: scale(1.5);
+		animation-timing-function: linear;
+	}
+	82% {
+		opacity: 0.14;
+		transform: scale(1.7);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.9);
+	}
+}
+
+.fx-popring {
+	fill: none;
+	stroke: var(--fx-color-2);
+	stroke-width: 1.6;
+}
+
+.fx-popbit {
+	fill: var(--fx-color);
+}
+
+.fx-waterline {
+	fill: #dff6ff;
+	opacity: 0.5;
+	animation: fx-surface-lap calc(var(--fx-speed) * 1.1) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-waterline {
+	animation-play-state: running;
+}
+
+@keyframes fx-surface-lap {
+	0% {
+		transform: translateX(-3%) scaleY(0.86);
+		opacity: 0.34;
+		animation-timing-function: linear;
+	}
+	9% {
+		transform: translateX(-2.25%) scaleY(0.905);
+		opacity: 0.38;
+		animation-timing-function: linear;
+	}
+	18% {
+		transform: translateX(-1.5%) scaleY(0.95);
+		opacity: 0.42;
+		animation-timing-function: linear;
+	}
+	27% {
+		transform: translateX(-0.75%) scaleY(0.995);
+		opacity: 0.46;
+		animation-timing-function: linear;
+	}
+	36% {
+		transform: translateX(0%) scaleY(1.04);
+		opacity: 0.5;
+		animation-timing-function: linear;
+	}
+	44% {
+		transform: translateX(0.5%) scaleY(1.015);
+		opacity: 0.48;
+		animation-timing-function: linear;
+	}
+	52% {
+		transform: translateX(1%) scaleY(0.99);
+		opacity: 0.46;
+		animation-timing-function: linear;
+	}
+	60% {
+		transform: translateX(1.5%) scaleY(0.965);
+		opacity: 0.44;
+		animation-timing-function: linear;
+	}
+	68% {
+		transform: translateX(2%) scaleY(0.94);
+		opacity: 0.42;
+		animation-timing-function: linear;
+	}
+	76% {
+		transform: translateX(2.25%) scaleY(0.99);
+		opacity: 0.465;
+		animation-timing-function: linear;
+	}
+	84% {
+		transform: translateX(2.5%) scaleY(1.04);
+		opacity: 0.51;
+		animation-timing-function: linear;
+	}
+	92% {
+		transform: translateX(2.75%) scaleY(1.09);
+		opacity: 0.555;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: translateX(3%) scaleY(1.14);
+		opacity: 0.6;
+	}
+}
+
+.fx-bubblepop {
+	position: absolute;
+	top: var(--o-top, 20%);
+	left: var(--o-left, 0%);
+	height: calc(clamp(10px, 30%, 130px) * var(--o-scale, 1));
+	width: auto;
+	aspect-ratio: 1;
+	overflow: visible;
+	pointer-events: none;
+	opacity: 0;
+	animation: fx-shell-burst calc(var(--fx-speed) * 1.4) ease-out infinite paused;
+	animation-delay: calc(var(--o-j) * -0.62s);
+}
+
+.fx-live .fx-bubblepop {
+	animation-play-state: running;
+}
+
+@keyframes fx-shell-burst {
+	0% {
+		opacity: 0;
+		transform: scale(0.3);
+		animation-timing-function: linear;
+	}
+	10% {
+		opacity: 0.8;
+		transform: scale(0.62);
+		animation-timing-function: linear;
+	}
+	24% {
+		opacity: 0.7;
+		transform: scale(0.88);
+		animation-timing-function: linear;
+	}
+	40% {
+		opacity: 0.55;
+		transform: scale(1.06);
+		animation-timing-function: linear;
+	}
+	56% {
+		opacity: 0.38;
+		transform: scale(1.22);
+		animation-timing-function: linear;
+	}
+	72% {
+		opacity: 0.2;
+		transform: scale(1.38);
+		animation-timing-function: linear;
+	}
+	88% {
+		opacity: 0.08;
+		transform: scale(1.54);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.68);
+	}
+}
+
+.fx-popshell {
+	fill: none;
+	stroke: #e6faff;
+	stroke-width: 1.4;
+}
+
+.fx-popdrop {
+	fill: #ffffff;
+	opacity: 0.8;
+}
+
+.fx-gridline {
+	fill: none;
+	stroke: var(--fx-color);
+	stroke-width: 0.4;
+	opacity: 0.16;
+}
+
+.fx-bpmflash {
+	fill: var(--fx-color);
+	opacity: 0;
+	mix-blend-mode: screen;
+	animation: fx-bpm-flash calc(var(--fx-speed) * 1.6) linear infinite paused;
+}
+
+.fx-live .fx-bpmflash {
+	animation-play-state: running;
+}
+
+@keyframes fx-bpm-flash {
+	0% {
+		opacity: 0;
+		animation-timing-function: linear;
+	}
+	3% {
+		opacity: 0.11;
+		animation-timing-function: linear;
+	}
+	6% {
+		opacity: 0.22;
+		animation-timing-function: linear;
+	}
+	9% {
+		opacity: 0.13;
+		animation-timing-function: linear;
+	}
+	12% {
+		opacity: 0.04;
+		animation-timing-function: linear;
+	}
+	15% {
+		opacity: 0.1;
+		animation-timing-function: linear;
+	}
+	18% {
+		opacity: 0.16;
+		animation-timing-function: linear;
+	}
+	22% {
+		opacity: 0.09;
+		animation-timing-function: linear;
+	}
+	26% {
+		opacity: 0.02;
+		animation-timing-function: linear;
+	}
+	38% {
+		opacity: 0.01;
+		animation-timing-function: linear;
+	}
+	50% {
+		opacity: 0;
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.fx-ecgghost {
+	fill: none;
+	stroke: var(--fx-color);
+	stroke-width: 1.2;
+	opacity: 0.18;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.fx-constellation {
+	fill: #dfe9ff;
+	stroke: #7f9ad6;
+	stroke-width: 0.35;
+	opacity: 0.5;
+	animation: fx-constel-twinkle calc(var(--fx-speed) * 1.4) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-constellation {
+	animation-play-state: running;
+}
+
+@keyframes fx-constel-twinkle {
+	0% {
+		opacity: 0.28;
+		animation-timing-function: linear;
+	}
+	8.5% {
+		opacity: 0.34;
+		animation-timing-function: linear;
+	}
+	17% {
+		opacity: 0.4;
+		animation-timing-function: linear;
+	}
+	25.5% {
+		opacity: 0.46;
+		animation-timing-function: linear;
+	}
+	34% {
+		opacity: 0.52;
+		animation-timing-function: linear;
+	}
+	42.5% {
+		opacity: 0.485;
+		animation-timing-function: linear;
+	}
+	51% {
+		opacity: 0.45;
+		animation-timing-function: linear;
+	}
+	59.5% {
+		opacity: 0.415;
+		animation-timing-function: linear;
+	}
+	68% {
+		opacity: 0.38;
+		animation-timing-function: linear;
+	}
+	76% {
+		opacity: 0.455;
+		animation-timing-function: linear;
+	}
+	84% {
+		opacity: 0.53;
+		animation-timing-function: linear;
+	}
+	92% {
+		opacity: 0.605;
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.68;
+	}
+}
+
+.fx-moonrise {
+	fill: #f4f1e0;
+	opacity: 0.72;
+	filter: drop-shadow(0 0 12px rgba(220, 232, 255, 0.6));
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-moon-glow calc(var(--fx-speed) * 2.4) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-moonrise {
+	animation-play-state: running;
+}
+
+@keyframes fx-moon-glow {
+	0% {
+		opacity: 0.5;
+		transform: scale(0.97) translateY(1%);
+		animation-timing-function: linear;
+	}
+	10% {
+		opacity: 0.545;
+		transform: scale(0.978) translateY(0.75%);
+		animation-timing-function: linear;
+	}
+	20% {
+		opacity: 0.59;
+		transform: scale(0.985) translateY(0.5%);
+		animation-timing-function: linear;
+	}
+	30% {
+		opacity: 0.635;
+		transform: scale(0.992) translateY(0.25%);
+		animation-timing-function: linear;
+	}
+	40% {
+		opacity: 0.68;
+		transform: scale(1) translateY(0%);
+		animation-timing-function: linear;
+	}
+	48% {
+		opacity: 0.66;
+		transform: scale(0.998) translateY(-0.125%);
+		animation-timing-function: linear;
+	}
+	56% {
+		opacity: 0.64;
+		transform: scale(0.995) translateY(-0.25%);
+		animation-timing-function: linear;
+	}
+	64% {
+		opacity: 0.62;
+		transform: scale(0.992) translateY(-0.375%);
+		animation-timing-function: linear;
+	}
+	72% {
+		opacity: 0.6;
+		transform: scale(0.99) translateY(-0.5%);
+		animation-timing-function: linear;
+	}
+	79% {
+		opacity: 0.655;
+		transform: scale(1.003) translateY(-0.75%);
+		animation-timing-function: linear;
+	}
+	86% {
+		opacity: 0.71;
+		transform: scale(1.015) translateY(-1%);
+		animation-timing-function: linear;
+	}
+	93% {
+		opacity: 0.765;
+		transform: scale(1.027) translateY(-1.25%);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.82;
+		transform: scale(1.04) translateY(-1.5%);
+	}
+}
+
+.fx-holoscan {
+	fill: #ffffff;
+	opacity: 0.2;
+	mix-blend-mode: screen;
+	animation: fx-holo-scan calc(var(--fx-speed) * 1.2) linear infinite paused;
+}
+
+.fx-live .fx-holoscan {
+	animation-play-state: running;
+}
+
+@keyframes fx-holo-scan {
+	0% {
+		transform: translateX(-14%) skewX(-12deg);
+		opacity: 0;
+		animation-timing-function: linear;
+	}
+	7% {
+		transform: translateX(-3%) skewX(-12deg);
+		opacity: 0.17;
+		animation-timing-function: linear;
+	}
+	14% {
+		transform: translateX(8%) skewX(-12deg);
+		opacity: 0.34;
+		animation-timing-function: linear;
+	}
+	26% {
+		transform: translateX(23%) skewX(-12deg);
+		opacity: 0.27;
+		animation-timing-function: linear;
+	}
+	38% {
+		transform: translateX(38%) skewX(-12deg);
+		opacity: 0.2;
+		animation-timing-function: linear;
+	}
+	50% {
+		transform: translateX(54%) skewX(-12deg);
+		opacity: 0.28;
+		animation-timing-function: linear;
+	}
+	62% {
+		transform: translateX(70%) skewX(-12deg);
+		opacity: 0.36;
+		animation-timing-function: linear;
+	}
+	74% {
+		transform: translateX(86%) skewX(-12deg);
+		opacity: 0.26;
+		animation-timing-function: linear;
+	}
+	86% {
+		transform: translateX(102%) skewX(-12deg);
+		opacity: 0.16;
+		animation-timing-function: linear;
+	}
+	93% {
+		transform: translateX(110%) skewX(-12deg);
+		opacity: 0.08;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: translateX(118%) skewX(-12deg);
+		opacity: 0;
+	}
+}
+
+.fx-hologrid {
+	fill: none;
+	stroke: #ffffff;
+	stroke-width: 0.3;
+	opacity: 0.14;
+	mix-blend-mode: overlay;
+}
+
+.fx-loveribbon {
+	fill: var(--fx-color-2);
+	opacity: 0.34;
+	filter: blur(2px);
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-ribbon-sway calc(var(--fx-speed) * 1.5) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-loveribbon {
+	animation-play-state: running;
+}
+
+@keyframes fx-ribbon-sway {
+	0% {
+		transform: translateY(-3%) scaleY(0.9) skewX(-3deg);
+		opacity: 0.2;
+		animation-timing-function: linear;
+	}
+	9% {
+		transform: translateY(-2.25%) scaleY(0.93) skewX(-2deg);
+		opacity: 0.235;
+		animation-timing-function: linear;
+	}
+	18% {
+		transform: translateY(-1.5%) scaleY(0.96) skewX(-1deg);
+		opacity: 0.27;
+		animation-timing-function: linear;
+	}
+	27% {
+		transform: translateY(-0.75%) scaleY(0.99) skewX(0deg);
+		opacity: 0.305;
+		animation-timing-function: linear;
+	}
+	36% {
+		transform: translateY(0%) scaleY(1.02) skewX(1deg);
+		opacity: 0.34;
+		animation-timing-function: linear;
+	}
+	44% {
+		transform: translateY(0.5%) scaleY(1.01) skewX(0.5deg);
+		opacity: 0.325;
+		animation-timing-function: linear;
+	}
+	52% {
+		transform: translateY(1%) scaleY(1) skewX(0deg);
+		opacity: 0.31;
+		animation-timing-function: linear;
+	}
+	60% {
+		transform: translateY(1.5%) scaleY(0.99) skewX(-0.5deg);
+		opacity: 0.295;
+		animation-timing-function: linear;
+	}
+	68% {
+		transform: translateY(2%) scaleY(0.98) skewX(-1deg);
+		opacity: 0.28;
+		animation-timing-function: linear;
+	}
+	76% {
+		transform: translateY(2.5%) scaleY(1.015) skewX(0.25deg);
+		opacity: 0.325;
+		animation-timing-function: linear;
+	}
+	84% {
+		transform: translateY(3%) scaleY(1.05) skewX(1.5deg);
+		opacity: 0.37;
+		animation-timing-function: linear;
+	}
+	92% {
+		transform: translateY(3.5%) scaleY(1.085) skewX(2.75deg);
+		opacity: 0.415;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: translateY(4%) scaleY(1.12) skewX(4deg);
+		opacity: 0.46;
+	}
+}
+
+.fx-sparkheart {
+	position: absolute;
+	top: var(--h-top, 30%);
+	left: var(--h-left, 0%);
+	height: calc(clamp(6px, 20%, 84px) * var(--h-scale, 1));
+	width: auto;
+	aspect-ratio: 1;
+	overflow: visible;
+	pointer-events: none;
+	fill: #fff0f6;
+	opacity: 0;
+	filter: drop-shadow(0 0 5px var(--fx-color));
+	animation: fx-spark-twinkle calc(var(--fx-speed) * 0.9) ease-out infinite paused;
+	animation-delay: calc(var(--h-j) * -0.31s);
+}
+
+.fx-live .fx-sparkheart {
+	animation-play-state: running;
+}
+
+@keyframes fx-spark-twinkle {
+	0% {
+		opacity: 0;
+		transform: scale(0.2) rotate(0deg);
+		animation-timing-function: linear;
+	}
+	7% {
+		opacity: 0.5;
+		transform: scale(0.625) rotate(12deg);
+		animation-timing-function: linear;
+	}
+	14% {
+		opacity: 1;
+		transform: scale(1.05) rotate(24deg);
+		animation-timing-function: linear;
+	}
+	22% {
+		opacity: 0.8;
+		transform: scale(0.925) rotate(35deg);
+		animation-timing-function: linear;
+	}
+	30% {
+		opacity: 0.6;
+		transform: scale(0.8) rotate(46deg);
+		animation-timing-function: linear;
+	}
+	39% {
+		opacity: 0.75;
+		transform: scale(0.96) rotate(58deg);
+		animation-timing-function: linear;
+	}
+	48% {
+		opacity: 0.9;
+		transform: scale(1.12) rotate(70deg);
+		animation-timing-function: linear;
+	}
+	57% {
+		opacity: 0.67;
+		transform: scale(0.99) rotate(81deg);
+		animation-timing-function: linear;
+	}
+	66% {
+		opacity: 0.44;
+		transform: scale(0.86) rotate(92deg);
+		animation-timing-function: linear;
+	}
+	74% {
+		opacity: 0.31;
+		transform: scale(0.93) rotate(102deg);
+		animation-timing-function: linear;
+	}
+	82% {
+		opacity: 0.18;
+		transform: scale(1) rotate(112deg);
+		animation-timing-function: linear;
+	}
+	91% {
+		opacity: 0.09;
+		transform: scale(0.7) rotate(122deg);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.4) rotate(132deg);
+	}
+}
+
+.fx-thread {
+	fill: none;
+	stroke: #ffe6f6;
+	stroke-width: 0.5;
+	opacity: 0.3;
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-thread-drift calc(var(--fx-speed) * 1.7) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-thread {
+	animation-play-state: running;
+}
+
+@keyframes fx-thread-drift {
+	0% {
+		transform: translateY(-2%) skewY(-0.6deg);
+		opacity: 0.16;
+		animation-timing-function: linear;
+	}
+	9.5% {
+		transform: translateY(-1.5%) skewY(-0.4deg);
+		opacity: 0.195;
+		animation-timing-function: linear;
+	}
+	19% {
+		transform: translateY(-1%) skewY(-0.2deg);
+		opacity: 0.23;
+		animation-timing-function: linear;
+	}
+	28.5% {
+		transform: translateY(-0.5%) skewY(0deg);
+		opacity: 0.265;
+		animation-timing-function: linear;
+	}
+	38% {
+		transform: translateY(0%) skewY(0.2deg);
+		opacity: 0.3;
+		animation-timing-function: linear;
+	}
+	46% {
+		transform: translateY(0.25%) skewY(0.1deg);
+		opacity: 0.285;
+		animation-timing-function: linear;
+	}
+	54% {
+		transform: translateY(0.5%) skewY(0deg);
+		opacity: 0.27;
+		animation-timing-function: linear;
+	}
+	62% {
+		transform: translateY(0.75%) skewY(-0.1deg);
+		opacity: 0.255;
+		animation-timing-function: linear;
+	}
+	70% {
+		transform: translateY(1%) skewY(-0.2deg);
+		opacity: 0.24;
+		animation-timing-function: linear;
+	}
+	77.5% {
+		transform: translateY(1.375%) skewY(0.05deg);
+		opacity: 0.285;
+		animation-timing-function: linear;
+	}
+	85% {
+		transform: translateY(1.75%) skewY(0.3deg);
+		opacity: 0.33;
+		animation-timing-function: linear;
+	}
+	92.5% {
+		transform: translateY(2.125%) skewY(0.55deg);
+		opacity: 0.375;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: translateY(2.5%) skewY(0.8deg);
+		opacity: 0.42;
+	}
+}
+
+.fx-silkfold {
+	fill: #1c0716;
+	opacity: 0.26;
+	filter: blur(4px);
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-fold-shift calc(var(--fx-speed) * 1.9) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-silkfold {
+	animation-play-state: running;
+}
+
+@keyframes fx-fold-shift {
+	0% {
+		transform: translateY(-4%) scaleY(0.88);
+		opacity: 0.14;
+		animation-timing-function: linear;
+	}
+	10% {
+		transform: translateY(-3%) scaleY(0.915);
+		opacity: 0.17;
+		animation-timing-function: linear;
+	}
+	20% {
+		transform: translateY(-2%) scaleY(0.95);
+		opacity: 0.2;
+		animation-timing-function: linear;
+	}
+	30% {
+		transform: translateY(-1%) scaleY(0.985);
+		opacity: 0.23;
+		animation-timing-function: linear;
+	}
+	40% {
+		transform: translateY(0%) scaleY(1.02);
+		opacity: 0.26;
+		animation-timing-function: linear;
+	}
+	48% {
+		transform: translateY(0.75%) scaleY(1.005);
+		opacity: 0.245;
+		animation-timing-function: linear;
+	}
+	56% {
+		transform: translateY(1.5%) scaleY(0.99);
+		opacity: 0.23;
+		animation-timing-function: linear;
+	}
+	64% {
+		transform: translateY(2.25%) scaleY(0.975);
+		opacity: 0.215;
+		animation-timing-function: linear;
+	}
+	72% {
+		transform: translateY(3%) scaleY(0.96);
+		opacity: 0.2;
+		animation-timing-function: linear;
+	}
+	79% {
+		transform: translateY(3.75%) scaleY(1.005);
+		opacity: 0.235;
+		animation-timing-function: linear;
+	}
+	86% {
+		transform: translateY(4.5%) scaleY(1.05);
+		opacity: 0.27;
+		animation-timing-function: linear;
+	}
+	93% {
+		transform: translateY(5.25%) scaleY(1.095);
+		opacity: 0.305;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: translateY(6%) scaleY(1.14);
+		opacity: 0.34;
+	}
+}
+
+.fx-lensarc {
+	fill: none;
+	stroke: var(--fx-color-2);
+	stroke-width: 1.1;
+	stroke-linecap: round;
+	stroke-dasharray: 100;
+	stroke-dashoffset: 100;
+	opacity: 0;
+	filter: drop-shadow(0 0 5px var(--fx-color));
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-lens-sweep calc(var(--fx-speed) * 2.2) linear infinite paused;
+	animation-delay: calc(var(--a-j) * -0.27s);
+}
+
+.fx-live .fx-lensarc {
+	animation-play-state: running;
+}
+
+@keyframes fx-lens-sweep {
+	0% {
+		stroke-dashoffset: 100;
+		opacity: 0;
+		transform: rotate(0deg) scale(1);
+		animation-timing-function: linear;
+	}
+	12% {
+		stroke-dashoffset: 82;
+		opacity: 0.62;
+		transform: rotate(6deg) scale(0.99);
+		animation-timing-function: linear;
+	}
+	26% {
+		stroke-dashoffset: 60;
+		opacity: 0.95;
+		transform: rotate(14deg) scale(0.97);
+		animation-timing-function: linear;
+	}
+	40% {
+		stroke-dashoffset: 40;
+		opacity: 0.88;
+		transform: rotate(22deg) scale(0.95);
+		animation-timing-function: linear;
+	}
+	55% {
+		stroke-dashoffset: 22;
+		opacity: 0.7;
+		transform: rotate(31deg) scale(0.92);
+		animation-timing-function: linear;
+	}
+	70% {
+		stroke-dashoffset: 8;
+		opacity: 0.46;
+		transform: rotate(40deg) scale(0.89);
+		animation-timing-function: linear;
+	}
+	85% {
+		stroke-dashoffset: -4;
+		opacity: 0.2;
+		transform: rotate(50deg) scale(0.86);
+		animation-timing-function: linear;
+	}
+	100% {
+		stroke-dashoffset: -18;
+		opacity: 0;
+		transform: rotate(60deg) scale(0.83);
+	}
+}
+
+.fx-accretion {
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	filter: blur(1.6px);
+	mix-blend-mode: screen;
+	animation: fx-accrete calc(var(--fx-speed) * 0.8) linear infinite paused;
+}
+
+.fx-accretion-back {
+	opacity: 0.5;
+	animation-direction: reverse;
+	animation-duration: calc(var(--fx-speed) * 1.15);
+}
+
+.fx-live .fx-accretion {
+	animation-play-state: running;
+}
+
+@keyframes fx-accrete {
+	0% {
+		transform: rotate(0deg) scaleY(1) scaleX(1);
+		opacity: 0.62;
+		animation-timing-function: linear;
+	}
+	14% {
+		transform: rotate(50deg) scaleY(1.12) scaleX(0.97);
+		opacity: 0.8;
+		animation-timing-function: linear;
+	}
+	28% {
+		transform: rotate(101deg) scaleY(1.2) scaleX(1.02);
+		opacity: 0.95;
+		animation-timing-function: linear;
+	}
+	43% {
+		transform: rotate(155deg) scaleY(1.08) scaleX(1.04);
+		opacity: 0.78;
+		animation-timing-function: linear;
+	}
+	57% {
+		transform: rotate(205deg) scaleY(0.94) scaleX(1);
+		opacity: 0.6;
+		animation-timing-function: linear;
+	}
+	72% {
+		transform: rotate(259deg) scaleY(1.06) scaleX(0.98);
+		opacity: 0.74;
+		animation-timing-function: linear;
+	}
+	86% {
+		transform: rotate(310deg) scaleY(1.16) scaleX(1.01);
+		opacity: 0.88;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: rotate(360deg) scaleY(1) scaleX(1);
+		opacity: 0.62;
+	}
+}
+
+.fx-jetknot {
+	fill: #ffffff;
+	opacity: 0;
+	filter: drop-shadow(0 0 6px var(--fx-color-2));
+	animation: fx-knot-climb calc(var(--fx-speed) * 1.1) linear infinite paused;
+	animation-delay: calc(var(--k-n) * -0.3s);
+}
+
+.fx-live .fx-jetknot {
+	animation-play-state: running;
+}
+
+@keyframes fx-knot-climb {
+	0% {
+		opacity: 0;
+		transform: translateY(0) scale(0.4);
+		animation-timing-function: linear;
+	}
+	12% {
+		opacity: 0.9;
+		transform: translateY(-8px) scale(1);
+		animation-timing-function: linear;
+	}
+	26% {
+		opacity: 1;
+		transform: translateY(-17px) scale(0.94);
+		animation-timing-function: linear;
+	}
+	40% {
+		opacity: 0.9;
+		transform: translateY(-26px) scale(0.86);
+		animation-timing-function: linear;
+	}
+	54% {
+		opacity: 0.72;
+		transform: translateY(-34px) scale(0.76);
+		animation-timing-function: linear;
+	}
+	68% {
+		opacity: 0.5;
+		transform: translateY(-40px) scale(0.64);
+		animation-timing-function: linear;
+	}
+	84% {
+		opacity: 0.22;
+		transform: translateY(-45px) scale(0.5);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-49px) scale(0.36);
+	}
+}
+
+.fx-weave {
+	fill: none;
+	stroke: #ffd9ee;
+	stroke-width: 0.35;
+	opacity: 0.16;
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-weave-shift calc(var(--fx-speed) * 2.1) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-weave {
+	animation-play-state: running;
+}
+
+@keyframes fx-weave-shift {
+	0% {
+		transform: translateX(-1.5%) skewX(-1deg);
+		opacity: 0.08;
+		animation-timing-function: linear;
+	}
+	8.5% {
+		transform: translateX(-1.225%) skewX(-0.8deg);
+		opacity: 0.1;
+		animation-timing-function: linear;
+	}
+	17% {
+		transform: translateX(-0.95%) skewX(-0.6deg);
+		opacity: 0.12;
+		animation-timing-function: linear;
+	}
+	25.5% {
+		transform: translateX(-0.675%) skewX(-0.4deg);
+		opacity: 0.14;
+		animation-timing-function: linear;
+	}
+	34% {
+		transform: translateX(-0.4%) skewX(-0.2deg);
+		opacity: 0.16;
+		animation-timing-function: linear;
+	}
+	42.5% {
+		transform: translateX(-0.15%) skewX(-0.05deg);
+		opacity: 0.15;
+		animation-timing-function: linear;
+	}
+	51% {
+		transform: translateX(0.1%) skewX(0.1deg);
+		opacity: 0.14;
+		animation-timing-function: linear;
+	}
+	59.5% {
+		transform: translateX(0.35%) skewX(0.25deg);
+		opacity: 0.13;
+		animation-timing-function: linear;
+	}
+	68% {
+		transform: translateX(0.6%) skewX(0.4deg);
+		opacity: 0.12;
+		animation-timing-function: linear;
+	}
+	76% {
+		transform: translateX(0.9%) skewX(0.6deg);
+		opacity: 0.145;
+		animation-timing-function: linear;
+	}
+	84% {
+		transform: translateX(1.2%) skewX(0.8deg);
+		opacity: 0.17;
+		animation-timing-function: linear;
+	}
+	92% {
+		transform: translateX(1.5%) skewX(1deg);
+		opacity: 0.195;
+		animation-timing-function: linear;
+	}
+	100% {
+		transform: translateX(1.8%) skewX(1.2deg);
+		opacity: 0.22;
+	}
+}
+
+.fx-silkglint {
+	fill: #fff2fa;
+	opacity: 0;
+	filter: drop-shadow(0 0 4px var(--fx-color-2));
+	animation: fx-glint-blink calc(var(--fx-speed) * 1.3) ease-out infinite paused;
+	animation-delay: calc(var(--g-j) * -0.37s);
+}
+
+.fx-live .fx-silkglint {
+	animation-play-state: running;
+}
+
+@keyframes fx-glint-blink {
+	0% {
+		opacity: 0;
+		transform: scale(0.3);
+		animation-timing-function: linear;
+	}
+	12% {
+		opacity: 1;
+		transform: scale(1.3);
+		animation-timing-function: linear;
+	}
+	26% {
+		opacity: 0.4;
+		transform: scale(0.8);
+		animation-timing-function: linear;
+	}
+	42% {
+		opacity: 0.85;
+		transform: scale(1.15);
+		animation-timing-function: linear;
+	}
+	58% {
+		opacity: 0.3;
+		transform: scale(0.9);
+		animation-timing-function: linear;
+	}
+	74% {
+		opacity: 0.55;
+		transform: scale(1.05);
+		animation-timing-function: linear;
+	}
+	88% {
+		opacity: 0.14;
+		transform: scale(0.7);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.4);
+	}
+}
+
+.fx-polestar {
+	fill: #e8f6ff;
+	opacity: 0.55;
+	animation: fx-polestar-blink calc(var(--fx-speed) * 0.6) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-polestar {
+	animation-play-state: running;
+}
+
+@keyframes fx-polestar-blink {
+	0% {
+		opacity: 0.24;
+		animation-timing-function: linear;
+	}
+	9.5% {
+		opacity: 0.305;
+		animation-timing-function: linear;
+	}
+	19% {
+		opacity: 0.37;
+		animation-timing-function: linear;
+	}
+	28.5% {
+		opacity: 0.435;
+		animation-timing-function: linear;
+	}
+	38% {
+		opacity: 0.5;
+		animation-timing-function: linear;
+	}
+	46.5% {
+		opacity: 0.465;
+		animation-timing-function: linear;
+	}
+	55% {
+		opacity: 0.43;
+		animation-timing-function: linear;
+	}
+	63.5% {
+		opacity: 0.395;
+		animation-timing-function: linear;
+	}
+	72% {
+		opacity: 0.36;
+		animation-timing-function: linear;
+	}
+	79% {
+		opacity: 0.45;
+		animation-timing-function: linear;
+	}
+	86% {
+		opacity: 0.54;
+		animation-timing-function: linear;
+	}
+	93% {
+		opacity: 0.63;
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.72;
+	}
+}
+
+.fx-corona-veil {
+	fill: #7dffb0;
+	opacity: 0.12;
+	filter: blur(11px);
+	mix-blend-mode: screen;
+	transform-box: fill-box;
+	transform-origin: 50% 50%;
+	animation: fx-veil-breathe calc(var(--fx-speed) * 1.4) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-corona-veil {
+	animation-play-state: running;
+}
+
+@keyframes fx-veil-breathe {
+	0% {
+		opacity: 0.06;
+		transform: translateY(-3%) scaleY(0.9) skewX(-3deg);
+		animation-timing-function: linear;
+	}
+	8% {
+		opacity: 0.078;
+		transform: translateY(-2.25%) scaleY(0.93) skewX(-2.25deg);
+		animation-timing-function: linear;
+	}
+	16% {
+		opacity: 0.095;
+		transform: translateY(-1.5%) scaleY(0.96) skewX(-1.5deg);
+		animation-timing-function: linear;
+	}
+	24% {
+		opacity: 0.113;
+		transform: translateY(-0.75%) scaleY(0.99) skewX(-0.75deg);
+		animation-timing-function: linear;
+	}
+	32% {
+		opacity: 0.13;
+		transform: translateY(0%) scaleY(1.02) skewX(0deg);
+		animation-timing-function: linear;
+	}
+	40.5% {
+		opacity: 0.123;
+		transform: translateY(0.5%) scaleY(1.01) skewX(0.5deg);
+		animation-timing-function: linear;
+	}
+	49% {
+		opacity: 0.115;
+		transform: translateY(1%) scaleY(1) skewX(1deg);
+		animation-timing-function: linear;
+	}
+	57.5% {
+		opacity: 0.108;
+		transform: translateY(1.5%) scaleY(0.99) skewX(1.5deg);
+		animation-timing-function: linear;
+	}
+	66% {
+		opacity: 0.1;
+		transform: translateY(2%) scaleY(0.98) skewX(2deg);
+		animation-timing-function: linear;
+	}
+	74.5% {
+		opacity: 0.125;
+		transform: translateY(2.5%) scaleY(1.02) skewX(2.5deg);
+		animation-timing-function: linear;
+	}
+	83% {
+		opacity: 0.15;
+		transform: translateY(3%) scaleY(1.06) skewX(3deg);
+		animation-timing-function: linear;
+	}
+	91.5% {
+		opacity: 0.175;
+		transform: translateY(3.5%) scaleY(1.1) skewX(3.5deg);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.2;
+		transform: translateY(4%) scaleY(1.14) skewX(4deg);
+	}
+}
+
+.fx-auroraray {
+	fill: none;
+	stroke: #a7f3d0;
+	stroke-width: 1.4;
+	stroke-linecap: round;
+	opacity: 0;
+	filter: blur(2px);
+	transform-box: fill-box;
+	transform-origin: 50% 0;
+	animation: fx-ray-flare calc(var(--fx-speed) * 0.9) ease-in-out infinite paused;
+	animation-delay: calc(var(--w-j) * -0.42s);
+}
+
+.fx-live .fx-auroraray {
+	animation-play-state: running;
+}
+
+@keyframes fx-ray-flare {
+	0% {
+		opacity: 0;
+		transform: scaleY(0.4) skewX(-4deg);
+		animation-timing-function: linear;
+	}
+	14% {
+		opacity: 0.5;
+		transform: scaleY(0.72) skewX(-2deg);
+		animation-timing-function: linear;
+	}
+	30% {
+		opacity: 0.8;
+		transform: scaleY(1) skewX(1deg);
+		animation-timing-function: linear;
+	}
+	46% {
+		opacity: 0.54;
+		transform: scaleY(0.86) skewX(3deg);
+		animation-timing-function: linear;
+	}
+	62% {
+		opacity: 0.74;
+		transform: scaleY(1.12) skewX(-1deg);
+		animation-timing-function: linear;
+	}
+	78% {
+		opacity: 0.36;
+		transform: scaleY(0.94) skewX(2deg);
+		animation-timing-function: linear;
+	}
+	92% {
+		opacity: 0.14;
+		transform: scaleY(0.66) skewX(-3deg);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0;
+		transform: scaleY(0.42) skewX(-4deg);
+	}
+}
+
+.fx-ridgesnow {
+	fill: #dff3ff;
+	opacity: 0.5;
+}
+
+.fx-auroraglow {
+	fill: #4ade80;
+	opacity: 0.1;
+	filter: blur(13px);
+	mix-blend-mode: screen;
+	animation: fx-groundglow calc(var(--fx-speed) * 1.7) ease-in-out infinite alternate paused;
+}
+
+.fx-live .fx-auroraglow {
+	animation-play-state: running;
+}
+
+@keyframes fx-groundglow {
+	0% {
+		opacity: 0.04;
+		transform: scaleY(0.9);
+		animation-timing-function: linear;
+	}
+	9% {
+		opacity: 0.057;
+		transform: scaleY(0.93);
+		animation-timing-function: linear;
+	}
+	18% {
+		opacity: 0.075;
+		transform: scaleY(0.96);
+		animation-timing-function: linear;
+	}
+	27% {
+		opacity: 0.093;
+		transform: scaleY(0.99);
+		animation-timing-function: linear;
+	}
+	36% {
+		opacity: 0.11;
+		transform: scaleY(1.02);
+		animation-timing-function: linear;
+	}
+	44.5% {
+		opacity: 0.103;
+		transform: scaleY(1.005);
+		animation-timing-function: linear;
+	}
+	53% {
+		opacity: 0.095;
+		transform: scaleY(0.99);
+		animation-timing-function: linear;
+	}
+	61.5% {
+		opacity: 0.088;
+		transform: scaleY(0.975);
+		animation-timing-function: linear;
+	}
+	70% {
+		opacity: 0.08;
+		transform: scaleY(0.96);
+		animation-timing-function: linear;
+	}
+	77.5% {
+		opacity: 0.103;
+		transform: scaleY(1);
+		animation-timing-function: linear;
+	}
+	85% {
+		opacity: 0.125;
+		transform: scaleY(1.04);
+		animation-timing-function: linear;
+	}
+	92.5% {
+		opacity: 0.148;
+		transform: scaleY(1.08);
+		animation-timing-function: linear;
+	}
+	100% {
+		opacity: 0.17;
+		transform: scaleY(1.12);
+	}
+}
+
 .fx-swell {
 	transform-origin: 50% 100%;
 	animation: fx-swell-roll calc(var(--fx-speed) * (1.4 + var(--v-i) * 0.5)) ease-in-out infinite alternate paused;
@@ -8689,6 +10542,7 @@ html.lenis body {
 }
 
 .fx-breaker {
+	filter: blur(2.2px) drop-shadow(0 -4px 14px rgba(6, 40, 70, 0.55));
 	transform-origin: 30% 100%;
 	filter: drop-shadow(0 -4px 12px rgba(6, 40, 70, 0.55));
 	animation: fx-breaker-surge var(--fx-speed) ease-in-out infinite alternate paused;
@@ -9170,57 +11024,47 @@ html.lenis body {
 @keyframes fx-scanbar {
 	0% {
 		transform: translateY(-32%) scaleY(0.9);
-		opacity: 0.18;
+		opacity: 0;
 		animation-timing-function: linear;
 	}
-	8% {
-		transform: translateY(-19%) scaleY(0.97);
-		opacity: 0.4;
-		animation-timing-function: linear;
-	}
-	16% {
-		transform: translateY(-6%) scaleY(1.04);
-		opacity: 0.62;
-		animation-timing-function: linear;
-	}
-	27% {
-		transform: translateY(9%) scaleY(1);
-		opacity: 0.53;
-		animation-timing-function: linear;
-	}
-	38% {
-		transform: translateY(24%) scaleY(0.96);
+	10% {
+		transform: translateY(-14%) scaleY(0.98);
 		opacity: 0.44;
 		animation-timing-function: linear;
 	}
-	47.5% {
-		transform: translateY(38%) scaleY(1.02);
-		opacity: 0.61;
+	24% {
+		transform: translateY(10%) scaleY(1.04);
+		opacity: 0.66;
 		animation-timing-function: linear;
 	}
-	57% {
-		transform: translateY(52%) scaleY(1.08);
-		opacity: 0.78;
+	38% {
+		transform: translateY(34%) scaleY(0.96);
+		opacity: 0.46;
 		animation-timing-function: linear;
 	}
-	67.5% {
-		transform: translateY(68%) scaleY(1.03);
-		opacity: 0.64;
+	52% {
+		transform: translateY(58%) scaleY(1.08);
+		opacity: 0.76;
 		animation-timing-function: linear;
 	}
-	78% {
-		transform: translateY(84%) scaleY(0.98);
-		opacity: 0.5;
+	66% {
+		transform: translateY(80%) scaleY(1);
+		opacity: 0.54;
 		animation-timing-function: linear;
 	}
-	89% {
-		transform: translateY(105%) scaleY(0.95);
-		opacity: 0.33;
+	80% {
+		transform: translateY(100%) scaleY(0.96);
+		opacity: 0.32;
+		animation-timing-function: linear;
+	}
+	92% {
+		transform: translateY(116%) scaleY(0.94);
+		opacity: 0.12;
 		animation-timing-function: linear;
 	}
 	100% {
 		transform: translateY(126%) scaleY(0.92);
-		opacity: 0.16;
+		opacity: 0;
 	}
 }
 
@@ -9237,43 +11081,30 @@ html.lenis body {
 	content: '';
 	position: absolute;
 	inset: -10%;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-	opacity: var(--fx-opacity);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.75'/%3E%3C/svg%3E");
+	opacity: calc(var(--fx-opacity) * 1.5);
 	mix-blend-mode: overlay;
-	animation: fx-jitter var(--fx-speed) steps(3) infinite;
+	animation: fx-jitter calc(var(--fx-speed) * 0.22) steps(4, end) infinite;
 }
 
 @keyframes fx-jitter {
 	0% {
-		transform: translate3d(0, 0, 0);
-		animation-timing-function: linear;
+		transform: translate3d(0, 0, 0) scale(1);
 	}
-	25% {
-		transform: translate3d(-2px, 2px, 0);
-		animation-timing-function: linear;
+	20% {
+		transform: translate3d(-9px, 5px, 0) scale(1.02);
 	}
-	37.5% {
-		transform: translate3d(0px, 0px, 0);
-		animation-timing-function: linear;
+	40% {
+		transform: translate3d(7px, -8px, 0) scale(0.99);
 	}
-	50% {
-		transform: translate3d(2px, -2px, 0);
-		animation-timing-function: linear;
+	60% {
+		transform: translate3d(-5px, -4px, 0) scale(1.03);
 	}
-	62.5% {
-		transform: translate3d(0px, -2px, 0);
-		animation-timing-function: linear;
-	}
-	75% {
-		transform: translate3d(-2px, -2px, 0);
-		animation-timing-function: linear;
-	}
-	87.5% {
-		transform: translate3d(0px, 0px, 0);
-		animation-timing-function: linear;
+	80% {
+		transform: translate3d(8px, 7px, 0) scale(0.98);
 	}
 	100% {
-		transform: translate3d(2px, 2px, 0);
+		transform: translate3d(0, 0, 0) scale(1);
 	}
 }
 
@@ -10698,36 +12529,44 @@ html.lenis body {
 		opacity: 0;
 		animation-timing-function: linear;
 	}
-	12.5% {
-		opacity: 0.125;
+	12% {
+		opacity: 0;
 		animation-timing-function: linear;
 	}
-	25% {
-		opacity: 0.25;
-		animation-timing-function: linear;
-	}
-	37.5% {
-		opacity: 0.375;
-		animation-timing-function: linear;
-	}
-	50% {
+	14% {
 		opacity: 0.5;
 		animation-timing-function: linear;
 	}
-	62.5% {
-		opacity: 0.625;
+	16% {
+		opacity: 1;
 		animation-timing-function: linear;
 	}
-	75% {
-		opacity: 0.75;
+	84% {
+		opacity: 1;
 		animation-timing-function: linear;
 	}
-	87.5% {
-		opacity: 0.875;
+	87% {
+		opacity: 0.8;
+		animation-timing-function: linear;
+	}
+	90% {
+		opacity: 0.6;
+		animation-timing-function: linear;
+	}
+	93% {
+		opacity: 0.4;
+		animation-timing-function: linear;
+	}
+	96% {
+		opacity: 0.2;
+		animation-timing-function: linear;
+	}
+	98% {
+		opacity: 0.1;
 		animation-timing-function: linear;
 	}
 	100% {
-		opacity: 1;
+		opacity: 0;
 	}
 }
 

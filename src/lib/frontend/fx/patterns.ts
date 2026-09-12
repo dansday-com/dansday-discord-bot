@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, hsl, plot, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
 
 /** Ground that cracks open, with dust venting out of the fissures. */
 export function makeQuake(rows: number): FxProgram {
@@ -90,6 +90,7 @@ export function makeTear(rows: number): FxProgram {
 		init(s) {
 			(s as any).bands = [] as number[][];
 			(s as any).next = 0;
+			(s as any).ghost = [] as number[][];
 		},
 		frame(s) {
 			clear(s);
@@ -101,6 +102,8 @@ export function makeTear(rows: number): FxProgram {
 					bands.push([s.rnd() * s.h, 1 + s.rnd() * (3 + s.v.drift * 4), (s.rnd() - 0.5) * s.w * (0.12 + s.v.drift * 0.22) * s.v.dir, s.rnd()]);
 				st.bands = bands;
 				st.next = s.t + 1 + ((s.rnd() * 9 * (1.4 - s.v.speed * 0.4)) | 0);
+				for (const bd of bands) st.ghost.push([bd[0], bd[1], bd[2], 1]);
+				if (st.ghost.length > 18) st.ghost.splice(0, st.ghost.length - 18);
 			}
 			const [br, bg, bb] = hsl(s.v.hue, s.v.sat, 56);
 			const [cr, cg, cb] = hsl(s.v.hue2, s.v.sat, 56);
@@ -119,6 +122,15 @@ export function makeTear(rows: number): FxProgram {
 			for (let k = 0; k < 3; k++) {
 				const y = s.rnd() * s.h;
 				for (let x = 0; x < s.w; x++) if (s.rnd() > 0.6) plot(s, x, y, 255, 255, 255, 0.3);
+			}
+			for (let i = (st.ghost as number[][]).length - 1; i >= 0; i--) {
+				const gh = st.ghost[i];
+				gh[3] -= 0.08;
+				if (gh[3] <= 0) {
+					st.ghost.splice(i, 1);
+					continue;
+				}
+				for (let y = gh[0]; y < gh[0] + gh[1]; y++) for (let x = 0; x < s.w; x += 2) plot(s, x + gh[2] * gh[3], y, br, bg, bb, gh[3] * 0.18);
 			}
 			blit(s);
 		}
@@ -155,7 +167,7 @@ export function makeMaw(rows: number): FxProgram {
 				const a = p[o];
 				for (let k = 0; k < 7; k++) {
 					const rr = p[o + 1] + k * 0.035;
-					plot(s, cx + Math.cos(a) * rr * s.w * 0.5, cy + Math.sin(a) * rr * s.h * 0.5, lr, lg, lb, (1 - k / 7) * 0.6);
+					plot(s, cx + Math.cos(a) * rr * s.w * 0.5, cy + Math.sin(a) * rr * s.h * 0.5, lr, lg, lb, (1 - k / 7) * 0.6 * edge(p[o + 1], 0.16, 1.3, 0.22));
 				}
 			}
 			const [vr, vg, vb] = hsl(s.v.hue2, s.v.sat * 0.4, 82);
@@ -314,7 +326,7 @@ export function withBough(inner: FxProgram): FxProgram {
 	};
 }
 
-/** A trunk and crown rooted on the ground. Height, lean and canopy vary. */
+/** A rooted stand of trees with litter underfoot. Count, sizes and shapes vary. */
 export function withCanopy(inner: FxProgram): FxProgram {
 	return {
 		rows: inner.rows,
@@ -323,19 +335,51 @@ export function withCanopy(inner: FxProgram): FxProgram {
 		frame(s) {
 			inner.frame(s);
 			const r = mulberry32(s.v.seed + 3307);
-			const baseX = s.w * (0.16 + r() * 0.68);
-			const bark = hsl(s.v.hue + 200, 22, 20);
-			const tips: number[][] = [];
-			grow(s, baseX, s.h * 0.92, -Math.PI / 2 + s.v.tilt * 0.2, s.h * (0.26 + r() * 0.1), 3.2, 4, r, bark, tips);
-			for (let i = 0; i < tips.length; i++) {
-				const [tx, ty] = tips[i];
-				const leaf = hsl(s.v.hue + (i % 5) * 12 - 12, s.v.sat, 46 + (i % 3) * 10);
-				const rustle = Math.sin(s.t * 0.03 + i * 0.7) * 0.8;
-				for (let dy = -2; dy <= 2; dy++)
-					for (let dx = -2; dx <= 2; dx++) {
-						if (dx * dx + dy * dy > 5) continue;
-						plot(s, tx + dx + rustle, ty + dy, leaf[0], leaf[1], leaf[2], 0.72);
+			const gy = s.h * 0.84;
+			const soil = hsl(s.v.hue + 12, 30, 14);
+			const litter = hsl(s.v.hue, s.v.sat, 40);
+			for (let x = 0; x < s.w; x++) {
+				const lip = gy + Math.sin(x * 0.09 + s.v.tilt) * 1.4;
+				for (let y = lip; y < s.h; y++) plot(s, x, y, soil[0], soil[1], soil[2], 0.95);
+				plot(s, x, lip, litter[0], litter[1], litter[2], 0.5);
+			}
+			for (let l = 0; l < 14; l++) {
+				const lx = ((l * 0.137 + s.v.drift) % 1) * s.w;
+				const ly = gy + 2 + ((l * 0.31) % 1) * (s.h - gy - 2);
+				const lc = hsl(s.v.hue + ((l % 4) - 2) * 14, s.v.sat, 44);
+				plot(s, lx, ly, lc[0], lc[1], lc[2], 0.8);
+				plot(s, lx + 1, ly, lc[0], lc[1], lc[2], 0.6);
+			}
+
+			const count = 3 + ((r() * 3) | 0);
+			const order: number[][] = [];
+			for (let i = 0; i < count; i++) order.push([0.08 + (i / count) * 0.84 + (r() - 0.5) * 0.1, 0.5 + r() * 0.6, r()]);
+			order.sort((a, b) => a[1] - b[1]);
+			for (const [fx, scale, tone] of order) {
+				const depth = scale < 0.75 ? 3 : 4;
+				const bark = hsl(s.v.hue + 200, 22, 12 + scale * 12);
+				const tips: number[][] = [];
+				grow(s, fx * s.w, gy + 1, -Math.PI / 2 + s.v.tilt * 0.18, s.h * 0.3 * scale, 1.4 + scale * 2.4, depth, r, bark, tips);
+				let cx = 0;
+				let cy = 0;
+				for (const t of tips) {
+					cx += t[0];
+					cy += t[1];
+				}
+				cx /= tips.length || 1;
+				cy /= tips.length || 1;
+				const rx = s.w * 0.1 * scale;
+				const ry = s.h * 0.15 * scale;
+				for (let y = -ry; y <= ry; y++) {
+					for (let x = -rx; x <= rx; x++) {
+						const d = Math.hypot(x / rx, y / ry);
+						if (d > 1) continue;
+						if ((((x + cx) | 0) * 7 + ((y + cy) | 0) * 13) % 5 === 0 && d > 0.55) continue;
+						const rustle = Math.sin(s.t * 0.03 * s.v.speed + (x + y) * 0.2 + tone * 6) * scale;
+						const leaf = hsl(s.v.hue + ((x + y) % 5) * 11 - 22, s.v.sat, (34 + scale * 20) * (1 - d * 0.3));
+						plot(s, cx + x + rustle, cy + y, leaf[0], leaf[1], leaf[2], 0.9 - d * 0.25);
 					}
+				}
 			}
 			blit(s);
 		}
@@ -443,6 +487,205 @@ export function withBursts(inner: FxProgram, count: number, period: number, salt
 					plot(s, bx + Math.cos(th) * rad * 1.5, by + Math.sin(th) * rad * 1.5 + f * f * 6, pr, pg, pb, (1 - f) * 0.9);
 				}
 			}
+			blit(s);
+		}
+	};
+}
+
+/** Embers lifting off a coal bed: steady rise, sideways weave, shrinking as they cool. */
+export function makeEmbers(rows: number): FxProgram {
+	const place = (sc: FxScene, i: number, fresh: boolean) => {
+		const p = sc.parts;
+		p[i * 6] = sc.rnd() * sc.w;
+		p[i * 6 + 1] = fresh ? sc.h + 2 : sc.rnd() * sc.h;
+		p[i * 6 + 2] = 0.3 + sc.rnd() * 0.8;
+		p[i * 6 + 3] = sc.rnd() * Math.PI * 2;
+		p[i * 6 + 4] = (0.5 + sc.rnd() * 0.9) * sc.v.drift;
+		p[i * 6 + 5] = 1.2 + sc.rnd() * 1.6;
+	};
+	return {
+		rows,
+		stride: 0.6,
+		init(s) {
+			for (let i = 0; i < s.n; i++) place(s, i, false);
+			(s as any).wisps = Array.from({ length: 4 }, () => [s.rnd(), s.rnd() * 6.28, 0.6 + s.rnd() * 0.7]);
+		},
+		frame(s) {
+			clear(s);
+
+			const haze = 0.55 + 0.45 * Math.sin(s.t * 0.03 * s.v.speed);
+			const [hr, hg, hb] = hsl(s.v.hue, s.v.sat, 46);
+			for (let y = s.h * 0.45; y < s.h; y++) {
+				const f = (y - s.h * 0.45) / (s.h * 0.55);
+				for (let x = 0; x < s.w; x++) plot(s, x, y, hr, hg, hb, f * f * 0.2 * haze);
+			}
+
+			const [sr, sg, sb] = hsl(s.v.hue + 190, 12, 34);
+			for (const [wx, wph, wsc] of (s as any).wisps as number[][]) {
+				for (let k = 0; k < 26; k++) {
+					const f = k / 26;
+					const y = s.h - f * s.h * 0.85 * wsc;
+					const x = wx * s.w + Math.sin(f * 4 + s.t * 0.02 * s.v.speed + wph) * s.w * 0.05 * (1 + f);
+					const w = 1 + f * 3.5 * wsc;
+					for (let d = -w; d <= w; d++) plot(s, x + d, y, sr, sg, sb, (1 - f) * 0.1 * (1 - Math.abs(d) / (w + 1)));
+				}
+			}
+
+			for (let i = 0; i < s.n; i++) {
+				const o = i * 6;
+				const p = s.parts;
+				p[o + 3] += 0.045 * p[o + 2];
+				p[o + 1] -= p[o + 2] * s.v.speed * 0.85;
+				if (p[o + 1] < -3) place(s, i, true);
+				const climb = 1 - p[o + 1] / s.h;
+				const x = p[o] + Math.sin(p[o + 3]) * p[o + 4] * s.w * 0.09 * s.v.dir;
+				const cool = 1 - climb * 0.28;
+				const fade = Math.min(1, p[o + 1] / s.h + 0.15) * Math.min(1, (s.h - p[o + 1]) / (s.h * 0.12));
+				const rad = p[o + 5] * cool;
+				const [r, g, b] = hsl(s.v.hue + climb * 16, s.v.sat, 58 + (1 - climb) * 34);
+				for (let dy = -rad; dy <= rad; dy++)
+					for (let dx = -rad; dx <= rad; dx++) {
+						const d = Math.hypot(dx, dy) / rad;
+						if (d > 1) continue;
+						plot(s, x + dx, p[o + 1] + dy, r, g, b, (1 - d) * (1 - d) * fade);
+					}
+				plot(s, x, p[o + 1], 255, 246, 208, fade * 0.9);
+			}
+			blit(s);
+		}
+	};
+}
+
+/** Where autumn's crowns sit — the same seeded maths withCanopy draws them from. */
+export function canopySource(sc: FxScene): [number, number] {
+	const r = mulberry32(sc.v.seed + 3307);
+	const gy = sc.h * 0.84;
+	const count = 3 + ((r() * 3) | 0);
+	const trees: number[][] = [];
+	for (let i = 0; i < count; i++) trees.push([0.08 + (i / count) * 0.84 + (r() - 0.5) * 0.1, 0.5 + r() * 0.6]);
+	const t = trees[(sc.rnd() * trees.length) | 0];
+	const scale = t[1];
+	return [t[0] * sc.w + (sc.rnd() - 0.5) * sc.w * 0.18 * scale, gy - sc.h * 0.3 * scale - sc.rnd() * sc.h * 0.12 * scale];
+}
+
+/** Where sakura's bough tips reach — mirrors withBough. */
+export function boughSource(sc: FxScene): [number, number] {
+	const side = sc.v.dir > 0 ? 0 : 1;
+	const reach = sc.h * 0.32;
+	const f = sc.rnd();
+	return [(side ? sc.w + 2 : -2) + (side ? -1 : 1) * f * reach * 2.4, -2 + f * reach * 0.9 + sc.rnd() * 4];
+}
+
+/** A CRT beam: the sweep is what lights the phosphor, and it decays behind it. */
+export function makeCrt(rows: number): FxProgram {
+	return {
+		rows,
+		stride: 0,
+		init(s) {
+			(s as any).phos = new Float32Array(s.h);
+			(s as any).hold = 0;
+		},
+		frame(s) {
+			clear(s);
+			const st = s as any;
+			const phos = st.phos as Float32Array;
+			const beam = ((s.t * (1.1 + s.v.speed * 0.8) * s.v.dir + s.h * 4) | 0) % s.h;
+			phos[beam] = 1;
+			if (s.rnd() < 0.004) st.hold = 26;
+			if (st.hold > 0) st.hold -= 1;
+			const slip = st.hold > 0 ? Math.sin(st.hold * 0.5) * s.h * 0.1 : 0;
+			const [r, g, b] = hsl(s.v.hue, s.v.sat, 62);
+			const [hr, hg, hb] = hsl(s.v.hue, s.v.sat * 0.4, 96);
+			for (let y = 0; y < s.h; y++) {
+				phos[y] *= 0.82;
+				const lit = phos[y];
+				if (lit < 0.01) continue;
+				const row = (y + slip + s.h) % s.h;
+				for (let x = 0; x < s.w; x++) {
+					const mask = x % 3 === 0 ? 1 : 0.55;
+					plot(s, x, row, r, g, b, lit * 0.5 * mask);
+				}
+				if (lit > 0.9) for (let x = 0; x < s.w; x++) plot(s, x, row, hr, hg, hb, (lit - 0.9) * 6 * (0.4 + s.v.drift * 0.3));
+			}
+			for (let y = s.t % 2; y < s.h; y += 2) for (let x = 0; x < s.w; x++) plot(s, x, y, 0, 0, 0, 0);
+			blit(s);
+		}
+	};
+}
+
+/** Film: the gate weaves, dust sticks for a few frames, a scratch rides the emulsion. */
+export function makeFilm(rows: number): FxProgram {
+	return {
+		rows,
+		stride: 0,
+		init(s) {
+			(s as any).dust = [] as number[][];
+			(s as any).scratch = -1;
+		},
+		frame(s) {
+			clear(s);
+			const st = s as any;
+			const weave = Math.round(Math.sin(s.t * 0.31 * s.v.speed) * (1 + s.v.drift));
+			const lift = Math.round(Math.sin(s.t * 0.17) * s.v.tilt * 2);
+			const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.3, 74);
+			const density = 0.28 + s.v.drift * 0.2;
+			for (let y = 0; y < s.h; y += 1) {
+				for (let x = 0; x < s.w; x += 1) {
+					if (s.rnd() > density * 0.3) continue;
+					plot(s, x + weave, y + lift, r, g, b, s.rnd() * 0.42);
+				}
+			}
+			if (s.rnd() < 0.06) st.dust.push([s.rnd() * s.w, s.rnd() * s.h, 3 + ((s.rnd() * 9) | 0), 1 + s.rnd() * 2]);
+			for (let i = st.dust.length - 1; i >= 0; i--) {
+				const d = st.dust[i];
+				d[2] -= 1;
+				if (d[2] <= 0) {
+					st.dust.splice(i, 1);
+					continue;
+				}
+				for (let k = 0; k < d[3]; k++) plot(s, d[0] + weave, d[1] + k + lift, 20, 18, 16, 0.85);
+			}
+			if (st.scratch < 0 && s.rnd() < 0.01) st.scratch = s.rnd() * s.w;
+			if (st.scratch >= 0) {
+				st.scratch += (s.rnd() - 0.5) * 0.8;
+				for (let y = 0; y < s.h; y++) plot(s, st.scratch + weave + Math.sin(y * 0.3) * 0.6, y, 240, 236, 228, 0.4);
+				if (s.rnd() < 0.02) st.scratch = -1;
+			}
+			blit(s);
+		}
+	};
+}
+
+/** Foil: the scan bar is the light source, and the spectrum is where it falls. */
+export function makeFoilLit(rows: number): FxProgram {
+	return {
+		rows,
+		stride: 0,
+		init() {},
+		frame(s) {
+			clear(s);
+			const bar = ((s.t * 0.7 * s.v.speed * s.v.dir + s.w * 4) % (s.w * 1.7)) - s.w * 0.35;
+			const slant = 0.35 + s.v.tilt * 0.4;
+			for (let y = 0; y < s.h; y++) {
+				for (let x = 0; x < s.w; x++) {
+					const d = (x - bar - (y - s.h / 2) * slant) / (s.w * 0.5);
+					const lit = Math.max(0, 1 - Math.abs(d));
+					if (lit < 0.02) continue;
+					const [r, g, b] = hsl(s.v.hue + d * 300 * (0.6 + s.v.drift * 0.5), 90, 58);
+					plot(s, x, y, r, g, b, lit * lit * 0.55);
+				}
+			}
+			const [gr, gg, gb] = hsl(0, 0, 100);
+			for (let x = 0; x < s.w; x += 6)
+				for (let y = 0; y < s.h; y++) {
+					const near = Math.max(0, 1 - Math.abs(x - bar - (y - s.h / 2) * slant) / (s.w * 0.2));
+					plot(s, x, y, gr, gg, gb, 0.05 + near * 0.3);
+				}
+			for (let y = 0; y < s.h; y += 6)
+				for (let x = 0; x < s.w; x++) {
+					const near = Math.max(0, 1 - Math.abs(x - bar - (y - s.h / 2) * slant) / (s.w * 0.2));
+					plot(s, x, y, gr, gg, gb, 0.05 + near * 0.3);
+				}
 			blit(s);
 		}
 	};

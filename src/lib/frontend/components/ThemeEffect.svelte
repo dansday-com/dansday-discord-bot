@@ -20,6 +20,7 @@
 	let canvas = $state<HTMLCanvasElement | undefined>();
 	let live = $state(false);
 	let aspect = $state(3.2);
+	let boxH = $state(0);
 	let scene = $state.raw<FxScene | undefined>(undefined);
 
 	$effect(() => {
@@ -31,6 +32,8 @@
 			const next = Math.max(0.6, Math.min(7, w / Math.max(1, h)));
 			const quantised = Math.round(next * 8) / 8;
 			if (quantised !== aspect) aspect = quantised;
+			const rows = Math.round(h / 4) * 4;
+			if (rows !== boxH) boxH = rows;
 		};
 		measure();
 		const ro = new ResizeObserver(measure);
@@ -82,8 +85,9 @@
 		const sd = seed;
 		const ac = accent;
 		const ratio = aspect;
+		const height = boxH;
 		if (!el || !prog || fam === 'none') return;
-		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio);
+		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
 		prog.frame(built);
 		scene = built;
 	});

@@ -1,4 +1,5 @@
-import { blit, clear, hsl, plot, type FxProgram, type FxScene } from './engine.js';
+import { mulberry32 } from '$lib/effects.js';
+import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
 import {
 	makeArc,
 	makeBands,
@@ -13,9 +14,22 @@ import {
 	makeVortex,
 	withSky
 } from './extra.js';
-import { makeFoil, makeMaw, makeQuake, makeTear, makeWeave, withBough, withBursts, withCanopy, withGalaxyBand, withGlow, withWater } from './patterns.js';
+import {
+	makeFoil,
+	makeMaw,
+	makeEmbers,
+	makeQuake,
+	makeTear,
+	makeWeave,
+	withBough,
+	withBursts,
+	withCanopy,
+	withGalaxyBand,
+	withGlow,
+	withWater
+} from './patterns.js';
 import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
-import { makeBreaker, makeHoles, makeSign, makeWishNight, withCone, withFunnel, withGround, withHorizon, withImpacts } from './structure.js';
+import { makeBreaker, makeHoles, makeSign, makeStrike, makeWishNight, withCone, withFunnel, withGround, withHorizon, withImpacts } from './structure.js';
 
 const P = 6;
 
@@ -59,6 +73,7 @@ function makeFire(rows: number, decay: number, feed: number): FxProgram {
 		stride: 0,
 		init(s) {
 			(s as any).pal = fieldPalette(s, 36);
+			(s as any).sparks = [] as number[][];
 			const { w, h, buf } = s;
 			for (let y = 0; y < h; y++) {
 				const heat = 36 * (y / (h - 1));
@@ -79,13 +94,41 @@ function makeFire(rows: number, decay: number, feed: number): FxProgram {
 					plot(s, x, y, c[0], c[1], c[2], c[3]);
 				}
 			}
+			const sparks = (s as any).sparks as number[][];
+			for (let k = 0; k < 3; k++) {
+				const sx = (s.rnd() * w) | 0;
+				for (let y = 1; y < h; y++) {
+					if (buf[y * w + sx] > 26 && buf[(y - 1) * w + sx] <= 4) {
+						if (s.rnd() < 0.25) sparks.push([sx, y, 0, 0.3 + s.rnd() * 0.7]);
+						break;
+					}
+				}
+			}
+			for (let i = sparks.length - 1; i >= 0; i--) {
+				const sp = sparks[i];
+				sp[1] -= 0.35 * sp[3] * s.v.speed;
+				sp[0] += Math.sin(sp[2] * 0.3) * 0.4 * s.v.drift * s.v.dir;
+				sp[2] += 1;
+				if (sp[1] < 0 || sp[2] > 70) {
+					sparks.splice(i, 1);
+					continue;
+				}
+				const life = 1 - sp[2] / 70;
+				const c = pal[Math.min(pal.length - 1, (20 + life * 16) | 0)];
+				plot(s, sp[0], sp[1], c[0], c[1], c[2], life * 0.9);
+			}
+			if (sparks.length > 40) sparks.splice(0, sparks.length - 40);
 			blit(s);
 		}
 	};
 }
 
 /** Points falling with a shared wind vector — one storm, not 57 arguments. */
-function makeFall(rows: number, stride: number, opts: { len: number; wind: number; sway: number; size: number; fall?: number; from?: number }): FxProgram {
+function makeFall(
+	rows: number,
+	stride: number,
+	opts: { len: number; wind: number; sway: number; size: number; fall?: number; from?: number; splash?: number }
+): FxProgram {
 	return {
 		rows,
 		stride,
@@ -103,6 +146,7 @@ function makeFall(rows: number, stride: number, opts: { len: number; wind: numbe
 			clear(s);
 			const wind = opts.wind * (0.55 + s.v.drift * 0.65) * s.v.dir;
 			const rate = opts.fall ?? 1.5;
+			const splashes = ((s as any).splashes ??= [] as number[][]);
 			const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.5, 92);
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
@@ -111,12 +155,16 @@ function makeFall(rows: number, stride: number, opts: { len: number; wind: numbe
 				p[o] += wind * p[o + 2] + Math.sin(p[o + 3]) * opts.sway;
 				p[o + 1] += p[o + 2] * s.v.speed * rate;
 				if (p[o + 1] > s.h) {
+					if (opts.splash) {
+						splashes.push([p[o], 0]);
+						if (splashes.length > 14) splashes.shift();
+					}
 					p[o + 1] = (opts.from ?? 0) * s.h - 2;
 					p[o] = s.rnd() * s.w;
 				}
 				if (p[o] > s.w + 2) p[o] = -2;
 				if (p[o] < -2) p[o] = s.w + 2;
-				const a = p[o + 4];
+				const a = p[o + 4] * edge(p[o + 1], (opts.from ?? 0) * s.h - 3, s.h + 1, s.h * 0.16);
 				const size = opts.size * p[o + 2];
 				for (let k = 0; k < opts.len; k++) {
 					const t = k / Math.max(1, opts.len);
@@ -124,17 +172,41 @@ function makeFall(rows: number, stride: number, opts: { len: number; wind: numbe
 				}
 				if (size > 0.8) plot(s, p[o] + 1, p[o + 1], r, g, b, a * 0.55);
 			}
+			for (let k = splashes.length - 1; k >= 0; k--) {
+				const sp = splashes[k];
+				sp[1] += 1;
+				if (sp[1] > 12) {
+					splashes.splice(k, 1);
+					continue;
+				}
+				const f = sp[1] / 12;
+				const w2 = f * (opts.splash ?? 3);
+				for (let d = -w2; d <= w2; d++) plot(s, sp[0] + d, s.h - 1 - Math.sin((1 - Math.abs(d) / (w2 + 0.5)) * 2) * 1.5, r, g, b, (1 - f) * 0.7);
+			}
 			blit(s);
 		}
 	};
 }
 
 /** Sparks thrown up and out, falling back under gravity. */
-function makeFountain(rows: number, stride: number, gravity: number, spread: number): FxProgram {
+function makeFountain(rows: number, stride: number, gravity: number, spread: number, vent = false): FxProgram {
+	const mouth = (sc: FxScene) => {
+		const r = mulberry32(sc.v.seed + 7311);
+		const cx = sc.w * (0.5 + sc.v.tilt * 0.14);
+		const peak = sc.h * (0.3 + r() * 0.14);
+		const half = sc.w * (0.2 + r() * 0.12);
+		return [cx, peak, half * 0.16] as const;
+	};
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
-		p[i * P] = sc.w * 0.5 + (sc.rnd() - 0.5) * sc.w * spread;
-		p[i * P + 1] = sc.h - 1;
+		if (vent) {
+			const [mx, my, mw] = mouth(sc);
+			p[i * P] = mx + (sc.rnd() - 0.5) * mw * 2;
+			p[i * P + 1] = my;
+		} else {
+			p[i * P] = sc.w * 0.5 + (sc.rnd() - 0.5) * sc.w * spread;
+			p[i * P + 1] = sc.h - 1;
+		}
 		p[i * P + 2] = (sc.rnd() - 0.5) * 0.9 + sc.v.tilt;
 		p[i * P + 3] = -(0.7 + sc.rnd() * 1.5) * sc.v.speed;
 		p[i * P + 4] = 0.5 + sc.rnd() * 0.5;
@@ -232,7 +304,12 @@ function makeSpiral(rows: number, stride: number, inward: number): FxProgram {
 				const y = cy + Math.sin(p[o]) * ry * p[o + 1];
 				const heat = 1 - p[o + 1];
 				const [r, g, b] = hsl(s.v.hue + heat * 50, s.v.sat, 46 + heat * 46);
-				plot(s, x, y, r, g, b, p[o + 3] * (0.35 + heat * 0.65));
+				const a = p[o + 3] * (0.35 + heat * 0.65) * edge(p[o + 1], 0.06, 1.25, 0.24);
+				const stretch = Math.max(1, heat * heat * 9);
+				for (let t = 0; t < stretch; t++) {
+					const back = p[o + 1] + t * 0.012;
+					plot(s, cx + Math.cos(p[o] - t * 0.012 * s.v.dir) * rx * back, cy + Math.sin(p[o] - t * 0.012 * s.v.dir) * ry * back, r, g, b, a * (1 - t / stretch));
+				}
 			}
 			blit(s);
 		}
@@ -298,11 +375,14 @@ function makeTwinkle(rows: number, stride: number, rise: number): FxProgram {
 					p[o + 1] = s.h + 1;
 					p[o] = s.rnd() * s.w;
 				}
+				const rest = s.h * 0.82;
+				if (p[o + 1] > rest) p[o + 1] -= (p[o + 1] - rest) * 0.06;
 				const tw = Math.max(0, Math.sin(p[o + 3]));
 				const [r, g, b] = hsl(s.v.hue + (s.v.hue2 - s.v.hue) * p[o + 2], s.v.sat, 62 + tw * 30);
-				plot(s, p[o], p[o + 1], r, g, b, tw * 0.95);
-				plot(s, p[o] + 1, p[o + 1], r, g, b, tw * 0.3);
-				plot(s, p[o], p[o + 1] + 1, r, g, b, tw * 0.3);
+				const fe = edge(p[o + 1], -2, s.h + 2, s.h * 0.18);
+				plot(s, p[o], p[o + 1], r, g, b, tw * 0.95 * fe);
+				plot(s, p[o] + 1, p[o + 1], r, g, b, tw * 0.3 * fe);
+				plot(s, p[o], p[o + 1] + 1, r, g, b, tw * 0.3 * fe);
 			}
 			blit(s);
 		}
@@ -311,19 +391,19 @@ function makeTwinkle(rows: number, stride: number, rise: number): FxProgram {
 
 export const PROGRAMS: Record<string, FxProgram> = {
 	fire: makeFire(52, 3, 0.86),
-	ember: withGlow(makeFountain(56, 0.34, 0.012, 1.9), 0.95, 0.5, 52, 1502),
-	volcano: withCone(makeFountain(56, 0.42, 0.028, 0.34)),
+	ember: withGround(makeEmbers(56), 323, 0.1, 0.04, 26),
+	volcano: withCone(makeFountain(56, 0.42, 0.028, 0.34, true)),
 
-	snow: withSky(makeSprite(56, 0.16, FLAKE, { fall: 1, sway: 0.2, tumble: 0.04, wind: 0.16, light: 94, spread: 8, from: 0.2 }), 3, 88, 0.4),
+	snow: withSky(makeSprite(56, 0.16, FLAKE, { fall: 1, sway: 0.2, tumble: 0.04, wind: 0.16, light: 94, spread: 8, settle: 0.16, from: 0.2 }), 3, 88, 0.4),
 	blizzard: withSky(makeFall(56, 1.15, { len: 4, wind: 1.35, sway: 0.05, size: 0.6, from: 0.2 }), 4, 80, 2.4),
-	rain: withSky(makeFall(56, 1.0, { len: 6, wind: 0.28, sway: 0, size: 0.5, from: 0.2 }), 3, 54, 0.5),
+	rain: withSky(makeFall(56, 1.0, { len: 6, wind: 0.28, sway: 0, size: 0.5, from: 0.2, splash: 3 }), 3, 54, 0.5),
 	sandstorm: withGround(makeFall(56, 1.4, { len: 6, wind: 3.4, sway: 0.12, size: 0.5, fall: -0.14 }), 279, 0.22, 0.09, 34),
 	earthquake: makeQuake(56),
 
-	aurora: withGlow(makeCurtain(56), 0.78, 0.7, 56, 1401),
+	aurora: withGround(withGlow(makeCurtain(56), 0.72, 0.7, 56, 1401), 311, 0.24, 0.16, 11, true),
 	blackhole: withHorizon(makeSpiral(56, 0.7, 0.006)),
 	void: makeMaw(56),
-	tornado: withSky(withFunnel(makeVortex(56, 0.8)), 4, 48, 1.2),
+	tornado: withSky(withGround(withFunnel(makeVortex(56, 0.8)), 337, 0.12, 0.05, 16), 4, 48, 1.2),
 
 	milkyway: withGalaxyBand(makeStarfield(56, 0.95, 0.72)),
 	eclipse: makeEclipse(56),
@@ -331,46 +411,49 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	fireflies: withGround(makeTwinkle(56, 0.4, 0.05), 211, 0.2, 0.06, 18),
 	crystal: withGlow(makeSprite(56, 0.12, SHARD, { fall: -1, sway: 0.22, tumble: 0.03, wind: 0.08, light: 78, spread: 36 }), 0.85, 0.55, 62, 1805),
 
-	meteor: withImpacts(withGround(makeStreak(56, 0.34, 1.5, 9), 233, 0.17, 0.1, 16), 210),
+	meteor: withGround(makeStrike(56, 0.3, 1.5, 9, 0.83), 233, 0.17, 0.1, 16),
 	fallingstar: withGround(makeWishNight(56), 257, 0.15, 0.08, 12),
 	thunder: withSky(makeBolt(56, 46), 3, 42, 0.3),
 	tsunami: makeBreaker(56),
 	pulse: makeEcg(56),
 	rainbow: withSky(makeArc(56, 7, 2.4), 2, 92, 0.25),
 
-	bubbles: withWater(makeSprite(56, 0.13, BUBBLE, { fall: -1, sway: 0.3, tumble: 0, wind: 0.08, light: 80, spread: 14 }), 0.12),
+	bubbles: withWater(makeSprite(56, 0.13, BUBBLE, { fall: -1, sway: 0.3, tumble: 0, wind: 0.08, light: 80, spread: 14, from: 0.14 }), 0.12),
 	love: withGlow(makeSprite(56, 0.13, HEART, { fall: -1, sway: 0.38, tumble: 0.05, wind: 0.1, light: 70, spread: 18 }), 0.7, 0.62, 62, 1603),
 
-	confetti: withBursts(makeConfetti(56, 0.7, 300), 4, 120, 1906),
-	autumn: withCanopy(makeSprite(56, 0.14, LEAF, { fall: 1, sway: 0.55, tumble: 0.12, wind: 0.4, light: 56, spread: 46 })),
-	sakura: withBough(makeSprite(56, 0.14, BLOSSOM, { fall: 1, sway: 0.6, tumble: 0.07, wind: 0.3, light: 82, spread: 20 })),
+	confetti: makeConfetti(56, 0.7, 300),
+	autumn: withCanopy(makeSprite(56, 0.14, LEAF, { fall: 1, sway: 0.55, tumble: 0.12, wind: 0.4, light: 56, spread: 46, source: canopySource })),
+	sakura: withBough(makeSprite(56, 0.14, BLOSSOM, { fall: 1, sway: 0.6, tumble: 0.07, wind: 0.3, light: 82, spread: 20, source: boughSource })),
 
 	glass: makeFacets(56, 0.18, false),
 	bullethole: makeHoles(56),
 
-	holo: makeFoil(56),
+	holo: makeFoilLit(56),
 	silk: makeWeave(56),
 	neon: makeSign(56),
-	scanlines: makeBands(56, { count: 7, slant: 0, soft: 2, spread: 0.2, light: 70 }),
+	scanlines: makeCrt(56),
 	glitch: makeTear(56),
 
-	grain: makeNoise(56, 0.5, 1)
+	grain: makeFilm(56)
 };
 
 export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
 
 export const BLEND: Record<string, 'screen' | 'normal'> = {
+	aurora: 'normal',
 	autumn: 'normal',
 	blackhole: 'normal',
 	bubbles: 'normal',
 	bullethole: 'normal',
 	earthquake: 'normal',
+	ember: 'normal',
 	fallingstar: 'normal',
 	fireflies: 'normal',
 	meteor: 'normal',
 	neon: 'normal',
 	sakura: 'normal',
 	sandstorm: 'normal',
+	tornado: 'normal',
 	tsunami: 'normal',
 	void: 'normal',
 	volcano: 'normal'

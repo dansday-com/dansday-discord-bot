@@ -78,8 +78,10 @@ export function fxVariant(family: string, seed: unknown, accent: unknown): FxVar
 	};
 }
 
-export function createScene(canvas: HTMLCanvasElement, program: FxProgram, v: FxVariant, aspect: number): FxScene {
-	const h = program.rows;
+export const FX_PIXEL = 2;
+
+export function createScene(canvas: HTMLCanvasElement, program: FxProgram, v: FxVariant, aspect: number, boxH = 0): FxScene {
+	const h = boxH > 0 ? Math.max(18, Math.min(program.rows, Math.round(boxH / FX_PIXEL))) : program.rows;
 	const w = Math.max(24, Math.min(420, Math.round(h * aspect)));
 	canvas.width = w;
 	canvas.height = h;
@@ -179,4 +181,10 @@ export function stamp(
 			plot(s, ox + x * squash, oy + y, r, g, b, a);
 		}
 	}
+}
+
+/** 0 at the boundaries, 1 in the middle — so a particle is invisible when it wraps. */
+export function edge(v: number, lo: number, hi: number, m: number) {
+	if (m <= 0) return 1;
+	return Math.max(0, Math.min(1, Math.min((v - lo) / m, (hi - v) / m)));
 }

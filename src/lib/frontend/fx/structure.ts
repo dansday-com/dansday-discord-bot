@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, hsl, plot, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
 
 /** A seeded ridge silhouette along the bottom — every card gets its own skyline. */
 export function ground(s: FxScene, salt: number, height: number, rough: number, light: number) {
@@ -19,14 +19,37 @@ export function ground(s: FxScene, salt: number, height: number, rough: number, 
 	}
 }
 
-export function withGround(inner: FxProgram, salt: number, height: number, rough: number, light: number): FxProgram {
+export function withGround(inner: FxProgram, salt: number, height: number, rough: number, light: number, catchLight = false): FxProgram {
 	return {
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
 		frame(s) {
 			inner.frame(s);
+			const lit: number[][] = [];
+			if (catchLight) {
+				const r = mulberry32(s.v.seed + salt);
+				const steps = 7 + ((r() * 5) | 0);
+				const pts: number[] = [];
+				for (let i = 0; i <= steps; i++) pts.push(s.h * (1 - height) + (r() - 0.5) * s.h * rough);
+				for (let x = 0; x < s.w; x++) {
+					const u = (x / s.w) * steps;
+					const i = Math.min(steps - 1, u | 0);
+					const crest = pts[i] * (1 - (u - i)) + pts[i + 1] * (u - i);
+					let mr = 0;
+					let mg = 0;
+					let mb = 0;
+					for (let y = Math.max(0, crest - s.h * 0.45); y < crest; y++) {
+						const q = ((y | 0) * s.w + x) * 4;
+						if (s.px[q] > mr) mr = s.px[q];
+						if (s.px[q + 1] > mg) mg = s.px[q + 1];
+						if (s.px[q + 2] > mb) mb = s.px[q + 2];
+					}
+					lit.push([x, crest, mr, mg, mb]);
+				}
+			}
 			ground(s, salt, height, rough, light);
+			for (const [x, crest, mr, mg, mb] of lit) for (let k = 0; k < 4; k++) plot(s, x, crest + k, mr, mg, mb, (0.55 - k * 0.13) * 0.55);
 			blit(s);
 		}
 	};
@@ -64,6 +87,11 @@ export function withCone(inner: FxProgram): FxProgram {
 					const flow = 0.35 + 0.35 * Math.sin(s.t * 0.06 - y * 0.3);
 					plot(s, x, y, lr, lg, lb, flow);
 				}
+			}
+			const pool = 0.6 + 0.4 * Math.sin(s.t * 0.05 * s.v.speed);
+			for (let x = cx - half * 1.15; x <= cx + half * 1.15; x++) {
+				const f = 1 - Math.abs(x - cx) / (half * 1.15);
+				for (let y = s.h - 3 * f; y < s.h; y++) plot(s, x, y, lr, lg, lb, f * pool * 0.7);
 			}
 			blit(s);
 		}
@@ -214,6 +242,7 @@ export function makeHoles(rows: number): FxProgram {
 				const cy = hy * s.h;
 				const age = (s.t * s.v.speed - born) % Math.round(360 / Math.max(0.5, s.v.speed));
 				const fresh = age >= 0 && age < 14 ? 1 - age / 14 : 0;
+				if (age < 0) continue;
 				for (let y = -rad * 2.4; y <= rad * 2.4; y++)
 					for (let x = -rad * 2.4; x <= rad * 2.4; x++) {
 						const d = Math.sqrt(x * x + y * y);
@@ -404,6 +433,12 @@ export function makeWishNight(rows: number): FxProgram {
 				plot(s, st[0] * s.w, st[1] * s.h, sr, sg, sb, tw * st[2]);
 			}
 
+			const spill = rise * (1 - phase * 0.6);
+			for (let x = 0; x < s.w; x++) {
+				const reach = Math.max(0, 1 - Math.abs(x - cx) / (s.w * 0.45));
+				if (reach <= 0.01) continue;
+				for (let y = s.h * 0.7; y < s.h; y++) plot(s, x, y, mr, mg, mb, reach * reach * spill * 0.2);
+			}
 			const age = (s.t * s.v.speed - wOff + 900) % Math.round(300 / Math.max(0.5, s.v.speed));
 			if (age < 26) {
 				const f = age / 26;
@@ -416,6 +451,101 @@ export function makeWishNight(rows: number): FxProgram {
 					if (p < 0) continue;
 					plot(s, x0 + p * s.w * 0.6 * s.v.dir, y0 + p * s.h * (0.35 + s.v.tilt * 0.3), wr, wg, wb, (1 - t) * (1 - f) * 0.95);
 				}
+			}
+			blit(s);
+		}
+	};
+}
+
+/** Meteors that actually land: each streak stops at the ground and throws its own impact. */
+export function makeStrike(rows: number, stride: number, steep: number, len: number, groundFrac: number): FxProgram {
+	const spawn = (sc: FxScene, i: number) => {
+		const p = sc.parts;
+		p[i * 6] = sc.rnd() * sc.w * 1.5 - sc.w * 0.25;
+		p[i * 6 + 1] = -sc.rnd() * sc.h * 1.4 - 4;
+		p[i * 6 + 2] = 0.55 + sc.rnd() * 1.1;
+		p[i * 6 + 3] = 0.55 + sc.rnd() * 0.45;
+		p[i * 6 + 4] = 1.4 + sc.rnd() * 2.2;
+		p[i * 6 + 5] = (sc.rnd() * 4096) | 0;
+	};
+	return {
+		rows,
+		stride,
+		init(s) {
+			for (let i = 0; i < s.n; i++) {
+				spawn(s, i);
+				s.parts[i * 6 + 1] = s.rnd() * s.h * groundFrac;
+			}
+			(s as any).hits = [] as number[][];
+		},
+		frame(s) {
+			clear(s);
+			const gy = s.h * groundFrac;
+			const dx = steep * s.v.dir;
+			const hits = (s as any).hits as number[][];
+			const [r, g, b] = hsl(s.v.hue, s.v.sat, 88);
+
+			for (let i = 0; i < s.n; i++) {
+				const o = i * 6;
+				const p = s.parts;
+				p[o] += dx * p[o + 2] * s.v.speed;
+				p[o + 1] += p[o + 2] * s.v.speed * 1.7;
+				if (p[o + 1] >= gy) {
+					hits.push([p[o], 0, 0.4 + p[o + 4] * 0.28]);
+					if (hits.length > 6) hits.shift();
+					spawn(s, i);
+					continue;
+				}
+				const fade = edge(p[o + 1], -4, gy + 1, s.h * 0.18);
+				for (let k = 0; k < len; k++) {
+					const t = k / len;
+					plot(s, p[o] - dx * k * 1.4, p[o + 1] - k * 1.7, r, g, b, p[o + 3] * (1 - t) * fade);
+				}
+				const rad = p[o + 4];
+				const key = p[o + 5];
+				const spin = s.t * 0.22 * p[o + 2];
+				for (let dy = -rad; dy <= rad; dy++) {
+					for (let dx = -rad; dx <= rad; dx++) {
+						const d = Math.hypot(dx, dy) / rad;
+						if (d > 1) continue;
+						const bite = ((((dx + 8) * 73 + (dy + 8) * 151 + key) * 2654435761) >>> 0) % 100;
+						if (d > 0.55 && bite < 34) continue;
+						const face = (dx * Math.cos(spin) + dy * Math.sin(spin)) / rad;
+						const heat = Math.max(0, face) * 0.7 + 0.3;
+						const [rr2, rg2, rb2] = hsl(s.v.hue + (1 - heat) * 24, s.v.sat, 34 + heat * 58);
+						plot(s, p[o] + dx, p[o + 1] + dy, rr2, rg2, rb2, fade * (0.75 + heat * 0.25));
+					}
+				}
+				plot(s, p[o] + Math.cos(spin) * rad, p[o + 1] + Math.sin(spin) * rad, 255, 250, 224, fade);
+			}
+
+			for (let h = hits.length - 1; h >= 0; h--) {
+				const hit = hits[h];
+				hit[1] += 1;
+				const age = hit[1];
+				if (age > 46) {
+					hits.splice(h, 1);
+					continue;
+				}
+				const cx = hit[0];
+				const sc2 = hit[2];
+				const f = age / 46;
+				const [hr, hg, hb] = hsl(s.v.hue, s.v.sat, 92 - f * 34);
+				if (age < 10) {
+					const flash = 1 - age / 10;
+					for (let y = gy - 8 * sc2; y < gy + 3; y++) for (let x = cx - 11 * sc2; x < cx + 11 * sc2; x++) plot(s, x, y, hr, hg, hb, flash * 0.32);
+				}
+				const rad = f * s.w * 0.22 * sc2;
+				for (let k = 0; k < 180; k += 3) {
+					const th = (k * Math.PI) / 180 + Math.PI;
+					plot(s, cx + Math.cos(th) * rad, gy + Math.sin(th) * rad * 0.3, hr, hg, hb, (1 - f) * 0.8);
+				}
+				for (let e = 0; e < 9; e++) {
+					const th = Math.PI + (e / 8) * Math.PI;
+					const d = f * s.h * 0.6 * sc2;
+					plot(s, cx + Math.cos(th) * d * 1.5, gy + Math.sin(th) * d + f * f * s.h * 0.45, hr, hg, hb, (1 - f) * 0.95);
+				}
+				for (let x = cx - 6 * sc2; x < cx + 6 * sc2; x++) plot(s, x, gy, hr, hg * 0.45, hb * 0.25, (1 - f) * 0.6);
 			}
 			blit(s);
 		}

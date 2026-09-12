@@ -1,4 +1,4 @@
-import { blit, clear, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 import type { Mask } from './sprites.js';
 import { mulberry32 } from '$lib/effects.js';
 
@@ -92,6 +92,21 @@ export function makeBolt(rows: number, period: number): FxProgram {
 				const [fr, fg, fb] = hsl(s.v.hue2, s.v.sat * 0.4, 88);
 				for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) plot(s, x, y, fr, fg, fb, flash * 0.12);
 				const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.5, 94);
+				const land = (st.path as number[][])[s.h - 1] ?? [s.w / 2, s.h];
+				const gy = s.h - 1;
+				const heat = (st.until - s.t) / 8;
+				for (let d = 0; d < s.w * 0.3; d++) {
+					const fall = 1 - d / (s.w * 0.3);
+					plot(s, land[0] - d, gy, r, g, b, fall * heat * 0.8);
+					plot(s, land[0] + d, gy, r, g, b, fall * heat * 0.8);
+					plot(s, land[0] - d * 0.6, gy - 1, r, g, b, fall * heat * 0.4);
+					plot(s, land[0] + d * 0.6, gy - 1, r, g, b, fall * heat * 0.4);
+				}
+				for (let k = 0; k < 10; k++) {
+					const th = Math.PI + (k / 9) * Math.PI;
+					const d = (1 - heat) * s.h * 0.45;
+					plot(s, land[0] + Math.cos(th) * d * 1.3, gy + Math.sin(th) * d, r, g, b, heat * 0.9);
+				}
 				for (const [x, y] of st.path as number[][]) {
 					plot(s, x, y, r, g, b, 1);
 					plot(s, x - 1, y, r, g, b, 0.45);
@@ -108,7 +123,7 @@ export function makeVortex(rows: number, stride: number): FxProgram {
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
 		p[i * P] = sc.rnd() * Math.PI * 2;
-		p[i * P + 1] = sc.rnd();
+		p[i * P + 1] = sc.rnd() * 0.9;
 		p[i * P + 2] = 0.5 + sc.rnd() * 0.9;
 		p[i * P + 3] = 0.4 + sc.rnd() * 0.6;
 	};
@@ -125,14 +140,17 @@ export function makeVortex(rows: number, stride: number): FxProgram {
 				const o = i * P;
 				const p = s.parts;
 				p[o] += (0.09 + p[o + 1] * 0.07) * s.v.speed * s.v.dir;
-				p[o + 1] -= 0.004 * p[o + 2];
-				if (p[o + 1] < 0) p[o + 1] = 1;
+				p[o + 1] += 0.004 * p[o + 2] * s.v.speed;
+				if (p[o + 1] > 1) {
+					p[o + 1] = 0;
+					p[o] = s.rnd() * Math.PI * 2;
+				}
 				const width = s.w * 0.06 + p[o + 1] * s.w * 0.38;
 				const x = cx + Math.cos(p[o]) * width + s.v.tilt * (1 - p[o + 1]) * s.w * 0.1;
 				const y = s.h - p[o + 1] * s.h;
 				const front = Math.sin(p[o]) > 0 ? 1 : 0.4;
 				const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.6, 40 + p[o + 1] * 34);
-				plot(s, x, y, r, g, b, p[o + 3] * front);
+				plot(s, x, y, r, g, b, p[o + 3] * front * edge(p[o + 1], 0, 1, 0.16));
 			}
 			blit(s);
 		}
@@ -169,7 +187,7 @@ export function makeStreak(rows: number, stride: number, steep: number, len: num
 				const [r, g, b] = hsl(s.v.hue, s.v.sat, 88);
 				for (let k = 0; k < len; k++) {
 					const t = k / len;
-					plot(s, p[o] - dx * k * 1.4, p[o + 1] - k * 1.7, r, g, b, p[o + 3] * (1 - t));
+					plot(s, p[o] - dx * k * 1.4, p[o + 1] - k * 1.7, r, g, b, p[o + 3] * (1 - t) * edge(p[o + 1], -2, s.h + 2, s.h * 0.2));
 				}
 			}
 			blit(s);
@@ -179,18 +197,26 @@ export function makeStreak(rows: number, stride: number, steep: number, len: num
 
 /** Chunky tumbling bits in mixed hues. */
 export function makeConfetti(rows: number, stride: number, hues: number): FxProgram {
+	const POPS = 4;
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
-		p[i * P] = sc.rnd() * sc.w;
-		p[i * P + 1] = -sc.rnd() * sc.h;
+		const pops = (sc as any).pops as number[][];
+		const from = pops[(sc.rnd() * pops.length) | 0];
+		const th = sc.rnd() * Math.PI * 2;
+		const push = 0.4 + sc.rnd() * 1.3;
+		p[i * P] = from[0] * sc.w;
+		p[i * P + 1] = from[1] * sc.h;
 		p[i * P + 2] = 0.3 + sc.rnd() * 0.8;
 		p[i * P + 3] = sc.rnd() * Math.PI * 2;
 		p[i * P + 4] = sc.rnd();
+		p[i * P + 5] = Math.cos(th) * push;
+		p[i * P + 1] -= Math.abs(Math.sin(th)) * 2;
 	};
 	return {
 		rows,
 		stride,
 		init(s) {
+			(s as any).pops = Array.from({ length: POPS }, () => [0.12 + s.rnd() * 0.76, 0.1 + s.rnd() * 0.5, s.rnd() * 120]);
 			seed(s, (sc, i) => {
 				spawn(sc, i);
 				sc.parts[i * P + 1] = sc.rnd() * sc.h;
@@ -202,14 +228,28 @@ export function makeConfetti(rows: number, stride: number, hues: number): FxProg
 				const o = i * P;
 				const p = s.parts;
 				p[o + 3] += 0.16 * p[o + 2];
-				p[o] += Math.sin(p[o + 3]) * 0.5 * s.v.drift + s.v.tilt * 0.3;
+				p[o + 5] *= 0.97;
+				p[o] += p[o + 5] + Math.sin(p[o + 3]) * 0.5 * s.v.drift + s.v.tilt * 0.3;
 				p[o + 1] += p[o + 2] * s.v.speed * 1.2;
 				if (p[o + 1] > s.h + 2) spawn(s, i);
 				const [r, g, b] = hsl(s.v.hue + p[o + 4] * hues, s.v.sat, 62);
 				const flat = Math.abs(Math.cos(p[o + 3]));
 				const wide = 1 + Math.round(flat * 2);
 				const tall = 1 + Math.round((1 - flat) * 2);
-				for (let dy = 0; dy < tall; dy++) for (let dx = 0; dx < wide; dx++) plot(s, p[o] + dx, p[o + 1] + dy, r, g, b, 0.95 - dy * 0.12);
+				const ce = edge(p[o + 1], -2, s.h + 2, s.h * 0.14);
+				for (let dy = 0; dy < tall; dy++) for (let dx = 0; dx < wide; dx++) plot(s, p[o] + dx, p[o + 1] + dy, r, g, b, (0.95 - dy * 0.12) * ce);
+			}
+			const pops = (s as any).pops as number[][];
+			for (const [px, py, off] of pops) {
+				const ph = ((s.t * s.v.speed + off) % 120) / 120;
+				if (ph > 0.3) continue;
+				const f = ph / 0.3;
+				const rad = f * s.w * 0.1;
+				const [pr, pg, pb] = hsl(s.v.hue + px * hues, s.v.sat, 80);
+				for (let k = 0; k < 360; k += 7) {
+					const th = (k * Math.PI) / 180;
+					plot(s, px * s.w + Math.cos(th) * rad, py * s.h + Math.sin(th) * rad, pr, pg, pb, (1 - f) * 0.8);
+				}
 			}
 			blit(s);
 		}
@@ -237,7 +277,9 @@ export function makeFacets(rows: number, stride: number, crack: boolean): FxProg
 				const o = i * P;
 				const p = s.parts;
 				p[o + 3] += 0.02 * s.v.speed * s.v.dir;
-				const shine = Math.max(0, Math.sin(p[o + 3]));
+				const sweep = ((s.t * 0.6 * s.v.speed * s.v.dir) % (s.w * 1.6)) - s.w * 0.3;
+				const hit = Math.max(0, 1 - Math.abs(p[o] - sweep - (p[o + 1] - s.h / 2) * 0.5) / (s.w * 0.16));
+				const shine = Math.max(0, Math.sin(p[o + 3])) * 0.35 + hit * hit * 0.9;
 				const [r, g, b] = hsl(s.v.hue + shine * 40, s.v.sat, 60 + shine * 34);
 				const len = p[o + 2];
 				const a = Math.cos(p[o + 4]);
@@ -277,6 +319,7 @@ export function makeArc(rows: number, bands: number, thick: number): FxProgram {
 			const cx = s.w * (0.5 + s.v.tilt * 0.12);
 			const cy = s.h * 1.02;
 			const t = s.t * 0.016 * s.v.speed;
+			const sun = 0.5 + 0.42 * Math.sin(s.t * 0.004 * s.v.speed * s.v.dir);
 			for (let i = 0; i < bands; i++) {
 				const c = SPECTRUM[i % SPECTRUM.length];
 				const [r, g, b] = hsl(c[0] + s.v.hue * 0.06, c[1], c[2]);
@@ -287,7 +330,7 @@ export function makeArc(rows: number, bands: number, thick: number): FxProgram {
 					const u = k / steps;
 					const a = Math.PI + u * Math.PI;
 					const travel = 0.55 + 0.45 * Math.sin(u * 6.5 - t * 2.2 * s.v.dir + i * 0.5);
-					const fade = Math.sin(u * Math.PI);
+					const fade = Math.sin(u * Math.PI) * (0.45 + 0.55 * Math.max(0, 1 - Math.abs(u - sun) * 2.2));
 					plot(s, cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, r, g, b, travel * fade * 0.85);
 				}
 			}
@@ -301,13 +344,30 @@ export function makeSprite(
 	rows: number,
 	stride: number,
 	m: Mask,
-	o: { fall: number; sway: number; tumble: number; wind: number; light: number; spread: number; twinkle?: number; from?: number }
+	o: {
+		fall: number;
+		sway: number;
+		tumble: number;
+		wind: number;
+		light: number;
+		spread: number;
+		twinkle?: number;
+		from?: number;
+		settle?: number;
+		source?: (sc: FxScene) => [number, number];
+	}
 ): FxProgram {
 	const place = (sc: FxScene, i: number, fresh: boolean) => {
 		const p = sc.parts;
-		p[i * P] = sc.rnd() * sc.w;
 		const top = (o.from ?? 0) * sc.h;
-		p[i * P + 1] = fresh ? (o.fall > 0 ? top - m.h : sc.h + m.h) : top + sc.rnd() * (sc.h - top);
+		if (o.source) {
+			const [sx, sy] = o.source(sc);
+			p[i * P] = sx;
+			p[i * P + 1] = fresh ? sy : sy + sc.rnd() * (sc.h - sy);
+		} else {
+			p[i * P] = sc.rnd() * sc.w;
+			p[i * P + 1] = fresh ? (o.fall > 0 ? top - m.h : sc.h + m.h) : top + sc.rnd() * (sc.h - top);
+		}
 		p[i * P + 2] = 0.3 + sc.rnd() * 0.8;
 		p[i * P + 3] = sc.rnd() * Math.PI * 2;
 		p[i * P + 4] = 0.55 + sc.rnd() * 0.45;
@@ -318,28 +378,51 @@ export function makeSprite(
 		stride,
 		init(s) {
 			for (let i = 0; i < s.n; i++) place(s, i, false);
+			if (o.settle) (s as any).drift = new Float32Array(s.w);
 		},
 		frame(s) {
 			clear(s);
 			const wind = o.wind * s.v.drift * s.v.dir;
+			const pile = o.settle ? ((s as any).drift as Float32Array) : null;
 			for (let i = 0; i < s.n; i++) {
 				const k = i * P;
 				const p = s.parts;
 				p[k + 3] += o.tumble * (0.4 + p[k + 2]);
 				p[k] += wind * p[k + 2] + Math.sin(p[k + 3] * 0.5) * o.sway;
 				if (!o.twinkle) p[k + 1] += o.fall * p[k + 2] * s.v.speed;
+				if (pile && o.fall > 0) {
+					const c = Math.max(0, Math.min(s.w - 1, p[k] | 0));
+					if (p[k + 1] >= s.h - pile[c]) {
+						if (pile[c] < s.h * (o.settle ?? 0.14)) {
+							pile[c] += 0.55;
+							if (c > 0) pile[c - 1] += 0.22;
+							if (c < s.w - 1) pile[c + 1] += 0.22;
+						}
+						place(s, i, true);
+						continue;
+					}
+				}
 				if (!o.twinkle && (o.fall > 0 ? p[k + 1] > s.h + m.h : p[k + 1] < (o.from ?? 0) * s.h - m.h)) place(s, i, true);
 				if (p[k] > s.w + m.w) p[k] = -m.w;
 				if (p[k] < -m.w) p[k] = s.w + m.w;
 				const [r, g, b] = hsl(s.v.hue + p[k + 5] * o.spread, s.v.sat, o.light);
 				const squash = Math.abs(Math.cos(p[k + 3])) * 0.75 + 0.25;
-				let alpha = p[k + 4] * 0.9;
+				let alpha = p[k + 4] * 0.9 * (o.twinkle ? 1 : edge(p[k + 1], (o.from ?? 0) * s.h - m.h, s.h + m.h, s.h * 0.16));
 				if (o.twinkle) {
 					const pulse = Math.sin(p[k + 3] * o.twinkle);
 					alpha *= Math.max(0, pulse);
 					if (pulse < -0.985) place(s, i, false);
 				}
 				stamp(s, m, p[k], p[k + 1], r, g, b, alpha, o.tumble > 0 ? squash : 1);
+			}
+			if (pile) {
+				const [dr, dg, db] = hsl(s.v.hue, s.v.sat * 0.4, 96);
+				const [er2, eg2, eb2] = hsl(s.v.hue2, s.v.sat * 0.5, 76);
+				for (let x = 0; x < s.w; x++) {
+					const top = s.h - pile[x];
+					for (let y = top; y < s.h; y++) plot(s, x, y, dr, dg, db, 0.94);
+					if (pile[x] > 0.5) plot(s, x, top, er2, eg2, eb2, 0.5);
+				}
 			}
 			blit(s);
 		}

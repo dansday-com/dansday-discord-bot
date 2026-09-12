@@ -9,7 +9,10 @@ let botId = null;
 
 const MEMBER_LEAVE_DELETE_DELAY_MS = 30000;
 const RETENTION_PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const FULL_RESYNC_INTERVAL_MS = 30 * 60 * 1000;
 const MEMBER_FETCH_MIN_RATIO = 0.9;
+
+let syncRunning = false;
 
 async function findBotByToken(token) {
 	try {
@@ -119,7 +122,8 @@ async function syncGuildData(guild) {
 }
 
 async function syncAllGuilds() {
-	if (!client) return;
+	if (!client || syncRunning) return;
+	syncRunning = true;
 
 	try {
 		const guilds = client.guilds.cache;
@@ -144,6 +148,8 @@ async function syncAllGuilds() {
 		await runRetentionPurge();
 	} catch (error) {
 		logger.log(`❌ Error syncing all guilds: ${error.message}`);
+	} finally {
+		syncRunning = false;
 	}
 }
 
@@ -326,6 +332,12 @@ async function init(discordClient, botToken) {
 		if (!botId) return;
 		runRetentionPurge();
 	}, RETENTION_PURGE_INTERVAL_MS);
+
+	setInterval(() => {
+		if (!botId) return;
+		logger.log('🔄 Official bot periodic guild re-sync...');
+		syncAllGuilds();
+	}, FULL_RESYNC_INTERVAL_MS);
 
 	client.on('guildCreate', async (guild) => {
 		logger.log(`🆕 Bot joined new guild: ${guild.name}`);

@@ -3260,6 +3260,11 @@ span.fx-blend-overlay {
 	border-radius: inherit;
 	pointer-events: none;
 	contain: paint;
+	grid-area: auto;
+}
+
+.fx-layer {
+	grid-area: auto;
 }
 
 .fx-canvas {

@@ -79,6 +79,7 @@
 	});
 
 	let builtKey = '';
+	let builtEl: HTMLCanvasElement | undefined;
 
 	$effect(() => {
 		const el = canvas;
@@ -91,8 +92,9 @@
 		const seen = live;
 		if (!el || !prog || fam === 'none' || !seen) return;
 		const key = `${fam}|${sd}|${ac}|${ratio}|${height}`;
-		if (key === builtKey && scene) return;
+		if (key === builtKey && scene && builtEl === el) return;
 		builtKey = key;
+		builtEl = el;
 		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
 		prog.frame(built);
 		scene = built;

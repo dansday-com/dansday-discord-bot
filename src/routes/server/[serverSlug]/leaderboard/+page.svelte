@@ -49,7 +49,9 @@
 	const maxValue = $derived(Math.max(1, ...rows.map((r: any) => metricValueNumber(r, metric))));
 
 	let anim = $state<Record<string, number>>({});
+	let animKey = $state('');
 	let raf: number | null = null;
+	const tabKey = $derived(`${metric}|${period}`);
 	let mounted = $state(false);
 
 	function cleanName(s: string): string {
@@ -91,6 +93,11 @@
 	}
 
 	function metricValueNumber(r: any, m: string) {
+		const n = rawMetricValue(r, m);
+		return Number.isFinite(n) ? n : 0;
+	}
+
+	function rawMetricValue(r: any, m: string) {
 		if (m === 'chat') return Number(r.chat_total || 0);
 		if (m === 'voice_total') return Number(r.voice_minutes_total || 0);
 		if (m === 'voice_active') return Number(r.voice_minutes_active || 0);
@@ -111,11 +118,22 @@
 		return Number(r.xp || 0);
 	}
 
+	function formatMetric(n: number, m: string) {
+		const safe = Number.isFinite(n) ? n : 0;
+		if (m === 'minigames_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return (Math.round(safe * 10) / 10).toLocaleString();
+		return Math.round(safe).toLocaleString();
+	}
+
 	function metricValueAnimated(r: any, m: string) {
-		const n = anim[r.discord_member_id] ?? metricValueNumber(r, m);
-		if (m === 'minigames_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return (Math.round(n * 10) / 10).toLocaleString();
-		const rounded = Math.round(n);
-		return rounded.toLocaleString();
+		const live = animKey === tabKey ? anim[r.discord_member_id] : undefined;
+		return formatMetric(live ?? metricValueNumber(r, m), m);
+	}
+
+	function podiumValueSize(r: any, m: string) {
+		const len = formatMetric(metricValueNumber(r, m), m).length;
+		if (len > 12) return 'text-[12px]';
+		if (len > 9) return 'text-[15px]';
+		return 'text-lg';
 	}
 
 	function metricUnit(m: string) {
@@ -161,11 +179,15 @@
 	function animateToCurrentValues(fromZero = false) {
 		if (raf) cancelAnimationFrame(raf);
 		const duration = 1100;
+		const key = tabKey;
+		const sameTab = animKey === key;
 		const start = performance.now();
 		const targets: Record<string, number> = {};
 		for (const r of rows as any[]) targets[r.discord_member_id] = metricValueNumber(r, metric);
 		const initial: Record<string, number> = {};
-		for (const [id, target] of Object.entries(targets)) initial[id] = fromZero ? 0 : (anim[id] ?? 0);
+		for (const id of Object.keys(targets)) initial[id] = fromZero || !sameTab ? 0 : (anim[id] ?? 0);
+		anim = { ...initial };
+		animKey = key;
 
 		const tick = (now: number) => {
 			const t = Math.min(1, (now - start) / duration);
@@ -412,7 +434,7 @@
 							/>
 						</div>
 						<div
-							class="flex items-baseline justify-center gap-[3px] text-lg font-black whitespace-nowrap tabular-nums"
+							class="flex items-baseline justify-center gap-[3px] font-black whitespace-nowrap tabular-nums {podiumValueSize(r, metric)}"
 							style="color: {RANK_STYLES[rank].color};"
 						>
 							{metricValueAnimated(r, metric)}
@@ -461,23 +483,6 @@
 					class="list-row border-base-300 relative isolate items-center gap-3 rounded-none border-b px-3 py-2.5 sm:px-4"
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
 				>
-					{#if rowAccent(r)}
-						{@const rowImage = r.theme_image ?? null}
-						{#if rowImage}
-							<div
-								class="pointer-events-none absolute inset-0 -z-20 bg-cover bg-center opacity-16"
-								style="background-image: url('{rowImage}')"
-								aria-hidden="true"
-							></div>
-						{/if}
-						<div
-							class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-[color-mix(in_srgb,var(--row-accent)_20%,transparent)] to-transparent"
-							aria-hidden="true"
-						></div>
-						<div class="pointer-events-none absolute inset-y-0 left-0 -z-10 w-[3px] bg-(--row-accent)" aria-hidden="true"></div>
-						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} always />
-					{/if}
-
 					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>
 
 					<div class="border-base-300 bg-base-300 size-10 shrink-0 overflow-hidden rounded-full border">
@@ -516,6 +521,23 @@
 						{metricValueAnimated(r, metric)}
 						<span class="text-base-content/40 text-[9px] font-semibold">{metricUnit(metric)}</span>
 					</span>
+
+					{#if rowAccent(r)}
+						{@const rowImage = r.theme_image ?? null}
+						{#if rowImage}
+							<div
+								class="fx-layer pointer-events-none absolute inset-0 -z-20 bg-cover bg-center opacity-16"
+								style="background-image: url('{rowImage}')"
+								aria-hidden="true"
+							></div>
+						{/if}
+						<div
+							class="fx-layer pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-[color-mix(in_srgb,var(--row-accent)_20%,transparent)] to-transparent"
+							aria-hidden="true"
+						></div>
+						<div class="fx-layer pointer-events-none absolute inset-y-0 left-0 -z-10 w-[3px] bg-(--row-accent)" aria-hidden="true"></div>
+						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} always />
+					{/if}
 				</li>
 			{/each}
 		</ul>

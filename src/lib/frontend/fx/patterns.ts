@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 
 /** Ground that cracks open, with dust venting out of the fissures. */
 export function makeQuake(rows: number): FxProgram {
@@ -686,6 +686,148 @@ export function makeFoilLit(rows: number): FxProgram {
 					const near = Math.max(0, 1 - Math.abs(x - bar - (y - s.h / 2) * slant) / (s.w * 0.2));
 					plot(s, x, y, gr, gg, gb, 0.05 + near * 0.3);
 				}
+			blit(s);
+		}
+	};
+}
+
+/** Glyph columns: a head that falls, a tail of phosphor decaying behind it, and characters that re-roll while they are still hot. */
+export function makeGlyphRain(rows: number): FxProgram {
+	return {
+		rows,
+		stride: 0,
+		init(s) {
+			const r = mulberry32(s.v.seed + 4703);
+			const gw = s.v.tilt > 0.12 ? 4 : 3;
+			const gh = gw === 4 ? 6 : 5;
+			const cw = gw + 1;
+			const ch = gh + 1;
+			const cols = Math.max(4, Math.floor(s.w / cw));
+			const lines = Math.max(3, Math.floor(s.h / ch));
+			const glyphs: { w: number; h: number; bits: Uint8Array }[] = [];
+			for (let i = 0; i < 16; i++) {
+				const bits = new Uint8Array(gw * gh);
+				let on = 0;
+				for (let k = 0; k < bits.length; k++) {
+					bits[k] = r() < 0.45 ? 1 : 0;
+					on += bits[k];
+				}
+				while (on < 4) {
+					const k = (r() * bits.length) | 0;
+					if (!bits[k]) {
+						bits[k] = 1;
+						on += 1;
+					}
+				}
+				glyphs.push({ w: gw, h: gh, bits });
+			}
+			const head = new Float32Array(cols);
+			const spd = new Float32Array(cols);
+			const len = new Float32Array(cols);
+			const lead = new Uint8Array(cols);
+			for (let c = 0; c < cols; c++) {
+				spd[c] = 0.05 + r() * 0.12;
+				len[c] = 2 + r() * (lines * 0.9);
+				lead[c] = r() < 0.18 ? 1 : 0;
+				head[c] = -r() * (lines + len[c]);
+			}
+			const st = s as any;
+			st.glyphs = glyphs;
+			st.cols = cols;
+			st.lines = lines;
+			st.cw = cw;
+			st.ch = ch;
+			st.head = head;
+			st.spd = spd;
+			st.len = len;
+			st.lead = lead;
+			st.mark = new Int16Array(cols).fill(-999);
+			st.gi = new Uint8Array(cols * lines);
+			st.gb = new Float32Array(cols * lines);
+			st.period = 150 + ((r() * 200) | 0);
+			st.surge = -1;
+			for (let k = 0; k < cols * lines; k++) st.gi[k] = (r() * glyphs.length) | 0;
+		},
+		frame(s) {
+			clear(s);
+			const st = s as any;
+			const { cols, lines, cw, ch, period } = st;
+			const glyphs = st.glyphs as { w: number; h: number; bits: Uint8Array }[];
+			const head = st.head as Float32Array;
+			const spd = st.spd as Float32Array;
+			const len = st.len as Float32Array;
+			const lead = st.lead as Uint8Array;
+			const mark = st.mark as Int16Array;
+			const gi = st.gi as Uint8Array;
+			const gb = st.gb as Float32Array;
+			const down = s.v.dir > 0;
+
+			if (st.surge < 0 && s.t % period === 0) st.surge = 0;
+			if (st.surge >= 0) {
+				st.surge += 0.6 + s.v.speed * 0.5;
+				if (st.surge > cols + 10) st.surge = -1;
+			}
+			const wave = st.surge >= 0 ? st.surge : -99;
+			const swell = st.surge >= 0 ? Math.max(0, 1 - Math.abs(st.surge - cols * 0.5) / (cols * 0.5)) : 0;
+			s.out = swell;
+
+			for (let c = 0; c < cols; c++) {
+				const near = wave > -90 ? Math.max(0, 1 - Math.abs(c - wave) / 6) : 0;
+				head[c] += spd[c] * s.v.speed * (1 + near * 2.2);
+				const cell = Math.floor(head[c]);
+				if (cell !== mark[c]) {
+					mark[c] = cell;
+					if (cell >= 0 && cell < lines) {
+						const k = cell * cols + c;
+						gi[k] = (s.rnd() * glyphs.length) | 0;
+						gb[k] = lead[c] ? 1.35 : 1;
+					}
+				}
+				if (head[c] > lines + len[c]) {
+					head[c] = -s.rnd() * lines * 0.8 - len[c];
+					mark[c] = -999;
+					spd[c] = 0.05 + s.rnd() * 0.12 * (0.6 + s.v.drift * 0.5);
+					len[c] = 2 + s.rnd() * (lines * 0.9);
+					lead[c] = s.rnd() < 0.18 ? 1 : 0;
+				}
+			}
+
+			const [tr, tg, tb] = hsl(s.v.hue, s.v.sat, 46);
+			const [hr, hg, hb] = hsl(s.v.hue2, s.v.sat * 0.35, 92);
+			const mutate = 0.1 + s.v.drift * 0.16;
+			for (let row = 0; row < lines; row++) {
+				for (let c = 0; c < cols; c++) {
+					const k = row * cols + c;
+					let b = gb[k];
+					if (b < 0.012) {
+						gb[k] = 0;
+						continue;
+					}
+					const fade = 0.995 - 0.11 / Math.max(1, len[c] * 0.35);
+					b *= fade;
+					gb[k] = b;
+					if (b > 0.3 && s.rnd() < mutate * b) gi[k] = (s.rnd() * glyphs.length) | 0;
+					const shown = down ? row : lines - 1 - row;
+					const px = c * cw + glyphs[0].w / 2;
+					const py = shown * ch + glyphs[0].h / 2;
+					const hem = edge(py, -1, s.h + 1, s.h * 0.16);
+					if (hem <= 0) continue;
+					const hot = Math.min(1, Math.max(0, (b - 0.82) * 4));
+					const rr = tr + (hr - tr) * hot;
+					const gg = tg + (hg - tg) * hot;
+					const bb2 = tb + (hb - tb) * hot;
+					stamp(s, glyphs[gi[k]], px, py, rr, gg, bb2, Math.min(1, b) * hem * (0.75 + swell * 0.25));
+					if (hot > 0.2) {
+						const halo = hot * hem * 0.16;
+						for (let dy = -2; dy <= 2; dy++)
+							for (let dx = -2; dx <= 2; dx++) {
+								const d = Math.abs(dx) + Math.abs(dy);
+								if (d === 0 || d > 3) continue;
+								plot(s, px + dx, py + dy, hr, hg, hb, halo / d);
+							}
+					}
+				}
+			}
 			blit(s);
 		}
 	};

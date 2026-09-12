@@ -1,6 +1,6 @@
 import { mulberry32 } from '$lib/effects.js';
 import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
-import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeSprite, makeVortex, withSky } from './extra.js';
+import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withSky } from './extra.js';
 import {
 	boughSource,
 	canopySource,
@@ -8,6 +8,7 @@ import {
 	makeEmbers,
 	makeFilm,
 	makeFoilLit,
+	makeGlyphRain,
 	makeMaw,
 	makeQuake,
 	makeTear,
@@ -20,7 +21,7 @@ import {
 	withWater
 } from './patterns.js';
 import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
-import { makeBreaker, makeHoles, makeSign, makeStrike, makeWishNight, withCone, withFunnel, withGround, withHorizon } from './structure.js';
+import { makeBreaker, makeHoles, makeSign, makeStrike, makeWishNight, withCone, withFunnel, withGround, withHorizon, withScreen } from './structure.js';
 
 const P = 6;
 
@@ -423,6 +424,8 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	silk: makeWeave(56),
 	neon: makeSign(56),
 	scanlines: makeCrt(56),
+	matrix: withScreen(makeGlyphRain(56), 9, 0.8, 0.55, 0.22),
+	bouncer: withScreen(makeIdler(56), 13, 0.86, 0.7, 0.14),
 	glitch: makeTear(56),
 
 	grain: makeFilm(56)
@@ -432,6 +435,7 @@ export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
 
 export const BLEND: Record<string, 'screen' | 'normal'> = {
 	aurora: 'normal',
+	bouncer: 'normal',
 	autumn: 'normal',
 	blackhole: 'normal',
 	bubbles: 'normal',
@@ -440,6 +444,7 @@ export const BLEND: Record<string, 'screen' | 'normal'> = {
 	ember: 'normal',
 	fallingstar: 'normal',
 	fireflies: 'normal',
+	matrix: 'normal',
 	meteor: 'normal',
 	neon: 'normal',
 	sakura: 'normal',

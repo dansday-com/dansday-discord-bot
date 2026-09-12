@@ -1,5 +1,5 @@
 import { blit, clear, edge, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
-import type { Mask } from './sprites.js';
+import { LETTER_D, LETTER_V, type Mask } from './sprites.js';
 import { funnelAxis } from './structure.js';
 import { mulberry32 } from '$lib/effects.js';
 
@@ -571,6 +571,204 @@ export function withSky(inner: FxProgram, count: number, light: number, drift: n
 		frame(s) {
 			inner.frame(s);
 			clouds(s, count, light, drift);
+			blit(s);
+		}
+	};
+}
+
+/** The idler: a wordmark on a disc that bounces off the walls, takes a new colour from every wall it hits, and burns its path into the screen. */
+export function makeIdler(rows: number): FxProgram {
+	const PAD = 3;
+	return {
+		rows,
+		stride: 0,
+		init(s) {
+			const r = mulberry32(s.v.seed + 5281);
+			const st = s as any;
+			const bw = Math.max(18, Math.round(s.w * (0.17 + r() * 0.07)));
+			const bh = Math.max(9, Math.round(s.h * (0.24 + r() * 0.09) * (1 + s.v.tilt * 0.2)));
+			const gw = bw + PAD * 2;
+			const gh = bh + PAD * 2;
+			const mark = new Uint8Array(gw * gh);
+
+			const ex = PAD + bw / 2;
+			const ey = PAD + bh * 0.74;
+			const erx = bw * 0.48;
+			const ery = bh * 0.26;
+			for (let y = 0; y < gh; y++) {
+				for (let x = 0; x < gw; x++) {
+					const dx = (x + 0.5 - ex) / erx;
+					const dy = (y + 0.5 - ey) / ery;
+					if (dx * dx + dy * dy <= 1) mark[y * gw + x] = 1;
+				}
+			}
+
+			const word = [LETTER_D, LETTER_V, LETTER_D];
+			const cell = bw / word.length;
+			const inset = cell * 0.09;
+			const sx = (cell - inset * 2) / word[0].w;
+			const sy = (bh * 0.64) / word[0].h;
+			for (let i = 0; i < word.length; i++) {
+				const g = word[i];
+				const base = PAD + i * cell + inset;
+				for (let gy = 0; gy < g.h; gy++) {
+					const y0 = PAD + Math.round(gy * sy);
+					const y1 = Math.max(y0 + 1, PAD + Math.round((gy + 1) * sy));
+					for (let gx = 0; gx < g.w; gx++) {
+						if (!g.bits[gy * g.w + gx]) continue;
+						const x0 = Math.round(base + gx * sx);
+						const x1 = Math.max(x0 + 1, Math.round(base + (gx + 1) * sx));
+						for (let y = y0; y < y1; y++) {
+							for (let x = x0; x < x1; x++) {
+								if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+								mark[y * gw + x] = 2;
+							}
+						}
+					}
+				}
+			}
+
+			const halo = new Uint8Array(gw * gh);
+			for (let y = 0; y < gh; y++) {
+				for (let x = 0; x < gw; x++) {
+					if (mark[y * gw + x]) continue;
+					let near = 0;
+					for (let k = 1; k <= PAD && !near; k++) {
+						if (x - k >= 0 && mark[y * gw + x - k]) near = k;
+						else if (x + k < gw && mark[y * gw + x + k]) near = k;
+						else if (y - k >= 0 && mark[(y - k) * gw + x]) near = k;
+						else if (y + k < gh && mark[(y + k) * gw + x]) near = k;
+					}
+					halo[y * gw + x] = near;
+				}
+			}
+
+			const count = 4 + ((r() * 4) | 0);
+			const hues: number[] = [];
+			for (let i = 0; i < count; i++) hues.push(s.v.hue + (i / count) * 360 + (r() - 0.5) * 24);
+			const ang = (0.21 + r() * 0.23) * Math.PI * (r() < 0.5 ? 1 : -1);
+
+			st.bw = bw;
+			st.bh = bh;
+			st.gw = gw;
+			st.gh = gh;
+			st.crown = PAD + Math.max(1, Math.round(bh * 0.08));
+			st.mark = mark;
+			st.halo = halo;
+			st.hues = hues;
+			st.ci = (r() * count) | 0;
+			st.x = bw + r() * Math.max(1, s.w - bw * 3);
+			st.y = bh + r() * Math.max(1, s.h - bh * 3);
+			st.vx = Math.cos(ang) * 0.55 * s.v.dir;
+			st.vy = Math.sin(ang) * 0.55;
+			st.burn = new Float32Array(s.w * s.h);
+			st.scuffs = [] as number[][];
+			st.flash = 0;
+		},
+		frame(s) {
+			clear(s);
+			const st = s as any;
+			const bw = st.bw as number;
+			const bh = st.bh as number;
+			const gw = st.gw as number;
+			const gh = st.gh as number;
+			const crown = st.crown as number;
+			const mark = st.mark as Uint8Array;
+			const halo = st.halo as Uint8Array;
+			const burn = st.burn as Float32Array;
+			const scuffs = st.scuffs as number[][];
+			const hues = st.hues as number[];
+
+			st.x += st.vx * s.v.speed * 1.15;
+			st.y += st.vy * s.v.speed * 1.15;
+
+			let hitX = false;
+			let hitY = false;
+			if (st.x <= 0) {
+				st.x = 0;
+				st.vx = -st.vx;
+				hitX = true;
+			} else if (st.x + bw >= s.w) {
+				st.x = s.w - bw;
+				st.vx = -st.vx;
+				hitX = true;
+			}
+			if (st.y <= 0) {
+				st.y = 0;
+				st.vy = -st.vy;
+				hitY = true;
+			} else if (st.y + bh >= s.h) {
+				st.y = s.h - bh;
+				st.vy = -st.vy;
+				hitY = true;
+			}
+
+			if (hitX || hitY) {
+				st.ci = (st.ci + 1) % hues.length;
+				const tol = Math.max(1.5, s.h * 0.08);
+				const nearY = st.y <= tol || st.y + bh >= s.h - tol;
+				const nearX = st.x <= tol || st.x + bw >= s.w - tol;
+				if ((hitX && nearY) || (hitY && nearX)) st.flash = 1;
+				scuffs.push([hitX ? (st.x <= 0 ? 0 : s.w - 1) : st.x + bw / 2, hitY ? (st.y <= 0 ? 0 : s.h - 1) : st.y + bh / 2, 0]);
+				if (scuffs.length > 18) scuffs.shift();
+			}
+			st.flash *= 0.9;
+			s.out = st.flash;
+
+			const hue = hues[st.ci];
+			const [cr, cg, cb] = hsl(hue, s.v.sat, 58);
+			const [lr, lg, lb] = hsl(hue, s.v.sat * 0.55, 90);
+			const [dr, dg, db] = hsl(hue, s.v.sat, 34);
+			const [er, eg, eb] = hsl(s.v.hue2, s.v.sat * 0.3, 40);
+
+			for (let i = 0; i < burn.length; i++) {
+				burn[i] *= 0.9982;
+				const b = burn[i];
+				if (b < 0.02) continue;
+				plot(s, i % s.w, (i / s.w) | 0, er, eg, eb, Math.min(0.42, b) * 0.6);
+			}
+
+			for (let k = scuffs.length - 1; k >= 0; k--) {
+				const sc = scuffs[k];
+				sc[2] += 1;
+				if (sc[2] > 46) {
+					scuffs.splice(k, 1);
+					continue;
+				}
+				const life = 1 - sc[2] / 46;
+				const vertical = sc[0] <= 0 || sc[0] >= s.w - 1;
+				for (let d = -3; d <= 3; d++) {
+					plot(s, sc[0] + (vertical ? 0 : d), sc[1] + (vertical ? d : 0), lr, lg, lb, life * 0.5 * (1 - Math.abs(d) / 4));
+				}
+			}
+
+			const ox = (st.x as number) - PAD;
+			const oy = (st.y as number) - PAD;
+			const gain = 0.0035 * (0.5 + s.v.drift * 0.7);
+			for (let y = 0; y < gh; y++) {
+				for (let x = 0; x < gw; x++) {
+					const px = ox + x;
+					const py = oy + y;
+					if (px < 0 || py < 0 || px >= s.w || py >= s.h) continue;
+					const kind = mark[y * gw + x];
+					const bi = (py | 0) * s.w + (px | 0);
+					if (kind === 2) {
+						const top = y < crown;
+						plot(s, px, py, top ? lr : cr, top ? lg : cg, top ? lb : cb, 0.96);
+						burn[bi] = Math.min(1, burn[bi] + gain);
+					} else if (kind === 1) {
+						plot(s, px, py, dr, dg, db, 0.9);
+						burn[bi] = Math.min(1, burn[bi] + gain * 0.6);
+					} else {
+						const near = halo[y * gw + x];
+						if (near) plot(s, px, py, cr, cg, cb, (0.3 / near) * (0.55 + st.flash * 0.85));
+					}
+				}
+			}
+
+			if (st.flash > 0.02) {
+				for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) plot(s, x, y, lr, lg, lb, st.flash * 0.22 * edge(y, -1, s.h + 1, s.h * 0.5));
+			}
 			blit(s);
 		}
 	};

@@ -392,21 +392,41 @@ export function makeWishNight(rows: number): FxProgram {
 			for (let i = 0; i < n; i++) link.push((r() * stars.length) | 0);
 			(s as any).stars = stars;
 			(s as any).link = link;
-			(s as any).moon = [0.1 + r() * 0.24, 0.2 + r() * 0.18, 0.3 + r() * 0.5];
+			const PHASES = [0.02, 0.16, 0.5, 0.82, 1, 0.82, 0.5, 0.16];
+			const TINTS = [
+				[38, 12, 94],
+				[214, 44, 88],
+				[6, 62, 62],
+				[338, 46, 86],
+				[28, 58, 80]
+			];
+			const pick = (r() * PHASES.length) | 0;
+			const tint = TINTS[(r() * TINTS.length) | 0];
+			const maria: number[][] = [];
+			for (let k = 0; k < 5; k++) maria.push([(r() - 0.5) * 1.3, (r() - 0.5) * 1.3, 0.14 + r() * 0.2]);
+			(s as any).moon = {
+				x: 0.1 + r() * 0.24,
+				y: 0.2 + r() * 0.18,
+				lit: PHASES[pick],
+				waxing: pick < 4,
+				size: 0.09 + r() * 0.1,
+				tint,
+				maria
+			};
 			(s as any).wish = [r() * 300, r(), r()];
 		},
 		frame(s) {
 			clear(s);
 			const stars = (s as any).stars as number[][];
 			const link = (s as any).link as number[];
-			const [mx, my, phase] = (s as any).moon as number[];
+			const moon = (s as any).moon as { x: number; y: number; lit: number; waxing: boolean; size: number; tint: number[]; maria: number[][] };
 			const [wOff, wx, wy] = (s as any).wish as number[];
 
 			const rise = Math.min(1, s.t / 300);
-			const cx = mx * s.w;
-			const cy = (my + (1 - rise) * 0.3) * s.h;
-			const rad = s.h * (0.13 + s.v.drift * 0.06);
-			const [mr, mg, mb] = hsl(s.v.hue, s.v.sat * 0.4, 92);
+			const cx = moon.x * s.w;
+			const cy = (moon.y + (1 - rise) * 0.3) * s.h;
+			const rad = s.h * moon.size * (0.85 + s.v.drift * 0.3);
+			const [mr, mg, mb] = hsl(moon.tint[0], moon.tint[1], moon.tint[2]);
 			for (let g = 9; g >= 1; g--)
 				for (let y = -rad - g * 2; y <= rad + g * 2; y++)
 					for (let x = -rad - g * 2; x <= rad + g * 2; x++) {
@@ -414,12 +434,16 @@ export function makeWishNight(rows: number): FxProgram {
 						if (d > rad + g * 2 || d < rad) continue;
 						plot(s, cx + x, cy + y, mr, mg, mb, 0.035 / g);
 					}
-			for (let y = -rad; y <= rad; y++)
-				for (let x = -rad; x <= rad; x++) {
-					if (x * x + y * y > rad * rad) continue;
-					const shadow = x < -rad + rad * 2 * phase;
-					plot(s, cx + x, cy + y, mr, mg, mb, shadow ? 0.14 : 1);
+			for (let y = -rad; y <= rad; y++) {
+				const halfW = Math.sqrt(Math.max(0, rad * rad - y * y));
+				for (let x = -halfW; x <= halfW; x++) {
+					const term = (1 - 2 * moon.lit) * halfW;
+					const lit = moon.waxing ? x > term : x < -term;
+					let a = lit ? 1 : 0.09;
+					if (lit) for (const [mxp, myp, mrad] of moon.maria) if (Math.hypot(x / rad - mxp, y / rad - myp) < mrad) a *= 0.74;
+					plot(s, cx + x, cy + y, mr, mg, mb, a);
 				}
+			}
 
 			const [sr, sg, sb] = hsl(s.v.hue2, s.v.sat * 0.5, 88);
 			for (let i = 0; i < link.length - 1; i++) {
@@ -437,7 +461,7 @@ export function makeWishNight(rows: number): FxProgram {
 				plot(s, st[0] * s.w, st[1] * s.h, sr, sg, sb, tw * st[2]);
 			}
 
-			const spill = rise * (1 - phase * 0.6);
+			const spill = rise * moon.lit;
 			for (let x = 0; x < s.w; x++) {
 				const reach = Math.max(0, 1 - Math.abs(x - cx) / (s.w * 0.45));
 				if (reach <= 0.01) continue;
@@ -550,6 +574,49 @@ export function makeStrike(rows: number, stride: number, steep: number, len: num
 					plot(s, cx + Math.cos(th) * d * 1.5, gy + Math.sin(th) * d + f * f * s.h * 0.45, hr, hg, hb, (1 - f) * 0.95);
 				}
 				for (let x = cx - 6 * sc2; x < cx + 6 * sc2; x++) plot(s, x, gy, hr, hg * 0.45, hb * 0.25, (1 - f) * 0.6);
+			}
+			blit(s);
+		}
+	};
+}
+
+/** A dim screen the effect is displayed on: a dark panel behind, a vignette, and a shadow mask over every other line. */
+export function withScreen(inner: FxProgram, dark: number, cover: number, vignette: number, scan: number): FxProgram {
+	return {
+		rows: inner.rows,
+		stride: inner.stride,
+		init: inner.init,
+		frame(s) {
+			inner.frame(s);
+			const px = s.px;
+			const [br, bg, bb] = hsl(s.v.hue, s.v.sat * 0.45, dark);
+			const cx = s.w / 2;
+			const cy = s.h / 2;
+			const rad = Math.sqrt(cx * cx + cy * cy);
+			for (let y = 0; y < s.h; y++) {
+				for (let x = 0; x < s.w; x++) {
+					const i = (y * s.w + x) * 4;
+					const lit = px[i + 3] / 255;
+					const dx = (x - cx) / rad;
+					const dy = (y - cy) / rad;
+					const k = Math.max(0, 1 - Math.sqrt(dx * dx + dy * dy) * vignette) * cover * (1 - lit);
+					if (k <= 0) continue;
+					px[i] = Math.min(255, px[i] + br * k);
+					px[i + 1] = Math.min(255, px[i + 1] + bg * k);
+					px[i + 2] = Math.min(255, px[i + 2] + bb * k);
+					px[i + 3] = Math.min(255, px[i + 3] + 255 * k);
+				}
+			}
+			if (scan > 0) {
+				const keep = 1 - scan;
+				for (let y = 1; y < s.h; y += 2) {
+					for (let x = 0; x < s.w; x++) {
+						const i = (y * s.w + x) * 4;
+						px[i] *= keep;
+						px[i + 1] *= keep;
+						px[i + 2] *= keep;
+					}
+				}
 			}
 			blit(s);
 		}

@@ -37,7 +37,9 @@ export const EFFECT_FAMILIES = [
 	'fireflies',
 	'silk',
 	'crystal',
-	'neon'
+	'neon',
+	'matrix',
+	'bouncer'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -80,7 +82,9 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'fireflies', label: 'Fireflies', icon: 'fa-hand-sparkles', particles: false },
 	{ id: 'silk', label: 'Silk', icon: 'fa-ribbon', particles: false },
 	{ id: 'crystal', label: 'Crystal', icon: 'fa-diamond', particles: false },
-	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false }
+	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false },
+	{ id: 'matrix', label: 'Matrix', icon: 'fa-terminal', particles: false },
+	{ id: 'bouncer', label: 'Bouncer', icon: 'fa-clone', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -200,7 +204,9 @@ const TUNING: Record<string, Tuning> = {
 	fireflies: { tile: [22, 50], dot: [1.4, 3], speed: [4, 9], opacity: [0.6, 1], drift: [-50, 50] },
 	silk: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.65, 1] },
 	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1] },
-	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] }
+	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] },
+	matrix: { tile: [6, 14], dot: [0.8, 1.7], speed: [1.6, 3.6], opacity: [0.7, 1] },
+	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [3.4, 7.5], opacity: [0.75, 1] }
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -238,7 +244,9 @@ const PALETTE: Record<string, [string, string]> = {
 	fireflies: ['#ffd97a', '#8fd6a0'],
 	silk: ['#b8438f', '#ffd6ec'],
 	crystal: ['#a78bfa', '#e9d5ff'],
-	neon: ['#ff2d95', '#22d3ee']
+	neon: ['#ff2d95', '#22d3ee'],
+	matrix: ['#3ff28a', '#d6ffe9'],
+	bouncer: ['#e2e8f0', '#6366f1']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {

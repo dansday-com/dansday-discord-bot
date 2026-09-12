@@ -483,6 +483,7 @@ export function makeEclipse(rows: number): FxProgram {
 			const cy = s.h * (0.42 + s.v.drift * 0.06);
 			const rad = s.h * 0.28;
 			const cover = 0.5 + 0.5 * Math.sin(s.t * 0.006 * s.v.speed * s.v.dir);
+			s.out = cover;
 			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat, 76);
 
 			for (let ring = 0; ring < 30; ring++) {

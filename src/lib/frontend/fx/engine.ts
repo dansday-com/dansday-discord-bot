@@ -25,6 +25,7 @@ export type FxScene = {
 	v: FxVariant;
 	rnd: () => number;
 	t: number;
+	out?: number;
 };
 
 export type FxProgram = {
@@ -104,7 +105,7 @@ export function createScene(canvas: HTMLCanvasElement, program: FxProgram, v: Fx
 	return scene;
 }
 
-export function runScene(canvas: HTMLCanvasElement, program: FxProgram, scene: FxScene, fps: number) {
+export function runScene(canvas: HTMLCanvasElement, program: FxProgram, scene: FxScene, fps: number, onFrame?: (s: FxScene) => void) {
 	let raf = 0;
 	let last = 0;
 	const interval = 1000 / fps;
@@ -114,6 +115,7 @@ export function runScene(canvas: HTMLCanvasElement, program: FxProgram, scene: F
 		last = now;
 		scene.t += 1;
 		program.frame(scene);
+		onFrame?.(scene);
 	};
 	raf = requestAnimationFrame(tick);
 	return () => cancelAnimationFrame(raf);

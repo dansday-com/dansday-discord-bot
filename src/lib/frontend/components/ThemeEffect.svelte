@@ -101,7 +101,10 @@
 		const fam = family;
 		if (!el || !prog || !sc || !running || halted) return;
 		if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		return runScene(el, prog, sc, fam === 'fire' ? 18 : 24);
+		const card = host?.parentElement;
+		return runScene(el, prog, sc, fam === 'fire' ? 18 : 24, (scene) => {
+			if (scene.out !== undefined) card?.style.setProperty('--fx-cover', scene.out.toFixed(3));
+		});
 	});
 </script>
 

@@ -651,7 +651,7 @@ export function withShore(inner: FxProgram): FxProgram {
 			inner.init(s);
 			const r = mulberry32(s.v.seed + 3313);
 			const st = s as any;
-			st.shore = 0.77 + r() * 0.06;
+			st.shore = 0.7 + r() * 0.17;
 			st.lip = r() * 6.28;
 			const crests: number[][] = [];
 			const n = 3 + ((r() * 3) | 0);

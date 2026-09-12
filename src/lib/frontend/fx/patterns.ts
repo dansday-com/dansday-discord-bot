@@ -865,12 +865,16 @@ export function makeSunset(rows: number): FxProgram {
 			const r = mulberry32(s.v.seed + 7717);
 			const st = s as any;
 			const clouds: number[][] = [];
-			const n = 3 + ((r() * 4) | 0);
-			for (let i = 0; i < n; i++) clouds.push([r(), 0.1 + r() * 0.46, 0.14 + r() * 0.26, 0.055 + r() * 0.085, r() * 6.28]);
+			const n = 1 + ((r() * 7) | 0);
+			for (let i = 0; i < n; i++) clouds.push([r(), 0.1 + r() * 0.46, 0.12 + r() * 0.3, 0.045 + r() * 0.1, r() * 6.28]);
 			st.clouds = clouds;
-			st.sunX = 0.22 + r() * 0.56;
+			st.sunX = 0.18 + r() * 0.64;
 			st.phase = r() * 6.28;
-			st.sunR = 0.085 + r() * 0.05;
+			st.sunR = 0.075 + r() * 0.07;
+			st.altLo = 0.012 + r() * 0.062;
+			st.altSpan = 0.045 + r() * 0.175;
+			st.zenith = 184 + r() * 76;
+			st.haze = 0.66 + r() * 0.62;
 			st.rowR = new Float32Array(s.h);
 			st.rowG = new Float32Array(s.h);
 			st.rowB = new Float32Array(s.h);
@@ -880,16 +884,18 @@ export function makeSunset(rows: number): FxProgram {
 			clear(s);
 			const st = s as any;
 			const hz = Math.round(s.h * (0.52 + s.v.tilt * 0.07));
-			const alt = 0.03 + 0.16 * (0.5 + 0.5 * Math.sin(s.t * 0.0017 * s.v.speed + st.phase));
-			const low = 1 - (alt - 0.03) / 0.16;
+			const alt = st.altLo + st.altSpan * (0.5 + 0.5 * Math.sin(s.t * 0.0017 * s.v.speed + st.phase));
+			const red = 1 - Math.min(1, alt / 0.2);
 			const sunX = st.sunX * s.w;
 			const sunY = hz - alt * s.h;
 
-			const sunHue = s.v.hue2 + (s.v.hue - s.v.hue2) * low;
-			const [sr, sg, sb] = hsl(sunHue, Math.min(100, s.v.sat + low * 14), 72 - low * 16);
-			const [zr, zg, zb] = hsl(s.v.hue + 212, s.v.sat * 0.5, 17 + (1 - low) * 7);
-			const [br, bg, bb] = hsl(sunHue + 6, s.v.sat * 0.95, 50);
-			const [gr, gg, gb] = hsl(s.v.hue2 + 8, s.v.sat * 0.8, 74);
+			const sat = Math.min(100, s.v.sat * st.haze);
+			const sunHue = s.v.hue2 + (s.v.hue - s.v.hue2) * red;
+			const [sr, sg, sb] = hsl(sunHue, Math.min(100, sat + red * 14), 74 - red * 18);
+			const [zr, zg, zb] = hsl(s.v.hue + st.zenith, sat * 0.5, 17 + (1 - red) * 7);
+			const [br, bg, bb] = hsl(sunHue + 6, sat * 0.95, 50);
+			const [gr, gg, gb] = hsl(s.v.hue2 + 8, sat * 0.8, 74);
+			const low = red;
 
 			const rowR = st.rowR as Float32Array;
 			const rowG = st.rowG as Float32Array;
@@ -919,7 +925,7 @@ export function makeSunset(rows: number): FxProgram {
 				}
 			}
 
-			const [dr, dg, db] = hsl(s.v.hue + 232, s.v.sat * 0.4, 20);
+			const [dr, dg, db] = hsl(s.v.hue + st.zenith + 20, sat * 0.4, 20);
 			const slide = s.t * 0.045 * s.v.drift * s.v.dir;
 			for (const [cx, cy, chw, chh, warp] of st.clouds as number[][]) {
 				const ox = ((((cx * s.w + slide) % (s.w + 40)) + s.w + 40) % (s.w + 40)) - 20;
@@ -957,7 +963,7 @@ export function makeSunset(rows: number): FxProgram {
 						plot(s, sunX + dx, sunY + dy, sr, sg, sb, 0.05 / g);
 					}
 			}
-			const [cr, cg, cb] = hsl(sunHue + 8, s.v.sat * 0.55, 96 - low * 10);
+			const [cr, cg, cb] = hsl(sunHue + 8, sat * 0.55, 96 - red * 10);
 			for (let dy = -rad * squash; dy <= rad * squash; dy++)
 				for (let dx = -rad; dx <= rad; dx++) {
 					const d = Math.sqrt(dx * dx + (dy / squash) * (dy / squash)) / rad;

@@ -1168,6 +1168,14 @@ html.lenis body {
 	}
 }
 
+[data-fx-host='beach'] {
+	box-shadow:
+		inset 0 -40px 70px -30px rgba(255, 138, 62, calc(0.3 + var(--fx-cover, 0) * 0.4)),
+		inset 0 0 0 1px rgba(255, 190, 120, calc(0.18 + var(--fx-cover, 0) * 0.3)),
+		0 0 calc(14px + var(--fx-cover, 0) * 26px) -6px rgba(255, 120, 50, calc(0.22 + var(--fx-cover, 0) * 0.38));
+	filter: saturate(calc(1.05 + var(--fx-cover, 0) * 0.3)) brightness(calc(0.99 + var(--fx-cover, 0) * 0.1));
+}
+
 [data-fx-host='matrix'] {
 	box-shadow:
 		inset 0 0 0 1px rgba(63, 242, 138, calc(0.28 + var(--fx-cover, 0) * 0.5)),
@@ -1736,6 +1744,54 @@ html.lenis body {
 	}
 	to {
 		background-position: 0 160%;
+	}
+}
+
+.fx-text[data-fx='beach']::before {
+	background-image: linear-gradient(180deg, #5b3a7a 0%, var(--fx-color) 34%, var(--fx-color-2) 58%, #fff0c8 70%, #b4632e 84%, #3f2a2a 100%);
+	background-size: 100% 190%;
+	background-position: 0 0;
+	opacity: var(--fx-opacity, 0.95);
+	text-shadow: 0 1px 2px rgba(60, 24, 10, 0.42);
+	animation: fx-name-sundown calc(var(--fx-speed) * 1.3) ease-in-out infinite alternate;
+}
+
+.fx-text[data-fx='beach']::after {
+	background-image: linear-gradient(
+		180deg,
+		transparent 0 62%,
+		rgba(255, 226, 170, 0.9) 70%,
+		rgba(255, 255, 255, 0.95) 78%,
+		rgba(255, 210, 140, 0.7) 86%,
+		transparent 96%
+	);
+	background-size: 22% 100%;
+	background-repeat: no-repeat;
+	background-position: 50% 0;
+	animation: fx-name-glitter calc(var(--fx-speed) * 0.22) steps(3, end) infinite;
+}
+
+@keyframes fx-name-sundown {
+	from {
+		background-position: 0 0;
+	}
+	to {
+		background-position: 0 100%;
+	}
+}
+
+@keyframes fx-name-glitter {
+	0% {
+		background-size: 22% 100%;
+		opacity: 0.9;
+	}
+	50% {
+		background-size: 30% 100%;
+		opacity: 0.62;
+	}
+	100% {
+		background-size: 22% 100%;
+		opacity: 0.9;
 	}
 }
 

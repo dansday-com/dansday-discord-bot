@@ -185,6 +185,18 @@ export function stamp(
 	}
 }
 
+/** Source-over: covers what is under it instead of adding to it — for surfaces, where `plot` is for light. */
+export function paint(s: FxScene, x: number, y: number, r: number, g: number, b: number, a: number) {
+	if (x < 0 || y < 0 || x >= s.w || y >= s.h || a <= 0) return;
+	const i = ((y | 0) * s.w + (x | 0)) * 4;
+	const px = s.px;
+	const k = 1 - a;
+	px[i] = r * a + px[i] * k;
+	px[i + 1] = g * a + px[i + 1] * k;
+	px[i + 2] = b * a + px[i + 2] * k;
+	px[i + 3] = a * 255 + px[i + 3] * k;
+}
+
 /** 0 at the boundaries, 1 in the middle — so a particle is invisible when it wraps. */
 export function edge(v: number, lo: number, hi: number, m: number) {
 	if (m <= 0) return 1;

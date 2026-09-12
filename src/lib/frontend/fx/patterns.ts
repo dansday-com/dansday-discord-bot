@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, edge, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, paint, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 
 /** Ground that cracks open, with dust venting out of the fissures. */
 export function makeQuake(rows: number): FxProgram {
@@ -852,6 +852,122 @@ export function makeGlyphRain(rows: number): FxProgram {
 				}
 			}
 			blit(s);
+		}
+	};
+}
+
+/** Sunset sky: the sun's altitude reddens it, lights the clouds from underneath, and refraction squashes the disc as it nears the horizon. */
+export function makeSunset(rows: number): FxProgram {
+	return {
+		rows,
+		stride: 0,
+		init(s) {
+			const r = mulberry32(s.v.seed + 7717);
+			const st = s as any;
+			const clouds: number[][] = [];
+			const n = 3 + ((r() * 4) | 0);
+			for (let i = 0; i < n; i++) clouds.push([r(), 0.1 + r() * 0.46, 0.14 + r() * 0.26, 0.055 + r() * 0.085, r() * 6.28]);
+			st.clouds = clouds;
+			st.sunX = 0.22 + r() * 0.56;
+			st.phase = r() * 6.28;
+			st.sunR = 0.085 + r() * 0.05;
+			st.rowR = new Float32Array(s.h);
+			st.rowG = new Float32Array(s.h);
+			st.rowB = new Float32Array(s.h);
+			st.colX = new Float32Array(s.w);
+		},
+		frame(s) {
+			clear(s);
+			const st = s as any;
+			const hz = Math.round(s.h * (0.52 + s.v.tilt * 0.07));
+			const alt = 0.03 + 0.16 * (0.5 + 0.5 * Math.sin(s.t * 0.0017 * s.v.speed + st.phase));
+			const low = 1 - (alt - 0.03) / 0.16;
+			const sunX = st.sunX * s.w;
+			const sunY = hz - alt * s.h;
+
+			const sunHue = s.v.hue2 + (s.v.hue - s.v.hue2) * low;
+			const [sr, sg, sb] = hsl(sunHue, Math.min(100, s.v.sat + low * 14), 72 - low * 16);
+			const [zr, zg, zb] = hsl(s.v.hue + 212, s.v.sat * 0.5, 17 + (1 - low) * 7);
+			const [br, bg, bb] = hsl(sunHue + 6, s.v.sat * 0.95, 50);
+			const [gr, gg, gb] = hsl(s.v.hue2 + 8, s.v.sat * 0.8, 74);
+
+			const rowR = st.rowR as Float32Array;
+			const rowG = st.rowG as Float32Array;
+			const rowB = st.rowB as Float32Array;
+			const spread = s.h * 0.24;
+			for (let y = 0; y < hz; y++) {
+				const t = y / Math.max(1, hz - 1);
+				const glow = Math.exp(-Math.abs(y - sunY) / spread);
+				const m = Math.min(1, t * t * 0.75 + glow * 0.95);
+				const k = t * t * t * 0.75;
+				const r1 = zr + (br - zr) * m;
+				const g1 = zg + (bg - zg) * m;
+				const b1 = zb + (bb - zb) * m;
+				rowR[y] = r1 + (gr - r1) * k;
+				rowG[y] = g1 + (gg - g1) * k;
+				rowB[y] = b1 + (gb - b1) * k;
+			}
+			const colX = st.colX as Float32Array;
+			const reach = s.w * 0.44;
+			for (let x = 0; x < s.w; x++) colX[x] = 0.62 + 0.38 * Math.exp(-Math.abs(x - sunX) / reach);
+
+			for (let y = 0; y < hz; y++) {
+				const a = 0.68 + (y / Math.max(1, hz)) * 0.24;
+				for (let x = 0; x < s.w; x++) {
+					const k = colX[x];
+					paint(s, x, y, rowR[y] * k, rowG[y] * k, rowB[y] * k, a);
+				}
+			}
+
+			const [dr, dg, db] = hsl(s.v.hue + 232, s.v.sat * 0.4, 20);
+			const slide = s.t * 0.045 * s.v.drift * s.v.dir;
+			for (const [cx, cy, chw, chh, warp] of st.clouds as number[][]) {
+				const ox = ((((cx * s.w + slide) % (s.w + 40)) + s.w + 40) % (s.w + 40)) - 20;
+				const oy = cy * hz;
+				const hw = chw * s.w;
+				const hh = chh * s.h;
+				for (let dx = -hw; dx <= hw; dx++) {
+					const u = dx / hw;
+					const body = Math.sqrt(Math.max(0, 1 - u * u));
+					const puff = body * (0.62 + 0.38 * Math.sin(u * 5.5 + warp) * Math.sin(u * 2.1 - warp * 0.6));
+					const th = hh * puff;
+					if (th < 0.5) continue;
+					const px = ox + dx;
+					const fade = edge(px, -18, s.w + 18, 22);
+					if (fade <= 0) continue;
+					const lit = Math.exp(-Math.abs(px - sunX) / (s.w * 0.5));
+					for (let dy = -th; dy <= th; dy++) {
+						const under = (dy + th) / (2 * th);
+						const warm = under * under * (0.35 + lit * 0.75) * (0.5 + low * 0.5);
+						const d = Math.abs(dy) / (th + 0.5);
+						const a = (1 - d * d) * 0.72 * fade;
+						paint(s, px, oy + dy, dr + (sr - dr) * warm, dg + (sg - dg) * warm, db + (sb - db) * warm, a);
+					}
+				}
+			}
+
+			const rad = st.sunR * s.h * (0.85 + s.v.drift * 0.22);
+			const squash = 1 - low * 0.34;
+			for (let g = 7; g >= 1; g--) {
+				const gr2 = rad * (1 + g * 0.55);
+				for (let dy = -gr2 * squash; dy <= gr2 * squash; dy++)
+					for (let dx = -gr2; dx <= gr2; dx++) {
+						const d = Math.sqrt(dx * dx + (dy / squash) * (dy / squash));
+						if (d > gr2 || d < rad) continue;
+						plot(s, sunX + dx, sunY + dy, sr, sg, sb, 0.05 / g);
+					}
+			}
+			const [cr, cg, cb] = hsl(sunHue + 8, s.v.sat * 0.55, 96 - low * 10);
+			for (let dy = -rad * squash; dy <= rad * squash; dy++)
+				for (let dx = -rad; dx <= rad; dx++) {
+					const d = Math.sqrt(dx * dx + (dy / squash) * (dy / squash)) / rad;
+					if (d > 1) continue;
+					const core = 1 - d * d;
+					paint(s, sunX + dx, sunY + dy, cr + (sr - cr) * d, cg + (sg - cg) * d, cb + (sb - cb) * d, Math.min(1, 0.55 + core));
+				}
+
+			st.sun = [sunX, sunY, alt, sr, sg, sb, hz, low];
+			s.out = low;
 		}
 	};
 }

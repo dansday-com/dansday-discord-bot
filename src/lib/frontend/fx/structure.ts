@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 /** A seeded ridge silhouette along the bottom — every card gets its own skyline. */
 export function ground(s: FxScene, salt: number, height: number, rough: number, light: number) {
@@ -630,6 +630,168 @@ export function withScreen(inner: FxProgram, dark: number, cover: number, vignet
 						px[i + 2] *= keep;
 					}
 				}
+			}
+			blit(s);
+		}
+	};
+}
+
+function glint(x: number, y: number, t: number) {
+	let h = (x * 73856093) ^ (y * 19349663) ^ (t * 83492791);
+	h = Math.imul(h ^ (h >>> 13), 1274126177);
+	return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** The shore the sunset falls on: the sun lays a glitter path down the water, swell breaks at the sand, and the foam it leaves keeps the sand wet enough to mirror the sky until it dries. */
+export function withShore(inner: FxProgram): FxProgram {
+	return {
+		rows: inner.rows,
+		stride: inner.stride,
+		init(s) {
+			inner.init(s);
+			const r = mulberry32(s.v.seed + 3313);
+			const st = s as any;
+			st.shore = 0.77 + r() * 0.06;
+			st.lip = r() * 6.28;
+			const crests: number[][] = [];
+			const n = 3 + ((r() * 3) | 0);
+			for (let i = 0; i < n; i++) crests.push([r(), 0.45 + r() * 0.55, r() * 6.28]);
+			st.crests = crests;
+			st.runs = [] as number[][];
+			st.wet = new Float32Array(s.w);
+			st.mirror = new Float32Array(s.w);
+		},
+		frame(s) {
+			inner.frame(s);
+			const st = s as any;
+			const sun = st.sun as number[];
+			if (!sun) {
+				blit(s);
+				return;
+			}
+			const [sunX, , alt, sr, sg, sb, hz, low] = sun;
+			const shoreY = Math.round(s.h * st.shore);
+			const deep = Math.max(1, shoreY - hz);
+			const wet = st.wet as Float32Array;
+			const crests = st.crests as number[][];
+			const runs = st.runs as number[][];
+
+			const [fr, fg, fb] = hsl(s.v.hue + 198, s.v.sat * 0.5, 20);
+			const [nr, ng, nb] = hsl(s.v.hue + 206, s.v.sat * 0.42, 34);
+			const mirror = st.mirror as Float32Array;
+			for (let x = 0; x < s.w; x++) mirror[x] = 0.22 + 0.78 * Math.exp(-Math.abs(x - sunX) / (s.w * 0.42));
+			for (let y = hz; y < shoreY; y++) {
+				const t = (y - hz) / deep;
+				const sky = Math.exp(-t * 3.2) * (0.3 + low * 0.3);
+				const rr = fr + (nr - fr) * t;
+				const gg = fg + (ng - fg) * t;
+				const bb = fb + (nb - fb) * t;
+				for (let x = 0; x < s.w; x++) {
+					const k = sky * mirror[x];
+					paint(s, x, y, rr + (sr - rr) * k, gg + (sg - gg) * k, bb + (sb - bb) * k, 1);
+				}
+			}
+
+			for (let x = 0; x < s.w; x++) {
+				const near = Math.exp(-Math.abs(x - sunX) / (s.w * 0.22));
+				if (near < 0.02) continue;
+				plot(s, x, hz, sr, sg, sb, near * 0.34 * (0.4 + low * 0.6));
+			}
+
+			if (alt > 0.02) {
+				const tick = (s.t * 0.22 * s.v.speed) | 0;
+				for (let y = hz; y < shoreY; y++) {
+					const t = (y - hz) / deep;
+					const half = s.w * (0.014 + t * t * 0.2);
+					const lo = Math.max(0, Math.round(sunX - half));
+					const hi = Math.min(s.w - 1, Math.round(sunX + half));
+					const scint = 0.34 + t * 0.4;
+					for (let x = lo; x <= hi; x++) {
+						const u = (x - sunX) / half;
+						const across = 1 - u * u;
+						if (across <= 0) continue;
+						const g = glint(x, y * 3 + tick, tick >> 2);
+						if (g < 1 - scint) continue;
+						const f = (g - (1 - scint)) / scint;
+						plot(s, x, y, sr, sg, sb, across * f * f * (0.5 + low * 0.5));
+					}
+				}
+			}
+
+			const [wr, wg, wb] = hsl(s.v.hue2 + 4, s.v.sat * 0.3, 92);
+			const rate = 0.0042 * s.v.speed;
+			for (const c of crests) {
+				c[0] += rate * (0.7 + c[1] * 0.6);
+				if (c[0] >= 1) {
+					c[0] = 0;
+					c[1] = 0.45 + s.rnd() * 0.55;
+					runs.push([0, c[1] * 0.62, 52 + s.rnd() * 26]);
+					if (runs.length > 4) runs.shift();
+				}
+				const p = c[0];
+				if (p < 0.22) continue;
+				const y = hz + deep * Math.pow(p, 1.9);
+				const thick = 0.4 + p * p * 2.2;
+				const a = edge(p, 0.18, 1.02, 0.2) * (0.22 + p * 0.5) * c[1];
+				for (let x = 0; x < s.w; x++) {
+					const wob = Math.sin(x * 0.13 + c[2]) * 0.5 + Math.sin(x * 0.041 - c[2] * 1.7) * 0.5;
+					const gap = Math.sin(x * 0.055 + c[2] * 2.3) * 0.5 + Math.sin(x * 0.017 - c[2]) * 0.5;
+					const bite = Math.max(0, gap * 0.7 + 0.45);
+					if (bite <= 0.02) continue;
+					const yy = y + wob * thick * 0.8;
+					for (let k = 0; k < thick; k++) paint(s, x, yy + k, wr, wg, wb, a * bite * (1 - k / thick) * 0.7);
+				}
+			}
+
+			const sand = Math.max(1, s.h - shoreY);
+			const lipOf = (x: number) => Math.sin(x * 0.062 + st.lip) * 0.6 + Math.sin(x * 0.019 - st.lip * 1.4) * 0.4;
+			for (let x = 0; x < s.w; x++) wet[x] *= 0.991;
+			const front = new Float32Array(s.w);
+			const wash = new Float32Array(s.w);
+			for (let k = runs.length - 1; k >= 0; k--) {
+				const run = runs[k];
+				run[0] += 1;
+				if (run[0] > run[2]) {
+					runs.splice(k, 1);
+					continue;
+				}
+				const f = Math.sin((run[0] / run[2]) * Math.PI);
+				for (let x = 0; x < s.w; x++) {
+					const wob = 0.78 + 0.22 * Math.sin(x * 0.075 + st.lip) * Math.sin(x * 0.028 - st.lip * 1.3);
+					const up = f * run[1] * wob;
+					if (up > wet[x]) wet[x] = up;
+					if (up > front[x]) {
+						front[x] = up;
+						wash[x] = 1 - f * 0.4;
+					}
+				}
+			}
+
+			const [dryR, dryG, dryB] = hsl(s.v.hue2 - 6, s.v.sat * 0.45, 46);
+			const [darkR, darkG, darkB] = hsl(s.v.hue2 - 10, s.v.sat * 0.5, 28);
+			for (let x = 0; x < s.w; x++) {
+				const soak = wet[x];
+				const edgeY = shoreY + lipOf(x) * sand * 0.16;
+				for (let y = Math.round(edgeY); y < s.h; y++) {
+					const t = (y - edgeY) / sand;
+					const grain = 1 + (glint(x, y, 0) * 0.12 - 0.06);
+					let rr = dryR + (darkR - dryR) * t * 0.5;
+					let gg = dryG + (darkG - dryG) * t * 0.5;
+					let bb = dryB + (darkB - dryB) * t * 0.5;
+					if (t < soak) {
+						const sheen = (1 - t / soak) * soak * 0.62;
+						rr = rr * (1 - sheen) + sr * 0.62 * sheen;
+						gg = gg * (1 - sheen) + sg * 0.62 * sheen;
+						bb = bb * (1 - sheen) + sb * 0.68 * sheen;
+					}
+					paint(s, x, y, rr * grain, gg * grain, bb * grain, 1);
+				}
+			}
+
+			for (let x = 0; x < s.w; x++) {
+				if (front[x] <= 0.004) continue;
+				const fy = shoreY + lipOf(x) * sand * 0.16 + front[x] * sand;
+				for (let d = 0; d < 3; d++) paint(s, x, fy - d, wr, wg, wb, (1 - d / 3) * wash[x] * 0.9);
 			}
 			blit(s);
 		}

@@ -39,7 +39,8 @@ export const EFFECT_FAMILIES = [
 	'crystal',
 	'neon',
 	'matrix',
-	'bouncer'
+	'bouncer',
+	'beach'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -84,7 +85,8 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'crystal', label: 'Crystal', icon: 'fa-diamond', particles: false },
 	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false },
 	{ id: 'matrix', label: 'Matrix', icon: 'fa-terminal', particles: false },
-	{ id: 'bouncer', label: 'Bouncer', icon: 'fa-clone', particles: false }
+	{ id: 'bouncer', label: 'Bouncer', icon: 'fa-clone', particles: false },
+	{ id: 'beach', label: 'Beach Sunset', icon: 'fa-umbrella-beach', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -206,7 +208,8 @@ const TUNING: Record<string, Tuning> = {
 	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1] },
 	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] },
 	matrix: { tile: [6, 14], dot: [0.8, 1.7], speed: [1.6, 3.6], opacity: [0.7, 1] },
-	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [8, 16.5], opacity: [0.75, 1] }
+	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [8, 16.5], opacity: [0.75, 1] },
+	beach: { tile: [1, 1], dot: [0.5, 1], speed: [5.5, 11], opacity: [0.8, 1] }
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -246,7 +249,8 @@ const PALETTE: Record<string, [string, string]> = {
 	crystal: ['#a78bfa', '#e9d5ff'],
 	neon: ['#ff2d95', '#22d3ee'],
 	matrix: ['#3ff28a', '#d6ffe9'],
-	bouncer: ['#e2e8f0', '#6366f1']
+	bouncer: ['#e2e8f0', '#6366f1'],
+	beach: ['#ff5e3a', '#ffd27a']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {

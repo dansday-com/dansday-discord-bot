@@ -11,6 +11,7 @@ import {
 	makeGlyphRain,
 	makeMaw,
 	makeQuake,
+	makeSunset,
 	makeTear,
 	makeWeave,
 	withBough,
@@ -21,7 +22,19 @@ import {
 	withWater
 } from './patterns.js';
 import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
-import { makeBreaker, makeHoles, makeSign, makeStrike, makeWishNight, withCone, withFunnel, withGround, withHorizon, withScreen } from './structure.js';
+import {
+	makeBreaker,
+	makeHoles,
+	makeSign,
+	makeStrike,
+	makeWishNight,
+	withCone,
+	withFunnel,
+	withGround,
+	withHorizon,
+	withScreen,
+	withShore
+} from './structure.js';
 
 const P = 6;
 
@@ -407,6 +420,7 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	fallingstar: withGround(makeWishNight(56), 257, 0.15, 0.08, 12),
 	thunder: withSky(makeBolt(56, 46), 3, 42, 0.3),
 	tsunami: makeBreaker(56),
+	beach: withShore(makeSunset(56)),
 	pulse: makeEcg(56),
 	rainbow: withSky(makeArc(56, 7, 2.4), 2, 92, 0.25),
 
@@ -435,6 +449,7 @@ export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
 
 export const BLEND: Record<string, 'screen' | 'normal'> = {
 	aurora: 'normal',
+	beach: 'normal',
 	bouncer: 'normal',
 	autumn: 'normal',
 	blackhole: 'normal',

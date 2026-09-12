@@ -1683,10 +1683,12 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		FROM server_members m
 		INNER JOIN servers sv ON sv.id = m.server_id AND sv.deleted_at IS NULL
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
-		INNER JOIN server_settings ss
+		LEFT JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
-		WHERE m.deleted_at IS NULL AND m.is_bot = 0 ${searchClause}
+		WHERE m.deleted_at IS NULL
+			AND m.is_bot = 0
+			AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.items_enabled')), 'true') <> 'false'
+			${searchClause}
 		${orderClause}
 		LIMIT ${safeLimit}
 	`);
@@ -1715,10 +1717,11 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 		FROM server_members m
 		INNER JOIN servers sv ON sv.id = m.server_id AND sv.deleted_at IS NULL
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
-		INNER JOIN server_settings ss
+		LEFT JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
-		WHERE m.id = ${Number(memberId)} AND m.deleted_at IS NULL
+		WHERE m.id = ${Number(memberId)}
+			AND m.deleted_at IS NULL
+			AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.items_enabled')), 'true') <> 'false'
 		LIMIT 1
 	`);
 	return ((rows[0] as unknown as any[]) || []).length > 0;

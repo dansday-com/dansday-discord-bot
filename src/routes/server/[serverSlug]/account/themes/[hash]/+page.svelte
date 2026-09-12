@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
+	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { ConfirmModal, GameModal, ReelStrip } from '$lib/frontend/components/public';
@@ -56,8 +56,8 @@
 			input.value = '';
 			return;
 		}
-		if (file.size > MEMBER_THEME_SOURCE_MAX_BYTES) {
-			showToast(`That image is ${imageSizeLabel(file.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_SOURCE_MAX_BYTES)}.`, 'error');
+		if (file.size > MEMBER_THEME_MAX_BYTES) {
+			showToast(`That image is ${imageSizeLabel(file.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`, 'error');
 			input.value = '';
 			return;
 		}

@@ -141,6 +141,16 @@ export function withHorizon(inner: FxProgram): FxProgram {
 	};
 }
 
+/** The funnel's axis and half-width at height fraction f (0 = cloud base, 1 = ground). */
+export function funnelAxis(s: FxScene, f: number): [number, number] {
+	const r = mulberry32(s.v.seed + 3120);
+	const top = s.w * (0.35 + r() * 0.3);
+	const lean = (r() - 0.5) * s.w * 0.3 + s.v.tilt * s.w * 0.1;
+	const wTop = s.w * (0.16 + r() * 0.08);
+	const wob = Math.sin(f * 6 + s.t * 0.07 * s.v.speed) * s.w * 0.03 * f;
+	return [top + lean * f * f + wob, wTop * (1 - f * 0.82)];
+}
+
 /** A leaning funnel reaching down from the cloud deck. Lean and width vary. */
 export function withFunnel(inner: FxProgram): FxProgram {
 	return {
@@ -149,16 +159,10 @@ export function withFunnel(inner: FxProgram): FxProgram {
 		init: inner.init,
 		frame(s) {
 			inner.frame(s);
-			const r = mulberry32(s.v.seed + 3120);
-			const top = s.w * (0.35 + r() * 0.3);
-			const lean = (r() - 0.5) * s.w * 0.3 + s.v.tilt * s.w * 0.1;
-			const wTop = s.w * (0.16 + r() * 0.08);
 			const [fr, fg, fb] = hsl(s.v.hue, s.v.sat * 0.45, 52);
 			for (let y = 0; y < s.h; y++) {
 				const f = y / s.h;
-				const w = wTop * (1 - f * 0.82);
-				const wob = Math.sin(f * 6 + s.t * 0.07 * s.v.speed) * s.w * 0.03 * f;
-				const mid = top + lean * f * f + wob;
+				const [mid, w] = funnelAxis(s, f);
 				for (let x = mid - w; x <= mid + w; x++) {
 					const edge = Math.abs(x - mid) / Math.max(0.5, w);
 					plot(s, x, y, fr, fg, fb, (0.12 + edge * 0.3) * (0.5 + 0.5 * f));

@@ -1,5 +1,6 @@
 import { blit, clear, edge, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 import type { Mask } from './sprites.js';
+import { funnelAxis } from './structure.js';
 import { mulberry32 } from '$lib/effects.js';
 
 const P = 6;
@@ -135,7 +136,6 @@ export function makeVortex(rows: number, stride: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const cx = s.w * 0.5;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				const p = s.parts;
@@ -145,8 +145,8 @@ export function makeVortex(rows: number, stride: number): FxProgram {
 					p[o + 1] = 0;
 					p[o] = s.rnd() * Math.PI * 2;
 				}
-				const width = s.w * 0.06 + p[o + 1] * s.w * 0.38;
-				const x = cx + Math.cos(p[o]) * width + s.v.tilt * (1 - p[o + 1]) * s.w * 0.1;
+				const [mid, width] = funnelAxis(s, 1 - p[o + 1]);
+				const x = mid + Math.cos(p[o]) * width;
 				const y = s.h - p[o + 1] * s.h;
 				const front = Math.sin(p[o]) > 0 ? 1 : 0.4;
 				const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.6, 40 + p[o + 1] * 34);

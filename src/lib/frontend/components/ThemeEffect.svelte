@@ -62,12 +62,12 @@
 	$effect(() => {
 		if (family === 'none' || frozen) return;
 		const node = host;
+		const ungated = always;
 		if (!node) return;
 		if (typeof IntersectionObserver === 'undefined') {
-			live = true;
+			live = ungated;
 			return;
 		}
-		live = always;
 		const io = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) live = entry.isIntersecting;
@@ -78,6 +78,8 @@
 		return () => io.disconnect();
 	});
 
+	let builtKey = '';
+
 	$effect(() => {
 		const el = canvas;
 		const prog = program;
@@ -86,7 +88,11 @@
 		const ac = accent;
 		const ratio = aspect;
 		const height = boxH;
-		if (!el || !prog || fam === 'none') return;
+		const seen = live;
+		if (!el || !prog || fam === 'none' || !seen) return;
+		const key = `${fam}|${sd}|${ac}|${ratio}|${height}`;
+		if (key === builtKey && scene) return;
+		builtKey = key;
 		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
 		prog.frame(built);
 		scene = built;

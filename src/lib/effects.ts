@@ -37,7 +37,9 @@ export const EFFECT_FAMILIES = [
 	'fireflies',
 	'silk',
 	'crystal',
-	'neon'
+	'neon',
+	'matrix',
+	'bouncer'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -80,7 +82,9 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'fireflies', label: 'Fireflies', icon: 'fa-hand-sparkles', particles: false },
 	{ id: 'silk', label: 'Silk', icon: 'fa-ribbon', particles: false },
 	{ id: 'crystal', label: 'Crystal', icon: 'fa-diamond', particles: false },
-	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false }
+	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false },
+	{ id: 'matrix', label: 'Matrix', icon: 'fa-terminal', particles: false },
+	{ id: 'bouncer', label: 'Bouncer', icon: 'fa-clone', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -122,7 +126,7 @@ function parseHex(value: any): string {
 	return /^#[0-9a-f]{6}$/i.test(withHash) ? withHash.toLowerCase() : BRAND_PRIMARY;
 }
 
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
 	let a = seed >>> 0;
 	return () => {
 		a = (a + 0x6d2b79f5) >>> 0;
@@ -200,39 +204,9 @@ const TUNING: Record<string, Tuning> = {
 	fireflies: { tile: [22, 50], dot: [1.4, 3], speed: [4, 9], opacity: [0.6, 1], drift: [-50, 50] },
 	silk: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.65, 1] },
 	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1] },
-	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] }
-};
-
-export const PARTICLE_COUNTS: Record<string, number> = {
-	meteor: 19,
-	fire: 25,
-	confetti: 32,
-	rain: 110,
-	snow: 48,
-	blizzard: 57,
-	earthquake: 28,
-	sparkle: 35,
-	ember: 39,
-	bubbles: 28,
-	aurora: 9,
-	pulse: 3,
-	rainbow: 0,
-	love: 33,
-	glass: 0,
-	bullethole: 0,
-	volcano: 39,
-	sandstorm: 60,
-	void: 40,
-	eclipse: 35,
-	fallingstar: 15,
-	milkyway: 74,
-	blackhole: 48,
-	autumn: 39,
-	sakura: 44,
-	fireflies: 39,
-	silk: 0,
-	crystal: 33,
-	neon: 0
+	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] },
+	matrix: { tile: [6, 14], dot: [0.8, 1.7], speed: [1.6, 3.6], opacity: [0.7, 1] },
+	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [8, 16.5], opacity: [0.75, 1] }
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -270,7 +244,9 @@ const PALETTE: Record<string, [string, string]> = {
 	fireflies: ['#ffd97a', '#8fd6a0'],
 	silk: ['#b8438f', '#ffd6ec'],
 	crystal: ['#a78bfa', '#e9d5ff'],
-	neon: ['#ff2d95', '#22d3ee']
+	neon: ['#ff2d95', '#22d3ee'],
+	matrix: ['#3ff28a', '#d6ffe9'],
+	bouncer: ['#e2e8f0', '#6366f1']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {
@@ -281,387 +257,12 @@ export function effectPalette(family: any, accent: any): [string, string] {
 	return [hex, hex];
 }
 
-export type EffectVariant = { family: EffectFamily; seed: number; style: string; particles: string[] };
-
-function buildParticles(family: EffectFamily, rand: () => number, c1: [number, number, number], c2: [number, number, number]): string[] {
-	const [hue, sat, light] = c1;
-	const [hue2, sat2, light2] = c2;
-	const count = PARTICLE_COUNTS[family] ?? 0;
-	if (count === 0) return [];
-	const out: string[] = [];
-
-	for (let i = 0; i < count; i++) {
-		const x = (i / count) * 100 + (rand() - 0.5) * (80 / count);
-		const delay = -(rand() * 6).toFixed(2);
-		const scale = (0.55 + rand() * 0.95).toFixed(2);
-
-		if (family === 'meteor') {
-			const dur = (0.9 + rand() * 1.9).toFixed(2);
-			const len = Math.round(60 + rand() * 130);
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${dur}s`,
-					`--p-len: ${len}px`,
-					`--p-thick: ${(1 + rand() * 1.8).toFixed(2)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'fire') {
-			const dur = (0.7 + rand() * 1.1).toFixed(2);
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${dur}s`,
-					`--p-w: ${Math.round(10 + rand() * 26)}px`,
-					`--p-h: ${Math.round(26 + rand() * 62)}px`,
-					`--p-scale: ${scale}`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'earthquake') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(rand() * 88).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(0.9 + rand() * 1.6).toFixed(2)}s`,
-					`--p-w: ${Math.round(3 + rand() * 7)}px`,
-					`--p-spin: ${Math.round((rand() - 0.5) * 360)}deg`,
-					`--p-drift: ${Math.round((rand() - 0.5) * 40)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.9)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'snow' || family === 'blizzard') {
-			const dur = family === 'blizzard' ? (1.4 + rand() * 2.2).toFixed(2) : (5 + rand() * 8).toFixed(2);
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${dur}s`,
-					`--p-w: ${Math.round(5 + rand() * 12)}px`,
-					`--p-spin: ${Math.round(180 + rand() * 540)}deg`,
-					`--p-drift: ${family === 'blizzard' ? Math.round(150 + rand() * 190) : Math.round((rand() - 0.5) * 90)}px`,
-					`--p-soft: ${Math.round(58 + rand() * 28)}%`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.95)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'sparkle') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(rand() * 100).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(1.1 + rand() * 2.4).toFixed(2)}s`,
-					`--p-w: ${Math.round(7 + rand() * 18)}px`,
-					`--p-spin: ${Math.round(rand() * 90)}deg`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'ember') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(2.2 + rand() * 3.6).toFixed(2)}s`,
-					`--p-w: ${(2 + rand() * 4.5).toFixed(1)}px`,
-					`--p-drift: ${Math.round((rand() - 0.5) * 120)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'bubbles') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(4 + rand() * 6).toFixed(2)}s`,
-					`--p-w: ${Math.round(7 + rand() * 26)}px`,
-					`--p-drift: ${Math.round((rand() - 0.5) * 70)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.85)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'aurora') {
-			out.push(
-				[
-					`--p-x: ${(i * 22 - 8).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(6 + rand() * 7).toFixed(2)}s`,
-					`--p-w: ${Math.round(60 + rand() * 130)}px`,
-					`--p-skew: ${Math.round((rand() - 0.5) * 30)}deg`,
-					`--p-hue: ${hsla(hue + i * 34, sat, light, 0.9)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'pulse') {
-			out.push(
-				[
-					`--p-delay: ${(-i * 1.1).toFixed(2)}s`,
-					`--p-dur: ${(2.4 + rand() * 1.6).toFixed(2)}s`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'rain') {
-			const dur = (1.1 + rand() * 1.9).toFixed(2);
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(rand() * 70).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${dur}s`,
-					`--p-w: ${(2.6 + rand() * 3.4).toFixed(1)}px`,
-					`--p-trail: ${Math.round(22 + rand() * 62)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 8, sat, light, 0.9)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'love') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(4.5 + rand() * 5).toFixed(2)}s`,
-					`--p-w: ${Math.round(7 + rand() * 14)}px`,
-					`--p-rock: ${Math.round(18 + rand() * 34)}deg`,
-					`--p-drift: ${Math.round((rand() - 0.5) * 110)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 22, sat, light + (rand() - 0.5) * 16, 0.95)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'volcano') {
-			out.push(
-				[
-					`--p-x: ${(38 + rand() * 24).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(1.6 + rand() * 2.4).toFixed(2)}s`,
-					`--p-w: ${(2 + rand() * 5).toFixed(1)}px`,
-					`--p-arc: ${Math.round((rand() - 0.5) * 300)}px`,
-					`--p-lift: ${(0.4 + rand() * 0.55).toFixed(2)}`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 18, sat, light + rand() * 14, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'sandstorm') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(rand() * 96).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(0.7 + rand() * 1.3).toFixed(2)}s`,
-					`--p-w: ${(1.4 + rand() * 3.4).toFixed(1)}px`,
-					`--p-trail: ${Math.round(10 + rand() * 46)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 14, sat, light + (rand() - 0.5) * 18, 0.8)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'void') {
-			out.push(
-				[
-					`--p-orbit: ${Math.round(18 + rand() * 62)}px`,
-					`--p-angle: ${Math.round(rand() * 360)}deg`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(2.4 + rand() * 3.6).toFixed(2)}s`,
-					`--p-w: ${(1.4 + rand() * 3).toFixed(1)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 40, sat, light + rand() * 10, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'milkyway') {
-			const band = 88 - 0.766 * x;
-			const y = rand() < 0.72 ? band + (rand() - 0.5) * 46 : rand() * 100;
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${Math.max(1, Math.min(97, y)).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(2 + rand() * 4.5).toFixed(2)}s`,
-					`--p-w: ${(0.9 + rand() * 2.4).toFixed(2)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 46, sat, light + rand() * 12, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'eclipse') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(rand() * 100).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(2 + rand() * 4.5).toFixed(2)}s`,
-					`--p-w: ${(0.9 + rand() * 2.4).toFixed(2)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 46, sat, light + rand() * 12, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'sakura') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(6 + rand() * 8).toFixed(2)}s`,
-					`--p-w: ${Math.round(5 + rand() * 9)}px`,
-					`--p-glide: ${Math.round(30 + rand() * 90)}px`,
-					`--p-spin: ${Math.round(120 + rand() * 300)}deg`,
-					`--p-drift: ${Math.round((rand() - 0.5) * 130)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 18, sat - rand() * 10, light + (rand() - 0.5) * 12, 0.95)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'fireflies') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(18 + rand() * 74).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(4 + rand() * 6).toFixed(2)}s`,
-					`--p-w: ${(2 + rand() * 3.2).toFixed(1)}px`,
-					`--p-wander: ${Math.round(18 + rand() * 54)}px`,
-					`--p-rise: ${Math.round(14 + rand() * 46)}px`,
-					`--p-blink: ${(0.4 + rand() * 0.9).toFixed(2)}s`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 26, sat, light + rand() * 12, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'crystal') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-y: ${(rand() * 96).toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(2.6 + rand() * 4).toFixed(2)}s`,
-					`--p-w: ${(1.6 + rand() * 3.4).toFixed(1)}px`,
-					`--p-lift: ${Math.round(10 + rand() * 40)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 40, sat, light + rand() * 16, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'autumn') {
-			out.push(
-				[
-					`--p-x: ${x.toFixed(1)}%`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(5 + rand() * 7).toFixed(2)}s`,
-					`--p-w: ${Math.round(8 + rand() * 16)}px`,
-					`--p-spin: ${Math.round(420 + rand() * 900)}deg`,
-					`--p-flip: ${Math.round(180 + rand() * 720)}deg`,
-					`--p-drift: ${Math.round((rand() - 0.5) * 170)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 34, sat - rand() * 14, light + (rand() - 0.5) * 20, 0.96)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'blackhole') {
-			out.push(
-				[
-					`--p-ring: ${Math.round(26 + rand() * 54)}px`,
-					`--p-angle: ${Math.round(rand() * 360)}deg`,
-					`--p-arc: ${Math.round(14 + rand() * 40)}px`,
-					`--p-delay: ${delay}s`,
-					`--p-dur: ${(3.4 + rand() * 5).toFixed(2)}s`,
-					`--p-thick: ${(0.9 + rand() * 1.6).toFixed(2)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 54, sat, light + rand() * 14, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		if (family === 'fallingstar') {
-			out.push(
-				[
-					`--p-x: ${(12 + rand() * 78).toFixed(1)}%`,
-					`--p-y: ${(rand() * 34).toFixed(1)}%`,
-					`--p-delay: ${(-rand() * 14).toFixed(2)}s`,
-					`--p-dur: ${(1.1 + rand() * 1.5).toFixed(2)}s`,
-					`--p-len: ${Math.round(70 + rand() * 150)}px`,
-					`--p-thick: ${(1.1 + rand() * 1.5).toFixed(2)}px`,
-					`--p-hue: ${hsla(hue + (rand() - 0.5) * 26, sat, light, 1)}`
-				].join('; ')
-			);
-			continue;
-		}
-
-		const dur = (2.5 + rand() * 4).toFixed(2);
-		out.push(
-			[
-				`--p-x: ${x.toFixed(1)}%`,
-				`--p-delay: ${delay}s`,
-				`--p-dur: ${dur}s`,
-				`--p-w: ${Math.round(4 + rand() * 8)}px`,
-				`--p-spin: ${Math.round(180 + rand() * 720)}deg`,
-				`--p-hue: ${hsla(rand() * 360, 85, 62, 1)}`
-			].join('; ')
-		);
-	}
-	return out;
-}
-
-export function spreadPieces(seed: any, count: number, jitter = 0.34, scaleMin = 0.82, scaleMax = 1.18) {
-	const n = Math.max(1, Math.round(count));
-	const rand = mulberry32(normalizeSeed(seed) + n * 104729 + 7);
-	const step = 100 / n;
-	const out: { left: number; scale: number; delay: number; flip: boolean }[] = [];
-	for (let i = 0; i < n; i++) {
-		out.push({
-			left: Number((i * step + (rand() - 0.5) * step * jitter).toFixed(2)),
-			scale: Number((scaleMin + rand() * (scaleMax - scaleMin)).toFixed(3)),
-			delay: Number((rand() * 5).toFixed(2)),
-			flip: rand() > 0.5
-		});
-	}
-	return out;
-}
+export type EffectVariant = { family: EffectFamily; seed: number; style: string };
 
 export function effectVariant(family: any, seed: any, accent: any): EffectVariant {
 	const id = normalizeEffect(family);
 	const s = normalizeSeed(seed);
-	if (id === 'none') return { family: 'none', seed: s, style: '', particles: [] };
+	if (id === 'none') return { family: 'none', seed: s, style: '' };
 
 	const rand = mulberry32(s + id.length * 7919);
 	const pick = (range: [number, number]) => range[0] + rand() * (range[1] - range[0]);
@@ -708,7 +309,6 @@ export function effectVariant(family: any, seed: any, accent: any): EffectVarian
 		seed: s,
 		style: Object.entries(vars)
 			.map(([key, value]) => `${key}: ${value}`)
-			.join('; '),
-		particles: buildParticles(id, rand, [c1[0] + jitter, c1[1], c1[2]], [c2[0] + jitter, c2[1], c2[2]])
+			.join('; ')
 	};
 }

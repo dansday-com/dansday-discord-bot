@@ -4,7 +4,7 @@
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
-	import { GameModal, ReelStrip } from '$lib/frontend/components/public';
+	import { ConfirmModal, GameModal, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { getContext } from 'svelte';
@@ -33,6 +33,7 @@
 	let spinning = $state(false);
 	let reelWrapEl = $state<HTMLDivElement | undefined>();
 	let playing = $state(false);
+	let confirmingReset = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
 	const previewImage = $derived(pendingPreview ?? savedImage);
@@ -204,6 +205,7 @@
 			showToast('Could not reset your theme.', 'error');
 		} finally {
 			busy = false;
+			confirmingReset = false;
 		}
 	}
 
@@ -226,7 +228,7 @@
 	}
 
 	$effect(() => {
-		if (!playing) return;
+		if (!playing && !confirmingReset) return;
 		return lockScroll();
 	});
 
@@ -443,7 +445,7 @@
 			{#if busy}<span class="loading loading-spinner loading-xs"></span>{/if}Save theme
 		</button>
 		{#if hasTheme}
-			<button class="btn btn-ghost btn-sm" onclick={reset} disabled={busy}>Reset to default</button>
+			<button class="btn btn-ghost btn-sm" onclick={() => (confirmingReset = true)} disabled={busy}>Reset to default</button>
 		{/if}
 		{#if dirty}
 			<span class="text-base-content/45 text-[11px] font-medium">Unsaved changes</span>
@@ -496,4 +498,18 @@
 			</button>
 		{/if}
 	</GameModal>
+{/if}
+
+{#if confirmingReset}
+	<ConfirmModal
+		icon="fa-rotate-left"
+		title="Reset to default?"
+		message={owned === 'none'
+			? 'Your banner image and accent colour will be removed. This cannot be undone.'
+			: `Your banner image and accent colour will be removed. Your ${effectMeta(owned)?.label} effect stays — spins are never lost.`}
+		confirmLabel="Reset"
+		loading={busy}
+		onconfirm={reset}
+		oncancel={() => (confirmingReset = false)}
+	/>
 {/if}

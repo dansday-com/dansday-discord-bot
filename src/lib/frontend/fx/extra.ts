@@ -31,6 +31,11 @@ export function makeBands(rows: number, o: { count: number; slant: number; soft:
 					}
 				}
 			}
+			for (let bd = 0; bd < 6; bd++) {
+				const bx = (((bd * 0.19 + t * 0.4) % 1.2) - 0.1) * s.w;
+				const bw = s.w * (0.02 + (bd % 3) * 0.012);
+				for (let x = bx; x < bx + bw; x++) for (let y = 0; y < s.h; y++) plot(s, x + (y - s.h / 2) * o.slant, y, 255, 255, 255, 0.08);
+			}
 			blit(s);
 		}
 	};
@@ -45,11 +50,13 @@ export function makeNoise(rows: number, amount: number, chunk: number): FxProgra
 		frame(s) {
 			clear(s);
 			const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.3, 74);
-			for (let y = 0; y < s.h; y += chunk) {
-				for (let x = 0; x < s.w; x += chunk) {
-					const a = s.rnd();
+			const grit = Math.max(1, chunk + ((s.v.drift * 1.6) | 0));
+			const bias = s.v.dir * s.v.tilt * 6;
+			for (let y = 0; y < s.h; y += grit) {
+				for (let x = 0; x < s.w; x += grit) {
+					const a = s.rnd() * (0.8 + s.v.speed * 0.3);
 					if (a > amount) continue;
-					for (let j = 0; j < chunk; j++) for (let k = 0; k < chunk; k++) plot(s, x + k, y + j, r, g, b, a * 0.5);
+					for (let j = 0; j < grit; j++) for (let k = 0; k < grit; k++) plot(s, x + k + bias, y + j, r, g, b, a * 0.5);
 				}
 			}
 			blit(s);
@@ -219,7 +226,7 @@ export function makeFacets(rows: number, stride: number, crack: boolean): FxProg
 				const p = sc.parts;
 				p[i * P] = sc.rnd() * sc.w;
 				p[i * P + 1] = sc.rnd() * sc.h;
-				p[i * P + 2] = 3 + sc.rnd() * 7;
+				p[i * P + 2] = 3 + sc.rnd() * (4 + sc.v.drift * 5);
 				p[i * P + 3] = sc.rnd() * Math.PI * 2;
 				p[i * P + 4] = sc.rnd() * Math.PI * 2;
 			});
@@ -229,17 +236,21 @@ export function makeFacets(rows: number, stride: number, crack: boolean): FxProg
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				const p = s.parts;
-				p[o + 3] += 0.02 * s.v.speed;
+				p[o + 3] += 0.02 * s.v.speed * s.v.dir;
 				const shine = Math.max(0, Math.sin(p[o + 3]));
 				const [r, g, b] = hsl(s.v.hue + shine * 40, s.v.sat, 60 + shine * 34);
 				const len = p[o + 2];
 				const a = Math.cos(p[o + 4]);
-				const bq = Math.sin(p[o + 4]);
+				const bq = Math.sin(p[o + 4] + s.v.tilt);
 				for (let k = -len; k <= len; k++) {
 					plot(s, p[o] + a * k, p[o + 1] + bq * k, r, g, b, shine * 0.8 * (1 - Math.abs(k) / len));
 					if (crack) plot(s, p[o] - bq * k * 0.5, p[o + 1] + a * k * 0.5, r, g, b, shine * 0.4);
 				}
 			}
+			const [pr, pg, pb] = hsl(s.v.hue, s.v.sat * 0.5, 58);
+			for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) plot(s, x, y, pr, pg, pb, 0.05 + (y / s.h) * 0.05);
+			const gl = ((s.t * 0.6 * s.v.speed * s.v.dir) % (s.w * 1.6)) - s.w * 0.3;
+			for (let y = 0; y < s.h; y++) for (let d = -5; d <= 5; d++) plot(s, gl + d + (y - s.h / 2) * 0.5, y, 255, 255, 255, (1 - Math.abs(d) / 5) * 0.22);
 			blit(s);
 		}
 	};
@@ -290,12 +301,13 @@ export function makeSprite(
 	rows: number,
 	stride: number,
 	m: Mask,
-	o: { fall: number; sway: number; tumble: number; wind: number; light: number; spread: number }
+	o: { fall: number; sway: number; tumble: number; wind: number; light: number; spread: number; twinkle?: number; from?: number }
 ): FxProgram {
 	const place = (sc: FxScene, i: number, fresh: boolean) => {
 		const p = sc.parts;
 		p[i * P] = sc.rnd() * sc.w;
-		p[i * P + 1] = fresh ? (o.fall > 0 ? -m.h : sc.h + m.h) : sc.rnd() * sc.h;
+		const top = (o.from ?? 0) * sc.h;
+		p[i * P + 1] = fresh ? (o.fall > 0 ? top - m.h : sc.h + m.h) : top + sc.rnd() * (sc.h - top);
 		p[i * P + 2] = 0.3 + sc.rnd() * 0.8;
 		p[i * P + 3] = sc.rnd() * Math.PI * 2;
 		p[i * P + 4] = 0.55 + sc.rnd() * 0.45;
@@ -315,13 +327,19 @@ export function makeSprite(
 				const p = s.parts;
 				p[k + 3] += o.tumble * (0.4 + p[k + 2]);
 				p[k] += wind * p[k + 2] + Math.sin(p[k + 3] * 0.5) * o.sway;
-				p[k + 1] += o.fall * p[k + 2] * s.v.speed;
-				if (o.fall > 0 ? p[k + 1] > s.h + m.h : p[k + 1] < -m.h) place(s, i, true);
+				if (!o.twinkle) p[k + 1] += o.fall * p[k + 2] * s.v.speed;
+				if (!o.twinkle && (o.fall > 0 ? p[k + 1] > s.h + m.h : p[k + 1] < (o.from ?? 0) * s.h - m.h)) place(s, i, true);
 				if (p[k] > s.w + m.w) p[k] = -m.w;
 				if (p[k] < -m.w) p[k] = s.w + m.w;
 				const [r, g, b] = hsl(s.v.hue + p[k + 5] * o.spread, s.v.sat, o.light);
 				const squash = Math.abs(Math.cos(p[k + 3])) * 0.75 + 0.25;
-				stamp(s, m, p[k], p[k + 1], r, g, b, p[k + 4] * 0.9, o.tumble > 0 ? squash : 1);
+				let alpha = p[k + 4] * 0.9;
+				if (o.twinkle) {
+					const pulse = Math.sin(p[k + 3] * o.twinkle);
+					alpha *= Math.max(0, pulse);
+					if (pulse < -0.985) place(s, i, false);
+				}
+				stamp(s, m, p[k], p[k + 1], r, g, b, alpha, o.tumble > 0 ? squash : 1);
 			}
 			blit(s);
 		}
@@ -331,8 +349,9 @@ export function makeSprite(
 /** Pixel cumulus along the top edge, drifting. Seeded lumps, not drawn paths. */
 export function clouds(s: FxScene, count: number, light: number, drift: number) {
 	const r0 = mulberry32(s.v.seed + 4242);
-	const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.28, light);
-	const [dr, dg, db] = hsl(s.v.hue, s.v.sat * 0.34, light * 0.62);
+	const tint = Math.min(16, s.v.sat * 0.28);
+	const [r, g, b] = hsl(s.v.hue, tint, light);
+	const [dr, dg, db] = hsl(s.v.hue, tint * 1.2, light * 0.62);
 	for (let c = 0; c < count; c++) {
 		const baseX = (c / count) * s.w + r0() * (s.w / count);
 		const baseY = 2 + r0() * s.h * 0.16;
@@ -353,50 +372,56 @@ export function clouds(s: FxScene, count: number, light: number, drift: number) 
 	}
 }
 
-/** A dark disc crossing a bright corona — an actual eclipse. */
+/** Corona, chromosphere rim and flares. The disc is the hole where no light is drawn. */
 export function makeEclipse(rows: number): FxProgram {
 	return {
 		rows,
-		stride: 0.5,
+		stride: 0.7,
 		init(s) {
 			for (let i = 0; i < s.n; i++) {
 				const p = s.parts;
 				p[i * P] = s.rnd() * s.w;
 				p[i * P + 1] = s.rnd() * s.h;
 				p[i * P + 2] = s.rnd() * Math.PI * 2;
+				p[i * P + 3] = 0.3 + s.rnd() * 0.7;
 			}
 		},
 		frame(s) {
 			clear(s);
+			const [sr, sg, sb] = hsl(s.v.hue2, s.v.sat * 0.4, 88);
 			for (let i = 0; i < s.n; i++) {
 				const p = s.parts;
-				p[i * P + 2] += 0.03;
-				const tw = 0.4 + 0.6 * Math.sin(p[i * P + 2]);
-				plot(s, p[i * P], p[i * P + 1], 210, 220, 255, tw * 0.5);
+				p[i * P + 2] += 0.02 + p[i * P + 3] * 0.02 * s.v.speed;
+				const tw = 0.35 + 0.65 * Math.sin(p[i * P + 2]);
+				plot(s, p[i * P], p[i * P + 1], sr, sg, sb, tw * p[i * P + 3] * 0.8);
 			}
-			const cx = s.w * 0.5 + s.v.tilt * s.w * 0.1;
-			const cy = s.h * 0.44;
-			const rad = s.h * 0.3;
-			const cover = 0.72 + 0.26 * Math.sin(s.t * 0.008 * s.v.speed);
-			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat, 74);
-			for (let ring = 0; ring < 26; ring++) {
-				const rr = rad * (1 + ring * 0.07);
-				const a = (1 - ring / 26) * 0.3 * cover;
-				for (let k = 0; k < 360; k += 4) {
+
+			const cx = s.w * (0.5 + s.v.tilt * 0.18);
+			const cy = s.h * (0.42 + s.v.drift * 0.06);
+			const rad = s.h * 0.28;
+			const cover = 0.5 + 0.5 * Math.sin(s.t * 0.006 * s.v.speed * s.v.dir);
+			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat, 76);
+
+			for (let ring = 0; ring < 30; ring++) {
+				const rr = rad * (1.04 + ring * 0.075);
+				const fall = 1 - ring / 30;
+				for (let k = 0; k < 360; k += 3) {
 					const th = (k * Math.PI) / 180;
-					const flare = 0.7 + 0.3 * Math.sin(th * 6 + s.t * 0.05);
-					plot(s, cx + Math.cos(th) * rr, cy + Math.sin(th) * rr, cr, cg, cb, a * flare);
+					const streamer = 0.55 + 0.45 * Math.sin(th * 7 + s.t * 0.03 + ring * 0.2);
+					plot(s, cx + Math.cos(th) * rr, cy + Math.sin(th) * rr, cr, cg, cb, fall * fall * streamer * 0.34 * cover);
 				}
 			}
-			for (let y = -rad; y <= rad; y++) {
-				for (let x = -rad; x <= rad; x++) {
-					if (x * x + y * y > rad * rad) continue;
-					const i = (((cy + y) | 0) * s.w + ((cx + x * cover) | 0)) * 4;
-					if (i < 0 || i >= s.px.length) continue;
-					s.px[i] = s.px[i + 1] = s.px[i + 2] = 0;
-					s.px[i + 3] = 235;
-				}
+
+			const [rr2, rg2, rb2] = hsl(s.v.hue, s.v.sat * 0.5, 98);
+			for (let k = 0; k < 360; k += 1) {
+				const th = (k * Math.PI) / 180;
+				const bead = 0.25 + 0.75 * Math.max(0, Math.sin(th * 11 + s.t * 0.02));
+				plot(s, cx + Math.cos(th) * rad, cy + Math.sin(th) * rad, rr2, rg2, rb2, bead * cover * 0.9);
 			}
+			const dth = s.t * 0.01 * s.v.dir;
+			for (let g = 0; g < 8; g++)
+				for (let d = 0; d < s.h * 0.4; d++)
+					plot(s, cx + Math.cos(dth) * (rad + d), cy + Math.sin(dth) * (rad + d), rr2, rg2, rb2, (1 - d / (s.h * 0.4)) * cover * 0.5);
 			blit(s);
 		}
 	};
@@ -423,9 +448,9 @@ export function makeEcg(rows: number): FxProgram {
 		frame(s) {
 			clear(s);
 			const trail = (s as any).trail as Float32Array;
-			const mid = s.h * 0.52;
-			const amp = s.h * 0.36;
-			const head = ((s.t * 0.9 * s.v.speed) | 0) % s.w;
+			const mid = s.h * (0.52 + s.v.tilt * 0.08);
+			const amp = s.h * (0.26 + s.v.drift * 0.14);
+			const head = s.v.dir > 0 ? ((s.t * 0.9 * s.v.speed) | 0) % s.w : s.w - 1 - (((s.t * 0.9 * s.v.speed) | 0) % s.w);
 			const [gr, gg, gb] = hsl(s.v.hue, s.v.sat * 0.4, 30);
 			for (let x = 0; x < s.w; x += 6) for (let y = 0; y < s.h; y += 5) plot(s, x, y, gr, gg, gb, 0.35);
 			trail[head] = WAVE((head / s.w + 1) % 1);
@@ -438,6 +463,15 @@ export function makeEcg(rows: number): FxProgram {
 				plot(s, x, y, r, g, b, a);
 				plot(s, x, y + 1, r, g, b, a * 0.5);
 				if (x === head) for (let k = -2; k <= 2; k++) plot(s, x, y + k, 255, 255, 255, 0.9);
+			}
+			const beat = trail[head];
+			if (beat > 0.8) {
+				const [br2, bg2, bb2] = hsl(s.v.hue, s.v.sat, 70);
+				for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) plot(s, x, y, br2, bg2, bb2, (beat - 0.8) * 0.5);
+			}
+			for (let x = 0; x < s.w; x++) {
+				const gy2 = mid - trail[x] * amp * 0.72;
+				plot(s, x, gy2 + 3, r, g, b, 0.12);
 			}
 			blit(s);
 		}

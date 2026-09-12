@@ -46,8 +46,8 @@ function hueOf(hex: string): [number, number, number] {
 	const max = Math.max(r, g, b);
 	const min = Math.min(r, g, b);
 	const l = (max + min) / 2;
-	if (max === min) return [0, 0, l * 100];
 	const d = max - min;
+	if (d < 0.06) return [0, 0, l * 100];
 	const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
 	let h: number;
 	if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
@@ -68,7 +68,7 @@ export function fxVariant(family: string, seed: unknown, accent: unknown): FxVar
 		seed: s,
 		hue: h1 + jitter,
 		hue2: h2 + jitter,
-		sat: Math.max(40, Math.min(100, s1 + (rnd() - 0.5) * 18)),
+		sat: Math.max(6, Math.min(100, s1 + (rnd() - 0.5) * 18)),
 		light: l1,
 		dir: rnd() < 0.5 ? -1 : 1,
 		speed: 0.72 + rnd() * 0.72,

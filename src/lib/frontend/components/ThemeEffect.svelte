@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
 	import { createScene, fxVariant, runScene, type FxScene } from '$lib/frontend/fx/engine.js';
-	import { PROGRAMS } from '$lib/frontend/fx/programs.js';
+	import { BLEND, PROGRAMS } from '$lib/frontend/fx/programs.js';
 
 	type Props = {
 		effect?: string | null;
@@ -103,6 +103,6 @@
 
 {#if family !== 'none' && program}
 	<div bind:this={host} class="fx fx-{family}" data-fx-seed={normalizeSeed(seed)} aria-hidden="true">
-		<canvas bind:this={canvas} class="fx-canvas"></canvas>
+		<canvas bind:this={canvas} class="fx-canvas" style="mix-blend-mode: {BLEND[family] ?? 'screen'}"></canvas>
 	</div>
 {/if}

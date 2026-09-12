@@ -628,7 +628,7 @@ html.lenis body {
 	background-size: 240% 100%;
 	background-position: 0 0;
 	text-shadow: 0 0 7px rgba(255, 217, 122, 0.5);
-	animation: fx-name-glowpass calc(var(--fx-speed) * 1.9) linear infinite;
+	animation: fx-name-glowpass calc(var(--fx-speed) * 1.9) linear infinite alternate;
 }
 
 @keyframes fx-name-glowpass {
@@ -645,7 +645,7 @@ html.lenis body {
 	background-size: 230% 100%;
 	background-position: 0 0;
 	text-shadow: 0 1px 2px rgba(40, 6, 30, 0.44);
-	animation: fx-name-satin calc(var(--fx-speed) * 1.4) linear infinite;
+	animation: fx-name-satin calc(var(--fx-speed) * 1.4) linear infinite alternate;
 }
 
 @keyframes fx-name-satin {
@@ -695,7 +695,7 @@ html.lenis body {
 	background-size: 210% 100%;
 	background-position: 0 0;
 	text-shadow: 0 0 6px rgba(167, 139, 250, 0.45);
-	animation: fx-name-refract calc(var(--fx-speed) * 1.7) linear infinite;
+	animation: fx-name-refract calc(var(--fx-speed) * 1.7) linear infinite alternate;
 }
 
 @keyframes fx-name-refract {
@@ -1110,53 +1110,54 @@ html.lenis body {
 }
 
 [data-fx-host='eclipse'] {
+	filter: brightness(0.5) saturate(0.55);
 	animation: fx-host-umbra 8s linear infinite;
 }
 
 @keyframes fx-host-umbra {
 	0% {
 		box-shadow: inset 0 0 40px -14px rgba(4, 4, 12, 0.55);
-		filter: brightness(0.8);
+		filter: brightness(0.56);
 		animation-timing-function: linear;
 	}
 	16% {
 		box-shadow: inset 0 0 56px -14px rgba(4, 4, 12, 0.6);
-		filter: brightness(0.75);
+		filter: brightness(0.5);
 		animation-timing-function: linear;
 	}
 	30% {
 		box-shadow: inset 0 0 74px -12px rgba(4, 4, 12, 0.66);
-		filter: brightness(0.69);
+		filter: brightness(0.42);
 		animation-timing-function: linear;
 	}
 	42% {
 		box-shadow: inset 0 0 92px -10px rgba(4, 4, 12, 0.73);
-		filter: brightness(0.63);
+		filter: brightness(0.34);
 		animation-timing-function: linear;
 	}
 	50% {
 		box-shadow: inset 0 0 110px -8px rgba(2, 2, 8, 0.8);
-		filter: brightness(0.58);
+		filter: brightness(0.26);
 		animation-timing-function: linear;
 	}
 	58% {
 		box-shadow: inset 0 0 92px -10px rgba(4, 4, 12, 0.73);
-		filter: brightness(0.63);
+		filter: brightness(0.34);
 		animation-timing-function: linear;
 	}
 	70% {
 		box-shadow: inset 0 0 74px -12px rgba(4, 4, 12, 0.66);
-		filter: brightness(0.69);
+		filter: brightness(0.42);
 		animation-timing-function: linear;
 	}
 	84% {
 		box-shadow: inset 0 0 56px -14px rgba(4, 4, 12, 0.6);
-		filter: brightness(0.75);
+		filter: brightness(0.5);
 		animation-timing-function: linear;
 	}
 	100% {
 		box-shadow: inset 0 0 40px -14px rgba(4, 4, 12, 0.55);
-		filter: brightness(0.8);
+		filter: brightness(0.56);
 	}
 }
 
@@ -1554,7 +1555,7 @@ html.lenis body {
 	background-repeat: no-repeat;
 	background-size: 55% 100%;
 	background-position: -60% 0;
-	animation: fx-name-glint calc(var(--fx-speed) * 0.85) linear infinite;
+	animation: fx-name-glint calc(var(--fx-speed) * 0.85) linear infinite alternate;
 }
 
 @keyframes fx-name-glint {
@@ -1840,7 +1841,7 @@ html.lenis body {
 	background-repeat: no-repeat;
 	background-size: 80% 100%;
 	background-position: -90% 0;
-	animation: fx-name-sheen calc(var(--fx-speed) * 2.1) ease-in-out infinite;
+	animation: fx-name-sheen calc(var(--fx-speed) * 2.1) ease-in-out infinite alternate;
 }
 
 @keyframes fx-name-holo {
@@ -2319,13 +2320,14 @@ html.lenis body {
 	);
 	background-repeat: no-repeat;
 	background-size: 85% 100%;
-	background-position: -95% 0;
+	background-repeat: no-repeat;
+	background-position: -570% 0;
 	animation: fx-name-streak calc(var(--fx-speed) * 2.6) linear infinite;
 }
 
 @keyframes fx-name-streak {
 	0% {
-		background-position: -95% 0;
+		background-position: -570% 0;
 		animation-timing-function: linear;
 	}
 	3% {
@@ -2357,11 +2359,11 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	24% {
-		background-position: 195% 0;
+		background-position: 670% 0;
 		animation-timing-function: linear;
 	}
 	100% {
-		background-position: 195% 0;
+		background-position: 670% 0;
 	}
 }
 .fx-text[data-fx='blizzard']::before {
@@ -2788,7 +2790,7 @@ html.lenis body {
 	background-repeat: no-repeat;
 	background-size: 70% 100%;
 	background-position: -80% 0;
-	animation: fx-name-facet calc(var(--fx-speed) * 1.7) cubic-bezier(0.5, 0, 0.4, 1) infinite;
+	animation: fx-name-facet calc(var(--fx-speed) * 1.7) cubic-bezier(0.5, 0, 0.4, 1) infinite alternate;
 }
 
 @keyframes fx-name-facet {
@@ -2889,8 +2891,8 @@ html.lenis body {
 }
 
 .fx-text[data-fx='volcano']::before {
-	background-image: linear-gradient(196deg, #2c1108 0%, #7e2408 22%, var(--fx-color) 52%, var(--fx-color-2) 76%, #fff0c2 100%);
-	background-size: 100% 240%;
+	background-image: linear-gradient(196deg, #2c1108 0%, #7e2408 18%, var(--fx-color) 42%, var(--fx-color-2) 62%, #fff0c2 80%, #2c1108 100%);
+	background-size: 100% 200%;
 	background-position: 0 0;
 	opacity: var(--fx-opacity, 0.95);
 	text-shadow: 0 1px 2px rgba(50, 12, 0, 0.5);
@@ -2902,13 +2904,13 @@ html.lenis body {
 		background-position: 0 0;
 	}
 	100% {
-		background-position: 0 240%;
+		background-position: 0 -200%;
 	}
 }
 
 .fx-text[data-fx='sandstorm']::before {
 	background-image: linear-gradient(88deg, #6b4a1c 0%, var(--fx-color) 30%, var(--fx-color-2) 55%, #a97c33 78%, #6b4a1c 100%);
-	background-size: 260% 100%;
+	background-size: 200% 100%;
 	background-position: 0 0;
 	text-shadow: 0 1px 1px rgba(60, 40, 12, 0.42);
 	animation: fx-name-scour calc(var(--fx-speed) * 0.8) linear infinite;
@@ -2919,7 +2921,7 @@ html.lenis body {
 		background-position: 0 0;
 	}
 	100% {
-		background-position: 260% 0;
+		background-position: -200% 0;
 	}
 }
 
@@ -3024,13 +3026,14 @@ html.lenis body {
 	background-image: linear-gradient(214deg, transparent 0%, rgba(255, 255, 255, 0.98) 46%, rgba(180, 214, 255, 0.6) 54%, transparent 66%);
 	background-repeat: no-repeat;
 	background-size: 46% 260%;
-	background-position: -60% -80%;
+	background-repeat: no-repeat;
+	background-position: -200% -80%;
 	animation: fx-name-wish calc(var(--fx-speed) * 2.2) cubic-bezier(0.35, 0, 0.5, 1) infinite;
 }
 
 @keyframes fx-name-wish {
 	0% {
-		background-position: -60% -80%;
+		background-position: -200% -80%;
 		animation-timing-function: linear;
 	}
 	54% {
@@ -3062,7 +3065,7 @@ html.lenis body {
 		animation-timing-function: linear;
 	}
 	100% {
-		background-position: 170% 180%;
+		background-position: 320% 180%;
 	}
 }
 
@@ -3071,7 +3074,7 @@ html.lenis body {
 	background-size: 220% 100%;
 	background-position: 0 0;
 	text-shadow: 0 0 6px rgba(182, 164, 255, 0.45);
-	animation: fx-name-nebula calc(var(--fx-speed) * 1.8) linear infinite;
+	animation: fx-name-nebula calc(var(--fx-speed) * 1.8) linear infinite alternate;
 }
 
 @keyframes fx-name-nebula {
@@ -3169,7 +3172,6 @@ span.fx-blend-overlay {
 	width: 100%;
 	height: 100%;
 	image-rendering: pixelated;
-	mix-blend-mode: screen;
 }
 
 [data-fx-host='blackhole'],

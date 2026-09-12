@@ -692,19 +692,36 @@ export async function deleteServer(serverId: number) {
 export async function markServerDeleted(serverId: number) {
 	await initializeDatabase();
 	if (!Number.isFinite(Number(serverId)) || Number(serverId) <= 0) return false;
+	const stamp = toMySQLDateTime();
 	await db
 		.update(schema.servers)
-		.set({ deleted_at: toMySQLDateTime() as any })
+		.set({ deleted_at: stamp as any })
 		.where(and(eq(schema.servers.id, Number(serverId)), isNull(schema.servers.deleted_at)));
+	await db
+		.update(schema.serverMembers)
+		.set({ deleted_at: stamp as any })
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)));
 	return true;
 }
 
 export async function restoreServer(serverId: number) {
 	await initializeDatabase();
+	const existing = await db
+		.select({ deleted_at: schema.servers.deleted_at })
+		.from(schema.servers)
+		.where(eq(schema.servers.id, Number(serverId)))
+		.limit(1);
+	const stamp = existing[0]?.deleted_at ?? null;
 	await db
 		.update(schema.servers)
 		.set({ deleted_at: null })
 		.where(eq(schema.servers.id, Number(serverId)));
+	if (stamp) {
+		await db
+			.update(schema.serverMembers)
+			.set({ deleted_at: null })
+			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.deleted_at, stamp as any)));
+	}
 	return true;
 }
 
@@ -751,15 +768,15 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		.from(schema.servers)
 		.where(sql`${schema.servers.deleted_at} IS NOT NULL AND ${schema.servers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`);
 
-	if (staleServers.length > PURGE_MAX_SERVERS_PER_RUN) {
+	const serversSkipped = staleServers.length > PURGE_MAX_SERVERS_PER_RUN;
+	if (serversSkipped) {
 		logger.log(
-			`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping server purge for manual review. Raise the cap or clear deleted_at to proceed.`
+			`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping the server purge for manual review. Member purge still runs. Raise the cap or clear deleted_at to proceed.`
 		);
-		return { servers: 0, members: 0, skipped: true as const };
-	}
-
-	for (const row of staleServers) {
-		await db.delete(schema.servers).where(eq(schema.servers.id, Number(row.id)));
+	} else {
+		for (const row of staleServers) {
+			await db.delete(schema.servers).where(eq(schema.servers.id, Number(row.id)));
+		}
 	}
 
 	const staleMembers = await db
@@ -778,7 +795,7 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		await db.delete(schema.serverMembers).where(eq(schema.serverMembers.id, Number(row.id)));
 	}
 
-	return { servers: staleServers.length, members: membersBatch.length, skipped: false as const };
+	return { servers: serversSkipped ? 0 : staleServers.length, members: membersBatch.length, skipped: serversSkipped };
 }
 
 export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
@@ -1623,20 +1640,35 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 		.limit(safeLimit);
 }
 
-export async function searchPanelMembersForGift(panelId: any, queryText: string | null, limit = 60) {
+export async function searchPanelMembersForGift(panelId: any, queryText: string | null, limit = 50) {
 	await initializeDatabase();
 	if (panelId == null) return [];
 	const q = (queryText || '').trim();
-	const safeLimit = Math.max(1, Math.min(200, Number(limit) || 60));
-	const likeValue = `%${q.replace(/[%_]/g, '\\$&')}%`;
-	const searchClause = q
-		? sql`AND (
-				m.discord_member_id LIKE ${likeValue}
-				OR m.username LIKE ${likeValue}
-				OR m.display_name LIKE ${likeValue}
-				OR m.server_display_name LIKE ${likeValue}
-			)`
-		: sql``;
+	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+	const escaped = q.replace(/[%_\\]/g, '\\$&');
+	const contains = `%${escaped}%`;
+	const prefix = `${escaped}%`;
+	const numericId = /^\d{5,}$/.test(q);
+
+	const searchClause = !q
+		? sql``
+		: numericId
+			? sql`AND m.discord_member_id LIKE ${prefix}`
+			: sql`AND (
+					m.server_display_name LIKE ${contains}
+					OR m.display_name LIKE ${contains}
+					OR m.username LIKE ${contains}
+				)`;
+
+	const orderClause = q
+		? sql`ORDER BY
+				CASE
+					WHEN m.discord_member_id = ${q} OR m.server_display_name = ${q} OR m.display_name = ${q} OR m.username = ${q} THEN 0
+					WHEN m.server_display_name LIKE ${prefix} OR m.display_name LIKE ${prefix} OR m.username LIKE ${prefix} THEN 1
+					ELSE 2
+				END ASC,
+				m.id DESC`
+		: sql`ORDER BY m.id DESC`;
 
 	const rows = await db.execute(sql`
 		SELECT
@@ -1647,24 +1679,32 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 			m.server_display_name,
 			m.avatar,
 			sv.id AS server_id,
-			sv.name AS server_name,
-			COALESCE(inv.total, 0) AS inventory_total
+			sv.name AS server_name
 		FROM server_members m
-		INNER JOIN servers sv ON sv.id = m.server_id
+		INNER JOIN servers sv ON sv.id = m.server_id AND sv.deleted_at IS NULL
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
-		LEFT JOIN (
-			SELECT member_id, SUM(quantity) AS total
-			FROM server_member_items
-			GROUP BY member_id
-		) inv ON inv.member_id = m.id
 		WHERE m.deleted_at IS NULL AND m.is_bot = 0 ${searchClause}
-		ORDER BY sv.name ASC, COALESCE(inv.total, 0) DESC, m.updated_at DESC
+		${orderClause}
 		LIMIT ${safeLimit}
 	`);
 	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getMemberInventoryTotals(memberIds: any[]) {
+	await initializeDatabase();
+	const ids = [...new Set((memberIds || []).map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0))];
+	if (ids.length === 0) return {} as Record<number, number>;
+	const rows = await db
+		.select({ member_id: schema.serverMemberItems.member_id, total: sql<number>`SUM(${schema.serverMemberItems.quantity})` })
+		.from(schema.serverMemberItems)
+		.where(inArray(schema.serverMemberItems.member_id, ids))
+		.groupBy(schema.serverMemberItems.member_id);
+	const totals: Record<number, number> = {};
+	for (const row of rows) totals[Number(row.member_id)] = Number(row.total || 0);
+	return totals;
 }
 
 export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
@@ -1673,12 +1713,12 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 	const rows = await db.execute(sql`
 		SELECT 1
 		FROM server_members m
-		INNER JOIN servers sv ON sv.id = m.server_id
+		INNER JOIN servers sv ON sv.id = m.server_id AND sv.deleted_at IS NULL
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
-		WHERE m.id = ${Number(memberId)}
+		WHERE m.id = ${Number(memberId)} AND m.deleted_at IS NULL
 		LIMIT 1
 	`);
 	return ((rows[0] as unknown as any[]) || []).length > 0;
@@ -6761,6 +6801,7 @@ export default {
 	getServerMemberById,
 	searchServerMembers,
 	searchPanelMembersForGift,
+	getMemberInventoryTotals,
 	memberServerHasItemsEnabled,
 	syncMembers,
 	markMemberDeletedByDiscordId,

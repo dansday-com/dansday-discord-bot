@@ -4,6 +4,8 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
 
+const GIFT_SEARCH_LIMIT = 50;
+
 function isSuperadmin(locals: App.Locals) {
 	return locals.user.authenticated && locals.user.account_type === 'superadmin' && locals.user.account_source === 'accounts';
 }
@@ -19,8 +21,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	if (panelId == null) return json({ success: false, error: 'No panel available' }, { status: 404 });
 
 	const q = url.searchParams.get('q') ?? '';
-	const members = await db.searchPanelMembersForGift(panelId, q, 60);
-	return json({ success: true, members });
+	const members = await db.searchPanelMembersForGift(panelId, q, GIFT_SEARCH_LIMIT);
+	const totals = await db.getMemberInventoryTotals(members.map((m: any) => m.id));
+
+	return json({
+		success: true,
+		limit: GIFT_SEARCH_LIMIT,
+		members: members.map((m: any) => ({ ...m, inventory_total: totals[Number(m.id)] ?? 0 }))
+	});
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {

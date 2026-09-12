@@ -239,19 +239,25 @@
 	let giftItem = $state<any | null>(null);
 	let giftSearch = $state('');
 	let giftMembers = $state<any[]>([]);
+	let giftLimit = $state(0);
 	let giftLoading = $state(false);
 	let giftingMemberId = $state<number | null>(null);
 	let giftSearchTimer: ReturnType<typeof setTimeout> | null = null;
+	let giftRequestId = 0;
 
 	async function loadGiftMembers() {
+		const requestId = ++giftRequestId;
 		giftLoading = true;
 		try {
 			const res = await fetch(`/api/admin/items/gift?q=${encodeURIComponent(giftSearch.trim())}`, { credentials: 'include' });
 			const d = await res.json();
-			if (d.success) giftMembers = d.members ?? [];
-			else showToast(d.error || 'Failed to load members', 'error');
+			if (requestId !== giftRequestId) return;
+			if (d.success) {
+				giftMembers = d.members ?? [];
+				giftLimit = Number(d.limit) || 0;
+			} else showToast(d.error || 'Failed to load members', 'error');
 		} finally {
-			giftLoading = false;
+			if (requestId === giftRequestId) giftLoading = false;
 		}
 	}
 
@@ -264,7 +270,7 @@
 
 	function onGiftSearchInput() {
 		if (giftSearchTimer) clearTimeout(giftSearchTimer);
-		giftSearchTimer = setTimeout(loadGiftMembers, 250);
+		giftSearchTimer = setTimeout(loadGiftMembers, 300);
 	}
 
 	const giftGroups = $derived.by(() => {
@@ -858,11 +864,13 @@
 						type="search"
 						bind:value={giftSearch}
 						oninput={onGiftSearchInput}
-						placeholder="Search members by name…"
+						placeholder="Search members by name or Discord ID…"
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
 					/>
 				</div>
-				<p class="text-ash-500 mt-2 text-[11px]">Only members in servers with the items module enabled are shown. Same person can appear per server.</p>
+				<p class="text-ash-500 mt-2 text-[11px]">
+					Search by name or Discord ID. Only members in servers with the items module enabled are shown. Same person can appear per server.
+				</p>
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
@@ -897,6 +905,9 @@
 							</div>
 						</div>
 					{/each}
+					{#if giftLimit > 0 && giftMembers.length >= giftLimit}
+						<p class="text-ash-500 pt-1 text-center text-[11px]">First {giftLimit} matches. Keep typing to narrow it down.</p>
+					{/if}
 				{/if}
 			</div>
 		</div>

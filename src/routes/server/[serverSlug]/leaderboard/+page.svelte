@@ -230,12 +230,13 @@
 
 	onMount(() => {
 		tabPrefetch.set(prefetchKey(data.metric, data.period), data.rows);
+		const prefetchPeriod = period;
 		for (const m of METRICS) {
 			if (m === data.metric) continue;
-			fetch(snapshotUrl(m, period))
+			fetch(snapshotUrl(m, prefetchPeriod))
 				.then((r) => (r.ok ? r.json() : null))
 				.then((snap) => {
-					if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(prefetchKey(m, period), snap.rows);
+					if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(prefetchKey(m, prefetchPeriod), snap.rows);
 				})
 				.catch(() => {});
 		}
@@ -250,7 +251,10 @@
 	});
 
 	async function loadCurrent() {
-		const hit = tabPrefetch.get(prefetchKey(metric, period));
+		const requested = prefetchKey(metric, period);
+		const requestedMetric = metric;
+		const requestedPeriod = period;
+		const hit = tabPrefetch.get(requested);
 		if (hit && hit.length > 0) {
 			rows = hit;
 			animateToCurrentValues(false);
@@ -259,11 +263,12 @@
 		}
 		connect();
 		try {
-			const res = await fetch(snapshotUrl(metric, period));
+			const res = await fetch(snapshotUrl(requestedMetric, requestedPeriod));
 			if (res.ok) {
 				const snap = await res.json();
 				if (Array.isArray(snap?.rows)) {
-					tabPrefetch.set(prefetchKey(metric, period), snap.rows);
+					tabPrefetch.set(requested, snap.rows);
+					if (prefetchKey(metric, period) !== requested) return;
 					rows = snap.rows;
 					animateToCurrentValues(false);
 				}

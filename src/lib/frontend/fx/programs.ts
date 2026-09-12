@@ -1,23 +1,14 @@
 import { mulberry32 } from '$lib/effects.js';
 import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
+import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeSprite, makeVortex, withSky } from './extra.js';
 import {
-	makeArc,
-	makeBands,
-	makeBolt,
-	makeConfetti,
-	makeEcg,
-	makeEclipse,
-	makeFacets,
-	makeNoise,
-	makeSprite,
-	makeStreak,
-	makeVortex,
-	withSky
-} from './extra.js';
-import {
-	makeFoil,
-	makeMaw,
+	boughSource,
+	canopySource,
+	makeCrt,
 	makeEmbers,
+	makeFilm,
+	makeFoilLit,
+	makeMaw,
 	makeQuake,
 	makeTear,
 	makeWeave,
@@ -29,7 +20,7 @@ import {
 	withWater
 } from './patterns.js';
 import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
-import { makeBreaker, makeHoles, makeSign, makeStrike, makeWishNight, withCone, withFunnel, withGround, withHorizon, withImpacts } from './structure.js';
+import { makeBreaker, makeHoles, makeSign, makeStrike, makeWishNight, withCone, withFunnel, withGround, withHorizon } from './structure.js';
 
 const P = 6;
 

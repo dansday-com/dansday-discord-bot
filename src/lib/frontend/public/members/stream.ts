@@ -4,7 +4,7 @@ import { attachMemberThemes } from '../memberThemes.js';
 type RawMember = NonNullable<Awaited<ReturnType<typeof getServerMembersList>>>[number];
 
 export type PublicMembersStreamPayload = {
-	members: (RawMember & { isDisguised: boolean })[];
+	members: RawMember[];
 	updated_at: number;
 };
 
@@ -22,7 +22,7 @@ const POLL_MS = 3_000;
 
 async function fetchMembers(serverId: number): Promise<PublicMembersStreamPayload> {
 	const disguisedIds = new Set((await getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
-	const members = ((await getServerMembersList(serverId)) ?? []).map((m: any) => ({ ...m, isDisguised: disguisedIds.has(Number(m.id)) }));
+	const members = ((await getServerMembersList(serverId)) ?? []).filter((m: any) => !disguisedIds.has(Number(m.id)));
 	return { members: await attachMemberThemes(serverId, members), updated_at: Date.now() };
 }
 

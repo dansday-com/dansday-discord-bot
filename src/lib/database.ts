@@ -1481,11 +1481,16 @@ export async function upsertRole(serverId: any, roleData: any) {
 export async function syncRoles(serverId: any, roles: any[]) {
 	if (!roles || roles.length === 0) return true;
 
-	await Promise.all(
+	const roleResults = await Promise.all(
 		roles.map((role) =>
-			upsertRole(serverId, { id: role.id, name: role.name, position: role.position, hexColor: role.hexColor, permissions: role.permissions }).catch(() => null)
+			upsertRole(serverId, { id: role.id, name: role.name, position: role.position, hexColor: role.hexColor, permissions: role.permissions }).catch((error) => {
+				logger.log(`❌ syncRoles: failed to upsert role ${role.name} (${role.id}) on server ${serverId}: ${error.message}`);
+				return null;
+			})
 		)
 	);
+	const roleFailures = roleResults.filter((r) => r === null).length;
+	if (roleFailures > 0) logger.log(`⚠️  syncRoles: ${roleFailures} of ${roles.length} role(s) failed to upsert on server ${serverId}`);
 
 	const discordIds = new Set(roles.map((r) => r.id));
 	const dbRoles = await db
@@ -1785,15 +1790,25 @@ export async function syncMembers(serverId: any, members: any[]) {
 		return true;
 	}
 
+	let memberFailures = 0;
 	await Promise.all(
 		members.map(async (member) => {
-			const dbMember = await upsertMember(serverId, member).catch(() => null);
+			const tag = (member.user || member)?.id ?? member.id;
+			const dbMember = await upsertMember(serverId, member).catch((error) => {
+				memberFailures += 1;
+				logger.log(`❌ syncMembers: failed to upsert member ${tag} on server ${serverId}: ${error.message}`);
+				return null;
+			});
 			if (dbMember && !(member.user || member)?.bot) {
 				const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((id: any) => id !== member.guild?.id) : [];
-				await syncMemberRoles(dbMember.id, memberRoles as string[], serverId);
+				await syncMemberRoles(dbMember.id, memberRoles as string[], serverId).catch((error) => {
+					memberFailures += 1;
+					logger.log(`❌ syncMembers: failed to sync roles for member ${tag} on server ${serverId}: ${error.message}`);
+				});
 			}
 		})
 	);
+	if (memberFailures > 0) logger.log(`⚠️  syncMembers: ${memberFailures} failure(s) across ${members.length} member(s) on server ${serverId}`);
 
 	const discordIds = new Set(members.map((m) => (m.user || m)?.id || m.id));
 	const dbMembers = await db

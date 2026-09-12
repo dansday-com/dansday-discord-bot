@@ -507,8 +507,9 @@ export function makeEmbers(rows: number): FxProgram {
 		rows,
 		stride: 0.6,
 		init(s) {
+			const r = mulberry32(s.v.seed + 6607);
+			(s as any).wisps = Array.from({ length: 4 }, () => [r(), r() * 6.28, 0.6 + r() * 0.7]);
 			for (let i = 0; i < s.n; i++) place(s, i, false);
-			(s as any).wisps = Array.from({ length: 4 }, () => [s.rnd(), s.rnd() * 6.28, 0.6 + s.rnd() * 0.7]);
 		},
 		frame(s) {
 			clear(s);
@@ -721,17 +722,35 @@ export function makeGlyphRain(rows: number): FxProgram {
 				}
 				glyphs.push({ w: gw, h: gh, bits });
 			}
+			const SLOTS = 64;
+			const slotSpd = new Float32Array(SLOTS);
+			const slotLen = new Float32Array(SLOTS);
+			const slotLead = new Uint8Array(SLOTS);
+			const slotPhase = new Float32Array(SLOTS);
+			for (let i = 0; i < SLOTS; i++) {
+				slotSpd[i] = 0.05 + r() * 0.12;
+				slotLen[i] = 0.14 + r() * 0.86;
+				slotLead[i] = r() < 0.18 ? 1 : 0;
+				slotPhase[i] = r();
+			}
+			const period = 150 + ((r() * 200) | 0);
+
 			const head = new Float32Array(cols);
 			const spd = new Float32Array(cols);
 			const len = new Float32Array(cols);
 			const lead = new Uint8Array(cols);
 			for (let c = 0; c < cols; c++) {
-				spd[c] = 0.05 + r() * 0.12;
-				len[c] = 2 + r() * (lines * 0.9);
-				lead[c] = r() < 0.18 ? 1 : 0;
-				head[c] = -r() * (lines + len[c]);
+				const k = c % SLOTS;
+				spd[c] = slotSpd[k];
+				len[c] = 2 + slotLen[k] * lines * 0.9;
+				lead[c] = slotLead[k];
+				head[c] = -slotPhase[k] * (lines + len[c]);
 			}
 			const st = s as any;
+			st.slots = SLOTS;
+			st.slotSpd = slotSpd;
+			st.slotLen = slotLen;
+			st.slotLead = slotLead;
 			st.glyphs = glyphs;
 			st.cols = cols;
 			st.lines = lines;
@@ -744,9 +763,11 @@ export function makeGlyphRain(rows: number): FxProgram {
 			st.mark = new Int16Array(cols).fill(-999);
 			st.gi = new Uint8Array(cols * lines);
 			st.gb = new Float32Array(cols * lines);
-			st.period = 150 + ((r() * 200) | 0);
+			st.period = period;
+			st.cycle = 0;
 			st.surge = -1;
-			for (let k = 0; k < cols * lines; k++) st.gi[k] = (r() * glyphs.length) | 0;
+			const fill = mulberry32(s.v.seed + 9901);
+			for (let k = 0; k < cols * lines; k++) st.gi[k] = (fill() * glyphs.length) | 0;
 		},
 		frame(s) {
 			clear(s);
@@ -784,11 +805,13 @@ export function makeGlyphRain(rows: number): FxProgram {
 					}
 				}
 				if (head[c] > lines + len[c]) {
+					const k = (c + st.cycle) % st.slots;
 					head[c] = -s.rnd() * lines * 0.8 - len[c];
 					mark[c] = -999;
-					spd[c] = 0.05 + s.rnd() * 0.12 * (0.6 + s.v.drift * 0.5);
-					len[c] = 2 + s.rnd() * (lines * 0.9);
-					lead[c] = s.rnd() < 0.18 ? 1 : 0;
+					spd[c] = (st.slotSpd as Float32Array)[k];
+					len[c] = 2 + (st.slotLen as Float32Array)[k] * lines * 0.9;
+					lead[c] = (st.slotLead as Uint8Array)[k];
+					st.cycle += 1;
 				}
 			}
 

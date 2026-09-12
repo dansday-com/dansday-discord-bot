@@ -31,6 +31,8 @@ Every member card effect renders through one `<canvas>` per card. Families are l
 
 **Every effect must vary by seed** on at least three of `hue`, `dir`, `speed`, `drift`, `tilt`, plus seeded _structure_ — tree count and positions, crack sites, hole count, tube bends, moon phase, constellation. Every seed in `SEED_RANGE` must give a distinct card.
 
+**Seeded structure must not depend on canvas size.** The same member's card renders at three sizes — wallet, member card, leaderboard row — and the spin is a gacha, so the prize must be the same object on all of them. `mulberry32(seed + salt)` is a _sequence_: if `init` makes a number of draws that depends on `s.w`, `s.h` or `s.n`, every value drawn afterwards shifts and the structure silently differs per surface. Draw identity — counts, positions, phases, palettes, periods — from a fixed number of pulls, store positions normalised 0..1, and multiply by `w`/`h` only at draw time. Anything sized by the canvas (particle counts, column counts) gets its own separate stream, seeded from the same seed, so it can vary freely without shifting identity. Per-column or per-cell properties come from a fixed-size table indexed by position, never from a loop bounded by the canvas. Size-derived _magnitudes_ may scale; seeded _identity_ may not.
+
 **Blend mode is derived, never hand-set.** `BLEND` in `programs.ts` is generated from each family's program chain. Under `mix-blend-mode: screen` black is invisible, so anything painting darkness or an opaque silhouette (ground, trunk, water, cone, horizon, holes) must composite `normal`. Add a surface wrapper and regenerate the map.
 
 **Particles must fade to zero before they wrap**, via `edge()` from `engine.ts`. A particle that teleports at full opacity is the "jumping" artefact.
@@ -39,7 +41,7 @@ Every member card effect renders through one `<canvas>` per card. Families are l
 
 **iOS:** never put `filter` and `mix-blend-mode` on the same element — on iOS 26 the element fills with flat opaque colour. Split them across a wrapper. Prefix `backdrop-filter` and `mask-image` with `-webkit-`.
 
-**Audit before claiming done**, across every family — not just the one you touched. Check for: a family with no program, fewer than three seed axes, black painted under screen blend, an opaque surface drawn in screen mode, particles popping on respawn, and two families sharing a program chain. State the counts; don't assert it's clean.
+**Audit before claiming done**, across every family — not just the one you touched. Check for: a family with no program, fewer than three seed axes, black painted under screen blend, an opaque surface drawn in screen mode, particles popping on respawn, seeded identity that shifts when the canvas is resized, and two families sharing a program chain. State the counts; don't assert it's clean.
 
 An audit catches mechanical faults only. Whether an effect looks right, reads as its own thing, or carries real effort is a judgement only the user can make — show the work rather than declaring it done.
 

@@ -206,7 +206,7 @@ const TUNING: Record<string, Tuning> = {
 	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1] },
 	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] },
 	matrix: { tile: [6, 14], dot: [0.8, 1.7], speed: [1.6, 3.6], opacity: [0.7, 1] },
-	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [3.4, 7.5], opacity: [0.75, 1] }
+	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [8, 16.5], opacity: [0.75, 1] }
 };
 
 const PALETTE: Record<string, [string, string]> = {

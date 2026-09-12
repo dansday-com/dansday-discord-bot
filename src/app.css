@@ -1742,35 +1742,47 @@ html.lenis body {
 .fx-text[data-fx='bouncer']::before {
 	color: var(--fx-color);
 	opacity: var(--fx-opacity, 0.95);
-	animation: fx-name-cycle calc(var(--fx-speed) * 1.4) steps(1, end) infinite;
+	animation: fx-name-cycle calc(var(--fx-speed) * 2) linear infinite;
 }
 
 .fx-text[data-fx='bouncer']::after {
-	content: '';
-	box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.28);
-	border-radius: 3px;
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		rgba(255, 255, 255, 0.12) 30%,
+		rgba(255, 255, 255, 0.95) 50%,
+		rgba(255, 255, 255, 0.12) 70%,
+		transparent 100%
+	);
+	background-repeat: no-repeat;
+	background-size: 34% 100%;
+	background-position: 0% 0;
+	animation: fx-name-idle var(--fx-speed) linear infinite alternate;
 }
 
 @keyframes fx-name-cycle {
+	0%,
+	49.99% {
+		color: var(--fx-color);
+	}
+	50%,
+	100% {
+		color: var(--fx-color-2);
+	}
+}
+
+@keyframes fx-name-idle {
 	0% {
-		color: var(--fx-color);
-		transform: translateX(0);
+		background-position: 0% 0;
+		background-size: 48% 100%;
 	}
-	25% {
-		color: var(--fx-color-2);
-		transform: translateX(1px);
-	}
-	50% {
-		color: var(--fx-color);
-		transform: translateX(0);
-	}
-	75% {
-		color: var(--fx-color-2);
-		transform: translateX(-1px);
+	14%,
+	86% {
+		background-size: 34% 100%;
 	}
 	100% {
-		color: var(--fx-color);
-		transform: translateX(0);
+		background-position: 100% 0;
+		background-size: 48% 100%;
 	}
 }
 

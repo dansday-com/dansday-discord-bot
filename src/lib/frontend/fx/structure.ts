@@ -385,12 +385,9 @@ export function makeWishNight(rows: number): FxProgram {
 		stride: 0.5,
 		init(s) {
 			const r = mulberry32(s.v.seed + 8123);
-			const stars: number[][] = [];
-			for (let i = 0; i < s.n; i++) stars.push([r(), r() * 0.8, 0.3 + r() * 0.7, r() * 6.28]);
-			const link: number[] = [];
+			const link: number[][] = [];
 			const n = 4 + ((r() * 3) | 0);
-			for (let i = 0; i < n; i++) link.push((r() * stars.length) | 0);
-			(s as any).stars = stars;
+			for (let i = 0; i < n; i++) link.push([0.1 + r() * 0.8, 0.06 + r() * 0.56, 0.55 + r() * 0.45, r() * 6.28]);
 			(s as any).link = link;
 			const PHASES = [0.02, 0.16, 0.5, 0.82, 1, 0.82, 0.5, 0.16];
 			const TINTS = [
@@ -414,11 +411,15 @@ export function makeWishNight(rows: number): FxProgram {
 				maria
 			};
 			(s as any).wish = [r() * 300, r(), r()];
+			const field = mulberry32(s.v.seed + 4409);
+			const stars: number[][] = [];
+			for (let i = 0; i < s.n; i++) stars.push([field(), field() * 0.8, 0.3 + field() * 0.7, field() * 6.28]);
+			(s as any).stars = stars;
 		},
 		frame(s) {
 			clear(s);
 			const stars = (s as any).stars as number[][];
-			const link = (s as any).link as number[];
+			const link = (s as any).link as number[][];
 			const moon = (s as any).moon as { x: number; y: number; lit: number; waxing: boolean; size: number; tint: number[]; maria: number[][] };
 			const [wOff, wx, wy] = (s as any).wish as number[];
 
@@ -447,12 +448,24 @@ export function makeWishNight(rows: number): FxProgram {
 
 			const [sr, sg, sb] = hsl(s.v.hue2, s.v.sat * 0.5, 88);
 			for (let i = 0; i < link.length - 1; i++) {
-				const a = stars[link[i]];
-				const b = stars[link[i + 1]];
-				if (!a || !b) continue;
+				const a = link[i];
+				const b = link[i + 1];
 				for (let k = 0; k <= 30; k++) {
 					const f = k / 30;
 					plot(s, (a[0] + (b[0] - a[0]) * f) * s.w, (a[1] + (b[1] - a[1]) * f) * s.h, sr, sg, sb, 0.12);
+				}
+			}
+			for (const node of link) {
+				const tw = 0.5 + 0.5 * Math.sin(s.t * 0.02 * node[2] + node[3]);
+				const nx = node[0] * s.w;
+				const ny = node[1] * s.h;
+				plot(s, nx, ny, sr, sg, sb, tw * node[2]);
+				for (let d = 1; d <= 2; d++) {
+					const spill = (tw * node[2] * 0.45) / d;
+					plot(s, nx - d, ny, sr, sg, sb, spill);
+					plot(s, nx + d, ny, sr, sg, sb, spill);
+					plot(s, nx, ny - d, sr, sg, sb, spill);
+					plot(s, nx, ny + d, sr, sg, sb, spill);
 				}
 			}
 			for (const st of stars) {

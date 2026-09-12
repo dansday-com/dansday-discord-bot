@@ -336,7 +336,7 @@ async function init(discordClient, botToken) {
 	setInterval(() => {
 		if (!botId) return;
 		logger.log('🔄 Official bot periodic guild re-sync...');
-		syncAllGuilds();
+		syncAllGuilds().catch((error) => logger.log(`❌ Periodic guild re-sync failed: ${error.message}`));
 	}, FULL_RESYNC_INTERVAL_MS);
 
 	client.on('guildCreate', async (guild) => {

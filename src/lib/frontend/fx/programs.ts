@@ -461,6 +461,7 @@ export const BLEND: Record<string, 'screen' | 'normal'> = {
 	fireflies: 'normal',
 	matrix: 'normal',
 	meteor: 'normal',
+	milkyway: 'normal',
 	neon: 'normal',
 	sakura: 'normal',
 	sandstorm: 'normal',

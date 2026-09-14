@@ -4,5 +4,6 @@
 /build
 /bots
 .claude
+/.omc
 /graphify-out
 /scripts

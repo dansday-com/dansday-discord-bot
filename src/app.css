@@ -409,6 +409,7 @@
 
 .marquee {
 	overflow: hidden;
+	-webkit-mask-image: linear-gradient(to right, transparent, black 4rem, black calc(100% - 4rem), transparent);
 	mask-image: linear-gradient(to right, transparent, black 4rem, black calc(100% - 4rem), transparent);
 }
 

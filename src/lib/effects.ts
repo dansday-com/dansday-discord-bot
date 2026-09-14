@@ -250,7 +250,8 @@ const PALETTE: Record<string, [string, string]> = {
 	neon: ['#ff2d95', '#22d3ee'],
 	matrix: ['#3ff28a', '#d6ffe9'],
 	bouncer: ['#e2e8f0', '#6366f1'],
-	beach: ['#ff5e3a', '#ffd27a']
+	beach: ['#ff5e3a', '#ffd27a'],
+	pulse: ['#ff5f6d', '#ff9fb0']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {

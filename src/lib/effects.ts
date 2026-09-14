@@ -40,7 +40,18 @@ export const EFFECT_FAMILIES = [
 	'neon',
 	'matrix',
 	'bouncer',
-	'beach'
+	'beach',
+	'waterfall',
+	'ripple',
+	'cave',
+	'frost',
+	'fog',
+	'smoke',
+	'swarm',
+	'jellyfish',
+	'meadow',
+	'circuit',
+	'prism'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -86,7 +97,18 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'neon', label: 'Neon', icon: 'fa-signature', particles: false },
 	{ id: 'matrix', label: 'Matrix', icon: 'fa-terminal', particles: false },
 	{ id: 'bouncer', label: 'Bouncer', icon: 'fa-clone', particles: false },
-	{ id: 'beach', label: 'Beach Sunset', icon: 'fa-umbrella-beach', particles: false }
+	{ id: 'beach', label: 'Beach Sunset', icon: 'fa-umbrella-beach', particles: false },
+	{ id: 'waterfall', label: 'Waterfall', icon: 'fa-shower', particles: false },
+	{ id: 'ripple', label: 'Ripple', icon: 'fa-circle-notch', particles: false },
+	{ id: 'cave', label: 'Cave', icon: 'fa-mountain', particles: false },
+	{ id: 'frost', label: 'Frost', icon: 'fa-icicles', particles: false },
+	{ id: 'fog', label: 'Fog', icon: 'fa-cloud', particles: false },
+	{ id: 'smoke', label: 'Smoke', icon: 'fa-fire-flame-simple', particles: false },
+	{ id: 'swarm', label: 'Swarm', icon: 'fa-crow', particles: false },
+	{ id: 'jellyfish', label: 'Jellyfish', icon: 'fa-life-ring', particles: false },
+	{ id: 'meadow', label: 'Meadow', icon: 'fa-wheat-awn', particles: false },
+	{ id: 'circuit', label: 'Circuit', icon: 'fa-microchip', particles: false },
+	{ id: 'prism', label: 'Prism', icon: 'fa-explosion', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -209,7 +231,18 @@ const TUNING: Record<string, Tuning> = {
 	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] },
 	matrix: { tile: [6, 14], dot: [0.8, 1.7], speed: [1.6, 3.6], opacity: [0.7, 1] },
 	bouncer: { tile: [1, 1], dot: [0.5, 1], speed: [8, 16.5], opacity: [0.75, 1] },
-	beach: { tile: [1, 1], dot: [0.5, 1], speed: [5.5, 11], opacity: [0.8, 1] }
+	beach: { tile: [1, 1], dot: [0.5, 1], speed: [5.5, 11], opacity: [0.8, 1] },
+	waterfall: { tile: [1, 1], dot: [0.5, 1], speed: [3.2, 7], opacity: [0.8, 1] },
+	ripple: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.7, 1] },
+	cave: { tile: [1, 1], dot: [0.5, 1], speed: [6, 13], opacity: [0.75, 1] },
+	frost: { tile: [1, 1], dot: [0.5, 1], speed: [7, 15], opacity: [0.7, 1] },
+	fog: { tile: [1, 1], dot: [0.5, 1], speed: [8, 17], opacity: [0.6, 1] },
+	smoke: { tile: [1, 1], dot: [0.5, 1], speed: [5.5, 12], opacity: [0.7, 1] },
+	swarm: { tile: [18, 40], dot: [1, 2.2], speed: [3.4, 7.5], opacity: [0.75, 1], drift: [-60, 60] },
+	jellyfish: { tile: [1, 1], dot: [0.5, 1], speed: [6, 13], opacity: [0.7, 1] },
+	meadow: { tile: [1, 1], dot: [0.5, 1], speed: [4.5, 10], opacity: [0.75, 1], drift: [-70, 70] },
+	circuit: { tile: [1, 1], dot: [0.5, 1], speed: [3, 6.5], opacity: [0.8, 1] },
+	prism: { tile: [1, 1], dot: [0.5, 1], speed: [4, 9], opacity: [0.75, 1] }
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -250,7 +283,19 @@ const PALETTE: Record<string, [string, string]> = {
 	neon: ['#ff2d95', '#22d3ee'],
 	matrix: ['#3ff28a', '#d6ffe9'],
 	bouncer: ['#e2e8f0', '#6366f1'],
-	beach: ['#ff5e3a', '#ffd27a']
+	beach: ['#ff5e3a', '#ffd27a'],
+	pulse: ['#ff5f6d', '#ff9fb0'],
+	waterfall: ['#2f7fa8', '#d9f4ff'],
+	ripple: ['#1f6f8b', '#bfe9ff'],
+	cave: ['#4a5a6b', '#7fe3d4'],
+	frost: ['#8fd4ff', '#eaf8ff'],
+	fog: ['#8a95a3', '#e6ecf2'],
+	smoke: ['#5a5a5f', '#ffb56b'],
+	swarm: ['#2b2f3a', '#ffb27a'],
+	jellyfish: ['#2a2a6b', '#8fe3ff'],
+	meadow: ['#5d8a3a', '#e6d98a'],
+	circuit: ['#1d5c3a', '#6cffb0'],
+	prism: ['#dfe6ff', '#ff5f9e']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {

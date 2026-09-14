@@ -88,6 +88,7 @@ export function createScene(canvas: HTMLCanvasElement, program: FxProgram, v: Fx
 	canvas.height = h;
 	const ctx = canvas.getContext('2d', { alpha: true })!;
 	const img = ctx.createImageData(w, h);
+	const n = Math.max(8, Math.round(w * program.stride * v.density));
 	const scene: FxScene = {
 		w,
 		h,
@@ -95,8 +96,8 @@ export function createScene(canvas: HTMLCanvasElement, program: FxProgram, v: Fx
 		img,
 		px: img.data,
 		buf: new Uint8Array(w * h),
-		parts: new Float32Array(Math.ceil(w * program.stride) * 6),
-		n: Math.max(8, Math.round(w * program.stride * v.density)),
+		parts: new Float32Array(n * 6),
+		n,
 		v,
 		rnd: mulberry32(v.seed + 90001),
 		t: 0

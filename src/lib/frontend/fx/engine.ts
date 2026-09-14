@@ -1,7 +1,8 @@
-import { effectPalette, mulberry32, normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { effectPalette, familySalt, mulberry32, normalizeEffect, normalizeSeed } from '$lib/effects.js';
 
 export type FxVariant = {
 	seed: number;
+	salt: number;
 	hue: number;
 	hue2: number;
 	sat: number;
@@ -60,13 +61,14 @@ function hueOf(hex: string): [number, number, number] {
 export function fxVariant(family: string, seed: unknown, accent: unknown): FxVariant {
 	const id = normalizeEffect(family);
 	const s = normalizeSeed(seed);
-	const rnd = mulberry32(s + id.length * 7919);
+	const rnd = mulberry32(s + familySalt(id));
 	const [a, b] = effectPalette(id, accent);
 	const [h1, s1, l1] = hueOf(a);
 	const [h2] = hueOf(b);
 	const jitter = (rnd() - 0.5) * 22;
 	return {
 		seed: s,
+		salt: familySalt(id),
 		hue: h1 + jitter,
 		hue2: h2 + jitter,
 		sat: Math.max(6, Math.min(100, s1 + (rnd() - 0.5) * 18)),
@@ -99,7 +101,7 @@ export function createScene(canvas: HTMLCanvasElement, program: FxProgram, v: Fx
 		parts: new Float32Array(n * 6),
 		n,
 		v,
-		rnd: mulberry32(v.seed + 90001),
+		rnd: mulberry32(v.seed + v.salt + 90001),
 		t: 0
 	};
 	program.init(scene);

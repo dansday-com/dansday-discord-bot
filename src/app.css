@@ -3670,6 +3670,196 @@ span.fx-blend-overlay {
 	}
 }
 
+[data-fx-host='mycelium'] {
+	animation: fx-host-spread 9.4s ease-in-out infinite;
+}
+
+@keyframes fx-host-spread {
+	0% {
+		box-shadow: inset 0 0 26px -18px rgba(127, 212, 168, 0.55);
+	}
+	50% {
+		box-shadow: inset 0 0 52px -14px rgba(127, 212, 168, 0.75);
+	}
+	100% {
+		box-shadow: inset 0 0 26px -18px rgba(127, 212, 168, 0.55);
+	}
+}
+
+[data-fx-host='coral'] {
+	animation: fx-host-surge 7.2s ease-in-out infinite;
+}
+
+@keyframes fx-host-surge {
+	0% {
+		box-shadow: inset 0 -30px 48px -30px rgba(31, 95, 122, 0.7);
+		transform: translate3d(0, 0, 0);
+	}
+	50% {
+		box-shadow: inset 0 -38px 60px -28px rgba(255, 127, 107, 0.5);
+		transform: translate3d(0.6%, 0, 0);
+	}
+	100% {
+		box-shadow: inset 0 -30px 48px -30px rgba(31, 95, 122, 0.7);
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+[data-fx-host='lichen'] {
+	animation: fx-host-crust 12s linear infinite;
+}
+
+@keyframes fx-host-crust {
+	0% {
+		box-shadow:
+			inset 0 0 0 1px rgba(90, 83, 72, 0.6),
+			inset 0 0 30px -20px rgba(157, 191, 106, 0.5);
+	}
+	50% {
+		box-shadow:
+			inset 0 0 0 2px rgba(90, 83, 72, 0.7),
+			inset 0 0 46px -18px rgba(157, 191, 106, 0.65);
+	}
+	100% {
+		box-shadow:
+			inset 0 0 0 1px rgba(90, 83, 72, 0.6),
+			inset 0 0 30px -20px rgba(157, 191, 106, 0.5);
+	}
+}
+
+[data-fx-host='anthill'] {
+	animation: fx-host-forage 4.6s ease-in-out infinite;
+}
+
+@keyframes fx-host-forage {
+	0% {
+		box-shadow: inset 0 0 28px -20px rgba(217, 143, 74, 0.6);
+	}
+	40% {
+		box-shadow: inset 0 0 40px -18px rgba(217, 143, 74, 0.8);
+	}
+	100% {
+		box-shadow: inset 0 0 28px -20px rgba(217, 143, 74, 0.6);
+	}
+}
+
+[data-fx-host='slime'] {
+	animation: fx-host-pulsefeed 5.8s ease-in-out infinite;
+}
+
+@keyframes fx-host-pulsefeed {
+	0% {
+		box-shadow: inset 0 0 30px -20px rgba(242, 212, 74, 0.6);
+		transform: scale(1);
+	}
+	45% {
+		box-shadow: inset 0 0 50px -16px rgba(255, 179, 71, 0.75);
+		transform: scale(1.006);
+	}
+	100% {
+		box-shadow: inset 0 0 30px -20px rgba(242, 212, 74, 0.6);
+		transform: scale(1);
+	}
+}
+
+[data-fx-host='culture'] {
+	animation: fx-host-incubate 10.5s ease-in-out infinite;
+}
+
+@keyframes fx-host-incubate {
+	0% {
+		box-shadow: inset 0 0 34px -22px rgba(111, 217, 164, 0.5);
+	}
+	55% {
+		box-shadow: inset 0 0 56px -16px rgba(111, 217, 164, 0.7);
+	}
+	100% {
+		box-shadow: inset 0 0 34px -22px rgba(111, 217, 164, 0.5);
+	}
+}
+
+[data-fx-host='graze'] {
+	animation: fx-host-shoal 6.4s ease-in-out infinite;
+}
+
+@keyframes fx-host-shoal {
+	0% {
+		box-shadow: inset 0 0 30px -20px rgba(74, 184, 154, 0.6);
+		transform: translate3d(0, 0, 0);
+	}
+	50% {
+		box-shadow: inset 0 0 44px -18px rgba(255, 227, 163, 0.5);
+		transform: translate3d(-0.5%, 0.3%, 0);
+	}
+	100% {
+		box-shadow: inset 0 0 30px -20px rgba(74, 184, 154, 0.6);
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+[data-fx-host='decay'] {
+	animation: fx-host-rot 13s linear infinite;
+}
+
+@keyframes fx-host-rot {
+	0% {
+		box-shadow: inset 0 -24px 40px -28px rgba(138, 111, 74, 0.65);
+		filter: saturate(1);
+	}
+	50% {
+		box-shadow: inset 0 -34px 54px -24px rgba(201, 168, 107, 0.55);
+		filter: saturate(0.88);
+	}
+	100% {
+		box-shadow: inset 0 -24px 40px -28px rgba(138, 111, 74, 0.65);
+		filter: saturate(1);
+	}
+}
+
+[data-fx-host='bloom'] {
+	animation: fx-host-unfurl 8s ease-in-out infinite;
+}
+
+@keyframes fx-host-unfurl {
+	0% {
+		box-shadow: inset 0 0 32px -22px rgba(255, 143, 192, 0.6);
+		transform: scale(1);
+	}
+	50% {
+		box-shadow: inset 0 0 52px -16px rgba(255, 143, 192, 0.8);
+		transform: scale(1.008);
+	}
+	100% {
+		box-shadow: inset 0 0 32px -22px rgba(255, 143, 192, 0.6);
+		transform: scale(1);
+	}
+}
+
+[data-fx-host='spore'] {
+	animation: fx-host-react 11s ease-in-out infinite;
+}
+
+@keyframes fx-host-react {
+	0% {
+		box-shadow:
+			inset 0 0 0 1px rgba(30, 58, 74, 0.7),
+			inset 0 0 30px -20px rgba(127, 232, 212, 0.55);
+		filter: hue-rotate(0deg);
+	}
+	50% {
+		box-shadow:
+			inset 0 0 0 1px rgba(30, 58, 74, 0.8),
+			inset 0 0 48px -16px rgba(127, 232, 212, 0.75);
+		filter: hue-rotate(10deg);
+	}
+	100% {
+		box-shadow:
+			inset 0 0 0 1px rgba(30, 58, 74, 0.7),
+			inset 0 0 30px -20px rgba(127, 232, 212, 0.55);
+		filter: hue-rotate(0deg);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.fx-canvas {
 		display: none;

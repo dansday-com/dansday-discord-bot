@@ -24,6 +24,7 @@ import {
 import { makeFog, makeFrost, makeSmoke } from './air.js';
 import { makeJelly, makeMeadow, makeSwarm } from './life.js';
 import { makeCircuit, makePrism } from './optic.js';
+import { makeAnthill, makeBloom, makeCoral, makeCulture, makeDecay, makeGraze, makeLichen, makeMycelium, makeSlime, makeSpore } from './grow.js';
 import { makeDrip, makeRipple, makeWaterfall } from './water.js';
 import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
 import {
@@ -458,7 +459,17 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	jellyfish: makeJelly(56),
 	meadow: makeMeadow(56),
 	circuit: makeCircuit(56),
-	prism: makePrism(56)
+	prism: makePrism(56),
+	mycelium: makeMycelium(56),
+	coral: makeCoral(56),
+	lichen: makeLichen(56),
+	anthill: makeAnthill(56),
+	slime: makeSlime(56),
+	culture: makeCulture(56),
+	graze: makeGraze(56),
+	decay: makeDecay(56),
+	bloom: makeBloom(56),
+	spore: makeSpore(56)
 };
 
 export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
@@ -474,13 +485,21 @@ export const BLEND: Record<string, 'screen' | 'normal'> = {
 	earthquake: 'normal',
 	ember: 'normal',
 	fallingstar: 'normal',
+	anthill: 'normal',
+	bloom: 'normal',
+	coral: 'normal',
+	culture: 'normal',
+	decay: 'normal',
 	fireflies: 'normal',
+	graze: 'normal',
+	lichen: 'normal',
 	matrix: 'normal',
 	meteor: 'normal',
 	milkyway: 'normal',
 	neon: 'normal',
 	sakura: 'normal',
 	sandstorm: 'normal',
+	spore: 'normal',
 	tornado: 'normal',
 	tsunami: 'normal',
 	void: 'normal',

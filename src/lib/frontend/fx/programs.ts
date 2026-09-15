@@ -21,6 +21,11 @@ import {
 	withGlow,
 	withWater
 } from './patterns.js';
+import { makeFog, makeFrost, makeSmoke } from './air.js';
+import { makeJelly, makeMeadow, makeSwarm } from './life.js';
+import { makeCircuit, makePrism } from './optic.js';
+import { makeAnthill, makeBloom, makeCoral, makeCulture, makeDecay, makeGraze, makeLichen, makeMycelium, makeSlime, makeSpore } from './grow.js';
+import { makeDrip, makeRipple, makeWaterfall } from './water.js';
 import { BLOSSOM, BUBBLE, FLAKE, HEART, LEAF, SHARD, STAR } from './sprites.js';
 import {
 	makeBreaker,
@@ -442,7 +447,29 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	bouncer: withScreen(makeIdler(56), 13, 0.86, 0.7, 0.14),
 	glitch: makeTear(56),
 
-	grain: makeFilm(56)
+	grain: makeFilm(56),
+
+	waterfall: makeWaterfall(56),
+	ripple: makeRipple(56),
+	cave: makeDrip(56),
+	frost: makeFrost(56),
+	fog: makeFog(56),
+	smoke: makeSmoke(56),
+	swarm: makeSwarm(56),
+	jellyfish: makeJelly(56),
+	meadow: makeMeadow(56),
+	circuit: makeCircuit(56),
+	prism: makePrism(56),
+	mycelium: makeMycelium(56),
+	coral: makeCoral(56),
+	lichen: makeLichen(56),
+	anthill: makeAnthill(56),
+	slime: makeSlime(56),
+	culture: makeCulture(56),
+	graze: makeGraze(56),
+	decay: makeDecay(56),
+	bloom: makeBloom(56),
+	spore: makeSpore(56)
 };
 
 export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
@@ -458,15 +485,34 @@ export const BLEND: Record<string, 'screen' | 'normal'> = {
 	earthquake: 'normal',
 	ember: 'normal',
 	fallingstar: 'normal',
+	anthill: 'normal',
+	bloom: 'normal',
+	coral: 'normal',
+	culture: 'normal',
+	decay: 'normal',
 	fireflies: 'normal',
+	graze: 'normal',
+	lichen: 'normal',
 	matrix: 'normal',
 	meteor: 'normal',
 	milkyway: 'normal',
 	neon: 'normal',
 	sakura: 'normal',
 	sandstorm: 'normal',
+	spore: 'normal',
 	tornado: 'normal',
 	tsunami: 'normal',
 	void: 'normal',
-	volcano: 'normal'
+	volcano: 'normal',
+	waterfall: 'normal',
+	ripple: 'normal',
+	cave: 'normal',
+	frost: 'normal',
+	fog: 'normal',
+	smoke: 'normal',
+	swarm: 'normal',
+	jellyfish: 'normal',
+	meadow: 'normal',
+	circuit: 'normal',
+	prism: 'normal'
 };

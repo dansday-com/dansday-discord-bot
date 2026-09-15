@@ -590,7 +590,7 @@ export function makeCrt(rows: number): FxProgram {
 			clear(s);
 			const st = s as any;
 			const phos = st.phos as Float32Array;
-			const beam = ((s.t * (1.1 + s.v.speed * 0.8) * s.v.dir + s.h * 4) | 0) % s.h;
+			const beam = ((((s.t * (1.1 + s.v.speed * 0.8) * s.v.dir) | 0) % s.h) + s.h) % s.h;
 			phos[beam] = 1;
 			if (s.rnd() < 0.004) st.hold = 26;
 			if (st.hold > 0) st.hold -= 1;

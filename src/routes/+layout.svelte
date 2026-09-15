@@ -2,7 +2,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { effectAccentCssVars } from '$lib/items.js';
 	import '../app.css';
-	import Toast from '$lib/frontend/Toast.svelte';
+	import Toast from '$lib/frontend/ToastHost.svelte';
 
 	let { children } = $props();
 

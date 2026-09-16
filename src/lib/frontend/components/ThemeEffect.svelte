@@ -117,6 +117,9 @@
 </script>
 
 {#if family !== 'none' && program}
+	{#if (BLEND[family] ?? 'screen') === 'normal'}
+		<div class="fx-stage" aria-hidden="true"></div>
+	{/if}
 	<div bind:this={host} class="fx fx-{family}" data-fx-seed={normalizeSeed(seed)} aria-hidden="true">
 		<canvas bind:this={canvas} class="fx-canvas" style="mix-blend-mode: {BLEND[family] ?? 'screen'}"></canvas>
 	</div>

@@ -428,7 +428,7 @@ export function makeAnthill(rows: number): FxProgram {
 				const bright = carrying ? 1 : 0.65;
 				paint(s, p[o], p[o + 1], ar * bright, ag * bright, ab * bright, 0.9);
 			}
-			s.out = Math.min(1, laden / (s.n * 0.35));
+			s.out = Math.min(1, laden / (s.n * 0.055));
 			blit(s);
 		}
 	};
@@ -436,12 +436,14 @@ export function makeAnthill(rows: number): FxProgram {
 
 export function makeSlime(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.6,
 		init(s) {
 			const id = nutrientIdent(s, 7321, 4);
 			(s as any).id = id;
 			(s as any).tr = new Float32Array(s.w * s.h);
+			(s as any).food = id.spots.map((q) => [q[0], q[1], q[2], q[2]]);
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				const sp = id.spots[i % id.spots.length];
@@ -449,7 +451,7 @@ export function makeSlime(rows: number): FxProgram {
 				s.parts[o + 1] = sp[1] * s.h;
 				s.parts[o + 2] = 0;
 				s.parts[o + 3] = 0;
-				s.parts[o + 4] = 1;
+				s.parts[o + 4] = 0.5;
 				s.parts[o + 5] = s.rnd() * 6.28;
 			}
 		},
@@ -457,9 +459,14 @@ export function makeSlime(rows: number): FxProgram {
 			clear(s);
 			const id = (s as any).id as Nutrient;
 			const tr = (s as any).tr as Float32Array;
+			const food = (s as any).food as number[][];
 			const p = s.parts;
-			const [sr, sg, sb] = hsl(s.v.hue, s.v.sat * 0.9, 56);
+			const [ar, ag, ab] = hsl(s.v.hue2, s.v.sat * 0.3, 13);
+			const [sr, sg, sb] = hsl(s.v.hue, s.v.sat * 0.9, 50);
 			const [nr, ng, nb] = hsl(s.v.hue2, s.v.sat, 66);
+			const [kr, kg, kb] = hsl(s.v.hue, s.v.sat * 0.3, 26);
+
+			backdrop(s, ar, ag, ab, 0.93, 0.3);
 
 			for (let i = 0; i < tr.length; i++) tr[i] *= id.decay;
 
@@ -474,7 +481,8 @@ export function makeSlime(rows: number): FxProgram {
 					const sy = (p[o + 1] + Math.sin(th) * sense) | 0;
 					if (sx < 0 || sy < 0 || sx >= s.w || sy >= s.h) continue;
 					let v = tr[sy * s.w + sx];
-					for (const f of id.spots) {
+					for (const f of food) {
+						if (f[2] < 0.04) continue;
 						const dx = f[0] * s.w - sx;
 						const dy = f[1] * s.h - sy;
 						v += (f[2] * 40) / (dx * dx + dy * dy + 20);
@@ -485,7 +493,7 @@ export function makeSlime(rows: number): FxProgram {
 					}
 				}
 				p[o + 5] = bth + (s.rnd() - 0.5) * 0.28;
-				const rate = 0.45 * s.v.speed;
+				const rate = 0.45 * s.v.speed * (0.55 + p[o + 4] * 0.75);
 				p[o] += Math.cos(p[o + 5]) * rate;
 				p[o + 1] += Math.sin(p[o + 5]) * rate;
 				if (p[o] < 1 || p[o] > s.w - 2) {
@@ -497,34 +505,68 @@ export function makeSlime(rows: number): FxProgram {
 					p[o + 1] = Math.max(1, Math.min(s.h - 2, p[o + 1]));
 				}
 				const cell = (p[o + 1] | 0) * s.w + (p[o] | 0);
-				tr[cell] = Math.min(2.4, tr[cell] + 0.34);
+				tr[cell] = Math.min(2.4, tr[cell] + 0.18 + p[o + 4] * 0.34);
+				p[o + 4] = Math.max(0, p[o + 4] - 0.0035);
+				for (const f of food) {
+					if (f[2] < 0.04) continue;
+					const dx = f[0] * s.w - p[o];
+					const dy = f[1] * s.h - p[o + 1];
+					if (dx * dx + dy * dy < 14) {
+						f[2] = Math.max(0, f[2] - 0.0015);
+						p[o + 4] = Math.min(1, p[o + 4] + 0.16);
+					}
+				}
 			}
 
 			let veins = 0;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const v = tr[y * s.w + x];
-					if (v < 0.02) continue;
+					if (v < 0.03) continue;
 					const thick = Math.min(1, v / 2.4);
-					plot(s, x, y, sr, sg, sb, Math.min(0.8, v * 0.36));
+					paint(s, x, y, sr, sg, sb, Math.min(0.92, 0.22 + v * 0.44));
+					if (thick > 0.26) {
+						const skirt = (thick - 0.26) * 0.62;
+						paint(s, x + 1, y, sr * 0.78, sg * 0.78, sb * 0.78, skirt);
+						paint(s, x, y + 1, sr * 0.78, sg * 0.78, sb * 0.78, skirt);
+						paint(s, x - 1, y, sr * 0.68, sg * 0.68, sb * 0.68, skirt * 0.7);
+						paint(s, x, y - 1, sr * 0.68, sg * 0.68, sb * 0.68, skirt * 0.7);
+					}
 					if (thick > 0.6) {
 						veins++;
-						plot(s, x, y, nr, ng, nb, (thick - 0.6) * 0.6);
+						plot(s, x, y, nr, ng, nb, (thick - 0.6) * 0.8);
 					}
 				}
 			}
-			for (const f of id.spots) {
+
+			for (const f of food) {
 				const cx = f[0] * s.w;
 				const cy = f[1] * s.h;
-				const pulse = 2.2 + Math.sin(s.t * 0.05 + f[0] * 9) * 0.6;
-				for (let dy = -pulse; dy <= pulse; dy++) {
-					for (let dx = -pulse; dx <= pulse; dx++) {
+				const left = f[2];
+				const spent = 1 - Math.min(1, left / Math.max(0.001, f[3]));
+				const rad = 1.3 + left * 2.8;
+				const husk = rad + 1.4;
+				for (let dy = -husk; dy <= husk; dy++) {
+					for (let dx = -husk; dx <= husk; dx++) {
 						const d = Math.hypot(dx, dy);
-						if (d > pulse) continue;
-						plot(s, cx + dx, cy + dy, nr, ng, nb, (1 - d / pulse) * 0.55);
+						if (d > husk) continue;
+						if (d > rad) {
+							paint(s, cx + dx, cy + dy, kr, kg, kb, spent * 0.75 * (1 - (d - rad) / 1.9));
+							continue;
+						}
+						const k = 1 - d / (rad + 0.6);
+						plot(s, cx + dx, cy + dy, nr, ng, nb, k * k * (0.2 + left * 0.75));
 					}
 				}
+				f[2] = Math.min(f[3], f[2] + 0.0012);
 			}
+
+			for (let i = 0; i < s.n; i++) {
+				const o = i * P;
+				if (p[o + 4] < 0.08) continue;
+				plot(s, p[o], p[o + 1], 255, 255, 255, p[o + 4] * 0.45);
+			}
+
 			s.out = Math.min(1, veins / (s.w * s.h * 0.04));
 			blit(s);
 		}
@@ -539,60 +581,142 @@ export function makeCulture(rows: number): FxProgram {
 		init(s) {
 			const r = mulberry32(s.v.seed + s.v.salt + 8219);
 			const colonies: number[][] = [];
-			for (let i = 0; i < 6; i++) colonies.push([0.12 + r() * 0.76, 0.12 + r() * 0.76, 0.5 + r() * 0.9, r() * 6.28]);
-			(s as any).id = { colonies, lag: 0.3 + r() * 0.5 };
+			for (let i = 0; i < 6; i++) colonies.push([0.12 + r() * 0.76, 0.12 + r() * 0.76, 0.5 + r() * 0.9, r() * 6.28, 0]);
+			(s as any).id = { colonies, lag: 0.3 + r() * 0.5, tol: 0.5 + r() * 0.45 };
+			(s as any).own = new Int8Array(s.w * s.h).fill(-1);
+			(s as any).waste = new Float32Array(s.w * s.h);
+			(s as any).swap = new Float32Array(s.w * s.h);
+			(s as any).rad = colonies.map(() => 0);
+			(s as any).seedAt = 60;
 		},
 		frame(s) {
 			clear(s);
-			const id = (s as any).id as { colonies: number[][]; lag: number };
+			const id = (s as any).id as { colonies: number[][]; lag: number; tol: number };
+			const own = (s as any).own as Int8Array;
+			const waste = (s as any).waste as Float32Array;
+			const swap = (s as any).swap as Float32Array;
+			const rad = (s as any).rad as number[];
 			const [pr, pg, pb] = hsl(s.v.hue2, s.v.sat * 0.4, 20);
 			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat * 0.85, 60);
-			const [wr, wg, wb] = hsl(s.v.hue + 40, s.v.sat * 0.5, 34);
+			const [wr, wg, wb] = hsl(s.v.hue + 44, s.v.sat * 0.55, 32);
+			const [nr2, ng2, nb2] = hsl(s.v.hue + 26, s.v.sat * 0.3, 14);
 
 			const ax = s.w * 0.5;
 			const ay = s.h * 0.5;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
-					const d = Math.min(1, Math.hypot((x - ax) / ax, (y - ay) / ay));
-					paint(s, x, y, pr * (1 - d * 0.3), pg * (1 - d * 0.3), pb, 0.3 + 0.65 * d * d);
+					const dd = Math.min(1, Math.hypot((x - ax) / ax, (y - ay) / ay));
+					paint(s, x, y, pr * (1 - dd * 0.3), pg * (1 - dd * 0.3), pb, 0.3 + 0.65 * dd * dd);
 				}
 			}
 
-			const clock = s.t * 0.012 * s.v.speed;
-			let lawn = 0;
-			for (const c of id.colonies) {
+			const span = Math.min(s.w, s.h);
+			for (let ci = 0; ci < id.colonies.length; ci++) {
+				const c = id.colonies[ci];
+				if (c[4] > 1.5) continue;
 				const cx = c[0] * s.w;
 				const cy = c[1] * s.h;
-				const growth = Math.max(0, clock - id.lag * c[2]);
-				const span = Math.min(s.w, s.h);
-				const rad = Math.min(span * 0.42, (span * 0.46 * growth) / (1 + growth * 0.8));
-				if (rad < 0.6) continue;
-				const dead = Math.max(0, rad - span * 0.12);
-				const y0 = Math.max(0, (cy - rad - 1) | 0);
-				const y1 = Math.min(s.h - 1, (cy + rad + 1) | 0);
-				const x0 = Math.max(0, (cx - rad - 1) | 0);
-				const x1 = Math.min(s.w - 1, (cx + rad + 1) | 0);
+				const wcell = waste[Math.min(waste.length - 1, Math.max(0, (cy | 0) * s.w + (cx | 0)))];
+				const choke = Math.max(0, 1 - wcell / id.tol);
+				rad[ci] = Math.min(span * 0.46, rad[ci] + 0.075 * s.v.speed * c[2] * choke);
+				const R = rad[ci];
+				if (R < 0.8) continue;
+				const lobes = 5 + ((c[3] * 3) | 0);
+				const y0 = Math.max(0, (cy - R - 1) | 0);
+				const y1 = Math.min(s.h - 1, (cy + R + 1) | 0);
+				const x0 = Math.max(0, (cx - R - 1) | 0);
+				const x1 = Math.min(s.w - 1, (cx + R + 1) | 0);
 				for (let y = y0; y <= y1; y++) {
 					for (let x = x0; x <= x1; x++) {
 						const dx = x - cx;
 						const dy = y - cy;
-						const d = Math.hypot(dx, dy);
+						const dd = Math.hypot(dx, dy);
 						const th = Math.atan2(dy, dx);
-						const wob = 1 + Math.sin(th * 7 + c[3]) * 0.07 + Math.sin(th * 3 - c[3] * 2) * 0.05;
-						const r2 = rad * wob;
-						if (d > r2) continue;
-						lawn++;
-						if (d < dead * wob) {
-							paint(s, x, y, wr, wg, wb, 0.85);
-							continue;
-						}
-						const rim = 1 - (r2 - d) / Math.max(1, r2 - dead * wob);
-						paint(s, x, y, cr, cg, cb, 0.9);
-						if (rim > 0.55) plot(s, x, y, cr, cg, cb, (rim - 0.55) * 0.9);
+						const wob = 1 + Math.sin(th * lobes + c[3]) * 0.09 + Math.sin(th * 3 - c[3] * 2) * 0.06;
+						if (dd > R * wob) continue;
+						const cell = y * s.w + x;
+						if (own[cell] === -1) own[cell] = ci;
 					}
 				}
 			}
-			s.out = Math.min(1, lawn / (s.w * s.h * 0.62));
+
+			let lawn = 0;
+			for (let c = 0; c < own.length; c++) {
+				if (own[c] < 0) continue;
+				lawn++;
+				waste[c] += 0.0016;
+			}
+
+			for (let y = 1; y < s.h - 1; y++) {
+				for (let x = 1; x < s.w - 1; x++) {
+					const i2 = y * s.w + x;
+					swap[i2] = waste[i2] + 0.16 * (waste[i2 - 1] + waste[i2 + 1] + waste[i2 - s.w] + waste[i2 + s.w] - 4 * waste[i2]);
+				}
+			}
+			waste.set(swap);
+
+			let dead = 0;
+			for (let y = 0; y < s.h; y++) {
+				for (let x = 0; x < s.w; x++) {
+					const cell = y * s.w + x;
+					const o = own[cell];
+					const wv = waste[cell];
+					if (o < 0) {
+						if (wv > 0.04) paint(s, x, y, nr2, ng2, nb2, Math.min(0.5, wv * 0.5));
+						continue;
+					}
+					if (wv > id.tol) {
+						dead++;
+						const rot = Math.min(1, (wv - id.tol) * 2.2);
+						paint(s, x, y, wr * (1 - rot * 0.55), wg * (1 - rot * 0.55), wb * (1 - rot * 0.6), 0.9);
+						continue;
+					}
+					const vig = 1 - wv / id.tol;
+					const hue = s.v.hue + o * 9;
+					const [lr3, lg3, lb3] = hsl(hue, s.v.sat * (0.5 + vig * 0.45), 34 + vig * 30);
+					paint(s, x, y, lr3, lg3, lb3, 0.92);
+					const rim = own[Math.max(0, cell - 1)] !== o || own[Math.min(own.length - 1, cell + 1)] !== o || own[Math.max(0, cell - s.w)] !== o;
+					if (rim) plot(s, x, y, lr3, lg3, lb3, 0.45 * vig);
+				}
+			}
+
+			for (let ci = 0; ci < id.colonies.length; ci++) {
+				const c = id.colonies[ci];
+				const cx = c[0] * s.w;
+				const cy = c[1] * s.h;
+				const idx = Math.min(waste.length - 1, Math.max(0, (cy | 0) * s.w + (cx | 0)));
+				if (waste[idx] > id.tol * 1.35) c[4] = 2;
+			}
+
+			if (--(s as any).seedAt <= 0) {
+				(s as any).seedAt = 220 + ((s.rnd() * 420) | 0);
+				let pick = -1;
+				for (let ci = 0; ci < id.colonies.length; ci++) if (id.colonies[ci][4] > 1.5) pick = ci;
+				if (pick >= 0) {
+					const c = id.colonies[pick];
+					let bx = 0;
+					let by = 0;
+					let clean = 1e9;
+					for (let q = 0; q < 12; q++) {
+						const tx = (0.1 + s.rnd() * 0.8) * s.w;
+						const ty = (0.1 + s.rnd() * 0.8) * s.h;
+						const v = waste[Math.min(waste.length - 1, (ty | 0) * s.w + (tx | 0))];
+						if (v < clean) {
+							clean = v;
+							bx = tx;
+							by = ty;
+						}
+					}
+					c[0] = bx / s.w;
+					c[1] = by / s.h;
+					c[3] = s.rnd() * 6.28;
+					c[4] = 0;
+					rad[pick] = 0;
+					for (let cI = 0; cI < own.length; cI++) if (own[cI] === pick) own[cI] = -1;
+				}
+			}
+
+			s.out = Math.min(1, (lawn - dead * 0.5) / (s.w * s.h * 0.5));
 			blit(s);
 		}
 	};
@@ -711,7 +835,7 @@ export function makeGraze(rows: number): FxProgram {
 				}
 				plot(s, p[o] + dx, p[o + 1] + dy, hr, hg, hb, 0.5 * fat * near);
 			}
-			s.out = Math.min(1, herd / Math.max(1, s.n * 0.6));
+			s.out = Math.min(1, Math.max(0, (herd / s.n - 0.65) / 0.35));
 			blit(s);
 		}
 	};
@@ -827,56 +951,158 @@ export function makeBloom(rows: number): FxProgram {
 			const r = mulberry32(s.v.seed + s.v.salt + 11311);
 			(s as any).id = {
 				cx: 0.3 + r() * 0.4,
-				cy: 0.3 + r() * 0.4,
+				cy: 0.26 + r() * 0.3,
 				angle: 2.399 + (r() - 0.5) * 0.06,
 				petals: 3 + ((r() * 4) | 0),
-				spread: 0.5 + r() * 0.5
+				spread: 0.5 + r() * 0.5,
+				lit: r() * 6.28,
+				swayT: 150 + r() * 160,
+				live: 96 + ((r() * 70) | 0)
 			};
+			(s as any).top = (s as any).id.live * 0.6;
+			(s as any).base = 0;
+			(s as any).fall = [] as number[][];
+			(s as any).litter = new Float32Array(s.w);
+			(s as any).gust = 40 + ((s.rnd() * 90) | 0);
 		},
 		frame(s) {
 			clear(s);
-			const id = (s as any).id as { cx: number; cy: number; angle: number; petals: number; spread: number };
+			const id = (s as any).id as { cx: number; cy: number; angle: number; petals: number; spread: number; lit: number; swayT: number; live: number };
+			const fall = (s as any).fall as number[][];
+			const litter = (s as any).litter as Float32Array;
 			const [dr, dg, db] = hsl(s.v.hue2, s.v.sat * 0.35, 10);
-			const cx = id.cx * s.w;
-			const cy = id.cy * s.h;
-			const span = Math.min(s.w, s.h) * 0.46 * id.spread;
+			const [stR, stG, stB] = hsl(s.v.hue2 + 90, s.v.sat * 0.5, 26);
+			const span = Math.min(s.w, s.h) * 0.42 * id.spread;
 
 			const mx = s.w * 0.5;
 			const my = s.h * 0.5;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
-					const d = Math.hypot(x - cx, y - cy) / (span * 2 + 1);
 					const e = Math.min(1, Math.hypot((x - mx) / mx, (y - my) / my));
-					paint(s, x, y, dr, dg, db, (0.92 - d * 0.1) * (0.3 + 0.7 * e * e));
+					paint(s, x, y, dr, dg, db, 0.3 + 0.62 * e * e);
 				}
 			}
 
-			const live = Math.min(220, 12 + s.t * 0.22 * s.v.speed);
-			const drift = s.t * 0.004 * s.v.dir * s.v.drift;
-			for (let i = 0; i < live; i++) {
-				const k = live - i;
-				const th = k * id.angle + drift;
-				const rad = Math.sqrt(k / live) * span;
+			const sway = Math.sin((s.t * 6.28) / id.swayT) * 0.5 + Math.sin((s.t * 6.28) / (id.swayT * 0.41)) * 0.28;
+			const lean = sway * s.w * 0.035 * s.v.drift * s.v.dir;
+			const cx = id.cx * s.w + lean;
+			const cy = id.cy * s.h;
+
+			const rootX = id.cx * s.w;
+			for (let y = Math.round(cy); y < s.h; y++) {
+				const f = (y - cy) / Math.max(1, s.h - cy);
+				const x = cx + (rootX - cx) * f * f;
+				const thick = 0.6 + f * 1.4;
+				for (let k = -thick; k <= thick; k++) {
+					const sh = 1 - Math.abs(k) / (thick + 0.8);
+					paint(s, x + k, y, stR * (0.55 + sh * 0.6), stG * (0.55 + sh * 0.6), stB * (0.55 + sh * 0.6), 0.92);
+				}
+			}
+
+			(s as any).top += 0.24 * s.v.speed;
+			const top = (s as any).top as number;
+			let base = (s as any).base as number;
+
+			if (--(s as any).gust <= 0) {
+				(s as any).gust = 50 + ((s.rnd() * 130) | 0);
+				(s as any).shake = 3 + ((s.rnd() * 5) | 0);
+			}
+			let shake = ((s as any).shake ?? 0) as number;
+
+			const shedTo = Math.floor(top) - id.live;
+			while (base <= shedTo || (shake > 0 && base < Math.floor(top) - 8)) {
+				const age = top - base;
+				const rad = Math.sqrt(Math.max(0, age) / id.live) * span;
+				const th = base * id.angle + s.t * 0.003 * s.v.dir * s.v.drift;
+				fall.push([
+					cx + Math.cos(th) * rad,
+					cy + Math.sin(th) * rad * 0.82,
+					(s.rnd() - 0.5) * 0.5 + sway * 0.3,
+					-0.15 - s.rnd() * 0.2,
+					s.rnd() * 6.28,
+					base & 4095
+				]);
+				if (fall.length > 26) fall.shift();
+				base++;
+				if (shake > 0) shake--;
+				else break;
+			}
+			(s as any).base = base;
+			(s as any).shake = shake;
+
+			const hi = Math.floor(top);
+			for (let k = base; k <= hi; k++) {
+				const age = top - k;
+				const f = Math.max(0, Math.min(1, age / id.live));
+				const rad = Math.sqrt(f) * span;
+				const th = k * id.angle + s.t * 0.003 * s.v.dir * s.v.drift;
 				const px = cx + Math.cos(th) * rad;
 				const py = cy + Math.sin(th) * rad * 0.82;
-				const age = k / live;
-				const size = 0.9 + (1 - age) * 2.4;
-				const [br, bg, bb] = hsl(s.v.hue + age * 48, s.v.sat * (0.5 + age * 0.5), 38 + (1 - age) * 34);
+				const size = 0.8 + (1 - f) * 2.3;
+				const key = (k * 2654435761) >>> 0;
+				const toLit = Math.cos(th - id.lit);
+				const [br, bg, bb] = hsl(s.v.hue + f * 52, s.v.sat * (0.5 + f * 0.5), 34 + (1 - f) * 30 + toLit * 12);
 				for (let a = 0; a < id.petals; a++) {
 					const pa = th + (a / id.petals) * 6.28;
-					const ox = px + Math.cos(pa) * size * 0.7;
-					const oy = py + Math.sin(pa) * size * 0.7;
+					const ox = px + Math.cos(pa) * size * 0.72;
+					const oy = py + Math.sin(pa) * size * 0.72;
 					for (let dy = -size; dy <= size; dy++) {
 						for (let dx = -size; dx <= size; dx++) {
-							const d = Math.hypot(dx, dy);
-							if (d > size) continue;
-							paint(s, ox + dx, oy + dy, br, bg, bb, 0.9 * (1 - d / (size + 1)));
+							const dd = Math.hypot(dx, dy) / size;
+							if (dd > 1) continue;
+							const bite = ((((dx + 8) * 73 + (dy + 8) * 151 + key + a * 37) * 2654435761) >>> 0) % 100;
+							if (dd > 0.52 && bite < 36) continue;
+							const face = (dx * Math.cos(id.lit) + dy * Math.sin(id.lit)) / size;
+							const sh = 0.72 + Math.max(0, face) * 0.42;
+							paint(s, ox + dx, oy + dy, br * sh, bg * sh, bb * sh, 0.92 * (1 - dd * 0.22));
 						}
 					}
 				}
-				if (age < 0.25) plot(s, px, py, br, bg, bb, (0.25 - age) * 1.6);
+				if (f < 0.22) plot(s, px, py, br, bg, bb, (0.22 - f) * 2);
 			}
-			s.out = Math.min(1, live / 220);
+
+			for (let k = fall.length - 1; k >= 0; k--) {
+				const q = fall[k];
+				q[3] += 0.014 * s.v.speed;
+				q[2] += Math.sin(q[4]) * 0.035 * s.v.drift;
+				q[2] *= 0.985;
+				q[4] += 0.12 + Math.abs(q[2]) * 0.2;
+				q[0] += q[2];
+				q[1] += q[3];
+				const col = Math.max(0, Math.min(s.w - 1, q[0] | 0));
+				const rest = s.h - 1 - litter[col] * 0.6;
+				if (q[1] >= rest) {
+					litter[col] = Math.min(4, litter[col] + 1);
+					const l2 = Math.max(0, col - 1);
+					const r2 = Math.min(s.w - 1, col + 1);
+					litter[l2] = Math.min(4, litter[l2] + 0.4);
+					litter[r2] = Math.min(4, litter[r2] + 0.4);
+					fall.splice(k, 1);
+					continue;
+				}
+				const squash = Math.abs(Math.cos(q[4]));
+				const size = 1.1 + squash * 1.3;
+				const [pr2, pg2, pb2] = hsl(s.v.hue + 46, s.v.sat * 0.8, 44 + squash * 22);
+				for (let dy = -size; dy <= size; dy++) {
+					for (let dx = -size; dx <= size; dx++) {
+						const dd = Math.hypot(dx / Math.max(0.4, squash), dy) / size;
+						if (dd > 1) continue;
+						const bite = ((((dx + 8) * 73 + (dy + 8) * 151 + q[5]) * 2654435761) >>> 0) % 100;
+						if (dd > 0.5 && bite < 40) continue;
+						paint(s, q[0] + dx, q[1] + dy, pr2, pg2, pb2, 0.9 * edge(q[1], -2, s.h + 1, s.h * 0.1));
+					}
+				}
+			}
+
+			const [lr2, lg2, lb2] = hsl(s.v.hue + 40, s.v.sat * 0.6, 30);
+			for (let x = 0; x < s.w; x++) {
+				const hgt = litter[x] * 0.6;
+				if (hgt < 0.3) continue;
+				for (let k = 0; k < hgt; k++) paint(s, x, s.h - 1 - k, lr2, lg2, lb2, 0.85 * (1 - k / (hgt + 1.4)));
+				litter[x] *= 0.99955;
+			}
+
+			s.out = Math.min(1, (hi - base) / id.live);
 			blit(s);
 		}
 	};

@@ -68,31 +68,69 @@ export function withCone(inner: FxProgram): FxProgram {
 			const peak = s.h * (0.3 + r() * 0.14);
 			const half = s.w * (0.2 + r() * 0.12);
 			const lean = (r() - 0.5) * 0.5;
+			const craterW = half * (0.2 + r() * 0.13);
+			const craterD = Math.max(2, s.h * (0.05 + r() * 0.04));
+			const rough = 0.25 + r() * 0.55;
+			const skew = r() * 6.28;
 			const [rr, gg, bb] = hsl(s.v.hue, s.v.sat * 0.35, 14);
 			const [lr, lg, lb] = hsl(s.v.hue, s.v.sat, 58);
+			const [hr2, hg2, hb2] = hsl(s.v.hue + 16, s.v.sat * 0.85, 90);
+			const rimY = peak + craterD;
+			const midAt = (f: number) => cx + lean * f * s.w * 0.1;
+			const bowlAt = (y: number) => (y < rimY ? craterW * 0.88 * (1 - (y - peak) / craterD) : 0);
+
 			for (let y = peak; y < s.h; y++) {
-				const f = (y - peak) / (s.h - peak);
-				const w = half * f;
-				const mid = cx + lean * f * s.w * 0.1;
-				for (let x = mid - w; x <= mid + w; x++) plot(s, x, y, rr, gg, bb, 0.92);
+				const f = (y - peak) / Math.max(1, s.h - peak);
+				const jag = (Math.sin(y * 0.83 + skew) + Math.sin(y * 0.29 - skew * 1.7) * 0.7) * rough;
+				const w = craterW + (half - craterW) * f + jag * (0.3 + f * 1.5);
+				const mid = midAt(f);
+				const bowl = bowlAt(y);
+				for (let x = Math.round(mid - w); x <= Math.round(mid + w); x++) {
+					if (bowl > 0 && Math.abs(x - mid) <= bowl) continue;
+					plot(s, x, y, rr, gg, bb, 0.92);
+				}
 				plot(s, mid - w, y, lr * 0.4, lg * 0.4, lb * 0.4, 0.6);
 				plot(s, mid + w, y, lr * 0.4, lg * 0.4, lb * 0.4, 0.6);
 			}
+
 			const glow = 0.6 + 0.4 * Math.sin(s.t * 0.08 * s.v.speed);
-			for (let x = cx - half * 0.16; x <= cx + half * 0.16; x++) for (let y = peak - 1; y < peak + 2; y++) plot(s, x, y, lr, lg, lb, glow);
+			for (let y = peak; y < rimY; y++) {
+				const d = (y - peak) / craterD;
+				const bowl = bowlAt(y);
+				if (bowl < 0.4) continue;
+				const mid = midAt((y - peak) / Math.max(1, s.h - peak));
+				for (let x = Math.round(mid - bowl); x <= Math.round(mid + bowl); x++) {
+					const u = (x - mid) / bowl;
+					const boil = 0.72 + 0.28 * Math.sin(x * 0.92 + y * 1.4 + s.t * 0.17 * s.v.speed + skew);
+					const heat = (1 - u * u * 0.72) * (0.32 + d * 0.8) * glow * boil;
+					plot(s, x, y, lr, lg, lb, heat * 0.95);
+					if (d > 0.7 && boil > 0.92) plot(s, x, y, hr2, hg2, hb2, (d - 0.7) * 1.5 * glow);
+				}
+			}
+
+			for (let k = -1; k <= 1; k += 2) {
+				const lip = craterW * 0.88;
+				for (let q = 0; q < 4; q++) {
+					const x = cx + k * (lip + q);
+					plot(s, x, peak + q * 0.5, lr, lg, lb, (1 - q / 4) * glow * 0.75);
+				}
+			}
+
 			for (let run = 0; run < 2; run++) {
-				let x = cx + (run ? 1 : -1) * half * 0.1;
-				for (let y = peak; y < s.h; y++) {
+				let x = cx + (run ? 1 : -1) * craterW * 0.8;
+				for (let y = rimY; y < s.h; y++) {
 					x += (mulberry32(s.v.seed + run * 97 + y)() - 0.5) * 1.4;
 					const flow = 0.35 + 0.35 * Math.sin(s.t * 0.06 - y * 0.3);
 					plot(s, x, y, lr, lg, lb, flow);
 				}
 			}
+
 			const pool = 0.6 + 0.4 * Math.sin(s.t * 0.05 * s.v.speed);
 			for (let x = cx - half * 1.15; x <= cx + half * 1.15; x++) {
 				const f = 1 - Math.abs(x - cx) / (half * 1.15);
 				for (let y = s.h - 3 * f; y < s.h; y++) plot(s, x, y, lr, lg, lb, f * pool * 0.7);
 			}
+			s.out = Math.min(1, glow * 0.62 + pool * 0.38);
 			blit(s);
 		}
 	};
@@ -241,7 +279,7 @@ export function makeBreaker(rows: number): FxProgram {
 			for (let x = 0; x < s.w; x++) {
 				const rel = ((x - front) / s.w) * dir;
 				const heap = Math.exp(-rel * rel * (14 - (st.steep as number) * 6));
-				const behind = rel < 0 ? 1 : 0;
+				const behind = Math.max(0, Math.min(1, 0.5 - rel * 1.7));
 				const suck = rel > 0 && rel < 0.5 ? Math.exp(-rel * rel * 26) * 0.45 : 0;
 				const chop = Math.sin(x * 0.16 + s.t * 0.09 * s.v.speed + (st.phase as number)) * s.h * 0.012;
 				const level = restY + draw * s.h * 0.16 + suck * s.h * 0.12 - heap * crestH - behind * flood * s.h * (0.18 + (st.steep as number) * 0.1) + chop;
@@ -298,8 +336,8 @@ export function makeBreaker(rows: number): FxProgram {
 
 			for (let x = 0; x < s.w; x++) {
 				const rel = ((x - front) / s.w) * dir;
-				if (rel > 0) continue;
-				const age = Math.min(1, -rel * 2.4);
+				if (rel > 0.14) continue;
+				const age = Math.min(1, Math.max(0, (-rel + 0.14) * 2.4));
 				const foam = (1 - age) * (0.3 + 0.3 * Math.sin(x * 0.42 + s.t * 0.1));
 				if (foam <= 0.02) continue;
 				for (let k = 0; k < 2; k++) paint(s, x, surf[x] + k, fr, fg, fb, foam * 0.7);
@@ -741,10 +779,10 @@ export function withShore(inner: FxProgram): FxProgram {
 			inner.init(s);
 			const r = mulberry32(s.v.seed + 3313);
 			const st = s as any;
-			st.shore = 0.7 + r() * 0.17;
+			st.shore = 0.76 + r() * 0.12;
 			st.lip = r() * 6.28;
 			const crests: number[][] = [];
-			const n = 3 + ((r() * 3) | 0);
+			const n = 5 + ((r() * 4) | 0);
 			for (let i = 0; i < n; i++) crests.push([r(), 0.45 + r() * 0.55, r() * 6.28]);
 			st.crests = crests;
 			st.runs = [] as number[][];
@@ -809,6 +847,8 @@ export function withShore(inner: FxProgram): FxProgram {
 			}
 
 			const [wr, wg, wb] = hsl(s.v.hue2 + 4, s.v.sat * 0.3, 92);
+			const [swr, swg, swb] = hsl(s.v.hue + 202, s.v.sat * 0.6, 27);
+			const [trr, trg, trb] = hsl(s.v.hue + 200, s.v.sat * 0.55, 13);
 			const rate = 0.0042 * s.v.speed;
 			for (const c of crests) {
 				c[0] += rate * (0.7 + c[1] * 0.6);
@@ -820,17 +860,26 @@ export function withShore(inner: FxProgram): FxProgram {
 					if (runs.length > 4) runs.shift();
 				}
 				const p = c[0];
-				if (p < 0.22) continue;
-				const y = hz + deep * Math.pow(p, 1.9);
-				const thick = 0.4 + p * p * 2.2;
-				const a = edge(p, 0.18, 1.0, 0.2) * (0.22 + p * 0.5) * c[1];
+				if (p < 0.06) continue;
+				const y = hz + deep * Math.pow(p, 1.7);
+				const thick = 0.8 + p * p * 3.4;
+				const rise = deep * (0.06 + p * p * 0.36) * c[1];
+				const a = edge(p, 0.04, 1.0, 0.12) * (0.3 + p * 0.62) * c[1];
 				for (let x = 0; x < s.w; x++) {
 					const wob = Math.sin(x * 0.13 + c[2]) * 0.5 + Math.sin(x * 0.041 - c[2] * 1.7) * 0.5;
 					const gap = Math.sin(x * 0.055 + c[2] * 2.3) * 0.5 + Math.sin(x * 0.017 - c[2]) * 0.5;
 					const bite = Math.max(0, gap * 0.7 + 0.45);
-					if (bite <= 0.02) continue;
 					const yy = y + wob * thick * 0.8;
-					for (let k = 0; k < thick; k++) paint(s, x, yy + k, wr, wg, wb, a * bite * (1 - k / thick) * 0.7);
+					const face = rise * (0.5 + bite * 0.7);
+					for (let k = 0; k < face; k++) {
+						if (yy - k < hz) break;
+						const f = k / Math.max(1, face);
+						paint(s, x, yy - k, swr + (trr - swr) * f, swg + (trg - swg) * f, swb + (trb - swb) * f, a * (0.6 + f * 0.4));
+					}
+					if (bite <= 0.02) continue;
+					plot(s, x, yy - face, wr, wg, wb, a * bite * 0.55);
+					for (let k = 0; k < thick; k++) paint(s, x, yy + k, wr, wg, wb, a * bite * (1 - k / thick) * 0.95);
+					paint(s, x, yy + thick, trr, trg, trb, a * bite * 0.5);
 				}
 			}
 

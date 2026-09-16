@@ -873,7 +873,7 @@ export function makeSunset(rows: number): FxProgram {
 		frame(s) {
 			clear(s);
 			const st = s as any;
-			const hz = Math.round(s.h * (0.52 + s.v.tilt * 0.07));
+			const hz = Math.round(s.h * (0.42 + s.v.tilt * 0.06));
 			const alt = st.altLo + st.altSpan * (0.5 + 0.5 * Math.sin(s.t * 0.0017 * s.v.speed + st.phase));
 			const red = 1 - Math.min(1, alt / 0.2);
 			const sunX = st.sunX * s.w;

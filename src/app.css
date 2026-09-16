@@ -3589,6 +3589,15 @@ span.fx-blend-overlay {
 	grid-area: auto;
 }
 
+.fx-stage {
+	position: absolute;
+	inset: 0;
+	z-index: -20;
+	border-radius: inherit;
+	pointer-events: none;
+	background: radial-gradient(ellipse 130% 150% at 50% 42%, #121721 0%, #080b12 58%, #04050a 100%);
+}
+
 .fx-canvas {
 	display: block;
 	width: 100%;

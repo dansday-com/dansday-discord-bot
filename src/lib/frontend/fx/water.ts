@@ -186,7 +186,10 @@ export function makeRipple(rows: number): FxProgram {
 			const id = pondIdent(s);
 			(s as any).id = id;
 			(s as any).hf = new Float32Array(s.w * s.h);
+			(s as any).src = new Uint8ClampedArray(s.w * s.h * 4);
 			(s as any).rings = [] as number[][];
+			(s as any).drops = [] as number[][];
+			(s as any).crown = [] as number[][];
 			(s as any).next = 4;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
@@ -200,7 +203,10 @@ export function makeRipple(rows: number): FxProgram {
 			clear(s);
 			const id = (s as any).id as Pond;
 			const hf = (s as any).hf as Float32Array;
+			const src = (s as any).src as Uint8ClampedArray;
 			const rings = (s as any).rings as number[][];
+			const drops = (s as any).drops as number[][];
+			const crown = (s as any).crown as number[][];
 			const top = id.level * s.h;
 			const depth = s.h - top;
 			const squash = 0.34;
@@ -229,9 +235,44 @@ export function makeRipple(rows: number): FxProgram {
 			}
 
 			if (--(s as any).next <= 0) {
-				(s as any).next = id.cadence * (0.6 + s.rnd() * 0.8);
-				rings.push([s.rnd() * s.w, top + s.rnd() * depth, 0, 0.7 + s.rnd() * 0.6]);
-				if (rings.length > 9) rings.shift();
+				(s as any).next = id.cadence * (0.3 + s.rnd() * 1.2);
+				const squall = 1 + ((s.rnd() * s.rnd() * 4) | 0);
+				for (let q = 0; q < squall; q++) {
+					drops.push([s.rnd() * s.w, -2 - s.rnd() * 7, 0.5 + s.rnd() * 0.6, top + s.rnd() * depth]);
+					if (drops.length > 16) drops.shift();
+				}
+			}
+
+			for (let k = drops.length - 1; k >= 0; k--) {
+				const dp = drops[k];
+				dp[2] += 0.12 * s.v.speed;
+				dp[1] += dp[2];
+				if (dp[1] >= dp[3]) {
+					rings.push([dp[0], dp[3], 0, 0.72 + s.rnd() * 0.68]);
+					if (rings.length > 11) rings.shift();
+					const bits = 4 + ((s.rnd() * 4) | 0);
+					for (let q = 0; q < bits; q++) {
+						const th = (q / bits) * Math.PI * 2 + s.rnd() * 0.6;
+						crown.push([dp[0], dp[3], Math.cos(th) * (0.45 + s.rnd() * 0.75), -0.65 - s.rnd() * 0.95, dp[3]]);
+					}
+					if (crown.length > 64) crown.splice(0, crown.length - 64);
+					drops.splice(k, 1);
+					continue;
+				}
+			}
+
+			for (let k = crown.length - 1; k >= 0; k--) {
+				const c = crown[k];
+				c[2] *= 0.985;
+				c[3] += 0.085 * s.v.speed;
+				c[0] += c[2];
+				c[1] += c[3];
+				if (c[1] >= c[4] && c[3] > 0) {
+					rings.push([c[0], c[4], 0, 0.16 + s.rnd() * 0.18]);
+					if (rings.length > 11) rings.shift();
+					crown.splice(k, 1);
+					continue;
+				}
 			}
 
 			hf.fill(0);
@@ -253,16 +294,35 @@ export function makeRipple(rows: number): FxProgram {
 					const dy = (y - rg2[1]) / squash;
 					for (let x = x0; x <= x1; x++) {
 						const dx = x - rg2[0];
-						const d = Math.sqrt(dx * dx + dy * dy);
-						const off = d - R;
+						const dd = Math.sqrt(dx * dx + dy * dy);
+						const off = dd - R;
 						if (off < -5 || off > 5) continue;
 						hf[y * s.w + x] += amp * Math.cos(off * 1.15) * (1 - Math.abs(off) / 5);
 					}
 				}
 			}
 
+			src.set(s.px);
+			const lo = (top | 0) + 1;
+			for (let y = lo; y < s.h - 1; y++) {
+				for (let x = 1; x < s.w - 1; x++) {
+					const i = y * s.w + x;
+					const gx = hf[i + 1] - hf[i - 1];
+					const gy = hf[i + s.w] - hf[i - s.w];
+					if (gx * gx + gy * gy < 0.0002) continue;
+					const ux = Math.max(0, Math.min(s.w - 1, Math.round(x + gx * 5.5)));
+					const uy = Math.max(lo, Math.min(s.h - 1, Math.round(y + gy * 3.2)));
+					const a = (uy * s.w + ux) * 4;
+					const b = i * 4;
+					s.px[b] = src[a];
+					s.px[b + 1] = src[a + 1];
+					s.px[b + 2] = src[a + 2];
+					s.px[b + 3] = src[a + 3];
+				}
+			}
+
 			const lx = id.lightX * s.w;
-			for (let y = (top | 0) + 1; y < s.h - 1; y++) {
+			for (let y = lo; y < s.h - 1; y++) {
 				for (let x = 1; x < s.w - 1; x++) {
 					const i = y * s.w + x;
 					const gx = hf[i + 1] - hf[i - 1];
@@ -271,6 +331,15 @@ export function makeRipple(rows: number): FxProgram {
 					if (slope > 0.02) plot(s, x, y, sr, sg, sb, Math.min(0.85, slope * 1.5));
 					else if (slope < -0.02) paint(s, x, y, kr, kg, kb, Math.min(0.5, -slope * 0.9));
 				}
+			}
+
+			for (const dp of drops) {
+				const fade = edge(dp[1], -9, s.h, s.h * 0.1);
+				for (let t2 = 0; t2 < 5; t2++) plot(s, dp[0], dp[1] - t2 * 0.9, sr, sg, sb, (1 - t2 / 5) * 0.6 * fade);
+			}
+			for (const c of crown) {
+				plot(s, c[0], c[1], sr, sg, sb, 0.75);
+				plot(s, c[0], c[1] - 1, sr, sg, sb, 0.3);
 			}
 
 			for (let i = 0; i < s.n; i++) {
@@ -284,7 +353,7 @@ export function makeRipple(rows: number): FxProgram {
 				const tw = 0.4 + 0.6 * Math.max(0, Math.sin(p[o + 3] * 1.7));
 				plot(s, p[o], y, sr, sg, sb, tw * 0.4 * edge(p[o], -1, s.w + 1, s.w * 0.12));
 			}
-			s.out = Math.min(1, rings.length / 5);
+			s.out = Math.min(1, (rings.length + crown.length * 0.15) / 6);
 			blit(s);
 		}
 	};

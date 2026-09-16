@@ -126,7 +126,7 @@ export function makeSwarm(rows: number): FxProgram {
 				}
 				if (p[o + 1] < s.h * 0.3) plot(s, p[o], p[o + 1], wr, wg, wb, a * 0.12);
 			}
-			s.out = Math.min(1, packed / (s.n * 2.5));
+			s.out = Math.min(1, Math.max(0, (packed / s.n - 3) / 18));
 			blit(s);
 		}
 	};

@@ -258,7 +258,7 @@ export function makeSmoke(rows: number): FxProgram {
 					}
 				}
 			}
-			s.out = Math.min(1, thick / 6);
+			s.out = Math.min(1, Math.max(0, (thick - 6) / 24));
 			blit(s);
 		}
 	};

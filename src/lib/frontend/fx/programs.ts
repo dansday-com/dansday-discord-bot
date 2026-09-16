@@ -1,4 +1,6 @@
+import { makeCrown, makeCupcake, makeGem, makeIcecream, makeRibbon } from './cute.js';
 import { mulberry32 } from '$lib/effects.js';
+import { makeCandle, makeCat, makeClock, makeCoffee, makeDice, makeFishtank, makeMoney, makePopcorn, makeRainglass, makeVinyl } from './objects.js';
 import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
 import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withOvercast, withSky } from './extra.js';
 import {
@@ -529,7 +531,22 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	graze: withOvercast(makeGraze(56), 3, 0.55),
 	decay: withGround(makeDecay(56), 3511, 0.11, 0.05, 12),
 	bloom: withGlow(makeBloom(56), 0.56, 0.62, 72, 3607),
-	spore: withOvercast(makeSpore(56), 4, 0.9)
+	spore: withOvercast(makeSpore(56), 4, 0.9),
+	money: makeMoney(56),
+	cat: makeCat(56),
+	coffee: makeCoffee(56),
+	candle: makeCandle(56),
+	vinyl: makeVinyl(56),
+	fishtank: makeFishtank(56),
+	popcorn: makePopcorn(56),
+	clock: makeClock(56),
+	rainglass: makeRainglass(56),
+	dice: makeDice(56),
+	cupcake: makeCupcake(56),
+	ribbon: makeRibbon(56),
+	gem: makeGem(56),
+	icecream: makeIcecream(56),
+	crown: makeCrown(56)
 };
 
 export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));

@@ -61,7 +61,22 @@ export const EFFECT_FAMILIES = [
 	'graze',
 	'decay',
 	'bloom',
-	'spore'
+	'spore',
+	'money',
+	'cat',
+	'coffee',
+	'candle',
+	'vinyl',
+	'fishtank',
+	'popcorn',
+	'clock',
+	'rainglass',
+	'dice',
+	'cupcake',
+	'ribbon',
+	'gem',
+	'icecream',
+	'crown'
 ] as const;
 
 export type EffectFamily = (typeof EFFECT_FAMILIES)[number];
@@ -128,7 +143,22 @@ export const EFFECTS: EffectMeta[] = [
 	{ id: 'graze', label: 'Graze', icon: 'fa-shrimp', particles: false },
 	{ id: 'decay', label: 'Decay', icon: 'fa-plant-wilt', particles: false },
 	{ id: 'bloom', label: 'Bloom', icon: 'fa-seedling', particles: false },
-	{ id: 'spore', label: 'Spore', icon: 'fa-virus', particles: false }
+	{ id: 'spore', label: 'Spore', icon: 'fa-virus', particles: false },
+	{ id: 'money', label: 'Money', icon: 'fa-money-bill-wave', particles: false },
+	{ id: 'cat', label: 'Cat', icon: 'fa-cat', particles: false },
+	{ id: 'coffee', label: 'Coffee', icon: 'fa-mug-hot', particles: false },
+	{ id: 'candle', label: 'Candle', icon: 'fa-fire-flame-simple', particles: false },
+	{ id: 'vinyl', label: 'Vinyl', icon: 'fa-record-vinyl', particles: false },
+	{ id: 'fishtank', label: 'Fish tank', icon: 'fa-fish', particles: false },
+	{ id: 'popcorn', label: 'Popcorn', icon: 'fa-bowl-food', particles: false },
+	{ id: 'clock', label: 'Clockwork', icon: 'fa-gears', particles: false },
+	{ id: 'rainglass', label: 'Rain glass', icon: 'fa-droplet', particles: false },
+	{ id: 'dice', label: 'Dice', icon: 'fa-dice', particles: false },
+	{ id: 'cupcake', label: 'Cupcake', icon: 'fa-cake-candles', particles: false },
+	{ id: 'ribbon', label: 'Ribbon', icon: 'fa-ribbon', particles: false },
+	{ id: 'gem', label: 'Gem', icon: 'fa-gem', particles: false },
+	{ id: 'icecream', label: 'Ice cream', icon: 'fa-ice-cream', particles: false },
+	{ id: 'crown', label: 'Crown', icon: 'fa-crown', particles: false }
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -281,7 +311,22 @@ const TUNING: Record<string, Tuning> = {
 	graze: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.75, 1], drift: [-40, 40] },
 	decay: { tile: [1, 1], dot: [0.5, 1], speed: [8, 17], opacity: [0.75, 1], drift: [-30, 30] },
 	bloom: { tile: [1, 1], dot: [0.5, 1], speed: [6, 13], opacity: [0.8, 1] },
-	spore: { tile: [1, 1], dot: [0.5, 1], speed: [7, 15], opacity: [0.8, 1] }
+	spore: { tile: [1, 1], dot: [0.5, 1], speed: [7, 15], opacity: [0.8, 1] },
+	money: { tile: [18, 40], dot: [2.2, 4.6], speed: [4, 9], opacity: [0.8, 1] },
+	cat: { tile: [20, 44], dot: [1.8, 3.6], speed: [5, 11], opacity: [0.85, 1] },
+	coffee: { tile: [16, 34], dot: [1.6, 3.2], speed: [5, 12], opacity: [0.75, 1] },
+	candle: { tile: [12, 26], dot: [1.4, 3], speed: [2.5, 6], opacity: [0.8, 1] },
+	vinyl: { tile: [22, 48], dot: [1.5, 3], speed: [3, 7], opacity: [0.8, 1] },
+	fishtank: { tile: [20, 42], dot: [2, 4.2], speed: [6, 13], opacity: [0.7, 0.95] },
+	popcorn: { tile: [15, 32], dot: [2.4, 5], speed: [2, 5], opacity: [0.85, 1] },
+	clock: { tile: [18, 38], dot: [1.6, 3.4], speed: [6, 14], opacity: [0.8, 1] },
+	rainglass: { tile: [10, 24], dot: [1.2, 2.6], speed: [3, 8], opacity: [0.7, 0.95] },
+	dice: { tile: [19, 40], dot: [2, 4.2], speed: [3, 8], opacity: [0.85, 1] },
+	cupcake: { tile: [16, 34], dot: [2, 4.2], speed: [4, 9], opacity: [0.85, 1] },
+	ribbon: { tile: [18, 40], dot: [1.8, 3.8], speed: [5, 11], opacity: [0.85, 1] },
+	gem: { tile: [14, 30], dot: [1.4, 3], speed: [3, 7], opacity: [0.85, 1] },
+	icecream: { tile: [17, 36], dot: [2, 4], speed: [6, 13], opacity: [0.85, 1] },
+	crown: { tile: [15, 32], dot: [1.6, 3.4], speed: [4, 9], opacity: [0.85, 1] }
 };
 
 const PALETTE: Record<string, [string, string]> = {
@@ -344,7 +389,22 @@ const PALETTE: Record<string, [string, string]> = {
 	graze: ['#4ab89a', '#ffe3a3'],
 	decay: ['#8a6f4a', '#c9a86b'],
 	bloom: ['#ff8fc0', '#3a2a4a'],
-	spore: ['#7fe8d4', '#1e3a4a']
+	spore: ['#7fe8d4', '#1e3a4a'],
+	money: ['#5fbf7a', '#ffd76a'],
+	cat: ['#f2a33c', '#2b2118'],
+	coffee: ['#6f4028', '#e8d3b8'],
+	candle: ['#ffb347', '#fff2cc'],
+	vinyl: ['#d94f4f', '#1a1a1f'],
+	fishtank: ['#ffa44f', '#3fb6d9'],
+	popcorn: ['#fff3d1', '#e0a83c'],
+	clock: ['#c9a227', '#3a3a42'],
+	rainglass: ['#9fc6e8', '#25303a'],
+	dice: ['#d9443f', '#f5f5f0'],
+	cupcake: ['#ff8fc7', '#ffe3f0'],
+	ribbon: ['#ff7fb4', '#ffd9e8'],
+	gem: ['#ff6fae', '#ffd2e6'],
+	icecream: ['#ffa6d2', '#fff0f6'],
+	crown: ['#ff9ecb', '#ffe9c9']
 };
 
 export function effectPalette(family: any, accent: any): [string, string] {

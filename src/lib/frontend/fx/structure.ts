@@ -435,7 +435,8 @@ export function makeSign(rows: number): FxProgram {
 					const row = (y / 5) | 0;
 					const brick = ((x + (row % 2) * 6) / 12) | 0;
 					const edge = (x + (row % 2) * 6) % 12 < 1 || y % 5 === 0;
-					plot(s, x, y, kr, kg, kb, edge ? 0.25 : 0.5 + ((brick * 7) % 3) * 0.04);
+					const shade = edge ? 0.42 : 1;
+					plot(s, x, y, kr * shade, kg * shade, kb * shade, 0.52 + ((brick * 7) % 3) * 0.04);
 				}
 			const pts = (s as any).pts as number[][];
 			const flick = s.rnd() < 0.02 + s.v.drift * 0.04 ? 0.25 : 1;
@@ -800,6 +801,8 @@ export function withShore(inner: FxProgram): FxProgram {
 			const [sunX, , alt, sr, sg, sb, hz, low] = sun;
 			const shoreY = Math.round(s.h * st.shore);
 			const deep = Math.max(1, shoreY - hz);
+			const sand = Math.max(1, s.h - shoreY);
+			const wetEnd = Math.min(s.h, Math.ceil(shoreY + sand * 0.16 + 1));
 			const wet = st.wet as Float32Array;
 			const crests = st.crests as number[][];
 			const runs = st.runs as number[][];
@@ -808,8 +811,8 @@ export function withShore(inner: FxProgram): FxProgram {
 			const [nr, ng, nb] = hsl(s.v.hue + 206, s.v.sat * 0.42, 34);
 			const mirror = st.mirror as Float32Array;
 			for (let x = 0; x < s.w; x++) mirror[x] = 0.22 + 0.78 * Math.exp(-Math.abs(x - sunX) / (s.w * 0.42));
-			for (let y = hz; y < shoreY; y++) {
-				const t = (y - hz) / deep;
+			for (let y = hz; y < wetEnd; y++) {
+				const t = Math.min(1, (y - hz) / deep);
 				const sky = Math.exp(-t * 3.2) * (0.3 + low * 0.3);
 				const rr = fr + (nr - fr) * t;
 				const gg = fg + (ng - fg) * t;
@@ -883,7 +886,6 @@ export function withShore(inner: FxProgram): FxProgram {
 				}
 			}
 
-			const sand = Math.max(1, s.h - shoreY);
 			const lipOf = (x: number) => Math.sin(x * 0.062 + st.lip) * 0.6 + Math.sin(x * 0.019 - st.lip * 1.4) * 0.4;
 			for (let x = 0; x < s.w; x++) wet[x] *= 0.991;
 			const front = new Float32Array(s.w);

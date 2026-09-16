@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, backdrop, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;
 
@@ -31,7 +31,6 @@ function field(s: FxScene, spots: number[][], x: number, y: number, out: number[
 	return out;
 }
 
-/** Hyphal tips crawl up the nutrient gradient, laying wall behind them and forking when the food is rich; the mat is the record of where the tips have been, and it dims where nothing has fed for a while. */
 export function makeMycelium(rows: number): FxProgram {
 	return {
 		rows,
@@ -116,8 +115,10 @@ export function makeMycelium(rows: number): FxProgram {
 					if (m > 0.9) plot(s, x, y, fr, fg, fb, (m - 0.9) * 0.5);
 				}
 			}
+			let ripe = 0;
 			for (const f of food) {
 				f[2] = Math.min(1, f[2] + 0.004);
+				ripe += f[2];
 				if (f[2] < 0.04) continue;
 				const cx = f[0] * s.w;
 				const cy = f[1] * s.h;
@@ -130,14 +131,15 @@ export function makeMycelium(rows: number): FxProgram {
 					}
 				}
 			}
+			s.out = Math.min(1, ripe / Math.max(1, food.length));
 			blit(s);
 		}
 	};
 }
 
-/** Polyps settle on the reef below and lay calcium where flow is strongest, so the colony climbs toward the current; older skeleton bleaches as the living tissue advances past it. */
 export function makeCoral(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.16,
 		init(s) {
@@ -168,7 +170,8 @@ export function makeCoral(rows: number): FxProgram {
 
 			for (let y = 0; y < s.h; y++) {
 				const f = y / s.h;
-				for (let x = 0; x < s.w; x++) paint(s, x, y, wr * (0.4 + f * 0.6), wg * (0.4 + f * 0.6), wb, 0.92);
+				const shade = 0.4 + f * 0.6;
+				for (let x = 0; x < s.w; x++) paint(s, x, y, wr * shade, wg * shade, wb, 0.24 + f * f * 0.68);
 			}
 
 			const cur = Math.sin(s.t * 0.014 * s.v.speed) * id.flow * s.v.dir;
@@ -192,10 +195,12 @@ export function makeCoral(rows: number): FxProgram {
 				if (cell >= 0 && cell < rock.length) rock[cell] = Math.min(1.4, rock[cell] + 0.42);
 			}
 
+			let grown = 0;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const m = rock[y * s.w + x];
 					if (m < 0.05) continue;
+					grown += m;
 					const age = Math.min(1, m / 1.4);
 					const live = 1 - age;
 					paint(s, x, y, cr * live + br2 * age, cg * live + bg2 * age, cb * live + bb2 * age, Math.min(0.95, 0.3 + m * 0.6));
@@ -210,14 +215,15 @@ export function makeCoral(rows: number): FxProgram {
 				const y = (k * 11 + Math.sin(s.t * 0.02 + k) * 4) % s.h;
 				plot(s, x, y, 255, 255, 255, 0.12 * edge(y, 0, s.h, s.h * 0.2));
 			}
+			s.out = Math.min(1, grown / (s.w * s.h * 0.1));
 			blit(s);
 		}
 	};
 }
 
-/** Spores land on bare stone and spread as a rosette whose rim is alive and whose centre is spent; two colonies meeting stop dead at the boundary, the way real thalli compete for rock. */
 export function makeLichen(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.02,
 		init(s) {
@@ -235,11 +241,14 @@ export function makeLichen(rows: number): FxProgram {
 			const own = (s as any).own as Int8Array;
 			const [rr, rg, rb] = hsl(s.v.hue2, s.v.sat * 0.25, 30);
 
+			const rx = s.w * 0.5;
+			const ry = s.h * 0.5;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const n = Math.sin(x * 0.7 + y * 1.3) * Math.cos(x * 0.31 - y * 0.47);
 					const g = 1 + n * id.grain * 0.4;
-					paint(s, x, y, rr * g, rg * g, rb * g, 0.95);
+					const d = Math.min(1, Math.hypot((x - rx) / rx, (y - ry) / ry));
+					paint(s, x, y, rr * g, rg * g, rb * g, 0.32 + 0.63 * d * d);
 				}
 			}
 
@@ -269,7 +278,12 @@ export function makeLichen(rows: number): FxProgram {
 					}
 				}
 			}
-			for (let c = 0; c < own.length; c++) if (own[c] >= 0) age[c] = Math.min(1, age[c] + 0.0022);
+			let taken = 0;
+			for (let c = 0; c < own.length; c++)
+				if (own[c] >= 0) {
+					taken++;
+					age[c] = Math.min(1, age[c] + 0.0022);
+				}
 
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
@@ -283,14 +297,15 @@ export function makeLichen(rows: number): FxProgram {
 					if (a < 0.12) plot(s, x, y, lr, lg, lb, 0.5);
 				}
 			}
+			s.out = Math.min(1, taken / (own.length * 0.55));
 			blit(s);
 		}
 	};
 }
 
-/** Foragers wander until they find food, then walk it home laying pheromone; followers smell the strongest trail, so the shortest route reinforces itself and the rest evaporates. */
 export function makeAnthill(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.5,
 		init(s) {
@@ -322,7 +337,7 @@ export function makeAnthill(rows: number): FxProgram {
 			const [tr, tg, tb] = hsl(s.v.hue, s.v.sat * 0.8, 52);
 			const [ar, ag, ab] = hsl(s.v.hue, s.v.sat * 0.4, 80);
 
-			for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) paint(s, x, y, gr, gg, gb, 0.94);
+			backdrop(s, gr, gg, gb, 0.94, 0.34);
 			for (let i = 0; i < ph.length; i++) ph[i] *= id.evap;
 
 			const nx = id.nest[0] * s.w;
@@ -405,17 +420,20 @@ export function makeAnthill(rows: number): FxProgram {
 					paint(s, nx + dx, ny + dy, tr * 0.5, tg * 0.5, tb * 0.5, 0.9);
 				}
 			}
+			let laden = 0;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
-				const bright = p[o + 4] > 0.5 ? 1 : 0.65;
+				const carrying = p[o + 4] > 0.5;
+				if (carrying) laden++;
+				const bright = carrying ? 1 : 0.65;
 				paint(s, p[o], p[o + 1], ar * bright, ag * bright, ab * bright, 0.9);
 			}
+			s.out = Math.min(1, laden / (s.n * 0.35));
 			blit(s);
 		}
 	};
 }
 
-/** A plasmodium fans out over every route at once, then thickens the tubes that carry the most flow and lets the rest wither, so the network it leaves behind is the solved path between food sources. */
 export function makeSlime(rows: number): FxProgram {
 	return {
 		rows,
@@ -482,13 +500,17 @@ export function makeSlime(rows: number): FxProgram {
 				tr[cell] = Math.min(2.4, tr[cell] + 0.34);
 			}
 
+			let veins = 0;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const v = tr[y * s.w + x];
 					if (v < 0.02) continue;
 					const thick = Math.min(1, v / 2.4);
 					plot(s, x, y, sr, sg, sb, Math.min(0.8, v * 0.36));
-					if (thick > 0.6) plot(s, x, y, nr, ng, nb, (thick - 0.6) * 0.6);
+					if (thick > 0.6) {
+						veins++;
+						plot(s, x, y, nr, ng, nb, (thick - 0.6) * 0.6);
+					}
 				}
 			}
 			for (const f of id.spots) {
@@ -503,14 +525,15 @@ export function makeSlime(rows: number): FxProgram {
 					}
 				}
 			}
+			s.out = Math.min(1, veins / (s.w * s.h * 0.04));
 			blit(s);
 		}
 	};
 }
 
-/** A colony doubles on nutrient agar until the plate crowds, waste builds where it is densest, and the middle of the oldest patches dies back into a ring. */
 export function makeCulture(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.02,
 		init(s) {
@@ -526,14 +549,17 @@ export function makeCulture(rows: number): FxProgram {
 			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat * 0.85, 60);
 			const [wr, wg, wb] = hsl(s.v.hue + 40, s.v.sat * 0.5, 34);
 
+			const ax = s.w * 0.5;
+			const ay = s.h * 0.5;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
-					const d = Math.hypot(x - s.w / 2, y - s.h / 2) / (s.w * 0.6);
-					paint(s, x, y, pr * (1 - d * 0.3), pg * (1 - d * 0.3), pb, 0.95);
+					const d = Math.min(1, Math.hypot((x - ax) / ax, (y - ay) / ay));
+					paint(s, x, y, pr * (1 - d * 0.3), pg * (1 - d * 0.3), pb, 0.3 + 0.65 * d * d);
 				}
 			}
 
 			const clock = s.t * 0.012 * s.v.speed;
+			let lawn = 0;
 			for (const c of id.colonies) {
 				const cx = c[0] * s.w;
 				const cy = c[1] * s.h;
@@ -555,6 +581,7 @@ export function makeCulture(rows: number): FxProgram {
 						const wob = 1 + Math.sin(th * 7 + c[3]) * 0.07 + Math.sin(th * 3 - c[3] * 2) * 0.05;
 						const r2 = rad * wob;
 						if (d > r2) continue;
+						lawn++;
 						if (d < dead * wob) {
 							paint(s, x, y, wr, wg, wb, 0.85);
 							continue;
@@ -565,14 +592,15 @@ export function makeCulture(rows: number): FxProgram {
 					}
 				}
 			}
+			s.out = Math.min(1, lawn / (s.w * s.h * 0.62));
 			blit(s);
 		}
 	};
 }
 
-/** Grazers eat the algae where it is thickest, breed when they are fat and starve when the pasture is bare, so both populations swing against each other instead of settling. */
 export function makeGraze(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.34,
 		init(s) {
@@ -600,7 +628,7 @@ export function makeGraze(rows: number): FxProgram {
 			const [ar, ag, ab] = hsl(s.v.hue, s.v.sat * 0.8, 46);
 			const [hr, hg, hb] = hsl(s.v.hue2, s.v.sat * 0.7, 74);
 
-			for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) paint(s, x, y, wr, wg, wb, 0.95);
+			backdrop(s, wr, wg, wb, 0.95, 0.32);
 
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
@@ -667,26 +695,31 @@ export function makeGraze(rows: number): FxProgram {
 					plot(s, x, y, ar, ag, ab, Math.min(0.7, v * 0.7));
 				}
 			}
+			let herd = 0;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				const fat = Math.min(1, p[o + 4]);
+				herd += fat;
 				const len = 1.4 + fat * 1.8;
 				const dx = Math.cos(p[o + 5]);
 				const dy = Math.sin(p[o + 5]);
+				const near = edge(p[o], 0, s.w, s.w * 0.09) * edge(p[o + 1], 0, s.h, s.h * 0.12);
+				if (near <= 0.01) continue;
 				for (let k = 0; k <= len; k++) {
-					const a = 0.85 * (1 - (k / (len + 1)) * 0.6) * (0.4 + fat * 0.6);
+					const a = 0.85 * (1 - (k / (len + 1)) * 0.6) * (0.4 + fat * 0.6) * near;
 					paint(s, p[o] - dx * k, p[o + 1] - dy * k, hr, hg, hb, a);
 				}
-				plot(s, p[o] + dx, p[o + 1] + dy, hr, hg, hb, 0.5 * fat);
+				plot(s, p[o] + dx, p[o + 1] + dy, hr, hg, hb, 0.5 * fat * near);
 			}
+			s.out = Math.min(1, herd / Math.max(1, s.n * 0.6));
 			blit(s);
 		}
 	};
 }
 
-/** Fallen wood loses mass where the rot is warmest, fruiting bodies push out of the softest patches, and spores drift off to start the next patch. */
 export function makeDecay(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.28,
 		init(s) {
@@ -715,9 +748,10 @@ export function makeDecay(rows: number): FxProgram {
 			const [mr, mg, mb] = hsl(s.v.hue2, s.v.sat * 0.8, 52);
 			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat * 0.7, 72);
 
-			for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) paint(s, x, y, fr, fg, fb, 0.95);
+			backdrop(s, fr, fg, fb, 0.95, 0.33);
 
 			const rot = Math.min(1, s.t * 0.0016 * s.v.speed);
+			let caps = 0;
 			for (const lg of id.logs) {
 				const x0 = lg[0] * s.w;
 				const y0 = lg[1] * s.h;
@@ -739,6 +773,7 @@ export function makeDecay(rows: number): FxProgram {
 						if (rim > 0.75) plot(s, x, yy, br, bg, bb, 0.14 * (1 - eaten));
 					}
 					if (eaten > 0.45 && (d | 0) % 7 === 0) {
+						caps++;
 						const cap = 1 + eaten * 2.4;
 						const cy = y - thick;
 						for (let dx = -cap; dx <= cap; dx++) {
@@ -777,14 +812,15 @@ export function makeDecay(rows: number): FxProgram {
 				const a = 0.5 * rot * edge(p[o + 1], -2, s.h + 2, s.h * 0.2);
 				plot(s, p[o], p[o + 1], cr, cg, cb, a);
 			}
+			s.out = Math.min(1, caps / (s.w * 0.06));
 			blit(s);
 		}
 	};
 }
 
-/** Each polyp buds a clone at its rim and the head grows outward in a spiral because new buds only fit where the last one left room. */
 export function makeBloom(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.02,
 		init(s) {
@@ -805,10 +841,13 @@ export function makeBloom(rows: number): FxProgram {
 			const cy = id.cy * s.h;
 			const span = Math.min(s.w, s.h) * 0.46 * id.spread;
 
+			const mx = s.w * 0.5;
+			const my = s.h * 0.5;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const d = Math.hypot(x - cx, y - cy) / (span * 2 + 1);
-					paint(s, x, y, dr, dg, db, 0.92 - d * 0.1);
+					const e = Math.min(1, Math.hypot((x - mx) / mx, (y - my) / my));
+					paint(s, x, y, dr, dg, db, (0.92 - d * 0.1) * (0.3 + 0.7 * e * e));
 				}
 			}
 
@@ -837,14 +876,15 @@ export function makeBloom(rows: number): FxProgram {
 				}
 				if (age < 0.25) plot(s, px, py, br, bg, bb, (0.25 - age) * 1.6);
 			}
+			s.out = Math.min(1, live / 220);
 			blit(s);
 		}
 	};
 }
 
-/** Predator and prey chemicals diffuse at different rates and feed on each other, and that difference alone is enough to make the surface break into spots and stripes. */
 export function makeSpore(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.02,
 		init(s) {
@@ -900,13 +940,21 @@ export function makeSpore(rows: number): FxProgram {
 
 			const [lo1, lo2, lo3] = hsl(s.v.hue2, s.v.sat * 0.4, 12);
 			const [hi1, hi2, hi3] = hsl(s.v.hue, s.v.sat, 62);
+			const qx = s.w * 0.5;
+			const qy = s.h * 0.5;
+			let spotted = 0;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < w; x++) {
 					const v = Math.min(1, b[y * w + x] * 3.4);
-					paint(s, x, y, lo1 + (hi1 - lo1) * v, lo2 + (hi2 - lo2) * v, lo3 + (hi3 - lo3) * v, 0.95);
-					if (v > 0.55) plot(s, x, y, hi1, hi2, hi3, (v - 0.55) * 0.55);
+					const e = Math.min(1, Math.hypot((x - qx) / qx, (y - qy) / qy));
+					paint(s, x, y, lo1 + (hi1 - lo1) * v, lo2 + (hi2 - lo2) * v, lo3 + (hi3 - lo3) * v, Math.min(0.95, 0.18 + v * 0.62 + e * e * 0.42));
+					if (v > 0.55) {
+						spotted++;
+						plot(s, x, y, hi1, hi2, hi3, (v - 0.55) * 0.55);
+					}
 				}
 			}
+			s.out = Math.min(1, spotted / (s.w * s.h * 0.3));
 			blit(s);
 		}
 	};

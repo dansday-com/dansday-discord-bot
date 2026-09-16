@@ -1,9 +1,9 @@
 import { mulberry32 } from '$lib/effects.js';
 import { blit, clear, edge, hsl, paint, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 
-/** Ground that cracks open, with dust venting out of the fissures. */
 export function makeQuake(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.9,
 		init(s) {
@@ -82,7 +82,6 @@ export function makeQuake(rows: number): FxProgram {
 	};
 }
 
-/** Channel-split tear bands that jump in hard steps. */
 export function makeTear(rows: number): FxProgram {
 	return {
 		rows,
@@ -137,9 +136,9 @@ export function makeTear(rows: number): FxProgram {
 	};
 }
 
-/** Lines drawn inward and swallowed by a rimmed maw. */
 export function makeMaw(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.8,
 		init(s) {
@@ -195,7 +194,6 @@ export function makeMaw(rows: number): FxProgram {
 	};
 }
 
-/** Foil: a spectrum wash under a printed grid, with a scan bar riding over it. */
 export function makeFoil(rows: number): FxProgram {
 	return {
 		rows,
@@ -222,7 +220,6 @@ export function makeFoil(rows: number): FxProgram {
 	};
 }
 
-/** Woven threads crossing over and under, with a sheen travelling along the weave. */
 export function makeWeave(rows: number): FxProgram {
 	return {
 		rows,
@@ -294,9 +291,9 @@ function grow(s: FxScene, x: number, y: number, ang: number, len: number, w: num
 	}
 }
 
-/** A blossoming bough reaching in from a top corner. Shape, side and bloom vary. */
 export function withBough(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -326,9 +323,9 @@ export function withBough(inner: FxProgram): FxProgram {
 	};
 }
 
-/** A rooted stand of trees with litter underfoot. Count, sizes and shapes vary. */
 export function withCanopy(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -386,9 +383,9 @@ export function withCanopy(inner: FxProgram): FxProgram {
 	};
 }
 
-/** An ambient bloom low in the frame, breathing. */
 export function withGlow(inner: FxProgram, at: number, reach: number, light: number, salt: number): FxProgram {
 	return {
+		opaque: inner.opaque,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -413,9 +410,9 @@ export function withGlow(inner: FxProgram, at: number, reach: number, light: num
 	};
 }
 
-/** A body of water with a rippling surface line. */
 export function withWater(inner: FxProgram, level: number): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -434,9 +431,9 @@ export function withWater(inner: FxProgram, level: number): FxProgram {
 	};
 }
 
-/** A diagonal galaxy band with a dust rift through its middle. */
 export function withGalaxyBand(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -461,9 +458,9 @@ export function withGalaxyBand(inner: FxProgram): FxProgram {
 	};
 }
 
-/** Rings and bits popping outward from seeded points. */
 export function withBursts(inner: FxProgram, count: number, period: number, salt: number): FxProgram {
 	return {
+		opaque: inner.opaque,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -492,7 +489,6 @@ export function withBursts(inner: FxProgram, count: number, period: number, salt
 	};
 }
 
-/** Embers lifting off a coal bed: steady rise, sideways weave, shrinking as they cool. */
 export function makeEmbers(rows: number): FxProgram {
 	const place = (sc: FxScene, i: number, fresh: boolean) => {
 		const p = sc.parts;
@@ -557,7 +553,6 @@ export function makeEmbers(rows: number): FxProgram {
 	};
 }
 
-/** Where autumn's crowns sit — the same seeded maths withCanopy draws them from. */
 export function canopySource(sc: FxScene): [number, number] {
 	const r = mulberry32(sc.v.seed + 3307);
 	const gy = sc.h * 0.84;
@@ -569,7 +564,6 @@ export function canopySource(sc: FxScene): [number, number] {
 	return [t[0] * sc.w + (sc.rnd() - 0.5) * sc.w * 0.18 * scale, gy - sc.h * 0.3 * scale - sc.rnd() * sc.h * 0.12 * scale];
 }
 
-/** Where sakura's bough tips reach — mirrors withBough. */
 export function boughSource(sc: FxScene): [number, number] {
 	const side = sc.v.dir > 0 ? 0 : 1;
 	const reach = sc.h * 0.32;
@@ -577,7 +571,6 @@ export function boughSource(sc: FxScene): [number, number] {
 	return [(side ? sc.w + 2 : -2) + (side ? -1 : 1) * f * reach * 2.4, -2 + f * reach * 0.9 + sc.rnd() * 4];
 }
 
-/** A CRT beam: the sweep is what lights the phosphor, and it decays behind it. */
 export function makeCrt(rows: number): FxProgram {
 	return {
 		rows,
@@ -614,7 +607,6 @@ export function makeCrt(rows: number): FxProgram {
 	};
 }
 
-/** Film: the gate weaves, dust sticks for a few frames, a scratch rides the emulsion. */
 export function makeFilm(rows: number): FxProgram {
 	return {
 		rows,
@@ -657,7 +649,6 @@ export function makeFilm(rows: number): FxProgram {
 	};
 }
 
-/** Foil: the scan bar is the light source, and the spectrum is where it falls. */
 export function makeFoilLit(rows: number): FxProgram {
 	return {
 		rows,
@@ -692,7 +683,6 @@ export function makeFoilLit(rows: number): FxProgram {
 	};
 }
 
-/** Glyph columns: a head that falls, a tail of phosphor decaying behind it, and characters that re-roll while they are still hot. */
 export function makeGlyphRain(rows: number): FxProgram {
 	return {
 		rows,
@@ -856,9 +846,9 @@ export function makeGlyphRain(rows: number): FxProgram {
 	};
 }
 
-/** Sunset sky: the sun's altitude reddens it, lights the clouds from underneath, and refraction squashes the disc as it nears the horizon. */
 export function makeSunset(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -918,7 +908,8 @@ export function makeSunset(rows: number): FxProgram {
 			for (let x = 0; x < s.w; x++) colX[x] = 0.62 + 0.38 * Math.exp(-Math.abs(x - sunX) / reach);
 
 			for (let y = 0; y < hz; y++) {
-				const a = 0.68 + (y / Math.max(1, hz)) * 0.24;
+				const t = y / Math.max(1, hz);
+				const a = 0.2 + t * t * 0.62;
 				for (let x = 0; x < s.w; x++) {
 					const k = colX[x];
 					paint(s, x, y, rowR[y] * k, rowG[y] * k, rowB[y] * k, a);

@@ -9,7 +9,6 @@ function seed(s: FxScene, fn: (s: FxScene, i: number) => void) {
 	for (let i = 0; i < s.n; i++) fn(s, i);
 }
 
-/** Bands sweeping across on an angle — foil, scanlines, silk, spectrum. */
 export function makeBands(rows: number, o: { count: number; slant: number; soft: number; spread: number; light: number }): FxProgram {
 	return {
 		rows,
@@ -42,7 +41,6 @@ export function makeBands(rows: number, o: { count: number; slant: number; soft:
 	};
 }
 
-/** Value noise that resettles every frame — film grain, static. */
 export function makeNoise(rows: number, amount: number, chunk: number): FxProgram {
 	return {
 		rows,
@@ -65,7 +63,6 @@ export function makeNoise(rows: number, amount: number, chunk: number): FxProgra
 	};
 }
 
-/** A random-walk bolt that strikes, holds, then clears. */
 export function makeBolt(rows: number, period: number): FxProgram {
 	return {
 		rows,
@@ -119,7 +116,6 @@ export function makeBolt(rows: number, period: number): FxProgram {
 	};
 }
 
-/** A funnel of debris orbiting a vertical axis. */
 export function makeVortex(rows: number, stride: number): FxProgram {
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
@@ -157,7 +153,6 @@ export function makeVortex(rows: number, stride: number): FxProgram {
 	};
 }
 
-/** Bright heads dragging tails on a steep diagonal. */
 export function makeStreak(rows: number, stride: number, steep: number, len: number): FxProgram {
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
@@ -195,7 +190,6 @@ export function makeStreak(rows: number, stride: number, steep: number, len: num
 	};
 }
 
-/** Chunky tumbling bits in mixed hues. */
 export function makeConfetti(rows: number, stride: number, hues: number): FxProgram {
 	const POPS = 4;
 	const spawn = (sc: FxScene, i: number) => {
@@ -256,7 +250,6 @@ export function makeConfetti(rows: number, stride: number, hues: number): FxProg
 	};
 }
 
-/** Static facets that catch the light in sequence. */
 export function makeFacets(rows: number, stride: number, crack: boolean): FxProgram {
 	return {
 		rows,
@@ -308,7 +301,6 @@ const SPECTRUM = [
 	[258, 90, 77]
 ];
 
-/** Concentric spectrum arcs springing from the bottom edge, light travelling along them. */
 export function makeArc(rows: number, bands: number, thick: number): FxProgram {
 	return {
 		rows,
@@ -339,7 +331,6 @@ export function makeArc(rows: number, bands: number, thick: number): FxProgram {
 	};
 }
 
-/** Pixel sprites drifting with tumble — hearts, leaves, petals, flakes. */
 export function makeSprite(
 	rows: number,
 	stride: number,
@@ -429,7 +420,6 @@ export function makeSprite(
 	};
 }
 
-/** Pixel cumulus along the top edge, drifting. Seeded lumps, not drawn paths. */
 export function clouds(s: FxScene, count: number, light: number, drift: number) {
 	const r0 = mulberry32(s.v.seed + 4242);
 	const tint = Math.min(16, s.v.sat * 0.28);
@@ -455,7 +445,6 @@ export function clouds(s: FxScene, count: number, light: number, drift: number) 
 	}
 }
 
-/** Corona, chromosphere rim and flares. The disc is the hole where no light is drawn. */
 export function makeEclipse(rows: number): FxProgram {
 	return {
 		rows,
@@ -511,7 +500,6 @@ export function makeEclipse(rows: number): FxProgram {
 	};
 }
 
-/** A heartbeat trace sweeping left to right, leaving a decaying tail. */
 export function makeEcg(rows: number): FxProgram {
 	const WAVE = (u: number) => {
 		if (u < 0.36 || u > 0.62) return 0;
@@ -562,9 +550,9 @@ export function makeEcg(rows: number): FxProgram {
 	};
 }
 
-/** Compose a weather program with a cloud deck above it. */
 export function withSky(inner: FxProgram, count: number, light: number, drift: number): FxProgram {
 	return {
+		opaque: inner.opaque,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -576,7 +564,6 @@ export function withSky(inner: FxProgram, count: number, light: number, drift: n
 	};
 }
 
-/** The idler: a wordmark on a disc that bounces off the walls, takes a new colour from every wall it hits, and burns its path into the screen. */
 export function makeIdler(rows: number): FxProgram {
 	const PAD = 3;
 	return {

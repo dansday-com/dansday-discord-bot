@@ -1468,6 +1468,8 @@ html.lenis body {
 
 [data-fx-host='waterfall'] {
 	animation: fx-host-plunge 3.2s linear infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.1)) saturate(calc(1 + var(--fx-cover, 0) * 0.25));
+	transform: translateY(calc(var(--fx-cover, 0) * 0.6px));
 }
 
 @keyframes fx-host-plunge {
@@ -1498,6 +1500,8 @@ html.lenis body {
 
 [data-fx-host='ripple'] {
 	animation: fx-host-wavefront 4.6s linear infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.06));
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.007));
 }
 
 @keyframes fx-host-wavefront {
@@ -1522,6 +1526,8 @@ html.lenis body {
 
 [data-fx-host='cave'] {
 	animation: fx-host-seep 5.4s steps(1, end) infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.14));
+	transform: translateY(calc(var(--fx-cover, 0) * 0.5px));
 }
 
 @keyframes fx-host-seep {
@@ -1550,6 +1556,8 @@ html.lenis body {
 
 [data-fx-host='frost'] {
 	animation: fx-host-rime 9s linear infinite;
+	filter: saturate(calc(1 - var(--fx-cover, 0) * 0.45)) brightness(calc(1 + var(--fx-cover, 0) * 0.12));
+	transform: scale(calc(1 - var(--fx-cover, 0) * 0.004));
 }
 
 @keyframes fx-host-rime {
@@ -1576,6 +1584,7 @@ html.lenis body {
 
 [data-fx-host='fog'] {
 	animation: fx-host-bank 11s linear infinite;
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.006));
 }
 
 @keyframes fx-host-bank {
@@ -1597,6 +1606,8 @@ html.lenis body {
 
 [data-fx-host='smoke'] {
 	animation: fx-host-soot 6.2s linear infinite;
+	filter: brightness(calc(1 - var(--fx-cover, 0) * 0.16)) saturate(calc(1 - var(--fx-cover, 0) * 0.28));
+	transform: translateY(calc(var(--fx-cover, 0) * -0.7px));
 }
 
 @keyframes fx-host-soot {
@@ -1621,6 +1632,8 @@ html.lenis body {
 
 [data-fx-host='swarm'] {
 	animation: fx-host-dusk 7.4s linear infinite;
+	filter: contrast(calc(1 + var(--fx-cover, 0) * 0.12));
+	transform: scale(calc(1 - var(--fx-cover, 0) * 0.006));
 }
 
 @keyframes fx-host-dusk {
@@ -1646,6 +1659,7 @@ html.lenis body {
 
 [data-fx-host='jellyfish'] {
 	animation: fx-host-pulsejet 3.8s linear infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.18)) saturate(calc(1 + var(--fx-cover, 0) * 0.3));
 }
 
 @keyframes fx-host-pulsejet {
@@ -1680,6 +1694,7 @@ html.lenis body {
 
 [data-fx-host='meadow'] {
 	animation: fx-host-gust 8.6s linear infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.1)) saturate(calc(1 + var(--fx-cover, 0) * 0.22));
 }
 
 @keyframes fx-host-gust {
@@ -1706,6 +1721,8 @@ html.lenis body {
 
 [data-fx-host='circuit'] {
 	animation: fx-host-bus 2.8s linear infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.16)) saturate(calc(1 + var(--fx-cover, 0) * 0.35));
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.004));
 }
 
 @keyframes fx-host-bus {
@@ -1737,6 +1754,7 @@ html.lenis body {
 
 [data-fx-host='prism'] {
 	animation: fx-host-disperse 5s linear infinite;
+	transform: rotate(calc(var(--fx-cover, 0) * 0.18deg));
 }
 
 @keyframes fx-host-disperse {
@@ -3578,7 +3596,6 @@ span.fx-blend-overlay {
 	image-rendering: pixelated;
 }
 
-[data-fx-host='blackhole'],
 [data-fx-host='void'] {
 	animation:
 		fx-host-pinch 7s linear infinite,
@@ -3598,6 +3615,57 @@ span.fx-blend-overlay {
 	}
 	100% {
 		transform: scale(1) rotate(0deg);
+	}
+}
+
+[data-fx-host='blackhole'] {
+	animation:
+		fx-host-pinch 7s linear infinite,
+		fx-host-collapse 6.5s cubic-bezier(0.55, 0, 0.35, 1) infinite;
+	transform-origin: 50% 50%;
+}
+
+@keyframes fx-host-collapse {
+	0% {
+		transform: scale(0.97) rotate(-1deg);
+		border-radius: 14px;
+		filter: contrast(1.06) brightness(0.94);
+		animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.4);
+	}
+	38% {
+		transform: scale(0.82) rotate(-7deg);
+		border-radius: 22px;
+		filter: contrast(1.14) brightness(0.84);
+		animation-timing-function: cubic-bezier(0.8, 0, 1, 0.5);
+	}
+	58% {
+		transform: scale(0.44) rotate(-26deg);
+		border-radius: 46%;
+		filter: contrast(1.35) brightness(0.6);
+		animation-timing-function: cubic-bezier(0.9, 0, 1, 0.45);
+	}
+	70% {
+		transform: scale(0.14) rotate(-52deg);
+		border-radius: 50%;
+		filter: contrast(1.7) brightness(0.3);
+		animation-timing-function: ease-out;
+	}
+	80% {
+		transform: scale(0.3) rotate(-30deg);
+		border-radius: 50%;
+		filter: contrast(1.4) brightness(0.52);
+		animation-timing-function: ease-out;
+	}
+	92% {
+		transform: scale(1.02) rotate(2deg);
+		border-radius: 16px;
+		filter: contrast(1.02) brightness(1.02);
+		animation-timing-function: ease-in-out;
+	}
+	100% {
+		transform: scale(0.97) rotate(-1deg);
+		border-radius: 14px;
+		filter: contrast(1.06) brightness(0.94);
 	}
 }
 
@@ -3672,6 +3740,8 @@ span.fx-blend-overlay {
 
 [data-fx-host='mycelium'] {
 	animation: fx-host-spread 9.4s ease-in-out infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.13)) saturate(calc(1 + var(--fx-cover, 0) * 0.28));
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.005));
 }
 
 @keyframes fx-host-spread {
@@ -3688,6 +3758,7 @@ span.fx-blend-overlay {
 
 [data-fx-host='coral'] {
 	animation: fx-host-surge 7.2s ease-in-out infinite;
+	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.35)) brightness(calc(1 + var(--fx-cover, 0) * 0.08));
 }
 
 @keyframes fx-host-surge {
@@ -3707,6 +3778,8 @@ span.fx-blend-overlay {
 
 [data-fx-host='lichen'] {
 	animation: fx-host-crust 12s linear infinite;
+	filter: saturate(calc(1 - var(--fx-cover, 0) * 0.3)) contrast(calc(1 + var(--fx-cover, 0) * 0.14));
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.004));
 }
 
 @keyframes fx-host-crust {
@@ -3729,6 +3802,8 @@ span.fx-blend-overlay {
 
 [data-fx-host='anthill'] {
 	animation: fx-host-forage 4.6s ease-in-out infinite;
+	filter: brightness(calc(1 + var(--fx-cover, 0) * 0.12));
+	transform: translateY(calc(var(--fx-cover, 0) * -0.6px));
 }
 
 @keyframes fx-host-forage {
@@ -3745,6 +3820,7 @@ span.fx-blend-overlay {
 
 [data-fx-host='slime'] {
 	animation: fx-host-pulsefeed 5.8s ease-in-out infinite;
+	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.5)) brightness(calc(1 + var(--fx-cover, 0) * 0.1));
 }
 
 @keyframes fx-host-pulsefeed {
@@ -3764,6 +3840,8 @@ span.fx-blend-overlay {
 
 [data-fx-host='culture'] {
 	animation: fx-host-incubate 10.5s ease-in-out infinite;
+	filter: saturate(calc(1 - var(--fx-cover, 0) * 0.22));
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.012));
 }
 
 @keyframes fx-host-incubate {
@@ -3780,6 +3858,7 @@ span.fx-blend-overlay {
 
 [data-fx-host='graze'] {
 	animation: fx-host-shoal 6.4s ease-in-out infinite;
+	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.34)) brightness(calc(1 + var(--fx-cover, 0) * 0.09));
 }
 
 @keyframes fx-host-shoal {
@@ -3799,6 +3878,7 @@ span.fx-blend-overlay {
 
 [data-fx-host='decay'] {
 	animation: fx-host-rot 13s linear infinite;
+	transform: translateY(calc(var(--fx-cover, 0) * 0.8px)) scale(calc(1 - var(--fx-cover, 0) * 0.006));
 }
 
 @keyframes fx-host-rot {
@@ -3818,6 +3898,7 @@ span.fx-blend-overlay {
 
 [data-fx-host='bloom'] {
 	animation: fx-host-unfurl 8s ease-in-out infinite;
+	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.4)) brightness(calc(1 + var(--fx-cover, 0) * 0.12));
 }
 
 @keyframes fx-host-unfurl {
@@ -3837,6 +3918,7 @@ span.fx-blend-overlay {
 
 [data-fx-host='spore'] {
 	animation: fx-host-react 11s ease-in-out infinite;
+	transform: scale(calc(1 + var(--fx-cover, 0) * 0.009));
 }
 
 @keyframes fx-host-react {

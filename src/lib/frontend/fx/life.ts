@@ -16,9 +16,9 @@ function flockIdent(s: FxScene): Flock {
 	return { cohere, align, sep, roost, poles };
 }
 
-/** Three local rules — separation, alignment, cohesion — with no leader; the murmuration is emergent, and the flock wheels because its members only watch their neighbours. */
 export function makeSwarm(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.9,
 		init(s) {
@@ -57,6 +57,7 @@ export function makeSwarm(rows: number): FxProgram {
 			const rx = id.roost[0] * s.w + Math.sin(s.t * 0.008 * s.v.speed) * s.w * 0.22 * s.v.dir;
 			const ry = id.roost[1] * s.h + Math.cos(s.t * 0.011 * s.v.speed) * s.h * 0.14;
 
+			let packed = 0;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				let ax = 0;
@@ -84,6 +85,7 @@ export function makeSwarm(rows: number): FxProgram {
 						ay -= dy * inv * 0.9;
 					}
 				}
+				packed += seen;
 				if (seen > 0) {
 					ax += (cx / seen - p[o]) * id.cohere;
 					ay += (cy / seen - p[o + 1]) * id.cohere;
@@ -124,6 +126,7 @@ export function makeSwarm(rows: number): FxProgram {
 				}
 				if (p[o + 1] < s.h * 0.3) plot(s, p[o], p[o + 1], wr, wg, wb, a * 0.12);
 			}
+			s.out = Math.min(1, packed / (s.n * 2.5));
 			blit(s);
 		}
 	};
@@ -140,9 +143,9 @@ function jellyIdent(s: FxScene): Bloom {
 	return { bells, period, motes };
 }
 
-/** Jet propulsion: the bell contracts, expels water and lurches upward, then drifts down while it refills — and the tentacles lag a beat behind the body that drags them. */
 export function makeJelly(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.5,
 		init(s) {
@@ -179,12 +182,14 @@ export function makeJelly(rows: number): FxProgram {
 				}
 			}
 
+			let pump = 0;
 			for (let bi = 0; bi < id.bells.length; bi++) {
 				const b = id.bells[bi];
 				const per = id.period * b[4];
 				const ph = ((s.t * s.v.speed + b[3] * per) % per) / per;
 				const thrust = ph < 0.3 ? Math.sin((ph / 0.3) * Math.PI) : 0;
-				const squeeze = ph < 0.3 ? Math.sin((ph / 0.3) * Math.PI) : 0;
+				const squeeze = thrust;
+				pump = Math.max(pump, thrust);
 				ys[bi] -= thrust * 0.5 * b[2] * s.v.speed;
 				ys[bi] += 0.06 * (1 - thrust) * 0.5;
 				if (ys[bi] < -0.25) ys[bi] = 1.25;
@@ -240,6 +245,7 @@ export function makeJelly(rows: number): FxProgram {
 				const tw = 0.4 + 0.6 * Math.sin(p[o + 3] * 1.3);
 				plot(s, p[o], p[o + 1], br2, bg2, bb2, tw * 0.35 * edge(p[o + 1], -1, s.h + 1, s.h * 0.2));
 			}
+			s.out = pump;
 			blit(s);
 		}
 	};
@@ -257,9 +263,9 @@ function meadowIdent(s: FxScene): Field {
 	return { blades, gustPeriod, horizon, seeds };
 }
 
-/** A gust is a pressure front crossing the field, so each blade bends as the wave reaches its own x and springs back behind it — the ripple travels rather than every blade waving at once. */
 export function makeMeadow(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.5,
 		init(s) {
@@ -340,6 +346,7 @@ export function makeMeadow(rows: number): FxProgram {
 				plot(s, p[o] - 1, p[o + 1], sr, sg, sb, a * 0.3);
 				plot(s, p[o], p[o + 1] - 1, sr, sg, sb, a * 0.3);
 			}
+			s.out = Math.max(0, Math.sin(gust * Math.PI));
 			blit(s);
 		}
 	};

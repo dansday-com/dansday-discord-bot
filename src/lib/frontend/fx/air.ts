@@ -15,9 +15,9 @@ function frostIdent(s: FxScene): Frost {
 	return { nuclei, branch, sixth, clarity };
 }
 
-/** Ice accretes: vapour freezes onto whatever is already frozen, so crystal creeps outward from seeded nuclei along six axes instead of being drawn as a snowflake. */
 export function makeFrost(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -72,10 +72,12 @@ export function makeFrost(rows: number): FxProgram {
 			}
 
 			const shimmer = 0.78 + 0.22 * Math.sin(s.t * 0.05 * s.v.speed);
+			let glazed = 0;
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const v = ice[y * s.w + x] * (1 - melt);
 					if (v < 0.03) continue;
+					glazed += v;
 					const haze = v * id.clarity;
 					paint(s, x, y, dr * 0.35, dg * 0.35, db * 0.35, haze * 0.5);
 					plot(s, x, y, cr, cg, cb, v * 0.55 * shimmer);
@@ -92,6 +94,7 @@ export function makeFrost(rows: number): FxProgram {
 					plot(s, x, y + 1, cr, cg, cb, (1 - melt) * 0.3);
 				}
 			}
+			s.out = Math.min(1, glazed / (s.w * s.h * 0.18));
 			blit(s);
 		}
 	};
@@ -109,9 +112,9 @@ function fogIdent(s: FxScene): Bank {
 	return { rows, base, ridge };
 }
 
-/** Layered banks of vapour at different depths drift at their own rates, so nearer fog overtakes farther fog and the scene gains depth rather than a flat wash. */
 export function makeFog(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -171,6 +174,7 @@ export function makeFog(rows: number): FxProgram {
 					plot(s, x, y, fr, fg, fb, (1 - d) * (1 - d) * 0.2 * halo);
 				}
 			}
+			s.out = Math.min(1, halo * 0.75);
 			blit(s);
 		}
 	};
@@ -187,9 +191,9 @@ function smokeIdent(s: FxScene): Plume {
 	return { vents, curl, rise };
 }
 
-/** Density advected by a curl-noise field: the smoke is carried by the flow and thins as it expands, so it braids and dissipates the way a real plume does. */
 export function makeSmoke(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 2.4,
 		init(s) {
@@ -213,6 +217,7 @@ export function makeSmoke(rows: number): FxProgram {
 			const [hr, hg, hb] = hsl(s.v.hue2, s.v.sat * 0.5, 66);
 			const t = s.t * 0.01 * s.v.speed;
 
+			let thick = 0;
 			for (const v of id.vents) {
 				const vx = v[0] * s.w;
 				const ember = 0.45 + 0.55 * Math.abs(Math.sin(s.t * 0.06 + v[2]));
@@ -242,6 +247,7 @@ export function makeSmoke(rows: number): FxProgram {
 				const a = p[o + 3] * (1 - life) * (1 - life) * 0.4 * edge(p[o + 1], -3, s.h + 2, s.h * 0.2);
 				if (a < 0.005) continue;
 				const heat = Math.max(0, 1 - life * 4);
+				thick += a;
 				for (let y = -rad; y <= rad; y += 1) {
 					for (let x = -rad; x <= rad; x += 1) {
 						const d = Math.hypot(x, y) / rad;
@@ -252,6 +258,7 @@ export function makeSmoke(rows: number): FxProgram {
 					}
 				}
 			}
+			s.out = Math.min(1, thick / 6);
 			blit(s);
 		}
 	};

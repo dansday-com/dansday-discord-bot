@@ -32,6 +32,7 @@ export type FxScene = {
 export type FxProgram = {
 	rows: number;
 	stride: number;
+	opaque?: boolean;
 	init: (s: FxScene) => void;
 	frame: (s: FxScene) => void;
 };
@@ -165,7 +166,6 @@ export function hsl(h: number, s: number, l: number): [number, number, number] {
 	return [f(hh + 1 / 3) * 255, f(hh) * 255, f(hh - 1 / 3) * 255];
 }
 
-/** Blit a pixel mask, optionally squashed horizontally to read as a tumble. */
 export function stamp(
 	s: FxScene,
 	m: { w: number; h: number; bits: Uint8Array },
@@ -188,7 +188,6 @@ export function stamp(
 	}
 }
 
-/** Source-over: covers what is under it instead of adding to it — for surfaces, where `plot` is for light. */
 export function paint(s: FxScene, x: number, y: number, r: number, g: number, b: number, a: number) {
 	if (x < 0 || y < 0 || x >= s.w || y >= s.h || a <= 0) return;
 	const i = ((y | 0) * s.w + (x | 0)) * 4;
@@ -200,8 +199,22 @@ export function paint(s: FxScene, x: number, y: number, r: number, g: number, b:
 	px[i + 3] = a * 255 + px[i + 3] * k;
 }
 
-/** 0 at the boundaries, 1 in the middle — so a particle is invisible when it wraps. */
 export function edge(v: number, lo: number, hi: number, m: number) {
 	if (m <= 0) return 1;
 	return Math.max(0, Math.min(1, Math.min((v - lo) / m, (hi - v) / m)));
+}
+
+export function backdrop(s: FxScene, r: number, g: number, b: number, rim: number, core: number) {
+	const cx = s.w * 0.5;
+	const cy = s.h * 0.5;
+	const rx = s.w * 0.5;
+	const ry = s.h * 0.5;
+	const ph = ((s as any).__gph ??= [s.v.seed % 6.28, (s.v.seed * 1.7) % 6.28]) as number[];
+	for (let y = 0; y < s.h; y++) {
+		for (let x = 0; x < s.w; x++) {
+			const d = Math.min(1, Math.hypot((x - cx) / rx, (y - cy) / ry));
+			const mottle = 0.86 + 0.14 * Math.sin(x * 0.09 + ph[0]) * Math.cos(y * 0.11 + ph[1]);
+			paint(s, x, y, r * mottle, g * mottle, b * mottle, core + (rim - core) * d * d);
+		}
+	}
 }

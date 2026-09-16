@@ -30,9 +30,9 @@ function ridgeAt(ridge: number[], u: number, spread: number) {
 	return (ridge[i] * (1 - f) + ridge[i + 1] * f - 0.5) * spread;
 }
 
-/** Water leaves a lip as a smooth sheet, goes turbulent as it accelerates, and throws spray back out of the pool it digs. */
 export function makeWaterfall(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 1.6,
 		init(s) {
@@ -157,6 +157,7 @@ export function makeWaterfall(rows: number): FxProgram {
 					}
 				}
 			}
+			s.out = Math.min(1, splash.length / 18);
 			blit(s);
 		}
 	};
@@ -176,9 +177,9 @@ function pondIdent(s: FxScene): Pond {
 	return { level, lightX, cadence, reeds, bank };
 }
 
-/** Drops strike still water and their wavefronts sum on a height field, so crests and troughs interfere instead of merely overlapping. */
 export function makeRipple(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.18,
 		init(s) {
@@ -283,6 +284,7 @@ export function makeRipple(rows: number): FxProgram {
 				const tw = 0.4 + 0.6 * Math.max(0, Math.sin(p[o + 3] * 1.7));
 				plot(s, p[o], y, sr, sg, sb, tw * 0.4 * edge(p[o], -1, s.w + 1, s.w * 0.12));
 			}
+			s.out = Math.min(1, rings.length / 5);
 			blit(s);
 		}
 	};
@@ -307,9 +309,9 @@ function caveIdent(s: FxScene): Cavern {
 	return { tips, lens, offs, pool, shaft, glow };
 }
 
-/** Seep beads at a stalactite tip until its own weight releases it; the drop falls, lands, and rings the pool it has been carving. */
 export function makeDrip(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -422,6 +424,9 @@ export function makeDrip(rows: number): FxProgram {
 				plot(s, gx + 1, gy, lr, lg, lb, tw * 0.3);
 				plot(s, gx, gy + 1, lr, lg, lb, tw * 0.3);
 			}
+			let young = 0;
+			for (const rgn of rings) if (rgn[1] < 7) young++;
+			s.out = Math.min(1, young * 0.6);
 			blit(s);
 		}
 	};

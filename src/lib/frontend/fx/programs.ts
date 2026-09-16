@@ -52,18 +52,24 @@ function fieldPalette(s: FxScene, steps: number) {
 	for (let i = 0; i <= steps; i++) {
 		const t = i / steps;
 		const h = s.v.hue + (s.v.hue2 - s.v.hue) * t;
-		pal.push([...hsl(h, s.v.sat - t * 46, 6 + t * 88), Math.min(1, t * 3.2)] as [number, number, number, number]);
+		pal.push([...hsl(h, s.v.sat - t * 46, 6 + t * 88), Math.min(1, t * t * 1.9)] as [number, number, number, number]);
 	}
 	return pal;
 }
 
-/** Heat propagates upward with random decay — the 1993 Doom fire. */
-function makeFire(rows: number, decay: number, feed: number): FxProgram {
+function makeFire(rows: number, decay: number, feed: number, reach: number): FxProgram {
 	const step = (s: FxScene) => {
 		const { w, h, buf } = s;
+		const top = (s as any).levels as number;
+		const coals = (s as any).coals as number[][];
 		const fuel = feed * (0.82 + s.v.speed * 0.18);
 		const lean = s.v.dir > 0 ? 1 : 2;
-		for (let x = 0; x < w; x++) buf[(h - 1) * w + x] = s.rnd() < fuel ? 36 : 28 + ((s.v.drift * 6) | 0);
+		const idle = Math.max(1, Math.round(top * (0.6 + s.v.drift * 0.14)));
+		for (let x = 0; x < w; x++) {
+			let bed = 0;
+			for (const [cx, cw, cs] of coals) bed = Math.max(bed, cs * Math.max(0, 1 - Math.abs(x / w - cx) / cw));
+			buf[(h - 1) * w + x] = s.rnd() < fuel * (0.35 + bed * 0.65) ? top : Math.round(idle * (0.4 + bed * 0.6));
+		}
 		for (let x = 0; x < w; x++) {
 			for (let y = 1; y < h; y++) {
 				const src = y * w + x;
@@ -82,33 +88,89 @@ function makeFire(rows: number, decay: number, feed: number): FxProgram {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).pal = fieldPalette(s, 36);
+			const r = mulberry32(s.v.seed + 4421);
+			const coals: number[][] = [];
+			const n = 3 + ((r() * 4) | 0);
+			for (let i = 0; i < 7; i++) {
+				const keep = i < n;
+				const cx = 0.08 + r() * 0.84;
+				const cw = 0.1 + r() * 0.22;
+				const cs = 0.45 + r() * 0.55;
+				if (keep) coals.push([cx, cw, cs]);
+			}
+			(s as any).coals = coals;
+			const levels = Math.max(6, Math.round(s.h * reach * (0.82 + s.v.drift * 0.24)));
+			(s as any).levels = levels;
+			(s as any).pal = fieldPalette(s, levels);
 			(s as any).sparks = [] as number[][];
+			(s as any).tips = new Float32Array(s.w);
 			const { w, h, buf } = s;
 			for (let y = 0; y < h; y++) {
-				const heat = 36 * (y / (h - 1));
-				for (let x = 0; x < w; x++) buf[y * w + x] = Math.max(0, Math.min(36, Math.round(heat * (0.45 + s.rnd() * 0.9))));
+				const heat = levels * (y / (h - 1));
+				for (let x = 0; x < w; x++) buf[y * w + x] = Math.max(0, Math.min(levels, Math.round(heat * (0.45 + s.rnd() * 0.9))));
 			}
 			for (let i = 0; i < 14; i++) step(s);
 		},
 		frame(s) {
 			const { w, h, buf } = s;
 			const pal = (s as any).pal as [number, number, number, number][];
+			const levels = (s as any).levels as number;
+			const coals = (s as any).coals as number[][];
+			const tips = (s as any).tips as Float32Array;
 			step(s);
 			clear(s);
+
+			for (let x = 0; x < w; x++) tips[x] = h;
 			for (let y = 0; y < h; y++) {
 				for (let x = 0; x < w; x++) {
 					const v = buf[y * w + x];
 					if (!v) continue;
 					const c = pal[v < pal.length ? v : pal.length - 1];
 					plot(s, x, y, c[0], c[1], c[2], c[3]);
+					if (v > levels * 0.2 && y < tips[x]) tips[x] = y;
 				}
 			}
+
+			const [hr, hg, hb] = hsl(s.v.hue + 8, s.v.sat * 0.6, 54);
+			const lift = Math.sin(s.t * 0.05 * s.v.speed) * 0.5 + 0.5;
+			for (let x = 0; x < w; x++) {
+				const tip = tips[x];
+				if (tip >= h) continue;
+				const span = h * 0.24;
+				for (let k = 1; k < span; k++) {
+					const y = tip - k;
+					if (y < 0) break;
+					const f = 1 - k / span;
+					const swirl = 0.6 + 0.4 * Math.sin(x * 0.2 + s.t * 0.06 * s.v.dir + k * 0.3);
+					plot(s, x + Math.sin(k * 0.4 + s.t * 0.03) * s.v.drift, y, hr, hg, hb, f * f * swirl * 0.12 * (0.7 + lift * 0.3));
+				}
+			}
+
+			const [cr, cg, cb] = hsl(s.v.hue - 6, s.v.sat, 46);
+			const [gr2, gg2, gb2] = hsl(s.v.hue + 14, s.v.sat * 0.8, 86);
+			for (const [cx, cw, cs] of coals) {
+				const px = cx * w;
+				const half = cw * w;
+				const glow = cs * (0.62 + 0.38 * Math.sin(s.t * 0.07 * s.v.speed + cx * 9));
+				for (let dx = -half; dx <= half; dx++) {
+					const u = Math.abs(dx) / half;
+					if (u > 1) continue;
+					const body = 1 - u * u;
+					for (let k = 0; k < 3; k++) {
+						const y = h - 1 - k;
+						const a = body * glow * (1 - k / 3);
+						plot(s, px + dx, y, cr, cg, cb, a * 0.8);
+						if (k === 0 && body > 0.55) plot(s, px + dx, y, gr2, gg2, gb2, (body - 0.55) * glow * 0.9);
+					}
+				}
+			}
+
 			const sparks = (s as any).sparks as number[][];
 			for (let k = 0; k < 3; k++) {
 				const sx = (s.rnd() * w) | 0;
+				const lim = levels * 0.72;
 				for (let y = 1; y < h; y++) {
-					if (buf[y * w + sx] > 26 && buf[(y - 1) * w + sx] <= 4) {
+					if (buf[y * w + sx] > lim && buf[(y - 1) * w + sx] <= levels * 0.12) {
 						if (s.rnd() < 0.25) sparks.push([sx, y, 0, 0.3 + s.rnd() * 0.7]);
 						break;
 					}
@@ -124,16 +186,19 @@ function makeFire(rows: number, decay: number, feed: number): FxProgram {
 					continue;
 				}
 				const life = 1 - sp[2] / 70;
-				const c = pal[Math.min(pal.length - 1, (20 + life * 16) | 0)];
+				const c = pal[Math.min(pal.length - 1, ((0.55 + life * 0.45) * levels) | 0)];
 				plot(s, sp[0], sp[1], c[0], c[1], c[2], life * 0.9);
 			}
 			if (sparks.length > 40) sparks.splice(0, sparks.length - 40);
+
+			let heat = 0;
+			for (let x = 0; x < w; x++) heat += 1 - tips[x] / h;
+			s.out = Math.min(1, (heat / w) * 1.6);
 			blit(s);
 		}
 	};
 }
 
-/** Points falling with a shared wind vector — one storm, not 57 arguments. */
 function makeFall(
 	rows: number,
 	stride: number,
@@ -198,7 +263,6 @@ function makeFall(
 	};
 }
 
-/** Sparks thrown up and out, falling back under gravity. */
 function makeFountain(rows: number, stride: number, gravity: number, spread: number, vent = false): FxProgram {
 	const mouth = (sc: FxScene) => {
 		const r = mulberry32(sc.v.seed + 7311);
@@ -251,7 +315,6 @@ function makeFountain(rows: number, stride: number, gravity: number, spread: num
 	};
 }
 
-/** Vertical curtains driven by layered sines — light, not drawn ribbons. */
 function makeCurtain(rows: number): FxProgram {
 	return {
 		rows,
@@ -283,7 +346,6 @@ function makeCurtain(rows: number): FxProgram {
 	};
 }
 
-/** Matter spiralling inward and vanishing at the centre. */
 function makeSpiral(rows: number, stride: number, inward: number): FxProgram {
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
@@ -326,7 +388,6 @@ function makeSpiral(rows: number, stride: number, inward: number): FxProgram {
 	};
 }
 
-/** A star band plus scattered field, twinkling on its own clock. */
 function makeStarfield(rows: number, stride: number, band: number): FxProgram {
 	return {
 		rows,
@@ -359,7 +420,6 @@ function makeStarfield(rows: number, stride: number, band: number): FxProgram {
 	};
 }
 
-/** Points that fade in and out where they stand. */
 function makeTwinkle(rows: number, stride: number, rise: number): FxProgram {
 	return {
 		rows,
@@ -400,7 +460,7 @@ function makeTwinkle(rows: number, stride: number, rise: number): FxProgram {
 }
 
 export const PROGRAMS: Record<string, FxProgram> = {
-	fire: makeFire(52, 3, 0.86),
+	fire: makeFire(52, 3, 0.86, 0.58),
 	ember: withGround(makeEmbers(56), 323, 0.1, 0.04, 26),
 	volcano: withCone(makeFountain(56, 0.42, 0.028, 0.34, true)),
 
@@ -449,70 +509,31 @@ export const PROGRAMS: Record<string, FxProgram> = {
 
 	grain: makeFilm(56),
 
-	waterfall: makeWaterfall(56),
-	ripple: makeRipple(56),
-	cave: makeDrip(56),
-	frost: makeFrost(56),
-	fog: makeFog(56),
-	smoke: makeSmoke(56),
-	swarm: makeSwarm(56),
-	jellyfish: makeJelly(56),
-	meadow: makeMeadow(56),
-	circuit: makeCircuit(56),
-	prism: makePrism(56),
-	mycelium: makeMycelium(56),
-	coral: makeCoral(56),
-	lichen: makeLichen(56),
-	anthill: makeAnthill(56),
-	slime: makeSlime(56),
-	culture: makeCulture(56),
-	graze: makeGraze(56),
-	decay: makeDecay(56),
-	bloom: makeBloom(56),
-	spore: makeSpore(56)
+	waterfall: withGlow(makeWaterfall(56), 0.82, 0.5, 74, 2101),
+	ripple: withGlow(makeRipple(56), 0.5, 0.62, 70, 2203),
+	cave: withGround(makeDrip(56), 2307, 0.14, 0.06, 13),
+	frost: withGlow(makeFrost(56), 0.3, 0.66, 82, 2411),
+	fog: withGround(makeFog(56), 2503, 0.16, 0.07, 15),
+	smoke: withGround(makeSmoke(56), 2609, 0.1, 0.04, 12),
+	swarm: withSky(makeSwarm(56), 3, 62, 0.5),
+	jellyfish: withGlow(makeJelly(56), 0.6, 0.7, 64, 2707),
+	meadow: withSky(makeMeadow(56), 3, 74, 0.6),
+	circuit: withGlow(makeCircuit(56), 0.5, 0.58, 58, 2803),
+	prism: withGlow(makePrism(56), 0.42, 0.54, 76, 2909),
+	mycelium: withGround(makeMycelium(56), 3011, 0.12, 0.05, 10),
+	coral: withWater(makeCoral(56), 0.08),
+	lichen: withGlow(makeLichen(56), 0.46, 0.6, 56, 3109),
+	anthill: withGround(makeAnthill(56), 3203, 0.1, 0.05, 14),
+	slime: withGlow(makeSlime(56), 0.66, 0.58, 60, 3307),
+	culture: withGlow(makeCulture(56), 0.5, 0.64, 66, 3413),
+	graze: withSky(makeGraze(56), 3, 70, 0.55),
+	decay: withGround(makeDecay(56), 3511, 0.11, 0.05, 12),
+	bloom: withGlow(makeBloom(56), 0.56, 0.62, 72, 3607),
+	spore: withSky(makeSpore(56), 4, 68, 0.9)
 };
 
 export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
 
-export const BLEND: Record<string, 'screen' | 'normal'> = {
-	aurora: 'normal',
-	beach: 'normal',
-	bouncer: 'normal',
-	autumn: 'normal',
-	blackhole: 'normal',
-	bubbles: 'normal',
-	bullethole: 'normal',
-	earthquake: 'normal',
-	ember: 'normal',
-	fallingstar: 'normal',
-	anthill: 'normal',
-	bloom: 'normal',
-	coral: 'normal',
-	culture: 'normal',
-	decay: 'normal',
-	fireflies: 'normal',
-	graze: 'normal',
-	lichen: 'normal',
-	matrix: 'normal',
-	meteor: 'normal',
-	milkyway: 'normal',
-	neon: 'normal',
-	sakura: 'normal',
-	sandstorm: 'normal',
-	spore: 'normal',
-	tornado: 'normal',
-	tsunami: 'normal',
-	void: 'normal',
-	volcano: 'normal',
-	waterfall: 'normal',
-	ripple: 'normal',
-	cave: 'normal',
-	frost: 'normal',
-	fog: 'normal',
-	smoke: 'normal',
-	swarm: 'normal',
-	jellyfish: 'normal',
-	meadow: 'normal',
-	circuit: 'normal',
-	prism: 'normal'
-};
+export const BLEND: Record<string, 'screen' | 'normal'> = Object.fromEntries(
+	Object.entries(PROGRAMS).map(([family, program]) => [family, program.opaque ? 'normal' : 'screen'])
+) as Record<string, 'screen' | 'normal'>;

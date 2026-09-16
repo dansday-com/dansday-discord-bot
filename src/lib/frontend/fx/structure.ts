@@ -1,7 +1,6 @@
 import { mulberry32 } from '$lib/effects.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
-/** A seeded ridge silhouette along the bottom — every card gets its own skyline. */
 export function ground(s: FxScene, salt: number, height: number, rough: number, light: number) {
 	const r = mulberry32(s.v.seed + salt);
 	const [gr, gg, gb] = hsl(s.v.hue, s.v.sat * 0.35, light);
@@ -21,6 +20,7 @@ export function ground(s: FxScene, salt: number, height: number, rough: number, 
 
 export function withGround(inner: FxProgram, salt: number, height: number, rough: number, light: number, catchLight = false): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -55,9 +55,9 @@ export function withGround(inner: FxProgram, salt: number, height: number, rough
 	};
 }
 
-/** A cone with a glowing vent and lava running down it. Width, lean and vents vary. */
 export function withCone(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -98,9 +98,9 @@ export function withCone(inner: FxProgram): FxProgram {
 	};
 }
 
-/** Event horizon, accretion disc and polar jets. Disc tilt and jet strength vary. */
 export function withHorizon(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -141,7 +141,6 @@ export function withHorizon(inner: FxProgram): FxProgram {
 	};
 }
 
-/** The funnel's axis and half-width at height fraction f (0 = cloud base, 1 = ground). */
 export function funnelAxis(s: FxScene, f: number): [number, number] {
 	const r = mulberry32(s.v.seed + 3120);
 	const top = s.w * (0.35 + r() * 0.3);
@@ -151,9 +150,9 @@ export function funnelAxis(s: FxScene, f: number): [number, number] {
 	return [top + lean * f * f + wob, wTop * (1 - f * 0.82)];
 }
 
-/** A leaning funnel reaching down from the cloud deck. Lean and width vary. */
 export function withFunnel(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -175,55 +174,148 @@ export function withFunnel(inner: FxProgram): FxProgram {
 	};
 }
 
-/** One breaking wave with a curl and spray. Crest position and direction vary. */
 export function makeBreaker(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
-		init() {},
+		init(s) {
+			const r = mulberry32(s.v.seed + 8080);
+			const st = s as any;
+			st.rest = 0.72 + r() * 0.12;
+			st.period = 320 + r() * 220;
+			st.steep = 0.55 + r() * 0.5;
+			st.phase = r() * 6.28;
+			const rocks: number[][] = [];
+			for (let i = 0; i < 5; i++) rocks.push([r(), 0.3 + r() * 0.7, r() * 6.28]);
+			st.rocks = rocks;
+			const debris: number[][] = [];
+			for (let i = 0; i < 6; i++) debris.push([r(), 0.4 + r() * 0.6, r() * 6.28, 1 + ((r() * 3) | 0)]);
+			st.debris = debris;
+			st.spray = [] as number[][];
+			st.surf = new Float32Array(s.w);
+		},
 		frame(s) {
 			clear(s);
-			const r = mulberry32(s.v.seed + 8080);
+			const st = s as any;
 			const dir = s.v.dir;
-			const crest = s.w * (0.35 + r() * 0.3);
-			const t = s.t * 0.02 * s.v.speed;
-			const [deep, dg, db] = hsl(s.v.hue, s.v.sat, 22);
-			const [mid, mg, mb] = hsl(s.v.hue, s.v.sat, 42);
-			const [fr, fg, fb] = hsl(s.v.hue2, s.v.sat * 0.4, 94);
-			for (let x = 0; x < s.w; x++) {
-				const u = ((x - crest) / s.w) * dir;
-				const swell = Math.exp(-u * u * 9);
-				const base = s.h * 0.78 - swell * s.h * 0.6 + Math.sin(x * 0.18 + t * 3) * s.h * 0.03;
-				for (let y = base; y < s.h; y++) {
-					const depth = (y - base) / (s.h - base);
-					plot(s, x, y, deep + (mid - deep) * (1 - depth), dg + (mg - dg) * (1 - depth), db + (mb - db) * (1 - depth), 0.9);
+			const rest = st.rest as number;
+			const period = st.period as number;
+			const surf = st.surf as Float32Array;
+			const spray = st.spray as number[][];
+
+			const cyc = ((s.t * s.v.speed) % period) / period;
+			const restY = s.h * rest;
+
+			const draw = cyc < 0.18 ? Math.sin((cyc / 0.18) * Math.PI) : 0;
+			const runT = cyc > 0.18 && cyc < 0.62 ? (cyc - 0.18) / 0.44 : cyc >= 0.62 ? 1 : 0;
+			const flood = cyc >= 0.62 ? 1 - (cyc - 0.62) / 0.38 : runT;
+
+			const front = (dir > 0 ? runT : 1 - runT) * s.w * 1.25 - (dir > 0 ? s.w * 0.12 : -s.w * 0.12);
+			const crestH = s.h * (0.34 + (st.steep as number) * 0.2);
+			const rising = runT > 0 && runT < 1;
+
+			const [dr, dg2, db] = hsl(s.v.hue, s.v.sat, 16);
+			const [mr, mg2, mb] = hsl(s.v.hue, s.v.sat, 38);
+			const [fr, fg, fb] = hsl(s.v.hue2, s.v.sat * 0.35, 95);
+			const [br, bg, bb] = hsl(s.v.hue2 - 14, s.v.sat * 0.5, 62);
+
+			if (draw > 0.02) {
+				const [sr2, sg2, sb2] = hsl(s.v.hue2 - 26, s.v.sat * 0.45, 32);
+				for (let x = 0; x < s.w; x++) {
+					const bare = restY + draw * s.h * 0.16;
+					for (let y = restY; y < bare; y++) paint(s, x, y, sr2, sg2, sb2, 0.9);
 				}
-				plot(s, x, base, fr, fg, fb, 0.5 + swell * 0.5);
-				if (swell > 0.55) {
-					const lip = base - swell * s.h * 0.12 * Math.sin(t * 2 + u * 4);
-					plot(s, x + dir * 2, lip, fr, fg, fb, 0.8);
-					if (r() < 0.08) plot(s, x + dir * 3, lip - r() * 5, fr, fg, fb, 0.6);
+				for (const [rx, rs, rp] of st.rocks as number[][]) {
+					const px = rx * s.w;
+					const py = restY + draw * s.h * 0.1 + Math.sin(rp) * 2;
+					const rad = 1 + rs * 2.2;
+					for (let dy = -rad; dy <= rad; dy++)
+						for (let dx = -rad; dx <= rad; dx++) {
+							if (dx * dx + dy * dy > rad * rad) continue;
+							paint(s, px + dx, py + dy, sr2 * 0.7, sg2 * 0.7, sb2 * 0.7, draw * 0.9);
+						}
 				}
 			}
-			for (let fl = 0; fl < 5; fl++) {
-				const ph = ((s.t * 0.4 * s.v.speed + fl * 40) % 200) / 200;
-				const fx2 = ph * s.w * 1.2 * dir + (dir < 0 ? s.w : 0);
-				const u2 = ((fx2 - crest) / s.w) * dir;
-				const fy2 = s.h * 0.78 - Math.exp(-u2 * u2 * 9) * s.h * 0.6;
-				for (let k = 0; k < 3; k++) plot(s, fx2 + k, fy2 - 1, 40, 28, 20, 0.85);
-			}
+
 			for (let x = 0; x < s.w; x++) {
-				const foam = 0.35 + 0.35 * Math.sin(x * 0.5 + t * 4);
-				for (let k = 0; k < 2; k++) plot(s, x, s.h - 1 - k, fr, fg, fb, foam * 0.5);
+				const rel = ((x - front) / s.w) * dir;
+				const heap = Math.exp(-rel * rel * (14 - (st.steep as number) * 6));
+				const behind = rel < 0 ? 1 : 0;
+				const suck = rel > 0 && rel < 0.5 ? Math.exp(-rel * rel * 26) * 0.45 : 0;
+				const chop = Math.sin(x * 0.16 + s.t * 0.09 * s.v.speed + (st.phase as number)) * s.h * 0.012;
+				const level =
+					restY + draw * s.h * 0.16 + suck * s.h * 0.12 - heap * crestH * (rising ? 1 : 0) - behind * flood * s.h * (0.18 + (st.steep as number) * 0.1) + chop;
+				surf[x] = level;
+				for (let y = Math.max(0, level); y < s.h; y++) {
+					const depth = (y - level) / Math.max(1, s.h - level);
+					const a = Math.min(0.94, 0.5 + depth * 0.5);
+					paint(s, x, y, dr + (mr - dr) * (1 - depth), dg2 + (mg2 - dg2) * (1 - depth), db + (mb - db) * (1 - depth), a);
+				}
+				plot(s, x, level, fr, fg, fb, 0.25 + heap * 0.55);
 			}
+
+			if (rising) {
+				for (let x = 0; x < s.w; x++) {
+					const rel = ((x - front) / s.w) * dir;
+					const heap = Math.exp(-rel * rel * (14 - (st.steep as number) * 6));
+					if (heap < 0.35) continue;
+					const lip = surf[x];
+					const curl = (heap - 0.35) / 0.65;
+					for (let k = 0; k < curl * 5; k++) paint(s, x + dir * k, lip + k * 0.8, fr, fg, fb, curl * (1 - k / 6) * 0.9);
+					for (let k = 0; k < curl * crestH * 0.5; k++) paint(s, x, lip + k, br, bg, bb, curl * (1 - k / (crestH * 0.5)) * 0.5);
+					if (s.rnd() < curl * 0.14) spray.push([x, lip, (s.rnd() - 0.5) * 1.2 + dir * 0.6, -s.rnd() * 1.6 - 0.4, 0]);
+				}
+			}
+
+			for (let i = spray.length - 1; i >= 0; i--) {
+				const p = spray[i];
+				p[0] += p[2];
+				p[1] += p[3];
+				p[3] += 0.075;
+				p[4] += 1;
+				const col = Math.max(0, Math.min(s.w - 1, p[0] | 0));
+				if (p[4] > 60 || p[1] > surf[col]) {
+					spray.splice(i, 1);
+					continue;
+				}
+				const life = 1 - p[4] / 60;
+				plot(s, p[0], p[1], fr, fg, fb, life * 0.85);
+				plot(s, p[0], p[1] - 1, fr, fg, fb, life * 0.3);
+			}
+			if (spray.length > 90) spray.splice(0, spray.length - 90);
+
+			for (const d of st.debris as number[][]) {
+				if (runT <= 0) continue;
+				const px = ((d[0] + runT * 1.3 * dir) % 1.3) * s.w;
+				const col = Math.max(0, Math.min(s.w - 1, px | 0));
+				const py = surf[col] - 1;
+				const [wr, wg, wb] = hsl(28, 40, 22 + d[1] * 14);
+				const len = d[3];
+				const tilt = Math.sin(s.t * 0.08 + d[2]) * 0.8;
+				for (let k = 0; k < len; k++) paint(s, px + k * dir, py + k * tilt * 0.4, wr, wg, wb, 0.9);
+			}
+
+			for (let x = 0; x < s.w; x++) {
+				const rel = ((x - front) / s.w) * dir;
+				if (rel > 0) continue;
+				const age = Math.min(1, -rel * 2.4);
+				const foam = (1 - age) * (0.3 + 0.3 * Math.sin(x * 0.42 + s.t * 0.1));
+				if (foam <= 0.02) continue;
+				for (let k = 0; k < 2; k++) paint(s, x, surf[x] + k, fr, fg, fb, foam * 0.7);
+			}
+
+			let mean = 0;
+			for (let x = 0; x < s.w; x++) mean += 1 - surf[x] / s.h;
+			s.out = Math.min(1, (mean / s.w) * 2.2);
 			blit(s);
 		}
 	};
 }
 
-/** Impact holes punched through the surface. Count, size and spread vary. */
 export function makeHoles(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -284,9 +376,9 @@ export function makeHoles(rows: number): FxProgram {
 	};
 }
 
-/** A neon tube bent into a seeded shape, buzzing in its own pool of light. */
 export function makeSign(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -333,9 +425,9 @@ export function makeSign(rows: number): FxProgram {
 	};
 }
 
-/** Ground impacts — shock rings, ejecta and a lingering scorch. Sites vary per card. */
 export function withImpacts(inner: FxProgram, period: number): FxProgram {
 	return {
+		opaque: inner.opaque,
 		rows: inner.rows,
 		stride: inner.stride,
 		init(s) {
@@ -378,7 +470,6 @@ export function withImpacts(inner: FxProgram, period: number): FxProgram {
 	};
 }
 
-/** A quiet night: seeded constellation, a rising moon, and the rare wish streak. */
 export function makeWishNight(rows: number): FxProgram {
 	return {
 		rows,
@@ -498,7 +589,6 @@ export function makeWishNight(rows: number): FxProgram {
 	};
 }
 
-/** Meteors that actually land: each streak stops at the ground and throws its own impact. */
 export function makeStrike(rows: number, stride: number, steep: number, len: number, groundFrac: number): FxProgram {
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
@@ -593,9 +683,9 @@ export function makeStrike(rows: number, stride: number, steep: number, len: num
 	};
 }
 
-/** A dim screen the effect is displayed on: a dark panel behind, a vignette, and a shadow mask over every other line. */
 export function withScreen(inner: FxProgram, dark: number, cover: number, vignette: number, scan: number): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init: inner.init,
@@ -642,9 +732,9 @@ function glint(x: number, y: number, t: number) {
 	return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** The shore the sunset falls on: the sun lays a glitter path down the water, swell breaks at the sand, and the foam it leaves keeps the sand wet enough to mirror the sky until it dries. */
 export function withShore(inner: FxProgram): FxProgram {
 	return {
+		opaque: true,
 		rows: inner.rows,
 		stride: inner.stride,
 		init(s) {
@@ -725,14 +815,15 @@ export function withShore(inner: FxProgram): FxProgram {
 				if (c[0] >= 1) {
 					c[0] = 0;
 					c[1] = 0.45 + s.rnd() * 0.55;
-					runs.push([0, c[1] * 0.62, 52 + s.rnd() * 26]);
+					const life = (52 + s.rnd() * 26) / Math.max(0.35, s.v.speed);
+					runs.push([0, c[1] * 0.62, life]);
 					if (runs.length > 4) runs.shift();
 				}
 				const p = c[0];
 				if (p < 0.22) continue;
 				const y = hz + deep * Math.pow(p, 1.9);
 				const thick = 0.4 + p * p * 2.2;
-				const a = edge(p, 0.18, 1.02, 0.2) * (0.22 + p * 0.5) * c[1];
+				const a = edge(p, 0.18, 1.0, 0.2) * (0.22 + p * 0.5) * c[1];
 				for (let x = 0; x < s.w; x++) {
 					const wob = Math.sin(x * 0.13 + c[2]) * 0.5 + Math.sin(x * 0.041 - c[2] * 1.7) * 0.5;
 					const gap = Math.sin(x * 0.055 + c[2] * 2.3) * 0.5 + Math.sin(x * 0.017 - c[2]) * 0.5;
@@ -755,7 +846,8 @@ export function withShore(inner: FxProgram): FxProgram {
 					runs.splice(k, 1);
 					continue;
 				}
-				const f = Math.sin((run[0] / run[2]) * Math.PI);
+				const rp = run[0] / run[2];
+				const f = rp < 0.3 ? Math.sin((rp / 0.3) * Math.PI * 0.5) : Math.cos(((rp - 0.3) / 0.7) * Math.PI * 0.5);
 				for (let x = 0; x < s.w; x++) {
 					const wob = 0.78 + 0.22 * Math.sin(x * 0.075 + st.lip) * Math.sin(x * 0.028 - st.lip * 1.3);
 					const up = f * run[1] * wob;

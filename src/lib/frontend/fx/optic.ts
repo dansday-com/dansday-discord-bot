@@ -1,5 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, backdrop, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;
 
@@ -28,9 +28,9 @@ function circuitIdent(s: FxScene): Net {
 	return { nodes, traces, rate, pads };
 }
 
-/** Current runs the copper: pulses enter at a pad and travel each trace at a finite speed, lighting vias as they arrive, so the board conducts rather than blinking at random. */
 export function makeCircuit(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0,
 		init(s) {
@@ -46,7 +46,7 @@ export function makeCircuit(rows: number): FxProgram {
 			const [cu, cug, cub] = hsl(s.v.hue, s.v.sat * 0.4, 30);
 			const [lit, litg, litb] = hsl(s.v.hue2, s.v.sat, 72);
 
-			for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) paint(s, x, y, sub, subg, subb, 0.82);
+			backdrop(s, sub, subg, subb, 0.82, 0.3);
 
 			for (const [px, py, pr] of id.pads) {
 				const x0 = px * s.w;
@@ -122,6 +122,7 @@ export function makeCircuit(rows: number): FxProgram {
 				plot(s, hx, hy, 255, 255, 255, 0.5 * fade);
 			}
 
+			let load = 0;
 			for (let i = 0; i < id.nodes.length; i++) {
 				const n = id.nodes[i];
 				const x = n[0] * s.w;
@@ -133,6 +134,7 @@ export function makeCircuit(rows: number): FxProgram {
 					if (a === i && t < 0.12 && t > -0.02) hot = Math.max(hot, 1 - t / 0.12);
 					if (b === i && t > 0.88 && t < 1.02) hot = Math.max(hot, 1 - (1 - t) / 0.12);
 				}
+				load += hot;
 				paint(s, x, y, cu * 1.4, cug * 1.4, cub * 1.4, 0.95);
 				paint(s, x + 1, y, cu * 1.4, cug * 1.4, cub * 1.4, 0.8);
 				paint(s, x, y + 1, cu * 1.4, cug * 1.4, cub * 1.4, 0.8);
@@ -146,6 +148,7 @@ export function makeCircuit(rows: number): FxProgram {
 						}
 				}
 			}
+			s.out = Math.min(1, load / 3);
 			blit(s);
 		}
 	};
@@ -164,9 +167,9 @@ function prismIdent(s: FxScene): Optic {
 	return { entryY, apex, size, spin, facets };
 }
 
-/** One white beam enters the glass and each wavelength bends by a slightly different angle, so the spectrum is produced by dispersion at the surface — the fan is the output, not a painted rainbow. */
 export function makePrism(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.5,
 		init(s) {
@@ -266,6 +269,7 @@ export function makePrism(rows: number): FxProgram {
 				const a = tw * (0.12 + near * 0.4) * edge(p[o + 1], -1, s.h + 1, s.h * 0.18);
 				plot(s, p[o], p[o + 1], 255, 255, 255, a * 0.7);
 			}
+			s.out = Math.min(1, pulse * 0.9);
 			blit(s);
 		}
 	};

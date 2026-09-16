@@ -208,12 +208,12 @@ export function makeBreaker(rows: number): FxProgram {
 			const restY = s.h * rest;
 
 			const draw = cyc < 0.18 ? Math.sin((cyc / 0.18) * Math.PI) : 0;
-			const runT = cyc > 0.18 && cyc < 0.62 ? (cyc - 0.18) / 0.44 : cyc >= 0.62 ? 1 : 0;
-			const flood = cyc >= 0.62 ? 1 - (cyc - 0.62) / 0.38 : runT;
+			const runT = cyc > 0.18 && cyc < 0.74 ? (cyc - 0.18) / 0.56 : cyc >= 0.74 ? 1 : 0;
+			const flood = cyc >= 0.74 ? 1 - (cyc - 0.74) / 0.26 : runT;
 
-			const front = (dir > 0 ? runT : 1 - runT) * s.w * 1.25 - (dir > 0 ? s.w * 0.12 : -s.w * 0.12);
+			const travel = -0.75 + runT * 2.5;
+			const front = (dir > 0 ? travel : 1 - travel) * s.w;
 			const crestH = s.h * (0.34 + (st.steep as number) * 0.2);
-			const rising = runT > 0 && runT < 1;
 
 			const [dr, dg2, db] = hsl(s.v.hue, s.v.sat, 16);
 			const [mr, mg2, mb] = hsl(s.v.hue, s.v.sat, 38);
@@ -244,8 +244,7 @@ export function makeBreaker(rows: number): FxProgram {
 				const behind = rel < 0 ? 1 : 0;
 				const suck = rel > 0 && rel < 0.5 ? Math.exp(-rel * rel * 26) * 0.45 : 0;
 				const chop = Math.sin(x * 0.16 + s.t * 0.09 * s.v.speed + (st.phase as number)) * s.h * 0.012;
-				const level =
-					restY + draw * s.h * 0.16 + suck * s.h * 0.12 - heap * crestH * (rising ? 1 : 0) - behind * flood * s.h * (0.18 + (st.steep as number) * 0.1) + chop;
+				const level = restY + draw * s.h * 0.16 + suck * s.h * 0.12 - heap * crestH - behind * flood * s.h * (0.18 + (st.steep as number) * 0.1) + chop;
 				surf[x] = level;
 				for (let y = Math.max(0, level); y < s.h; y++) {
 					const depth = (y - level) / Math.max(1, s.h - level);
@@ -255,17 +254,15 @@ export function makeBreaker(rows: number): FxProgram {
 				plot(s, x, level, fr, fg, fb, 0.25 + heap * 0.55);
 			}
 
-			if (rising) {
-				for (let x = 0; x < s.w; x++) {
-					const rel = ((x - front) / s.w) * dir;
-					const heap = Math.exp(-rel * rel * (14 - (st.steep as number) * 6));
-					if (heap < 0.35) continue;
-					const lip = surf[x];
-					const curl = (heap - 0.35) / 0.65;
-					for (let k = 0; k < curl * 5; k++) paint(s, x + dir * k, lip + k * 0.8, fr, fg, fb, curl * (1 - k / 6) * 0.9);
-					for (let k = 0; k < curl * crestH * 0.5; k++) paint(s, x, lip + k, br, bg, bb, curl * (1 - k / (crestH * 0.5)) * 0.5);
-					if (s.rnd() < curl * 0.14) spray.push([x, lip, (s.rnd() - 0.5) * 1.2 + dir * 0.6, -s.rnd() * 1.6 - 0.4, 0]);
-				}
+			for (let x = 0; x < s.w; x++) {
+				const rel = ((x - front) / s.w) * dir;
+				const heap = Math.exp(-rel * rel * (14 - (st.steep as number) * 6));
+				if (heap < 0.35) continue;
+				const lip = surf[x];
+				const curl = (heap - 0.35) / 0.65;
+				for (let k = 0; k < curl * 5; k++) paint(s, x + dir * k, lip + k * 0.8, fr, fg, fb, curl * (1 - k / 6) * 0.9);
+				for (let k = 0; k < curl * crestH * 0.5; k++) paint(s, x, lip + k, br, bg, bb, curl * (1 - k / (crestH * 0.5)) * 0.5);
+				if (s.rnd() < curl * 0.14) spray.push([x, lip, (s.rnd() - 0.5) * 1.2 + dir * 0.6, -s.rnd() * 1.6 - 0.4, 0]);
 			}
 
 			for (let i = spray.length - 1; i >= 0; i--) {
@@ -286,14 +283,17 @@ export function makeBreaker(rows: number): FxProgram {
 			if (spray.length > 90) spray.splice(0, spray.length - 90);
 
 			for (const d of st.debris as number[][]) {
-				if (runT <= 0) continue;
-				const px = ((d[0] + runT * 1.3 * dir) % 1.3) * s.w;
+				if (flood <= 0.02) continue;
+				const span = 1.4;
+				const px = (((((d[0] + runT * span * dir) % span) + span) % span) - 0.2) * s.w;
+				const carry = flood * edge(px, -2, s.w + 2, s.w * 0.14);
+				if (carry <= 0.02) continue;
 				const col = Math.max(0, Math.min(s.w - 1, px | 0));
 				const py = surf[col] - 1;
 				const [wr, wg, wb] = hsl(28, 40, 22 + d[1] * 14);
 				const len = d[3];
 				const tilt = Math.sin(s.t * 0.08 + d[2]) * 0.8;
-				for (let k = 0; k < len; k++) paint(s, px + k * dir, py + k * tilt * 0.4, wr, wg, wb, 0.9);
+				for (let k = 0; k < len; k++) paint(s, px + k * dir, py + k * tilt * 0.4, wr, wg, wb, 0.9 * carry);
 			}
 
 			for (let x = 0; x < s.w; x++) {

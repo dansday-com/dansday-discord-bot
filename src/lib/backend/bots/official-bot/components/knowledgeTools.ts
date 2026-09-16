@@ -24,7 +24,7 @@ import { computePublicServerSlugForServerId } from '../../../../frontend/public/
 import {
 	COMMUNITY_DISCORD_URL,
 	DISCORD_APP_DIRECTORY_URL,
-	MAINTAINER_DISCORD_HANDLE,
+	MAINTAINER_DISCORD_ID,
 	OFFICIAL_BOT_INVITE_URL,
 	SOURCE_REPO_URL,
 	publicServerUrl,
@@ -100,8 +100,8 @@ const DOCS_SECTIONS = {
 		title: 'Support, and who makes this',
 		points: () => [
 			`Support server, for help, bug reports and feature requests: ${COMMUNITY_DISCORD_URL}`,
-			`${APP_NAME} Discord Bot is built and run by ${MAINTAINER_DISCORD_HANDLE} on Discord, who is the owner and maintainer of the whole system — the bot, the panel and the website.`,
-			`${MAINTAINER_DISCORD_HANDLE} is not the owner of this Discord server and has no role in it. A server owner or staff member here is the person to ask about anything to do with this server's own settings.`,
+			`${APP_NAME} Discord Bot is built and run by ${maintainerHandle()} on Discord, who is the owner and maintainer of the whole system — the bot, the panel and the website.`,
+			`${maintainerHandle()} is not the owner of this Discord server and has no role in it. A server owner or staff member here is the person to ask about anything to do with this server's own settings.`,
 			`Listed on the Discord App Directory: ${DISCORD_APP_DIRECTORY_URL}`,
 			`Add the bot to another server: ${OFFICIAL_BOT_INVITE_URL}`,
 			`Free and open source under the GNU AGPL-3.0: ${SOURCE_REPO_URL}`,
@@ -156,9 +156,37 @@ async function publicPagesSection(botId, guildId) {
 	return { topic: 'public', title: 'The public website', points: [...here, ...directories] };
 }
 
+let cachedHandle = '';
+let handleFetchedAt = 0;
+
+async function ensureMaintainerHandle() {
+	if (!MAINTAINER_DISCORD_ID) return;
+	if (cachedHandle && Date.now() - handleFetchedAt < 86400000) return;
+	try {
+		const { getBotToken } = await import('../../../config.js');
+		const token = getBotToken('official');
+		if (!token) return;
+		const res = await fetch(`https://discord.com/api/v10/users/${MAINTAINER_DISCORD_ID}`, { headers: { Authorization: `Bot ${token}` } });
+		if (!res.ok) return;
+		const body: any = await res.json();
+		if (body?.username) {
+			cachedHandle = String(body.username);
+			handleFetchedAt = Date.now();
+		}
+	} catch {
+		return;
+	}
+}
+
+function maintainerHandle() {
+	return cachedHandle || 'the maintainer';
+}
+
 export async function runDocsTool(botId, guildId, args) {
 	const topic = DOCS_TOPICS.includes(args?.topic) ? args.topic : 'all';
 	const wanted = topic === 'all' ? Object.keys(DOCS_SECTIONS).filter((key) => !DOCS_SECTIONS[key].detailOnly) : topic === 'public' ? [] : [topic];
+
+	await ensureMaintainerHandle();
 
 	const sections = wanted.map((key) => {
 		const section = DOCS_SECTIONS[key];

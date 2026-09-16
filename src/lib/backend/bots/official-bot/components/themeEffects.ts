@@ -1,6 +1,7 @@
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
-import { EFFECT_SPIN_COST, EFFECT_SPIN_GAME, effectMeta, rollEffect } from '../../../../effects.js';
+import { EFFECT_FAMILIES, EFFECT_SPIN_COST, EFFECT_SPIN_GAME, effectMeta, normalizeSeed, randomSeed, rollEffect } from '../../../../effects.js';
+import { MAINTAINER_DISCORD_ID } from '../../../../url.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 
@@ -9,6 +10,33 @@ const ANNOUNCE_DELAY_MS = 7000;
 async function resolveServerMemberId(serverId: any, discordId: any) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordId)).catch(() => null);
 	return member?.id ?? null;
+}
+
+export async function handleThemeEffectSet(payload: any) {
+	const { guild_id, actor_discord_id, effect, seed } = payload || {};
+	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+
+	const family = String(effect || '');
+	if (!(EFFECT_FAMILIES as readonly string[]).includes(family)) return { ok: false, error: 'unknown_effect' };
+
+	const { getServerForCurrentBot } = await import('../../../config.js');
+
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(guild_id);
+	} catch (_) {
+		return { ok: false, error: 'server_not_found' };
+	}
+
+	if (!MAINTAINER_DISCORD_ID || String(actor_discord_id) !== MAINTAINER_DISCORD_ID) return { ok: false, error: 'forbidden' };
+
+	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
+	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+
+	const picked = seed === null || seed === undefined || seed === '' ? randomSeed() : normalizeSeed(seed);
+	await db.setMemberTheme(actorMemberId, { effect: family, effectSeed: picked, effectEnabled: true });
+
+	return { ok: true, result: { effect: family, seed: picked, label: effectMeta(family)?.label ?? family } };
 }
 
 export async function handleThemeEffectSpin(client: any, payload: any) {

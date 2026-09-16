@@ -4,7 +4,7 @@ export const OFFICIAL_BOT_INVITE_URL = 'https://discord.com/oauth2/authorize?cli
 
 export const DISCORD_APP_DIRECTORY_URL = 'https://discord.com/discovery/applications/1446572985849876640';
 
-export const MAINTAINER_DISCORD_HANDLE = '.dansday.';
+export const MAINTAINER_DISCORD_ID = '473430221211697162';
 
 export const SOURCE_REPO_URL = 'https://github.com/dansday-com/dansday-discord-bot';
 

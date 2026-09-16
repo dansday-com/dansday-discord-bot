@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
-	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
+	import { EFFECT_SPIN_COST, SEED_RANGE, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { ConfirmModal, GameModal, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
@@ -41,7 +41,6 @@
 	const ink = $derived(accentInk(accent));
 	const owned = $derived(theme?.ownedEffect ?? 'none');
 	const effectOn = $derived(theme?.effectEnabled !== false);
-	const effectSeed = $derived(theme?.effectSeed ?? 0);
 	const canSpin = $derived((ctx?.liveXp ?? 0) >= EFFECT_SPIN_COST);
 	const dirty = $derived(pendingFile != null || (colorDraft != null && colorDraft !== theme?.accent));
 	const hasTheme = $derived(theme != null || pendingFile != null);
@@ -254,6 +253,35 @@
 		centerCell(2);
 	}
 
+	let ownerEffect = $state<string>(SPINNABLE_EFFECTS[0]);
+	let ownerSeed = $state('');
+	let applyingOwner = $state(false);
+
+	async function applyOwnerEffect() {
+		if (applyingOwner) return;
+		applyingOwner = true;
+		try {
+			const raw = ownerSeed.trim();
+			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}/set`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: data.hash, effect: ownerEffect, seed: raw === '' ? null : Number(raw) })
+			});
+			const body = await response.json().catch(() => null);
+			if (!response.ok || !body?.success) {
+				showToast(body?.error ?? 'Could not set effect.', 'error');
+				return;
+			}
+			ownerSeed = String(body.result.seed);
+			showToast(`${body.result.label} · seed ${body.result.seed}`, 'success');
+			await invalidateAll();
+		} catch {
+			showToast('Could not set effect.', 'error');
+		} finally {
+			applyingOwner = false;
+		}
+	}
+
 	async function spin() {
 		if (spinning || busy || !canSpin) return;
 		spinning = true;
@@ -439,6 +467,46 @@
 			</p>
 		</div>
 	</section>
+
+	{#if data.isPlatformOwner}
+		<section class="border-warning/40 bg-warning/5 rounded-box border border-dashed p-3.5">
+			<div class="mb-2.5 flex items-center gap-2">
+				<i class="fas fa-flask text-warning text-xs"></i>
+				<h3 class="m-0 text-xs font-semibold tracking-wide uppercase">Owner test tool</h3>
+			</div>
+			<div class="flex flex-wrap items-end gap-2">
+				<label class="flex min-w-45 flex-1 flex-col gap-1">
+					<span class="text-base-content/50 text-[10px] font-medium">Effect</span>
+					<select class="select select-sm select-bordered w-full" bind:value={ownerEffect} disabled={applyingOwner}>
+						{#each SPINNABLE_EFFECTS as id (id)}
+							<option value={id}>{effectMeta(id)?.label ?? id}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="flex w-30 flex-col gap-1">
+					<span class="text-base-content/50 text-[10px] font-medium">Seed</span>
+					<input
+						class="input input-sm input-bordered w-full"
+						type="number"
+						min="0"
+						max={SEED_RANGE - 1}
+						placeholder="random"
+						bind:value={ownerSeed}
+						disabled={applyingOwner}
+					/>
+				</label>
+				<button class="btn btn-sm btn-warning" onclick={applyOwnerEffect} disabled={applyingOwner}>
+					{#if applyingOwner}<span class="loading loading-spinner loading-xs"></span>{/if}Apply
+				</button>
+				<button class="btn btn-sm btn-ghost" onclick={() => (ownerSeed = String(randomSeed()))} disabled={applyingOwner} title="Random seed">
+					<i class="fas fa-dice"></i>
+				</button>
+			</div>
+			<p class="text-base-content/45 m-0 mt-2 text-[11px] font-medium">
+				Sets the effect on your own card with no XP cost and no announcement. Leave seed blank for a random variant.
+			</p>
+		</section>
+	{/if}
 
 	<div class="flex flex-wrap items-center gap-2">
 		<button class="btn btn-primary btn-sm" onclick={save} disabled={busy || !dirty}>

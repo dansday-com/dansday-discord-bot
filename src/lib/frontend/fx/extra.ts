@@ -1,4 +1,4 @@
-import { blit, clear, edge, hsl, plot, stamp, type FxProgram, type FxScene } from './engine.js';
+import { blit, clear, edge, hsl, paint, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 import { LETTER_D, LETTER_V, type Mask } from './sprites.js';
 import { funnelAxis } from './structure.js';
 import { mulberry32 } from '$lib/effects.js';
@@ -545,6 +545,43 @@ export function makeEcg(rows: number): FxProgram {
 				const gy2 = mid - trail[x] * amp * 0.72;
 				plot(s, x, gy2 + 3, r, g, b, 0.12);
 			}
+			blit(s);
+		}
+	};
+}
+
+export function shadows(s: FxScene, count: number, drift: number) {
+	const r0 = mulberry32(s.v.seed + 4242);
+	const [dr, dg, db] = hsl(s.v.hue2, s.v.sat * 0.3, 5);
+	for (let c = 0; c < count; c++) {
+		const baseX = (c / count) * s.w + r0() * (s.w / count);
+		const baseY = r0() * s.h;
+		const span = s.w * (0.14 + r0() * 0.18);
+		const shift = ((s.t * 0.05 * drift * s.v.dir + c * 31) % (s.w + span * 2)) - span;
+		for (let lump = 0; lump < 5; lump++) {
+			const lx = baseX + shift + (lump - 2) * span * 0.34;
+			const ly = baseY + (lump - 2) * span * 0.11;
+			const rad = span * (0.4 - Math.abs(lump - 2) * 0.07);
+			for (let y = -rad; y <= rad; y++) {
+				for (let x = -rad; x <= rad; x++) {
+					const d = (x * x * 0.42 + y * y * 1.1) / (rad * rad);
+					if (d > 1) continue;
+					paint(s, lx + x, ly + y, dr, dg, db, (1 - d) * 0.32);
+				}
+			}
+		}
+	}
+}
+
+export function withOvercast(inner: FxProgram, count: number, drift: number): FxProgram {
+	return {
+		opaque: inner.opaque,
+		rows: inner.rows,
+		stride: inner.stride,
+		init: inner.init,
+		frame(s) {
+			inner.frame(s);
+			shadows(s, count, drift);
 			blit(s);
 		}
 	};

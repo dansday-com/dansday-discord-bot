@@ -1,6 +1,6 @@
 import { mulberry32 } from '$lib/effects.js';
 import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
-import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withSky } from './extra.js';
+import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withOvercast, withSky } from './extra.js';
 import {
 	boughSource,
 	canopySource,
@@ -526,10 +526,10 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	anthill: withGround(makeAnthill(56), 3203, 0.1, 0.05, 14),
 	slime: withGlow(makeSlime(56), 0.66, 0.58, 60, 3307),
 	culture: withGlow(makeCulture(56), 0.5, 0.64, 66, 3413),
-	graze: withSky(makeGraze(56), 3, 70, 0.55),
+	graze: withOvercast(makeGraze(56), 3, 0.55),
 	decay: withGround(makeDecay(56), 3511, 0.11, 0.05, 12),
 	bloom: withGlow(makeBloom(56), 0.56, 0.62, 72, 3607),
-	spore: withSky(makeSpore(56), 4, 68, 0.9)
+	spore: withOvercast(makeSpore(56), 4, 0.9)
 };
 
 export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));

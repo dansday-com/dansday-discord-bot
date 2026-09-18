@@ -1111,8 +1111,11 @@ html.lenis body {
 }
 
 [data-fx-host='eclipse'] {
-	filter: brightness(calc(0.94 - var(--fx-cover, 0.4) * 0.68)) saturate(calc(1 - var(--fx-cover, 0.4) * 0.5));
-	box-shadow: inset 0 0 calc(var(--fx-cover, 0.4) * 120px) -10px rgba(2, 2, 8, 0.8);
+	filter: brightness(calc(1.04 - var(--fx-cover, 0.2) * 0.8)) saturate(calc(1.1 - var(--fx-cover, 0.2) * 0.72)) contrast(calc(1 + var(--fx-cover, 0.2) * 0.3));
+	box-shadow:
+		inset 0 0 calc(var(--fx-cover, 0.2) * 150px) calc(var(--fx-cover, 0.2) * -6px) rgba(2, 2, 10, 0.92),
+		0 0 calc(var(--fx-cover, 0.2) * 46px) calc(var(--fx-cover, 0.2) * 3px) rgba(255, 216, 138, calc(var(--fx-cover, 0.2) * 0.55));
+	transition: filter 90ms linear;
 }
 
 [data-fx-host='neon'] {

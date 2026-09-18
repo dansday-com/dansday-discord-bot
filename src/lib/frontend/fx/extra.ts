@@ -445,56 +445,233 @@ export function clouds(s: FxScene, count: number, light: number, drift: number) 
 	}
 }
 
+function lens(d: number, R: number, r: number) {
+	if (d >= R + r) return 0;
+	if (d <= Math.abs(R - r)) return Math.min(R, r) ** 2 / (R * R);
+	const a = Math.max(-1, Math.min(1, (d * d + r * r - R * R) / (2 * d * r)));
+	const b = Math.max(-1, Math.min(1, (d * d + R * R - r * r) / (2 * d * R)));
+	const tri = Math.sqrt(Math.max(0, (-d + r + R) * (d + r - R) * (d - r + R) * (d + r + R)));
+	return (r * r * Math.acos(a) + R * R * Math.acos(b) - 0.5 * tri) / (Math.PI * R * R);
+}
+
 export function makeEclipse(rows: number): FxProgram {
 	return {
+		opaque: true,
 		rows,
 		stride: 0.7,
 		init(s) {
+			const r = mulberry32(s.v.seed + s.v.salt + 5501);
+			const limb = new Float32Array(24);
+			for (let i = 0; i < 24; i++) limb[i] = 1 + (r() - 0.5) * 0.05;
+			const prom: number[][] = [];
+			for (let i = 0; i < 5; i++) prom.push([r() * 6.28, 0.08 + r() * 0.2, 0.22 + r() * 0.44]);
+			const streak = new Float32Array(12);
+			for (let i = 0; i < 12; i++) streak[i] = 0.3 + r() * 0.7;
+			(s as any).id = {
+				sunX: 0.36 + r() * 0.28,
+				sunY: 0.32 + r() * 0.16,
+				ratio: 0.93 + r() * 0.26,
+				miss: (r() - 0.5) * 0.3,
+				slope: (r() - 0.5) * 0.26,
+				period: 380 + ((r() * 210) | 0),
+				gran: r() * 6.28,
+				band: r() * 6.28,
+				limb,
+				prom,
+				streak
+			};
 			for (let i = 0; i < s.n; i++) {
 				const p = s.parts;
-				p[i * P] = s.rnd() * s.w;
-				p[i * P + 1] = s.rnd() * s.h;
-				p[i * P + 2] = s.rnd() * Math.PI * 2;
+				p[i * P] = s.rnd();
+				p[i * P + 1] = s.rnd();
+				p[i * P + 2] = s.rnd() * 6.28;
 				p[i * P + 3] = 0.3 + s.rnd() * 0.7;
 			}
 		},
 		frame(s) {
 			clear(s);
-			const [sr, sg, sb] = hsl(s.v.hue2, s.v.sat * 0.4, 88);
-			for (let i = 0; i < s.n; i++) {
-				const p = s.parts;
-				p[i * P + 2] += 0.02 + p[i * P + 3] * 0.02 * s.v.speed;
-				const tw = 0.35 + 0.65 * Math.sin(p[i * P + 2]);
-				plot(s, p[i * P], p[i * P + 1], sr, sg, sb, tw * p[i * P + 3] * 0.8);
-			}
+			const id = (s as any).id as {
+				sunX: number;
+				sunY: number;
+				ratio: number;
+				miss: number;
+				slope: number;
+				period: number;
+				gran: number;
+				band: number;
+				limb: Float32Array;
+				prom: number[][];
+				streak: Float32Array;
+			};
+			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
+			const u = (cyc - 0.5) * 2;
+			const march = u * 0.5;
+			const R = Math.min(s.w, s.h) * 0.29;
+			const M = R * id.ratio;
+			const sx = s.w * id.sunX;
+			const sy = s.h * id.sunY;
+			const span = s.w * 1.15;
+			const mx = sx + march * span * s.v.dir;
+			const spin = s.t * 0.006 * s.v.speed;
+			const my = sy + id.miss * R + march * span * id.slope;
+			const dist = Math.hypot(mx - sx, my - sy);
+			const covMax = Math.min(1, id.ratio * id.ratio);
+			const prog = lens(dist, R, M) / covMax;
+			const cov = prog * covMax;
+			const amb = Math.pow(1 - cov, 0.42);
+			const deep = Math.max(0, (prog - 0.9) / 0.1);
+			const total = M >= R ? deep : 0;
+			const annular = M < R ? deep : 0;
+			const sliver = Math.max(0, 1 - Math.abs(1 - prog - 0.014) / 0.014);
+			s.out = Math.min(1, Math.pow(Math.max(0, prog), 3.2) * 0.6 + deep * 0.4);
 
-			const cx = s.w * (0.5 + s.v.tilt * 0.18);
-			const cy = s.h * (0.42 + s.v.drift * 0.06);
-			const rad = s.h * 0.28;
-			const cover = 0.5 + 0.5 * Math.sin(s.t * 0.006 * s.v.speed * s.v.dir);
-			s.out = cover;
-			const [cr, cg, cb] = hsl(s.v.hue, s.v.sat, 76);
-
-			for (let ring = 0; ring < 30; ring++) {
-				const rr = rad * (1.04 + ring * 0.075);
-				const fall = 1 - ring / 30;
-				for (let k = 0; k < 360; k += 3) {
-					const th = (k * Math.PI) / 180;
-					const streamer = 0.55 + 0.45 * Math.sin(th * 7 + s.t * 0.03 + ring * 0.2);
-					plot(s, cx + Math.cos(th) * rr, cy + Math.sin(th) * rr, cr, cg, cb, fall * fall * streamer * 0.34 * cover);
+			const twi = Math.pow(deep, 1.3);
+			const [tr, tg, tb] = hsl(s.v.hue2, s.v.sat * 0.55, 3 + amb * 24);
+			const [hr2, hg2, hb2] = hsl(s.v.hue2, s.v.sat * 0.7, 5 + amb * 16);
+			const [wr, wg, wb] = hsl(s.v.hue, s.v.sat, 58);
+			for (let y = 0; y < s.h; y++) {
+				const f = y / s.h;
+				const horizon = Math.pow(f, 3.4) * twi;
+				for (let x = 0; x < s.w; x++) {
+					const gd = Math.hypot(x - sx, y - sy);
+					const scint = 1 + 0.5 * Math.sin(gd * 0.55 - s.t * 0.22 * s.v.speed) * Math.sin(Math.atan2(y - sy, x - sx) * 6 + s.t * 0.13);
+					const glare = Math.exp(-gd / (R * 2.2)) * (1 - cov) * 0.9 * scint;
+					const rr = tr + (hr2 - tr) * f + horizon * wr * 1.5 + glare * 210;
+					const gg = tg + (hg2 - tg) * f + horizon * wg * 1.5 + glare * 172;
+					const bb = tb + (hb2 - tb) * f + horizon * wb * 1.5 + glare * 96;
+					paint(s, x, y, rr, gg, bb, 0.2 + f * f * 0.42 + twi * 0.24);
 				}
 			}
 
-			const [rr2, rg2, rb2] = hsl(s.v.hue, s.v.sat * 0.5, 98);
-			for (let k = 0; k < 360; k += 1) {
-				const th = (k * Math.PI) / 180;
-				const bead = 0.25 + 0.75 * Math.max(0, Math.sin(th * 11 + s.t * 0.02));
-				plot(s, cx + Math.cos(th) * rad, cy + Math.sin(th) * rad, rr2, rg2, rb2, bead * cover * 0.9);
+			const starA = Math.max(0, 1 - amb * 1.85);
+			if (starA > 0.01) {
+				const [sr, sg, sb] = hsl(s.v.hue2, s.v.sat * 0.3, 92);
+				for (let i = 0; i < s.n; i++) {
+					const p = s.parts;
+					p[i * P + 2] += 0.02 + p[i * P + 3] * 0.02 * s.v.speed;
+					const tw = 0.35 + 0.65 * Math.sin(p[i * P + 2]);
+					plot(s, p[i * P] * s.w, p[i * P + 1] * s.h, sr, sg, sb, tw * p[i * P + 3] * starA * 0.9);
+				}
 			}
-			const dth = s.t * 0.01 * s.v.dir;
-			for (let g = 0; g < 8; g++)
-				for (let d = 0; d < s.h * 0.4; d++)
-					plot(s, cx + Math.cos(dth) * (rad + d), cy + Math.sin(dth) * (rad + d), rr2, rg2, rb2, (1 - d / (s.h * 0.4)) * cover * 0.5);
+
+			if (total > 0.02) {
+				const [cr2, cg2, cb2] = hsl(s.v.hue, s.v.sat * 0.35, 86);
+				for (let ring = 0; ring < 24; ring++) {
+					const rr = M * (1.02 + ring * 0.09);
+					const fall = 1 - ring / 24;
+					for (let k = 0; k < 360; k += 3) {
+						const th = (k * Math.PI) / 180;
+						const arm = id.streak[(k / 30) | 0];
+						const flow = 0.4 + 0.6 * Math.sin(th * 3 + s.t * 0.024 * s.v.speed + ring * 0.24);
+						plot(s, mx + Math.cos(th) * rr, my + Math.sin(th) * rr, cr2, cg2, cb2, fall * fall * arm * flow * 0.5 * total);
+					}
+				}
+			}
+
+			const [er, eg, eb] = hsl(s.v.hue - 10, s.v.sat, 62);
+			const [fr, fg, fb] = hsl(s.v.hue, s.v.sat * 0.45, 97);
+			const y0 = Math.floor(sy - R - 2);
+			const y1 = Math.ceil(sy + R + 2);
+			const x0 = Math.floor(sx - R - 2);
+			const x1 = Math.ceil(sx + R + 2);
+			for (let y = y0; y <= y1; y++) {
+				for (let x = x0; x <= x1; x++) {
+					const d = Math.hypot(x - sx, y - sy);
+					if (d > R + 1.6) continue;
+					if (d > R) {
+						const th = Math.atan2(y - sy, x - sx);
+						const flare = 0.7 + 0.3 * Math.sin(th * 9 + s.t * 0.11 * s.v.speed) * Math.sin(th * 5 - s.t * 0.07);
+						plot(s, x, y, fr, fg, fb, ((R + 1.6 - d) / 1.6) * flare * 0.6 * (1 - cov * 0.7));
+						continue;
+					}
+					const mu = Math.sqrt(Math.max(0, 1 - (d / R) ** 2));
+					const lon = ((x - sx) / R / (mu * 0.6 + 0.4)) * 2.2 + spin;
+					const lat = ((y - sy) / R) * 2.6 + id.gran;
+					const cell =
+						Math.sin(lon * 3.1 + Math.sin(lat * 2.3 + s.t * 0.18) * 1.4) * Math.sin(lat * 3.7 - Math.cos(lon * 1.9 - s.t * 0.15) * 1.6) +
+						Math.sin(lon * 7.3 - s.t * 0.31 * s.v.speed) * Math.sin(lat * 6.9 + s.t * 0.26) * 0.7;
+					const gran = 0.62 + 0.38 * (cell * 0.5 + 0.5) + Math.sin(lon * 13 + lat * 11 - s.t * 0.42 * s.v.speed) * 0.12;
+					const spot = Math.max(0, 1 - Math.hypot(lon - Math.sin(id.band) * 3 - 1.2, lat - id.miss * 4) / 0.55);
+					const k = Math.pow(mu, 0.42) * gran * (1 - spot * 0.72);
+					paint(s, x, y, er + (fr - er) * k, eg + (fg - eg) * k, eb + (fb - eb) * k, 0.97);
+				}
+			}
+
+			if (deep > 0.15) {
+				const [pr, pg, pb] = hsl(354, 84, 62);
+				for (const q of id.prom) {
+					const base = q[0] + s.t * 0.004 * s.v.dir;
+					const lift = q[1] * R * (0.7 + 0.3 * Math.sin(s.t * 0.05 * s.v.speed + q[0] * 3));
+					for (let a = -q[2]; a <= q[2]; a += 0.05) {
+						const arch = Math.cos((a / q[2]) * 1.5708);
+						for (let h = 0; h < lift * arch; h += 0.6) {
+							const rr = M + h;
+							plot(s, mx + Math.cos(base + a) * rr, my + Math.sin(base + a) * rr, pr, pg, pb, (1 - h / (lift + 0.001)) * 0.6 * deep);
+						}
+					}
+				}
+			}
+
+			const my0 = Math.floor(my - M - 2);
+			const my1 = Math.ceil(my + M + 2);
+			const mx0 = Math.floor(mx - M - 2);
+			const mx1 = Math.ceil(mx + M + 2);
+			for (let y = my0; y <= my1; y++) {
+				for (let x = mx0; x <= mx1; x++) {
+					const dx = x - mx;
+					const dy = y - my;
+					const d = Math.hypot(dx, dy);
+					if (d > M + 1) continue;
+					const th = Math.atan2(dy, dx);
+					const lr = M * id.limb[(((th + Math.PI) / 6.283) * 24) | 0];
+					if (d > lr) continue;
+					paint(s, x, y, 6, 5, 12, d > lr - 1 ? 0.6 : 0.95);
+				}
+			}
+
+			if (sliver > 0.02 && total > 0) {
+				const ang = Math.atan2(sy - my, sx - mx);
+				const dx2 = sx + Math.cos(ang) * R * 0.96;
+				const dy2 = sy + Math.sin(ang) * R * 0.96;
+				const pow = sliver * sliver;
+				for (let rr = 0; rr < R * 1.4; rr += 0.5) {
+					const fall = 1 - rr / (R * 1.4);
+					for (let k = 0; k < 360; k += 6) {
+						const th = (k * Math.PI) / 180;
+						plot(s, dx2 + Math.cos(th) * rr, dy2 + Math.sin(th) * rr, 255, 250, 232, fall * fall * pow * 0.18);
+					}
+				}
+				for (let arm = 0; arm < 4; arm++) {
+					const th = (arm * Math.PI) / 2 + 0.4;
+					for (let rr = 0; rr < R * 2.6; rr += 0.5) plot(s, dx2 + Math.cos(th) * rr, dy2 + Math.sin(th) * rr, 255, 252, 240, (1 - rr / (R * 2.6)) * pow * 0.55);
+				}
+				for (let k = -9; k <= 9; k++) {
+					const th = ang + k * 0.06;
+					const idx = (((th + Math.PI) / 6.283) * 24) | 0;
+					const gap = Math.max(0, id.limb[((idx % 24) + 24) % 24] - 1) * 40;
+					plot(s, sx + Math.cos(th) * R * 0.97, sy + Math.sin(th) * R * 0.97, 255, 250, 228, Math.min(1, gap) * sliver * 0.9);
+				}
+			}
+
+			if (annular > 0.4) {
+				const glowA = (annular - 0.4) / 0.6;
+				for (let k = 0; k < 360; k += 2) {
+					const th = (k * Math.PI) / 180;
+					for (let o = -2; o <= 3; o++)
+						plot(s, sx + Math.cos(th) * (R + o), sy + Math.sin(th) * (R + o), fr, fg, fb, Math.max(0, 1 - Math.abs(o) / 3) * glowA * 0.5);
+				}
+			}
+
+			if (deep > 0.5) {
+				const bA = (deep - 0.5) * 2 * 0.2;
+				const ca = Math.cos(id.band);
+				const sa = Math.sin(id.band);
+				for (let y = 0; y < s.h; y++)
+					for (let x = 0; x < s.w; x++) {
+						const w2 = Math.sin((x * ca + y * sa) * 0.45 - s.t * 0.5 * s.v.speed * s.v.dir);
+						if (w2 > 0.4) plot(s, x, y, wr, wg, wb, (w2 - 0.4) * bA);
+					}
+			}
 			blit(s);
 		}
 	};

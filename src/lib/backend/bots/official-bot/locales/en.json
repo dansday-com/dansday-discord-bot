@@ -481,6 +481,7 @@
 		"menuButton": "🔮 Discord Quest",
 		"listTitle": "🔮 Discord Quests",
 		"listEmpty": "No active Discord quest right now.",
+		"listAllClaimed": "✅ You claimed every active Discord quest.",
 		"listClaimedTag": "claimed",
 		"claimAllButton": "Claim all",
 		"alreadyClaimed": "Already Claimed",

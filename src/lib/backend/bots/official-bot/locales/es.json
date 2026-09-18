@@ -432,6 +432,7 @@
 		"menuButton": "🔮 Misiones de Discord",
 		"listTitle": "🔮 Misiones de Discord",
 		"listEmpty": "Ahora mismo no hay ninguna misión de Discord activa.",
+		"listAllClaimed": "✅ Has reclamado todas las misiones de Discord activas.",
 		"listClaimedTag": "reclamada",
 		"claimAllButton": "Reclamar todo",
 		"alreadyClaimed": "Ya reclamada",

@@ -36,8 +36,6 @@ export const QUEST_CLAIM_ALL_MODAL_ID = 'quest_claim_all_submit';
 const TOKEN_FIELD_ID = 'quest_enroll_token';
 const LEGACY_TOKEN_FIELD_ID = '\u006f\u0072\u0062_enroll_token';
 
-const QUEST_LIST_LIMIT = 20;
-
 export function isQuestEnrollButtonId(customId: string): boolean {
 	return customId.startsWith(QUEST_ENROLL_BUTTON_PREFIX) || customId.startsWith(LEGACY_ENROLL_BUTTON_PREFIX);
 }
@@ -126,7 +124,7 @@ function sortQuestsByExpiry(quests: DiscordQuestSummary[]): DiscordQuestSummary[
 async function listActiveQuestsForMember(serverId: number, memberId: number): Promise<{ quest: DiscordQuestSummary; claimed: boolean }[]> {
 	const botConfig = getBotConfig();
 	const quests = await db.listActiveBotDiscordQuests(botConfig!.id).catch(() => [] as DiscordQuestSummary[]);
-	const sorted = sortQuestsByExpiry(quests).slice(0, QUEST_LIST_LIMIT);
+	const sorted = sortQuestsByExpiry(quests);
 	const rows: { quest: DiscordQuestSummary; claimed: boolean }[] = [];
 	for (const quest of sorted) {
 		const claimed = memberId ? await db.hasServerMemberClaimedDiscordQuest(serverId, memberId, quest.id).catch(() => false) : false;
@@ -150,17 +148,17 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 	const rows = await listActiveQuestsForMember(server.id, dbMember?.id ?? 0);
 
 	const embedConfig = await getEmbedConfig(guildId);
-	const claimedTag = await translate('questEnroll.listClaimedTag', guildId, interaction.user.id);
-	const lines = rows.map(({ quest, claimed }, index) => {
+	const unclaimed = rows.filter((r) => !r.claimed);
+	const lines = unclaimed.map(({ quest }, index) => {
 		const expires = questExpiresLine(quest);
 		const parts = [`[${quest.questName}](${quest.questUrl})`];
 		if (quest.reward?.trim()) parts.push(quest.reward.trim().replace(/\s+/g, ' ').slice(0, 120));
 		if (expires) parts.push(expires);
-		if (claimed) parts.push(claimedTag);
 		return `**${index + 1}.** ${parts.join(' · ')}`;
 	});
 
-	const description = lines.length > 0 ? lines.join('\n').slice(0, 4000) : await translate('questEnroll.listEmpty', guildId, interaction.user.id);
+	const emptyKey = rows.length > 0 ? 'questEnroll.listAllClaimed' : 'questEnroll.listEmpty';
+	const description = lines.length > 0 ? lines.join('\n').slice(0, 4000) : await translate(emptyKey, guildId, interaction.user.id);
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
@@ -170,8 +168,7 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 		.setTimestamp();
 
 	const buttons: ButtonBuilder[] = [];
-	const claimableCount = rows.filter((r) => !r.claimed).length;
-	if (settings.autoQuest && claimableCount > 0) {
+	if (settings.autoQuest && unclaimed.length > 0) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(QUEST_CLAIM_ALL_BUTTON_ID)

@@ -432,6 +432,7 @@
 		"menuButton": "🔮 Discord Quest",
 		"listTitle": "🔮 Discord Quests",
 		"listEmpty": "Derzeit keine aktive Discord-Quest.",
+		"listAllClaimed": "✅ Du hast jede aktive Discord-Quest eingelöst.",
 		"listClaimedTag": "eingelöst",
 		"claimAllButton": "Alle einlösen",
 		"alreadyClaimed": "Bereits eingelöst",

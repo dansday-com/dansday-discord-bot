@@ -15,9 +15,39 @@ Leveling, moderation, embed builder, Discord Quests, creator tools, public stati
 </tr>
 </table>
 
+### Public directories
+
+No login needed. The site indexes every public server, quest, item, task and wiki in one place.
+
+<table>
+<tr>
+<td width="33%"><img src=".github/screenshots/servers.png" alt="Server directory ranking every public server by XP, members and activity"></td>
+<td width="33%"><img src=".github/screenshots/quests.png" alt="Discord Quests directory with game art, rewards and expiry dates"></td>
+<td width="33%"><img src=".github/screenshots/roblox.png" alt="Roblox catalog directory with prices, stock and favourites"></td>
+</tr>
+<tr>
+<td><strong>Servers</strong> — every public server, ranked by XP.</td>
+<td><strong>Quests</strong> — live Discord Quests with rewards and expiry.</td>
+<td><strong>Roblox catalog</strong> — 10.7K items, priced and ordered by favourites.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="33%"><img src=".github/screenshots/shop.png" alt="Item catalog listing every shop item with its effect and rarity"></td>
+<td width="33%"><img src=".github/screenshots/tasks.png" alt="Task catalog listing every daily and weekly task with its reward"></td>
+<td width="33%"><img src=".github/screenshots/wikis.png" alt="Wiki knowledge base explaining each module"></td>
+</tr>
+<tr>
+<td><strong>Items</strong> — what every shop item does, before you buy it.</td>
+<td><strong>Tasks</strong> — every daily and weekly task and its reward.</td>
+<td><strong>Wikis</strong> — how each module works, in plain language.</td>
+</tr>
+</table>
+
 ### Public server pages
 
-No login needed. Every server gets its own live pages at `/server/<slug>`.
+Every server gets its own live pages at `/server/<slug>`.
 
 <table>
 <tr>
@@ -59,6 +89,28 @@ Each member signs in to their own account on those same pages.
 <td><strong>Assets</strong> — live CoinGecko prices, no real money.</td>
 <td><strong>Minigames</strong> — wager XP above your current level.</td>
 <td><strong>History</strong> — every XP event, filterable by source.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="50%"><img src=".github/screenshots/account-themes.png" alt="Themes tab with animated card effects unlocked by spinning"></td>
+<td width="50%"><img src=".github/screenshots/account-guide.png" alt="Guide tab walking through XP, tasks, items and the market"></td>
+</tr>
+<tr>
+<td><strong>Themes</strong> — animated card effects, won from a spin.</td>
+<td><strong>Guide</strong> — how to earn, spend and compete, one step at a time.</td>
+</tr>
+</table>
+
+### Documentation
+
+<table>
+<tr>
+<td width="100%"><img src=".github/screenshots/docs.png" alt="Setup documentation for adding and configuring the bot"></td>
+</tr>
+<tr>
+<td><strong>Docs</strong> — add the bot, connect a server, configure each module.</td>
 </tr>
 </table>
 

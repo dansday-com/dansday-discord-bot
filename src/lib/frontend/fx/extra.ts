@@ -467,18 +467,30 @@ export function makeEclipse(rows: number): FxProgram {
 			for (let i = 0; i < 5; i++) prom.push([r() * 6.28, 0.08 + r() * 0.2, 0.22 + r() * 0.44]);
 			const streak = new Float32Array(12);
 			for (let i = 0; i < 12; i++) streak[i] = 0.3 + r() * 0.7;
+			const TINTS = [
+				[38, 12, 94],
+				[214, 44, 88],
+				[6, 62, 62],
+				[338, 46, 86],
+				[28, 58, 80]
+			];
+			const tint = TINTS[(r() * TINTS.length) | 0];
+			const maria: number[][] = [];
+			for (let k = 0; k < 5; k++) maria.push([(r() - 0.5) * 1.3, (r() - 0.5) * 1.3, 0.14 + r() * 0.2]);
 			(s as any).id = {
 				sunX: 0.36 + r() * 0.28,
 				sunY: 0.32 + r() * 0.16,
 				ratio: 0.93 + r() * 0.26,
 				miss: (r() - 0.5) * 0.3,
 				slope: (r() - 0.5) * 0.26,
-				period: 380 + ((r() * 210) | 0),
+				period: 1500 + ((r() * 600) | 0),
 				gran: r() * 6.28,
 				band: r() * 6.28,
 				limb,
 				prom,
-				streak
+				streak,
+				tint,
+				maria
 			};
 			for (let i = 0; i < s.n; i++) {
 				const p = s.parts;
@@ -502,10 +514,12 @@ export function makeEclipse(rows: number): FxProgram {
 				limb: Float32Array;
 				prom: number[][];
 				streak: Float32Array;
+				tint: number[];
+				maria: number[][];
 			};
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
 			const u = (cyc - 0.5) * 2;
-			const march = u * 0.5;
+			const march = Math.sign(u) * Math.pow(Math.abs(u), 1.7) * 0.5;
 			const R = Math.min(s.w, s.h) * 0.29;
 			const M = R * id.ratio;
 			const sx = s.w * id.sunX;
@@ -588,8 +602,8 @@ export function makeEclipse(rows: number): FxProgram {
 					const lon = ((x - sx) / R / (mu * 0.6 + 0.4)) * 2.2 + spin;
 					const lat = ((y - sy) / R) * 2.6 + id.gran;
 					const cell =
-						Math.sin(lon * 3.1 + Math.sin(lat * 2.3 + s.t * 0.18) * 1.4) * Math.sin(lat * 3.7 - Math.cos(lon * 1.9 - s.t * 0.15) * 1.6) +
-						Math.sin(lon * 7.3 - s.t * 0.31 * s.v.speed) * Math.sin(lat * 6.9 + s.t * 0.26) * 0.7;
+						Math.sin(lon * 3.1 + Math.sin(lat * 2.3 + s.t * 0.032) * 1.4) * Math.sin(lat * 3.7 - Math.cos(lon * 1.9 - s.t * 0.026) * 1.6) +
+						Math.sin(lon * 7.3 - s.t * 0.055 * s.v.speed) * Math.sin(lat * 6.9 + s.t * 0.046) * 0.7;
 					const gran = 0.62 + 0.38 * (cell * 0.5 + 0.5) + Math.sin(lon * 13 + lat * 11 - s.t * 0.42 * s.v.speed) * 0.12;
 					const spot = Math.max(0, 1 - Math.hypot(lon - Math.sin(id.band) * 3 - 1.2, lat - id.miss * 4) / 0.55);
 					const k = Math.pow(mu, 0.42) * gran * (1 - spot * 0.72);
@@ -616,6 +630,9 @@ export function makeEclipse(rows: number): FxProgram {
 			const my1 = Math.ceil(my + M + 2);
 			const mx0 = Math.floor(mx - M - 2);
 			const mx1 = Math.ceil(mx + M + 2);
+			const [mr, mg, mb] = hsl(id.tint[0], id.tint[1], id.tint[2]);
+			const sun = Math.atan2(sy - my, sx - mx);
+			const face = 1 - Math.min(1, prog * 1.25);
 			for (let y = my0; y <= my1; y++) {
 				for (let x = mx0; x <= mx1; x++) {
 					const dx = x - mx;
@@ -625,7 +642,14 @@ export function makeEclipse(rows: number): FxProgram {
 					const th = Math.atan2(dy, dx);
 					const lr = M * id.limb[(((th + Math.PI) / 6.283) * 24) | 0];
 					if (d > lr) continue;
-					paint(s, x, y, 6, 5, 12, d > lr - 1 ? 0.6 : 0.95);
+					const toSun = Math.cos(th - sun) * (d / lr);
+					const crescent = Math.max(0, toSun - (1 - face * 1.6)) * face;
+					const shade = 0.06 + Math.pow(crescent, 0.7) * 0.94;
+					let dim = 1;
+					for (const [mxp, myp, mrad] of id.maria) if (Math.hypot(dx / M - mxp, dy / M - myp) < mrad) dim *= 0.74;
+					const glow = 0.05 + deep * 0.16;
+					const k = shade * dim + glow;
+					paint(s, x, y, 5 + mr * k, 4 + mg * k, 11 + mb * k, d > lr - 1 ? 0.7 : 0.96);
 				}
 			}
 

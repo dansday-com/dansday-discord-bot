@@ -74,13 +74,9 @@ export function makeCircuit(rows: number): FxProgram {
 			const flick = cyc > 0.62 && cyc < 0.72 ? (Math.sin(s.t * 1.7) > 0.2 ? 0.45 : 1) : 1;
 			const live = (x: number) => (blown ? 0.06 : Math.min(1, Math.max(0, (sweep * 1.18 - x / s.w) * 6)) * flick);
 
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const weave = (hash2(x >> 1, y >> 1, id.grain) * 0.6 + hash2(x, y, id.grain + 3) * 0.4) * 0.45;
-					const vig = 1 - Math.hypot(x / s.w - 0.5, y / s.h - 0.5) * 0.5;
-					const k = (0.7 + weave) * vig;
-					paint(s, x, y, sub * k, subg * k, subb * k, 1);
-				}
+			void sub;
+			void subg;
+			void subb;
 
 			for (const [vx, vy] of id.vias) {
 				const x0 = vx * s.w;
@@ -311,20 +307,19 @@ export function makePrism(rows: number): FxProgram {
 			const sunUp = cyc < 0.46 ? Math.min(1, cyc / 0.12) : 1;
 			const beam = Math.max(0.05, sunUp * (1 - shade * 0.94));
 
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const g = hash2(x >> 1, y >> 1, id.grain) * 0.3 + hash2(x, y, id.grain + 2) * 0.15;
-					const vig = 1 - Math.hypot(x / s.w - 0.5, y / s.h - 0.5) * 0.55;
-					const k = (0.75 + g) * vig;
-					paint(s, x, y, wr * k, wg * k, wb * k, 1);
-				}
+			void wr;
+			void wg;
+			void wb;
+			const shw = s.w * 0.3;
+			const shc = s.w * id.px;
 			for (let y = shelfY; y < s.h; y++) {
 				const f = (y - shelfY) / Math.max(1, s.h - shelfY);
-				for (let x = 0; x < s.w; x++) {
+				for (let x = Math.max(0, Math.round(shc - shw)); x <= Math.min(s.w - 1, shc + shw); x++) {
+					const ex = Math.min(1, (shw - Math.abs(x - shc)) / (shw * 0.4));
 					const ring = Math.sin(x * 0.09 + Math.sin(x * 0.021) * 2.6 + y * 0.9) * 0.5 + 0.5;
 					const grain2 = ring * 0.22 + hash2(x >> 1, y, id.grain + 6) * 0.12;
 					const k = (1.05 - f * 0.5 + grain2) * (1 + Math.max(0, 1 - Math.abs(y - shelfY) / 1.6) * 0.55);
-					paint(s, x, y, tr2 * k, tg2 * k * 0.94, tb2 * k * 0.86, 1);
+					paint(s, x, y, tr2 * k, tg2 * k * 0.94, tb2 * k * 0.86, ex);
 				}
 			}
 

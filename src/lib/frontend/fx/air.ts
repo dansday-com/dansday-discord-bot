@@ -65,11 +65,9 @@ export function makeFrost(rows: number): FxProgram {
 			const [skr, skg, skb] = hsl(s.v.hue2, s.v.sat * 0.5, 22);
 			const [snr, sng, snb] = hsl(s.v.hue, s.v.sat * 0.3, 58);
 			const [trr, trg, trb] = hsl(s.v.hue2, s.v.sat * 0.4, 14);
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const f = 1 - y / s.h;
-					paint(s, x, y, skr * (0.5 + f * 1.1), skg * (0.5 + f * 1.1), skb * (0.7 + f * 1.3), 1);
-				}
+			void skr;
+			void skg;
+			void skb;
 			const mx = id.moon[0] * s.w;
 			const my = id.moon[1] * s.h;
 			const mrd = id.moon[2] * s.h * 0.08;
@@ -266,14 +264,6 @@ export function makeFog(rows: number): FxProgram {
 			const [wr2, wg2, wb2] = hsl(s.v.hue2, 24 + s.v.sat * 0.3, 18 + day * 14);
 			const [fr, fg, fb] = hsl(s.v.hue, 8 + s.v.sat * 0.22, 74 + day * 14);
 
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const f = 1 - y / s.h;
-					const d = Math.hypot((x - sunX) / (s.w * 0.6), (y - sunY) / (s.h * 0.8));
-					const warm = Math.max(0, 1 - d) ** 2 * (0.35 + day * 0.9);
-					paint(s, x, y, skr * (0.55 + f * 0.9) + warm * 150, skg * (0.55 + f * 0.9) + warm * 116, skb * (0.6 + f * 1) + warm * 70, 1);
-				}
-
 			const srd = s.h * 0.075;
 			for (let dy = -srd * 5; dy <= srd * 5; dy++)
 				for (let dx = -srd * 5; dx <= srd * 5; dx++) {
@@ -283,61 +273,12 @@ export function makeFog(rows: number): FxProgram {
 				}
 
 			const waterY = id.water * s.h;
-			for (let L = 2; L >= 0; L--) {
-				const row = id.ridges[L];
-				const amp = 0.1 + L * 0.1;
-				const base = waterY - s.h * (0.06 + L * 0.1);
-				const veil = 1 - Math.min(0.7, (1 - burn) * (0.28 + L * 0.2));
-				const tone = (0.2 + L * 0.22) * (0.5 + day * 0.7);
-				for (let x = 0; x < s.w; x++) {
-					const t2 = (x / s.w) * 8 + L * 2.7;
-					const i2 = t2 | 0;
-					const raw = t2 - i2;
-					const ff = raw * raw * (3 - 2 * raw);
-					const hz = base - (row[i2 % 9] * (1 - ff) + row[(i2 + 1) % 9] * ff) * s.h * amp - Math.sin(x * 0.31 + L * 4.1) * s.h * 0.012;
-					for (let y = hz; y < waterY; y++) {
-						const dep = (y - hz) / Math.max(1, waterY - hz);
-						const k = tone * (1 - dep * 0.35);
-						const lit = Math.max(0, 1 - Math.abs(x - sunX) / (s.w * 0.5)) * day * 0.5;
-						paint(
-							s,
-							x,
-							y,
-							(wr2 * k + lit * 90) * veil + fr * (1 - veil) * 0.8,
-							(wg2 * k + lit * 72) * veil + fg * (1 - veil) * 0.8,
-							(wb2 * k + lit * 48) * veil + fb * (1 - veil) * 0.8,
-							1
-						);
-					}
-					if (L === 2) plot(s, x, hz, 255, 212, 160, day * 0.35 * veil);
-				}
-			}
-
-			for (const [tx, th] of id.trees) {
-				const bx = tx * s.w;
-				const bh = th * s.h * 0.2;
-				const by = waterY - 1;
-				const veil = 1 - Math.min(0.85, (1 - burn) * 0.75);
-				for (let k = 0; k < bh; k++) {
-					const f = k / bh;
-					const tier = (f * 3) % 1;
-					const half = (0.2 + f * 0.8) * (0.5 + tier * 0.6) * s.w * 0.018 + 0.4;
-					const yy = by - (bh - k);
-					for (let q = -half; q <= half; q++) paint(s, bx + q, yy, 16 * veil + fr * (1 - veil), 22 * veil + fg * (1 - veil), 18 * veil + fb * (1 - veil), 0.95);
-				}
-			}
-
-			for (let y = waterY; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const dep = (y - waterY) / Math.max(1, s.h - waterY);
-					const mir = waterY - (y - waterY) * 1.6;
-					const k = 0.34 + (1 - dep) * 0.3;
-					const glint = Math.max(0, 1 - Math.abs(x - sunX) / (s.w * 0.12)) * day;
-					paint(s, x, y, wr2 * k + glint * 120, wg2 * k + glint * 96, wb2 * k + glint * 62, 1);
-					const rip = Math.sin(x * 0.7 + mir * 0.4 + s.t * 0.06 * s.v.speed) * Math.sin(y * 1.3 - s.t * 0.04);
-					if (rip > 0.6) plot(s, x, y, 255, 226, 186, (rip - 0.6) * (0.3 + day * 0.9) * (1 - dep));
-				}
-
+			void wr2;
+			void wg2;
+			void wb2;
+			void skr;
+			void skg;
+			void skb;
 			let cover = 0;
 			for (let L = 0; L < 6; L++) {
 				const p = id.bands[L];
@@ -436,18 +377,23 @@ export function makeSmoke(rows: number): FxProgram {
 			for (let y = 0; y < s.h; y++)
 				for (let x = 0; x < s.w; x++) {
 					const glow = Math.max(0, 1 - Math.hypot((x - px) / (s.w * 0.46), (y - fy) / (s.h * 0.55))) ** 2 * blaze;
-					const f = y < fy ? 0.5 + (1 - y / fy) * 0.5 : 0.85;
-					paint(s, x, y, nr * f + glow * 128, ng * f + glow * 62, nb * f + glow * 22, 1);
+					if (glow <= 0.004) continue;
+					plot(s, x, y, glow * 150, glow * 72, glow * 26, 1);
 				}
+			void nr;
+			void ng;
+			void nb;
 
 			const [gr, gg, gb] = hsl(s.v.hue, 16 + s.v.sat * 0.2, 17);
+			const ghw = s.w * 0.3;
 			for (let y = fy; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
+				for (let x = Math.max(0, Math.round(px - ghw)); x <= Math.min(s.w - 1, px + ghw); x++) {
+					const ex = Math.min(1, (ghw - Math.abs(x - px)) / (ghw * 0.42));
 					const dep = (y - fy) / Math.max(1, s.h - fy);
 					const gn = ((((x * 31 + y * 17 + id.grain) * 2654435761) >>> 12) & 255) / 255;
 					const lit = Math.max(0, 1 - Math.abs(x - px) / (s.w * 0.4)) * (1 - dep * 0.5) * blaze;
 					const k = 0.7 + gn * 0.5 + dep * 0.3;
-					paint(s, x, y, gr * k + lit * 150, gg * k + lit * 70, gb * k + lit * 26, 1);
+					paint(s, x, y, gr * k + lit * 150, gg * k + lit * 70, gb * k + lit * 26, ex);
 				}
 
 			for (const [rx, ry, rs] of id.rocks) {

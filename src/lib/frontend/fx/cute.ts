@@ -101,49 +101,6 @@ export function makeCupcake(rows: number): FxProgram {
 			}
 
 			const counterY = Math.round(s.h * 0.72);
-			const shelfY = Math.round(counterY * 0.44);
-			const [wr, wg, wb] = hsl(id.lhue, 16 + s.v.sat * 0.1, 21);
-			const tw = s.w / id.tiles;
-			const th = Math.max(5, counterY / 3);
-			for (let y = 0; y < counterY; y++) {
-				const vy = y / counterY;
-				for (let x = 0; x < s.w; x++) {
-					const row = (y / th) | 0;
-					const gx = (x + (row % 2) * tw * 0.5) % tw;
-					const gy = y % th;
-					const grout = gx < 1 || gy < 1 ? 0.5 : 1;
-					const face = 1 - Math.abs(gx / tw - (s.v.dir > 0 ? 0.28 : 0.72)) * 0.44;
-					const n = chip(x, y, id.grain) / 100;
-					const k = (0.92 + vy * 0.72 + n * 0.14) * grout * face;
-					paint(s, x, y, wr * k, wg * k, wb * k, 1);
-				}
-			}
-
-			for (const [jx, jw, jh, jt] of id.jars) {
-				const bx = jx * s.w;
-				const bw = jw * s.w;
-				const bh = Math.min(shelfY - 2, s.h * (0.13 + jh));
-				for (let y = shelfY - bh; y < shelfY; y++) {
-					const f = (shelfY - y) / bh;
-					const neck = f > 0.72 ? 0.52 + Math.max(0, 0.86 - f) * 1.7 : 1;
-					const base = f < 0.1 ? 0.84 + f * 1.6 : 1;
-					const hw = bw * neck * base * (1 - Math.max(0, f - 0.95) * 6);
-					for (let x = bx - hw; x <= bx + hw; x++) {
-						const u = (x - bx) / hw;
-						const glass = 0.68 + Math.max(0, 1 - Math.abs(u + s.v.dir * 0.42) * 3.4) * 0.7;
-						const full = f < 0.4 + jt * 0.26;
-						const k = glass * (full ? 1.2 : 0.8) * (0.9 + jt * 0.3);
-						const [jr, jg2, jb] = full ? hsl(id.sprPal[(jt * 4) | 0], 52, 46 + jt * 12) : hsl(id.lhue + 30, 8, 58);
-						paint(s, x, y, jr * k, jg2 * k, jb * k, 1);
-					}
-					if (f > 0.9) for (let x = bx - bw * 0.62; x <= bx + bw * 0.62; x++) paint(s, x, y, 168, 160, 148, 1);
-				}
-			}
-			for (let x = 0; x < s.w; x++) {
-				paint(s, x, shelfY, wr * 2.1, wg * 2.0, wb * 1.8, 1);
-				paint(s, x, shelfY + 1, wr * 1.3, wg * 1.25, wb * 1.15, 1);
-				paint(s, x, shelfY + 2, wr * 0.55, wg * 0.55, wb * 0.55, 1);
-			}
 
 			const [cr, cg, cb] = hsl(id.lhue + 20, 9, 36 + id.slab * 10);
 			for (let y = counterY; y < s.h; y++) {
@@ -164,19 +121,19 @@ export function makeCupcake(rows: number): FxProgram {
 				paint(s, x, s.h - 1, cr * 0.3, cg * 0.3, cb * 0.3, 1);
 			}
 
-			const lampX = s.v.dir > 0 ? s.w * 0.14 : s.w * 0.86;
-			const [gr2, gg2, gb2] = hsl(38, 74, 60);
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const d = Math.hypot((x - lampX) / (s.w * 0.62), (y + s.h * 0.34) / (s.h * 1.1));
-					if (d > 1) continue;
-					plot(s, x, y, gr2, gg2, gb2, (1 - d) * (1 - d) * (0.3 + done * 0.16));
-				}
-
 			const cx = s.w * 0.5 + s.v.tilt * s.w * 0.05 + sx;
 			const half = s.w * id.wide;
 			const caseBot = counterY + Math.round(s.h * 0.1);
 			const caseTop = caseBot - Math.round(s.h * 0.2);
+
+			const [gr2, gg2, gb2] = hsl(38, 74, 60);
+			const poolR = half * 5.2;
+			for (let dy = -poolR * 0.62; dy <= poolR * 0.62; dy++)
+				for (let dx = -poolR; dx <= poolR; dx++) {
+					const d = Math.hypot(dx / poolR, dy / (poolR * 0.62));
+					if (d > 1) continue;
+					plot(s, cx + dx, caseBot - s.h * 0.08 + dy, gr2, gg2, gb2, (1 - d) * (1 - d) * (0.26 + done * 0.16));
+				}
 
 			const dry = half * 2.6;
 			const drx = half * 1.7;
@@ -637,16 +594,6 @@ export function makeRibbon(rows: number): FxProgram {
 				(s as any).tied = true;
 			}
 
-			const [wr, wg, wb] = hsl(id.wall, 14, 17 + id.tone * 6);
-			for (let y = 0; y < tableY; y++) {
-				const f = y / tableY;
-				for (let x = 0; x < s.w; x++) {
-					const n = chip(x >> 1, y >> 1, id.grain) / 100;
-					const rail = Math.abs(y - tableY * 0.46) < 1.4 ? 1.5 : 1;
-					const k = (0.72 + f * 0.6 + n * 0.1) * rail;
-					paint(s, x, y, wr * k, wg * k, wb * k, 1);
-				}
-			}
 			const [tr2, tg2, tb2] = hsl(28 + id.tone * 8, 34, 30);
 			for (let y = tableY; y < s.h; y++) {
 				const f = (y - tableY) / Math.max(1, s.h - tableY);
@@ -860,22 +807,23 @@ export function makeRibbon(rows: number): FxProgram {
 			if (loopR > 0.02) {
 				const R = s.w * id.bowR * Math.min(1, loopR);
 				for (let side = -1; side <= 1; side += 2) {
-					const flap = Math.sin(s.t * 0.09 * s.v.speed + side * 1.5) * 0.1 * s.v.drift;
+					const flap = Math.sin(s.t * 0.09 * s.v.speed + side * 1.5) * 0.14 * s.v.drift;
 					const pts: number[][] = [];
-					for (let k = 0; k <= 22; k++) {
-						const a = -2.75 + (k / 22) * 5.5;
-						const rr3 = R * (1 - Math.cos(a) * 0.5);
-						const px = knotX + side * (Math.sin(a) * rr3 * 1.9 + R * 0.3);
-						const py = knotY - (1 - Math.cos(a)) * R * 0.44 + flap * R * Math.abs(Math.sin(a));
+					for (let k = 0; k <= 28; k++) {
+						const a = (k / 28) * Math.PI;
+						const out = Math.sin(a);
+						const arc = Math.sin(a * 2);
+						const px = knotX + side * (R * 2.05 * out + R * 0.2);
+						const py = knotY - arc * R * (arc > 0 ? 1.05 : 0.5) + flap * R * out;
 						pts.push([px, py]);
 					}
 					ribbonRun(
 						s,
 						pts,
-						(t) => s.w * id.rw * (0.55 + Math.sin(t * 3.1416) * 0.8) * Math.min(1, loopR),
+						(t) => s.w * id.rw * (0.4 + Math.sin(t * 3.1416) * 1.05) * Math.min(1, loopR),
 						(t, q) => {
-							const face = 0.35 + Math.abs(Math.sin(t * 3.1416 * 1.1)) * 0.75;
-							const k = 0.4 + face * 0.62 + (1 - Math.abs(q)) * 0.3 + Math.max(0, 1 - Math.abs(q + 0.45) * 2.4) * 0.26;
+							const face = t < 0.5 ? 1 : 0.46;
+							const k = 0.34 + face * 0.7 + (1 - Math.abs(q)) * 0.32 + Math.max(0, 1 - Math.abs(q + 0.45) * 2.4) * 0.3;
 							return [rr2 * k, rg2 * k, rb2 * k];
 						}
 					);
@@ -1043,45 +991,6 @@ export function makeGem(rows: number): FxProgram {
 			const cy = gy - swap * s.h * 0.72;
 			const lx = cx - id.side * s.w * 0.33;
 			const ly = s.h * 0.08;
-
-			const wallPal: number[][] = [];
-			for (let i = 0; i < 24; i++) wallPal.push(hsl(id.lamp - 16, 28, 2 + i * 0.9));
-			for (let y = 0; y < benchY; y++) {
-				for (let x = 0; x < s.w; x++) {
-					const d = Math.min(1, Math.hypot((x - lx) / (s.w * 0.6), (y - ly) / (s.h * 1.05)));
-					const l = 1 + (1 - d) * (1 - d) * 15 + (chip(x, y, 31) % 6) * 0.22;
-					const c = wallPal[Math.max(0, Math.min(23, Math.round(l / 0.9)))];
-					paint(s, x, y, c[0], c[1], c[2], 1);
-				}
-			}
-
-			const shelfY = Math.round(s.h * 0.2);
-			const shPal: number[][] = [];
-			for (let i = 0; i < 14; i++) shPal.push(hsl(id.wood - 4, 34, 3 + i * 1.1));
-			for (let y = shelfY; y < shelfY + 3; y++) {
-				for (let x = 0; x < s.w; x++) {
-					const lf = Math.max(0, 1 - Math.abs(x - lx) / (s.w * 0.7));
-					const c = shPal[Math.max(0, Math.min(13, Math.round((y === shelfY ? 7 : y === shelfY + 1 ? 4 : 1) + lf * 5)))];
-					paint(s, x, y, c[0], c[1], c[2], 1);
-				}
-			}
-			for (let j = 0; j < 5; j++) {
-				const jr = mulberry32(s.v.seed + 5100 + j * 77);
-				const jx = (0.08 + jr() * 0.84) * s.w;
-				if (Math.abs(jx - cx) < s.w * 0.1) continue;
-				const jh = 3 + jr() * 6;
-				const jw = 1.6 + jr() * 1.8;
-				const jhue = GEMS[(jr() * GEMS.length) | 0];
-				for (let y = shelfY - jh; y < shelfY; y++) {
-					const t2 = (y - (shelfY - jh)) / jh;
-					const hw2 = jw * (0.4 + t2 * 0.6);
-					for (let x = -hw2; x <= hw2; x++) {
-						const lfc = Math.max(0, 1 - Math.abs(jx - lx) / (s.w * 0.8));
-						const c = hsl(jhue, 44, 10 + (1 - Math.abs(x) / (hw2 + 0.4)) * 14 + lfc * 12 + t2 * 5);
-						paint(s, jx + x, y, c[0], c[1], c[2], 1);
-					}
-				}
-			}
 
 			const woodPal: number[][] = [];
 			for (let i = 0; i < 22; i++) woodPal.push(hsl(id.wood, 40, 5 + i * 1.1));
@@ -1507,22 +1416,20 @@ export function makeIcecream(rows: number): FxProgram {
 			const cx = s.w * 0.5 + s.v.tilt * s.w * 0.04;
 			const sunA = id.side;
 
-			const wallPal: number[][] = [];
-			for (let i = 0; i < 26; i++) wallPal.push(hsl(id.wall, 26, 8 + i * 1.5));
 			const sunX = cx - sunA * s.w * 0.36;
 			const beamSlope = sunA * 0.7;
 			const beamW = s.w * 0.17;
+			const [bmr, bmg, bmb] = hsl(id.wall + 24, 48, 74);
 			for (let y = 0; y < counterY; y++) {
-				const bcen = sunX + (y - 0) * beamSlope;
-				for (let x = 0; x < s.w; x++) {
-					const st = Math.floor(x / id.stripe) % 2;
+				const bcen = sunX + y * beamSlope;
+				const fade = 0.35 + (y / counterY) * 0.65;
+				const px0 = Math.max(0, Math.floor(bcen - beamW));
+				const px1 = Math.min(s.w, Math.ceil(bcen + beamW));
+				for (let x = px0; x < px1; x++) {
 					const bl = Math.max(0, 1 - Math.abs(x - bcen) / beamW);
 					const slat = ((y + x * beamSlope * 0.4) / id.blinds) % 1;
 					const louvre = slat < 0.62 ? 1 : 0.14;
-					let l = 8 + st * 1.6 + (chip(x, y, 19) % 5) * 0.2 + (1 - y / counterY) * 3;
-					l += bl * bl * louvre * (13 + heat * 15);
-					const c = wallPal[Math.max(0, Math.min(25, Math.round(l / 1.5)))];
-					paint(s, x, y, c[0], c[1], c[2], 1);
+					plot(s, x, y, bmr, bmg, bmb, bl * bl * louvre * fade * (0.1 + heat * 0.1));
 				}
 			}
 
@@ -1856,21 +1763,6 @@ export function makeCrown(rows: number): FxProgram {
 			const floorY = Math.round(s.h * 0.86);
 			const cx = s.w * 0.5 + s.v.tilt * s.w * 0.03;
 
-			const wallPal: number[][] = [];
-			for (let i = 0; i < 22; i++) wallPal.push(hsl(id.stone, 14, 3 + i * 1.2));
-			const bh2 = Math.max(4, Math.round(s.h * 0.13));
-			for (let y = 0; y < floorY; y++) {
-				const row = (y / bh2) | 0;
-				const off = (row % 2) * 7;
-				for (let x = 0; x < s.w; x++) {
-					const mortar = y % bh2 === 0 || (x + off) % 13 === 0 ? -3.4 : 0;
-					const vig = Math.max(0, 1 - Math.hypot((x - cx) / (s.w * 0.62), (y - s.h * 0.35) / (s.h * 0.9)));
-					const l = 4 + vig * vig * 7 + (chip(x, y, 23 + id.grain) % 5) * 0.28 + mortar + reign * vig * 5;
-					const c = wallPal[Math.max(0, Math.min(21, Math.round(l / 1.2)))];
-					paint(s, x, y, c[0], c[1], c[2], 1);
-				}
-			}
-
 			for (let k = 0; k < id.pillars * 2; k++) {
 				const sd = k % 2 === 0 ? -1 : 1;
 				const idx = k >> 1;
@@ -1908,12 +1800,15 @@ export function makeCrown(rows: number): FxProgram {
 			for (let i = 0; i < 18; i++) flPal.push(hsl(id.stone, 10, 4 + i * 1.3));
 			for (let y = floorY; y < s.h; y++) {
 				const dp = (y - floorY) / Math.max(1, s.h - floorY);
-				for (let x = 0; x < s.w; x++) {
+				const hwf = s.w * (0.42 + dp * 0.16);
+				for (let x = Math.max(0, Math.floor(cx - hwf)); x < Math.min(s.w, Math.ceil(cx + hwf)); x++) {
+					const ex = Math.min(1, (hwf - Math.abs(x - cx)) / 3.2);
+					if (ex <= 0) continue;
 					const tile = (((x + (y - floorY) * 3) / 9) | 0) % 2;
 					const seam = (x + (y - floorY) * 3) % 9 === 0 ? -3 : 0;
 					const l = 5 + tile * 3 + dp * 3 + seam + reign * Math.max(0, 1 - Math.abs(x - cx) / (s.w * 0.4)) * 6;
 					const c = flPal[Math.max(0, Math.min(17, Math.round(l / 1.3)))];
-					paint(s, x, y, c[0], c[1], c[2], 1);
+					paint(s, x, y, c[0], c[1], c[2], ex);
 				}
 			}
 

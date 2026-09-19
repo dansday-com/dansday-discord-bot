@@ -98,26 +98,6 @@ export function makeMoney(rows: number): FxProgram {
 			const charge = cyc < 0.3 ? cyc / 0.3 : 0;
 			const wind = id.wind * s.v.drift * s.v.dir;
 
-			const [wr, wg, wb] = hsl(s.v.hue2 + 8, 14 + s.v.sat * 0.16, 26);
-			for (let y = 0; y < fy; y++)
-				for (let x = 0; x < s.w; x++) {
-					const g = hash2m(x >> 1, y >> 1, id.grain) * 0.28 + hash2m(x, y, id.grain + 3) * 0.14;
-					const seam = Math.min(1, Math.abs((((x / s.w) * 5) % 1) - 0.5) * 6);
-					const vig = 1 - Math.hypot(x / s.w - 0.5, y / fy - 0.5) * 0.5;
-					const k = (0.72 + g * 0.5) * vig * (0.7 + seam * 0.4);
-					paint(s, x, y, wr * k, wg * k, wb * k, 1);
-				}
-			for (const [rx2, ry2] of id.rivets) {
-				const x = rx2 * s.w;
-				const y = ry2 * fy;
-				for (let dy = -1; dy <= 1; dy++)
-					for (let dx = -1; dx <= 1; dx++) {
-						if (Math.hypot(dx, dy) > 1.4) continue;
-						const lit = dx - dy < 0 ? 1.9 : 1.1;
-						paint(s, x + dx, y + dy, wr * lit, wg * lit, wb * lit, 1);
-					}
-			}
-
 			const lx = id.lampX * s.w;
 			const glow = 0.4 + charge * 0.4 + open * 0.6;
 			const lampY = s.h * 0.1;
@@ -178,7 +158,7 @@ export function makeMoney(rows: number): FxProgram {
 				for (let x = 0; x < s.w; x++) {
 					const tile = Math.min(1, Math.abs(((x / 9 + y / 4) % 1) - 0.5) * 5);
 					const k = 0.66 + d * 0.5 + tile * 0.3 + hash2m(x, y, id.grain + 11) * 0.16;
-					paint(s, x, y, flr * k, flg * k, flb * k, 1);
+					paint(s, x, y, flr * k, flg * k, flb * k, 0.92);
 				}
 			}
 
@@ -366,19 +346,18 @@ export function makeCat(rows: number): FxProgram {
 			const [dk, dg2, db2] = hsl(s.v.hue, s.v.sat * 0.7, 18);
 			const [er, eg, eb] = hsl(s.v.hue2, s.v.sat, 78);
 
-			const floorY = s.h * 0.86;
+			const floorY = s.h * 0.85;
 			const sunX = s.w * (0.5 + Math.sin(s.t * 0.026 * s.v.speed) * 0.34);
 			const sunW = s.w * 0.28;
-			for (let y = 0; y < s.h; y++) {
-				const f = y / s.h;
-				for (let x = 0; x < s.w; x++) {
-					const sun = Math.pow(Math.max(0, 1 - Math.abs(x - sunX) / sunW), 0.35) * f * f;
-					paint(s, x, y, fr * (0.7 + f * 0.5) + sun * 110, fg * (0.7 + f * 0.5) + sun * 88, fb + sun * 40, 0.26 + f * f * 0.52);
-				}
-			}
+			const lamp = (x: number) => Math.pow(Math.max(0, 1 - Math.abs(x - sunX) / sunW), 0.4);
 			for (let x = 0; x < s.w; x++) {
-				const sun = Math.pow(Math.max(0, 1 - Math.abs(x - sunX) / sunW), 0.35);
-				for (let y = Math.round(floorY); y < s.h; y++) paint(s, x, y, fr * 1.5 + sun * 130, fg * 1.5 + sun * 106, fb * 1.4 + sun * 50, 0.9);
+				const sun = lamp(x);
+				for (let y = Math.round(floorY); y < s.h; y++) {
+					const f = (y - floorY) / Math.max(1, s.h - floorY);
+					const k = 1.3 - f * 0.4;
+					paint(s, x, y, fr * k + sun * 120, fg * k + sun * 96, fb * k + sun * 44, 0.94);
+				}
+				plot(s, x, floorY, 255, 240, 214, 0.1 + sun * 0.4);
 			}
 			for (let k = 0; k < 14; k++) {
 				const life = (((s.t * 0.012 * s.v.speed + k * 0.0714) % 1) + 1) % 1;
@@ -413,7 +392,7 @@ export function makeCat(rows: number): FxProgram {
 			const smug = cyc > 0.66 ? Math.min(1, (cyc - 0.66) / 0.1) : 0;
 			const stretch = cyc > 0.8 ? Math.max(0, Math.sin(((cyc - 0.8) / 0.16) * Math.PI)) : 0;
 			const crouch = stare * 0.5 + reach * 0.3;
-			const bodyY = floorY - s.h * (settled ? 0.12 : 0.1) - Math.abs(stride) * 0.3 - breath * 0.5 - stretch * s.h * 0.02 + crouch * s.h * 0.012;
+			const bodyY = floorY - s.h * (settled ? 0.13 : 0.11) - Math.abs(stride) * 0.3 - breath * 0.5 - stretch * s.h * 0.02 + crouch * s.h * 0.012;
 
 			const [wr, wg2, wb] = hsl(s.v.hue2, s.v.sat * 0.5, 26);
 			const sx0 = dir > 0 ? 0 : edgeX;
@@ -534,113 +513,160 @@ export function makeCat(rows: number): FxProgram {
 				paint(s, q[0] + dir, q[1] - 1, dk, dg2, db2, a * 0.7);
 			}
 
-			const bw = s.w * 0.1 * (1 + stretch * 0.55);
-			const bh = s.h * (settled ? 0.16 : 0.12) * (1 + breath * 0.14 - stretch * 0.22);
-			for (let dy = -bh; dy <= bh; dy++) {
-				for (let dx = -bw; dx <= bw; dx++) {
-					const d = (dx * dx) / (bw * bw) + (dy * dy) / (bh * bh);
-					if (d > 1) continue;
-					const key = ((dx | 0) * 13 + (dy | 0) * 29) | 0;
-					if (d > 0.82 && chip(dx | 0, dy | 0, key) < 30) continue;
-					const sunlit = Math.max(0, 1 - Math.abs(cx + dx - sunX) / sunW) * 0.55;
-					const lit = 0.74 + Math.max(0, -dy / bh) * 0.4 + sunlit;
-					const stripe = id.stripes && Math.sin(dx * 0.9 + dy * 0.3) > 0.55;
-					paint(s, cx + dx, bodyY + dy, (stripe ? dk : cr) * lit, (stripe ? dg2 : cg) * lit, (stripe ? db2 : cb) * lit, 0.97);
-				}
-			}
-
-			for (let leg = 0; leg < 4; leg++) {
-				const near = leg < 2;
-				const lx = cx + ((leg % 2 ? bw * 0.58 : -bw * 0.52) + (near ? 0 : dir * 1.6)) * dir;
-				const swing = settled ? 0 : Math.sin(cyc * id.period * 0.16 + leg * 1.57) * 1.5;
-				const len = bh * (settled ? 0.72 : 0.95) * (near ? 1 : 0.94);
-				const shade = near ? 1 : 0.68;
-				for (let k = 0; k < len; k++) {
-					const f = k / len;
-					const w = 1.5 - f * 0.4;
-					for (let q = -w; q <= w; q++) paint(s, lx + q + swing * f, bodyY + bh * 0.55 + k, dk * shade, dg2 * shade, db2 * shade, 0.96);
-				}
-				const pw = 2;
-				for (let q = -pw; q <= pw; q++) paint(s, lx + q + swing + dir * 0.6, bodyY + bh * 0.55 + len, cr * shade, cg * shade, cb * shade, 0.96);
-			}
-
-			if (reach > 0.01) {
-				const paws = cx + bw * 0.8 * dir;
-				const pawY = bodyY - bh * 0.1;
-				const tipX = paws + dir * reach * s.w * 0.075;
-				const tipY = pawY - reach * (pawY - (shelfY - s.h * 0.02));
-				for (let k = 0; k <= 14; k++) {
-					const f = k / 14;
-					const w = 1.7 * (1 - f * 0.3);
+			const un = s.h;
+			const sit = settled ? Math.min(1, (cyc - 0.26) / 0.14) : 0;
+			const L = (a: number, b: number) => a + (b - a) * sit;
+			const fur = (x: number, y: number, lx: number, ly: number, top: number, k: number) => {
+				const sunlit = Math.max(0, 1 - Math.abs(x - sunX) / sunW) * 0.46;
+				const lit = (0.58 + top * 0.46 + sunlit) * k;
+				const band = id.stripes && Math.sin(lx * 1.15 + ly * 0.12) > 0.62;
+				paint(s, x, y, (band ? dk : cr) * lit, (band ? dg2 : cg) * lit, (band ? db2 : cb) * lit, 0.97);
+			};
+			const blob = (ox: number, oy: number, rx: number, ry: number, k: number, ragged: number) => {
+				for (let dy = -ry - 1; dy <= ry + 1; dy++)
+					for (let dx = -rx - 1; dx <= rx + 1; dx++) {
+						const d = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+						if (d > 1) continue;
+						if (ragged > 0 && d > 0.76 && chip(dx | 0, dy | 0, ((ox * 3) | 0) + ((oy * 7) | 0)) < ragged) continue;
+						fur(ox + dx, oy + dy, ox - cx + dx, dy, Math.max(0, -dy / ry), k);
+					}
+			};
+			const limb = (x0: number, y0: number, x1: number, y1: number, w0: number, w1: number, k: number) => {
+				const n = Math.max(4, Math.round(Math.hypot(x1 - x0, y1 - y0)));
+				for (let i = 0; i <= n; i++) {
+					const f = i / n;
+					const w = w0 + (w1 - w0) * f;
+					const px = x0 + (x1 - x0) * f;
+					const py = y0 + (y1 - y0) * f;
 					for (let dy = -w; dy <= w; dy++)
 						for (let dx = -w; dx <= w; dx++) {
 							if (dx * dx + dy * dy > w * w) continue;
-							paint(s, paws + (tipX - paws) * f + dx, pawY + (tipY - pawY) * f + dy, cr * 0.94, cg * 0.94, cb * 0.94, 0.97);
+							fur(px + dx, py + dy, px - cx + dx, py - bodyY + dy, Math.max(0, (-dx * dir) / (w + 0.5)) * 0.6, k);
 						}
+				}
+			};
+
+			const lift = Math.abs(stride) * 0.3 + breath * 0.4 + stretch * un * 0.02 - crouch * un * 0.012;
+			const hipX = cx - dir * un * L(0.088, 0.078);
+			const hipY = floorY - un * L(0.155, 0.112) - lift;
+			const hipRX = un * L(0.086, 0.104);
+			const hipRY = un * L(0.07, 0.104);
+			const chestX = cx + dir * un * L(0.062, 0.054) + dir * stretch * un * 0.03;
+			const chestY = floorY - un * L(0.162, 0.176) - lift - breath * 0.5;
+			const chestRX = un * L(0.078, 0.07);
+			const chestRY = un * L(0.062, 0.112) * (1 + breath * 0.06);
+			const track = obj && obj[5] > 1.5 ? Math.max(-3, Math.min(3, (obj[0] - cx) * 0.06)) : 0;
+			const look = Math.sin(s.t * 0.031 * s.v.speed) * Math.sin(s.t * 0.013) * 1.8 * (1 - stare) + track;
+			const hr2 = un * 0.076;
+			const hx = chestX + dir * un * L(0.088, 0.024) + look + dir * stretch * un * 0.04;
+			const hy = chestY - un * L(0.062, 0.128) + stretch * un * 0.03 + Math.sin(s.t * 0.047 * s.v.speed) * 0.5;
+
+			const flick = Math.sin(s.t * 0.13 * s.v.speed) * 0.9 + Math.sin(s.t * 0.29) * 0.5 + stretch * 1.8 + stare * Math.sin(s.t * 0.34 * s.v.speed) * 2.2;
+			const trX = hipX - dir * hipRX * 0.8;
+			const trY = hipY + hipRY * L(0.1, 0.5);
+			for (let i = tail.length - 1; i >= 0; i--) {
+				const f = i / (tail.length - 1);
+				const seg = tail[i];
+				const wkX = trX - dir * f * un * 0.19 * id.tailLen;
+				const wkY = trY - Math.sin(f * 2.2 + flick) * un * 0.105 * id.tailLen - f * un * 0.05;
+				const back = Math.min(1, f / 0.34);
+				const fwd = Math.max(0, (f - 0.34) / 0.66);
+				const stX = trX - dir * un * 0.12 * id.tailLen * back + dir * un * 0.33 * id.tailLen * fwd * fwd;
+				const stY = trY + (floorY - 1.5 - trY) * Math.min(1, f / 0.42) - Math.max(0, (f - 0.78) / 0.22) * Math.abs(Math.sin(flick)) * un * 0.07;
+				const tx = wkX + (stX - wkX) * sit;
+				const ty = wkY + (stY - wkY) * sit;
+				seg[0] += (tx - seg[0]) * 0.26;
+				seg[1] += (ty - seg[1]) * 0.26;
+				if (s.t < 3) {
+					seg[0] = tx;
+					seg[1] = ty;
+				}
+				const w = un * 0.042 * (1 - f * 0.48) + (f > 0.9 ? 0.5 : 0);
+				for (let dy = -w; dy <= w; dy++)
+					for (let dx = -w; dx <= w; dx++) {
+						if (dx * dx + dy * dy > w * w) continue;
+						fur(seg[0] + dx, seg[1] + dy, f * 14 + dx, dy, Math.max(0, -dy / (w + 0.4)) * 0.6, 0.88);
+					}
+			}
+
+			const rearY = floorY - 0.5;
+			for (let leg = 0; leg < 2; leg++) {
+				const k = leg ? 0.94 : 0.66;
+				const rx0 = hipX + dir * hipRX * (leg ? 0.3 : -0.06) + (leg ? 0 : -dir * 1.6);
+				const ph = Math.sin(cyc * id.period * 0.16 + leg * 3.14) * 1.5 * (1 - sit);
+				const kneeX = rx0 - dir * un * L(0.014, 0.038);
+				const kneeY = hipY + hipRY * L(0.5, 0.62);
+				const footX = rx0 + ph + dir * un * L(0.012, 0.072);
+				limb(rx0, hipY + hipRY * 0.2, kneeX, kneeY, 2, 1.7, k);
+				limb(kneeX, kneeY, footX, rearY, 1.7, 1.25, k);
+				limb(footX - dir * 1.2, rearY, footX + dir * 2.6, rearY, 1.25, 1.15, k);
+			}
+			blob(hipX, hipY, hipRX, hipRY, 0.96, 26);
+			blob((hipX + chestX) / 2, (hipY + chestY) / 2 - un * L(0.006, 0.012), Math.abs(chestX - hipX) * 0.62 + 2, un * L(0.058, 0.082), 1, 0);
+			blob(chestX, chestY, chestRX, chestRY, 1.04, 18);
+
+			for (let leg = 0; leg < 2; leg++) {
+				const k = leg ? 1 : 0.7;
+				const fx0 = chestX + dir * chestRX * (leg ? 0.26 : -0.06) + (leg ? 0 : -dir * 1.6);
+				const ph = Math.sin(cyc * id.period * 0.16 + leg * 3.14 + 1.57) * 1.5 * (1 - sit);
+				const raise = leg === 1 ? reach : 0;
+				const fy1 = floorY - 0.5 - raise * (floorY - (shelfY + 1));
+				const fx1 = fx0 + ph + dir * raise * un * 0.06;
+				limb(fx0, chestY + chestRY * 0.24, fx1, fy1, 1.8, 1.2, k);
+				if (raise < 0.2) limb(fx1 - dir * 1.2, fy1, fx1 + dir * 2.6, fy1, 1.2, 1.1, k);
+			}
+
+			blob(hx, hy, hr2 * 1.06, hr2 * 0.94, 1.06, 12);
+			for (let ear = 0; ear < 2; ear++) {
+				const sd = ear ? 1 : -1;
+				const ebx = hx + sd * hr2 * 0.56;
+				const eby = hy - hr2 * 0.66;
+				const tipx = ebx + sd * hr2 * 0.2 + Math.sin(s.t * 0.06 + ear * 2) * 0.5;
+				const tipy = eby - hr2 * 0.78;
+				const hgt = Math.max(2, eby - tipy);
+				for (let k = 0; k <= hgt; k++) {
+					const f = k / hgt;
+					const bx = ebx + (tipx - ebx) * f;
+					const half = hr2 * 0.44 * (1 - f * f * 0.9);
+					for (let q = -half; q <= half; q++) fur(bx + q, eby - k, q * 3, -k, 0.4 + f * 0.3, sd * dir > 0 ? 0.92 : 0.7);
+					if (f < 0.66 && sd * dir > 0) plot(s, bx + sd * 0.4, eby - k, 222, 144, 156, (0.66 - f) * 0.7);
 				}
 			}
 
-			const track = obj && obj[5] > 1.5 ? Math.max(-3, Math.min(3, (obj[0] - cx) * 0.06)) : 0;
-			const look = Math.sin(s.t * 0.031 * s.v.speed) * Math.sin(s.t * 0.013) * 2.4 * (1 - stare) + track;
-			const hx = cx + bw * 0.86 * dir + look + stretch * bw * 0.4 * dir;
-			const hy = bodyY - bh * (settled ? 0.86 : 0.62) - breath * 0.9 + Math.sin(s.t * 0.047 * s.v.speed) * 0.8;
-			const hr2 = s.h * 0.105;
-			for (let dy = -hr2; dy <= hr2; dy++) {
-				for (let dx = -hr2; dx <= hr2; dx++) {
-					if (dx * dx + dy * dy > hr2 * hr2) continue;
-					const lit = 0.76 + Math.max(0, -dy / hr2) * 0.42;
-					paint(s, hx + dx, hy + dy, cr * lit, cg * lit, cb * lit, 0.98);
+			const mzx = hx + dir * hr2 * 0.72;
+			const mzy = hy + hr2 * 0.3;
+			for (let dy = -hr2 * 0.4; dy <= hr2 * 0.4; dy++)
+				for (let dx = -hr2 * 0.46; dx <= hr2 * 0.46; dx++) {
+					if ((dx * dx) / (hr2 * 0.46) ** 2 + (dy * dy) / (hr2 * 0.4) ** 2 > 1) continue;
+					fur(mzx + dx, mzy + dy, 40, dy, 0.5 + Math.max(0, -dy / hr2), 1.14);
 				}
-			}
-			for (let ear = 0; ear < 2; ear++) {
-				const ex2 = hx + (ear ? hr2 * 0.62 : -hr2 * 0.62);
-				const tw = Math.sin(s.t * 0.06 + ear * 2) * 0.5;
-				for (let k = 0; k < hr2 * 0.9; k++) {
-					const w = (1 - k / (hr2 * 0.9)) * hr2 * 0.42;
-					for (let q = -w; q <= w; q++) paint(s, ex2 + q + tw * (k / hr2), hy - hr2 * 0.7 - k, cr * 0.8, cg * 0.8, cb * 0.8, 0.95);
-				}
+			paint(s, mzx + dir * hr2 * 0.32, mzy - hr2 * 0.1, 208, 124, 138, 0.92);
+			paint(s, mzx + dir * hr2 * 0.28, mzy + hr2 * 0.2, dk * 0.7, dg2 * 0.7, db2 * 0.7, 0.75);
+			for (let wk = 0; wk < 3; wk++) {
+				const wy = mzy - 1 + wk;
+				const bend = Math.sin(s.t * 0.04 + wk) * 0.6;
+				for (let k = 1; k < hr2 * 1.5; k++)
+					plot(s, mzx + dir * (hr2 * 0.3 + k), wy + (wk - 1) * k * 0.14 + bend * (k / 8), 236, 232, 226, 0.3 * (1 - k / (hr2 * 1.6)));
 			}
 
 			(s as any).blink -= 1;
 			if ((s as any).blink < -6) (s as any).blink = id.blinkEvery;
 			const shut = (s as any).blink < 0 || smug > 0.4;
 			for (let eye = 0; eye < 2; eye++) {
-				const ex2 = hx + (eye ? hr2 * 0.42 : -hr2 * 0.3) * dir;
-				const ey2 = hy - hr2 * 0.1;
+				const ex2 = hx + (eye ? hr2 * 0.42 : -hr2 * 0.1) * dir;
+				const ey2 = hy - hr2 * 0.18;
 				if (shut) {
-					paint(s, ex2, ey2, dk, dg2, db2, 0.9);
-					paint(s, ex2 + dir, ey2 - (smug > 0.4 ? 1 : 0), dk, dg2, db2, 0.75);
+					for (let q = -1; q <= 1; q++) paint(s, ex2 + q, ey2 + Math.abs(q) * 0.5, dk, dg2, db2, 0.9);
 					continue;
 				}
-				const wide = 1 + stare * 1.4;
-				for (let dy = -wide; dy <= wide; dy++)
-					for (let dx = -wide; dx <= wide; dx++) {
-						if (dx * dx + dy * dy > wide * wide) continue;
+				const eh = 0.9 + stare * 0.8;
+				const ew = 0.7 + stare * 0.8;
+				for (let dy = -eh; dy <= eh; dy++)
+					for (let dx = -ew; dx <= ew; dx++) {
+						if ((dx * dx) / (ew * ew + 0.2) + (dy * dy) / (eh * eh + 0.2) > 1) continue;
 						plot(s, ex2 + dx, ey2 + dy, er, eg, eb, 0.95);
 					}
-				plot(s, ex2, ey2 - 1, er * 0.6, eg * 0.6, eb * 0.6, 0.5);
-			}
-
-			const rootX = cx - bw * 0.9 * dir;
-			const rootY = bodyY + bh * 0.1;
-			const flick = Math.sin(s.t * 0.13 * s.v.speed) * 0.9 + Math.sin(s.t * 0.29) * 0.5 + stretch * 1.8 + stare * Math.sin(s.t * 0.34 * s.v.speed) * 2.2;
-			for (let i = 0; i < tail.length; i++) {
-				const f = i / (tail.length - 1);
-				const seg = tail[i];
-				const tx = rootX - dir * f * s.w * 0.1 * id.tailLen;
-				const ty = rootY - Math.sin(f * 2.1 + flick) * s.h * 0.1 * id.tailLen - f * s.h * 0.03;
-				seg[0] += (tx - seg[0]) * 0.28;
-				seg[1] += (ty - seg[1]) * 0.28;
-				if (s.t < 3) {
-					seg[0] = tx;
-					seg[1] = ty;
-				}
-				const w = 2.6 * (1 - f * 0.45);
-				for (let dy = -w; dy <= w; dy++)
-					for (let dx = -w; dx <= w; dx++) {
-						if (dx * dx + dy * dy > w * w) continue;
-						paint(s, seg[0] + dx, seg[1] + dy, cr * 0.9, cg * 0.9, cb * 0.9, 0.96);
-					}
+				paint(s, ex2 + dir * 0.3, ey2, 22, 18, 24, 0.8 - stare * 0.35);
 			}
 
 			s.out = Math.min(1, kick * 0.85 + stare * 0.25 + reach * 0.4 + stretch * 0.3);
@@ -743,30 +769,7 @@ export function makeCoffee(rows: number): FxProgram {
 			const wx0 = id.winX * s.w;
 			const wx1 = wx0 + id.winW * s.w;
 			const wcx = (wx0 + wx1) * 0.5;
-			const wyB = Math.round(ty * 0.72);
-			const [wr, wg, wb] = hsl(24 + (s.v.hue % 26), 14 + s.v.sat * 0.16, 15);
 			const [glr, glg, glb] = hsl(38 + (s.v.hue % 30), 26 + s.v.sat * 0.22, 54);
-			for (let y = 0; y < ty; y++)
-				for (let x = 0; x < s.w; x++) {
-					if (x > wx0 && x < wx1 && y < wyB) {
-						const mull = Math.abs(x - wcx) < 1 || Math.abs(y - wyB * 0.44) < 1 ? 0.34 : 1;
-						const haze = 0.82 + hash2m(x >> 2, y >> 2, id.grain + 5) * 0.26 + (1 - y / wyB) * 0.24;
-						paint(s, x, y, glr * haze * mull + 44, glg * haze * mull + 38, glb * haze * mull + 26, 1);
-						continue;
-					}
-					const dxw = Math.max(0, Math.max(wx0 - 2 - x, x - wx1 - 2));
-					const dyw = Math.max(0, y - wyB);
-					const sp = Math.exp(-(dxw * dxw * 0.7 + dyw * dyw * 1.8) / 110);
-					const g2 = hash2m(x >> 1, y >> 1, id.grain) * 0.2;
-					const k = 0.76 + g2 + sp * 1.6;
-					paint(s, x, y, wr * k, wg * k, wb * k, 1);
-				}
-			for (let y = 0; y <= wyB; y++)
-				for (let q = 0; q < 2; q++) {
-					paint(s, wx0 - q, y, 28, 22, 18, 1);
-					paint(s, wx1 + q, y, 28, 22, 18, 1);
-				}
-			for (let x = wx0 - 1; x <= wx1 + 1; x++) for (let q = 0; q < 2; q++) paint(s, x, wyB + q, 28, 22, 18, 1);
 
 			const [tr2, tg2, tb2] = hsl(26 + (s.v.hue % 18), 32 + s.v.sat * 0.2, 21);
 			for (let y = ty; y < s.h; y++) {
@@ -780,6 +783,8 @@ export function makeCoffee(rows: number): FxProgram {
 					let k = 0.8 + gr2 + f * 0.22 + near * 0.34 - seam * 0.5;
 					if (y - ty < 2) k += 0.75;
 					paint(s, x, y, tr2 * k, tg2 * k * 0.94, tb2 * k * 0.86, 1);
+					const pane = Math.max(0, 1 - Math.abs(x - wcx - f * (wx1 - wx0) * 0.3) / ((wx1 - wx0) * 0.55));
+					if (pane > 0) plot(s, x, y, glr, glg, glb, pane * pane * (1 - f * 0.55) * 0.3);
 				}
 			}
 
@@ -1099,26 +1104,27 @@ export function makeCandle(rows: number): FxProgram {
 
 			const wy = topY - 1;
 			const glowR = s.h * (0.62 + heat * 0.34);
-			const [wlr, wlg, wlb] = hsl(26 + (s.v.hue % 22), 22 + s.v.sat * 0.18, 12);
 			for (let y = 0; y < ty; y++)
 				for (let x = 0; x < s.w; x++) {
 					const d = Math.hypot((x - cx) / glowR, (y - wy) / (glowR * 0.82));
-					const fall = Math.max(0, 1 - d) ** 2.1;
-					const g2 = hash2m(x >> 1, y >> 1, id.grain) * 0.16;
-					const k = 0.5 + g2 + fall * 2.8 * heat;
-					paint(s, x, y, wlr * k + fall * heat * 44, wlg * k + fall * heat * 26, wlb * k + fall * heat * 9, 1);
+					if (d >= 1) continue;
+					const fall = (1 - d) ** 2.1;
+					plot(s, x, y, 255, 176, 88, fall * heat * 0.4);
 				}
 
 			const [tbr, tbg, tbb] = hsl(24 + (s.v.hue % 16), 34 + s.v.sat * 0.18, 17);
 			for (let y = ty; y < s.h; y++) {
 				const f = (y - ty) / Math.max(1, s.h - ty);
-				for (let x = 0; x < s.w; x++) {
+				const hwt = s.w * (0.34 + f * 0.2);
+				for (let x = Math.max(0, Math.floor(cx - hwt)); x < Math.min(s.w, Math.ceil(cx + hwt)); x++) {
+					const ex = Math.min(1, (hwt - Math.abs(x - cx)) / 3.4);
+					if (ex <= 0) continue;
 					const pool = Math.max(0, 1 - Math.hypot((x - cx) / (s.w * 0.44 * (0.6 + heat * 0.5)), f / 1.05)) ** 1.7;
 					const ring = Math.sin(x * 0.08 + Math.sin(x * 0.02 + id.grain) * 2.2 + f * 4) * 0.5 + 0.5;
 					const gr2 = ring * 0.24 + hash2m(x, y, id.grain + 7) * 0.14;
 					let k = 0.62 + gr2 - f * 0.18 + pool * 2.4 * heat;
 					if (y - ty < 2) k += 0.5;
-					paint(s, x, y, tbr * k + pool * heat * 40, tbg * k + pool * heat * 22, tbb * k + pool * heat * 7, 1);
+					paint(s, x, y, tbr * k + pool * heat * 40, tbg * k + pool * heat * 22, tbb * k + pool * heat * 7, ex);
 				}
 			}
 
@@ -1383,29 +1389,42 @@ export function makeVinyl(rows: number): FxProgram {
 			const jolt = (s as any).jolt as number;
 			const shake = jolt * Math.sin(s.t * 2.3) * 2.2;
 
+			const px = Math.min(s.w - 5, cx + R * 1.24);
+			const py = Math.max(5, cy - R * sq * 1.5);
+
 			const [pl, plg, plb] = hsl(220 + (s.v.hue % 30), 8 + s.v.sat * 0.12, 11);
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
+			const plx0 = Math.min(cx - R * 1.42, px - 7);
+			const plx1 = Math.max(cx + R * 1.42, px + 7);
+			const pcx = (plx0 + plx1) * 0.5;
+			const phw = (plx1 - plx0) * 0.5;
+			const ply0 = Math.max(0, py - 8);
+			const ply1 = Math.min(s.h - 1, s.h * 0.94 + 2);
+			for (let y = Math.floor(ply0); y <= ply1; y++) {
+				const fy = (y - ply0) / Math.max(1, ply1 - ply0);
+				const hw = phw * (0.94 + fy * 0.06);
+				for (let x = Math.max(0, Math.floor(pcx - hw)); x < Math.min(s.w, Math.ceil(pcx + hw)); x++) {
+					const ex = Math.min(1, (hw - Math.abs(x - pcx)) / 2.6) * Math.min(1, (y - ply0 + 1) / 2.4);
+					if (ex <= 0) continue;
 					const g2 = hash2m(x >> 1, y >> 1, id.grain) * 0.2;
-					const sheen = Math.max(0, 1 - Math.abs(x / s.w - 0.18 - (y / s.h) * 0.2) / 0.34) ** 2;
-					const k = 1.5 + g2 + sheen * 1.1 + (1 - y / s.h) * 0.4;
-					paint(s, x, y, pl * k + sheen * 26, plg * k + sheen * 28, plb * k + sheen * 34, 1);
+					const sheen = Math.max(0, 1 - Math.abs((x - pcx) / (phw * 2) + 0.3 - fy * 0.2) / 0.34) ** 2;
+					const k = 1.5 + g2 + sheen * 1.1 + (1 - fy) * 0.4;
+					paint(s, x, y, pl * k + sheen * 26, plg * k + sheen * 28, plb * k + sheen * 34, ex);
 				}
-			for (let x = 0; x < s.w; x++) {
+			}
+			for (let x = Math.max(0, Math.floor(pcx - phw)); x < Math.min(s.w, Math.ceil(pcx + phw)); x++) {
+				const ex = Math.min(1, (phw - Math.abs(x - pcx)) / 2.6);
+				if (ex <= 0) continue;
 				const yb = s.h * 0.94 + Math.sin(x * 0.02 + id.grain) * 0.6;
-				for (let k = 0; k < 3; k++) paint(s, x, yb + k, 30, 32, 38, 1);
+				for (let k = 0; k < 3; k++) paint(s, x, yb + k, 30, 32, 38, ex);
 			}
 			for (const f of id.feet) {
-				const fx = f * s.w;
+				const fx = pcx + (f - 0.5) * phw * 1.7;
 				for (let dy = 0; dy < 4; dy++)
 					for (let dx = -3; dx <= 3; dx++) {
 						if (Math.hypot(dx / 3.4, dy / 4) > 1) continue;
 						paint(s, fx + dx, s.h * 0.94 + dy, 18, 19, 22, 1);
 					}
 			}
-
-			const px = Math.min(s.w - 5, cx + R * 1.24);
-			const py = Math.max(5, cy - R * sq * 1.5);
 			for (let dy = -4; dy <= 5; dy++)
 				for (let dx = -4; dx <= 4; dx++) {
 					const d = Math.hypot(dx / 4.2, dy / 4.6);
@@ -1640,20 +1659,20 @@ function drawFish(s: FxScene, x: number, y: number, dir: number, sz: number, wag
 			if (!inside) continue;
 			const stripe = Math.sin(u * 9 + tone * 6) > 0.62 ? 0.78 : 1;
 			const k = shade * stripe;
-			paint(s, x + dx * dir, y + dy, fr * k + dr2 * (1 - k) * 0.5, fg * k + dg2 * (1 - k) * 0.5, fb * k + db2 * (1 - k) * 0.5, 1);
+			paint(s, x - dx * dir, y + dy, fr * k + dr2 * (1 - k) * 0.5, fg * k + dg2 * (1 - k) * 0.5, fb * k + db2 * (1 - k) * 0.5, 1);
 		}
 	const fy = y + bh * 0.72;
 	for (let dx = -bl * 0.2; dx <= bl * 0.4; dx++) {
 		const h = (1 - Math.abs(dx - bl * 0.1) / (bl * 0.34)) * bh * 0.7;
-		for (let dy = 0; dy < h; dy++) paint(s, x + dx * dir, fy + dy, dr2 * 1.3, dg2 * 1.3, db2 * 1.3, 0.85);
+		for (let dy = 0; dy < h; dy++) paint(s, x - dx * dir, fy + dy, dr2 * 1.3, dg2 * 1.3, db2 * 1.3, 0.85);
 	}
 	for (let dx = -bl * 0.1; dx <= bl * 0.35; dx++) {
 		const h = (1 - Math.abs(dx - bl * 0.1) / (bl * 0.3)) * bh * 0.85;
-		for (let dy = 0; dy < h; dy++) paint(s, x + dx * dir, y - bh * 0.72 - dy, dr2 * 1.15, dg2 * 1.15, db2 * 1.15, 0.85);
+		for (let dy = 0; dy < h; dy++) paint(s, x - dx * dir, y - bh * 0.72 - dy, dr2 * 1.15, dg2 * 1.15, db2 * 1.15, 0.85);
 	}
-	const ex = x + -bl * 0.58 * dir;
+	const ex = x + bl * 0.58 * dir;
 	paint(s, ex, y - bh * 0.18, 244, 240, 236, 1);
-	paint(s, ex - 0.6 * dir, y - bh * 0.18, 18, 16, 20, 1);
+	paint(s, ex + 0.6 * dir, y - bh * 0.18, 18, 16, 20, 1);
 }
 
 export function makeFishtank(rows: number): FxProgram {
@@ -1684,23 +1703,15 @@ export function makeFishtank(rows: number): FxProgram {
 			const cycle = Math.floor((s.t * s.v.speed) / id.period);
 			const feeding = cyc > id.feedAt && cyc < id.feedAt + 0.06;
 
-			const [wr, wg, wb] = hsl(190 + (s.v.hue % 30), 46 + s.v.sat * 0.24, 14);
-			for (let y = 0; y < s.h; y++)
+			for (let y = surf; y < s.h; y++)
 				for (let x = 0; x < s.w; x++) {
 					const dep = Math.max(0, (y - surf) / Math.max(1, bed - surf));
 					const caus =
 						Math.sin(x * 0.18 + s.t * 0.035 * s.v.speed + Math.sin(y * 0.1) * 1.4) * 0.5 +
 						0.5 +
 						(Math.sin(x * 0.07 - s.t * 0.021 * s.v.speed + y * 0.05) * 0.5 + 0.5) * 0.6;
-					const beam = Math.max(0, 1 - dep * 1.1) * caus * 0.5;
-					const g2 = hash2m(x >> 1, y >> 1, id.grain) * 0.12;
-					const k = 1.4 - dep * 0.55 + g2 + beam * 1.4;
-					paint(s, x, y, wr * k + beam * 24, wg * k + beam * 40, wb * k + beam * 40, 1);
-				}
-			for (let y = 0; y < surf; y++)
-				for (let x = 0; x < s.w; x++) {
-					const f = y / Math.max(1, surf);
-					paint(s, x, y, 10, 14, 18, 1 - f * 0.3);
+					const beam = Math.max(0, 1 - dep * 1.15) * Math.max(0, caus - 0.72);
+					if (beam > 0.01) plot(s, x, y, 90, 180, 220, beam * 0.5);
 				}
 
 			const [gr2, gg2, gb2] = hsl(34 + (s.v.hue % 20), 18 + s.v.sat * 0.14, 34);
@@ -1909,15 +1920,12 @@ export function makeFishtank(rows: number): FxProgram {
 				for (let k = 1; k < 4; k++) plot(s, x, surf + w2 - k, 140, 210, 240, 0.12 * (1 - k / 4));
 			}
 
-			for (let y = 0; y < s.h; y++) {
+			for (let y = surf; y < s.h; y++) {
+				const f = 1 - (y - surf) / Math.max(1, s.h - surf);
 				for (let q = 0; q < 2; q++) {
-					paint(s, q, y, 150, 190, 200, 0.24 - q * 0.1);
-					paint(s, s.w - 1 - q, y, 150, 190, 200, 0.24 - q * 0.1);
+					plot(s, q, y, 150, 200, 220, (0.16 - q * 0.08) * f);
+					plot(s, s.w - 1 - q, y, 150, 200, 220, (0.16 - q * 0.08) * f);
 				}
-			}
-			for (let x = 0; x < s.w; x++) {
-				const spec = Math.max(0, 1 - Math.abs(x / s.w - 0.24) / 0.3) ** 2;
-				for (let y = 0; y < s.h; y++) plot(s, x, y, 210, 240, 255, spec * 0.05 * (1 - y / s.h));
 			}
 
 			s.out = Math.min(1, excite / 5 + flakes.length * 0.05 + 0.18);
@@ -2023,28 +2031,28 @@ export function makePopcorn(rows: number): FxProgram {
 			const heat = cyc < 0.1 ? cyc / 0.1 : cyc < 0.82 ? 1 : Math.max(0, 1 - (cyc - 0.82) / 0.1);
 			const cook = Math.min(1, Math.max(0, (cyc - 0.12) / 0.62));
 
-			const [wr, wg, wb] = hsl(22 + (s.v.hue % 22), 16 + s.v.sat * 0.1, 9);
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const g = hash2m(x >> 1, y >> 1, id.grain) * 0.24;
-					const vig = 1 - Math.hypot(x / s.w - 0.5, y / s.h - 0.6) * 0.5;
-					const warm = Math.max(0, 1 - Math.hypot((x - (pl + pr) * 0.5) / (s.w * 0.6), (y - bot) / (s.h * 0.7)));
-					const k = (0.8 + g) * vig;
-					paint(s, x, y, wr * k + warm * warm * 44 * heat, wg * k + warm * warm * 16 * heat, wb * k + warm * warm * 5 * heat, 1);
+			const panCx = (pl + pr) * 0.5;
+			for (let y = 0; y < counter; y++) {
+				const warmR = s.w * 0.52;
+				for (let x = Math.max(0, Math.floor(panCx - warmR)); x < Math.min(s.w, Math.ceil(panCx + warmR)); x++) {
+					const warm = Math.max(0, 1 - Math.hypot((x - panCx) / warmR, (y - bot) / (s.h * 0.62)));
+					if (warm <= 0) continue;
+					plot(s, x, y, 255, 152, 58, warm * warm * heat * 0.3);
 				}
-			for (let i = 0; i < 8; i++) {
-				const gx = Math.round((i / 8 + id.tiles[i] * 0.05) * s.w);
-				for (let y = 0; y < counter - 2; y++) paint(s, gx, y, 0, 0, 0, 0.16);
 			}
+			const ctw = (pr - pl) * 1.22;
 			for (let y = counter; y < s.h; y++) {
 				const f = (y - counter) / Math.max(1, s.h - counter);
-				for (let x = 0; x < s.w; x++) {
+				const hw = ctw * (0.5 + f * 0.12);
+				for (let x = Math.max(0, Math.floor(panCx - hw)); x < Math.min(s.w, Math.ceil(panCx + hw)); x++) {
+					const ex = Math.min(1, (hw - Math.abs(x - panCx)) / 3);
+					if (ex <= 0) continue;
 					const g = hash2m(x, y, id.grain + 5) * 0.2;
 					const k = 0.9 - f * 0.45 + g;
-					paint(s, x, y, 58 * k + heat * 22, 54 * k + heat * 9, 50 * k, 1);
+					paint(s, x, y, 58 * k + heat * 22, 54 * k + heat * 9, 50 * k, ex);
+					if (y === counter) paint(s, x, y, 132, 124, 114, ex * 0.7);
 				}
 			}
-			for (let x = 0; x < s.w; x++) paint(s, x, counter, 132, 124, 114, 0.7);
 
 			const [mr, mg, mb] = hsl(208 + (s.v.hue % 26), 5 + s.v.sat * 0.05, 30);
 			const wall = 2;
@@ -2302,17 +2310,6 @@ export function makeClock(rows: number): FxProgram {
 			const sy = Math.sin(s.t * 4.3) * shake * 0.9;
 
 			const bq = 0.84 + id.brass * 0.3;
-			const [wr, wg, wb] = hsl(24 + (s.v.hue % 18), 22 + s.v.sat * 0.12, 13);
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const pi = ((x / s.w) * 6) | 0;
-					const seam = Math.abs((((x / s.w) * 6) % 1) - 0.5) > 0.47 ? 0.55 : 1;
-					const gr3 = Math.sin(y * 0.6 + id.planks[pi] * 20 + Math.sin(x * 0.04) * 3) * 0.12 + hash2m(x, y, id.grain) * 0.14;
-					const vig = 1 - Math.hypot(x / s.w - 0.5, y / s.h - 0.5) * 0.6;
-					const k = (0.8 + gr3) * vig * seam;
-					paint(s, x, y, wr * k, wg * k * 0.94, wb * k * 0.86, 1);
-				}
-
 			const ccx = s.w * id.cx + sx;
 			const half = s.w * id.caseW * 0.5;
 			const baseY = s.h * id.baseY + sy;
@@ -2521,48 +2518,28 @@ export function makeClock(rows: number): FxProgram {
 }
 
 type Pane = {
-	frame: number;
-	mull: number;
-	mullX: number;
-	mullY: number;
-	horizon: number;
-	towers: number[][];
-	lampX: number;
-	lampY: number;
 	seeds: number[][];
 	period: number;
-	carDir: number;
-	fogT: number;
+	sweepDir: number;
+	sweepY: number;
 	tone: number;
-	road: number;
+	fogT: number;
+	gustK: number;
 	grain: number;
 };
 
 function paneIdent(s: FxScene): Pane {
 	const r = mulberry32(s.v.seed + 22189);
-	const frame = 0.055 + r() * 0.03;
-	const mull = (r() * 3) | 0;
-	const mullX = 0.32 + r() * 0.36;
-	const mullY = 0.34 + r() * 0.28;
-	const horizon = 0.5 + r() * 0.14;
-	const towers: number[][] = [];
-	for (let i = 0; i < 10; i++) towers.push([r(), 0.07 + r() * 0.11, 0.08 + r() * 0.3, (r() * 9999) | 0, 0.18 + r() * 0.44]);
-	const lampX = 0.12 + r() * 0.74;
-	const lampY = 0.14 + r() * 0.16;
 	const seeds: number[][] = [];
 	for (let i = 0; i < 34; i++) seeds.push([r(), r(), r(), r(), r()]);
-	const period = 380 + ((r() * 220) | 0);
-	const carDir = r() < 0.5 ? -1 : 1;
-	const fogT = 0.22 + r() * 0.24;
+	const period = 360 + ((r() * 260) | 0);
+	const sweepDir = r() < 0.5 ? -1 : 1;
+	const sweepY = 0.22 + r() * 0.46;
 	const tone = r();
-	const road = r();
+	const fogT = 0.22 + r() * 0.3;
+	const gustK = 0.7 + r() * 0.9;
 	const grain = (r() * 9999) | 0;
-	return { frame, mull, mullX, mullY, horizon, towers, lampX, lampY, seeds, period, carDir, fogT, tone, road, grain };
-}
-
-function paneBox(s: FxScene, id: Pane) {
-	const t = Math.max(2, Math.round(s.h * id.frame));
-	return [t, t, s.w - 1 - t, s.h - 1 - t * 2] as const;
+	return { seeds, period, sweepDir, sweepY, tone, fogT, gustK, grain };
 }
 
 export function makeRainglass(rows: number): FxProgram {
@@ -2573,261 +2550,107 @@ export function makeRainglass(rows: number): FxProgram {
 		init(s) {
 			const id = paneIdent(s);
 			(s as any).id = id;
-			const [x0, y0, x1, y1] = paneBox(s, id);
 			const drops: number[][] = [];
-			for (const q of id.seeds) drops.push([x0 + q[0] * (x1 - x0), y0 + q[1] * (y1 - y0), 0.3 + q[2] * q[2] * 1.7, 0, 1.5 + q[3] * q[3] * 2.4, q[4] * 6.28, 0]);
+			for (const q of id.seeds) drops.push([q[0] * s.w, q[1] * s.h, 0.3 + q[2] * q[2] * 1.7, 0, 1.5 + q[3] * q[3] * 2.4, q[4] * 6.28, 0]);
 			(s as any).drops = drops;
-			(s as any).sharp = new Float32Array(s.w * s.h * 3);
-			(s as any).blur = new Float32Array(s.w * s.h * 3);
-			(s as any).tmp = new Float32Array(s.w * s.h * 3);
 			(s as any).cl = new Float32Array(s.w * s.h);
 			(s as any).pool = new Float32Array(s.w);
-			(s as any).ledge = new Float32Array(s.w);
 			(s as any).acc = 0;
-			(s as any).lastCar = -1;
+			(s as any).lastGust = -1;
 		},
 		frame(s) {
 			clear(s);
 			const id = (s as any).id as Pane;
 			const sw = s.w;
 			const sh = s.h;
-			const sharp = (s as any).sharp as Float32Array;
-			const blur = (s as any).blur as Float32Array;
-			const tmp = (s as any).tmp as Float32Array;
 			const cl = (s as any).cl as Float32Array;
 			const pool = (s as any).pool as Float32Array;
-			const ledge = (s as any).ledge as Float32Array;
 			const drops = (s as any).drops as number[][];
-			const [gx0, gy0, gx1, gy1] = paneBox(s, id);
-			const gw = gx1 - gx0;
-			const gh = gy1 - gy0;
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
 			const cycle = Math.floor((s.t * s.v.speed) / id.period);
-			const carOn = cyc > 0.42 && cyc < 0.68;
-			const ct = carOn ? (cyc - 0.42) / 0.26 : -1;
-			const near = carOn ? Math.max(0, 1 - Math.abs(ct - 0.5) * 2.3) : 0;
+			const sx = (id.sweepDir > 0 ? -0.4 + cyc * 1.8 : 1.4 - cyc * 1.8) * sw;
+			const near = Math.max(0, 1 - Math.abs(cyc - 0.5) * 2.6);
 			const beam = near * near;
 			const gust = 0.5 + 0.5 * Math.sin(cyc * 12.56 + id.tone * 6.28);
-			const rain = 0.4 + gust * 0.75 + beam * 0.7;
+			const rain = 0.4 + gust * id.gustK * 0.6 + beam * 0.5;
+			const [glr, glg, glb] = hsl(28 + (s.v.hue % 30), 58, 58);
+			const [cr, cg, cb] = hsl(s.v.hue2, 24 + s.v.sat * 0.2, 66);
 
-			const hor = Math.round(sh * id.horizon);
-			const lampX = Math.round(id.lampX * sw);
-			const lampY = Math.round(id.lampY * sh);
-			const [skr, skg, skb] = hsl(s.v.hue2, 30 + s.v.sat * 0.22, 11);
-			const [glr, glg, glb] = hsl(30 + (s.v.hue % 26), 62, 54);
+			for (let i = 0; i < cl.length; i++) cl[i] *= 0.984;
+			for (let x = 0; x < sw; x++) pool[x] *= 0.99;
 
-			const addS = (x: number, y: number, r: number, g: number, b: number) => {
-				if (x < 0 || y < 0 || x >= sw || y >= sh) return;
-				const i = ((y | 0) * sw + (x | 0)) * 3;
-				sharp[i] += r;
-				sharp[i + 1] += g;
-				sharp[i + 2] += b;
-			};
-			const setS = (x: number, y: number, r: number, g: number, b: number) => {
-				if (x < 0 || y < 0 || x >= sw || y >= sh) return;
-				const i = ((y | 0) * sw + (x | 0)) * 3;
-				sharp[i] = r;
-				sharp[i + 1] = g;
-				sharp[i + 2] = b;
-			};
-			const smp = (x: number, y: number, o: number) => {
-				const xi = x < 0 ? 0 : x >= sw ? sw - 1 : x | 0;
-				const yi = y < 0 ? 0 : y >= sh ? sh - 1 : y | 0;
-				return sharp[(yi * sw + xi) * 3 + o];
-			};
-
-			for (let y = 0; y < sh; y++) {
-				for (let x = 0; x < sw; x++) {
-					const i = (y * sw + x) * 3;
-					if (y < hor) {
-						const f = y / Math.max(1, hor);
-						const lift = f * f * f;
-						const cloud = 0.5 + Math.sin(x * 0.06 + s.t * 0.005 * s.v.speed) * 0.26 + Math.sin(y * 0.21 - x * 0.04) * 0.2;
-						const k = 0.5 + cloud * 0.5;
-						sharp[i] = skr * k + lift * glr * 0.3;
-						sharp[i + 1] = skg * k + lift * glg * 0.26;
-						sharp[i + 2] = skb * k + lift * glb * 0.24;
-					} else {
-						const d = (y - hor) / Math.max(1, sh - hor);
-						const g = hash2m(x, y, id.grain) * 0.5 + hash2m(x >> 1, y >> 1, id.grain + 5) * 0.5;
-						const k = 0.45 + g * 0.5 + d * 0.35;
-						sharp[i] = (11 + id.road * 6) * k;
-						sharp[i + 1] = (12 + id.road * 6) * k;
-						sharp[i + 2] = (17 + id.road * 8) * k;
+			if (beam > 0.003) {
+				const bw = sw * 0.32;
+				const by = id.sweepY * sh;
+				const x0 = Math.max(0, Math.round(sx - bw));
+				const x1 = Math.min(sw - 1, Math.round(sx + bw));
+				for (let x = x0; x <= x1; x++) {
+					const fx = 1 - Math.abs(x - sx) / bw;
+					if (fx <= 0) continue;
+					for (let y = 0; y < sh; y++) {
+						const fy = 1 - Math.min(1, Math.abs(y - by) / (sh * 0.96));
+						if (fy <= 0) continue;
+						const a = fx * fx * fy * beam * 0.26;
+						plot(s, x, y, glr * a, glg * a, glb * a, 1);
 					}
 				}
 			}
 
-			for (const [tx, tw, th, tseed, tlit] of id.towers) {
-				const cxp = tx * sw;
-				const halfw = Math.max(2, tw * sw * 0.5);
-				const left = Math.round(cxp - halfw);
-				const topY = Math.round(hor - th * sh);
-				const dep = 0.45 + th * 1.1;
-				for (let x = left; x <= cxp + halfw; x++) {
-					if (x < 0 || x >= sw) continue;
-					for (let y = topY; y < hor; y++) {
-						if (y < 0) continue;
-						setS(x, y, 9 * dep, 10 * dep, 15 * dep);
-						const ux = x - left;
-						const uy = y - topY;
-						if (ux % 3 < 2 && uy % 3 < 2) {
-							const q = hash2m((ux / 3) | 0, (uy / 3) | 0, tseed);
-							if (q < tlit) {
-								const fl = q > tlit - 0.05 ? (Math.sin(s.t * 0.33 + ux * 3.1 + uy) > 0 ? 1 : 0.22) : 1;
-								const warm = hash2m((ux / 3) | 0, (uy / 3) | 0, tseed + 1);
-								setS(x, y, (140 + warm * 100) * fl, (112 + warm * 86) * fl, (64 + warm * 76) * fl);
-							}
-						}
-					}
-				}
-			}
-
-			const armDir = s.v.dir > 0 ? 1 : -1;
-			for (let y = lampY; y < hor + 2; y++) setS(lampX, y, 30, 30, 34);
-			for (let k = 0; k <= 5; k++) setS(lampX + k * armDir, lampY - 1, 30, 30, 34);
-			const headX = lampX + 5 * armDir;
-			const glowR = sh * 0.46;
-			for (let dy = -glowR; dy <= glowR; dy++) {
-				for (let dx = -glowR * 1.35; dx <= glowR * 1.35; dx++) {
-					const d = Math.hypot(dx / (glowR * 1.35), dy / glowR);
-					if (d > 1) continue;
-					const a = (1 - d) * (1 - d) * 0.72;
-					addS(headX + dx, lampY + dy, glr * a, glg * a, glb * a);
-				}
-			}
-			for (let dy = -1; dy <= 1; dy++) for (let dx = -2; dx <= 2; dx++) setS(headX + dx, lampY + dy, 255, 238, 198);
-
-			const refl = (srcX: number, ir: number, ig: number, ib: number, pw: number) => {
-				for (let y = hor; y < sh; y++) {
-					const d = (y - hor) / Math.max(1, sh - hor);
-					const wob = Math.sin(y * 0.72 + s.t * 0.1 * s.v.speed) * (0.5 + d * 5) + Math.sin(y * 1.7 - s.t * 0.06) * d * 2.2;
-					const span = 1.3 + d * 6;
-					const cxr = srcX + wob;
-					for (let x = Math.round(cxr - span); x <= cxr + span; x++) {
-						const e = 1 - Math.abs(x - cxr) / (span + 0.5);
-						if (e <= 0) continue;
-						const a = e * e * (1 - d * 0.7) * pw * 0.5;
-						addS(x, y, ir * a, ig * a, ib * a);
-					}
-				}
-			};
-			refl(headX, glr, glg, glb, 0.9);
-
-			if (carOn) {
-				const roadY = hor + (sh - hor) * 0.18;
-				const cx2 = (id.carDir > 0 ? -0.24 + ct * 1.48 : 1.24 - ct * 1.48) * sw;
-				const size = 1 + near * 3.2;
-				const bw = 3.4 + near * 7;
-				const bh = 1.6 + near * 3.4;
-				for (let y = roadY - bh * 1.7; y <= roadY + bh * 0.7; y++) {
-					for (let x = cx2 - bw; x <= cx2 + bw; x++) {
-						const u = Math.abs(x - cx2) / bw;
-						const roofline = roadY - bh * (1 + Math.max(0, 1 - u * 1.9) * 0.8);
-						if (y < roofline) continue;
-						setS(x, y, 14, 14, 18);
-					}
-				}
-				for (const off of [-(1.6 + near * 3.4), 1.6 + near * 3.4]) {
-					const hxx = cx2 + off;
-					const gr = size * 5.5;
-					for (let dy = -gr; dy <= gr; dy++) {
-						for (let dx = -gr * 1.5; dx <= gr * 1.5; dx++) {
-							const d = Math.hypot(dx / (gr * 1.5), dy / gr);
-							if (d > 1) continue;
-							const a = (1 - d) * (1 - d) * 0.38 * (0.24 + near * 0.85);
-							addS(hxx + dx, roadY + dy, 255 * a, 242 * a, 206 * a);
-						}
-					}
-					for (let dy = -size; dy <= size; dy++) {
-						for (let dx = -size * 1.4; dx <= size * 1.4; dx++) {
-							const d = Math.hypot(dx / (size * 1.4), dy / size);
-							if (d > 1) continue;
-							setS(hxx + dx, roadY + dy, 255, 250 - d * 20, 226 - d * 50);
-						}
-					}
-					refl(hxx, 255, 242, 206, 0.45 + near * 0.9);
-				}
-			}
-
-			for (let k = 0; k < 54; k++) {
+			for (let k = 0; k < 48; k++) {
 				const col = ((k * 79) % 997) / 997;
-				const far = 0.28 + ((k * 43) % 100) / 150;
+				const far = 0.26 + ((k * 43) % 100) / 160;
 				const sp = 0.5 + ((k * 29) % 100) / 90;
 				const yy = (((s.t * sp * 0.05 * s.v.speed + col * 7.3) % 1) + 1) % 1;
 				const xx = col * sw + s.v.tilt * yy * sw * 0.2 * s.v.dir;
 				const len = 2 + far * 8;
+				const hy = yy * (sh + len);
 				for (let d2 = 0; d2 < len; d2++) {
-					const a = far * (1 - d2 / len) * 0.4 * rain;
-					addS(xx - d2 * s.v.tilt * 0.7, yy * (sh + len) - d2, 168 * a, 184 * a, 212 * a);
+					const fy = hy - d2;
+					const a = far * (1 - d2 / len) * 0.26 * rain * edge(fy, -len, sh + len, len * 1.4);
+					plot(s, xx - d2 * s.v.tilt * 0.7, fy, (cr + 60) * a, (cg + 70) * a, (cb + 90) * a, 1);
 				}
 			}
 
-			for (let pass = 0; pass < 2; pass++) {
-				const src = pass === 0 ? sharp : blur;
-				for (let y = 0; y < sh; y++) {
-					for (let x = 0; x < sw; x++) {
-						let a = 0;
-						let b = 0;
-						let c = 0;
-						for (let k = -2; k <= 2; k++) {
-							const xi = x + k < 0 ? 0 : x + k >= sw ? sw - 1 : x + k;
-							const wg = k === 0 ? 3 : Math.abs(k) === 1 ? 2 : 1;
-							const j = (y * sw + xi) * 3;
-							a += src[j] * wg;
-							b += src[j + 1] * wg;
-							c += src[j + 2] * wg;
-						}
-						const i = (y * sw + x) * 3;
-						tmp[i] = a / 9;
-						tmp[i + 1] = b / 9;
-						tmp[i + 2] = c / 9;
-					}
-				}
-				for (let y = 0; y < sh; y++) {
-					for (let x = 0; x < sw; x++) {
-						let a = 0;
-						let b = 0;
-						let c = 0;
-						for (let k = -2; k <= 2; k++) {
-							const yi = y + k < 0 ? 0 : y + k >= sh ? sh - 1 : y + k;
-							const wg = k === 0 ? 3 : Math.abs(k) === 1 ? 2 : 1;
-							const j = (yi * sw + x) * 3;
-							a += tmp[j] * wg;
-							b += tmp[j + 1] * wg;
-							c += tmp[j + 2] * wg;
-						}
-						const i = (y * sw + x) * 3;
-						blur[i] = a / 9;
-						blur[i + 1] = b / 9;
-						blur[i + 2] = c / 9;
+			const GX = 32;
+			const GY = 17;
+			const breathe = 0.7 + Math.sin(s.t * 0.023 * s.v.speed) * 0.3;
+			for (let cy2 = 0; cy2 < GY; cy2++) {
+				for (let cx2 = 0; cx2 < GX; cx2++) {
+					const h1 = hash2m(cx2, cy2, id.grain);
+					if (h1 > 0.34 + id.fogT) continue;
+					const h2 = hash2m(cx2, cy2, id.grain + 7);
+					const h3 = hash2m(cx2, cy2, id.grain + 13);
+					const mx = ((cx2 + 0.15 + h2 * 0.7) / GX) * sw;
+					const my = ((cy2 + 0.15 + h3 * 0.7) / GY) * sh;
+					const xi = mx | 0;
+					const yi = my | 0;
+					if (xi < 0 || yi < 0 || xi >= sw || yi >= sh) continue;
+					const wiped = Math.min(1, cl[yi * sw + xi] * 1.6);
+					if (wiped > 0.92) continue;
+					const tw = 0.55 + 0.45 * Math.sin(s.t * 0.04 * s.v.speed + h2 * 6.28);
+					const a = (1 - wiped) * (0.2 + h3 * 0.28) * (0.6 + breathe * 0.4);
+					paint(s, xi, yi, 26, 32, 46, a * 0.16);
+					plot(s, xi, yi, 150 * tw, 172 * tw, 208 * tw, a * (0.3 + beam * 0.7));
+					if (h1 < 0.1) {
+						paint(s, xi + 1, yi, 24, 30, 44, a * 0.3);
+						plot(s, xi, yi - 1, 170, 190, 220, a * 0.22);
 					}
 				}
 			}
 
-			for (let i = 0; i < cl.length; i++) cl[i] *= 0.9958;
-			for (let x = 0; x < sw; x++) {
-				pool[x] *= 0.994;
-				ledge[x] *= 0.992;
-			}
-
-			(s as any).acc += rain * 0.34;
+			(s as any).acc += rain * 0.16;
 			while ((s as any).acc > 1) {
 				(s as any).acc -= 1;
 				if (drops.length > 74) break;
 				const q0 = s.rnd();
-				drops.push([gx0 + s.rnd() * gw, gy0 + s.rnd() * gh, 0.26 + q0 * q0 * 1.1, 0, 1.4 + s.rnd() ** 2 * 2.5, s.rnd() * 6.28, 0]);
+				drops.push([s.rnd() * sw, s.rnd() * sh, 0.26 + q0 * q0 * 1.1, 0, 1.4 + s.rnd() ** 2 * 2.5, s.rnd() * 6.28, 0]);
 			}
-			if (carOn && ct > 0.5 && (s as any).lastCar !== cycle) {
-				(s as any).lastCar = cycle;
-				for (let q = 0; q < 14; q++)
-					drops.push([gx0 + s.rnd() * gw, gy0 + s.rnd() * gh * 0.92, 0.8 + s.rnd() * 1.5, 0, 1.4 + s.rnd() * 1.4, s.rnd() * 6.28, 0]);
+			if (cyc > 0.5 && (s as any).lastGust !== cycle) {
+				(s as any).lastGust = cycle;
+				for (let q = 0; q < 7; q++) drops.push([s.rnd() * sw, s.rnd() * sh * 0.9, 0.8 + s.rnd() * 1.5, 0, 1.4 + s.rnd() * 1.4, s.rnd() * 6.28, 0]);
 			}
 
-			const mullX = gx0 + id.mullX * gw;
-			const mullY = gy0 + id.mullY * gh;
-			const barH = Math.max(2, Math.round(sh * 0.035));
 			const born: number[][] = [];
 			let runners = 0;
 			for (let k = drops.length - 1; k >= 0; k--) {
@@ -2841,7 +2664,7 @@ export function makeRainglass(rows: number): FxProgram {
 					b[1] += b[3] * s.v.speed;
 					b[0] += Math.sin(b[1] * 0.3 + b[5]) * 0.2 + s.v.tilt * 0.07 * s.v.dir;
 					b[2] *= 0.982;
-					if (s.rnd() < 0.17) born.push([b[0] + (s.rnd() - 0.5), b[1] - b[2] - 1.2, 0.32 + s.rnd() * 0.32, 0, 1.6 + s.rnd() * 2, s.rnd() * 6.28, 0]);
+					if (s.rnd() < 0.1) born.push([b[0] + (s.rnd() - 0.5), b[1] - b[2] - 1.2, 0.32 + s.rnd() * 0.32, 0, 1.6 + s.rnd() * 2, s.rnd() * 6.28, 0]);
 					if (b[2] < 0.66) {
 						b[6] = 0;
 						b[3] = 0;
@@ -2857,69 +2680,52 @@ export function makeRainglass(rows: number): FxProgram {
 						if (j < k) k--;
 					}
 				}
-				if (b[0] < gx0 + 0.6) b[0] = gx0 + 0.6;
-				if (b[0] > gx1 - 0.6) b[0] = gx1 - 0.6;
+				if (b[0] < 0.6) b[0] = 0.6;
+				if (b[0] > sw - 1.6) b[0] = sw - 1.6;
 				const bi = Math.max(0, Math.min(sw - 1, b[0] | 0));
-				if (id.mull === 2 && b[6] && b[1] > mullY - barH * 0.5 && b[1] < mullY + barH) {
-					ledge[bi] += b[2] * 0.7;
-					drops.splice(k, 1);
-					continue;
-				}
-				if (b[1] > gy1 - 0.6) {
+				if (b[1] > sh - 1.4) {
 					pool[bi] += b[2] * 0.8;
 					drops.splice(k, 1);
 					continue;
 				}
-				const rr = b[2] + 0.7;
-				const ry = b[6] ? rr * (1 + b[3] * 1.1) : rr;
-				for (let dy = -ry; dy <= ry; dy++) {
-					for (let dx = -rr; dx <= rr; dx++) {
-						if ((dx / rr) ** 2 + (dy / ry) ** 2 > 1) continue;
-						const xi = (b[0] + dx) | 0;
-						const yi = (b[1] + dy) | 0;
-						if (xi < 0 || yi < 0 || xi >= sw || yi >= sh) continue;
-						const want = b[6] ? 1 : 0.78;
-						if (cl[yi * sw + xi] < want) cl[yi * sw + xi] = want;
+				if (b[6]) {
+					const rr = b[2] + 0.7;
+					const ry = rr * (1 + b[3] * 1.1);
+					for (let dy = -ry; dy <= ry; dy++) {
+						for (let dx = -rr; dx <= rr; dx++) {
+							if ((dx / rr) ** 2 + (dy / ry) ** 2 > 1) continue;
+							const xi = (b[0] + dx) | 0;
+							const yi = (b[1] + dy) | 0;
+							if (xi < 0 || yi < 0 || xi >= sw || yi >= sh) continue;
+							if (cl[yi * sw + xi] < 1) cl[yi * sw + xi] = 1;
+						}
 					}
 				}
 			}
-			for (const b of born) if (drops.length < 86) drops.push(b);
+			for (const b of born) if (drops.length < 34) drops.push(b);
 
-			const [fgr, fgg, fgb] = hsl(s.v.hue, 8 + s.v.sat * 0.12, 72);
-			const breathe = 0.84 + Math.sin(s.t * 0.024 * s.v.speed) * 0.16;
-			for (let y = gy0; y <= gy1; y++) {
-				for (let x = gx0; x <= gx1; x++) {
-					const i = y * sw + x;
-					const i3 = i * 3;
-					const clar = cl[i];
-					const r0 = blur[i3] + (sharp[i3] - blur[i3]) * clar;
-					const g0 = blur[i3 + 1] + (sharp[i3 + 1] - blur[i3 + 1]) * clar;
-					const b0 = blur[i3 + 2] + (sharp[i3 + 2] - blur[i3 + 2]) * clar;
-					const roll = 0.66 + Math.sin(x * 0.11 + s.t * 0.018 * s.v.speed) * 0.18 + Math.sin(y * 0.17 - s.t * 0.012) * 0.16;
-					const mist = Math.min(0.68, (1 - clar) * id.fogT * roll * breathe);
-					const fr3 = fgr + beam * 60;
-					const fg3 = fgg + beam * 58;
-					const fb3 = fgb + beam * 50;
-					paint(s, x, y, r0 + (fr3 - r0) * mist, g0 + (fg3 - g0) * mist, b0 + (fb3 - b0) * mist, 1);
+			for (let y = 0; y < sh; y++) {
+				for (let x = 0; x < sw; x++) {
+					const v = cl[y * sw + x];
+					if (v < 0.05) continue;
+					plot(s, x, y, 110 * v, 138 * v, 178 * v, 0.11 + beam * 0.16);
 				}
 			}
 
 			for (const b of drops) {
 				const rr = b[2] + 0.7;
 				const ry = b[6] ? rr * (1 + b[3] * 1.1) : rr;
-				const mag = 2.2 + b[2] * 0.6;
 				if (b[6]) {
-					const tl = ry * 1.5 + b[3] * 4.4;
+					const tl = Math.min(9, ry * 1.4 + b[3] * 2.6);
 					for (let q = 1; q < tl; q++) {
 						const f = q / tl;
-						const wdt = rr * (1 - f) * 0.62;
+						const wdt = rr * (1 - f) * 0.66;
 						for (let dx = -wdt; dx <= wdt; dx++) {
 							const e = 1 - Math.abs(dx) / (wdt + 0.4);
 							const x2 = b[0] + dx;
 							const y2 = b[1] - q;
-							if (y2 < gy0 || y2 > gy1 || x2 < gx0 || x2 > gx1) continue;
-							const k2 = 1.4 - e * 0.2;
-							paint(s, x2, y2, smp(x2, y2 - 2, 0) * k2, smp(x2, y2 - 2, 1) * k2, smp(x2, y2 - 2, 2) * k2, e * (1 - f) * 0.7);
+							if (y2 < 0 || y2 >= sh) continue;
+							plot(s, x2, y2, 128, 156, 196, e * (1 - f) * (0.16 + beam * 0.3));
 						}
 					}
 				}
@@ -2929,76 +2735,40 @@ export function makeRainglass(rows: number): FxProgram {
 						if (d > 1.12) continue;
 						const x2 = b[0] + dx;
 						const y2 = b[1] + dy;
-						if (x2 < gx0 || x2 > gx1 || y2 < gy0 || y2 > gy1) continue;
-						if (d > 1) {
-							paint(s, x2, y2, 12, 15, 21, (1.12 - d) * 1.1);
+						if (x2 < 0 || y2 < 0 || x2 >= sw || y2 >= sh) continue;
+						if (d > 0.9) {
+							paint(s, x2, y2, 18, 22, 34, Math.min(1, (1.12 - d) / 0.22) * 0.3);
 							continue;
 						}
-						const rim = d > 0.66 ? (d - 0.66) / 0.34 : 0;
-						const kk = 1.75 - rim * 1.05;
-						const sxp = b[0] - dx * mag;
-						const syp = b[1] - dy * mag * 0.9;
-						const amb = 14 + beam * 20;
-						paint(s, x2, y2, smp(sxp, syp, 0) * kk + amb, smp(sxp, syp, 1) * kk + amb, smp(sxp, syp, 2) * kk + amb * 1.15, 1);
+						const lens = d * d;
+						if (lens > 0.35) paint(s, x2, y2, 24, 30, 44, (lens - 0.35) * 0.2);
+						const caus = Math.max(0, (dy / ry) * 0.9 + 0.12 - Math.abs(dx / rr) * 0.55);
+						if (caus > 0) plot(s, x2, y2, 160 + beam * 80, 180 + beam * 66, 206, caus * (0.24 + beam * 0.6));
 					}
 				}
-				const hl = 0.42 + beam * 0.45;
-				plot(s, b[0] - rr * 0.36, b[1] - ry * 0.4, 232, 240, 255, hl);
+				const hl = 0.5 + beam * 0.5;
+				plot(s, b[0] - rr * 0.36, b[1] - ry * 0.42, 232, 240, 255, hl);
 				if (rr > 1.6) {
-					plot(s, b[0] - rr * 0.36 + 1, b[1] - ry * 0.4, 232, 240, 255, hl * 0.5);
-					plot(s, b[0] - rr * 0.36, b[1] - ry * 0.4 + 1, 232, 240, 255, hl * 0.5);
+					plot(s, b[0] - rr * 0.36 + 1, b[1] - ry * 0.42, 232, 240, 255, hl * 0.5);
+					plot(s, b[0] - rr * 0.36, b[1] - ry * 0.42 + 1, 232, 240, 255, hl * 0.5);
 				}
-				plot(s, b[0] + rr * 0.3, b[1] + ry * 0.45, 150, 176, 208, 0.22);
 			}
 
-			const water = (arr: Float32Array, baseY: number, up: number) => {
-				for (let x = gx0; x <= gx1; x++) {
-					const v = arr[x];
-					if (v < 0.05) continue;
-					const hgt = Math.min(3.4, v * 0.42);
-					for (let q = 0; q < hgt; q++) {
-						const y = baseY - q * up;
-						const f = q / Math.max(0.6, hgt);
-						paint(s, x, y, smp(x, y - 3, 0) * 1.15, smp(x, y - 3, 1) * 1.15, smp(x, y - 3, 2) * 1.2, 0.5 + (1 - f) * 0.4);
-					}
-					const gleam = Math.max(0, Math.sin(x * 0.4 + s.t * 0.06 * s.v.speed));
-					plot(s, x, baseY - hgt * up, 220, 234, 255, Math.min(0.55, v * 0.12) * (0.4 + gleam * 0.6) + beam * 0.25);
-				}
-			};
-			water(pool, gy1, 1);
-			if (id.mull === 2) water(ledge, mullY - barH * 0.5, 1);
-
-			const [wr2, wg2, wb2] = hsl(22 + id.tone * 18, 12 + id.tone * 24, 19 + id.tone * 7);
-			const litF = 0.8 + beam * 0.66;
-			const bar = (bx0: number, by0: number, bx1: number, by1: number) => {
-				for (let y = Math.round(by0); y <= by1; y++) {
-					for (let x = Math.round(bx0); x <= bx1; x++) {
-						if (x < 0 || y < 0 || x >= sw || y >= sh) continue;
-						const du = Math.min(x - bx0, bx1 - x);
-						const dv = Math.min(y - by0, by1 - y);
-						const bev = Math.min(du, dv);
-						const up = y - by0 < bx1 - bx0 ? 1 : 0;
-						const gn = hash2m(x >> 1, y, id.grain + 31) * 0.24 + Math.sin(x * 0.7 + y * 2.3) * 0.05;
-						let k = 0.78 + gn;
-						if (bev < 1) k += y - by0 < 1 || x - bx0 < 1 ? 0.5 : -0.38;
-						else if (bev < 2) k += up ? 0.16 : -0.1;
-						const kk = k * litF;
-						paint(s, x, y, wr2 * kk, wg2 * kk, wb2 * kk, 1);
-					}
-				}
-			};
-			bar(0, 0, sw - 1, gy0);
-			bar(0, gy1, sw - 1, sh - 1);
-			bar(0, 0, gx0, sh - 1);
-			bar(gx1, 0, sw - 1, sh - 1);
-			if (id.mull >= 1) bar(mullX - barH * 0.5, gy0, mullX + barH * 0.5, gy1);
-			if (id.mull === 2) bar(gx0, mullY - barH * 0.5, gx1, mullY + barH * 0.5);
 			for (let x = 0; x < sw; x++) {
-				const k = (0.95 + hash2m(x, 3, id.grain + 44) * 0.2) * litF;
-				paint(s, x, gy1 + 1, wr2 * k * 1.5, wg2 * k * 1.5, wb2 * k * 1.5, 1);
+				const v = pool[x];
+				if (v < 0.05) continue;
+				const hgt = Math.min(3.6, v * 0.42);
+				for (let q = 0; q < hgt; q++) {
+					const y = sh - 1 - q;
+					const f = q / Math.max(0.6, hgt);
+					paint(s, x, y, 22, 28, 42, (0.22 + (1 - f) * 0.24) * Math.min(1, hgt - q));
+					plot(s, x, y, 90, 118, 156, (1 - f) * 0.2);
+				}
+				const gleam = Math.max(0, Math.sin(x * 0.4 + s.t * 0.06 * s.v.speed));
+				plot(s, x, sh - 1 - hgt, 220, 234, 255, Math.min(0.55, v * 0.12) * (0.4 + gleam * 0.6) + beam * 0.25);
 			}
 
-			s.out = Math.min(1, beam * 0.85 + runners * 0.06 + 0.1);
+			s.out = Math.min(1, beam * 0.8 + runners * 0.05 + 0.1);
 			blit(s);
 		}
 	};

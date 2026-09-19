@@ -98,12 +98,7 @@ export function makeWaterfall(rows: number): FxProgram {
 			for (let x = 0; x < s.w; x++) {
 				const u = x / s.w;
 				const y0 = lipY + ridgeAt(id.ridge, u, s.h * 0.1);
-				for (let y = 0; y < s.h; y++) {
-					if (y < y0) {
-						const sky = 1 - y / Math.max(1, y0);
-						paint(s, x, y, rr * (0.6 + sky * 0.9), rg * (0.6 + sky * 0.9), rb * (0.7 + sky * 1.1), 1);
-						continue;
-					}
+				for (let y = y0; y < s.h; y++) {
 					if (y >= poolY) continue;
 					const band = id.strata[((((y - y0) / Math.max(1, poolY - y0)) * 6.99) | 0) % 7];
 					const g = hash2(x * 0.5, y, id.grain);
@@ -308,15 +303,6 @@ export function makeRipple(rows: number): FxProgram {
 			const storm = cyc < 0.55 ? Math.sin((cyc / 0.55) * Math.PI) ** 1.4 : 0;
 			(s as any).storm = storm;
 
-			const [skr, skg, skb] = hsl(s.v.hue2, 24 + s.v.sat * 0.35, 38 - storm * 20);
-			for (let y = 0; y < top; y++)
-				for (let x = 0; x < s.w; x++) {
-					const f = 1 - y / top;
-					const cloud = Math.sin(x * 0.09 + s.t * 0.006 * s.v.dir) * Math.sin(y * 0.19 + s.t * 0.004) * 0.5 + 0.5;
-					const k = (0.45 + f * 0.75) * (1 - storm * 0.3 * cloud);
-					paint(s, x, y, skr * k, skg * k, skb * k, 1);
-				}
-
 			const lampX = id.lightX * s.w;
 			if (id.lamp) {
 				const ly = top - s.h * 0.28;
@@ -327,30 +313,6 @@ export function makeRipple(rows: number): FxProgram {
 						else plot(s, lampX + dx * 2, ly + dy * 2, 255, 196, 110, Math.max(0, 1 - d / 3) ** 2 * 0.4);
 					}
 				for (let k = 0; k < s.h * 0.3; k++) for (let q = -1; q <= 0; q++) paint(s, lampX + q, ly + 6 + k, 16, 17, 20, 0.95);
-			}
-
-			for (let L = 0; L < 2; L++) {
-				const amp = L ? 0.14 : 0.08;
-				const tone = L ? 0.46 : 0.26;
-				for (let x = 0; x < s.w; x++) {
-					const t2 = (x / s.w) * 8 + L * 2.9;
-					const i2 = t2 | 0;
-					const raw = t2 - i2;
-					const ff = raw * raw * (3 - 2 * raw);
-					const hz = top - s.h * 0.02 - (id.far[i2 % 9] * (1 - ff) + id.far[(i2 + 1) % 9] * ff) * s.h * amp;
-					for (let y = hz; y < top; y++) paint(s, x, y, kr * tone * 3.6, kg * tone * 3.6, kb * tone * 3.6, 1);
-				}
-			}
-
-			for (const [tx, th] of id.trees) {
-				const bx = tx * s.w;
-				const bh = th * s.h * 0.18;
-				for (let k = 0; k < bh; k++) {
-					const f = k / bh;
-					const tier = (f * 3) % 1;
-					const half = (0.2 + f * 0.8) * (0.5 + tier * 0.6) * s.w * 0.018 + 0.4;
-					for (let q = -half; q <= half; q++) paint(s, bx + q, top - s.h * 0.015 - (bh - k), kr * 1.3, kg * 1.3, kb * 1.3, 0.95);
-				}
 			}
 
 			for (let x = 0; x < s.w; x++) {
@@ -378,15 +340,9 @@ export function makeRipple(rows: number): FxProgram {
 				const f = (y - top) / depth;
 				const k = (0.66 - f * 0.46) * (1 - storm * 0.22);
 				const bk = 0.9 - f * 0.45;
-				const chop = s.w * (0.004 + f * 0.03) * (0.4 + storm * 1.4);
-				for (let x = 0; x < s.w; x++) {
-					const wob = Math.sin(x * 0.21 + s.t * 0.05 * s.v.speed + f * 5) * chop + Math.sin(x * 0.07 - s.t * 0.028) * chop * 0.7;
-					const mx = Math.max(0, Math.min(s.w - 1, Math.round(x + wob)));
-					const mir = Math.max(0, Math.round(top - (y - top) * 0.74 + Math.sin(x * 0.4 + s.t * 0.04) * f * 1.6));
-					const a = (mir * s.w + mx) * 4;
-					paint(s, x, y, s.px[a] * k + br * bk, s.px[a + 1] * k + bg * bk, s.px[a + 2] * k + bb * bk * 1.1, 1);
-				}
+				for (let x = 0; x < s.w; x++) paint(s, x, y, br * bk + k * 40, bg * bk + k * 44, bb * bk + k * 52, 1);
 			}
+
 			if (id.lamp) {
 				for (let y = top | 0; y < s.h; y++) {
 					const f = (y - top) / depth;
@@ -598,13 +554,6 @@ export function makeDrip(rows: number): FxProgram {
 
 			const sx = id.shaft * s.w;
 			const beam = 0.6 + 0.4 * Math.sin(s.t * 0.015 * s.v.speed);
-			for (let y = 0; y < s.h; y++)
-				for (let x = 0; x < s.w; x++) {
-					const g = hash2(x * 0.4, y * 0.4, id.grain + 21) * 0.5 + hash2(x * 0.12, y * 0.12, id.grain + 22) * 0.5;
-					const depth = 0.16 + g * 0.24;
-					const glowFar = Math.max(0, 1 - Math.abs(x - sx) / (s.w * 0.45)) * 0.3;
-					paint(s, x, y, rr * (depth + glowFar), rg * (depth + glowFar), rb * (depth + glowFar * 1.3), 1);
-				}
 			for (let y = 0; y < poolY; y++) {
 				const f = y / poolY;
 				const half = s.w * (0.03 + f * 0.09);

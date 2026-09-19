@@ -308,14 +308,6 @@ export function makeJelly(rows: number): FxProgram {
 			const wave = cyc < 0.42 ? cyc / 0.42 : -1;
 
 			const bedY = s.h * 0.82;
-			for (let y = 0; y < s.h; y++) {
-				const f = y / s.h;
-				for (let x = 0; x < s.w; x++) {
-					const murk = hash2(x >> 1, y >> 1, id.grain) * 0.2;
-					const k = 0.35 + f * 1.3 + murk;
-					paint(s, x, y, dr * k, dg * k, db * k * 1.15, 1);
-				}
-			}
 			const shaftX = s.w * 0.5 + Math.sin(s.t * 0.006) * s.w * 0.14;
 			for (let y = 0; y < s.h; y++) {
 				const f = y / s.h;
@@ -327,18 +319,6 @@ export function makeJelly(rows: number): FxProgram {
 				}
 			}
 
-			for (let x = 0; x < s.w; x++) {
-				const t2 = (x / s.w) * 8;
-				const i2 = t2 | 0;
-				const raw = t2 - i2;
-				const ff = raw * raw * (3 - 2 * raw);
-				const hz = bedY - (id.floor[i2 % 9] * (1 - ff) + id.floor[(i2 + 1) % 9] * ff) * s.h * 0.08;
-				for (let y = hz; y < s.h; y++) {
-					const g = hash2(x, y, id.grain + 5);
-					const lit = (0.55 + g * 0.5 + Math.max(0, 1 - (y - hz) / 4) * 0.5) * (1 + prev * 0.7);
-					paint(s, x, y, dr * lit * 2.1, dg * lit * 2.1, db * lit * 1.9, 1);
-				}
-			}
 			for (const [rx, rr2, rh] of id.rocks) {
 				const px = rx * s.w;
 				const rad = rr2 * s.w;

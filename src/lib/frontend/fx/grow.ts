@@ -557,11 +557,6 @@ export function makeCoral(rows: number): FxProgram {
 
 			const [dr, dg, db] = hsl(s.v.hue2, 40 + s.v.sat * 0.3, 10);
 			const [sr, sg, sb] = hsl(s.v.hue2 - 12, 46 + s.v.sat * 0.3, 34);
-			for (let y = 0; y < s.h; y++) {
-				const f = y / s.h;
-				const k = (1 - f) ** 1.5;
-				for (let x = 0; x < s.w; x++) paint(s, x, y, dr + (sr - dr) * k, dg + (sg - dg) * k, db + (sb - db) * k, 1);
-			}
 			for (let x = 0; x < s.w; x++) {
 				const shaft = Math.sin(x * 0.05 + s.t * 0.006 * s.v.speed) + Math.sin(x * 0.017 - s.t * 0.004);
 				if (shaft < 0.7) continue;
@@ -1257,22 +1252,6 @@ export function makeSlime(rows: number): FxProgram {
 
 			const [ar, ag2, ab] = hsl(s.v.hue2 + 20, 16 + s.v.sat * 0.14, 22);
 			const [br, bg, bb] = hsl(s.v.hue2 + 34, 22 + s.v.sat * 0.16, 30);
-			for (let y = 0; y < s.h; y++) {
-				for (let x = 0; x < s.w; x++) {
-					let bl = 0;
-					for (const [bx2, by2, brad, bt] of id.blotch) {
-						const d = Math.hypot(x / s.w - bx2, (y / s.h - by2) * 0.72) / brad;
-						if (d < 1) bl = Math.max(bl, (1 - d) * (0.5 + bt * 0.5));
-					}
-					const g = hash2(x, y, id.grain) * 0.3 + hash2(x >> 1, y >> 1, id.grain + 5) * 0.4;
-					const vig = 1 - Math.hypot(x / s.w - 0.5, y / s.h - 0.5) * 0.42;
-					const k = (0.74 + g * 0.5) * vig;
-					const mr = ar + (br - ar) * bl;
-					const mg = ag2 + (bg - ag2) * bl;
-					const mb = ab + (bb - ab) * bl;
-					paint(s, x, y, mr * k, mg * k, mb * k, 1);
-				}
-			}
 			for (const [dx2, dy2, drad] of id.dew) {
 				const cx = dx2 * s.w;
 				const cy = dy2 * s.h;
@@ -2123,14 +2102,6 @@ export function makeDecay(rows: number): FxProgram {
 
 			const [dr, dg, db] = hsl(24 + (s.v.hue % 22), 24 + s.v.sat * 0.14, 12);
 			const [lr2, lg2, lb2] = hsl(28 + (s.v.hue % 30), 32 + s.v.sat * 0.22, 26);
-			for (let y = 0; y < s.h; y++) {
-				const dep = y / s.h;
-				for (let x = 0; x < s.w; x++) {
-					const g = hash2(x, y, id.grain) * 0.24 + hash2(x >> 1, y >> 1, id.grain + 4) * 0.28;
-					const k = (0.6 + g) * (0.5 + dep * 0.9);
-					paint(s, x, y, dr * k, dg * k, db * k, 1);
-				}
-			}
 			for (const [lx, ly, la, lt] of id.leaves) {
 				const x = lx * s.w;
 				const y = ly * s.h;

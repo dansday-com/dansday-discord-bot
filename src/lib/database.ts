@@ -4,7 +4,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
@@ -1244,6 +1244,12 @@ async function seedNewServerSettings(serverId: number) {
 
 		await upsertServerSettings(serverId, component, baseSettings);
 	}
+
+	await upsertServerSettings(
+		serverId,
+		SERVER_SETTINGS.component.public_statistics,
+		Object.fromEntries(PUBLIC_STATISTICS_SUBFEATURES.map((sub) => [`${sub}_enabled`, true]))
+	);
 
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
 		color: DEFAULT_MAIN_EMBED_COLOR,
@@ -4631,7 +4637,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		}
 		const row = await getServerSettings(sid, component).catch(() => null);
 		const st = row?.settings;
-		const featureOn = !st || typeof st !== 'object' || (st as Record<string, unknown>).enabled !== false;
+		const featureOn = !!st && typeof st === 'object' && (st as Record<string, unknown>).enabled === true;
 		if (featureOn) {
 			enabledFeatures.push({
 				component_name: component,

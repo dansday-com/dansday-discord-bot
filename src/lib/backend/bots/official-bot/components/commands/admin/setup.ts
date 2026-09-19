@@ -183,6 +183,7 @@ export async function execute(interaction: any, client: any) {
 			items_enabled: true,
 			minigames_enabled: true,
 			assets_enabled: true,
+			tasks_enabled: true,
 			...psRaw,
 			ITEMS_CHANNEL_ID: channelMap['items'],
 			MINIGAMES_CHANNEL_ID: channelMap['minigames']

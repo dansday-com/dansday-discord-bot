@@ -1,5 +1,5 @@
 import db, { type BotAiInput } from '../database.js';
-import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../frontend/panelServer.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled, type PublicStatisticsSubfeature, type ServerSettingsComponentName } from '../frontend/panelServer.js';
 import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-settings.js';
 
 const serverSettingsComponent = SERVER_SETTINGS.component;
@@ -339,10 +339,9 @@ async function getPublicStatsSettings(guildId: string): Promise<Record<string, a
 	}
 }
 
-export async function isPublicSubFeatureEnabled(guildId: string, key: 'items' | 'assets' | 'minigames' | 'tasks'): Promise<boolean> {
+export async function isPublicSubFeatureEnabled(guildId: string, key: PublicStatisticsSubfeature): Promise<boolean> {
 	const settings = await getPublicStatsSettings(guildId);
-	if (!settings) return false;
-	return settings[`${key}_enabled`] === true;
+	return publicSubfeatureEnabled(settings, key);
 }
 
 export async function getItemsChannelId(guildId: string): Promise<string | null> {

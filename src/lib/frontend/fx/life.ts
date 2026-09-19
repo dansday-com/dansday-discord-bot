@@ -63,14 +63,6 @@ export function makeSwarm(rows: number): FxProgram {
 			const dusk = s.h * 0.82;
 			const sunX = id.sun * s.w;
 			const sunY = dusk - s.h * 0.06;
-			const [skr, skg, skb] = hsl(s.v.hue2, 42 + s.v.sat * 0.3, 26);
-			for (let y = 0; y < dusk; y++)
-				for (let x = 0; x < dusk * 0 + s.w; x++) {
-					const f = 1 - y / dusk;
-					const d = Math.hypot((x - sunX) / (s.w * 0.55), (y - sunY) / (s.h * 0.8));
-					const warm = Math.max(0, 1 - d) ** 2.1;
-					paint(s, x, y, skr * (0.35 + f * 0.5) + warm * 190, skg * (0.4 + f * 0.6) + warm * 104, skb * (0.6 + f * 1) + warm * 46, 1);
-				}
 			const srd = s.h * 0.09;
 			for (let dy = -srd * 4; dy <= srd * 4; dy++)
 				for (let dx = -srd * 4; dx <= srd * 4; dx++) {
@@ -79,21 +71,10 @@ export function makeSwarm(rows: number): FxProgram {
 					else plot(s, sunX + dx, sunY + dy, 255, 158, 92, Math.max(0, 1 - d / 4) ** 2.3 * 0.42);
 				}
 
-			for (let L = 0; L < 2; L++) {
-				const amp = L ? 0.18 : 0.1;
-				const base = dusk - (L ? s.h * 0.02 : 0);
-				const tone = L ? 0.5 : 0.24;
-				for (let x = 0; x < s.w; x++) {
-					const t2 = (x / s.w) * 8 + L * 3.1;
-					const i2 = t2 | 0;
-					const raw = t2 - i2;
-					const ff = raw * raw * (3 - 2 * raw);
-					const hz = base - (id.ridge[i2 % 9] * (1 - ff) + id.ridge[(i2 + 1) % 9] * ff) * s.h * amp;
-					for (let y = hz; y < dusk; y++) paint(s, x, y, br * tone * 3, bg * tone * 3, bb * tone * 3, 1);
-				}
-			}
-
-			const [gr, gg, gb] = hsl(s.v.hue, 18 + s.v.sat * 0.2, 11);
+			void br;
+			void bg;
+			void bb;
+			const [gr, gg, gb] = hsl(s.v.hue + 18, s.v.sat * 0.36, 13);
 			for (let y = dusk; y < s.h; y++) {
 				const f = (y - dusk) / (s.h - dusk);
 				for (let x = 0; x < s.w; x++) {
@@ -460,7 +441,7 @@ function meadowIdent(s: FxScene): Field {
 	const blades: number[][] = [];
 	for (let i = 0; i < 64; i++) blades.push([r(), r(), r(), r()]);
 	const gustPeriod = 120 + r() * 110;
-	const horizon = 0.3 + r() * 0.16;
+	const horizon = 0.6 + r() * 0.12;
 	const seeds = 0.3 + r() * 0.5;
 	const hills: number[] = [];
 	for (let i = 0; i < 9; i++) hills.push(r());
@@ -504,15 +485,6 @@ export function makeMeadow(rows: number): FxProgram {
 			const sunX = id.sun * s.w;
 			const sunY = horizon - s.h * 0.08;
 
-			const [skr, skg, skb] = hsl(s.v.hue2 + 12, 40 + s.v.sat * 0.3, 40);
-			for (let y = 0; y < horizon; y++) {
-				const f = 1 - y / horizon;
-				for (let x = 0; x < s.w; x++) {
-					const d = Math.hypot((x - sunX) / (s.w * 0.6), (y - sunY) / (s.h * 0.7));
-					const warm = Math.max(0, 1 - d) ** 2;
-					paint(s, x, y, skr * (0.5 + f * 0.6) + warm * 175, skg * (0.6 + f * 0.7) + warm * 130, skb * (0.8 + f * 0.9) + warm * 60, 1);
-				}
-			}
 			const srd = s.h * 0.075;
 			for (let dy = -srd * 3.5; dy <= srd * 3.5; dy++)
 				for (let dx = -srd * 3.5; dx <= srd * 3.5; dx++) {
@@ -520,38 +492,6 @@ export function makeMeadow(rows: number): FxProgram {
 					if (d < 1) paint(s, sunX + dx, sunY + dy, 255, 236, 186, 1);
 					else plot(s, sunX + dx, sunY + dy, 255, 208, 130, Math.max(0, 1 - d / 3.5) ** 2.2 * 0.4);
 				}
-			for (const [cx, cy, cw] of id.clouds) {
-				const px = ((cx * s.w + s.t * 0.05 * s.v.speed * s.v.dir) % (s.w * 1.4)) - s.w * 0.2;
-				const py = cy * horizon * 0.8;
-				const rw = s.w * 0.14 * cw;
-				const rh = s.h * 0.03 * cw;
-				for (let dy = -rh; dy <= rh; dy++)
-					for (let dx = -rw; dx <= rw; dx++) {
-						const lump = 0.7 + 0.5 * Math.sin(dx * 0.4 + cx * 9) * Math.sin(dx * 0.13 + cy * 5);
-						const d = Math.hypot(dx / (rw * lump), dy / rh);
-						if (d > 1) continue;
-						const und = dy / rh;
-						plot(s, px + dx, py + dy, 255, 224 - und * 40, 206 - und * 70, (1 - d) * 0.34);
-					}
-			}
-
-			for (let L = 0; L < 2; L++) {
-				const amp = L ? 0.14 : 0.08;
-				const tone = L ? 1 : 0.62;
-				for (let x = 0; x < s.w; x++) {
-					const t2 = (x / s.w) * 8 + L * 3.3;
-					const i2 = t2 | 0;
-					const raw = t2 - i2;
-					const ff = raw * raw * (3 - 2 * raw);
-					const hz = horizon - (id.hills[i2 % 9] * (1 - ff) + id.hills[(i2 + 1) % 9] * ff) * s.h * amp;
-					const lit = Math.max(0, 1 - Math.abs(x - sunX) / (s.w * 0.5));
-					for (let y = hz; y < horizon; y++) {
-						const dep = (y - hz) / Math.max(1, horizon - hz);
-						const k = tone * (0.5 + dep * 0.5) * (1 + lit * 0.5);
-						paint(s, x, y, gr * k * 0.9, gg * k, gb * k * 0.8, 1);
-					}
-				}
-			}
 			for (const [tx, th, tw2] of id.trees) {
 				const bx = tx * s.w;
 				const bh = th * s.h * 0.12;

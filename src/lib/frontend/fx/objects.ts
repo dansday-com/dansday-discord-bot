@@ -994,8 +994,9 @@ export function makeCoffee(rows: number): FxProgram {
 					drops.splice(k, 1);
 					continue;
 				}
-				paint(s, d2[0], d2[1], dr2, dg2, db2, 0.92);
-				plot(s, d2[0], d2[1] - 1, 190, 160, 124, 0.3);
+				const df = Math.min(1, (70 - d2[4]) / 16);
+				paint(s, d2[0], d2[1], dr2, dg2, db2, 0.92 * df);
+				plot(s, d2[0], d2[1] - 1, 190, 160, 124, 0.3 * df);
 			}
 
 			const [str2, stg2, stb2] = hsl(34 + (s.v.hue % 30), 16, 84);
@@ -2998,7 +2999,7 @@ export function makeDice(rows: number): FxProgram {
 			const dice = (s as any).dice as number[][];
 			const puff = (s as any).puff as number[][];
 			const chips = (s as any).chips as number[][];
-			const wallY = Math.round(s.h * id.wall);
+			const wallY = Math.round(s.h * (0.52 + id.wall * 0.3));
 			const railY = Math.round(s.h * (1 - id.rail));
 			const near = railY - 1;
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
@@ -3068,14 +3069,6 @@ export function makeDice(rows: number): FxProgram {
 				}
 			}
 
-			for (let y = 0; y < wallY; y++) {
-				const f = y / Math.max(1, wallY);
-				for (let x = 0; x < s.w; x++) {
-					const gn = hash2m(x >> 1, y, id.grain + 21) * 0.2 + Math.sin(x * 0.42 + y * 1.7) * 0.05;
-					const k = 0.5 + f * 0.62 + gn;
-					paint(s, x + jx * 0.4, y, wdr * k, wdg * k, wdb * k, 1);
-				}
-			}
 			const pyW = s.w / id.pyr;
 			for (let p = 0; p < id.pyr; p++) {
 				const cxp = (p + 0.5) * pyW + jx * 0.4;

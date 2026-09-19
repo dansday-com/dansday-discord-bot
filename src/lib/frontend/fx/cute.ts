@@ -1260,7 +1260,7 @@ export function makeGem(rows: number): FxProgram {
 				const lf = 1 - p[4] / p[5];
 				const hot = lf * lf;
 				const c = hsl(16 + hot * 36, 96, 46 + hot * 48);
-				plot(s, p[0], p[1], c[0], c[1], c[2], 0.3 + lf * 0.65);
+				plot(s, p[0], p[1], c[0], c[1], c[2], (0.3 + lf * 0.65) * Math.min(1, lf * 5));
 				plot(s, p[0] - p[2] * 0.7, p[1] - p[3] * 0.7, c[0], c[1], c[2], lf * 0.34);
 			}
 			if (spark.length > 130) spark.splice(0, spark.length - 130);
@@ -1632,7 +1632,7 @@ export function makeIcecream(rows: number): FxProgram {
 					continue;
 				}
 				const c = hsl(q[5], 66, 76);
-				paint(s, q[0], q[1], c[0], c[1], c[2], 1);
+				paint(s, q[0], q[1], c[0], c[1], c[2], Math.min(1, (60 - q[4]) / 14));
 			}
 
 			for (let pass = 0; pass < 2; pass++) {

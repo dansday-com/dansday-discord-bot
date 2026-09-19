@@ -32,7 +32,7 @@ function fallIdent(s: FxScene): Falls {
 		const flare = 1.4 + r() * 1.2;
 		if (i < count) falls.push({ x, w, power, flare });
 	}
-	const lip = 0.15 + r() * 0.07;
+	const lip = 0.34 + r() * 0.08;
 	const pool = 0.74 + r() * 0.08;
 	const ridge: number[] = [];
 	for (let i = 0; i < 13; i++) ridge.push(r());

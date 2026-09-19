@@ -2,7 +2,7 @@
 
 Leveling, moderation, embed builder, Discord Quests, creator tools, public statistics pages and Roblox catalog alerts — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot. AGPL-3.0 licensed.
 
-![The web panel's landing page, listing every module](.github/screenshots/landing.png)
+![The web panel's landing page, listing every module](.github/screenshots/landing.gif)
 
 <table>
 <tr>
@@ -52,7 +52,7 @@ Every server gets its own live pages at `/server/<slug>`.
 <table>
 <tr>
 <td width="33%"><img src=".github/screenshots/public-statistics.png" alt="Public statistics with members, channels, leveling, voice activity, market, items, minigames and giveaways"></td>
-<td width="33%"><img src=".github/screenshots/leaderboard.png" alt="Leaderboard podium and rankings, filterable by XP, chat, voice, video, streaming, items and minigames"></td>
+<td width="33%"><img src=".github/screenshots/leaderboard.gif" alt="Leaderboard podium and rankings, filterable by XP, chat, voice, video, streaming, items and minigames"></td>
 <td width="33%"><img src=".github/screenshots/members.png" alt="Members directory with per-member level, messages, activity and XP"></td>
 </tr>
 <tr>
@@ -94,7 +94,7 @@ Each member signs in to their own account on those same pages.
 
 <table>
 <tr>
-<td width="50%"><img src=".github/screenshots/account-themes.png" alt="Themes tab with animated card effects unlocked by spinning"></td>
+<td width="50%"><img src=".github/screenshots/account-themes.gif" alt="Themes tab with animated card effects unlocked by spinning"></td>
 <td width="50%"><img src=".github/screenshots/account-guide.png" alt="Guide tab walking through XP, tasks, items and the market"></td>
 </tr>
 <tr>

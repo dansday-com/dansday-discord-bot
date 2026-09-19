@@ -1,5 +1,11 @@
+import { EFFECTS, EFFECT_SPIN_COST } from './effects.js';
+
 export const DOCS_TITLE = 'Bot documentation';
 export const DOCS_URL = 'https://dansday.com/docs';
+
+const EFFECT_NAMES = EFFECTS.map((e) => e.label)
+	.join(', ')
+	.replace(/, ([^,]*)$/, ' or $1');
 
 export const DOCS_HERO = {
 	heading: 'Set up {app} Bot',
@@ -776,7 +782,7 @@ export const modules = [
 			},
 			{
 				label: 'Themes',
-				desc: 'Always on, nothing to configure. Each member uploads a background image (PNG, JPG, GIF or WEBP) on their account Themes tab. Everything is re-encoded and resized to WebP — animated GIFs become animated WebP, keeping their frames and looping — and the stored result must land under 10MB. The accent colour is read from the image and can be overridden by hand. Animated effects — Glitch, Sparkle, Snow, Rain, Embers, Confetti, Bubbles, Scanlines, Grain, Holo, Aurora, Pulse, Earthquake, Thunder, Tsunami, Tornado, Meteor, Blizzard, Rainbow, Fire, Love, Glass, Bullet Hole, Volcano, Sandstorm, Void, Eclipse, Falling Star, Milky Way, Black Hole, Autumn, Sakura, Fireflies, Silk, Crystal, Neon, Matrix, Bouncer, Beach Sunset, Waterfall, Ripple, Cave, Frost, Fog, Smoke, Swarm, Jellyfish, Meadow, Circuit, Prism, Mycelium, Coral, Lichen, Anthill, Slime Mould, Culture, Graze, Decay, Bloom or Spore — are won by spinning a reel for 1,000 XP on the Themes tab, and each spin also rolls a one-of-a-kind variant, so no two members look the same. An effect can be disabled and re-enabled without spinning again, so turning it off never costs the XP already paid. Spins post to the minigames channel and appear in the member’s History, but are excluded from the Minigames leaderboard because they are a fixed-price roll, not a wager. All of it repaints that member’s account pages, wallet card, their row on the leaderboard and their card in the members list, so every visitor sees it. Themes are per server, and a disguised member is already hidden from the public leaderboard.'
+				desc: `Always on, nothing to configure. Each member uploads a background image (PNG, JPG, GIF or WEBP) on their account Themes tab. Everything is re-encoded and resized to WebP — animated GIFs become animated WebP, keeping their frames and looping — and the stored result must land under 10MB. The accent colour is read from the image and can be overridden by hand. Animated effects — ${EFFECT_NAMES} — are won by spinning a reel for ${EFFECT_SPIN_COST.toLocaleString('en-US')} XP on the Themes tab, and each spin also rolls a one-of-a-kind variant, so no two members look the same. An effect can be disabled and re-enabled without spinning again, so turning it off never costs the XP already paid. Spins post to the minigames channel and appear in the member’s History, but are excluded from the Minigames leaderboard because they are a fixed-price roll, not a wager. All of it repaints that member’s account pages, wallet card, their row on the leaderboard and their card in the members list, so every visitor sees it. Themes are per server, and a disguised member is already hidden from the public leaderboard.`
 			},
 			{ label: 'Public URL', desc: 'The generated public address, derived from the server name.' }
 		]

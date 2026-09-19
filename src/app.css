@@ -4046,64 +4046,6 @@ html.lenis body {
 	}
 }
 
-[data-fx-host='cat'] {
-	animation: fx-host-purr 4.2s ease-in-out infinite;
-	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.3)) brightness(calc(1 + var(--fx-cover, 0) * 0.12));
-	transform: translate(calc(var(--fx-cover, 0) * -2px), calc(var(--fx-cover, 0) * 3px)) rotate(calc(var(--fx-cover, 0) * -0.5deg));
-	box-shadow: 0 calc(var(--fx-cover, 0) * 10px) calc(var(--fx-cover, 0) * 22px) calc(var(--fx-cover, 0) * -6px) rgba(0, 0, 0, 0.5);
-}
-
-@keyframes fx-host-purr {
-	0% {
-		transform: scale(1) rotate(0deg);
-		box-shadow: inset 0 -22px 40px -26px rgba(24, 16, 10, 0.55);
-	}
-	26% {
-		transform: scale(1.004) rotate(0.12deg);
-	}
-	54% {
-		transform: scale(0.997) rotate(-0.1deg);
-		box-shadow: inset 0 -26px 46px -24px rgba(24, 16, 10, 0.7);
-	}
-	100% {
-		transform: scale(1) rotate(0deg);
-		box-shadow: inset 0 -22px 40px -26px rgba(24, 16, 10, 0.55);
-	}
-}
-
-[data-fx-host='coffee'] {
-	animation: fx-host-brew 7.4s ease-in-out infinite;
-	filter: saturate(calc(1.04 + var(--fx-cover, 0) * 0.32)) brightness(calc(1 + var(--fx-cover, 0) * 0.15)) contrast(calc(1 + var(--fx-cover, 0) * 0.06));
-	transform: translateY(calc(var(--fx-cover, 0) * -1.1px)) scale(calc(1 + var(--fx-cover, 0) * 0.009));
-}
-
-@keyframes fx-host-brew {
-	0% {
-		box-shadow:
-			inset 0 -30px 50px -26px rgba(122, 68, 34, 0.66),
-			inset 0 26px 46px -30px rgba(228, 206, 168, 0.3),
-			inset 0 0 0 1px rgba(232, 211, 184, 0.2);
-	}
-	42% {
-		box-shadow:
-			inset 0 -44px 66px -22px rgba(168, 100, 48, 0.8),
-			inset 0 38px 60px -26px rgba(244, 228, 196, 0.44),
-			inset 0 0 0 1px rgba(240, 222, 196, 0.36);
-	}
-	70% {
-		box-shadow:
-			inset 0 -36px 58px -24px rgba(146, 84, 40, 0.72),
-			inset 0 30px 52px -28px rgba(236, 216, 180, 0.34),
-			inset 0 0 0 1px rgba(236, 216, 188, 0.26);
-	}
-	100% {
-		box-shadow:
-			inset 0 -30px 50px -26px rgba(122, 68, 34, 0.66),
-			inset 0 26px 46px -30px rgba(228, 206, 168, 0.3),
-			inset 0 0 0 1px rgba(232, 211, 184, 0.2);
-	}
-}
-
 .fx-text[data-fx='money']::before {
 	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: var(--fx-opacity, 0.94);
@@ -4120,54 +4062,6 @@ html.lenis body {
 	}
 	100% {
 		background-position: 215% 0;
-	}
-}
-
-.fx-text[data-fx='cat']::before {
-	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
-	opacity: var(--fx-opacity, 0.94);
-	animation: fx-name-blinkcat calc(var(--fx-speed) * 2.6) steps(1, end) infinite;
-}
-.fx-text[data-fx='cat']::after {
-	background-image: linear-gradient(92deg, transparent 0 40%, rgba(255, 228, 176, 0.6) 50%, transparent 60%);
-	background-repeat: no-repeat;
-	background-size: 40% 100%;
-	animation: fx-name-fold calc(var(--fx-speed) * 3.4) ease-in-out infinite;
-}
-@keyframes fx-name-blinkcat {
-	0%,
-	92% {
-		opacity: var(--fx-opacity, 0.94);
-	}
-	94%,
-	97% {
-		opacity: 0.3;
-	}
-	100% {
-		opacity: var(--fx-opacity, 0.94);
-	}
-}
-
-.fx-text[data-fx='coffee']::before {
-	background-image: linear-gradient(180deg, var(--fx-color-2) 0%, var(--fx-color) 100%);
-	opacity: var(--fx-opacity, 0.94);
-}
-.fx-text[data-fx='coffee']::after {
-	background-image: linear-gradient(180deg, rgba(240, 232, 220, 0.7) 0 14%, transparent 34%, rgba(240, 232, 220, 0.4) 54% 62%, transparent 82%);
-	background-size: 100% 240%;
-	animation: fx-name-steam calc(var(--fx-speed) * 2.8) linear infinite;
-}
-@keyframes fx-name-steam {
-	0% {
-		background-position: 0 120%;
-		opacity: 0.25;
-	}
-	50% {
-		opacity: 0.65;
-	}
-	100% {
-		background-position: 0 -120%;
-		opacity: 0.25;
 	}
 }
 
@@ -4330,32 +4224,6 @@ html.lenis body {
 		box-shadow:
 			inset 0 -26px 46px -26px rgba(224, 168, 60, 0.45),
 			inset 0 0 0 1px rgba(255, 226, 168, 0.06);
-	}
-}
-
-[data-fx-host='clock'] {
-	animation: fx-host-tick 2s steps(1, end) infinite;
-	filter: saturate(calc(1.04 + var(--fx-cover, 0) * 0.42)) brightness(calc(0.97 + var(--fx-cover, 0) * 0.2));
-	transform: translate3d(calc(var(--fx-cover, 0) * 1.3px), calc(var(--fx-cover, 0) * -0.7px), 0) rotate(calc(var(--fx-cover, 0) * 0.25deg));
-}
-
-@keyframes fx-host-tick {
-	0%,
-	48% {
-		box-shadow:
-			inset 0 0 0 1px rgba(201, 162, 39, 0.24),
-			inset 0 -24px 44px -28px rgba(20, 18, 12, 0.7);
-	}
-	50%,
-	98% {
-		box-shadow:
-			inset 0 0 0 1px rgba(201, 162, 39, 0.42),
-			inset 0 -24px 44px -28px rgba(20, 18, 12, 0.7);
-	}
-	100% {
-		box-shadow:
-			inset 0 0 0 1px rgba(201, 162, 39, 0.24),
-			inset 0 -24px 44px -28px rgba(20, 18, 12, 0.7);
 	}
 }
 
@@ -4523,27 +4391,6 @@ html.lenis body {
 	}
 }
 
-.fx-text[data-fx='clock']::before {
-	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
-	opacity: var(--fx-opacity, 0.93);
-}
-.fx-text[data-fx='clock']::after {
-	background-image: conic-gradient(from 0deg at 50% 50%, transparent 0deg 300deg, rgba(255, 236, 178, 0.75) 340deg, transparent 360deg);
-	animation: fx-name-sweep2 calc(var(--fx-speed) * 2) steps(12, end) infinite;
-}
-@keyframes fx-name-sweep2 {
-	0% {
-		transform: none;
-		opacity: 0.5;
-	}
-	50% {
-		opacity: 0.85;
-	}
-	100% {
-		opacity: 0.5;
-	}
-}
-
 .fx-text[data-fx='rainglass']::before {
 	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: var(--fx-opacity, 0.93);
@@ -4620,40 +4467,6 @@ html.lenis body {
 	}
 }
 
-[data-fx-host='ribbon'] {
-	animation: fx-host-flutter 7.4s cubic-bezier(0.34, 0, 0.2, 1) infinite;
-	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.46)) brightness(calc(0.98 + var(--fx-cover, 0) * 0.34));
-	transform: translateY(calc(var(--fx-cover, 0) * -1.6px)) scale(calc(1 + var(--fx-cover, 0) * 0.012));
-}
-
-@keyframes fx-host-flutter {
-	0% {
-		box-shadow:
-			inset 0 -22px 44px -30px rgba(38, 22, 12, 0.6),
-			inset 0 0 0 1px rgba(255, 217, 232, 0.16);
-	}
-	40% {
-		box-shadow:
-			inset 0 -24px 46px -28px rgba(38, 22, 12, 0.62),
-			inset 0 0 0 1px rgba(255, 217, 232, 0.24);
-	}
-	48% {
-		box-shadow:
-			inset 0 26px 62px -30px rgba(255, 238, 198, 0.85),
-			inset 0 0 0 1px rgba(255, 246, 216, 0.62);
-	}
-	64% {
-		box-shadow:
-			inset 0 20px 54px -30px rgba(255, 232, 186, 0.5),
-			inset 0 0 0 1px rgba(255, 240, 210, 0.34);
-	}
-	100% {
-		box-shadow:
-			inset 0 -22px 44px -30px rgba(38, 22, 12, 0.6),
-			inset 0 0 0 1px rgba(255, 217, 232, 0.16);
-	}
-}
-
 [data-fx-host='gem'] {
 	animation: fx-host-facet 7.8s cubic-bezier(0.3, 0, 0.25, 1) infinite;
 	filter: saturate(calc(1.04 + var(--fx-cover, 0) * 0.58)) brightness(calc(0.98 + var(--fx-cover, 0) * 0.3)) contrast(calc(1 + var(--fx-cover, 0) * 0.12));
@@ -4690,35 +4503,6 @@ html.lenis body {
 			inset 0 0 0 1px rgba(226, 206, 188, 0.2),
 			inset 0 -18px 34px -26px rgba(0, 0, 0, 0.7),
 			0 0 12px -8px rgba(255, 196, 120, 0.35);
-	}
-}
-
-[data-fx-host='icecream'] {
-	animation: fx-host-drip2 8.2s cubic-bezier(0.4, 0, 0.3, 1) infinite;
-	filter: saturate(calc(1 + var(--fx-cover, 0) * 0.3)) brightness(calc(1 + var(--fx-cover, 0) * 0.2));
-	transform: translateY(calc(var(--fx-cover, 0) * 1.4px)) scaleY(calc(1 - var(--fx-cover, 0) * 0.008));
-}
-
-@keyframes fx-host-drip2 {
-	0% {
-		box-shadow:
-			inset 0 -20px 40px -30px rgba(255, 166, 210, 0.35),
-			inset 0 18px 46px -34px rgba(255, 246, 204, 0.3);
-	}
-	58% {
-		box-shadow:
-			inset 0 -26px 50px -28px rgba(255, 176, 202, 0.5),
-			inset 0 24px 60px -28px rgba(255, 244, 186, 0.68);
-	}
-	78% {
-		box-shadow:
-			inset 0 -48px 76px -20px rgba(255, 150, 194, 0.85),
-			inset 0 20px 52px -30px rgba(255, 244, 186, 0.5);
-	}
-	100% {
-		box-shadow:
-			inset 0 -20px 40px -30px rgba(255, 166, 210, 0.35),
-			inset 0 18px 46px -34px rgba(255, 246, 204, 0.3);
 	}
 }
 
@@ -4787,25 +4571,6 @@ html.lenis body {
 	}
 }
 
-.fx-text[data-fx='ribbon']::before {
-	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
-	opacity: var(--fx-opacity, 0.94);
-}
-.fx-text[data-fx='ribbon']::after {
-	background-image: linear-gradient(104deg, transparent 0 30%, rgba(255, 233, 244, 0.85) 46%, rgba(255, 255, 255, 0.6) 52%, transparent 68%);
-	background-repeat: no-repeat;
-	background-size: 62% 100%;
-	animation: fx-name-silkwave calc(var(--fx-speed) * 2.1) ease-in-out infinite;
-}
-@keyframes fx-name-silkwave {
-	0% {
-		background-position: -115% 0;
-	}
-	100% {
-		background-position: 215% 0;
-	}
-}
-
 .fx-text[data-fx='gem']::before {
 	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: var(--fx-opacity, 0.94);
@@ -4827,29 +4592,6 @@ html.lenis body {
 	100% {
 		background-position: 200% 0;
 		opacity: 0.5;
-	}
-}
-
-.fx-text[data-fx='icecream']::before {
-	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
-	opacity: var(--fx-opacity, 0.94);
-}
-.fx-text[data-fx='icecream']::after {
-	background-image: linear-gradient(180deg, transparent 0 30%, rgba(255, 240, 246, 0.85) 48%, rgba(255, 200, 226, 0.5) 62%, transparent 82%);
-	background-size: 100% 210%;
-	animation: fx-name-thaw calc(var(--fx-speed) * 2.6) linear infinite;
-}
-@keyframes fx-name-thaw {
-	0% {
-		background-position: 0 -90%;
-		opacity: 0.3;
-	}
-	50% {
-		opacity: 0.75;
-	}
-	100% {
-		background-position: 0 190%;
-		opacity: 0.3;
 	}
 }
 

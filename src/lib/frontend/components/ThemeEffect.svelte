@@ -2,7 +2,7 @@
 	import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
 	import { createScene, fxVariant, runScene, type FxScene } from '$lib/frontend/fx/engine.js';
 	import { BLEND, PROGRAMS } from '$lib/frontend/fx/programs.js';
-	import { FX_RETAIN_MS, observeVisibility, scheduleFx } from '$lib/frontend/fx/visible.js';
+	import { observeVisibility } from '$lib/frontend/fx/visible.js';
 
 	type Props = {
 		effect?: string | null;
@@ -83,27 +83,22 @@
 		if (!el || !prog || fam === 'none' || !seen) return;
 		const key = `${fam}|${sd}|${ac}|${ratio}|${height}`;
 		if (key === builtKey && scene && builtEl === el) return;
-		return scheduleFx(() => {
-			const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
-			prog.frame(built);
-			builtKey = key;
-			builtEl = el;
-			scene = built;
-		});
+		builtKey = key;
+		builtEl = el;
+		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
+		prog.frame(built);
+		scene = built;
 	});
 
 	$effect(() => {
 		if (live || frozen) return;
 		const el = canvas;
 		if (!el || builtKey === '') return;
-		const timer = setTimeout(() => {
-			scene = undefined;
-			builtKey = '';
-			builtEl = undefined;
-			el.width = 0;
-			el.height = 0;
-		}, FX_RETAIN_MS);
-		return () => clearTimeout(timer);
+		scene = undefined;
+		builtKey = '';
+		builtEl = undefined;
+		el.width = 0;
+		el.height = 0;
 	});
 
 	$effect(() => {

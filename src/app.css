@@ -1805,6 +1805,12 @@ html.lenis body {
 	animation-play-state: running;
 }
 
+[data-fx-scroll] [data-fx-host][data-fx-run],
+[data-fx-scroll] .fx-text[data-fx].fx-live::before,
+[data-fx-scroll] .fx-text[data-fx].fx-live::after {
+	animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	[data-fx-host] {
 		animation: none !important;

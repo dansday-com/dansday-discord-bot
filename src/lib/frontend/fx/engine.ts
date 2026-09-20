@@ -1,4 +1,5 @@
 import { effectPalette, familySalt, mulberry32, normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { fxScrolling } from '$lib/frontend/fx/visible.js';
 
 export type FxVariant = {
 	seed: number;
@@ -115,6 +116,7 @@ export function runScene(canvas: HTMLCanvasElement, program: FxProgram, scene: F
 	const interval = 1000 / fps;
 	const tick = (now: number) => {
 		raf = requestAnimationFrame(tick);
+		if (fxScrolling()) return;
 		if (now - last < interval) return;
 		last = now;
 		scene.t += 1;

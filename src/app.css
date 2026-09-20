@@ -1793,8 +1793,12 @@ html.lenis body {
 	}
 }
 
-[data-fx-host] {
-	animation-play-state: paused;
+[data-fx-host]:not([data-fx-run]) {
+	animation: none !important;
+	transform: none !important;
+	clip-path: none !important;
+	box-shadow: none !important;
+	filter: none !important;
 }
 
 [data-fx-host][data-fx-run] {
@@ -4665,6 +4669,10 @@ span.fx-blend-overlay {
 	width: 100%;
 	height: 100%;
 	image-rendering: pixelated;
+}
+
+[data-fx-host]:not([data-fx-run]) .fx-canvas {
+	display: none;
 }
 
 [data-fx-host='void'] {

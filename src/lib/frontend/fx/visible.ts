@@ -9,33 +9,6 @@ const registries = new Map<string, Registry>();
 
 export const FX_ROOT_MARGIN = '160px';
 
-const FX_SCROLL_IDLE_MS = 120;
-
-let scrolling = false;
-let scrollTimer: ReturnType<typeof setTimeout>;
-
-export function fxScrolling(): boolean {
-	return scrolling;
-}
-
-function endScroll() {
-	scrolling = false;
-	document.documentElement.removeAttribute('data-fx-scroll');
-}
-
-function onScroll() {
-	if (!scrolling) {
-		scrolling = true;
-		document.documentElement.setAttribute('data-fx-scroll', '');
-	}
-	clearTimeout(scrollTimer);
-	scrollTimer = setTimeout(endScroll, FX_SCROLL_IDLE_MS);
-}
-
-if (typeof window !== 'undefined') {
-	window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-}
-
 export function observeVisibility(node: Element, fn: Listener, rootMargin: string = FX_ROOT_MARGIN): () => void {
 	if (typeof IntersectionObserver === 'undefined') {
 		fn(true);

@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 	const metric = parseMetric(url.searchParams.get('metric'));
 	const period = parsePeriod(url.searchParams.get('period'));
-	const limit = Math.max(3, Math.min(100, Number(url.searchParams.get('limit') || 50)));
+	const limit = Math.max(3, Math.min(50, Number(url.searchParams.get('limit') || 50)));
 
 	const snap = await resolveLeaderboardSnapshot(server.id, metric, period, limit);
 

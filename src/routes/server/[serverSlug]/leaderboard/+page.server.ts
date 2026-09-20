@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 	const metric = parseMetric(url.searchParams.get('metric'));
 	const period = parsePeriod(url.searchParams.get('period'));
-	const limit = 100;
+	const limit = 50;
 
 	const snap = await resolveLeaderboardSnapshot(server.id, metric, period, limit);
 

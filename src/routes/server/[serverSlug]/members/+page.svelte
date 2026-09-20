@@ -111,7 +111,7 @@
 		es?.close();
 	});
 
-	const PER_PAGE = 100;
+	const PER_PAGE = 50;
 
 	let search = $state('');
 	let listPage = $state(1);

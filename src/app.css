@@ -1835,6 +1835,11 @@ html.lenis body {
 	animation-play-state: paused;
 }
 
+.fx-text[data-fx]:not(.fx-live)::before,
+.fx-text[data-fx]:not(.fx-live)::after {
+	display: none;
+}
+
 .fx-text[data-fx].fx-live::before,
 .fx-text[data-fx].fx-live::after {
 	animation-play-state: running;

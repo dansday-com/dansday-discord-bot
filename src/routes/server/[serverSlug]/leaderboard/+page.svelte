@@ -466,7 +466,7 @@
 								style="background: color-mix(in srgb, {rowAccent(r)} 55%, transparent)"
 								aria-hidden="true"
 							></div>
-							<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} always />
+							<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} />
 						{/if}
 						<span class="relative text-[11px] font-black text-black/50">#{rank}</span>
 					</div>
@@ -541,7 +541,7 @@
 							aria-hidden="true"
 						></div>
 						<div class="fx-layer pointer-events-none absolute inset-y-0 left-0 -z-10 w-[3px] bg-(--row-accent)" aria-hidden="true"></div>
-						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} always />
+						<ThemeEffect effect={r.theme_effect} seed={r.theme_effect_seed} accent={r.theme_accent} />
 					{/if}
 				</li>
 			{/each}

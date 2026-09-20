@@ -2,16 +2,16 @@
 	import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
 	import { createScene, fxVariant, runScene, type FxScene } from '$lib/frontend/fx/engine.js';
 	import { BLEND, PROGRAMS } from '$lib/frontend/fx/programs.js';
+	import { observeVisibility } from '$lib/frontend/fx/visible.js';
 
 	type Props = {
 		effect?: string | null;
 		seed?: number | null;
 		accent?: string | null;
-		always?: boolean;
 		frozen?: boolean;
 	};
 
-	let { effect: effectId = null, seed = 0, accent = null, always = false, frozen = false }: Props = $props();
+	let { effect: effectId = null, seed = 0, accent = null, frozen = false }: Props = $props();
 
 	const family = $derived(normalizeEffect(effectId));
 	const program = $derived(PROGRAMS[family]);
@@ -62,20 +62,10 @@
 	$effect(() => {
 		if (family === 'none' || frozen) return;
 		const node = host;
-		const ungated = always;
 		if (!node) return;
-		if (typeof IntersectionObserver === 'undefined') {
-			live = ungated;
-			return;
-		}
-		const io = new IntersectionObserver(
-			(entries) => {
-				for (const entry of entries) live = entry.isIntersecting;
-			},
-			{ rootMargin: '160px' }
-		);
-		io.observe(node);
-		return () => io.disconnect();
+		return observeVisibility(node, (visible) => {
+			live = visible;
+		});
 	});
 
 	let builtKey = '';
@@ -98,6 +88,17 @@
 		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
 		prog.frame(built);
 		scene = built;
+	});
+
+	$effect(() => {
+		if (live || frozen) return;
+		const el = canvas;
+		if (!el || builtKey === '') return;
+		scene = undefined;
+		builtKey = '';
+		builtEl = undefined;
+		el.width = 0;
+		el.height = 0;
 	});
 
 	$effect(() => {

@@ -213,7 +213,7 @@ export const aiChatFields = [
 	{
 		label: 'Thinking',
 		req: 'optional',
-		desc: 'Low, Medium or High background reasoning. Only used by extended thinking voice models such as gemini-3.8-live-extended-thinking; other models ignore it.'
+		desc: 'Low, Medium or High background reasoning, for extended thinking voice models such as gemini-3.8-live-extended-thinking. Other Live models think too, they just pick their own level.'
 	},
 	{
 		label: 'Voice',

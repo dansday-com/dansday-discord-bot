@@ -54,6 +54,7 @@
 	}
 
 	let ai = $state(aiFromServer(data.botAi));
+	const voiceThinkingSupported = $derived(ai.voice_model.toLowerCase().includes('live-extended-thinking'));
 	let aiKeyInput = $state('');
 	let voiceKeyInput = $state('');
 	let searchKeyInput = $state('');
@@ -265,13 +266,18 @@
 					<select
 						id="ai-voice-thinking"
 						bind:value={ai.voice_thinking}
-						class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+						disabled={!voiceThinkingSupported}
+						class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#each AI_VOICE_THINKING_OPTIONS as option}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>
-					<p class="text-ash-500 mt-1.5 text-xs">Extended thinking models only. Higher means slower replies.</p>
+					<p class="text-ash-500 mt-1.5 text-xs">
+						{voiceThinkingSupported
+							? 'Higher means slower replies.'
+							: 'Only extended thinking models take this. Others still think, they just set their own level.'}
+					</p>
 				</div>
 			</div>
 

@@ -70,18 +70,12 @@ const MUTE_RETRY_MS = 750;
 const MUTE_RECOVER_MS = 20_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
-const WIKI_STALL_MS = 1_800;
-const WIKI_STALL_GRACE_MS = 2_500;
-const WIKI_STALL_COOLDOWN_MS = 25_000;
 const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
 const FETCH_LOOKUP_TIMEOUT_MS = 16_000;
 const IMAGE_LOOKUP_TIMEOUT_MS = 125_000;
 const SPEECH_DRAIN_MAX_MS = 20_000;
 const TOOL_ANSWER_GRACE_MS = 10_000;
-
-const WIKI_STALL_PROMPT =
-	'[System] You are still looking that up. Say one short, natural line out loud right now to let them know you are checking, in the same language they are speaking — something like "let me check that" or "one sec". Say nothing else, do not guess the answer, and do not read this note aloud. The result arrives in a moment and you will answer properly then.';
 
 const WIKI_FAILED_PROMPT =
 	'[System] That lookup came back with nothing usable. Do not tell them you could not find it yet, and do not guess. Try again a different way right now — search_web with different English keywords, or fetch_web_page on a likely page. Say at most one very short line like "still checking" in the language they are speaking while you do it. Only once a web search has also come up empty may you tell them you could not find it. Do not read this note aloud.';
@@ -119,13 +113,10 @@ function thinkingLevelFor(level: string | null | undefined) {
 }
 
 function modelCapabilities(model) {
-	const id = (model ?? '').toLowerCase();
-	const extendedThinking = id.includes('live-extended-thinking');
-	const live38 = extendedThinking || id.includes('3.8-live');
+	const extendedThinking = (model ?? '').toLowerCase().includes('live-extended-thinking');
 
 	return {
-		asyncTools: live38 || id.includes('2.5'),
-		asyncEveryTool: live38,
+		extendedThinking,
 		scheduling: !extendedThinking,
 		thinkingLevel: extendedThinking,
 		interactionStatus: extendedThinking
@@ -197,7 +188,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const endpoint = botAiVoiceEndpoint(config);
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
 	const caps = modelCapabilities(config.voice_model);
-	const asyncTools = caps.asyncTools;
 	const systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), VOICE_SERVER_DATA_NOTE]
 		.filter(Boolean)
 		.join('\n\n');
@@ -243,7 +233,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const wikiInflight = new Map();
 	const activeLookups = new Set();
 	let toolBusyUntil = 0;
-	let lastStallAt = 0;
 	let modelThinking = false;
 
 	function isAddressed() {
@@ -771,20 +760,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
-	const SLOW_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image']);
-
-	function runsAsync(name: string) {
-		if (!asyncTools) return false;
-		return caps.asyncEveryTool || SLOW_TOOLS.has(name);
-	}
 
 	function withToolBehavior(declaration) {
-		if (!asyncTools) return declaration;
-		return { ...declaration, behavior: runsAsync(declaration.name) ? Behavior.NON_BLOCKING : Behavior.BLOCKING };
+		return { ...declaration, behavior: Behavior.NON_BLOCKING };
 	}
 
 	function toolResponse(call, response) {
-		if (!runsAsync(call.name) || !caps.scheduling) return { id: call.id, name: call.name, response };
+		if (!caps.scheduling) return { id: call.id, name: call.name, response };
 		return { id: call.id, name: call.name, response: { ...response, scheduling: FunctionResponseScheduling.INTERRUPT } };
 	}
 
@@ -915,7 +897,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			logger.log(`📖 Voice AI ${lookupLabel(call)}`);
 
 			let settled = false;
-			let stalled = false;
 			let settledFailureSpoken = false;
 			let resolveInflight;
 			wikiInflight.set(
@@ -929,29 +910,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			activeLookups.add(lookupId);
 			keepAwakeForTool();
 
-			const stallDeadline = Date.now() + WIKI_STALL_MS + WIKI_STALL_GRACE_MS;
-			const stallTimer = setTimeout(function stall() {
-				if (settled || closed || goodbyePending) return;
-				if (asyncTools || FAST_TOOLS.has(call.name)) return;
-
-				if (Date.now() - lastStallAt < WIKI_STALL_COOLDOWN_MS) return;
-
-				if (botIsSpeaking()) {
-					if (Date.now() < stallDeadline) {
-						setTimeout(stall, SPEAK_GUARD_MS);
-						return;
-					}
-					logger.log('⏳ Voice AI skipped the wiki stall line, it was still speaking');
-					return;
-				}
-
-				lastStallAt = Date.now();
-				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
-				stalled = true;
-				keepAwakeForTool();
-				sendSystemNote(WIKI_STALL_PROMPT);
-			}, WIKI_STALL_MS);
-
 			const keepAwake = setInterval(() => {
 				if (settled || closed || goodbyePending) {
 					clearInterval(keepAwake);
@@ -963,7 +921,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const finish = (response) => {
 				if (settled) return;
 				settled = true;
-				clearTimeout(stallTimer);
 				clearInterval(keepAwake);
 				wikiInflight.delete(dedupeKey);
 				activeLookups.delete(lookupId);
@@ -1000,8 +957,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					}, SPEAK_GUARD_MS);
 				};
 
-				if (stalled) afterSpeaking('the lookup answer', send, { graceMs: WIKI_STALL_GRACE_MS });
-				else send();
+				send();
 			};
 
 			const lookupTimeoutMs =
@@ -1151,9 +1107,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			},
 			callbacks: {
 				onopen: () =>
-					logger.log(
-						`🔊 Voice AI live session open (model=${config.voice_model} tools=${asyncTools ? (caps.asyncEveryTool ? 'async' : 'async on slow lookups') : 'blocking'}${caps.thinkingLevel ? ` thinking=${config.voice_thinking ?? 'low'}` : ''})`
-					),
+					logger.log(`🔊 Voice AI live session open (model=${config.voice_model}${caps.thinkingLevel ? ` thinking=${config.voice_thinking}` : ''})`),
 				onmessage: (msg) => {
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
 					if (msg.goAway) {
@@ -1412,7 +1366,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		offWakeDetected?.();
 		offWakeDetected = null;
 		wikiInflight.clear();
-		lastStallAt = 0;
 		bargeInDeafUntil = 0;
 		activeLookups.clear();
 		toolBusyUntil = 0;

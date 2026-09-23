@@ -1,6 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { botAiFromDbRow, BOT_AI_REASONING_LEVELS, type BotAiInput, type BotAiReasoning } from '$lib/database.js';
+import db, {
+	botAiFromDbRow,
+	BOT_AI_REASONING_LEVELS,
+	BOT_AI_VOICE_THINKING_LEVELS,
+	type BotAiInput,
+	type BotAiReasoning,
+	type BotAiVoiceThinking
+} from '$lib/database.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 import { GEMINI_VOICE_NAMES } from '$lib/geminiVoices.js';
 
@@ -79,6 +86,10 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const voice_enabled = body.voice_enabled === true;
 	const voice_model = body.voice_model === null || body.voice_model === undefined ? null : String(body.voice_model).trim() || null;
 	const voice_name = body.voice_name === null || body.voice_name === undefined ? null : String(body.voice_name).trim() || null;
+	const voice_thinking = (body.voice_thinking === null || body.voice_thinking === undefined ? 'low' : String(body.voice_thinking)) as BotAiVoiceThinking;
+	if (!BOT_AI_VOICE_THINKING_LEVELS.includes(voice_thinking)) {
+		return json({ success: false, error: 'Invalid voice thinking level' }, { status: 400 });
+	}
 	const voice_system_prompt =
 		body.voice_system_prompt === null || body.voice_system_prompt === undefined ? null : String(body.voice_system_prompt).trim() || null;
 
@@ -158,6 +169,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		voice_enabled,
 		voice_model,
 		voice_name,
+		voice_thinking,
 		voice_api_key,
 		voice_system_prompt,
 		search_api_url,

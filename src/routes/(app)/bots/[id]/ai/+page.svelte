@@ -19,6 +19,12 @@
 		{ value: 'xhigh', label: 'Extra high' }
 	];
 
+	const AI_VOICE_THINKING_OPTIONS: LabeledSelectOption[] = [
+		{ value: 'low', label: 'Low' },
+		{ value: 'medium', label: 'Medium' },
+		{ value: 'high', label: 'High' }
+	];
+
 	let { data }: PageProps = $props();
 
 	function aiFromServer(a: typeof data.botAi) {
@@ -31,6 +37,7 @@
 			voice_enabled: a.voice_enabled,
 			voice_model: a.voice_model ?? '',
 			voice_name: a.voice_name ?? '',
+			voice_thinking: a.voice_thinking,
 			voice_system_prompt: a.voice_system_prompt ?? '',
 			search_api_url: a.search_api_url ?? '',
 			search_model: a.search_model ?? '',
@@ -82,6 +89,7 @@
 					voice_enabled: ai.voice_enabled,
 					voice_model: blankToNull(ai.voice_model),
 					voice_name: blankToNull(ai.voice_name),
+					voice_thinking: ai.voice_thinking,
 					voice_api_key: blankToNull(voiceKeyInput),
 					voice_system_prompt: blankToNull(ai.voice_system_prompt),
 					search_api_url: blankToNull(ai.search_api_url),
@@ -221,7 +229,7 @@
 						maxlength="191"
 						autocomplete="off"
 						bind:value={ai.voice_model}
-						placeholder="gemini-3.1-flash-live-preview"
+						placeholder="gemini-3.8-live"
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 					/>
 				</div>
@@ -238,18 +246,33 @@
 				</div>
 			</div>
 
-			<div class="min-w-0 sm:max-w-xs">
-				<label for="ai-voice-name" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice</label>
-				<select
-					id="ai-voice-name"
-					bind:value={ai.voice_name}
-					class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				>
-					{#each AI_VOICE_OPTIONS as option}
-						<option value={option.value}>{option.label}</option>
-					{/each}
-				</select>
-				<p class="text-ash-500 mt-1.5 text-xs">Preview every voice in Google AI Studio before picking.</p>
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<div class="min-w-0">
+					<label for="ai-voice-name" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice</label>
+					<select
+						id="ai-voice-name"
+						bind:value={ai.voice_name}
+						class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					>
+						{#each AI_VOICE_OPTIONS as option}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+					<p class="text-ash-500 mt-1.5 text-xs">Preview every voice in Google AI Studio before picking.</p>
+				</div>
+				<div class="min-w-0">
+					<label for="ai-voice-thinking" class="text-ash-400 mb-1.5 block text-xs font-medium">Thinking</label>
+					<select
+						id="ai-voice-thinking"
+						bind:value={ai.voice_thinking}
+						class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					>
+						{#each AI_VOICE_THINKING_OPTIONS as option}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+					<p class="text-ash-500 mt-1.5 text-xs">Extended thinking models only. Higher means slower replies.</p>
+				</div>
 			</div>
 
 			<div class="min-w-0">

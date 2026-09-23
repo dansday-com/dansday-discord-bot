@@ -365,6 +365,9 @@ export async function upsertBotStatus(botId: number, data: BotStatusInput) {
 export const BOT_AI_REASONING_LEVELS = ['none', 'low', 'medium', 'high', 'xhigh'] as const;
 export type BotAiReasoning = (typeof BOT_AI_REASONING_LEVELS)[number];
 
+export const BOT_AI_VOICE_THINKING_LEVELS = ['low', 'medium', 'high'] as const;
+export type BotAiVoiceThinking = (typeof BOT_AI_VOICE_THINKING_LEVELS)[number];
+
 export interface BotAiInput {
 	enabled: boolean;
 	api_url: string | null;
@@ -375,6 +378,7 @@ export interface BotAiInput {
 	voice_enabled: boolean;
 	voice_model: string | null;
 	voice_name: string | null;
+	voice_thinking: BotAiVoiceThinking;
 	voice_api_key: string | null;
 	voice_system_prompt: string | null;
 	search_api_url: string | null;
@@ -398,6 +402,7 @@ export const DEFAULT_BOT_AI: BotAiInput = {
 	voice_enabled: false,
 	voice_model: null,
 	voice_name: null,
+	voice_thinking: 'low',
 	voice_api_key: null,
 	voice_system_prompt: null,
 	search_api_url: null,
@@ -450,6 +455,7 @@ export function botAiFromDbRow(row: any): BotAiInput {
 		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
 		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
 		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null,
+		voice_thinking: BOT_AI_VOICE_THINKING_LEVELS.includes(row.voice_thinking) ? row.voice_thinking : 'low',
 		voice_api_key: row.voice_api_key?.trim() ? row.voice_api_key.trim() : null,
 		voice_system_prompt: row.voice_system_prompt?.trim() ? row.voice_system_prompt.trim() : null,
 		search_api_url: row.search_api_url?.trim() ? row.search_api_url.trim() : null,
@@ -487,6 +493,7 @@ export async function upsertBotAi(botId: number, data: BotAiInput) {
 		voice_enabled: data.voice_enabled,
 		voice_model: data.voice_model?.trim() ? data.voice_model.trim() : null,
 		voice_name: data.voice_name?.trim() ? data.voice_name.trim() : null,
+		voice_thinking: data.voice_thinking,
 		voice_api_key: data.voice_api_key?.trim() ? data.voice_api_key.trim() : null,
 		voice_system_prompt: data.voice_system_prompt?.trim() ? data.voice_system_prompt.trim() : null,
 		search_api_url: data.search_api_url?.trim() ? data.search_api_url.trim() : null,

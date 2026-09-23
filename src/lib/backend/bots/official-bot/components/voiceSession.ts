@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Type, Behavior, FunctionResponseScheduling } from '@google/genai';
+import { GoogleGenAI, Modality, Type, Behavior, FunctionResponseScheduling, InteractionStatus, ThinkingLevel } from '@google/genai';
 import {
 	joinVoiceChannel,
 	createAudioPlayer,
@@ -110,8 +110,24 @@ function splitForChat(text) {
 	return chunks;
 }
 
-function supportsAsyncTools(model) {
-	return (model ?? '').toLowerCase().includes('2.5');
+function thinkingLevelFor(level: string | null | undefined) {
+	if (level === 'medium') return ThinkingLevel.MEDIUM;
+	if (level === 'high') return ThinkingLevel.HIGH;
+	return ThinkingLevel.LOW;
+}
+
+function modelCapabilities(model) {
+	const id = (model ?? '').toLowerCase();
+	const extendedThinking = id.includes('live-extended-thinking');
+	const live38 = extendedThinking || id.includes('3.8-live');
+
+	return {
+		asyncTools: live38 || id.includes('2.5'),
+		asyncEveryTool: live38,
+		scheduling: !extendedThinking,
+		thinkingLevel: extendedThinking,
+		interactionStatus: extendedThinking
+	};
 }
 
 function rmsOf(pcm) {
@@ -178,7 +194,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const speaking = new Map();
 	const endpoint = botAiVoiceEndpoint(config);
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
-	const asyncTools = supportsAsyncTools(config.voice_model);
+	const caps = modelCapabilities(config.voice_model);
+	const asyncTools = caps.asyncTools;
 	const systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), VOICE_SERVER_DATA_NOTE]
 		.filter(Boolean)
 		.join('\n\n');
@@ -224,6 +241,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const activeLookups = new Set();
 	let toolBusyUntil = 0;
 	let lastStallAt = 0;
+	let modelThinking = false;
 
 	function isAddressed() {
 		return Date.now() < addressedUntil;
@@ -312,7 +330,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function toolBusy() {
-		return activeLookups.size > 0 || Date.now() < toolBusyUntil;
+		return activeLookups.size > 0 || Date.now() < toolBusyUntil || modelThinking;
 	}
 
 	function keepAwakeForTool() {
@@ -752,13 +770,18 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
 	const SLOW_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image']);
 
+	function runsAsync(name: string) {
+		if (!asyncTools) return false;
+		return caps.asyncEveryTool || SLOW_TOOLS.has(name);
+	}
+
 	function withToolBehavior(declaration) {
-		if (!asyncTools || !SLOW_TOOLS.has(declaration.name)) return declaration;
-		return { ...declaration, behavior: Behavior.NON_BLOCKING };
+		if (!asyncTools) return declaration;
+		return { ...declaration, behavior: runsAsync(declaration.name) ? Behavior.NON_BLOCKING : Behavior.BLOCKING };
 	}
 
 	function toolResponse(call, response) {
-		if (!asyncTools || !SLOW_TOOLS.has(call.name)) return { id: call.id, name: call.name, response };
+		if (!runsAsync(call.name) || !caps.scheduling) return { id: call.id, name: call.name, response };
 		return { id: call.id, name: call.name, response: { ...response, scheduling: FunctionResponseScheduling.INTERRUPT } };
 	}
 
@@ -1053,6 +1076,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				responseModalities: [Modality.AUDIO],
 				...(config.voice_name ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice_name } } } } : {}),
 				...(systemInstruction ? { systemInstruction } : {}),
+				...(caps.thinkingLevel ? { thinkingConfig: { thinkingLevel: thinkingLevelFor(config.voice_thinking) } } : {}),
 				inputAudioTranscription: {},
 				outputAudioTranscription: {},
 				contextWindowCompression: { slidingWindow: {} },
@@ -1123,7 +1147,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				]
 			},
 			callbacks: {
-				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model} tools=${asyncTools ? 'async' : 'blocking'})`),
+				onopen: () =>
+					logger.log(
+						`🔊 Voice AI live session open (model=${config.voice_model} tools=${asyncTools ? (caps.asyncEveryTool ? 'async' : 'async on slow lookups') : 'blocking'}${caps.thinkingLevel ? ` thinking=${config.voice_thinking ?? 'low'}` : ''})`
+					),
 				onmessage: (msg) => {
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
 					if (msg.goAway) {
@@ -1138,6 +1165,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					const sc = msg.serverContent;
 					if (!sc) return;
+
+					if (caps.interactionStatus && sc.interactionStatus) {
+						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;
+						if (thinking !== modelThinking) {
+							modelThinking = thinking;
+							logger.log(thinking ? '🧠 Voice AI reasoning in the background' : '🧠 Voice AI finished reasoning');
+						}
+						if (thinking) keepAwakeForTool();
+					}
 
 					if (sc.interrupted) handleInterrupt();
 
@@ -1180,6 +1216,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		turnOpen = false;
 		turnOwnerId = '';
+		modelThinking = false;
 		if (wikiInflight.size) {
 			logger.log(`🔎 Voice AI dropping ${wikiInflight.size} in-flight wiki lookup(s) across reconnect, staying unmuted until they settle`);
 			wikiInflight.clear();
@@ -1376,6 +1413,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		bargeInDeafUntil = 0;
 		activeLookups.clear();
 		toolBusyUntil = 0;
+		modelThinking = false;
 
 		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
 

@@ -1,7 +1,7 @@
 {
 	"name": "dansday-discord-bot",
 	"private": true,
-	"version": "26.7.1",
+	"version": "26.7.2",
 	"license": "AGPL-3.0-only",
 	"type": "module",
 	"scripts": {
@@ -15,7 +15,7 @@
 		"@aws-sdk/client-s3": "^3.1127.0",
 		"@discordjs/opus": "^0.10.0",
 		"@discordjs/voice": "^0.19.2",
-		"@google/genai": "^2.15.0",
+		"@google/genai": "^2.24.0",
 		"@opentelemetry/api": "^1.9.1",
 		"@opentelemetry/api-logs": "^0.221.0",
 		"@opentelemetry/auto-instrumentations-node": "^0.79.0",

@@ -209,7 +209,12 @@ export const aiChatFields = [
 		req: 'optional',
 		desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, plus its own Google AI key and voice model. Requires Redis.'
 	},
-	{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.1-flash-live-preview. Only needed when voice AI is on.' },
+	{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.8-live. Only needed when voice AI is on.' },
+	{
+		label: 'Thinking',
+		req: 'optional',
+		desc: 'Low, Medium or High background reasoning. Only used by extended thinking voice models such as gemini-3.8-live-extended-thinking; other models ignore it.'
+	},
 	{
 		label: 'Voice',
 		req: 'optional',

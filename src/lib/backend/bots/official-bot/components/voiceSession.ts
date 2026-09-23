@@ -66,6 +66,8 @@ const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
+const MUTE_RETRY_MS = 750;
+const MUTE_RECOVER_MS = 20_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const WIKI_STALL_MS = 1_800;
@@ -230,6 +232,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let addressedUntil = 0;
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
+	let muteRetryTimer: ReturnType<typeof setTimeout> | null = null;
 	let speakAllowedUntil = 0;
 	let bargeInDeafUntil = 0;
 	let offWakeDetected: (() => void) | null = null;
@@ -468,8 +471,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function clearTimers() {
-		for (const t of [turnTimer, muteTimer]) if (t) clearTimeout(t);
-		turnTimer = muteTimer = null;
+		for (const t of [turnTimer, muteTimer, muteRetryTimer]) if (t) clearTimeout(t);
+		turnTimer = muteTimer = muteRetryTimer = null;
 		if (heartbeat) clearInterval(heartbeat);
 		heartbeat = null;
 	}
@@ -1528,20 +1531,59 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
-	function setSelfMute(muted) {
+	function setSelfMute(muted: boolean) {
 		if (closed || selfMuted === muted) return;
 		if (muted) {
 			playbackQueue.length = 0;
 			pending = EMPTY;
 			pendingOffset = 0;
 		}
-		try {
-			connection.rejoin({ channelId, selfDeaf: false, selfMute: muted });
+
+		if (muteRetryTimer) {
+			clearTimeout(muteRetryTimer);
+			muteRetryTimer = null;
+		}
+
+		if (connection.rejoin({ channelId, selfDeaf: false, selfMute: muted })) {
 			selfMuted = muted;
 			logger.log(muted ? '🔇 Voice AI muted (not addressed)' : '🎤 Voice AI unmuted (listening)');
-		} catch (err) {
-			logger.log(`⚠️ Voice AI could not toggle mute: ${err?.message || err}`);
+			return;
 		}
+
+		logger.log(
+			`⚠️ Voice AI could not ${muted ? 'mute' : 'unmute'} — Discord did not accept it (connection=${connection.state.status}), still ${selfMuted ? 'muted' : 'live'}, retrying`
+		);
+		muteRetryTimer = setTimeout(() => {
+			muteRetryTimer = null;
+			retrySelfMute(muted);
+		}, MUTE_RETRY_MS);
+	}
+
+	async function retrySelfMute(muted: boolean) {
+		if (closed || selfMuted === muted) return;
+
+		if (connection.state.status !== VoiceConnectionStatus.Ready) {
+			try {
+				connection.rejoin({ channelId, selfDeaf: false, selfMute: muted });
+				await entersState(connection, VoiceConnectionStatus.Ready, MUTE_RECOVER_MS);
+				selfMuted = muted;
+				logger.log(`🔗 Voice AI recovered the voice connection and is now ${muted ? 'muted' : 'live'}`);
+				return;
+			} catch (err) {
+				logger.log(`❌ Voice AI lost the voice connection while trying to ${muted ? 'mute' : 'unmute'}: ${err?.message || err}`);
+				await stop('mute_failed');
+				return;
+			}
+		}
+
+		if (connection.rejoin({ channelId, selfDeaf: false, selfMute: muted })) {
+			selfMuted = muted;
+			logger.log(muted ? '🔇 Voice AI muted (not addressed)' : '🎤 Voice AI unmuted (listening)');
+			return;
+		}
+
+		logger.log(`❌ Voice AI still cannot ${muted ? 'mute' : 'unmute'} after a retry, ending the session rather than staying live`);
+		await stop('mute_failed');
 	}
 
 	async function moveTo(nextChannelId, nextChannelName) {

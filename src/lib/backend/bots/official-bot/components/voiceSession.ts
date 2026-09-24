@@ -70,6 +70,8 @@ const MUTE_RETRY_MS = 750;
 const MUTE_RECOVER_MS = 20_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
+const VOICE_TRACE = process.env.VOICE_TRACE === '1';
+
 const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
 const FETCH_LOOKUP_TIMEOUT_MS = 16_000;
@@ -1111,7 +1113,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					const names = tool.functionDeclarations.map((d) => d.name);
 					const dupes = names.filter((n, i) => names.indexOf(n) !== i);
 					logger.log(
-						`🧰 Voice AI declaring ${names.length} tools (behavior=${caps.asyncTools ? 'NON_BLOCKING' : 'default'}${dupes.length ? ` DUPLICATES=${[...new Set(dupes)].join(',')}` : ''}): ${names.join(', ')}`
+						`🧰 Voice AI declaring ${names.length} tools (model=${config.voice_model} behavior=${caps.asyncTools ? 'NON_BLOCKING' : 'default'}${dupes.length ? ` DUPLICATES=${[...new Set(dupes)].join(',')}` : ''}): ${names.join(', ')}`
 					);
 					return tool;
 				})
@@ -1120,6 +1122,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				onopen: () =>
 					logger.log(`🔊 Voice AI live session open (model=${config.voice_model}${caps.thinkingLevel ? ` thinking=${config.voice_thinking}` : ''})`),
 				onmessage: (msg) => {
+					if (VOICE_TRACE) {
+						const sc = msg.serverContent;
+						const keys = Object.keys(msg).filter((k) => msg[k] != null);
+						const partKinds = (sc?.modelTurn?.parts ?? []).map((p) =>
+							p.functionCall ? `functionCall:${p.functionCall.name}` : p.inlineData ? 'audio' : p.thought ? 'thought' : p.text ? 'text' : 'other'
+						);
+						logger.log(
+							`🔬 Voice AI msg [${keys.join(',')}]${sc?.interactionStatus ? ` status=${sc.interactionStatus}` : ''}${sc?.turnComplete ? ' turnComplete' : ''}${sc?.generationComplete ? ' generationComplete' : ''}${partKinds.length ? ` parts=${partKinds.join('|')}` : ''}`
+						);
+					}
+
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
 					if (msg.goAway) {
 						logger.log(`⚠️ Voice AI goAway, timeLeft=${msg.goAway.timeLeft ?? '?'}`);

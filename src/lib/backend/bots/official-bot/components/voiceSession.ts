@@ -1155,6 +1155,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						if (thinking) keepAwakeForTool();
 					}
 
+					const inlineCalls = (sc.modelTurn?.parts ?? []).filter((p) => p.functionCall).map((p) => p.functionCall);
+					if (inlineCalls.length) {
+						logger.log(`🧰 Voice AI tool call (inline part): ${inlineCalls.map((c) => c.name).join(', ')}`);
+						handleToolCall(inlineCalls);
+						return;
+					}
+
 					if (sc.interrupted) handleInterrupt();
 
 					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);

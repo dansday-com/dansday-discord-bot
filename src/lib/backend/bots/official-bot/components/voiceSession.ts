@@ -767,11 +767,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
 
 	function withToolBehavior(declaration) {
-		const { parameters, ...rest } = declaration;
-		const takesArgs = Object.keys(parameters?.properties ?? {}).length > 0;
-		const base = takesArgs ? declaration : rest;
-		if (!caps.asyncTools) return base;
-		return { ...base, behavior: Behavior.NON_BLOCKING };
+		if (!caps.asyncTools) return declaration;
+		return { ...declaration, behavior: Behavior.NON_BLOCKING };
 	}
 
 	function toolResponse(call, response) {

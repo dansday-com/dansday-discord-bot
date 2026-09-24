@@ -474,6 +474,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const text = transcriptBuffer[role].trim();
 		transcriptBuffer[role] = '';
 		if (text.length < 2) return;
+		logger.log(`${role === 'user' ? '💬' : '🗨️'} Voice AI ${role}: ${text.slice(0, 300)}`);
 		appendAiMessage(botId, guildId, inviterId, role, text).catch(() => {});
 	}
 
@@ -1134,8 +1135,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						return;
 					}
 
+					if (msg.toolCallCancellation?.ids?.length) {
+						logger.log(`🧰 Voice AI tool call cancelled: ${msg.toolCallCancellation.ids.join(', ')}`);
+					}
+
 					const sc = msg.serverContent;
-					if (!sc) return;
+					if (!sc) {
+						const keys = Object.keys(msg).filter((k) => k !== 'sessionResumptionUpdate' && k !== 'usageMetadata');
+						if (keys.length) logger.log(`📩 Voice AI server message: ${keys.join(', ')}`);
+						return;
+					}
 
 					if (caps.interactionStatus && sc.interactionStatus) {
 						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;

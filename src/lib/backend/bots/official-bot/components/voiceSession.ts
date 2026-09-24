@@ -118,7 +118,7 @@ function modelCapabilities(model) {
 	const live38 = extendedThinking || id.includes('3.8-live');
 
 	return {
-		asyncTools: id.includes('2.5'),
+		asyncTools: live38 || id.includes('2.5'),
 		scheduling: !extendedThinking,
 		thinkingLevel: extendedThinking,
 		interactionStatus: live38

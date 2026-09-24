@@ -1,11 +1,8 @@
-import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
+import { APP_URL } from '$lib/frontend/panelServer.js';
 
 export const GET: RequestHandler = async () => {
-	const baseUrl = env.BASE_URL;
-	if (!baseUrl) {
-		return new Response('BASE_URL environment variable is not set', { status: 503 });
-	}
+	const baseUrl = APP_URL;
 	return new Response(
 		`User-Agent: *
 Allow: /

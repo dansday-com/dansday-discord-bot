@@ -31,7 +31,6 @@
 			"setupChannelsAllPresent": "All channels already exist — nothing new to create.",
 			"setupWarnNoBotConfig": "⚠️ Interface sent, but bot config is not available.",
 			"setupWarnNoServer": "⚠️ Interface sent, but could not find server record to generate invite.",
-			"setupWarnNoBaseUrl": "⚠️ Interface sent, but BASE_URL is not configured — cannot generate invite link.",
 			"error": "❌ Failed to send interface: {error}"
 		}
 	},

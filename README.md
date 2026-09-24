@@ -222,7 +222,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 
 ## Security
 
-Found a vulnerability? Email **security@dansday.com** instead of opening an issue. See [SECURITY.md](SECURITY.md).
+Found a vulnerability? Email **security@dansday.dev** instead of opening an issue. See [SECURITY.md](SECURITY.md).
 
 ---
 

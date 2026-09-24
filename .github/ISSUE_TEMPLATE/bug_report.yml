@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Found a security problem? Close this and email **security@dansday.com** — see [SECURITY.md](https://github.com/dansday-com/dansday-discord-bot/blob/master/SECURITY.md). Do not post it here.
+        Found a security problem? Close this and email **security@dansday.dev** — see [SECURITY.md](https://github.com/dansday-com/dansday-discord-bot/blob/master/SECURITY.md). Do not post it here.
 
   - type: checkboxes
     id: preflight
@@ -24,7 +24,7 @@ body:
     attributes:
       label: How are you running it?
       options:
-        - Hosted bot and panel at dansday.com
+        - Hosted bot and panel at dansday.dev
         - Self-hosted from this repository
     validations:
       required: true

@@ -1,3 +1,5 @@
+import { APP_URL } from './frontend/panelServer.js';
+
 export const COMMUNITY_DISCORD_URL = 'https://discord.gg/7fEqEDSur3';
 
 export const OFFICIAL_BOT_INVITE_URL = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
@@ -8,9 +10,8 @@ export const MAINTAINER_DISCORD_ID = '473430221211697162';
 
 export const SOURCE_REPO_URL = 'https://github.com/dansday-com/dansday-discord-bot';
 
-export function publicSiteOrigin(): string | null {
-	const o = process.env.BASE_URL?.replace(/\/$/, '');
-	return o || null;
+export function publicSiteOrigin(): string {
+	return APP_URL;
 }
 
 export function publicServerPath(slug: string): string {
@@ -18,7 +19,6 @@ export function publicServerPath(slug: string): string {
 }
 
 export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members' | 'account'): string | null {
-	const origin = publicSiteOrigin();
-	if (!origin || !slug) return null;
-	return origin + publicServerPath(slug) + (page ? `/${page}` : '');
+	if (!slug) return null;
+	return publicSiteOrigin() + publicServerPath(slug) + (page ? `/${page}` : '');
 }

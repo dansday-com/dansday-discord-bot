@@ -3,7 +3,7 @@ export const DEFAULT_MAIN_EMBED_COLOR = '#ff0000';
 import { APP_NAME, APP_DOMAIN } from '../frontend/panelServer.js';
 
 export const DEFAULT_BOT_NICKNAME = APP_NAME;
-export const DEFAULT_MAIN_EMBED_FOOTER = `Powered by bot.${APP_DOMAIN} {year}`;
+export const DEFAULT_MAIN_EMBED_FOOTER = `Powered by ${APP_DOMAIN} {year}`;
 
 function trimStr(v: unknown): string {
 	return typeof v === 'string' ? v.trim() : '';

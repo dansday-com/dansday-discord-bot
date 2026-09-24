@@ -129,7 +129,6 @@ const LEGAL_NEXT_STEP = `This is the real text of the document. Answer only from
 
 async function publicPagesSection(botId, guildId) {
 	const origin = publicSiteOrigin();
-	if (!origin) return null;
 
 	const directories = [
 		`Every public server ranked by XP: ${origin}/servers`,

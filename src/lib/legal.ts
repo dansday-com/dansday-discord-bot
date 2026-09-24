@@ -1,6 +1,6 @@
-import { APP_NAME, APP_URL } from './frontend/panelServer.js';
+import { APP_EMAIL, APP_NAME, APP_URL } from './frontend/panelServer.js';
 
-export const LEGAL_BASE_URL = 'https://bot.dansday.com';
+export const LEGAL_BASE_URL = APP_URL;
 
 export const TERMS_PATH = '/terms-of-service';
 export const PRIVACY_PATH = '/privacy-policy';
@@ -10,7 +10,7 @@ export const PRIVACY_URL = `${LEGAL_BASE_URL}${PRIVACY_PATH}`;
 
 export const LEGAL_LAST_UPDATED = 'August 24, 2026';
 export const LEGAL_RETENTION_DAYS = 7;
-export const SECURITY_EMAIL = 'security@dansday.com';
+export const SECURITY_EMAIL = APP_EMAIL('security');
 
 export const DISCORD_LINKS = {
 	terms: 'https://discord.com/terms',

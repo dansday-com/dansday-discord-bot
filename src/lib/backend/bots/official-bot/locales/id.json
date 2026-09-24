@@ -31,7 +31,6 @@
 			"setupChannelsAllPresent": "Semua saluran sudah ada — tidak ada yang perlu dibuat.",
 			"setupWarnNoBotConfig": "⚠️ Antarmuka terkirim, tetapi konfigurasi bot tidak tersedia.",
 			"setupWarnNoServer": "⚠️ Antarmuka terkirim, tetapi catatan server tidak ditemukan untuk membuat undangan.",
-			"setupWarnNoBaseUrl": "⚠️ Antarmuka terkirim, tetapi BASE_URL belum dikonfigurasi — tidak bisa membuat tautan undangan.",
 			"error": "❌ Gagal mengirim antarmuka: {error}"
 		}
 	},

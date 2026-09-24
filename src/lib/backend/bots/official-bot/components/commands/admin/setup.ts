@@ -271,37 +271,19 @@ export async function execute(interaction: any, client: any) {
 				(await translate('interface.panel.setupHasOwnerAccount', gid, uid, {
 					channel: menuChannel.toString()
 				}));
-			const origin = publicSiteOrigin();
-			let linkUrl: string | undefined;
-			let linkLabel: string | undefined;
-			if (origin) {
-				const loginUrl = `${origin}/login`;
-				description += '\n\n' + (await translate('interface.panel.setupSignInLinkLine', gid, uid, { url: loginUrl }));
-				linkUrl = loginUrl;
-				linkLabel = await translate('interface.panel.setupOpenPanelButton', gid, uid);
-			}
+			const loginUrl = `${publicSiteOrigin()}/login`;
+			description += '\n\n' + (await translate('interface.panel.setupSignInLinkLine', gid, uid, { url: loginUrl }));
+			const linkLabel = await translate('interface.panel.setupOpenPanelButton', gid, uid);
 			await interaction.editReply({
 				embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(description)],
-				...(linkUrl && linkLabel
-					? {
-							components: [
-								new ActionRowBuilder<ButtonBuilder>().addComponents(
-									new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(linkUrl).setLabel(linkLabel.slice(0, 80))
-								)
-							]
-						}
-					: {})
+				components: [
+					new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(loginUrl).setLabel(linkLabel.slice(0, 80)))
+				]
 			});
 			return;
 		}
 
 		const origin = publicSiteOrigin();
-		if (!origin) {
-			await interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(COLOR_WARN).setDescription(await translate('interface.panel.setupWarnNoBaseUrl', gid, uid))]
-			});
-			return;
-		}
 
 		const invites = await db.getServerAccountInvitesByServer(server.id);
 		const activeInvite = findActiveOwnerInvite(invites);

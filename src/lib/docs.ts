@@ -1,7 +1,8 @@
 import { EFFECTS, EFFECT_SPIN_COST } from './effects.js';
+import { APP_URL } from './frontend/panelServer.js';
 
 export const DOCS_TITLE = 'Bot documentation';
-export const DOCS_URL = 'https://dansday.com/docs';
+export const DOCS_URL = `${APP_URL}/docs`;
 
 const EFFECT_NAMES = EFFECTS.map((e) => e.label)
 	.join(', ')
@@ -357,7 +358,8 @@ export const aiWikiRelaySteps = [
 ];
 
 export const envVars = [
-	{ label: 'BASE_URL', req: 'required', desc: 'Public base URL of your site, e.g. https://bot.example.com.' },
+	{ label: 'APP_NAME', req: 'required', desc: 'Brand name shown in the panel, emails and bot embeds. Read at build time.' },
+	{ label: 'APP_URL', req: 'required', desc: 'Public base URL of your site, e.g. https://bot.example.com. Read at build time.' },
 	{
 		label: 'DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME',
 		req: 'required',
@@ -396,7 +398,7 @@ export const selfhostSteps = [
 	{
 		icon: 'fa-file-lines',
 		title: 'Fill the .env',
-		desc: 'Copy .env.example to .env and set DB_*, MAIL_*, BASE_URL and SECRET. Add REDIS_URL if you use Redis.'
+		desc: 'Copy .env.example to .env and set APP_NAME, APP_URL, DB_*, MAIL_* and SECRET. Add REDIS_URL if you use Redis.'
 	},
 	{ icon: 'fa-box-open', title: 'Install and build', desc: 'Run npm install then npm run build. The Node adapter outputs a server bundle.' },
 	{

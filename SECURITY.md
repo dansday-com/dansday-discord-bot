@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **security@dansday.com**. Do not open a public issue, pull request or Discord message for a security problem.
+Email **security@dansday.dev**. Do not open a public issue, pull request or Discord message for a security problem.
 
 Please include:
 
@@ -18,7 +18,7 @@ You will get a first reply within 72 hours. Valid reports get a fix timeline in 
 In scope:
 
 - This repository — the web panel, the bots, the API routes and the database layer.
-- The hosted bot and panel at dansday.com.
+- The hosted bot and panel at dansday.dev.
 
 Out of scope:
 
@@ -30,7 +30,7 @@ Out of scope:
 
 ## Testing rules
 
-Test only against your own self-hosted install or your own server on the hosted bot. Do not touch other people's servers, accounts or data, and do not run denial-of-service or automated scans against dansday.com.
+Test only against your own self-hosted install or your own server on the hosted bot. Do not touch other people's servers, accounts or data, and do not run denial-of-service or automated scans against dansday.dev.
 
 ## Supported versions
 

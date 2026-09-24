@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
     url: https://github.com/dansday-com/dansday-discord-bot/blob/master/SECURITY.md
-    about: Never open a public issue. Email security@dansday.com instead.
+    about: Never open a public issue. Email security@dansday.dev instead.
   - name: Community Discord
     url: https://discord.gg/7fEqEDSur3
     about: Setup help, configuration questions and general chat.

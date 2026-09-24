@@ -1,8 +1,8 @@
-import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 import { TERMS_URL, PRIVACY_URL } from '$lib/legal.js';
+import { APP_URL } from '$lib/frontend/panelServer.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -19,10 +19,7 @@ function escapeXml(unsafe: string): string {
 }
 
 export const GET: RequestHandler = async () => {
-	const baseUrl = env.BASE_URL;
-	if (!baseUrl) {
-		return new Response('BASE_URL environment variable is not set', { status: 503 });
-	}
+	const baseUrl = APP_URL;
 
 	const servers = await listPublicServerSlugs();
 
@@ -36,7 +33,7 @@ export const GET: RequestHandler = async () => {
 		}
 	};
 
-	const root = `${baseUrl.replace(/\/$/, '')}/server`;
+	const root = `${baseUrl}/server`;
 
 	const publicPageRows = servers.flatMap((s) => {
 		const enc = encodeURIComponent(String(s.slug));
@@ -50,13 +47,13 @@ export const GET: RequestHandler = async () => {
 
 	const staticPages = [
 		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/tasks`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/shop`, changefreq: 'daily' as const, priority: 0.8, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/quests`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/roblox`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/wikis`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/tasks`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/shop`, changefreq: 'daily' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/quests`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/roblox`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/wikis`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() },
 		{ loc: TERMS_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: new Date().toISOString() },
 		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: new Date().toISOString() }
 	];

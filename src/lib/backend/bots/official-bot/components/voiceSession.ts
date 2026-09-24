@@ -113,13 +113,16 @@ function thinkingLevelFor(level: string | null | undefined) {
 }
 
 function modelCapabilities(model) {
-	const extendedThinking = (model ?? '').toLowerCase().includes('live-extended-thinking');
+	const id = (model ?? '').toLowerCase();
+	const extendedThinking = id.includes('live-extended-thinking');
+	const live38 = extendedThinking || id.includes('3.8-live');
 
 	return {
 		extendedThinking,
+		asyncTools: live38 || id.includes('2.5'),
 		scheduling: !extendedThinking,
 		thinkingLevel: extendedThinking,
-		interactionStatus: extendedThinking
+		interactionStatus: live38
 	};
 }
 
@@ -762,6 +765,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
 
 	function withToolBehavior(declaration) {
+		if (!caps.asyncTools) return declaration;
 		return { ...declaration, behavior: Behavior.NON_BLOCKING };
 	}
 
@@ -1103,7 +1107,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							...(imageDeclaration ? [imageDeclaration] : [])
 						].map(withToolBehavior)
 					}
-				]
+				].map((tool) => {
+					const names = tool.functionDeclarations.map((d) => d.name);
+					const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+					logger.log(
+						`🧰 Voice AI declaring ${names.length} tools (behavior=${caps.asyncTools ? 'NON_BLOCKING' : 'default'}${dupes.length ? ` DUPLICATES=${[...new Set(dupes)].join(',')}` : ''}): ${names.join(', ')}`
+					);
+					return tool;
+				})
 			},
 			callbacks: {
 				onopen: () =>
@@ -1122,6 +1133,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					const sc = msg.serverContent;
 					if (!sc) return;
+
+					const inlineCalls = (sc.modelTurn?.parts ?? []).filter((p) => p.functionCall).map((p) => p.functionCall);
+					if (inlineCalls.length) {
+						logger.log(`🧰 Voice AI tool call arrived inside modelTurn: ${inlineCalls.map((c) => c.name).join(', ')}`);
+						handleToolCall(inlineCalls);
+					}
 
 					if (caps.interactionStatus && sc.interactionStatus) {
 						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;

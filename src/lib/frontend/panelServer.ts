@@ -1,6 +1,16 @@
-export const APP_NAME = '</DANSDAY>';
-export const APP_DOMAIN = 'dansday.com';
-export const APP_URL = 'https://dansday.com';
+declare const __APP_NAME__: string;
+declare const __APP_URL__: string;
+
+function requiredEnv(key: string): string {
+	const value = typeof process === 'undefined' ? '' : (process.env[key]?.trim() ?? '');
+	if (!value) throw new Error(`Missing ${key} environment variable`);
+	return value;
+}
+
+export const APP_NAME = typeof __APP_NAME__ !== 'undefined' ? __APP_NAME__ : requiredEnv('APP_NAME');
+export const APP_URL = (typeof __APP_URL__ !== 'undefined' ? __APP_URL__ : requiredEnv('APP_URL')).replace(/\/+$/, '');
+export const APP_DOMAIN = APP_URL.replace(/^https?:\/\//, '');
+export const APP_EMAIL = (mailbox: string) => `${mailbox}@${APP_DOMAIN}`;
 
 const REGISTRY = [
 	{ id: 'main', label: 'Main', featureSwitch: false, hrefSuffix: '', icon: 'fa-gear', iconClass: 'text-emerald-400' },

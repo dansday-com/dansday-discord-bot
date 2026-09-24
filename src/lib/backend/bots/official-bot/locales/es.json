@@ -31,7 +31,6 @@
 			"setupChannelsAllPresent": "Todos los canales ya existen; no hay nada nuevo que crear.",
 			"setupWarnNoBotConfig": "⚠️ Interfaz enviada, pero la configuración del bot no está disponible.",
 			"setupWarnNoServer": "⚠️ Interfaz enviada, pero no se encontró el registro del servidor para generar la invitación.",
-			"setupWarnNoBaseUrl": "⚠️ Interfaz enviada, pero BASE_URL no está configurada: no se puede generar el enlace de invitación.",
 			"error": "❌ No se pudo enviar la interfaz: {error}"
 		}
 	},

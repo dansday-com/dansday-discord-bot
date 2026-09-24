@@ -18,7 +18,7 @@
 
 	let embedTitle = $state('');
 	let embedDescription = $state('');
-	let embedFooter = $state(`Powered by bot.${APP_DOMAIN} {year}`);
+	let embedFooter = $state(`Powered by ${APP_DOMAIN} {year}`);
 	let embedColor = $state('#ff0000');
 	let imageMode = $state<'url' | 'upload'>('url');
 	let imageUrl = $state('');
@@ -110,7 +110,7 @@
 		bind:imageUrl
 		bind:uploadedImagePath
 		bind:imagePreview
-		defaultFooter={`Powered by bot.${APP_DOMAIN} {year}`}
+		defaultFooter={`Powered by ${APP_DOMAIN} {year}`}
 		defaultColor="#ff0000"
 		footerPreview={embedFooterPreview}
 		uploadEndpoint="/api/admin/upload-embed-image"

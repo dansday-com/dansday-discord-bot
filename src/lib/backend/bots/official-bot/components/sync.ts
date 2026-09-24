@@ -266,15 +266,12 @@ async function sendJoinGreeting(guild) {
 			.setDescription(description);
 
 		const buttons = [];
-		const origin = publicSiteOrigin();
-		if (origin) {
-			buttons.push(
-				new ButtonBuilder()
-					.setStyle(ButtonStyle.Link)
-					.setURL(`${origin}/docs`)
-					.setLabel((await translate('interface.panel.joinDocsButton', guild.id, '')).slice(0, 80))
-			);
-		}
+		buttons.push(
+			new ButtonBuilder()
+				.setStyle(ButtonStyle.Link)
+				.setURL(`${publicSiteOrigin()}/docs`)
+				.setLabel((await translate('interface.panel.joinDocsButton', guild.id, '')).slice(0, 80))
+		);
 		buttons.push(
 			new ButtonBuilder()
 				.setStyle(ButtonStyle.Link)

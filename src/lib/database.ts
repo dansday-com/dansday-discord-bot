@@ -296,7 +296,7 @@ import { APP_DOMAIN } from './frontend/panelServer.js';
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',
 	activity_type: 'playing',
-	activity_name: `bot.${APP_DOMAIN}`,
+	activity_name: APP_DOMAIN,
 	activity_url: null,
 	activity_state: 'Free web panel for your Discord server. Hosted free or self host.'
 };

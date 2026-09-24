@@ -6,7 +6,7 @@ By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Contribut
 
 ## Before you start
 
-- **Security issues do not belong in issues or pull requests.** Email **security@dansday.com** — see [SECURITY.md](SECURITY.md).
+- **Security issues do not belong in issues or pull requests.** Email **security@dansday.dev** — see [SECURITY.md](SECURITY.md).
 - Open an issue first for anything that adds a module, changes the database schema, or reshapes a panel tab. A short discussion beats a rejected branch.
 - Small, obvious fixes (typos, broken links, a wrong label) can go straight to a pull request.
 

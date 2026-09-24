@@ -31,7 +31,6 @@
 			"setupChannelsAllPresent": "Alle Kanäle existieren bereits — es gibt nichts Neues zu erstellen.",
 			"setupWarnNoBotConfig": "⚠️ Interface gesendet, aber die Bot-Konfiguration ist nicht verfügbar.",
 			"setupWarnNoServer": "⚠️ Interface gesendet, aber der Servereintrag zum Erstellen der Einladung wurde nicht gefunden.",
-			"setupWarnNoBaseUrl": "⚠️ Interface gesendet, aber BASE_URL ist nicht konfiguriert — es kann kein Einladungslink erstellt werden.",
 			"error": "❌ Interface konnte nicht gesendet werden: {error}"
 		}
 	},

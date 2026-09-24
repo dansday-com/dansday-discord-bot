@@ -70,8 +70,6 @@ const MUTE_RETRY_MS = 750;
 const MUTE_RECOVER_MS = 20_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
-const VOICE_TRACE = process.env.VOICE_TRACE === '1';
-
 const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
 const FETCH_LOOKUP_TIMEOUT_MS = 16_000;
@@ -120,8 +118,7 @@ function modelCapabilities(model) {
 	const live38 = extendedThinking || id.includes('3.8-live');
 
 	return {
-		extendedThinking,
-		asyncTools: live38 || id.includes('2.5'),
+		asyncTools: id.includes('2.5'),
 		scheduling: !extendedThinking,
 		thinkingLevel: extendedThinking,
 		interactionStatus: live38
@@ -772,8 +769,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function toolResponse(call, response) {
-		if (!caps.scheduling) return { id: call.id, name: call.name, response };
-		return { id: call.id, name: call.name, response: { ...response, scheduling: FunctionResponseScheduling.INTERRUPT } };
+		if (!caps.asyncTools || !caps.scheduling) return { id: call.id, name: call.name, response };
+		return { id: call.id, name: call.name, response, scheduling: FunctionResponseScheduling.INTERRUPT };
 	}
 
 	const LOOKUP_TOOLS = new Set([
@@ -1122,17 +1119,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				onopen: () =>
 					logger.log(`🔊 Voice AI live session open (model=${config.voice_model}${caps.thinkingLevel ? ` thinking=${config.voice_thinking}` : ''})`),
 				onmessage: (msg) => {
-					if (VOICE_TRACE) {
-						const sc = msg.serverContent;
-						const keys = Object.keys(msg).filter((k) => msg[k] != null);
-						const partKinds = (sc?.modelTurn?.parts ?? []).map((p) =>
-							p.functionCall ? `functionCall:${p.functionCall.name}` : p.inlineData ? 'audio' : p.thought ? 'thought' : p.text ? 'text' : 'other'
-						);
-						logger.log(
-							`🔬 Voice AI msg [${keys.join(',')}]${sc?.interactionStatus ? ` status=${sc.interactionStatus}` : ''}${sc?.turnComplete ? ' turnComplete' : ''}${sc?.generationComplete ? ' generationComplete' : ''}${partKinds.length ? ` parts=${partKinds.join('|')}` : ''}`
-						);
-					}
-
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
 					if (msg.goAway) {
 						logger.log(`⚠️ Voice AI goAway, timeLeft=${msg.goAway.timeLeft ?? '?'}`);
@@ -1140,18 +1126,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					}
 
 					if (msg.toolCall?.functionCalls?.length) {
+						logger.log(`🧰 Voice AI tool call: ${msg.toolCall.functionCalls.map((c) => c.name).join(', ')}`);
 						handleToolCall(msg.toolCall.functionCalls);
 						return;
 					}
 
 					const sc = msg.serverContent;
 					if (!sc) return;
-
-					const inlineCalls = (sc.modelTurn?.parts ?? []).filter((p) => p.functionCall).map((p) => p.functionCall);
-					if (inlineCalls.length) {
-						logger.log(`🧰 Voice AI tool call arrived inside modelTurn: ${inlineCalls.map((c) => c.name).join(', ')}`);
-						handleToolCall(inlineCalls);
-					}
 
 					if (caps.interactionStatus && sc.interactionStatus) {
 						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;

@@ -36,6 +36,8 @@ const EMPTY = Buffer.alloc(0);
 
 const SPEAK_GUARD_MS = 400;
 const SPEECH_TAIL_MS = 250;
+const KNOWN_SERVER_KEYS = new Set(['serverContent', 'toolCall', 'toolCallCancellation', 'sessionResumptionUpdate', 'usageMetadata', 'setupComplete', 'goAway']);
+
 const TURN_SILENCE_MS = 500;
 const TURN_SETTLE_MIN_MS = 40;
 const VOICE_RMS_THRESHOLD = 900;
@@ -1139,12 +1141,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						logger.log(`🧰 Voice AI tool call cancelled: ${msg.toolCallCancellation.ids.join(', ')}`);
 					}
 
+					const unknown = Object.keys(msg).filter((k) => !KNOWN_SERVER_KEYS.has(k));
+					if (unknown.length) logger.log(`📩 Voice AI server message: ${unknown.join(', ')} ${JSON.stringify(msg).slice(0, 400)}`);
+
 					const sc = msg.serverContent;
-					if (!sc) {
-						const keys = Object.keys(msg).filter((k) => k !== 'sessionResumptionUpdate' && k !== 'usageMetadata');
-						if (keys.length) logger.log(`📩 Voice AI server message: ${keys.join(', ')}`);
-						return;
-					}
+					if (!sc) return;
 
 					if (caps.interactionStatus && sc.interactionStatus) {
 						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;

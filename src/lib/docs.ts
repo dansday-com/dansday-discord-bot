@@ -24,14 +24,6 @@ export const sections = [
 		lead: 'Three steps take you from nothing to a configurable server.'
 	},
 	{
-		id: 'bots',
-		icon: 'fa-robot',
-		label: 'Bot vs selfbot',
-		heading: 'Official bot vs selfbot',
-		iconClass: 'fas fa-robot',
-		lead: 'The official bot runs everything. A selfbot is optional and only needed for two features.'
-	},
-	{
 		id: 'setup-command',
 		icon: 'fa-terminal',
 		label: '/setup',
@@ -465,46 +457,6 @@ export const accountFields = [
 	}
 ];
 
-export const botKinds = [
-	{
-		icon: 'fa-robot',
-		accent: '#5865f2',
-		title: 'Official bot',
-		what: 'The real Discord bot application you invite with an OAuth link. It runs almost everything: leveling, items, moderation, welcomer, booster, giveaways, AFK, feedback, staff rating, custom supporter roles, the /setup command, and every menu button.',
-		fields: [
-			{
-				label: 'How to add',
-				desc: 'Invite it with the OAuth link (the "Add the bot" button). It joins as a normal bot user with the permissions the features need.'
-			},
-			{
-				label: 'Token',
-				desc: 'For the hosted bot this is handled for you. Self-hosters store the bot token in the database bots table, not in Discord, and point the process at it with BOT_ID.'
-			},
-			{ label: 'Runs', desc: 'All standard features and slash/button interactions.' }
-		]
-	},
-	{
-		icon: 'fa-user-secret',
-		accent: '#c0392b',
-		title: 'Selfbot (optional)',
-		what: 'An optional user-token client for features that need a real user account. Only two features require it: the Discord Quest notifier and the message Forwarder. Everything else uses the official bot.',
-		fields: [
-			{
-				label: 'Requires a selfbot',
-				desc: 'Discord Quest notifier and Message forwarder. Their config pages warn you if no selfbot is running for the server.'
-			},
-			{
-				label: 'How to add',
-				desc: 'Add a selfbot under the Selfbots page for the server and paste a user token. It is stored encrypted. Adding, starting, stopping, restarting and deleting are owner-only; staff see it read-only.'
-			},
-			{
-				label: 'Risk',
-				desc: 'A selfbot uses a user account token. Use it in line with Discord’s terms and your own risk assessment. It is entirely optional.'
-			}
-		]
-	}
-];
-
 export const tiers = [
 	{
 		icon: 'fa-crown',
@@ -515,7 +467,6 @@ export const tiers = [
 			'Configure every module and permission for the server',
 			'Invite, freeze and delete staff accounts (not other owners)',
 			'Create and expire invite links',
-			'Add, start, stop, restart and delete selfbots',
 			'Invite more owners'
 		]
 	},
@@ -527,7 +478,6 @@ export const tiers = [
 		can: [
 			'View and change settings allowed by their permission roles',
 			'Use staff features like the rating review queue',
-			'View selfbots read-only (cannot start or manage them)',
 			'Cannot invite, freeze or delete any account',
 			'Cannot run /setup'
 		]
@@ -729,14 +679,14 @@ export const modules = [
 		icon: 'fa-scroll',
 		accent: '#5865f2',
 		title: 'Discord Quest notifier',
-		what: 'Posts Discord Quest alerts. Needs a running selfbot configured for the server.',
+		what: 'Posts Discord Quest alerts. Quest data comes from a public quest feed, so nothing extra is needed for alerts.',
 		fields: [
-			{ label: 'Quest notifier module', desc: 'When off, quest polling and posts are disabled. Requires a running selfbot when enabled.' },
+			{ label: 'Quest notifier module', desc: 'When off, quest polling and posts are disabled.' },
 			{ label: 'Notification channel', desc: 'Where the official bot posts quest embeds.' },
-			{ label: 'HTTP(S) proxy (optional)', desc: 'Used only for the quest list endpoint. Leave empty for a direct connection.' },
+			{ label: 'HTTP(S) proxy (optional)', desc: 'Used only for quest enrollment. Leave empty for a direct connection.' },
 			{
 				label: 'Auto quest enrollment',
-				desc: 'When on, the bot menu shows Discord Quest with a Claim all button that enrolls every open quest with a user token.'
+				desc: 'Instance-wide and off by default. Only the operator can turn it on; it is not a per-server setting. When on, the bot menu shows Discord Quest with a Claim all button that enrolls every open quest with the member’s own user token.'
 			}
 		]
 	},
@@ -745,15 +695,15 @@ export const modules = [
 		icon: 'fa-share-from-square',
 		accent: '#2f8f4e',
 		title: 'Message forwarder',
-		what: 'Forwards messages from a selfbot channel into a channel in this server. Add as many forwarders as you need.',
+		what: 'Forwards messages from a source channel the operator has linked into a channel in this server. Add as many forwarders as you need.',
 		fields: [
-			{ label: 'Forwarder module', desc: 'When off, message forwarding from selfbots is disabled.' },
-			{ label: 'Selfbot', desc: 'The selfbot account that forwards messages.' },
-			{ label: 'Server (where selfbot is)', desc: 'The server the selfbot is connected to.' },
+			{ label: 'Forwarder module', desc: 'When off, message forwarding is disabled.' },
+			{ label: 'Source account', desc: 'The linked account that forwards messages. The operator manages these; owners pick from what is available.' },
+			{ label: 'Server (where the account is)', desc: 'The server the linked account is connected to.' },
 			{ label: 'From Channels', desc: 'Messages from these source channels are forwarded.' },
 			{ label: 'Target Channel', desc: 'Where forwarded messages post in this server.' },
 			{ label: 'Role Pings (optional)', desc: 'Roles to mention on forwarded messages.' },
-			{ label: 'Mention filter', desc: 'Only forward messages that mention the selfbot.' },
+			{ label: 'Mention filter', desc: 'Only forward messages that mention the linked account.' },
 			{ label: 'Tag (optional)', desc: 'A label so you can recognize this forwarder later.' }
 		]
 	},

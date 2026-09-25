@@ -66,12 +66,21 @@ function tokenFromModal(interaction: ModalSubmitInteraction): string {
 	return interaction.fields.getTextInputValue(TOKEN_FIELD_ID)?.trim() || interaction.fields.getTextInputValue(LEGACY_TOKEN_FIELD_ID)?.trim() || '';
 }
 
+async function isAutoQuestEnrollmentEnabled(serverId: number): Promise<boolean> {
+	const panelId = await db.getServerPanelId(serverId).catch(() => null);
+	if (!panelId) return false;
+	const row = await db.getPanelSettings(panelId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
+	const raw = row?.settings;
+	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+	return s.auto_quest === true;
+}
+
 async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest: boolean; httpProxyUrl: string | null; channelId: string | null }> {
 	const row = await db.getServerSettings(serverId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 	const rawSettings = row && !Array.isArray(row) ? row.settings : null;
 	const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
 	return {
-		autoQuest: s.auto_quest !== false,
+		autoQuest: await isAutoQuestEnrollmentEnabled(serverId),
 		httpProxyUrl: typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null,
 		channelId: typeof s.channel_id === 'string' && s.channel_id.trim() ? s.channel_id.trim() : null
 	};

@@ -8,11 +8,6 @@
 
 	let { data }: PageProps = $props();
 
-	const canControlSelfbot = $derived(
-		data.user.authenticated &&
-			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
-	);
-
 	let showAdd = $state(false);
 
 	type LiveBot = { status: string; process_id: number | null; uptime_ms: number };
@@ -99,7 +94,7 @@
 
 	async function deleteBot(selfbotId: number, name: string) {
 		if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-		const res = await fetch(`/api/servers/${data.serverId}/selfbot`, {
+		const res = await fetch('/api/panel/selfbots', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
 			credentials: 'include',
@@ -123,27 +118,19 @@
 	<title>Selfbots | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<AddSelfbotModal open={showAdd} serverId={data.serverId} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />
+<AddSelfbotModal open={showAdd} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />
 
 <div class="space-y-4">
-	{#if data.selfbotViewOnly}
-		<div class="flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
-			<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
-			<span><strong class="text-amber-50">View only.</strong> You can see selfbot status; start, stop, restart, add, and delete are owner-only.</span>
-		</div>
-	{/if}
 	<div class="flex items-center justify-between">
 		<h2 class="text-ash-100 flex items-center gap-2 text-xl font-bold">
 			<i class="fas fa-robot text-violet-400"></i>Selfbots
 		</h2>
-		{#if canControlSelfbot}
-			<button
-				onclick={() => (showAdd = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:scale-105 active:scale-95"
-			>
-				<i class="fas fa-plus text-xs text-violet-300"></i>Add Selfbot
-			</button>
-		{/if}
+		<button
+			onclick={() => (showAdd = true)}
+			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:scale-105 active:scale-95"
+		>
+			<i class="fas fa-plus text-xs text-violet-300"></i>Add Selfbot
+		</button>
 	</div>
 
 	{#if data.selfbots.length === 0}
@@ -156,7 +143,7 @@
 			{@const live = liveData[bot.id] ?? { status: bot.status, process_id: null, uptime_ms: 0 }}
 
 			<a
-				href={`/bots/${data.botId}/servers/${data.serverId}/selfbot/${bot.id}`}
+				href={`/selfbots/${bot.id}`}
 				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
 			>
 				<div class="flex items-center gap-3">

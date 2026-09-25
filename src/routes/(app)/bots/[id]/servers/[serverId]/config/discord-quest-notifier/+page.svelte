@@ -14,7 +14,6 @@
 	let featureEnabled = $state(data.settings.enabled === true);
 	let channelId = $state(data.settings.channel_id || '');
 	let httpProxyUrl = $state(data.settings.http_proxy_url || '');
-	let autoQuest = $state(data.settings.auto_quest !== false);
 
 	async function save() {
 		if (!isValidQuestHttpProxyUrl(httpProxyUrl)) {
@@ -31,8 +30,7 @@
 					component: SERVER_SETTINGS.component.discord_quest_notifier,
 					enabled: featureEnabled,
 					channel_id: channelId,
-					http_proxy_url: httpProxyUrl.trim() || '',
-					auto_quest: autoQuest
+					http_proxy_url: httpProxyUrl.trim() || ''
 				})
 			});
 			const d = await res.json();
@@ -77,12 +75,12 @@
 		<i class="fas fa-gem text-sky-400"></i>Discord Quest notifier
 	</h3>
 	<p class="text-ash-400 text-xs">
-		Discord Quest alerts from this server’s selfbot (all reward types). Not the same as <strong class="text-ash-200">Channel notification</strong>.
+		Discord Quest alerts from a public quest feed (all reward types). Not the same as <strong class="text-ash-200">Channel notification</strong>.
 	</p>
 
 	<ConfigToggleRow
 		label="Quest notifier module"
-		description="When off, quest polling and posts are disabled. Requires a running selfbot when enabled."
+		description="When off, quest polling and posts are disabled."
 		labelIconClass="fas fa-gem text-sky-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle quest notifier module"
@@ -97,11 +95,7 @@
 		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
-				{#if !data.hasSelfbots}
-					<strong>No selfbot configured.</strong> Add a selfbot under the Selfbots section for this server to use this feature.
-				{:else}
-					<strong>No running selfbot.</strong> Start a selfbot under the Selfbots section for this server to use this feature.
-				{/if}
+				<strong>No quests available yet.</strong> Quest data comes from a public feed and refreshes automatically — check back shortly.
 			</span>
 		</p>
 	{/if}
@@ -135,13 +129,15 @@
 			/>
 		</div>
 
-		<ConfigToggleRow
-			label="Auto quest enrollment"
-			description="When on, the bot menu shows Discord Quest with a 'Claim all' button that enrolls every open quest with a user token."
-			labelIconClass="fas fa-bolt text-sky-400"
-			bind:enabled={autoQuest}
-			ariaLabel="Toggle auto quest enrollment"
-		/>
+		<div class="border-ash-700 bg-ash-800/40 rounded-lg border p-3">
+			<p class="text-ash-300 text-xs font-medium">
+				<i class="fas fa-bolt mr-1.5 text-sky-400"></i>Auto quest enrollment
+				<span class="ml-1.5 rounded px-1.5 py-0.5 text-[10px] {data.autoQuestEnabled ? 'bg-emerald-900/40 text-emerald-300' : 'bg-ash-700 text-ash-400'}">
+					{data.autoQuestEnabled ? 'On' : 'Off'}
+				</span>
+			</p>
+			<p class="text-ash-500 mt-1.5 text-xs">Set instance-wide by the operator, not per server. Off by default.</p>
+		</div>
 	</div>
 
 	<button

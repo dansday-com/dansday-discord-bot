@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db, { presenceFromDbRow, type ServerBotStatusInput } from '$lib/database.js';
-import { canManageSelfbots, canViewSelfbots } from '$lib/frontend/panelServer.js';
+import { canManagePanelSelfbots } from '$lib/frontend/panelServer.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'] as const;
@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ error: 'Selfbot not found' }, { status: 404 });
 	}
 
-	if (!(await canViewSelfbots(locals, selfbot.server_id))) {
+	if (!(await canManagePanelSelfbots(locals, selfbotId))) {
 		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
@@ -62,7 +62,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Selfbot not found' }, { status: 404 });
 	}
 
-	if (!(await canManageSelfbots(locals, selfbot.server_id))) {
+	if (!(await canManagePanelSelfbots(locals, selfbotId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

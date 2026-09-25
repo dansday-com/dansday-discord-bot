@@ -11,16 +11,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const officialBotId = await db.getOfficialBotIdForServer(Number(params.serverId)).catch(() => null);
 	const quests = officialBotId == null ? [] : await db.listActiveBotDiscordQuests(officialBotId).catch(() => []);
-	const selfbots = await db.getServerBots(Number(params.serverId)).catch(() => []);
+
+	const panelId = await db.getServerPanelId(Number(params.serverId)).catch(() => null);
+	const panelRow = panelId == null ? null : await db.getPanelSettings(panelId, SERVER_SETTINGS.component.discord_quest_notifier).catch(() => null);
+	const panelRaw = panelRow?.settings;
+	const panelSettings = panelRaw && typeof panelRaw === 'object' ? (panelRaw as Record<string, unknown>) : {};
 
 	return {
 		settings: {
 			enabled: s.enabled === true,
 			channel_id: typeof s.channel_id === 'string' ? s.channel_id : '',
-			http_proxy_url: typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '',
-			auto_quest: s.auto_quest !== false
+			http_proxy_url: typeof s.http_proxy_url === 'string' ? s.http_proxy_url : ''
 		},
 		hasQuests: quests.length > 0,
-		hasSelfbots: selfbots.length > 0
+		autoQuestEnabled: panelSettings.auto_quest === true
 	};
 };

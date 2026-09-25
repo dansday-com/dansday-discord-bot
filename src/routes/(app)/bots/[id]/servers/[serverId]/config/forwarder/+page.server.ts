@@ -8,7 +8,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.forwarder).catch(() => null);
 
-	const selfbots = await db.getServerBots(Number(params.serverId));
+	const panelId = await db.getServerPanelId(Number(params.serverId)).catch(() => null);
+	const selfbots = panelId == null ? [] : await db.getPanelSelfbots(panelId).catch(() => []);
 	const runningSelfbot = selfbots.find((sb) => sb.status === 'running' && typeof sb.token === 'string' && sb.token.trim() !== '');
 
 	return {

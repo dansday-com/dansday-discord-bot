@@ -438,12 +438,6 @@
 			more: 'Or use the hosted bot and skip the infrastructure.'
 		},
 		{
-			icon: 'fa-user-astronaut',
-			title: 'Self-bot path',
-			desc: 'An optional self-bot path with panel-managed tokens.',
-			more: "Use it in line with Discord's terms and your own risk assessment."
-		},
-		{
 			icon: 'fa-plug',
 			title: 'Webhook server',
 			desc: 'Incoming hooks for selected automation paths.',

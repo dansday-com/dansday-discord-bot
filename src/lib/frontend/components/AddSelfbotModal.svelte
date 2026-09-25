@@ -3,12 +3,11 @@
 
 	interface Props {
 		open: boolean;
-		serverId: number;
 		onclose: () => void;
 		onadded: () => void;
 	}
 
-	let { open, serverId, onclose, onadded }: Props = $props();
+	let { open, onclose, onadded }: Props = $props();
 
 	let loading = $state(false);
 	let token = $state('');
@@ -32,7 +31,7 @@
 
 		loading = true;
 		try {
-			const res = await fetch(`/api/servers/${serverId}/selfbot`, {
+			const res = await fetch('/api/panel/selfbots', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',

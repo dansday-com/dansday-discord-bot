@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { accountOwnsServer } from '$lib/frontend/panelServer.js';
+import { canReadSelfbotTopology } from '$lib/frontend/panelServer.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
@@ -15,10 +15,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		const selfbot = await db.getServerBotById(selfbotId);
 		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
 
-		if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, selfbot.server_id))) {
-			return json({ error: 'Access denied' }, { status: 403 });
-		}
-		if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== selfbot.server_id) {
+		if (!(await canReadSelfbotTopology(locals, selfbotId))) {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 

@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db from '../../../../database.js';
 import {
 	extractDiscordQuestSummaries,
-	fetchQuestsMe,
+	fetchPublicQuests,
 	getEmbedConfig,
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
@@ -29,22 +29,6 @@ async function runTickGuarded(client: Client, officialBotId: number) {
 
 const POLL_MS = 300_000;
 const POLL_JITTER_MS = 60_000;
-const QUEST_FETCH_CONCURRENCY = 4;
-
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
-	const results = new Array<R>(items.length);
-	let cursor = 0;
-	const workers = new Array(Math.max(1, Math.min(limit, items.length))).fill(null).map(async () => {
-		for (;;) {
-			const i = cursor++;
-			if (i >= items.length) return;
-			results[i] = await fn(items[i], i);
-		}
-	});
-	await Promise.all(workers);
-	return results;
-}
-
 function discordTs(iso: string | undefined | null, style: 'R'): string {
 	if (!iso) return '—';
 	const t = Date.parse(iso);
@@ -113,61 +97,32 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	}
 }
 
-async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServerId: Map<number, string>): Promise<Map<string, string>> {
+async function prefetchBotWideQuests(officialBotId: number): Promise<Map<string, string>> {
 	const sourceByQuestId = new Map<string, string>();
-	const selfbots = await db.getRunningSelfbotsForOfficialBot(officialBotId);
-	if (selfbots.length === 0) {
-		await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no running selfbot on any server — relying on stored quests only`);
+
+	let payload: { quests: unknown[] };
+	try {
+		payload = await fetchPublicQuests();
+	} catch (feedErr: any) {
+		await logger.log(`⚠️ Quest notifier: public quest feed fetch failed (${String(feedErr?.message || feedErr)}) — relying on stored quests only`);
 		return sourceByQuestId;
 	}
-
-	const fetched = await mapWithConcurrency(selfbots, QUEST_FETCH_CONCURRENCY, async (selfbot) => {
-		const httpProxyUrl = httpProxyUrlByServerId.get(selfbot.server_id) ?? '';
-		try {
-			return { selfbot, payload: await fetchQuestsMe(selfbot.token, { httpProxyUrl }), error: null as string | null };
-		} catch (accErr: any) {
-			return { selfbot, payload: null as unknown, error: String(accErr?.message || accErr) };
-		}
-	});
 
 	const mergedById = new Map<string, DiscordQuestSummary>();
-	let okAccounts = 0;
-
-	for (const { selfbot, payload, error } of fetched) {
-		if (error !== null) {
-			await logger.log(`⚠️ Quest notifier: selfbot "${selfbot.name}" (#${selfbot.id}) quest fetch failed: ${error}`);
-			continue;
-		}
-		okAccounts++;
-
-		for (const raw of (payload as any)?.quests ?? []) {
-			const assets = raw?.config?.assets;
-			const rewards = raw?.config?.rewards_config?.rewards ?? raw?.rewards_config?.rewards ?? raw?.config?.rewards;
-			await logger.log(
-				`🖼️ Quest ${raw?.id} via #${selfbot.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} rewards=${rewards ? JSON.stringify(rewards).slice(0, 900) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`
-			);
-		}
-
-		for (const q of extractDiscordQuestSummaries(payload)) {
-			if (mergedById.has(q.id)) continue;
-			mergedById.set(q.id, q);
-			sourceByQuestId.set(q.id, `#${selfbot.id} ${selfbot.name}`);
-			await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} rewardThumb=${q.thumbnailUrl ?? 'MISS'} via #${selfbot.id} ${selfbot.name}`);
-		}
+	for (const q of extractDiscordQuestSummaries(payload)) {
+		if (mergedById.has(q.id)) continue;
+		mergedById.set(q.id, q);
+		sourceByQuestId.set(q.id, 'public quest feed');
 	}
 
-	if (okAccounts === 0) {
-		await logger.log(`⚠️ Quest notifier: all ${selfbots.length} bot-wide selfbot(s) failed quest fetch — relying on stored quests only`);
+	if (mergedById.size === 0) {
+		await logger.log(`⚠️ Quest notifier: public quest feed returned no active quests — relying on stored quests only`);
 		return sourceByQuestId;
 	}
 
-	if (mergedById.size > 0) {
-		await db.syncBotDiscordQuestsFromApi(officialBotId, [...mergedById.values()]);
-	}
+	await db.syncBotDiscordQuestsFromApi(officialBotId, [...mergedById.values()]);
 
-	await logger.log(
-		`🔮 Quest notifier: prefetched ${mergedById.size} unique quest(s) from ${okAccounts}/${selfbots.length} bot-wide selfbot(s) for bot ${officialBotId}`
-	);
+	await logger.log(`🔮 Quest notifier: prefetched ${mergedById.size} active quest(s) from the public quest feed for bot ${officialBotId}`);
 
 	return sourceByQuestId;
 }
@@ -176,18 +131,14 @@ async function runTick(client: Client, officialBotId: number) {
 	const servers = await db.getServersForBot(officialBotId);
 
 	const settingsByServerId = new Map<number, Record<string, unknown>>();
-	const httpProxyUrlByServerId = new Map<number, string>();
 	for (const server of servers) {
 		const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 		const rawSettings = settingsRow && !Array.isArray(settingsRow) ? settingsRow.settings : null;
 		const parsed = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
 		settingsByServerId.set(server.id, parsed);
-		if (typeof parsed.http_proxy_url === 'string' && parsed.http_proxy_url.trim()) {
-			httpProxyUrlByServerId.set(server.id, parsed.http_proxy_url.trim());
-		}
 	}
 
-	const sourceByQuestId = await prefetchBotWideQuests(officialBotId, httpProxyUrlByServerId);
+	const sourceByQuestId = await prefetchBotWideQuests(officialBotId);
 	const questSummaries = await db.listActiveBotDiscordQuests(officialBotId);
 
 	const postedTargets = new Set<string>();

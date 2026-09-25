@@ -4414,13 +4414,13 @@ export async function getPanelOverview(panelId: number) {
 
 	try {
 		const selfbotsResult = await db.execute(sql`
-            SELECT 
-                COUNT(*) as count, 
+            SELECT
+                COUNT(*) as count,
                 SUM(CASE WHEN sb.status = 'running' THEN 1 ELSE 0 END) as running_count
             FROM server_bots sb
-            JOIN servers s ON sb.server_id = s.id
-            JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
+            LEFT JOIN servers s ON sb.server_id = s.id
+            LEFT JOIN bots b ON s.bot_id = b.id
+            WHERE (sb.panel_id = ${Number(panelId)} OR (b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL))
         `);
 		const sbRows = selfbotsResult[0] as any[];
 		if (sbRows && sbRows.length > 0) {
@@ -4431,9 +4431,10 @@ export async function getPanelOverview(panelId: number) {
 		const uptimeResult = await db.execute(sql`
             SELECT SUM(TIMESTAMPDIFF(SECOND, sb.uptime_started_at, UTC_TIMESTAMP())) * 1000 as uptime_ms
             FROM server_bots sb
-            JOIN servers s ON sb.server_id = s.id
-            JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL AND sb.status = 'running' AND sb.uptime_started_at IS NOT NULL
+            LEFT JOIN servers s ON sb.server_id = s.id
+            LEFT JOIN bots b ON s.bot_id = b.id
+            WHERE (sb.panel_id = ${Number(panelId)} OR (b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL))
+                AND sb.status = 'running' AND sb.uptime_started_at IS NOT NULL
         `);
 		const upRows = uptimeResult[0] as any[];
 		if (upRows && upRows.length > 0) {
@@ -5080,14 +5081,20 @@ async function getAllServerBots() {
 	return db.select().from(schema.serverBots);
 }
 
-async function getServerBots(serverId: number) {
-	return db.select().from(schema.serverBots).where(eq(schema.serverBots.server_id, serverId));
+async function getPanelSelfbots(panelId: number) {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverBots)
+		.where(eq(schema.serverBots.panel_id, Number(panelId)))
+		.orderBy(asc(schema.serverBots.id));
 }
 
-async function addServerBot(data: { server_id: number; name: string; token: string }) {
+async function addServerBot(data: { panel_id: number; server_id?: number | null; name: string; token: string }) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverBots).values({
-		server_id: data.server_id,
+		panel_id: data.panel_id,
+		server_id: data.server_id ?? null,
 		name: data.name,
 		token: data.token,
 		status: 'stopped',
@@ -5124,6 +5131,15 @@ async function getServerBotById(id: number) {
 }
 
 async function getOfficialBotForSelfbot(selfbotId: number) {
+	const viaPanel = await db
+		.select({ bot: schema.bots })
+		.from(schema.serverBots)
+		.innerJoin(schema.bots, eq(schema.bots.panel_id, schema.serverBots.panel_id))
+		.where(and(eq(schema.serverBots.id, selfbotId), isNotNull(schema.serverBots.panel_id)))
+		.orderBy(asc(schema.bots.id))
+		.limit(1);
+	if (viaPanel[0]?.bot) return viaPanel[0].bot;
+
 	const rows = await db
 		.select({ bot: schema.bots })
 		.from(schema.serverBots)
@@ -5146,36 +5162,22 @@ export async function getOfficialBotIdForServer(serverId: number): Promise<numbe
 }
 
 async function getSelfbotsForOfficialBot(officialBotId: number) {
-	return db
+	await initializeDatabase();
+	const panelId = await getBotPanelId(officialBotId);
+	const byId = new Map<number, typeof schema.serverBots.$inferSelect>();
+
+	if (panelId != null) {
+		for (const sb of await getPanelSelfbots(panelId)) byId.set(sb.id, sb);
+	}
+
+	const legacy = await db
 		.select({ selfbot: schema.serverBots })
 		.from(schema.serverBots)
 		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
-		.where(eq(schema.servers.bot_id, officialBotId))
-		.then((rows) => rows.map((r) => r.selfbot));
-}
+		.where(eq(schema.servers.bot_id, officialBotId));
+	for (const r of legacy) byId.set(r.selfbot.id, r.selfbot);
 
-async function getRunningSelfbotsForServer(serverId: number) {
-	await initializeDatabase();
-	const selfbots = await getServerBots(serverId);
-	const running = selfbots.filter((s) => s.status === 'running' && typeof s.token === 'string' && s.token.trim() !== '');
-	running.sort((a, b) => a.id - b.id);
-	return running;
-}
-
-async function getRunningSelfbotsForOfficialBot(officialBotId: number) {
-	await initializeDatabase();
-	const selfbots = await getSelfbotsForOfficialBot(officialBotId);
-	const byId = new Map<number, (typeof selfbots)[number]>();
-	for (const s of selfbots) {
-		if (s.status !== 'running' || typeof s.token !== 'string' || s.token.trim() === '') continue;
-		if (!byId.has(s.id)) byId.set(s.id, s);
-	}
 	return [...byId.values()].sort((a, b) => a.id - b.id);
-}
-
-async function getFirstRunningSelfbotForServer(serverId: number) {
-	const running = await getRunningSelfbotsForServer(serverId);
-	return running[0] ?? null;
 }
 
 type ServerSettingsRow = {
@@ -5242,6 +5244,49 @@ async function upsertServerSettings(serverId: any, componentName: string, settin
 		.select()
 		.from(schema.serverSettings)
 		.where(and(eq(schema.serverSettings.server_id, Number(serverId)), eq(schema.serverSettings.component_name, componentName)))
+		.limit(1);
+	return rows[0];
+}
+
+type PanelSettingsRow = {
+	id: number;
+	panel_id: number;
+	component_name: string;
+	settings: unknown;
+	created_at: Date;
+	updated_at: Date;
+};
+
+async function getPanelSettings(panelId: any, componentName: string): Promise<PanelSettingsRow | null> {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.panelSettings)
+		.where(and(eq(schema.panelSettings.panel_id, Number(panelId)), eq(schema.panelSettings.component_name, componentName)))
+		.limit(1);
+	if (!rows[0]) return null;
+	const row = { ...rows[0] };
+	if (row.settings && typeof row.settings === 'string') {
+		try {
+			row.settings = JSON.parse(row.settings);
+		} catch {
+			row.settings = {};
+		}
+	}
+	return row;
+}
+
+async function upsertPanelSettings(panelId: any, componentName: string, settings: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.panelSettings)
+		.values({ panel_id: Number(panelId), component_name: componentName, settings, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { settings, updated_at: now as any } });
+	const rows = await db
+		.select()
+		.from(schema.panelSettings)
+		.where(and(eq(schema.panelSettings.panel_id, Number(panelId)), eq(schema.panelSettings.component_name, componentName)))
 		.limit(1);
 	return rows[0];
 }
@@ -6921,6 +6966,9 @@ export default {
 	memberHasCustomSupporterRole,
 	getServerSettings,
 	upsertServerSettings,
+	getPanelSettings,
+	upsertPanelSettings,
+	getPanelSelfbots,
 	syncServerDiscordQuestsFromApi,
 	listServerDiscordQuestUnpostedIds,
 	syncBotDiscordQuestsFromApi,
@@ -6980,7 +7028,6 @@ export default {
 	updateServerAccountInvite,
 	getServerAccountInvitesByServer,
 	getAllServerBots,
-	getServerBots,
 	getServerBotById,
 	addServerBot,
 	updateServerBot,
@@ -6989,9 +7036,6 @@ export default {
 	resolveOfficialBotIdForServer,
 	getOfficialBotIdForServer,
 	getSelfbotsForOfficialBot,
-	getFirstRunningSelfbotForServer,
-	getRunningSelfbotsForServer,
-	getRunningSelfbotsForOfficialBot,
 	getChannelsForServer,
 	getCategoriesForServer,
 	serversNeedSync,

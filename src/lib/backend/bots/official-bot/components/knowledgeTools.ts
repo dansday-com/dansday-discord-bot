@@ -8,7 +8,6 @@ import {
 	aiToolRules,
 	aiVoiceRules,
 	aiWikiRules,
-	botKinds,
 	envVars,
 	permissionRoles,
 	selfhostSteps,
@@ -38,7 +37,6 @@ const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames',
 const DOCS_TOPICS = [
 	'all',
 	'start',
-	'bots',
 	'setup',
 	'accounts',
 	'roles',
@@ -77,7 +75,6 @@ function legalPoints(doc, url) {
 
 const DOCS_SECTIONS = {
 	start: { title: 'Getting started', points: () => startSteps.map(line) },
-	bots: { title: 'Official bot vs selfbot', points: () => botKinds.flatMap((b) => [`${b.title}: ${b.what}`, ...b.fields.map(line)]) },
 	setup: { title: 'The /setup command', points: () => setupChannels.map(line) },
 	accounts: { title: 'Accounts & staff', points: () => accountFields.map(line) },
 	roles: { title: 'Who can do what', points: () => tiers.flatMap((t) => [`${t.title}: ${t.what}`, ...t.can.map((c) => `${t.title} can: ${c}`)]) },

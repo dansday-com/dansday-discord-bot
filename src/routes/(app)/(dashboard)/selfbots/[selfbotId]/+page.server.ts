@@ -1,31 +1,20 @@
 import process from 'node:process';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db, { presenceFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
+import db, { presenceFromDbRow } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
-import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
-import { isGuildStaffUser } from '$lib/frontend/panelServer.js';
 
-export const load: PageServerLoad = async ({ locals, params, url }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
-	const serverId = Number(params.serverId);
 	const selfbotId = Number(params.selfbotId);
+	if (!selfbotId) redirect(302, '/selfbots');
 
-	if (!serverId || !selfbotId) redirect(302, webRouteUp(url.pathname));
-
-	if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== serverId) {
-		const ob = await getOfficialBotIdForServer(locals.user.server_id);
-		const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
-		const targetBot = ob ?? fallback;
-		if (targetBot != null) {
-			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/selfbot`);
-		}
-		redirect(302, DASHBOARD_PATH);
-	}
+	const panelId = locals.user.account_source === 'accounts' ? (locals.user.panel_id ?? null) : null;
+	if (panelId == null) redirect(302, '/selfbots');
 
 	let bot = await db.getServerBotById(selfbotId);
-	if (!bot || bot.server_id !== serverId) redirect(302, webRouteUp(url.pathname));
+	if (!bot || bot.panel_id !== panelId) redirect(302, '/selfbots');
 
 	if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 		try {
@@ -51,10 +40,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			uptime_ms: getBotUptimeMs(bot)
 		},
 		servers,
-		serverId,
-		botId: params.id,
 		user: locals.user,
-		selfbotViewOnly: isGuildStaffUser(locals.user),
 		selfbotPresence
 	};
 };

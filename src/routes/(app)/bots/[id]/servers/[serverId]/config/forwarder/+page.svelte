@@ -246,7 +246,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-forward text-violet-400"></i>Forwarder
 	</h3>
-	<p class="text-ash-400 text-xs">Forward messages from a selfbot's channel to a channel in this server.</p>
+	<p class="text-ash-400 text-xs">Forward messages from a linked account's channel to a channel in this server.</p>
 
 	<ConfigToggleRow
 		label="Forwarder module"
@@ -266,9 +266,9 @@
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
 				{#if !data.hasSelfbots}
-					<strong>No selfbot configured.</strong> Add a selfbot under the Selfbots section for this server to use this feature.
+					<strong>No linked account available.</strong> The operator has not linked an account that covers a source server. Ask them to add one.
 				{:else}
-					<strong>No running selfbot.</strong> Start a selfbot under the Selfbots section for this server to use this feature.
+					<strong>No linked account running.</strong> An account is linked but not online. Ask the operator to start it.
 				{/if}
 			</span>
 		</p>
@@ -287,7 +287,7 @@
 							<div class="min-w-0 flex-1 space-y-1 text-xs">
 								{#if fw.selfbot_id}
 									<div class="text-ash-100 flex items-center gap-1.5 font-medium">
-										<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Selfbot #${fw.selfbot_id}`}
+										<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Account #${fw.selfbot_id}`}
 									</div>
 								{/if}
 								{#if fw.source_channels?.length}
@@ -311,7 +311,7 @@
 								{/if}
 								{#if fw.only_forward_when_mentions_member}
 									<div class="text-ash-400 text-xs">
-										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions selfbot
+										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions the account
 									</div>
 								{/if}
 							</div>
@@ -373,26 +373,27 @@
 
 			<div class="flex-1 space-y-4 overflow-y-auto">
 				<div>
-					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5 text-violet-400"></i>Selfbot</label>
-					<p class="text-ash-500 mb-2 text-xs">Pick the selfbot account that will forward messages.</p>
+					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5 text-violet-400"></i>Source account</label
+					>
+					<p class="text-ash-500 mb-2 text-xs">Pick the linked account that will forward messages.</p>
 					<select
 						id="fw-selfbot"
 						value={draft.selfbot_id}
 						onchange={onSelfbotChange}
 						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 					>
-						<option value="">Select selfbot...</option>
+						<option value="">Select account...</option>
 						{#each selfbots as bot}
-							<option value={bot.id}>{bot.name || `Selfbot ${bot.id}`}</option>
+							<option value={bot.id}>{bot.name || `Account ${bot.id}`}</option>
 						{/each}
 					</select>
 				</div>
 
 				<div>
 					<label for="fw-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
-						><i class="fas fa-server mr-1.5 text-violet-400"></i>Server (where selfbot is)</label
+						><i class="fas fa-server mr-1.5 text-violet-400"></i>Server (where the account is)</label
 					>
-					<p class="text-ash-500 mb-2 text-xs">Select the server the selfbot is connected to.</p>
+					<p class="text-ash-500 mb-2 text-xs">Select the server the linked account is connected to.</p>
 					<select
 						id="fw-server"
 						value={draft.server_id}
@@ -453,7 +454,7 @@
 					<p class="text-ash-300 mb-1.5 text-xs font-medium">
 						<i class="fas fa-at mr-1.5 text-violet-400"></i>Mention filter
 					</p>
-					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the selfbot.</p>
+					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the linked account.</p>
 					<label class="flex cursor-pointer items-center gap-3">
 						<div class="relative">
 							<input type="checkbox" bind:checked={draft.only_forward_when_mentions_member} class="peer sr-only" />

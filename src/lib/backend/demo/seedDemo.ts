@@ -332,24 +332,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			])
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
-		const selfbotCount = 1 + (rngFor(s)(serverRow.id) % 5);
-		await db
-			.insert(schema.serverBots)
-			.values(
-				Array.from({ length: selfbotCount }).map((_, i) => ({
-					server_id: serverRow.id,
-					name: `Demo Selfbot #${i + 1}`,
-					token: 'DEMO_TOKEN_DO_NOT_USE',
-					bot_icon: null,
-					status: 'stopped' as const,
-					process_id: null,
-					uptime_started_at: null,
-					created_at: nowDb,
-					updated_at: nowDb
-				}))
-			)
-			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
-
 		const ownerUser = `${sessionSlug}_owner_${s}`;
 		const ownerEmail = `${sessionSlug}_owner_${s}@dansday.local`;
 		const ownerPw = await bcrypt.hash('demo', 10);
@@ -569,6 +551,36 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 		WHERE id = ${serverRow.id}
 	`);
 	}
+
+	const selfbotCount = 1 + (rngFor(1)(demoPanel.id) % 5);
+	await db
+		.insert(schema.serverBots)
+		.values(
+			Array.from({ length: selfbotCount }).map((_, i) => ({
+				panel_id: demoPanel.id,
+				server_id: null,
+				name: `Demo Selfbot #${i + 1}`,
+				token: 'DEMO_TOKEN_DO_NOT_USE',
+				bot_icon: null,
+				status: 'stopped' as const,
+				process_id: null,
+				uptime_started_at: null,
+				created_at: nowDb,
+				updated_at: nowDb
+			}))
+		)
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+
+	await db
+		.insert(schema.panelSettings)
+		.values({
+			panel_id: demoPanel.id,
+			component_name: SERVER_SETTINGS.component.discord_quest_notifier,
+			settings: { auto_quest: false },
+			created_at: nowDb,
+			updated_at: nowDb
+		})
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 	return { bot_id: botRow.id, superadmin_account_id: demoAdmin.id, server_ids: serverIds, panel_id: demoPanel.id };
 }

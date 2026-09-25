@@ -188,7 +188,6 @@ Each member signs in to their own account on those same pages.
 ### Advanced
 
 - **Official bot (discord.js)** - Core automation, slash `/setup`, buttons and component interactions.
-- **Optional self-bot path** - Panel-managed tokens for forwarder and quest flows. Use in line with Discord's terms and your own risk assessment.
 - **Webhook server** - Incoming hooks for selected automation paths.
 
 ---
@@ -201,7 +200,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Language & framework | [TypeScript](https://www.typescriptlang.org/) 6.0, [SvelteKit](https://kit.svelte.dev/) 2.70, [Svelte](https://svelte.dev/) 5.55, [Vite](https://vitejs.dev/) 8.2, adapter-node 5.5                                             |
 | Styling              | [Tailwind CSS](https://tailwindcss.com/) 4.2 with [DaisyUI](https://daisyui.com/) 5.7, Prettier 3.8 with Svelte and Tailwind plugins                                                                                            |
-| Discord              | [discord.js](https://discord.js.org/) 14.26, discord-api-types 0.38; discord.js-selfbot-v13 3.7 on the optional user-token path                                                                                                 |
+| Discord              | [discord.js](https://discord.js.org/) 14.26, discord-api-types 0.38                                                                                                                                                             |
 | AI chat              | [openai](https://www.npmjs.com/package/openai) 7.1 SDK against any OpenAI-compatible endpoint, set per bot in the panel                                                                                                         |
 | Voice AI             | [@google/genai](https://www.npmjs.com/package/@google/genai) 2.15 (Gemini Live API), @discordjs/voice 0.19, @discordjs/opus 0.10, sodium-native 5.1, prism-media 1.3, ffmpeg, onnxruntime-node 1.27 for the on-device wake word |
 | AI tools             | Native `fetch` to `/search`, `/web/fetch` and `/images/generations` on any OpenAI-compatible gateway; [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) with cheerio 1.2                                     |
@@ -226,4 +225,4 @@ Found a vulnerability? Email **security@dansday.dev** instead of opening an issu
 
 ---
 
-AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.7.2
+AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.7.3

@@ -34,6 +34,21 @@ export const panel = mysqlTable(
 	(t) => [uniqueIndex('uq_panels_account_id').on(t.account_id)]
 );
 
+export const panelSettings = mysqlTable(
+	'panel_settings',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		panel_id: int('panel_id')
+			.notNull()
+			.references(() => panel.id, { onDelete: 'cascade' }),
+		component_name: varchar('component_name', { length: 150 }).notNull(),
+		settings: json('settings').notNull().default({}),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_panel_component').on(t.panel_id, t.component_name), index('idx_panel_settings_panel_id').on(t.panel_id)]
+);
+
 export const bots = mysqlTable('bots', {
 	id: int('id').primaryKey().autoincrement(),
 	name: text('name').notNull(),
@@ -198,9 +213,8 @@ export const serverBots = mysqlTable(
 	'server_bots',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_id: int('server_id')
-			.notNull()
-			.references(() => servers.id, { onDelete: 'cascade' }),
+		server_id: int('server_id').references(() => servers.id, { onDelete: 'cascade' }),
+		panel_id: int('panel_id').references(() => panel.id, { onDelete: 'cascade' }),
 		name: text('name'),
 		token: text('token'),
 		bot_icon: text('bot_icon'),
@@ -210,7 +224,7 @@ export const serverBots = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at')
 	},
-	(t) => [index('idx_server_bots_server_id').on(t.server_id)]
+	(t) => [index('idx_server_bots_server_id').on(t.server_id), index('idx_server_bots_panel_id').on(t.panel_id)]
 );
 
 export const serverBotStatus = mysqlTable(

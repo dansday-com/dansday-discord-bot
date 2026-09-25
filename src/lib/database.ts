@@ -4799,6 +4799,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 export async function pruneOrphanedCustomSupporterRoles(serverId: any, liveDiscordRoleIds: string[]) {
 	await initializeDatabase();
 	if (!serverId) return true;
+	if (!Array.isArray(liveDiscordRoleIds) || liveDiscordRoleIds.length === 0) return true;
 
 	const ownedRows = await db
 		.select({ id: schema.serverMemberCustomSupporterRoles.id, discord_role_id: schema.serverRoles.discord_role_id })

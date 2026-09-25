@@ -35,7 +35,7 @@ export function resolveSupporterAnchor(guild, count = 1) {
 }
 
 export async function resolveStaffRatingAnchor(guild, count = 1) {
-	const perms = await PERMISSIONS.getPermissions(guild.id);
+	const perms = await PERMISSIONS.getPermissions(guild.id).catch(() => null);
 	const staffRoleIds = perms?.STAFF_ROLES?.filter(Boolean) || [];
 	if (staffRoleIds.length === 0) {
 		return { ok: false, reason: 'no_staff_roles' };

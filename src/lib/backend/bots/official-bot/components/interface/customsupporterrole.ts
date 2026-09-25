@@ -173,17 +173,19 @@ function parseColor(colorInput) {
 	return null;
 }
 
+class AnchorError extends Error {}
+
 async function getRolePosition(guild) {
 	const anchor = resolveSupporterAnchor(guild);
 
 	if (!anchor.ok) {
 		if (anchor.reason === 'no_booster_role') {
-			throw new Error('This server has no Server Booster role yet. It appears once someone boosts the server.');
+			throw new AnchorError('This server has no Server Booster role yet. It appears once someone boosts the server.');
 		}
 		if (anchor.reason === 'bot_too_low') {
-			throw new Error(`The bot's own role must be above ${anchor.anchorRole.name} to create supporter roles.`);
+			throw new AnchorError(`The bot's own role must be above ${anchor.anchorRole.name} to create supporter roles.`);
 		}
-		throw new Error('Could not determine where to place the supporter role.');
+		throw new AnchorError('Could not determine where to place the supporter role.');
 	}
 
 	return anchor.basePosition;
@@ -830,7 +832,9 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		try {
 			let errorMessage = '';
 
-			if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
+			if (error instanceof AnchorError) {
+				errorMessage = `❌ **Failed to Create Role**\n\n${error.message}`;
+			} else if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
 				errorMessage =
 					`❌ **Server Boost Required**\n\n` +
 					`This server needs **Level 2 Server Boost** to create custom supporter roles with certain features.\n\n` +
@@ -915,7 +919,7 @@ async function cleanupCustomRoles(client) {
 							continue;
 						}
 
-						const ownerId = ownerMemberId || role.members.first()?.id || null;
+						const ownerId = role.members.first()?.id || ownerMemberId || null;
 						if (ownerId) {
 							supporterRoles.set(ownerId, role.id);
 						}

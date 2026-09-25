@@ -1,15 +1,16 @@
 import '../console-instrumentation.js';
-import type { Handle } from '@sveltejs/kit';
+import { redirect, type Handle } from '@sveltejs/kit';
 import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
 import db from '$lib/database.js';
 import { verifyBotStatuses } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
 import { guardApiRoute } from '$lib/frontend/panelServer.js';
 import { pruneExpiredEmbedImages } from '$lib/backend/storage/embedImages.js';
-import { apexHome, publicServerSlugFromHost } from '$lib/url.js';
+import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 
 export const init = async () => {
 	await verifyBotStatuses();
+	setInterval(() => void verifyBotStatuses(), 30 * 1000);
 	await startDemoSessionExpiryListener();
 	await pruneExpiredEmbedImages();
 	setInterval(() => void pruneExpiredEmbedImages(), 5 * 60 * 1000);
@@ -51,6 +52,15 @@ function isFileLikePath(pathname: string): boolean {
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const start = Date.now();
+
+	if (
+		publicServerSlugFromHost(event.url.hostname) &&
+		!event.url.pathname.startsWith('/api/') &&
+		!isFileLikePath(event.url.pathname) &&
+		!isPublicServerSubpath(event.url.pathname)
+	) {
+		redirect(302, publicSiteOrigin() + event.url.pathname + event.url.search);
+	}
 
 	const cookieHeader = event.request.headers.get('cookie');
 	const sessionId = getSessionIdFromCookie(cookieHeader);

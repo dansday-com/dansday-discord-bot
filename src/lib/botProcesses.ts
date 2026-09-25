@@ -77,7 +77,7 @@ function emitBotStatus(mapKey: string, status: string, process_id: number | null
 }
 
 function isSelfbot(bot: any): boolean {
-	return bot.server_id !== undefined && bot.server_id !== null;
+	return !!bot && !('secret_key' in bot);
 }
 
 async function updateBotStatus(bot: any, data: { status: string; process_id?: number | null; uptime_started_at?: any }) {
@@ -126,7 +126,27 @@ function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: numb
 	});
 }
 
+function isOfficialProcessAlive(bot: any): boolean {
+	const info = botProcesses.get(botProcessMapKey('official', bot.id));
+	if (info?.process && !info.process.killed && (info.process as any).exitCode === null) return true;
+	if (info?.pid) {
+		try {
+			process.kill(info.pid, 0);
+			return true;
+		} catch (_) {}
+	}
+	return false;
+}
+
+async function anotherOfficialBotStillRunning(officialBotId: number): Promise<boolean> {
+	const panelId = await db.getBotPanelId(officialBotId).catch(() => null);
+	if (panelId == null) return false;
+	const bots = await db.getAllBots(panelId).catch(() => []);
+	return (bots || []).some((b: any) => b.id !== officialBotId && isOfficialProcessAlive(b));
+}
+
 async function stopConnectedSelfbots(officialBotId: number): Promise<void> {
+	if (await anotherOfficialBotStillRunning(officialBotId)) return;
 	const selfbots = await getConnectedSelfbots(officialBotId);
 	const alive = (selfbots || []).filter((sb: any) => isSelfbotProcessAlive(sb) || sb.status === 'running' || sb.status === 'starting');
 	if (alive.length === 0) return;
@@ -214,6 +234,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			if (code !== 0 && code !== null) {
 				logger.log(`❌ Bot ${mapKey} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
 			}
+			if (!selfbot && !isOfficialProcessAlive(bot)) await stopConnectedSelfbots(botId).catch(() => {});
 		});
 
 		botProcess.on('error', async (err: Error) => {
@@ -384,13 +405,21 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 	return { success: true };
 }
 
-function pidMatchesBotScript(pid: number, scriptName: string): boolean {
+function processCmdline(pid: number): string | null {
 	try {
-		const cmdline = readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ');
-		return cmdline.includes(scriptName);
-	} catch (_) {
-		return false;
-	}
+		return readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ');
+	} catch (_) {}
+	try {
+		const result = spawnSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8' });
+		if (result.status === 0 && result.stdout) return result.stdout.trim();
+	} catch (_) {}
+	return null;
+}
+
+function pidMatchesBotScript(pid: number, scriptName: string): boolean {
+	const cmdline = processCmdline(pid);
+	if (cmdline === null) return false;
+	return cmdline.includes(scriptName);
 }
 
 async function waitForProcessExit(pid: number, scriptName: string, timeoutMs: number): Promise<void> {
@@ -428,58 +457,54 @@ export async function restartBotById(botId: number, bot: any): Promise<{ success
 	return startBotById(botId, bot);
 }
 
+function hasLiveChildProcess(mapKey: string): boolean {
+	const info = botProcesses.get(mapKey);
+	return !!info?.process && !info.process.killed && (info.process as any).exitCode === null;
+}
+
+async function verifyOne(kind: BotProcessKind, row: any, scriptName: string): Promise<void> {
+	const mapKey = botProcessMapKey(kind, row.id);
+	const markStopped = () => updateBotStatus(row, { status: 'stopped', process_id: null, uptime_started_at: null });
+
+	if (hasLiveChildProcess(mapKey)) return;
+
+	if (!row.process_id) {
+		await markStopped();
+		emitBotStatus(mapKey, 'stopped', null, null);
+		return;
+	}
+
+	try {
+		process.kill(row.process_id, 0);
+		if (!pidMatchesBotScript(row.process_id, scriptName)) {
+			botProcesses.delete(mapKey);
+			await markStopped();
+			emitBotStatus(mapKey, 'stopped', null, null);
+			return;
+		}
+		if (botProcesses.get(mapKey)?.pid !== row.process_id) {
+			logger.log(`♻️  Re-adopted ${kind} ${row.id} (${row.name}) PID ${row.process_id}`);
+		}
+		botProcesses.set(mapKey, { process: null, pid: row.process_id, startTime: null, status: 'running' });
+	} catch (_) {
+		botProcesses.delete(mapKey);
+		await markStopped();
+		emitBotStatus(mapKey, 'stopped', null, null);
+	}
+}
+
 export async function verifyBotStatuses() {
 	try {
 		const bots = await db.getAllBots();
 		for (const bot of bots) {
 			if (bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') {
-				if (!bot.process_id) {
-					await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-					continue;
-				}
-				try {
-					process.kill(bot.process_id, 0);
-					const cmdline = readFileSync(`/proc/${bot.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
-					if (cmdline.includes('officialbot.js')) {
-						botProcesses.set(botProcessMapKey('official', bot.id), { process: null, pid: bot.process_id, startTime: null, status: 'running' });
-						logger.log(`♻️  Re-adopted official bot ${bot.id} (${bot.name}) PID ${bot.process_id}`);
-					} else {
-						await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-					}
-				} catch (_) {
-					await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-				}
+				await verifyOne('official', bot, 'officialbot.js');
 			}
 		}
 		const selfbots = await db.getAllSelfbots();
 		for (const sb of selfbots) {
 			if (sb.status === 'running' || sb.status === 'starting' || sb.status === 'stopping') {
-				if (!sb.process_id) {
-					if (sb.status === 'stopping') {
-						await db.updateSelfbot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-					}
-					continue;
-				}
-				try {
-					process.kill(sb.process_id, 0);
-					const cmdline = readFileSync(`/proc/${sb.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
-					if (cmdline.includes('selfbot.js')) {
-						botProcesses.set(botProcessMapKey('selfbot', sb.id), { process: null, pid: sb.process_id, startTime: null, status: 'running' });
-						logger.log(`♻️  Re-adopted selfbot ${sb.id} (${sb.name}) PID ${sb.process_id}`);
-					} else {
-						await db.updateSelfbot(sb.id, {
-							status: sb.status === 'stopping' ? 'stopped' : 'running',
-							process_id: null,
-							uptime_started_at: null
-						});
-					}
-				} catch (_) {
-					await db.updateSelfbot(sb.id, {
-						status: sb.status === 'stopping' ? 'stopped' : 'running',
-						process_id: null,
-						uptime_started_at: null
-					});
-				}
+				await verifyOne('selfbot', sb, 'selfbot.js');
 			}
 		}
 	} catch (error: any) {

@@ -1,9 +1,14 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { apexLink } from '$lib/url.js';
 	type Palette = 'light' | 'dark';
 	type Trailing = 'login' | 'live' | 'home';
 
 	let { palette = 'light' as Palette, trailing = 'login' as Trailing }: { palette?: Palette; trailing?: Trailing } = $props();
+
+	const homeHref = $derived(apexLink('/', page.url.hostname));
+	const loginHref = $derived(apexLink('/login', page.url.hostname));
 
 	const shell = $derived(
 		palette === 'light' ? 'border-base-300 bg-canvas/92 backdrop-blur-[18px] [-webkit-backdrop-filter:blur(18px)]' : 'border-ash-700 bg-ash-800'
@@ -15,7 +20,7 @@
 
 <header class="sticky top-0 z-40 shrink-0 border-b {shell}">
 	<div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:px-8">
-		<a href="/" class="flex min-w-0 flex-1 items-center gap-2 no-underline sm:gap-3 {brandText}">
+		<a href={homeHref} class="flex min-w-0 flex-1 items-center gap-2 no-underline sm:gap-3 {brandText}">
 			<div class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm sm:size-10 sm:text-base {iconWrap}">
 				<i class="fas fa-bolt"></i>
 			</div>
@@ -23,7 +28,7 @@
 		</a>
 		<div class="flex shrink-0 items-center gap-2 sm:gap-2.5">
 			{#if trailing === 'login'}
-				<a href="/login" class="btn btn-sm btn-primary">
+				<a href={loginHref} class="btn btn-sm btn-primary">
 					<i class="fas fa-sign-in-alt"></i>
 					Log in
 				</a>
@@ -33,7 +38,7 @@
 					Live
 				</span>
 			{:else}
-				<a href="/" class="btn btn-sm {palette === 'dark' ? 'border-ash-600 bg-ash-800/80 text-ash-200 hover:bg-ash-700' : ''}">
+				<a href={homeHref} class="btn btn-sm {palette === 'dark' ? 'border-ash-600 bg-ash-800/80 text-ash-200 hover:bg-ash-700' : ''}">
 					<i class="fas fa-house"></i>
 					Home
 				</a>

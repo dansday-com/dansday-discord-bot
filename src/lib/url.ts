@@ -126,6 +126,19 @@ export function apexHome(): string {
 	return `${publicSiteOrigin()}/`;
 }
 
+const PUBLIC_SERVER_SUBPATHS = ['leaderboard', 'members', 'account'];
+
+export function isPublicServerSubpath(pathname: string): boolean {
+	const path = String(pathname ?? '').replace(/\/+$/, '');
+	if (path === '') return true;
+	return PUBLIC_SERVER_SUBPATHS.includes(path.slice(1).split('/')[0]);
+}
+
+export function apexLink(path: string, hostname?: string | null): string {
+	if (hostname && publicServerSlugFromHost(hostname)) return publicSiteOrigin() + path;
+	return path;
+}
+
 export function publicServerBasePath(slug: string, hostname?: string | null): string {
 	if (hostname && publicServerSlugFromHost(hostname) === slug) return '';
 	return publicServerPath(slug);

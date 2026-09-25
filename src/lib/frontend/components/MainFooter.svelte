@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { APP_DOMAIN, APP_URL } from '$lib/frontend/panelServer.js';
 	import { legalNav } from '$lib/legal.js';
-	import { DISCORD_APP_DIRECTORY_URL } from '$lib/url.js';
+	import { apexLink, DISCORD_APP_DIRECTORY_URL } from '$lib/url.js';
 	type Palette = 'light' | 'dark';
 
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
@@ -18,7 +19,7 @@
 				{#if i > 0}
 					<span class="mx-1.5 opacity-45" aria-hidden="true">·</span>
 				{/if}
-				<a class="link link-hover" href={link.href}>{link.label}</a>
+				<a class="link link-hover" href={apexLink(link.href, page.url.hostname)}>{link.label}</a>
 			{/each}
 		</p>
 		<p class="text-base-content/70 text-xs leading-relaxed">

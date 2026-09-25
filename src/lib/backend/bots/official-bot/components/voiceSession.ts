@@ -267,7 +267,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function finishConversation() {
 		if (closed || goodbyePending) return;
 
-		if (toolBusy()) {
+		if (lookupBusy()) {
 			logger.log('🔎 Voice AI ignoring done request, a lookup is still running');
 			keepAwakeForTool();
 			return;
@@ -280,7 +280,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		afterSpeaking('muting', () => {
 			if (closed || isAddressed()) return;
-			if (toolBusy()) {
+			if (lookupBusy()) {
 				logger.log('🔎 Voice AI cancelled muting, a lookup is still running');
 				keepAwakeForTool();
 				return;
@@ -325,8 +325,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = setTimeout(releaseAfterSilence, ADDRESSED_WINDOW_MS);
 	}
 
+	function lookupBusy() {
+		return activeLookups.size > 0 || Date.now() < toolBusyUntil;
+	}
+
 	function toolBusy() {
-		return activeLookups.size > 0 || Date.now() < toolBusyUntil || modelThinking;
+		return lookupBusy() || modelThinking;
 	}
 
 	function keepAwakeForTool() {
@@ -581,7 +585,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (anyoneSpeaking()) {
-			logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
+			if (elapsed >= MAX_TURN_MS) logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
 			for (const [userId, vad] of voiceState) {
 				if (!micIsOpenFor(userId)) continue;
 				vad.active = false;

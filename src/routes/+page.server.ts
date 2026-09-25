@@ -20,12 +20,13 @@ import {
 const ROW_PREVIEW = 5;
 const GRID_PREVIEW = 6;
 const TASK_PREVIEW = 24;
+const ROBLOX_POOL = GRID_PREVIEW * 8;
 
 export const load: PageServerLoad = async () => {
 	const [directory, quests, roblox, robloxTracked, robloxNotified, items, wikis, forwarderSources] = await Promise.all([
 		resolveServerDirectory().catch(() => EMPTY_DIRECTORY),
 		resolveQuestDirectory().catch(() => EMPTY_QUESTS),
-		resolveRobloxDirectory(GRID_PREVIEW).catch(() => EMPTY_ROBLOX),
+		resolveRobloxDirectory(ROBLOX_POOL).catch(() => EMPTY_ROBLOX),
 		resolveRobloxTrackedCount().catch(() => 0),
 		resolveRobloxMostNotified(GRID_PREVIEW).catch(() => EMPTY_ROBLOX),
 		resolveItemDirectory().catch(() => EMPTY_ITEMS),
@@ -34,7 +35,9 @@ export const load: PageServerLoad = async () => {
 	]);
 
 	const notifiedAssetIds = new Set(robloxNotified.map((item) => item.asset_id));
-	const topRoblox = [...robloxNotified, ...roblox.filter((item) => !notifiedAssetIds.has(item.asset_id))].slice(0, GRID_PREVIEW);
+	const hasThumbnail = (item: { thumbnail_url: string | null }) => typeof item.thumbnail_url === 'string' && item.thumbnail_url.trim() !== '';
+	const fillers = roblox.filter((item) => !notifiedAssetIds.has(item.asset_id));
+	const topRoblox = [...robloxNotified, ...fillers.filter(hasThumbnail), ...fillers.filter((item) => !hasThumbnail(item))].slice(0, GRID_PREVIEW);
 
 	let tasks = EMPTY_TASKS;
 	try {

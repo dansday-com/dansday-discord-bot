@@ -195,7 +195,7 @@
 
 <div class="space-y-4">
 	<a href={'/selfbots'} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
-		<i class="fas fa-arrow-left text-violet-300"></i>Back to Selfbots
+		<i class="fas fa-arrow-left text-fuchsia-300"></i>Back to Selfbots
 	</a>
 
 	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
@@ -205,7 +205,7 @@
 					{#if data.bot.bot_icon}
 						<img src={data.bot.bot_icon} alt={data.bot.name || 'Selfbot'} class="h-full w-full object-cover" />
 					{:else}
-						<i class="fas fa-robot text-2xl text-violet-300 sm:text-3xl"></i>
+						<i class="fas fa-user-secret text-2xl text-fuchsia-300 sm:text-3xl"></i>
 					{/if}
 				</div>
 				<div class="min-w-0">

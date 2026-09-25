@@ -35,10 +35,10 @@
 </script>
 
 <div class="mb-4">
-	<h2 class="text-base-content mb-1 text-xl font-bold sm:text-2xl">
-		<i class="fas fa-sliders text-primary mr-2"></i>Settings
+	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+		<i class="fas fa-sliders mr-2 text-sky-400"></i>Settings
 	</h2>
-	<p class="text-base-content/55 text-xs sm:text-sm">Instance-wide switches that apply to every bot and server on this panel.</p>
+	<p class="text-ash-400 text-xs sm:text-sm">Instance-wide switches that apply to every bot and server on this panel.</p>
 </div>
 
 <div class="space-y-3 sm:space-y-4 lg:space-y-5">

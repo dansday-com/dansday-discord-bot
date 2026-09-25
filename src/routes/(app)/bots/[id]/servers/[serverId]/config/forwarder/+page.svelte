@@ -347,20 +347,15 @@
 				<div>
 					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-hashtag mr-1.5 text-violet-400"></i>From Channels</p>
 					<p class="text-ash-500 mb-2 text-xs">Messages from these channels will be forwarded.</p>
-					{#if loadingChannels}
-						<p class="text-ash-500 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>Loading channels...</p>
-					{:else if !draft.source_guild_id}
-						<p class="text-ash-500 text-xs italic">Select a server first.</p>
-					{:else}
-						<ChannelPicker
-							channels={sourceChannels}
-							categories={sourceCategories}
-							multi
-							value={draft.source_channels}
-							placeholder="Select source channels..."
-							onchange={(v) => (draft = { ...draft, source_channels: v as string[] })}
-						/>
-					{/if}
+					<ChannelPicker
+						channels={sourceChannels}
+						categories={sourceCategories}
+						multi
+						value={draft.source_channels}
+						placeholder={loadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'Select source channels...' : 'Select a server first...'}
+						emptyText={loadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'No channels found' : 'Select a source server first'}
+						onchange={(v) => (draft = { ...draft, source_channels: v as string[] })}
+					/>
 				</div>
 
 				<div>

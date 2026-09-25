@@ -72,11 +72,22 @@ export type WikiEntry = {
 	active: boolean;
 };
 
+export type ForwarderSourceEntry = {
+	discord_server_id: string;
+	name: string;
+	server_icon: string | null;
+	members: number;
+	channels: number;
+	boost_level: number;
+	created_at: string | null;
+};
+
 export const EMPTY_QUESTS: QuestEntry[] = [];
 export const EMPTY_ROBLOX: RobloxEntry[] = [];
 export const EMPTY_TASKS: TaskEntry[] = [];
 export const EMPTY_ITEMS: ItemEntry[] = [];
 export const EMPTY_WIKIS: WikiEntry[] = [];
+export const EMPTY_FORWARDER_SOURCES: ForwarderSourceEntry[] = [];
 
 const TASK_REQUIREMENT_LABEL: Record<TaskRequirement, string> = {
 	leveling: 'Leveling',
@@ -289,5 +300,24 @@ export function resolveWikiDirectory(): Promise<WikiEntry[]> {
 			});
 		},
 		EMPTY_WIKIS
+	);
+}
+
+export function resolveForwarderSourceDirectory(): Promise<ForwarderSourceEntry[]> {
+	return cached(
+		'dansday:forwarder_source_directory',
+		async () => {
+			const rows: any[] = await (db as any).listPublicForwarderSources(MAX_ROWS);
+			return rows.map((r) => ({
+				discord_server_id: String(r.discord_server_id),
+				name: r.name || 'Unnamed server',
+				server_icon: r.server_icon || null,
+				members: num(r.total_members),
+				channels: num(r.total_channels),
+				boost_level: num(r.boost_level),
+				created_at: iso(r.discord_created_at)
+			}));
+		},
+		EMPTY_FORWARDER_SOURCES
 	);
 }

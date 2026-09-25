@@ -573,15 +573,6 @@ export const BOOSTER = {
 };
 
 export const CUSTOM_SUPPORTER_ROLE = {
-	async getRoleConstraints(guildId: string) {
-		requireBotConfig();
-		requireGuildId(guildId, 'getting custom role constraints');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.custom_supporter_role))) {
-			return { ROLE_START: null, ROLE_END: null };
-		}
-		return CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guildId);
-	},
-
 	async getStoredRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting stored custom role constraints');
@@ -759,16 +750,6 @@ export const STAFF_RATING = {
 		const reviewId = config?.review_channel_id || config?.report_channel_id;
 		if (reviewId) return reviewId;
 		return null;
-	},
-
-	async getRoleConstraints(guildId: string) {
-		requireBotConfig();
-		requireGuildId(guildId, 'getting staff rating role constraints');
-		const config = await STAFF_RATING.getConfig(guildId);
-		if (config?.role_start && config?.role_end) {
-			return { ROLE_START: config.role_start, ROLE_END: config.role_end };
-		}
-		return { ROLE_START: null, ROLE_END: null };
 	},
 
 	async getCooldownDays(guildId: string) {

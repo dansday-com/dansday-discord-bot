@@ -95,13 +95,10 @@ async function syncGuildData(guild) {
 		);
 
 		try {
-			const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
-			const constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
-			if (constraints.ROLE_START && constraints.ROLE_END) {
-				await db.updateCustomRoleFlags(serverId, constraints.ROLE_START, constraints.ROLE_END);
-			} else {
-				await db.updateCustomRoleFlags(serverId, null, null);
-			}
+			await db.pruneOrphanedCustomSupporterRoles(
+				serverId,
+				roles.map((role) => role.id)
+			);
 		} catch (error) {}
 
 		const members = Array.from(guild.members.cache.values());

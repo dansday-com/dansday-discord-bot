@@ -615,11 +615,9 @@ export const modules = [
 		icon: 'fa-ranking-star',
 		accent: '#c8911a',
 		title: 'Staff rating',
-		what: 'Members rate staff; approved ratings drive dynamic roles placed within a hierarchy range.',
+		what: 'Members rate staff; approved ratings drive dynamic roles placed above your staff roles.',
 		fields: [
-			{ label: 'Staff rating module', desc: 'When off, staff rating flows and their Discord UI are disabled.' },
-			{ label: 'Role Start (Top)', desc: 'Highest boundary role. Rating roles are created/updated below it.' },
-			{ label: 'Role End (Bottom)', desc: 'Lowest boundary role. Rating roles are created/updated above it.' },
+			{ label: 'Staff rating module', desc: 'When off, staff rating flows and their Discord UI are disabled. Off until you pick staff roles in main config.' },
 			{ label: 'Rating Cooldown (Days)', desc: 'Days a member must wait before rating the same staff member again (1 to 30).' },
 			{ label: 'Review channel', desc: 'Where submissions go for staff review.' },
 			{ label: 'Rating Update Channel', desc: 'Where rating updates and announcements are sent.' },
@@ -653,11 +651,12 @@ export const modules = [
 		icon: 'fa-palette',
 		accent: '#7b5ea7',
 		title: 'Custom supporter roles',
-		what: 'Lets supporters create a personalized role within a range you define.',
+		what: 'Lets boosters create a personalized role, placed directly above the Server Booster role so its colour shows.',
 		fields: [
-			{ label: 'Custom supporter role module', desc: 'When off, custom supporter role creation from the bot is disabled.' },
-			{ label: 'Role Start (Top)', desc: 'Highest position where custom roles are created. New roles sit below it.' },
-			{ label: 'Role End (Bottom)', desc: 'Lowest position where custom roles are created. New roles sit above it.' }
+			{
+				label: 'Custom supporter role module',
+				desc: 'On by default. When off, custom supporter role creation from the bot is disabled. The bot’s own role must sit above the Server Booster role.'
+			}
 		]
 	},
 	{
@@ -698,7 +697,10 @@ export const modules = [
 		fields: [
 			{ label: 'Forwarder module', desc: 'When off, message forwarding is disabled.' },
 			{ label: 'Source account', desc: 'The linked account that forwards messages. The operator manages these; owners pick from what is available.' },
-			{ label: 'Server (where the account is)', desc: 'The server the linked account is connected to.' },
+			{
+				label: 'Server (where the account is)',
+				desc: 'The server the linked account is connected to. Every server you can forward from is listed at /forwarder-servers.'
+			},
 			{ label: 'From Channels', desc: 'Messages from these source channels are forwarded.' },
 			{ label: 'Target Channel', desc: 'Where forwarded messages post in this server.' },
 			{ label: 'Role Pings (optional)', desc: 'Roles to mention on forwarded messages.' },

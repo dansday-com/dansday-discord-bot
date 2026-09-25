@@ -13,8 +13,6 @@
 
 	let saving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
-	let roleStart = $state<string>(data.settings?.role_start ?? '');
-	let roleEnd = $state<string>(data.settings?.role_end ?? '');
 	let cooldownDays = $state<number>(data.settings?.cooldown_days ?? 1);
 	let reviewChannel = $state<string>(data.settings?.review_channel_id ?? '');
 	let ratingChannel = $state<string>(data.settings?.rating_channel_id ?? '');
@@ -29,8 +27,6 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.staff_rating,
-					role_start: roleStart,
-					role_end: roleEnd,
 					cooldown_days: cooldownDays,
 					review_channel_id: reviewChannel,
 					rating_channel_id: ratingChannel,
@@ -53,7 +49,19 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-clipboard-check text-orange-400"></i>Staff Rating
 	</h3>
-	<p class="text-ash-400 text-xs">Review queue, rating announcements, cooldown, and rating-role placement.</p>
+	<p class="text-ash-400 text-xs">
+		Review queue, rating announcements, and cooldown. Rating roles are created directly above the highest staff role from main config.
+	</p>
+
+	{#if !data.staffRolesConfigured}
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-triangle-exclamation mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>
+				No staff roles are set yet. Staff rating cannot work until you pick them in
+				<a class="underline hover:text-amber-100" href="/bots/{data.botId}/servers/{data.serverId}">main config</a>.
+			</span>
+		</p>
+	{/if}
 
 	<ConfigToggleRow
 		label="Staff rating module"
@@ -69,22 +77,6 @@
 		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
-		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-arrow-up mr-1 text-orange-400"></i>Role Start (Top)
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">The highest boundary role. Rating roles will be created/updated <strong>below</strong> this.</p>
-			<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
-		</div>
-
-		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-arrow-down mr-1 text-orange-400"></i>Role End (Bottom)
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">The lowest boundary role. Rating roles will be created/updated <strong>above</strong> this.</p>
-			<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
-		</div>
-
 		<ConfigNumberSelect
 			label="Rating Cooldown (Days)"
 			description="Days a member must wait before rating the same staff member again (1–30 days)."

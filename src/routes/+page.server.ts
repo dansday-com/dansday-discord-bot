@@ -8,11 +8,13 @@ import {
 	resolveWikiDirectory,
 	resolveRobloxTrackedCount,
 	resolveRobloxMostNotified,
+	resolveForwarderSourceDirectory,
 	EMPTY_QUESTS,
 	EMPTY_ROBLOX,
 	EMPTY_TASKS,
 	EMPTY_ITEMS,
-	EMPTY_WIKIS
+	EMPTY_WIKIS,
+	EMPTY_FORWARDER_SOURCES
 } from '$lib/frontend/public/catalog/index.js';
 
 const ROW_PREVIEW = 5;
@@ -20,14 +22,15 @@ const GRID_PREVIEW = 6;
 const TASK_PREVIEW = 24;
 
 export const load: PageServerLoad = async () => {
-	const [directory, quests, roblox, robloxTracked, robloxNotified, items, wikis] = await Promise.all([
+	const [directory, quests, roblox, robloxTracked, robloxNotified, items, wikis, forwarderSources] = await Promise.all([
 		resolveServerDirectory().catch(() => EMPTY_DIRECTORY),
 		resolveQuestDirectory().catch(() => EMPTY_QUESTS),
 		resolveRobloxDirectory(GRID_PREVIEW).catch(() => EMPTY_ROBLOX),
 		resolveRobloxTrackedCount().catch(() => 0),
 		resolveRobloxMostNotified(GRID_PREVIEW).catch(() => EMPTY_ROBLOX),
 		resolveItemDirectory().catch(() => EMPTY_ITEMS),
-		resolveWikiDirectory().catch(() => EMPTY_WIKIS)
+		resolveWikiDirectory().catch(() => EMPTY_WIKIS),
+		resolveForwarderSourceDirectory().catch(() => EMPTY_FORWARDER_SOURCES)
 	]);
 
 	const notifiedAssetIds = new Set(robloxNotified.map((item) => item.asset_id));
@@ -54,6 +57,9 @@ export const load: PageServerLoad = async () => {
 		robloxCount: Math.max(robloxTracked, roblox.length),
 		topWikis: wikis.slice(0, ROW_PREVIEW),
 		wikiCount: wikis.length,
-		activeWikiCount: wikis.filter((w) => w.active).length
+		activeWikiCount: wikis.filter((w) => w.active).length,
+		topForwarderSources: forwarderSources.slice(0, ROW_PREVIEW),
+		forwarderSourceCount: forwarderSources.length,
+		forwarderSourceMembers: forwarderSources.reduce((sum, s) => sum + s.members, 0)
 	};
 };

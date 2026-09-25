@@ -391,8 +391,6 @@ export {
 	type QuestAutomationResult
 } from './api/discord-quest-api.js';
 
-export { fetchPublicQuests, questFeedUrl } from './api/discord-quest-feed.js';
-
 export const robloxCatalogStreams = {
 	officialRoblox: {
 		params: { CreatorType: 1, CreatorTargetId: 1, IncludeNotForSale: true },

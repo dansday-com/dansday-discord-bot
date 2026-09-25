@@ -1,5 +1,4 @@
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicStatisticsSnapshot } from '$lib/frontend/public/statistics/index.js';
 import { aggregatePanelStatistics } from '$lib/frontend/public/statistics/aggregate.js';
 import type { PageServerLoad } from './$types';
@@ -21,7 +20,6 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 		shop_avg_cost: 0
 	};
 	let global = aggregatePanelStatistics([]);
-	let autoQuestEnrollment = false;
 
 	if (locals.user.authenticated && locals.user.account_source === 'accounts' && locals.user.panel_id) {
 		try {
@@ -51,10 +49,6 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 		} catch (err) {
 			console.error('Failed to aggregate panel statistics', err);
 		}
-
-		const questRow = await db.getPanelSettings(locals.user.panel_id, SERVER_SETTINGS.component.discord_quest_notifier).catch(() => null);
-		const questRaw = questRow?.settings;
-		autoQuestEnrollment = questRaw && typeof questRaw === 'object' ? (questRaw as Record<string, unknown>).auto_quest === true : false;
 	}
 
 	return {
@@ -69,7 +63,6 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 			total_uptime_ms,
 			...panel
 		},
-		global,
-		autoQuestEnrollment
+		global
 	};
 };

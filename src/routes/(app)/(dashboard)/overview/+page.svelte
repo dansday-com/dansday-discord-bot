@@ -1,39 +1,9 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { DashGrid, KpiTile, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
-	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
-	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-
-	let autoQuest = $state(data.autoQuestEnrollment === true);
-	let savingAutoQuest = $state(false);
-
-	async function saveAutoQuest(next: boolean) {
-		if (savingAutoQuest) return;
-		savingAutoQuest = true;
-		try {
-			const res = await fetch('/api/panel/settings', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({ auto_quest: next })
-			});
-			const d = await res.json();
-			if (d.success) {
-				showToast(next ? 'Auto quest enrollment enabled' : 'Auto quest enrollment disabled', 'success');
-			} else {
-				autoQuest = !next;
-				showToast(d.error || 'Failed to save', 'error');
-			}
-		} catch (_) {
-			autoQuest = !next;
-			showToast('Failed to save', 'error');
-		} finally {
-			savingAutoQuest = false;
-		}
-	}
 
 	const stats = $derived((data.stats ?? {}) as Record<string, number>);
 	const g = $derived((data.global ?? {}) as Record<string, number>);
@@ -285,18 +255,6 @@
 			<KpiTile icon={tile.icon} label={tile.label} value={tile.value} tone={tile.tone} />
 		{/each}
 	</DashGrid>
-
-	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
-		<ConfigToggleRow
-			label="Auto quest enrollment"
-			description="Instance-wide. When on, members can claim open Discord quests by pasting their own user token — a Discord ToS risk they take on their own account. Off by default."
-			labelIconClass="fas fa-bolt text-amber-400"
-			bind:enabled={autoQuest}
-			disabled={savingAutoQuest}
-			onchange={saveAutoQuest}
-			ariaLabel="Toggle auto quest enrollment for this instance"
-		/>
-	</div>
 
 	<DashGrid>
 		{#each sections as section}

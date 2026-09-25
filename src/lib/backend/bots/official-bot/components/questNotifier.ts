@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db from '../../../../database.js';
 import {
 	extractDiscordQuestSummaries,
-	fetchPublicQuests,
+	fetchQuestsMe,
 	getEmbedConfig,
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
@@ -29,6 +29,22 @@ async function runTickGuarded(client: Client, officialBotId: number) {
 
 const POLL_MS = 300_000;
 const POLL_JITTER_MS = 60_000;
+const QUEST_FETCH_CONCURRENCY = 4;
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+	const results = new Array<R>(items.length);
+	let cursor = 0;
+	const workers = new Array(Math.max(1, Math.min(limit, items.length))).fill(null).map(async () => {
+		for (;;) {
+			const i = cursor++;
+			if (i >= items.length) return;
+			results[i] = await fn(items[i], i);
+		}
+	});
+	await Promise.all(workers);
+	return results;
+}
+
 function discordTs(iso: string | undefined | null, style: 'R'): string {
 	if (!iso) return '—';
 	const t = Date.parse(iso);
@@ -99,30 +115,49 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 
 async function prefetchBotWideQuests(officialBotId: number): Promise<Map<string, string>> {
 	const sourceByQuestId = new Map<string, string>();
-
-	let payload: { quests: unknown[] };
-	try {
-		payload = await fetchPublicQuests();
-	} catch (feedErr: any) {
-		await logger.log(`⚠️ Quest notifier: public quest feed fetch failed (${String(feedErr?.message || feedErr)}) — relying on stored quests only`);
+	const selfbots = await db.getRunningSelfbotsForOfficialBot(officialBotId);
+	if (selfbots.length === 0) {
+		await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no running selfbot in its panel — relying on stored quests only`);
 		return sourceByQuestId;
 	}
+
+	const fetched = await mapWithConcurrency(selfbots, QUEST_FETCH_CONCURRENCY, async (selfbot) => {
+		try {
+			return { selfbot, payload: await fetchQuestsMe(selfbot.token as string), error: null as string | null };
+		} catch (accErr: any) {
+			return { selfbot, payload: null as unknown, error: String(accErr?.message || accErr) };
+		}
+	});
 
 	const mergedById = new Map<string, DiscordQuestSummary>();
-	for (const q of extractDiscordQuestSummaries(payload)) {
-		if (mergedById.has(q.id)) continue;
-		mergedById.set(q.id, q);
-		sourceByQuestId.set(q.id, 'public quest feed');
+	let okAccounts = 0;
+
+	for (const { selfbot, payload, error } of fetched) {
+		if (error !== null) {
+			await logger.log(`⚠️ Quest notifier: selfbot "${selfbot.name}" (#${selfbot.id}) quest fetch failed: ${error}`);
+			continue;
+		}
+		okAccounts++;
+
+		for (const q of extractDiscordQuestSummaries(payload)) {
+			if (mergedById.has(q.id)) continue;
+			mergedById.set(q.id, q);
+			sourceByQuestId.set(q.id, `#${selfbot.id} ${selfbot.name}`);
+		}
 	}
 
-	if (mergedById.size === 0) {
-		await logger.log(`⚠️ Quest notifier: public quest feed returned no active quests — relying on stored quests only`);
+	if (okAccounts === 0) {
+		await logger.log(`⚠️ Quest notifier: all ${selfbots.length} panel selfbot(s) failed quest fetch — relying on stored quests only`);
 		return sourceByQuestId;
 	}
 
-	await db.syncBotDiscordQuestsFromApi(officialBotId, [...mergedById.values()]);
+	if (mergedById.size > 0) {
+		await db.syncBotDiscordQuestsFromApi(officialBotId, [...mergedById.values()]);
+	}
 
-	await logger.log(`🔮 Quest notifier: prefetched ${mergedById.size} active quest(s) from the public quest feed for bot ${officialBotId}`);
+	await logger.log(
+		`🔮 Quest notifier: prefetched ${mergedById.size} unique quest(s) from ${okAccounts}/${selfbots.length} panel selfbot(s) for bot ${officialBotId}`
+	);
 
 	return sourceByQuestId;
 }
@@ -134,8 +169,7 @@ async function runTick(client: Client, officialBotId: number) {
 	for (const server of servers) {
 		const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 		const rawSettings = settingsRow && !Array.isArray(settingsRow) ? settingsRow.settings : null;
-		const parsed = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
-		settingsByServerId.set(server.id, parsed);
+		settingsByServerId.set(server.id, rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {});
 	}
 
 	const sourceByQuestId = await prefetchBotWideQuests(officialBotId);

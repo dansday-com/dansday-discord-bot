@@ -679,11 +679,10 @@ export const modules = [
 		icon: 'fa-scroll',
 		accent: '#5865f2',
 		title: 'Discord Quest notifier',
-		what: 'Posts Discord Quest alerts. Quest data comes from a public quest feed, so nothing extra is needed for alerts.',
+		what: 'Posts Discord Quest alerts. Quest data is discovered by the accounts the operator has linked, so nothing per-server is needed for alerts.',
 		fields: [
 			{ label: 'Quest notifier module', desc: 'When off, quest polling and posts are disabled.' },
 			{ label: 'Notification channel', desc: 'Where the official bot posts quest embeds.' },
-			{ label: 'HTTP(S) proxy (optional)', desc: 'Used only for quest enrollment. Leave empty for a direct connection.' },
 			{
 				label: 'Auto quest enrollment',
 				desc: 'Instance-wide and off by default. Only the operator can turn it on; it is not a per-server setting. When on, the bot menu shows Discord Quest with a Claim all button that enrolls every open quest with the member’s own user token.'

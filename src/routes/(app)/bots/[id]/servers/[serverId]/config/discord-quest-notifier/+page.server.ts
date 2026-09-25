@@ -17,13 +17,17 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const panelRaw = panelRow?.settings;
 	const panelSettings = panelRaw && typeof panelRaw === 'object' ? (panelRaw as Record<string, unknown>) : {};
 
+	const selfbots = panelId == null ? [] : await db.getPanelSelfbots(panelId).catch(() => []);
+	const runningSelfbot = selfbots.find((sb) => sb.status === 'running' && typeof sb.token === 'string' && sb.token.trim() !== '');
+
 	return {
 		settings: {
 			enabled: s.enabled === true,
-			channel_id: typeof s.channel_id === 'string' ? s.channel_id : '',
-			http_proxy_url: typeof s.http_proxy_url === 'string' ? s.http_proxy_url : ''
+			channel_id: typeof s.channel_id === 'string' ? s.channel_id : ''
 		},
 		hasQuests: quests.length > 0,
+		hasSelfbots: selfbots.length > 0,
+		hasRunningSelfbot: !!runningSelfbot,
 		autoQuestEnabled: panelSettings.auto_quest === true
 	};
 };

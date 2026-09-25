@@ -1,33 +1,8 @@
 import axios from 'axios';
-import { ProxyAgent } from 'proxy-agent';
 import { discordQuestHttp } from '../config.js';
-import { isValidQuestHttpProxyUrl } from '../../utils/questHttpProxyUrl.js';
 
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';
-
-const questProxyAgentCache = new Map<string, ProxyAgent>();
-const QUEST_PROXY_AGENT_CACHE_MAX = 32;
-
-function getQuestProxyAgent(proxyUrl: string): ProxyAgent {
-	if (!isValidQuestHttpProxyUrl(proxyUrl)) {
-		throw new Error('HTTP proxy must be a public http:// or https:// URL');
-	}
-	let ag = questProxyAgentCache.get(proxyUrl);
-	if (!ag) {
-		ag = new ProxyAgent({
-			getProxyForUrl: () => proxyUrl
-		});
-		questProxyAgentCache.set(proxyUrl, ag);
-		while (questProxyAgentCache.size > QUEST_PROXY_AGENT_CACHE_MAX) {
-			const first = questProxyAgentCache.keys().next().value as string | undefined;
-			if (first === undefined) break;
-			questProxyAgentCache.get(first)?.destroy();
-			questProxyAgentCache.delete(first);
-		}
-	}
-	return ag;
-}
 
 function retryAfterHeaderValue(headers: unknown): string | undefined {
 	if (!headers || typeof headers !== 'object') return undefined;
@@ -688,16 +663,8 @@ export function questPayloadRewardDiagnostics(payload: unknown): {
 	return { questCount: quests.length, afterPreviewExpired, heuristicCurrencyRewardCount };
 }
 
-async function questApiRequest(
-	userToken: string,
-	method: 'GET' | 'POST' | 'DELETE',
-	path: string,
-	body?: unknown,
-	opts?: { httpProxyUrl?: string | null }
-): Promise<{ status: number; data: unknown }> {
+async function questApiRequest(userToken: string, method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<{ status: number; data: unknown }> {
 	const headers = discordQuestRequestHeaders(userToken);
-	const proxyUrl = opts?.httpProxyUrl?.trim() || undefined;
-	const agent = proxyUrl ? getQuestProxyAgent(proxyUrl) : undefined;
 	const url = path.startsWith('http') ? path : `${discordQuestHttp.apiBase}${path.startsWith('/') ? path : `/${path}`}`;
 	const maxAttempts = 3;
 
@@ -707,7 +674,6 @@ async function questApiRequest(
 			url,
 			headers,
 			data: body === undefined ? undefined : body,
-			...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
 			validateStatus: () => true
 		});
 
@@ -727,10 +693,10 @@ async function questApiRequest(
 	return { status: 599, data: null };
 }
 
-export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {
+export async function fetchQuestsMe(userToken: string): Promise<unknown> {
 	const maxAttempts = 3;
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.questsMe, undefined, opts);
+		const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.questsMe);
 
 		if (res.status === 429 && attempt < maxAttempts) {
 			await sleep(2000);
@@ -844,10 +810,10 @@ function discordUserIdFromToken(userToken: string): string | null {
 	}
 }
 
-async function discordUserIdFromUserToken(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<string | null> {
+async function discordUserIdFromUserToken(userToken: string): Promise<string | null> {
 	const fromJwt = discordUserIdFromToken(userToken);
 	if (fromJwt) return fromJwt;
-	const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.usersMe, undefined, opts);
+	const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.usersMe);
 	if (res.status !== 200 || !res.data || typeof res.data !== 'object') return null;
 	const id = (res.data as Record<string, unknown>).id;
 	return typeof id === 'string' ? id : null;
@@ -857,7 +823,6 @@ async function runQuestHeartbeatUntilDone(
 	userToken: string,
 	questId: string,
 	taskKey: string,
-	opts: { httpProxyUrl?: string | null } | undefined,
 	config: {
 		knownTargetSec: number | null;
 		intervalMs: number;
@@ -872,7 +837,7 @@ async function runQuestHeartbeatUntilDone(
 	let reachedTarget = false;
 
 	for (let i = 0; i < maxIters; i++) {
-		const hb = await questApiRequest(userToken, 'POST', `/quests/${questId}/heartbeat`, makeBody(false), opts);
+		const hb = await questApiRequest(userToken, 'POST', `/quests/${questId}/heartbeat`, makeBody(false));
 		const body = hb.data && typeof hb.data === 'object' ? (hb.data as Record<string, unknown>) : null;
 
 		if (!heartbeatResponseOk(hb.data)) {
@@ -894,20 +859,13 @@ async function runQuestHeartbeatUntilDone(
 	}
 
 	if (sawTaskComplete || reachedTarget) {
-		await questApiRequest(userToken, 'POST', `/quests/${questId}/heartbeat`, makeBody(true), opts);
+		await questApiRequest(userToken, 'POST', `/quests/${questId}/heartbeat`, makeBody(true));
 	}
 
 	return { sawTaskComplete, reachedTarget, lastError };
 }
 
-async function completeAchievementViaDiscordSays(
-	userToken: string,
-	applicationId: string,
-	questTarget: number,
-	opts?: { httpProxyUrl?: string | null }
-): Promise<{ ok: boolean; error: string }> {
-	const proxyUrl = opts?.httpProxyUrl?.trim();
-	const agent = proxyUrl ? getQuestProxyAgent(proxyUrl) : undefined;
+async function completeAchievementViaDiscordSays(userToken: string, applicationId: string, questTarget: number): Promise<{ ok: boolean; error: string }> {
 	const baseHeaders = {
 		'User-Agent': CLIENT_USER_AGENT,
 		'Content-Type': 'application/json'
@@ -919,22 +877,16 @@ async function completeAchievementViaDiscordSays(
 		scope: 'identify applications.commands applications.entitlements',
 		state: ''
 	});
-	const authRes = await questApiRequest(
-		userToken,
-		'POST',
-		`/oauth2/authorize?${authQuery.toString()}`,
-		{
-			permissions: '0',
-			authorize: true,
-			integration_type: 1,
-			location_context: {
-				guild_id: '10000',
-				channel_id: '10000',
-				channel_type: 10000
-			}
-		},
-		opts
-	);
+	const authRes = await questApiRequest(userToken, 'POST', `/oauth2/authorize?${authQuery.toString()}`, {
+		permissions: '0',
+		authorize: true,
+		integration_type: 1,
+		location_context: {
+			guild_id: '10000',
+			channel_id: '10000',
+			channel_type: 10000
+		}
+	});
 	const authBody = authRes.data && typeof authRes.data === 'object' ? (authRes.data as Record<string, unknown>) : null;
 	const location = typeof authBody?.location === 'string' ? authBody.location : '';
 	let authCode: string | null = null;
@@ -953,7 +905,6 @@ async function completeAchievementViaDiscordSays(
 		url: saysUrl,
 		data: { code: authCode },
 		headers: baseHeaders,
-		...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
 		validateStatus: () => true
 	});
 	let saysToken: string | null = null;
@@ -971,14 +922,13 @@ async function completeAchievementViaDiscordSays(
 		url: progressUrl,
 		data: { progress: questTarget },
 		headers: { ...baseHeaders, 'x-auth-token': saysToken },
-		...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
 		validateStatus: () => true
 	});
 	if (prog.status < 200 || prog.status >= 300) {
 		return { ok: false, error: `Discord Says progress failed (HTTP ${prog.status}).` };
 	}
 
-	const tokensRes = await questApiRequest(userToken, 'GET', '/oauth2/tokens', undefined, opts);
+	const tokensRes = await questApiRequest(userToken, 'GET', '/oauth2/tokens');
 	if (tokensRes.status === 200 && Array.isArray(tokensRes.data)) {
 		const tokenInfo = (tokensRes.data as Record<string, unknown>[]).find((t) => {
 			if (!t || typeof t !== 'object') return false;
@@ -987,7 +937,7 @@ async function completeAchievementViaDiscordSays(
 		});
 		const tid = tokenInfo && typeof tokenInfo.id === 'string' ? tokenInfo.id : null;
 		if (tid) {
-			await questApiRequest(userToken, 'DELETE', `/oauth2/tokens/${tid}`, undefined, opts);
+			await questApiRequest(userToken, 'DELETE', `/oauth2/tokens/${tid}`);
 		}
 	}
 
@@ -1046,7 +996,7 @@ export type QuestAutomationResult = {
 	description: string;
 };
 
-export async function runQuestUserAutomation(userToken: string, questId: string, opts?: { httpProxyUrl?: string | null }): Promise<QuestAutomationResult> {
+export async function runQuestUserAutomation(userToken: string, questId: string): Promise<QuestAutomationResult> {
 	const qUrl = `https://discord.com/quests/${questId}`;
 	let token = userToken.trim();
 	const wipe = () => {
@@ -1054,7 +1004,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 	};
 
 	try {
-		let payload = await fetchQuestsMe(token, opts);
+		let payload = await fetchQuestsMe(token);
 		let quest = findQuestByIdInPayload(payload, questId);
 		if (!quest) {
 			return {
@@ -1094,7 +1044,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 			};
 		}
 
-		const enrollRes = await questApiRequest(token, 'POST', `/quests/${questId}/enroll`, { location: 11, is_targeted: false, metadata_raw: null }, opts);
+		const enrollRes = await questApiRequest(token, 'POST', `/quests/${questId}/enroll`, { location: 11, is_targeted: false, metadata_raw: null });
 		const enrollOk = enrollRes.status >= 200 && enrollRes.status < 300;
 		const enrollMsg =
 			enrollRes.data && typeof enrollRes.data === 'object' && typeof (enrollRes.data as Record<string, unknown>).message === 'string'
@@ -1112,7 +1062,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 			};
 		}
 
-		payload = await fetchQuestsMe(token, opts);
+		payload = await fetchQuestsMe(token);
 		quest = findQuestByIdInPayload(payload, questId) ?? quest;
 
 		if (userQuestCompleted(quest)) {
@@ -1164,8 +1114,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 					description: `Missing application id or achievement target in the quest config. Finish **${labelForTaskKey(taskKey)}** in the Discord client.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 				};
 			}
-			const ach = await completeAchievementViaDiscordSays(token, applicationId, questTarget, opts);
-			payload = await fetchQuestsMe(token, opts);
+			const ach = await completeAchievementViaDiscordSays(token, applicationId, questTarget);
+			payload = await fetchQuestsMe(token);
 			quest = findQuestByIdInPayload(payload, questId) ?? quest;
 			if (ach.ok || userQuestCompleted(quest)) {
 				return {
@@ -1188,7 +1138,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 		}
 
 		if (isPlayActivity) {
-			const userId = await discordUserIdFromUserToken(token, opts);
+			const userId = await discordUserIdFromUserToken(token);
 			if (!userId) {
 				return {
 					ok: false,
@@ -1201,12 +1151,12 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 			}
 			const knownTargetSec = heartbeatDurationTargetSec(taskKey, pt.obj);
 			const streamKey = `call:${userId}:1`;
-			const hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, opts, {
+			const hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, {
 				knownTargetSec,
 				intervalMs: 20_000,
 				makeBody: (terminal) => ({ stream_key: streamKey, terminal })
 			});
-			payload = await fetchQuestsMe(token, opts);
+			payload = await fetchQuestsMe(token);
 			quest = findQuestByIdInPayload(payload, questId) ?? quest;
 			const finalProgress = readProgressSeconds(quest, taskKey);
 			const done = hb.sawTaskComplete || userQuestCompleted(quest) || (knownTargetSec != null && finalProgress >= knownTargetSec - 0.5);
@@ -1236,14 +1186,14 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 			let hb: { sawTaskComplete: boolean; reachedTarget: boolean; lastError: string };
 
 			if (applicationId) {
-				hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, opts, {
+				hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, {
 					knownTargetSec,
 					intervalMs: 20_000,
 					makeBody: (terminal) => ({ application_id: applicationId, terminal })
 				});
 			} else if (taskKey === 'PLAY_ON_DESKTOP' || taskKey === 'PLAY_ON_DESKTOP_V2' || taskKey === 'STREAM_ON_DESKTOP') {
 				const streamKey = `call:${questId}:1`;
-				hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, opts, {
+				hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, {
 					knownTargetSec,
 					intervalMs: 30_000,
 					makeBody: (terminal) => ({ stream_key: streamKey, terminal })
@@ -1259,7 +1209,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 				};
 			}
 
-			payload = await fetchQuestsMe(token, opts);
+			payload = await fetchQuestsMe(token);
 			quest = findQuestByIdInPayload(payload, questId) ?? quest;
 			const finalProgress = readProgressSeconds(quest, taskKey);
 			const done = hb.sawTaskComplete || userQuestCompleted(quest) || (knownTargetSec != null && finalProgress >= knownTargetSec - 0.5);
@@ -1317,7 +1267,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 			const maxAllowed = Math.floor((Date.now() - enrolledAt) / 1000) + maxFuture;
 			if (maxAllowed - secondsDone >= speed) {
 				const timestamp = Math.min(targetSec, secondsDone + speed + Math.random() * 0.5);
-				const vp = await questApiRequest(token, 'POST', `/quests/${questId}/video-progress`, { timestamp }, opts);
+				const vp = await questApiRequest(token, 'POST', `/quests/${questId}/video-progress`, { timestamp });
 				const body = vp.data && typeof vp.data === 'object' ? (vp.data as Record<string, unknown>) : null;
 				if (body?.completed_at != null || body?.completedAt != null) {
 					secondsDone = targetSec;
@@ -1334,7 +1284,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string,
 			await sleep(1000);
 		}
 
-		payload = await fetchQuestsMe(token, opts);
+		payload = await fetchQuestsMe(token);
 		quest = findQuestByIdInPayload(payload, questId) ?? quest;
 
 		if (userQuestCompleted(quest) || readProgressSeconds(quest, pt.key) >= targetSec - 0.5) {

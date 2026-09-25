@@ -5221,6 +5221,11 @@ async function getSelfbotsForOfficialBot(officialBotId: number) {
 	return getPanelSelfbots(panelId);
 }
 
+async function getRunningSelfbotsForOfficialBot(officialBotId: number) {
+	const selfbots = await getSelfbotsForOfficialBot(officialBotId);
+	return selfbots.filter((s) => s.status === 'running' && typeof s.token === 'string' && s.token.trim() !== '').sort((a, b) => a.id - b.id);
+}
+
 type ServerSettingsRow = {
 	id: number;
 	server_id: number;
@@ -5388,6 +5393,40 @@ async function syncBotDiscordQuestsFromApi(botId: number, quests: DiscordQuestSu
 				} as any
 			});
 	}
+}
+
+async function addMissingBotDiscordQuests(botId: number, quests: DiscordQuestSummary[]): Promise<DiscordQuestSummary[]> {
+	await initializeDatabase();
+	if (quests.length === 0) return [];
+	const byId = new Map<string, DiscordQuestSummary>();
+	for (const q of quests) {
+		if (q?.id && !byId.has(q.id)) byId.set(q.id, q);
+	}
+	if (byId.size === 0) return [];
+
+	const existing = await db
+		.select({ quest_id: schema.botDiscordQuest.quest_id })
+		.from(schema.botDiscordQuest)
+		.where(inArray(schema.botDiscordQuest.quest_id, [...byId.keys()]));
+	for (const row of existing) byId.delete(row.quest_id);
+	if (byId.size === 0) return [];
+
+	const now = toMySQLDateTime();
+	const added: DiscordQuestSummary[] = [];
+	for (const q of byId.values()) {
+		try {
+			await db.insert(schema.botDiscordQuest).values({
+				bot_id: botId,
+				quest_id: q.id,
+				quest_task_type: q.taskTypeKey || '',
+				quest_task_label: q.taskTypeLabel || '',
+				created_at: now as any,
+				...snapshotFromDiscordQuestSummary(q)
+			});
+			added.push(q);
+		} catch (_) {}
+	}
+	return added;
 }
 
 async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, quests: DiscordQuestSummary[]): Promise<void> {
@@ -7017,6 +7056,7 @@ export default {
 	syncServerDiscordQuestsFromApi,
 	listServerDiscordQuestUnpostedIds,
 	syncBotDiscordQuestsFromApi,
+	addMissingBotDiscordQuests,
 	listActiveBotDiscordQuests,
 	linkServerToBotDiscordQuests,
 	claimServerDiscordQuestForPost,
@@ -7081,6 +7121,7 @@ export default {
 	resolveOfficialBotIdForServer,
 	getOfficialBotIdForServer,
 	getSelfbotsForOfficialBot,
+	getRunningSelfbotsForOfficialBot,
 	getChannelsForServer,
 	getCategoriesForServer,
 	serversNeedSync,

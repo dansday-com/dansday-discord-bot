@@ -720,6 +720,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return { id: call.id, name: call.name, response };
 	}
 
+	const SILENT_TOOLS = new Set(['leave_voice', 'conversation_done']);
+
 	const LOOKUP_TOOLS = new Set([
 		'send_to_chat',
 		'search_wiki',
@@ -821,7 +823,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function handleToolCall(calls) {
 		const lookupCalls = calls.filter((call) => LOOKUP_TOOLS.has(call.name));
-		const responses = calls.filter((call) => !LOOKUP_TOOLS.has(call.name)).map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
+		const responses = calls
+			.filter((call) => !LOOKUP_TOOLS.has(call.name) && !SILENT_TOOLS.has(call.name))
+			.map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
 
 		sendToolResponses(responses);
 

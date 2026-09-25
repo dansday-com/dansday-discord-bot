@@ -14,20 +14,6 @@
 	let channels = $state<string[]>(data.settings?.channels ?? []);
 	let messages = $state<string[]>(data.settings?.messages ?? []);
 
-	function channelById(id: string) {
-		return data.channels.find((c: any) => c.discord_channel_id === id);
-	}
-
-	function removeChannel(id: string) {
-		channels = channels.filter((c) => c !== id);
-	}
-
-	function addChannel(id: string) {
-		if (id && !channels.includes(id)) {
-			channels = [...channels, id];
-		}
-	}
-
 	async function save() {
 		saving = true;
 		try {
@@ -73,20 +59,14 @@
 				<i class="fas fa-hashtag mr-1 text-purple-400"></i>Boost Channels
 			</label>
 			<p class="text-ash-500 mb-2 text-xs">Channels for boost messages. Multiple channels allowed.</p>
-			<ChannelPicker channels={data.channels} categories={data.categories} value={channels[0] ?? ''} onchange={(id) => addChannel(id)} />
-			{#if channels.length > 0}
-				<div class="mt-2 flex flex-wrap gap-1.5">
-					{#each channels as id}
-						{@const ch = channelById(id)}
-						<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
-							#{ch ? ch.name : id}
-							<button type="button" onclick={() => removeChannel(id)} class="hover:text-ash-300 ml-0.5 transition-colors">
-								<i class="fas fa-times text-xs"></i>
-							</button>
-						</span>
-					{/each}
-				</div>
-			{/if}
+			<ChannelPicker
+				channels={data.channels}
+				categories={data.categories}
+				multi
+				value={channels}
+				placeholder="Select channels..."
+				onchange={(v) => (channels = v as string[])}
+			/>
 		</div>
 
 		<MessageList

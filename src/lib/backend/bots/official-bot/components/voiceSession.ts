@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Type, Behavior, FunctionResponseScheduling, InteractionStatus, ThinkingLevel, TurnCompleteReason } from '@google/genai';
+import { GoogleGenAI, Modality, Type, Behavior, InteractionStatus, ThinkingLevel, TurnCompleteReason } from '@google/genai';
 import {
 	joinVoiceChannel,
 	createAudioPlayer,
@@ -45,7 +45,6 @@ const VOICE_RMS_CEILING = 2_200;
 const VOICE_RMS_RELEASE = 550;
 const VOICE_ONSET_FRAMES = 3;
 const VOICE_HANG_MS = 500;
-const SPEECH_RECENT_MS = 3_000;
 const BARGE_IN_RMS_MIN = 1_800;
 const BARGE_IN_RMS_MARGIN = 1.8;
 const BARGE_IN_FRAMES = 6;
@@ -65,7 +64,6 @@ const OUTPUT_ENCODER_FRAMES = 2;
 const MAX_MISSED_FRAMES = 50;
 
 const GOODBYE_GRACE_MS = 12_000;
-const ADDRESSED_WINDOW_MS = 15_000;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const MUTE_RETRY_MS = 750;
@@ -114,17 +112,8 @@ function thinkingLevelFor(level: string | null | undefined) {
 	return ThinkingLevel.LOW;
 }
 
-function modelCapabilities(model) {
-	const id = (model ?? '').toLowerCase();
-	const extendedThinking = id.includes('live-extended-thinking');
-	const live38 = extendedThinking || id.includes('3.8-live');
-
-	return {
-		asyncTools: live38 || id.includes('2.5'),
-		scheduling: !extendedThinking,
-		thinkingLevel: extendedThinking,
-		interactionStatus: live38
-	};
+function isExtendedThinking(model) {
+	return (model ?? '').toLowerCase().includes('live-extended-thinking');
 }
 
 function rmsOf(pcm) {
@@ -183,7 +172,7 @@ const VOICE_SERVER_DATA_NOTE = `Your tools read this server's own live data. Use
 
 Everything you get back has to be said out loud, so keep it to one or two short spoken sentences. Give the few numbers or names that answer the question, round big numbers, and never read out a hash, a URL or a long list — send those to the text chat with send_to_chat and say one short line about it.
 
-When a lookup is running, say at most one short line about it, and only if you have not already said one — never repeat "let me check" or "one second". Keep the conversation going normally instead of going quiet, and answer properly the moment the result reaches you.
+When a lookup is running, say at most one short line about it, and only if you have not already said one — never repeat "let me check" or "one second". Then stay quiet until the result reaches you and answer from it. Never say the lookup failed, never apologise, and never mention an error or a system problem while you are still waiting — a slow result is not a failure.
 
 The get_my_* tools only ever read the account of the person talking to you. Never call one to answer a question about somebody else. If they ask what another member has in their bag, their history or their tasks, say plainly that it is private to that member, and offer their public level, rank and roles instead.`;
 
@@ -191,7 +180,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const speaking = new Map();
 	const endpoint = botAiVoiceEndpoint(config);
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
-	const caps = modelCapabilities(config.voice_model);
+	const extendedThinking = isExtendedThinking(config.voice_model);
+	const toolBehavior = extendedThinking ? Behavior.NON_BLOCKING : Behavior.BLOCKING;
 	const systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), VOICE_SERVER_DATA_NOTE]
 		.filter(Boolean)
 		.join('\n\n');
@@ -223,7 +213,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let lastSpeakerId = '';
 	let lockedSpeakerId = '';
 	let turnOwnerId = '';
-	let addressedUntil = 0;
+	let awake = false;
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
 	let muteRetryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -240,7 +230,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let modelThinking = false;
 
 	function isAddressed() {
-		return Date.now() < addressedUntil;
+		return awake;
 	}
 
 	function markAddressed({ verified = false } = {}) {
@@ -257,10 +247,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			lockedSpeakerId = speaker;
 		}
 
-		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+		awake = true;
 		setSelfMute(false);
-		if (muteTimer) clearTimeout(muteTimer);
-		muteTimer = setTimeout(releaseAfterSilence, ADDRESSED_WINDOW_MS);
 		return wasAddressed;
 	}
 
@@ -273,7 +261,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			return;
 		}
 
-		addressedUntil = 0;
+		awake = false;
 
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = null;
@@ -308,23 +296,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return best;
 	}
 
-	function keepAliveFromLockedSpeaker() {
-		if (!lockedSpeakerId || goodbyePending) return;
-		if (!isAddressed()) logger.log(`🔁 Voice AI re-opening window, ${nameOf(lockedSpeakerId)} is still talking`);
-		extendAddressedWindow();
-	}
-
-	function extendWhileReplying() {
-		if (!isAddressed() || goodbyePending) return;
-		extendAddressedWindow();
-	}
-
-	function extendAddressedWindow() {
-		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
-		if (muteTimer) clearTimeout(muteTimer);
-		muteTimer = setTimeout(releaseAfterSilence, ADDRESSED_WINDOW_MS);
-	}
-
 	function lookupBusy() {
 		return activeLookups.size > 0 || Date.now() < toolBusyUntil;
 	}
@@ -334,7 +305,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function keepAwakeForTool() {
-		extendAddressedWindow();
+		awake = true;
 		setSelfMute(false);
 	}
 
@@ -348,30 +319,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (!lockedSpeakerId) return true;
 		if (userId === lockedSpeakerId) return true;
 		return !isAddressed();
-	}
-
-	function releaseAfterSilence() {
-		muteTimer = null;
-		if (closed || goodbyePending || selfMuted) return;
-
-		if (toolBusy()) {
-			logger.log('🔎 Voice AI staying awake, a lookup is still running');
-			keepAwakeForTool();
-			return;
-		}
-
-		if (botIsSpeaking()) {
-			extendAddressedWindow();
-			return;
-		}
-
-		if (isAddressed()) {
-			muteTimer = setTimeout(releaseAfterSilence, Math.max(SPEAK_GUARD_MS, addressedUntil - Date.now()));
-			return;
-		}
-
-		logger.log('🔓 Voice AI conversation went quiet, open to anyone again');
-		releaseSpeakerLock();
 	}
 
 	function announceWakePhrase() {
@@ -617,8 +564,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		lastAudioAt = Date.now();
 
 		if (playbackQueue.length > stats.queueHigh) stats.queueHigh = playbackQueue.length;
-
-		extendWhileReplying();
 	}
 
 	function handleInterrupt() {
@@ -693,10 +638,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		stats.framesOut++;
 		if (filled === 0) {
 			stats.silenceOut++;
-			if (wasPlaying) {
-				wasPlaying = false;
-				extendWhileReplying();
-			}
+			wasPlaying = false;
 		} else {
 			lastAudioAt = Date.now();
 			wasPlaying = true;
@@ -771,13 +713,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
 
 	function withToolBehavior(declaration) {
-		if (!caps.asyncTools) return declaration;
-		return { ...declaration, behavior: Behavior.NON_BLOCKING };
+		return { ...declaration, behavior: toolBehavior };
 	}
 
 	function toolResponse(call, response) {
-		if (!caps.asyncTools || !caps.scheduling) return { id: call.id, name: call.name, response };
-		return { id: call.id, name: call.name, response, scheduling: FunctionResponseScheduling.INTERRUPT };
+		return { id: call.id, name: call.name, response };
 	}
 
 	const LOOKUP_TOOLS = new Set([
@@ -1045,7 +985,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				responseModalities: [Modality.AUDIO],
 				...(config.voice_name ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice_name } } } } : {}),
 				...(systemInstruction ? { systemInstruction } : {}),
-				...(caps.thinkingLevel ? { thinkingConfig: { thinkingLevel: thinkingLevelFor(config.voice_thinking) } } : {}),
+				...(extendedThinking ? { thinkingConfig: { thinkingLevel: thinkingLevelFor(config.voice_thinking) } } : {}),
 				inputAudioTranscription: {},
 				outputAudioTranscription: {},
 				contextWindowCompression: { slidingWindow: {} },
@@ -1117,14 +1057,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					const names = tool.functionDeclarations.map((d) => d.name);
 					const dupes = names.filter((n, i) => names.indexOf(n) !== i);
 					logger.log(
-						`🧰 Voice AI declaring ${names.length} tools (model=${config.voice_model} behavior=${caps.asyncTools ? 'NON_BLOCKING' : 'default'}${dupes.length ? ` DUPLICATES=${[...new Set(dupes)].join(',')}` : ''}): ${names.join(', ')}`
+						`🧰 Voice AI declaring ${names.length} tools (model=${config.voice_model} behavior=${toolBehavior}${dupes.length ? ` DUPLICATES=${[...new Set(dupes)].join(',')}` : ''}): ${names.join(', ')}`
 					);
 					return tool;
 				})
 			},
 			callbacks: {
-				onopen: () =>
-					logger.log(`🔊 Voice AI live session open (model=${config.voice_model}${caps.thinkingLevel ? ` thinking=${config.voice_thinking}` : ''})`),
+				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model}${extendedThinking ? ` thinking=${config.voice_thinking}` : ''})`),
 				onmessage: (msg) => {
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
 					if (msg.goAway) {
@@ -1152,7 +1091,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						logger.log(`📩 Voice AI turn complete reason: ${sc.turnCompleteReason}`);
 					}
 
-					if (caps.interactionStatus && sc.interactionStatus) {
+					if (sc.interactionStatus) {
 						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;
 						if (thinking !== modelThinking) {
 							modelThinking = thinking;
@@ -1286,7 +1225,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			if (botIsSpeaking() && !tryBargeIn(userId, vad, rms)) {
 				stats.framesDropped++;
-				if (userId === lockedSpeakerId && rms >= VOICE_RMS_THRESHOLD) keepAliveFromLockedSpeaker();
 				return;
 			}
 
@@ -1330,8 +1268,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				vad.active = false;
 				vad.onset = 0;
 			}
-
-			if (userId === lockedSpeakerId && now - vad.lastVoiceAt < SPEECH_RECENT_MS) keepAliveFromLockedSpeaker();
 
 			if (!vad.active) {
 				stats.framesNoise++;

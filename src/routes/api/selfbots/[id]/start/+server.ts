@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 			return json({ success: false, error: 'Access denied' }, { status: 403 });
 		}
 
-		const selfbot = await db.getServerBotById(selfbotId);
+		const selfbot = await db.getSelfbotById(selfbotId);
 		if (!selfbot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
 
 		const result = await startBotById(selfbot.id, selfbot);

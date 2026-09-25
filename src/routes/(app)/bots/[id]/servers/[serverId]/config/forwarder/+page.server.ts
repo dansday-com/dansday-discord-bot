@@ -10,11 +10,24 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const panelId = await db.getServerPanelId(Number(params.serverId)).catch(() => null);
 	const selfbots = panelId == null ? [] : await db.getPanelSelfbots(panelId).catch(() => []);
+	const sourceServers = panelId == null ? [] : await db.getPanelSourceServers(panelId).catch(() => []);
 	const runningSelfbot = selfbots.find((sb) => sb.status === 'running' && typeof sb.token === 'string' && sb.token.trim() !== '');
 
+	const settings = normalizeForwarderSettings(row?.settings ?? {});
+	settings.forwarders = await Promise.all(
+		settings.forwarders.map(async (raw) => {
+			const fw = raw as Record<string, unknown>;
+			if (typeof fw?.source_guild_id === 'string' && fw.source_guild_id) return fw;
+			if (!fw?.server_id) return fw;
+			const discordServerId = await db.getSelfbotServerDiscordId(Number(fw.server_id)).catch(() => null);
+			if (!discordServerId) return fw;
+			return { ...fw, source_guild_id: discordServerId };
+		})
+	);
+
 	return {
-		settings: normalizeForwarderSettings(row?.settings ?? {}),
-		selfbots: selfbots.map((sb) => ({ id: sb.id, name: sb.name })),
+		settings,
+		sourceServers: sourceServers.map((s) => ({ discord_server_id: s.discord_server_id, name: s.name, server_icon: s.server_icon })),
 		hasSelfbots: selfbots.length > 0,
 		hasRunningSelfbot: !!runningSelfbot
 	};

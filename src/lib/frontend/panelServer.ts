@@ -253,10 +253,10 @@ export async function canUseEmbedBuilder(locals: App.Locals, serverId: string | 
 export async function canReadSelfbotTopology(locals: App.Locals, selfbotId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
 	const db = await getDb();
-	const sb = await db.getServerBotById(selfbotId);
+	const sb = await db.getSelfbotById(selfbotId);
 	if (!sb) return false;
 
-	const selfbotPanelId = sb.panel_id ?? (sb.server_id != null ? await db.getServerPanelId(sb.server_id) : null);
+	const selfbotPanelId = sb.panel_id;
 	if (selfbotPanelId == null) return false;
 
 	if (locals.user.account_source === 'accounts') return locals.user.panel_id === selfbotPanelId;
@@ -270,10 +270,9 @@ export async function canManagePanelSelfbots(locals: App.Locals, selfbotId: numb
 	const panelId = getPanelId(locals);
 	if (panelId == null) return false;
 	const db = await getDb();
-	const sb = await db.getServerBotById(selfbotId);
+	const sb = await db.getSelfbotById(selfbotId);
 	if (!sb) return false;
-	if (sb.panel_id != null) return sb.panel_id === panelId;
-	return sb.server_id != null && accountOwnsServer(locals, sb.server_id);
+	return sb.panel_id === panelId;
 }
 
 export function isGuildStaffUser(user: App.Locals['user']): boolean {
@@ -306,10 +305,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 			const panelId = getPanelId(locals);
 			if (panelId == null) return false;
 			const db = await getDb();
-			const sb = await db.getServerBotById(Number(match[1]));
+			const sb = await db.getSelfbotById(Number(match[1]));
 			if (!sb) return false;
-			if (sb.panel_id != null) return sb.panel_id === panelId;
-			return sb.server_id != null && accountOwnsServer(locals, sb.server_id);
+			return sb.panel_id === panelId;
 		},
 		superadminOnly: true
 	},
@@ -331,6 +329,16 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	},
 	{
 		pattern: /^\/api\/servers\/(\d+)\/channels/,
+		check: async (locals, match) => {
+			const id = Number(match[1]);
+			if (!locals.user.authenticated) return false;
+			return locals.user.account_source === 'accounts'
+				? accountOwnsServer(locals, id)
+				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
+		}
+	},
+	{
+		pattern: /^\/api\/servers\/(\d+)\/source-servers/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
 			if (!locals.user.authenticated) return false;

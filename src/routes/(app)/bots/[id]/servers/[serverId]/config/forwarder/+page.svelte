@@ -10,9 +10,8 @@
 	let { data }: PageProps = $props();
 
 	type Forwarder = {
-		selfbot_id: number | '';
-		selfbot_name?: string;
-		server_id: number | '';
+		source_guild_id: string;
+		source_guild_name?: string;
 		source_channels: string[];
 		source_channel_names?: string[];
 		target_channel_id: string;
@@ -29,48 +28,31 @@
 	let editIndex = $state<number | null>(null);
 	let draft = $state<Forwarder>(emptyForwarder());
 
-	let selfbots = $state<any[]>(data.selfbots ?? []);
-	let selfbotServers = $state<any[]>([]);
-	let selfbotChannels = $state<any[]>([]);
-	let selfbotCategories = $state<any[]>([]);
-	let loadingServers = $state(false);
+	let sourceServers = $state<any[]>(data.sourceServers ?? []);
+	let sourceChannels = $state<any[]>([]);
+	let sourceCategories = $state<any[]>([]);
 	let loadingChannels = $state(false);
 	let hydratedListNames = $state(false);
 
-	const serverCacheBySelfbotId = new Map<string, any[]>();
-	const channelsCacheBySelfbotAndServer = new Map<string, { channels: any[]; categories: any[] }>();
+	const channelsCacheByGuild = new Map<string, { channels: any[]; categories: any[] }>();
 
 	function emptyForwarder(): Forwarder {
-		return { selfbot_id: '', server_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
+		return { source_guild_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
 	}
 
 	$effect(() => {
 		if (!hydratedListNames) hydrateForwarderSourceChannelNames();
 	});
 
-	async function fetchSelfbotServers(selfbotId: number): Promise<any[]> {
-		const key = String(selfbotId);
-		if (serverCacheBySelfbotId.has(key)) return serverCacheBySelfbotId.get(key) || [];
+	async function fetchSourceChannels(guildId: string): Promise<{ channels: any[]; categories: any[] }> {
+		const key = String(guildId);
+		if (channelsCacheByGuild.has(key)) return channelsCacheByGuild.get(key) || { channels: [], categories: [] };
 		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers`, { credentials: 'include' });
-			if (!res.ok) return [];
-			const list = await res.json();
-			serverCacheBySelfbotId.set(key, Array.isArray(list) ? list : []);
-			return serverCacheBySelfbotId.get(key) || [];
-		} catch (_) {
-			return [];
-		}
-	}
-
-	async function fetchSelfbotChannels(selfbotId: number, serverId: number): Promise<{ channels: any[]; categories: any[] }> {
-		const key = `${selfbotId}:${serverId}`;
-		if (channelsCacheBySelfbotAndServer.has(key)) return channelsCacheBySelfbotAndServer.get(key) || { channels: [], categories: [] };
-		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers/${serverId}/channels`, { credentials: 'include' });
+			const res = await fetch(`/api/servers/${data.serverId}/source-servers/${guildId}/channels`, { credentials: 'include' });
 			if (!res.ok) return { channels: [], categories: [] };
 			const d = await res.json();
 			const value = { channels: d?.channels ?? [], categories: d?.categories ?? [] };
-			channelsCacheBySelfbotAndServer.set(key, value);
+			channelsCacheByGuild.set(key, value);
 			return value;
 		} catch (_) {
 			return { channels: [], categories: [] };
@@ -79,7 +61,7 @@
 
 	async function hydrateForwarderSourceChannelNames() {
 		if (hydratedListNames) return;
-		const needs = (forwarders || []).filter((fw) => fw?.selfbot_id && fw?.server_id && Array.isArray(fw?.source_channels) && fw.source_channels.length > 0);
+		const needs = (forwarders || []).filter((fw) => fw?.source_guild_id && Array.isArray(fw?.source_channels) && fw.source_channels.length > 0);
 		if (needs.length === 0) {
 			hydratedListNames = true;
 			return;
@@ -94,10 +76,10 @@
 			const updated = [...forwarders];
 			for (let i = 0; i < updated.length; i++) {
 				const fw = updated[i];
-				if (!fw?.selfbot_id || !fw?.server_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
+				if (!fw?.source_guild_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
 				if (Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length) continue;
 
-				const { channels } = await fetchSelfbotChannels(Number(fw.selfbot_id), Number(fw.server_id));
+				const { channels } = await fetchSourceChannels(String(fw.source_guild_id));
 				if (!Array.isArray(channels) || channels.length === 0) continue;
 
 				const names = fw.source_channels.map((id) => channelName(id, channels));
@@ -112,8 +94,8 @@
 	async function openAdd() {
 		draft = emptyForwarder();
 		editIndex = null;
-		selfbotServers = [];
-		selfbotChannels = [];
+		sourceChannels = [];
+		sourceCategories = [];
 		modalOpen = true;
 	}
 
@@ -121,71 +103,41 @@
 		const fw = forwarders[i];
 		draft = { ...fw, source_channels: [...(fw.source_channels ?? [])], role_pings: [...(fw.role_pings ?? [])] };
 		editIndex = i;
-		selfbotServers = [];
-		selfbotChannels = [];
-		if (draft.selfbot_id) await loadServers(draft.selfbot_id);
-		if (draft.selfbot_id && draft.server_id) await loadChannels(draft.selfbot_id, draft.server_id);
+		sourceChannels = [];
+		sourceCategories = [];
+		if (draft.source_guild_id) await loadChannels(draft.source_guild_id);
 		modalOpen = true;
 	}
 
-	async function loadServers(selfbotId: number | '') {
-		if (!selfbotId) {
-			selfbotServers = [];
-			selfbotChannels = [];
-			selfbotCategories = [];
-			return;
-		}
-		loadingServers = true;
-		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers`, { credentials: 'include' });
-			if (res.ok) selfbotServers = await res.json();
-		} catch (_) {}
-		loadingServers = false;
-	}
-
-	async function loadChannels(selfbotId: number | '', serverId: number | '') {
-		if (!selfbotId || !serverId) {
-			selfbotChannels = [];
-			selfbotCategories = [];
+	async function loadChannels(guildId: string) {
+		if (!guildId) {
+			sourceChannels = [];
+			sourceCategories = [];
 			return;
 		}
 		loadingChannels = true;
-		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers/${serverId}/channels`, { credentials: 'include' });
-			if (res.ok) {
-				const d = await res.json();
-				selfbotChannels = d?.channels ?? [];
-				selfbotCategories = d?.categories ?? [];
-			}
-		} catch (_) {}
+		const { channels, categories } = await fetchSourceChannels(guildId);
+		sourceChannels = channels;
+		sourceCategories = categories;
 		loadingChannels = false;
 	}
 
-	async function onSelfbotChange(e: Event) {
+	async function onSourceServerChange(e: Event) {
 		const val = (e.target as HTMLSelectElement).value;
-		draft = { ...draft, selfbot_id: val ? Number(val) : '', server_id: '', source_channels: [] };
-		selfbotServers = [];
-		selfbotChannels = [];
-		selfbotCategories = [];
-		if (val) await loadServers(Number(val));
-	}
-
-	async function onServerChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
-		draft = { ...draft, server_id: val ? Number(val) : '', source_channels: [] };
-		selfbotChannels = [];
-		selfbotCategories = [];
-		if (val) await loadChannels(draft.selfbot_id, Number(val));
+		draft = { ...draft, source_guild_id: val, source_channels: [] };
+		sourceChannels = [];
+		sourceCategories = [];
+		if (val) await loadChannels(val);
 	}
 
 	function channelName(id: string, list: any[]) {
 		return list.find((c: any) => c.discord_channel_id === id)?.name ?? id;
 	}
 
-	function selfbotNameById(id: number | '') {
-		if (!id) return '';
-		const sb = selfbots.find((b: any) => String(b?.id) === String(id));
-		return (sb?.name || sb?.username || sb?.userTag || sb?.tag || '') as string;
+	function sourceServerName(guildId: string) {
+		if (!guildId) return '';
+		const s = sourceServers.find((sv: any) => String(sv?.discord_server_id) === String(guildId));
+		return (s?.name || '') as string;
 	}
 
 	function formatChannelList(names: string[], max = 3) {
@@ -200,9 +152,9 @@
 
 	function saveModal() {
 		const entry: Forwarder = { ...draft };
-		entry.selfbot_name = selfbotNameById(entry.selfbot_id) || entry.selfbot_name;
-		if (selfbotChannels?.length && entry.source_channels?.length) {
-			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, selfbotChannels));
+		entry.source_guild_name = sourceServerName(entry.source_guild_id) || entry.source_guild_name;
+		if (sourceChannels?.length && entry.source_channels?.length) {
+			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, sourceChannels));
 		}
 		if (editIndex !== null) {
 			const next = [...forwarders];
@@ -285,9 +237,11 @@
 					<div class="bg-ash-700 border-ash-600 rounded-lg border p-3">
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1 space-y-1 text-xs">
-								{#if fw.selfbot_id}
+								{#if fw.source_guild_id}
 									<div class="text-ash-100 flex items-center gap-1.5 font-medium">
-										<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Account #${fw.selfbot_id}`}
+										<i class="fas fa-server text-violet-400"></i>{sourceServerName(fw.source_guild_id) ||
+											fw.source_guild_name ||
+											`Server ${fw.source_guild_id}`}
 									</div>
 								{/if}
 								{#if fw.source_channels?.length}
@@ -296,7 +250,7 @@
 										{#if fw.source_channel_names?.length}
 											{formatChannelList(fw.source_channel_names)}
 										{:else}
-											{formatChannelList(fw.source_channels.map((id) => channelName(id, selfbotChannels))) ||
+											{formatChannelList(fw.source_channels.map((id) => channelName(id, sourceChannels))) ||
 												`${fw.source_channels.length} channel${fw.source_channels.length !== 1 ? 's' : ''}`}
 										{/if}
 									</div>
@@ -373,37 +327,19 @@
 
 			<div class="flex-1 space-y-4 overflow-y-auto">
 				<div>
-					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5 text-violet-400"></i>Source account</label
+					<label for="fw-source-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
+						><i class="fas fa-server mr-1.5 text-violet-400"></i>Source server</label
 					>
-					<p class="text-ash-500 mb-2 text-xs">Pick the linked account that will forward messages.</p>
+					<p class="text-ash-500 mb-2 text-xs">Select the server messages will be forwarded from.</p>
 					<select
-						id="fw-selfbot"
-						value={draft.selfbot_id}
-						onchange={onSelfbotChange}
+						id="fw-source-server"
+						value={draft.source_guild_id}
+						onchange={onSourceServerChange}
 						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 					>
-						<option value="">Select account...</option>
-						{#each selfbots as bot}
-							<option value={bot.id}>{bot.name || `Account ${bot.id}`}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div>
-					<label for="fw-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
-						><i class="fas fa-server mr-1.5 text-violet-400"></i>Server (where the account is)</label
-					>
-					<p class="text-ash-500 mb-2 text-xs">Select the server the linked account is connected to.</p>
-					<select
-						id="fw-server"
-						value={draft.server_id}
-						onchange={onServerChange}
-						disabled={!draft.selfbot_id || loadingServers}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none disabled:opacity-50"
-					>
-						<option value="">{loadingServers ? 'Loading...' : 'Select server...'}</option>
-						{#each selfbotServers as server}
-							<option value={server.id}>{server.name || `Server ${server.id}`}</option>
+						<option value="">Select server...</option>
+						{#each sourceServers as server}
+							<option value={server.discord_server_id}>{server.name || `Server ${server.discord_server_id}`}</option>
 						{/each}
 					</select>
 				</div>
@@ -413,12 +349,12 @@
 					<p class="text-ash-500 mb-2 text-xs">Messages from these channels will be forwarded.</p>
 					{#if loadingChannels}
 						<p class="text-ash-500 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>Loading channels...</p>
-					{:else if !draft.server_id}
+					{:else if !draft.source_guild_id}
 						<p class="text-ash-500 text-xs italic">Select a server first.</p>
 					{:else}
 						<ChannelPicker
-							channels={selfbotChannels}
-							categories={selfbotCategories}
+							channels={sourceChannels}
+							categories={sourceCategories}
 							multi
 							value={draft.source_channels}
 							placeholder="Select source channels..."

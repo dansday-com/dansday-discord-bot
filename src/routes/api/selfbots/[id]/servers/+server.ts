@@ -6,7 +6,7 @@ import { canReadSelfbotTopology } from '$lib/frontend/panelServer.js';
 export const GET: RequestHandler = async ({ locals, params }) => {
 	try {
 		const id = Number(params.id);
-		const selfbot = await db.getServerBotById(id);
+		const selfbot = await db.getSelfbotById(id);
 		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
 		if (!(await canReadSelfbotTopology(locals, id))) {
 			return json({ error: 'Access denied' }, { status: 403 });

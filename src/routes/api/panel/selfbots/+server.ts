@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	let id: number;
 	try {
-		id = await db.addServerBot({ panel_id: panelId, name: 'Selfbot', token });
+		id = await db.addSelfbot({ panel_id: panelId, name: 'Selfbot', token });
 	} catch (err: any) {
 		logger.error(`Failed to add selfbot for panel ${panelId}: ${err?.message ?? err}`);
 		return json({ success: false, error: 'Failed to add selfbot' }, { status: 500 });
@@ -48,12 +48,12 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 	const selfbotId = Number(body.selfbot_id);
 	if (!selfbotId) return json({ success: false, error: 'selfbot_id required' }, { status: 400 });
 
-	const selfbot = await db.getServerBotById(selfbotId);
+	const selfbot = await db.getSelfbotById(selfbotId);
 	if (!selfbot || selfbot.panel_id !== panelId) {
 		return json({ success: false, error: 'Selfbot not found' }, { status: 404 });
 	}
 
-	await db.removeServerBot(selfbotId);
+	await db.removeSelfbot(selfbotId);
 	if (locals.user.authenticated) logger.log(`${locals.user.username} deleted selfbot "${selfbot.name}" (ID: ${selfbotId}) from panel ${panelId}`);
 	return json({ success: true });
 };

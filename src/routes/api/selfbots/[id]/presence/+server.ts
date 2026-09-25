@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { presenceFromDbRow, type ServerBotStatusInput } from '$lib/database.js';
+import db, { presenceFromDbRow, type SelfbotStatusInput } from '$lib/database.js';
 import { canManagePanelSelfbots } from '$lib/frontend/panelServer.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ error: 'Invalid selfbot id' }, { status: 400 });
 	}
 
-	const selfbot = await db.getServerBotById(selfbotId);
+	const selfbot = await db.getSelfbotById(selfbotId);
 	if (!selfbot) {
 		return json({ error: 'Selfbot not found' }, { status: 404 });
 	}
@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
-	const row = await db.getServerBotStatusByServerBotId(selfbotId);
+	const row = await db.getSelfbotStatus(selfbotId);
 	return json({ presence: presenceFromDbRow(row) });
 };
 
@@ -57,7 +57,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Invalid selfbot id' }, { status: 400 });
 	}
 
-	const selfbot = await db.getServerBotById(selfbotId);
+	const selfbot = await db.getSelfbotById(selfbotId);
 	if (!selfbot) {
 		return json({ success: false, error: 'Selfbot not found' }, { status: 404 });
 	}
@@ -122,14 +122,14 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		}
 	}
 
-	const payload: ServerBotStatusInput = {
-		discord_status: discord_status as ServerBotStatusInput['discord_status'],
-		activity_type: activity_type as ServerBotStatusInput['activity_type'],
+	const payload: SelfbotStatusInput = {
+		discord_status: discord_status as SelfbotStatusInput['discord_status'],
+		activity_type: activity_type as SelfbotStatusInput['activity_type'],
 		activity_name,
 		activity_url,
 		activity_state
 	};
 
-	const saved = await db.upsertServerBotStatus(selfbotId, payload);
+	const saved = await db.upsertSelfbotStatus(selfbotId, payload);
 	return json({ success: true, presence: presenceFromDbRow(saved) });
 };

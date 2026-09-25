@@ -554,11 +554,10 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 
 	const selfbotCount = 1 + (rngFor(1)(demoPanel.id) % 5);
 	await db
-		.insert(schema.serverBots)
+		.insert(schema.selfbots)
 		.values(
 			Array.from({ length: selfbotCount }).map((_, i) => ({
 				panel_id: demoPanel.id,
-				server_id: null,
 				name: `Demo Selfbot #${i + 1}`,
 				token: 'DEMO_TOKEN_DO_NOT_USE',
 				bot_icon: null,

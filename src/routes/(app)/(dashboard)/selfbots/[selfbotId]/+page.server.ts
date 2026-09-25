@@ -13,22 +13,22 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const panelId = locals.user.account_source === 'accounts' ? (locals.user.panel_id ?? null) : null;
 	if (panelId == null) redirect(302, '/selfbots');
 
-	let bot = await db.getServerBotById(selfbotId);
+	let bot = await db.getSelfbotById(selfbotId);
 	if (!bot || bot.panel_id !== panelId) redirect(302, '/selfbots');
 
 	if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 		try {
 			process.kill(bot.process_id, 0);
 		} catch (_) {
-			await db.updateServerBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-			const refreshed = await db.getServerBotById(selfbotId);
+			await db.updateSelfbot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+			const refreshed = await db.getSelfbotById(selfbotId);
 			if (refreshed) bot = refreshed;
 		}
 	}
 
 	const servers = await db.getServersForSelfbot(selfbotId);
 
-	const statusRow = await db.getServerBotStatusByServerBotId(selfbotId);
+	const statusRow = await db.getSelfbotStatus(selfbotId);
 	const selfbotPresence = presenceFromDbRow(statusRow);
 
 	const { token: _token, ...botPublic } = bot as typeof bot & { token?: string };

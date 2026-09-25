@@ -6,9 +6,15 @@
 		enabled?: boolean;
 		ariaLabel?: string;
 		disabled?: boolean;
+		onchange?: (value: boolean) => void;
 	};
 
-	let { label, description = '', labelIconClass, enabled = $bindable(false), ariaLabel, disabled = false }: Props = $props();
+	let { label, description = '', labelIconClass, enabled = $bindable(false), ariaLabel, disabled = false, onchange }: Props = $props();
+
+	function toggle() {
+		enabled = !enabled;
+		onchange?.(enabled);
+	}
 </script>
 
 <div class="flex items-start justify-between gap-4">
@@ -26,7 +32,7 @@
 	<button
 		type="button"
 		{disabled}
-		onclick={() => (enabled = !enabled)}
+		onclick={toggle}
 		class="focus:ring-ash-500 relative mt-0.5 h-6 w-10 flex-shrink-0 rounded-full transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 {enabled
 			? 'bg-ash-400'
 			: 'bg-ash-700'}"

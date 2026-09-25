@@ -82,7 +82,7 @@ function isSelfbot(bot: any): boolean {
 
 async function updateBotStatus(bot: any, data: { status: string; process_id?: number | null; uptime_started_at?: any }) {
 	if (isSelfbot(bot)) {
-		await db.updateServerBot(bot.id, data);
+		await db.updateSelfbot(bot.id, data);
 	} else {
 		await db.updateBot(bot.id, data);
 	}
@@ -446,12 +446,12 @@ export async function verifyBotStatuses() {
 				}
 			}
 		}
-		const selfbots = await db.getAllServerBots();
+		const selfbots = await db.getAllSelfbots();
 		for (const sb of selfbots) {
 			if (sb.status === 'running' || sb.status === 'starting' || sb.status === 'stopping') {
 				if (!sb.process_id) {
 					if (sb.status === 'stopping') {
-						await db.updateServerBot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+						await db.updateSelfbot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
 					continue;
 				}
@@ -462,14 +462,14 @@ export async function verifyBotStatuses() {
 						botProcesses.set(botProcessMapKey('selfbot', sb.id), { process: null, pid: sb.process_id, startTime: null, status: 'running' });
 						logger.log(`♻️  Re-adopted selfbot ${sb.id} (${sb.name}) PID ${sb.process_id}`);
 					} else {
-						await db.updateServerBot(sb.id, {
+						await db.updateSelfbot(sb.id, {
 							status: sb.status === 'stopping' ? 'stopped' : 'running',
 							process_id: null,
 							uptime_started_at: null
 						});
 					}
 				} catch (_) {
-					await db.updateServerBot(sb.id, {
+					await db.updateSelfbot(sb.id, {
 						status: sb.status === 'stopping' ? 'stopped' : 'running',
 						process_id: null,
 						uptime_started_at: null

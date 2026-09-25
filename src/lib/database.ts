@@ -598,28 +598,28 @@ export async function deleteBotWiki(botId: number, wikiId: number) {
 	return true;
 }
 
-export type ServerBotStatusInput = BotStatusInput;
+export type SelfbotStatusInput = BotStatusInput;
 
-export const DEFAULT_SERVER_BOT_PRESENCE: ServerBotStatusInput = DEFAULT_BOT_PRESENCE;
+export const DEFAULT_SELFBOT_PRESENCE: SelfbotStatusInput = DEFAULT_BOT_PRESENCE;
 
-export async function getServerBotStatusByServerBotId(serverBotId: number) {
+export async function getSelfbotStatus(selfbotId: number) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.serverBotStatus)
-		.where(eq(schema.serverBotStatus.server_bot_id, Number(serverBotId)))
+		.from(schema.selfbotStatus)
+		.where(eq(schema.selfbotStatus.selfbot_id, Number(selfbotId)))
 		.limit(1);
 	return rows[0] ?? null;
 }
 
-export async function upsertServerBotStatus(serverBotId: number, data: ServerBotStatusInput) {
+export async function upsertSelfbotStatus(selfbotId: number, data: SelfbotStatusInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const stateTrimmed = data.activity_state?.trim() ? data.activity_state.trim() : null;
 	await db
-		.insert(schema.serverBotStatus)
+		.insert(schema.selfbotStatus)
 		.values({
-			server_bot_id: serverBotId,
+			selfbot_id: selfbotId,
 			discord_status: data.discord_status,
 			activity_type: data.activity_type,
 			activity_name: data.activity_name,
@@ -638,7 +638,7 @@ export async function upsertServerBotStatus(serverBotId: number, data: ServerBot
 				updated_at: now as any
 			}
 		});
-	return getServerBotStatusByServerBotId(serverBotId);
+	return getSelfbotStatus(selfbotId);
 }
 
 export async function getBotPanelId(botId: number): Promise<number | null> {
@@ -818,17 +818,88 @@ export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
 
 export async function getServersForSelfbot(selfbotId: number) {
 	await initializeDatabase();
-	return db.select().from(schema.serverBotServers).where(eq(schema.serverBotServers.server_bot_id, selfbotId)).orderBy(asc(schema.serverBotServers.name));
+	return db.select().from(schema.selfbotServers).where(eq(schema.selfbotServers.selfbot_id, selfbotId)).orderBy(asc(schema.selfbotServers.name));
 }
 
-export async function getServerBotServerForSelfbot(selfbotId: number, serverBotServerId: number) {
+export async function getSelfbotServer(selfbotId: number, selfbotServerId: number) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.serverBotServers)
-		.where(and(eq(schema.serverBotServers.server_bot_id, selfbotId), eq(schema.serverBotServers.id, serverBotServerId)))
+		.from(schema.selfbotServers)
+		.where(and(eq(schema.selfbotServers.selfbot_id, selfbotId), eq(schema.selfbotServers.id, selfbotServerId)))
 		.limit(1);
 	return rows[0] ?? null;
+}
+
+export async function getPanelSourceServers(panelId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select({
+			discord_server_id: schema.selfbotServers.discord_server_id,
+			name: schema.selfbotServers.name,
+			server_icon: schema.selfbotServers.server_icon,
+			total_members: schema.selfbotServers.total_members
+		})
+		.from(schema.selfbotServers)
+		.innerJoin(schema.selfbots, eq(schema.selfbotServers.selfbot_id, schema.selfbots.id))
+		.where(eq(schema.selfbots.panel_id, Number(panelId)))
+		.orderBy(asc(schema.selfbotServers.name));
+
+	const byDiscordId = new Map<string, (typeof rows)[number]>();
+	for (const row of rows) {
+		const key = String(row.discord_server_id);
+		const existing = byDiscordId.get(key);
+		if (!existing || Number(row.total_members ?? 0) > Number(existing.total_members ?? 0)) byDiscordId.set(key, row);
+	}
+	return [...byDiscordId.values()];
+}
+
+export async function getPanelSourceServerRows(panelId: number, discordServerId: string) {
+	await initializeDatabase();
+	return db
+		.select({ id: schema.selfbotServers.id, selfbot_id: schema.selfbotServers.selfbot_id })
+		.from(schema.selfbotServers)
+		.innerJoin(schema.selfbots, eq(schema.selfbotServers.selfbot_id, schema.selfbots.id))
+		.where(and(eq(schema.selfbots.panel_id, Number(panelId)), eq(schema.selfbotServers.discord_server_id, String(discordServerId))))
+		.orderBy(asc(schema.selfbotServers.selfbot_id));
+}
+
+export async function getPrimarySelfbotIdForSourceGuild(officialBotId: number, discordServerId: string) {
+	await initializeDatabase();
+	const panelId = await getBotPanelId(officialBotId);
+	if (panelId == null) return null;
+	const rows = await getPanelSourceServerRows(panelId, discordServerId);
+	return rows[0] ? Number(rows[0].selfbot_id) : null;
+}
+
+export async function getSelfbotServerDiscordId(selfbotServerId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ discord_server_id: schema.selfbotServers.discord_server_id })
+		.from(schema.selfbotServers)
+		.where(eq(schema.selfbotServers.id, Number(selfbotServerId)))
+		.limit(1);
+	return rows[0]?.discord_server_id ?? null;
+}
+
+export async function getPanelSourceServerTopology(panelId: number, discordServerId: string) {
+	const sources = await getPanelSourceServerRows(panelId, discordServerId);
+	if (sources.length === 0) return { channels: [], categories: [] };
+
+	const categories = new Map<string, any>();
+	const channels = new Map<string, any>();
+
+	for (const source of sources) {
+		const [rawChannels, rawCategories] = await Promise.all([getSelfbotChannelsForServer(source.id), getSelfbotCategoriesForServer(source.id)]);
+		for (const cat of rawCategories) {
+			if (!categories.has(cat.discord_category_id)) categories.set(cat.discord_category_id, cat);
+		}
+		for (const ch of rawChannels) {
+			if (!channels.has(ch.discord_channel_id)) channels.set(ch.discord_channel_id, ch);
+		}
+	}
+
+	return { channels: [...channels.values()], categories: [...categories.values()] };
 }
 
 export async function getOfficialServerByDiscordId(officialBotId: number, discordServerId: string) {
@@ -845,8 +916,8 @@ export async function getSelfbotServerByDiscordId(selfbotId: number, discordServ
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.serverBotServers)
-		.where(and(eq(schema.serverBotServers.server_bot_id, selfbotId), eq(schema.serverBotServers.discord_server_id, discordServerId)))
+		.from(schema.selfbotServers)
+		.where(and(eq(schema.selfbotServers.selfbot_id, selfbotId), eq(schema.selfbotServers.discord_server_id, discordServerId)))
 		.limit(1);
 	return rows[0] || null;
 }
@@ -1053,16 +1124,12 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 }
 
 export async function upsertSelfbotServer(selfbotId: number, guild: any) {
-	return upsertServerBotServer(selfbotId, guild);
-}
-
-export async function upsertServerBotServer(serverBotId: number, guild: any) {
 	await initializeDatabase();
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT INTO server_bot_servers (server_bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
-		VALUES (${serverBotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.boosters}, ${v.boostLevel}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
+		INSERT INTO selfbot_servers (selfbot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+		VALUES (${selfbotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.boosters}, ${v.boostLevel}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
 		ON DUPLICATE KEY UPDATE
 			name = VALUES(name),
 			total_members = VALUES(total_members),
@@ -1070,31 +1137,31 @@ export async function upsertServerBotServer(serverBotId: number, guild: any) {
 			total_boosters = VALUES(total_boosters),
 			boost_level = VALUES(boost_level),
 			server_icon = VALUES(server_icon),
-			discord_created_at = COALESCE(server_bot_servers.discord_created_at, VALUES(discord_created_at)),
+			discord_created_at = COALESCE(selfbot_servers.discord_created_at, VALUES(discord_created_at)),
 			vanity_url_code = VALUES(vanity_url_code),
-			invite_code = COALESCE(VALUES(invite_code), server_bot_servers.invite_code),
+			invite_code = COALESCE(VALUES(invite_code), selfbot_servers.invite_code),
 			updated_at = VALUES(updated_at)
 	`);
 	const rows = await db
 		.select()
-		.from(schema.serverBotServers)
-		.where(and(eq(schema.serverBotServers.server_bot_id, Number(serverBotId)), eq(schema.serverBotServers.discord_server_id, String(guild.id))))
+		.from(schema.selfbotServers)
+		.where(and(eq(schema.selfbotServers.selfbot_id, Number(selfbotId)), eq(schema.selfbotServers.discord_server_id, String(guild.id))))
 		.limit(1);
 	return rows[0] || null;
 }
 
-export async function syncServerBotCategories(serverBotServerId: number, categories: any[]) {
+export async function syncSelfbotCategories(selfbotServerId: number, categories: any[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const sid = Number(serverBotServerId);
+	const sid = Number(selfbotServerId);
 
 	if (categories && categories.length > 0) {
 		await Promise.all(
 			categories.map((cat) =>
 				db
-					.insert(schema.serverBotServerCategories)
+					.insert(schema.selfbotServerCategories)
 					.values({
-						server_bot_server_id: sid,
+						selfbot_server_id: sid,
 						discord_category_id: String(cat.id),
 						name: cat.name ?? null,
 						position: cat.position ?? null,
@@ -1109,32 +1176,32 @@ export async function syncServerBotCategories(serverBotServerId: number, categor
 
 	const discordIds = new Set((categories ?? []).map((c) => String(c.id)));
 	const dbCats = await db
-		.select({ id: schema.serverBotServerCategories.id, discord_category_id: schema.serverBotServerCategories.discord_category_id })
-		.from(schema.serverBotServerCategories)
-		.where(eq(schema.serverBotServerCategories.server_bot_server_id, sid));
+		.select({ id: schema.selfbotServerCategories.id, discord_category_id: schema.selfbotServerCategories.discord_category_id })
+		.from(schema.selfbotServerCategories)
+		.where(eq(schema.selfbotServerCategories.selfbot_server_id, sid));
 	const toDelete = dbCats.filter((c) => !discordIds.has(c.discord_category_id)).map((c) => c.id);
 	if (toDelete.length > 0) {
 		await db
-			.delete(schema.serverBotServerCategories)
-			.where(and(eq(schema.serverBotServerCategories.server_bot_server_id, sid), inArray(schema.serverBotServerCategories.id, toDelete)));
+			.delete(schema.selfbotServerCategories)
+			.where(and(eq(schema.selfbotServerCategories.selfbot_server_id, sid), inArray(schema.selfbotServerCategories.id, toDelete)));
 	}
 
 	return true;
 }
 
-export async function syncServerBotChannels(serverBotServerId: number, channels: any[]) {
+export async function syncSelfbotChannels(selfbotServerId: number, channels: any[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const sid = Number(serverBotServerId);
+	const sid = Number(selfbotServerId);
 	const valid = (channels ?? []).filter((ch) => ch.type !== 4);
 
 	if (valid.length > 0) {
 		await Promise.all(
 			valid.map((ch) =>
 				db
-					.insert(schema.serverBotServerChannels)
+					.insert(schema.selfbotServerChannels)
 					.values({
-						server_bot_server_id: sid,
+						selfbot_server_id: sid,
 						discord_channel_id: String(ch.id),
 						name: ch.name ?? null,
 						type: ch.type ?? null,
@@ -1159,35 +1226,35 @@ export async function syncServerBotChannels(serverBotServerId: number, channels:
 
 	const discordIds = new Set(valid.map((ch) => String(ch.id)));
 	const dbChannels = await db
-		.select({ id: schema.serverBotServerChannels.id, discord_channel_id: schema.serverBotServerChannels.discord_channel_id })
-		.from(schema.serverBotServerChannels)
-		.where(eq(schema.serverBotServerChannels.server_bot_server_id, sid));
+		.select({ id: schema.selfbotServerChannels.id, discord_channel_id: schema.selfbotServerChannels.discord_channel_id })
+		.from(schema.selfbotServerChannels)
+		.where(eq(schema.selfbotServerChannels.selfbot_server_id, sid));
 	const toDelete = dbChannels.filter((ch) => !discordIds.has(ch.discord_channel_id)).map((ch) => ch.id);
 	if (toDelete.length > 0) {
 		await db
-			.delete(schema.serverBotServerChannels)
-			.where(and(eq(schema.serverBotServerChannels.server_bot_server_id, sid), inArray(schema.serverBotServerChannels.id, toDelete)));
+			.delete(schema.selfbotServerChannels)
+			.where(and(eq(schema.selfbotServerChannels.selfbot_server_id, sid), inArray(schema.selfbotServerChannels.id, toDelete)));
 	}
 
 	return true;
 }
 
-export async function getServerBotCategoriesForServer(serverBotServerId: number) {
+export async function getSelfbotCategoriesForServer(selfbotServerId: number) {
 	await initializeDatabase();
 	return db
 		.select()
-		.from(schema.serverBotServerCategories)
-		.where(eq(schema.serverBotServerCategories.server_bot_server_id, serverBotServerId))
-		.orderBy(asc(schema.serverBotServerCategories.position), asc(schema.serverBotServerCategories.name));
+		.from(schema.selfbotServerCategories)
+		.where(eq(schema.selfbotServerCategories.selfbot_server_id, selfbotServerId))
+		.orderBy(asc(schema.selfbotServerCategories.position), asc(schema.selfbotServerCategories.name));
 }
 
-export async function getServerBotChannelsForServer(serverBotServerId: number) {
+export async function getSelfbotChannelsForServer(selfbotServerId: number) {
 	await initializeDatabase();
 	return db
 		.select()
-		.from(schema.serverBotServerChannels)
-		.where(eq(schema.serverBotServerChannels.server_bot_server_id, serverBotServerId))
-		.orderBy(asc(schema.serverBotServerChannels.position), asc(schema.serverBotServerChannels.name));
+		.from(schema.selfbotServerChannels)
+		.where(eq(schema.selfbotServerChannels.selfbot_server_id, selfbotServerId))
+		.orderBy(asc(schema.selfbotServerChannels.position), asc(schema.selfbotServerChannels.name));
 }
 
 export async function upsertServer(botId: number, guild: any) {
@@ -4417,10 +4484,8 @@ export async function getPanelOverview(panelId: number) {
             SELECT
                 COUNT(*) as count,
                 SUM(CASE WHEN sb.status = 'running' THEN 1 ELSE 0 END) as running_count
-            FROM server_bots sb
-            LEFT JOIN servers s ON sb.server_id = s.id
-            LEFT JOIN bots b ON s.bot_id = b.id
-            WHERE (sb.panel_id = ${Number(panelId)} OR (b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL))
+            FROM selfbots sb
+            WHERE sb.panel_id = ${Number(panelId)}
         `);
 		const sbRows = selfbotsResult[0] as any[];
 		if (sbRows && sbRows.length > 0) {
@@ -4430,10 +4495,8 @@ export async function getPanelOverview(panelId: number) {
 
 		const uptimeResult = await db.execute(sql`
             SELECT SUM(TIMESTAMPDIFF(SECOND, sb.uptime_started_at, UTC_TIMESTAMP())) * 1000 as uptime_ms
-            FROM server_bots sb
-            LEFT JOIN servers s ON sb.server_id = s.id
-            LEFT JOIN bots b ON s.bot_id = b.id
-            WHERE (sb.panel_id = ${Number(panelId)} OR (b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL))
+            FROM selfbots sb
+            WHERE sb.panel_id = ${Number(panelId)}
                 AND sb.status = 'running' AND sb.uptime_started_at IS NOT NULL
         `);
 		const upRows = uptimeResult[0] as any[];
@@ -5077,24 +5140,23 @@ async function getServerAccountInvitesByServer(serverId: number) {
 		.orderBy(desc(schema.serverAccountInvites.created_at));
 }
 
-async function getAllServerBots() {
-	return db.select().from(schema.serverBots);
+async function getAllSelfbots() {
+	return db.select().from(schema.selfbots);
 }
 
 async function getPanelSelfbots(panelId: number) {
 	await initializeDatabase();
 	return db
 		.select()
-		.from(schema.serverBots)
-		.where(eq(schema.serverBots.panel_id, Number(panelId)))
-		.orderBy(asc(schema.serverBots.id));
+		.from(schema.selfbots)
+		.where(eq(schema.selfbots.panel_id, Number(panelId)))
+		.orderBy(asc(schema.selfbots.id));
 }
 
-async function addServerBot(data: { panel_id: number; server_id?: number | null; name: string; token: string }) {
+async function addSelfbot(data: { panel_id: number; name: string; token: string }) {
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.serverBots).values({
+	const result = await db.insert(schema.selfbots).values({
 		panel_id: data.panel_id,
-		server_id: data.server_id ?? null,
 		name: data.name,
 		token: data.token,
 		status: 'stopped',
@@ -5104,7 +5166,7 @@ async function addServerBot(data: { panel_id: number; server_id?: number | null;
 	return (result[0] as any).insertId;
 }
 
-async function updateServerBot(
+async function updateSelfbot(
 	id: number,
 	data: Partial<{
 		name: string;
@@ -5116,36 +5178,27 @@ async function updateServerBot(
 	}>
 ) {
 	await db
-		.update(schema.serverBots)
+		.update(schema.selfbots)
 		.set({ ...data, updated_at: toMySQLDateTime() as any } as any)
-		.where(eq(schema.serverBots.id, id));
+		.where(eq(schema.selfbots.id, id));
 }
 
-async function removeServerBot(id: number) {
-	await db.delete(schema.serverBots).where(eq(schema.serverBots.id, id));
+async function removeSelfbot(id: number) {
+	await db.delete(schema.selfbots).where(eq(schema.selfbots.id, id));
 }
 
-async function getServerBotById(id: number) {
-	const rows = await db.select().from(schema.serverBots).where(eq(schema.serverBots.id, id)).limit(1);
+async function getSelfbotById(id: number) {
+	const rows = await db.select().from(schema.selfbots).where(eq(schema.selfbots.id, id)).limit(1);
 	return rows[0] || null;
 }
 
 async function getOfficialBotForSelfbot(selfbotId: number) {
-	const viaPanel = await db
-		.select({ bot: schema.bots })
-		.from(schema.serverBots)
-		.innerJoin(schema.bots, eq(schema.bots.panel_id, schema.serverBots.panel_id))
-		.where(and(eq(schema.serverBots.id, selfbotId), isNotNull(schema.serverBots.panel_id)))
-		.orderBy(asc(schema.bots.id))
-		.limit(1);
-	if (viaPanel[0]?.bot) return viaPanel[0].bot;
-
 	const rows = await db
 		.select({ bot: schema.bots })
-		.from(schema.serverBots)
-		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
-		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
-		.where(and(eq(schema.serverBots.id, selfbotId), isNotNull(schema.servers.bot_id)))
+		.from(schema.selfbots)
+		.innerJoin(schema.bots, eq(schema.bots.panel_id, schema.selfbots.panel_id))
+		.where(and(eq(schema.selfbots.id, selfbotId), isNotNull(schema.selfbots.panel_id)))
+		.orderBy(asc(schema.bots.id))
 		.limit(1);
 	return rows[0]?.bot || null;
 }
@@ -5164,20 +5217,8 @@ export async function getOfficialBotIdForServer(serverId: number): Promise<numbe
 async function getSelfbotsForOfficialBot(officialBotId: number) {
 	await initializeDatabase();
 	const panelId = await getBotPanelId(officialBotId);
-	const byId = new Map<number, typeof schema.serverBots.$inferSelect>();
-
-	if (panelId != null) {
-		for (const sb of await getPanelSelfbots(panelId)) byId.set(sb.id, sb);
-	}
-
-	const legacy = await db
-		.select({ selfbot: schema.serverBots })
-		.from(schema.serverBots)
-		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
-		.where(eq(schema.servers.bot_id, officialBotId));
-	for (const r of legacy) byId.set(r.selfbot.id, r.selfbot);
-
-	return [...byId.values()].sort((a, b) => a.id - b.id);
+	if (panelId == null) return [];
+	return getPanelSelfbots(panelId);
 }
 
 type ServerSettingsRow = {
@@ -6816,8 +6857,8 @@ export default {
 	updateBotWiki,
 	deleteBotWiki,
 	botWikiFromDbRow,
-	getServerBotStatusByServerBotId,
-	upsertServerBotStatus,
+	getSelfbotStatus,
+	upsertSelfbotStatus,
 	getServer,
 	getServersForBot,
 	deleteServer,
@@ -6829,7 +6870,12 @@ export default {
 	DELETION_RETENTION_DAYS,
 	getServerIdsForPanel,
 	getServersForSelfbot,
-	getServerBotServerForSelfbot,
+	getSelfbotServer,
+	getPanelSourceServers,
+	getPanelSourceServerRows,
+	getPanelSourceServerTopology,
+	getPrimarySelfbotIdForSourceGuild,
+	getSelfbotServerDiscordId,
 	getOfficialServerByDiscordId,
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
@@ -6843,11 +6889,10 @@ export default {
 	upsertServer,
 	upsertOfficialServer,
 	upsertSelfbotServer,
-	upsertServerBotServer,
-	syncServerBotCategories,
-	syncServerBotChannels,
-	getServerBotCategoriesForServer,
-	getServerBotChannelsForServer,
+	syncSelfbotCategories,
+	syncSelfbotChannels,
+	getSelfbotCategoriesForServer,
+	getSelfbotChannelsForServer,
 	listPublicServers,
 	upsertCategory,
 	syncCategories,
@@ -7027,11 +7072,11 @@ export default {
 	getServerAccountInviteByIdForServer,
 	updateServerAccountInvite,
 	getServerAccountInvitesByServer,
-	getAllServerBots,
-	getServerBotById,
-	addServerBot,
-	updateServerBot,
-	removeServerBot,
+	getAllSelfbots,
+	getSelfbotById,
+	addSelfbot,
+	updateSelfbot,
+	removeSelfbot,
 	getOfficialBotForSelfbot,
 	resolveOfficialBotIdForServer,
 	getOfficialBotIdForServer,

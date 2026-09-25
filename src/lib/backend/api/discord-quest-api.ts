@@ -279,15 +279,25 @@ function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'ba
 	return discordAppCoverUrl(applicationId, s);
 }
 
+const QUEST_ASSET_PATH_RE = /^quests\/[0-9]{5,}\//;
+
+function questAssetPath(questId: string, raw: string): string | null {
+	const s = raw.trim().replace(/^\/+/, '').replace(/\?.*$/, '');
+	if (!s || /\s/.test(s) || s === 'PLACEHOLDER') return null;
+	if (QUEST_ASSET_PATH_RE.test(s)) return s;
+	if (!questId) return null;
+	const file = s.replace(/^(?:quests\/)?[0-9]{5,}\//, '');
+	return file ? `quests/${questId}/${file}` : null;
+}
+
 function questAssetUrl(questId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
 	const s = raw.trim().replace(/^\/+/, '');
 	if (!s) return null;
 	if (s.startsWith('http://') || s.startsWith('https://')) return s;
-	if (!questId || /\s/.test(s)) return null;
-	const file = s.replace(/^(?:quests\/)?[0-9]{5,}\//, '').replace(/\?.*$/, '');
-	if (!file) return null;
+	const path = questAssetPath(questId, s);
+	if (!path) return null;
 	const query = kind === 'banner' ? '?format=webp&width=1320&height=370' : '?size=256';
-	return `https://cdn.discordapp.com/quests/${questId}/${file}${query}`;
+	return `https://cdn.discordapp.com/${path}${query}`;
 }
 
 const QUEST_VIDEO_RE = /\.(?:mp4|webm|mov)(?:\?|$)/i;
@@ -309,10 +319,9 @@ function questRewardAssetUrl(questId: string, raw: string): string | null {
 		return `https://cdn.discordapp.com/assets/content/${stem}${ext}?format=webp&width=256&height=256`;
 	}
 
-	if (!questId) return null;
-	const file = bare.replace(/^(?:quests\/)?[0-9]{5,}\//, '');
-	if (!file) return null;
-	return `https://cdn.discordapp.com/quests/${questId}/${file}?format=webp&width=256&height=256`;
+	const path = questAssetPath(questId, bare);
+	if (!path) return null;
+	return `https://cdn.discordapp.com/${path}?format=webp&width=256&height=256`;
 }
 
 function rewardMediaAsImage(url: string): string {
@@ -409,7 +418,9 @@ function mediaFromQuestAssets(questId: string, cfg: Record<string, unknown>): { 
 
 	const banner = pick('banner', 'hero', 'quest_bar_hero', 'bar_hero') || byKey('banner', /hero|banner|background|cover|tile/i, null);
 	const bannerFile = banner ? (banner.split('/').pop() ?? '').split('?')[0] : null;
-	const thumb = pick('thumb', 'logotype', 'gamelogo', 'game_logo', 'quest_bar_logo') || byKey('thumb', /logo|icon|tile|badge/i, bannerFile);
+	const thumb =
+		pick('thumb', 'logotype_dark', 'logotype_light', 'game_tile_dark', 'game_tile_light', 'game_tile', 'logotype', 'gamelogo', 'game_logo', 'quest_bar_logo') ||
+		byKey('thumb', /logo|icon|tile|badge/i, bannerFile);
 
 	return { banner, thumb: thumb === banner ? null : thumb };
 }
@@ -603,6 +614,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 	const taskTypeLabel = labelForTaskKey(taskTypeKey);
 	const publisher =
 		asStr(messages.publisher_name) ||
+		asStr(messages.game_publisher) ||
 		asStr(messages.publisher) ||
 		asStr(messages.brand_name) ||
 		asStr(messages.developer_name) ||
@@ -614,7 +626,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 	const taskObj = pt?.obj ?? {};
 	const questDescription = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
 
-	const { banner } = resolveQuestBannerAndThumb(id, cfg);
+	const { banner, thumb } = resolveQuestBannerAndThumb(id, cfg);
 	const rewardTile = rewardTileFromQuest(id, quest, cfg);
 
 	return {
@@ -630,7 +642,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 		publisher,
 		gameSubtitle,
 		questDescription,
-		thumbnailUrl: rewardTile,
+		thumbnailUrl: rewardTile ?? thumb,
 		bannerUrl: banner
 	};
 }

@@ -106,9 +106,9 @@ CREATE TABLE IF NOT EXISTS server_account_invites (
     FOREIGN KEY (used_by) REFERENCES server_accounts(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_bots (
+CREATE TABLE IF NOT EXISTS selfbots (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_id INT NOT NULL,
+    panel_id INT NULL,
     name TEXT NULL,
     token TEXT NULL,
     bot_icon TEXT NULL,
@@ -117,12 +117,13 @@ CREATE TABLE IF NOT EXISTS server_bots (
     uptime_started_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NULL,
-    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+    INDEX idx_selfbots_panel_id (panel_id),
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_bot_status (
+CREATE TABLE IF NOT EXISTS selfbot_status (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_bot_id INT NOT NULL,
+    selfbot_id INT NOT NULL,
     discord_status ENUM('online', 'idle', 'dnd', 'invisible') NOT NULL DEFAULT 'online',
     activity_type ENUM('playing', 'streaming', 'listening', 'watching', 'custom', 'competing') NOT NULL DEFAULT 'playing',
     activity_name VARCHAR(128) NOT NULL DEFAULT '',
@@ -130,8 +131,8 @@ CREATE TABLE IF NOT EXISTS server_bot_status (
     activity_state VARCHAR(128) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_server_bot_status_server_bot_id (server_bot_id),
-    FOREIGN KEY (server_bot_id) REFERENCES server_bots(id) ON DELETE CASCADE
+    UNIQUE KEY uq_selfbot_status_selfbot_id (selfbot_id),
+    FOREIGN KEY (selfbot_id) REFERENCES selfbots(id) ON DELETE CASCADE
 );
 
 
@@ -176,9 +177,9 @@ CREATE TABLE IF NOT EXISTS server_channels (
     FOREIGN KEY (category_id) REFERENCES server_categories(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_bot_servers (
+CREATE TABLE IF NOT EXISTS selfbot_servers (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_bot_id INT NOT NULL,
+    selfbot_id INT NOT NULL,
     discord_server_id VARCHAR(150) NOT NULL,
     name TEXT,
     total_members INT DEFAULT 0,
@@ -189,29 +190,29 @@ CREATE TABLE IF NOT EXISTS server_bot_servers (
     invite_code VARCHAR(255) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_server_bot_server (server_bot_id, discord_server_id),
-    INDEX idx_server_bot_servers_bot_id (server_bot_id),
-    INDEX idx_server_bot_servers_discord_id (discord_server_id),
-    FOREIGN KEY (server_bot_id) REFERENCES server_bots(id) ON DELETE CASCADE
+    UNIQUE KEY uq_selfbot_server (selfbot_id, discord_server_id),
+    INDEX idx_selfbot_servers_selfbot_id (selfbot_id),
+    INDEX idx_selfbot_servers_discord_id (discord_server_id),
+    FOREIGN KEY (selfbot_id) REFERENCES selfbots(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_bot_server_categories (
+CREATE TABLE IF NOT EXISTS selfbot_server_categories (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_bot_server_id INT NOT NULL,
+    selfbot_server_id INT NOT NULL,
     discord_category_id VARCHAR(150) NOT NULL,
     name TEXT,
     position INT,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_server_bot_category (server_bot_server_id, discord_category_id),
-    INDEX idx_server_bot_server_categories_server_id (server_bot_server_id),
-    INDEX idx_server_bot_server_categories_discord_id (discord_category_id),
-    FOREIGN KEY (server_bot_server_id) REFERENCES server_bot_servers(id) ON DELETE CASCADE
+    UNIQUE KEY uq_selfbot_server_category (selfbot_server_id, discord_category_id),
+    INDEX idx_selfbot_server_categories_selfbot_server_id (selfbot_server_id),
+    INDEX idx_selfbot_server_categories_discord_id (discord_category_id),
+    FOREIGN KEY (selfbot_server_id) REFERENCES selfbot_servers(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_bot_server_channels (
+CREATE TABLE IF NOT EXISTS selfbot_server_channels (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_bot_server_id INT NOT NULL,
+    selfbot_server_id INT NOT NULL,
     discord_channel_id VARCHAR(150) NOT NULL,
     name TEXT,
     type TEXT,
@@ -219,11 +220,11 @@ CREATE TABLE IF NOT EXISTS server_bot_server_channels (
     position INT,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_server_bot_channel (server_bot_server_id, discord_channel_id),
-    INDEX idx_server_bot_server_channels_server_id (server_bot_server_id),
-    INDEX idx_server_bot_server_channels_discord_id (discord_channel_id),
-    INDEX idx_server_bot_server_channels_parent_discord (discord_parent_category_id),
-    FOREIGN KEY (server_bot_server_id) REFERENCES server_bot_servers(id) ON DELETE CASCADE
+    UNIQUE KEY uq_selfbot_server_channel (selfbot_server_id, discord_channel_id),
+    INDEX idx_selfbot_server_channels_selfbot_server_id (selfbot_server_id),
+    INDEX idx_selfbot_server_channels_discord_id (discord_channel_id),
+    INDEX idx_selfbot_server_channels_parent_discord (discord_parent_category_id),
+    FOREIGN KEY (selfbot_server_id) REFERENCES selfbot_servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_members (
@@ -733,7 +734,6 @@ CREATE INDEX IF NOT EXISTS idx_server_accounts_server_id ON server_accounts(serv
 CREATE INDEX IF NOT EXISTS idx_server_accounts_email ON server_accounts(email);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_token ON server_account_invites(token);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_server_id ON server_account_invites(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_bots_server_id ON server_bots(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_member_id ON server_member_giveaways(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_status ON server_member_giveaways(status);
 CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_ends_at ON server_member_giveaways(ends_at);

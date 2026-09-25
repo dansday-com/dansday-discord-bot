@@ -54,7 +54,7 @@ async function loadBotConfig() {
 	}
 
 	if (kind === 'selfbot') {
-		const selfbot = await db.getServerBotById(numericId);
+		const selfbot = await db.getSelfbotById(numericId);
 		if (!selfbot) {
 			throw new Error(`Selfbot not found in database with ID: ${botId}`);
 		}
@@ -70,7 +70,7 @@ async function loadBotConfig() {
 		return botConfig;
 	}
 
-	const selfbot = await db.getServerBotById(numericId);
+	const selfbot = await db.getSelfbotById(numericId);
 	if (selfbot) {
 		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);
 		botConfig = {
@@ -830,6 +830,13 @@ export const CONTENT_CREATOR = {
 	}
 };
 
+async function forwarderMatchesSourceGuild(forwarder: any, sourceGuildId: string) {
+	if (forwarder?.source_guild_id) return String(forwarder.source_guild_id) === String(sourceGuildId);
+	if (!forwarder?.server_id) return false;
+	const legacyGuildId = await db.getSelfbotServerDiscordId(Number(forwarder.server_id));
+	return legacyGuildId != null && String(legacyGuildId) === String(sourceGuildId);
+}
+
 export const FORWARDER = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
@@ -857,6 +864,11 @@ export const FORWARDER = {
 			const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
 			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 
+			const primarySelfbotId = await db.getPrimarySelfbotIdForSourceGuild(officialBot.id, guildId);
+			if (primarySelfbotId !== null && String(primarySelfbotId) !== String(botConfig!.id)) {
+				return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+			}
+
 			const officialServers = await db.getServersForBot(officialBot.id);
 
 			for (const officialServer of officialServers) {
@@ -865,8 +877,7 @@ export const FORWARDER = {
 					const list = (forwarders.forwarders || []) as any[];
 
 					for (const forwarder of list) {
-						if (String(forwarder.selfbot_id) !== String(botConfig!.id)) continue;
-						if (String(forwarder.server_id) !== String(selfbotServer.id)) continue;
+						if (!(await forwarderMatchesSourceGuild(forwarder, guildId))) continue;
 						if (forwarder.source_channels && Array.isArray(forwarder.source_channels)) {
 							const foundChannel = forwarder.source_channels.find((ch: any) =>
 								typeof ch === 'string' ? String(ch) === String(channelId) : String(ch?.channel_id || '') === String(channelId)
@@ -898,8 +909,6 @@ export const FORWARDER = {
 
 		const allGuilds = await db.getServersForBot(botConfig!.id);
 
-		const connectedSelfbots = await db.getSelfbotsForOfficialBot(botConfig!.id);
-
 		for (const officialServer of allGuilds) {
 			try {
 				const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
@@ -912,17 +921,7 @@ export const FORWARDER = {
 						typeof ch === 'string' ? String(ch) === String(sourceChannelId) : String(ch?.channel_id || '') === String(sourceChannelId)
 					);
 					if (!foundChannel) continue;
-
-					const forwarderSelfbotIdNum = typeof forwarder.selfbot_id === 'string' ? parseInt(forwarder.selfbot_id) : forwarder.selfbot_id;
-					const forwarderSelfbot = connectedSelfbots.find((bot: any) => {
-						const botIdNum = typeof bot.id === 'string' ? parseInt(bot.id) : bot.id;
-						return botIdNum === forwarderSelfbotIdNum;
-					});
-					if (!forwarderSelfbot) continue;
-
-					const selfbotServer = await db.getServerByDiscordId(forwarderSelfbot.id, sourceGuildId, { forSelfbot: true });
-					if (!selfbotServer) continue;
-					if (String(selfbotServer.id) !== String(forwarder.server_id)) continue;
+					if (!(await forwarderMatchesSourceGuild(forwarder, sourceGuildId))) continue;
 
 					return {
 						target_channel_id: forwarder.target_channel_id,

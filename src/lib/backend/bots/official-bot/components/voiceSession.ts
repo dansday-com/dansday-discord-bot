@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Type, Behavior, FunctionResponseScheduling, InteractionStatus, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI, Modality, Type, Behavior, FunctionResponseScheduling, InteractionStatus, ThinkingLevel, TurnCompleteReason } from '@google/genai';
 import {
 	joinVoiceChannel,
 	createAudioPlayer,
@@ -1147,6 +1147,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					const sc = msg.serverContent;
 					if (!sc) return;
+
+					if (sc.turnCompleteReason && sc.turnCompleteReason !== TurnCompleteReason.NEED_MORE_INPUT) {
+						logger.log(`📩 Voice AI turn complete reason: ${sc.turnCompleteReason}`);
+					}
 
 					if (caps.interactionStatus && sc.interactionStatus) {
 						const thinking = sc.interactionStatus === InteractionStatus.IN_PROGRESS;

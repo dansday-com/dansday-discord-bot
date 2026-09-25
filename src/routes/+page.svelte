@@ -668,67 +668,40 @@
 			</section>
 		{/if}
 
-		{#if data.topTasks.length > 0}
+		{#if data.topForwarderSources.length > 0}
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>03 — Tasks</p>
-						<h2 class={H2}>A pool of {data.taskCount} tasks</h2>
-						<p class={LEAD}>Daily and weekly cards deal from this pool. Goals scale to each member, so nobody gets the same card.</p>
+						<p class={EYEBROW}>03 — Forwarder sources</p>
+						<h2 class={H2}>Forward from here</h2>
+						<p class={LEAD}>
+							{data.forwarderSourceCount} servers are available to forward messages from, reaching {fmt(data.forwarderSourceMembers)} members. Duplicates are already
+							merged, so this is the whole list.
+						</p>
 					</div>
-					<a href="/tasks" class="{BTN} btn-outline btn-primary shrink-0">
-						All {data.taskCount} tasks
+					<a href="/forwarder-servers" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.forwarderSourceCount} sources
 						<i class="fas fa-arrow-right"></i>
 					</a>
 				</div>
-				<div use:reveal class="{REVEAL_CLASS} border-base-300 flex flex-wrap gap-2 border-t pt-6">
-					{#each data.topTasks as task (task.id)}
-						<span class="border-base-300 bg-base-100 flex items-center gap-2 rounded-sm border px-2.5 py-1.5">
-							<i class="fas {task.icon} text-[11px] leading-none" style="color: {task.accent}"></i>
-							<span class="text-base-content/75 text-[11.5px] leading-none font-bold tracking-[0.04em] uppercase">{task.label}</span>
-						</span>
-					{/each}
-					{#if data.taskCount > data.topTasks.length}
-						<a
-							href="/tasks"
-							class="border-primary/40 text-primary hover:bg-primary hover:text-primary-content flex items-center rounded-sm border px-2.5 py-1.5 text-[11.5px] leading-none font-extrabold tracking-[0.1em] uppercase transition-colors"
+				<div class="border-base-300 grid grid-cols-1 gap-3 border-t pt-6 sm:grid-cols-2 lg:grid-cols-3">
+					{#each data.topForwarderSources as source, i (source.discord_server_id)}
+						<div
+							use:reveal
+							class="{REVEAL_CLASS} border-base-300 bg-base-100 flex items-center gap-3 rounded-sm border p-3.5"
+							style="transition-delay: {i * 60}ms"
 						>
-							+{data.taskCount - data.topTasks.length} more
-						</a>
-					{/if}
-				</div>
-			</section>
-		{/if}
-
-		{#if data.topItems.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
-				<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-					<div class="min-w-0">
-						<p class={EYEBROW}>04 — Items</p>
-						<h2 class={H2}>The shop catalog</h2>
-						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once they are in a bag.</p>
-					</div>
-					<a href="/shop" class="{BTN} btn-outline btn-primary shrink-0">
-						All {data.itemCount} items
-						<i class="fas fa-arrow-right"></i>
-					</a>
-				</div>
-				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					{#each data.topItems as item, i (item.id)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
-							<a href="/shop" class="border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col rounded-sm border p-4 transition-colors sm:p-5">
-								<div class="mb-3 flex items-start justify-between gap-3">
-									<i class="fas {effectIcon(item.effect_type)} text-[18px] leading-none" style="color: {effectAccentHex(item.effect_type)}"></i>
-									{#if item.buyable}
-										<span class="text-primary text-[9.5px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
-									{:else}
-										<span class="text-base-content/30 text-[9.5px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
-									{/if}
-								</div>
-								<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{item.name}</h3>
-								<p class="text-base-content/70 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
-								<p class="text-primary mt-4 text-[15px] leading-none font-black tabular-nums">{fmt(item.cost)} XP</p>
-							</a>
+							<span class="bg-base-200 text-primary grid size-10 shrink-0 place-items-center overflow-hidden rounded-sm text-[14px] leading-none">
+								{#if source.server_icon}
+									<img src={source.server_icon} alt={source.name} loading="lazy" decoding="async" width="40" height="40" class="size-full object-cover" />
+								{:else}
+									<i class="fas fa-satellite-dish"></i>
+								{/if}
+							</span>
+							<span class="min-w-0">
+								<span class="text-base-content block truncate text-[12.5px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{source.name}</span>
+								<span class="text-base-content/55 mt-1 block text-[11.5px] tabular-nums">{fmt(source.members)} members</span>
+							</span>
 						</div>
 					{/each}
 				</div>
@@ -739,7 +712,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>05 — Discord Quests</p>
+						<p class={EYEBROW}>04 — Discord Quests</p>
 						<h2 class={H2}>Quests worth running</h2>
 						<p class={LEAD}>{data.liveQuestCount} live of {data.questCount} tracked, with the game, the task and the reward.</p>
 					</div>
@@ -802,7 +775,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>06 — Roblox catalog</p>
+						<p class={EYEBROW}>05 — Roblox catalog</p>
 						<h2 class={H2}>Items under watch</h2>
 						<p class={LEAD}>
 							The most notified, then the most favourited, of {data.robloxCount} catalog items the notifier tracks for price and stock changes.
@@ -864,7 +837,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>07 — Wiki knowledge</p>
+						<p class={EYEBROW}>06 — Wiki knowledge</p>
 						<h2 class={H2}>What it can look up</h2>
 						<p class={LEAD}>
 							{data.activeWikiCount} of {data.wikiCount} connected wikis answer questions right now. Every server the bot is in can ask about all of them.
@@ -907,9 +880,76 @@
 			</section>
 		{/if}
 
+		{#if data.topTasks.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>07 — Tasks</p>
+						<h2 class={H2}>A pool of {data.taskCount} tasks</h2>
+						<p class={LEAD}>Daily and weekly cards deal from this pool. Goals scale to each member, so nobody gets the same card.</p>
+					</div>
+					<a href="/tasks" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.taskCount} tasks
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<div use:reveal class="{REVEAL_CLASS} border-base-300 flex flex-wrap gap-2 border-t pt-6">
+					{#each data.topTasks as task (task.id)}
+						<span class="border-base-300 bg-base-100 flex items-center gap-2 rounded-sm border px-2.5 py-1.5">
+							<i class="fas {task.icon} text-[11px] leading-none" style="color: {task.accent}"></i>
+							<span class="text-base-content/75 text-[11.5px] leading-none font-bold tracking-[0.04em] uppercase">{task.label}</span>
+						</span>
+					{/each}
+					{#if data.taskCount > data.topTasks.length}
+						<a
+							href="/tasks"
+							class="border-primary/40 text-primary hover:bg-primary hover:text-primary-content flex items-center rounded-sm border px-2.5 py-1.5 text-[11.5px] leading-none font-extrabold tracking-[0.1em] uppercase transition-colors"
+						>
+							+{data.taskCount - data.topTasks.length} more
+						</a>
+					{/if}
+				</div>
+			</section>
+		{/if}
+
+		{#if data.topItems.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>08 — Items</p>
+						<h2 class={H2}>The shop catalog</h2>
+						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once they are in a bag.</p>
+					</div>
+					<a href="/shop" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.itemCount} items
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					{#each data.topItems as item, i (item.id)}
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
+							<a href="/shop" class="border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col rounded-sm border p-4 transition-colors sm:p-5">
+								<div class="mb-3 flex items-start justify-between gap-3">
+									<i class="fas {effectIcon(item.effect_type)} text-[18px] leading-none" style="color: {effectAccentHex(item.effect_type)}"></i>
+									{#if item.buyable}
+										<span class="text-primary text-[9.5px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
+									{:else}
+										<span class="text-base-content/30 text-[9.5px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
+									{/if}
+								</div>
+								<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{item.name}</h3>
+								<p class="text-base-content/70 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
+								<p class="text-primary mt-4 text-[15px] leading-none font-black tabular-nums">{fmt(item.cost)} XP</p>
+							</a>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
 		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>08 — The panel</p>
+				<p class={EYEBROW}>09 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
 				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
 			</div>

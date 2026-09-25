@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { STAFF_RATING, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
+import { resolveStaffRatingAnchor } from './roleAnchor.js';
 import db from '../../../../database.js';
 
 function getRatingColor(rating) {
@@ -15,22 +16,22 @@ function getRatingColor(rating) {
 }
 
 async function updateAllRatingRolePositions(guild, serverId) {
-	const constraints = await STAFF_RATING.getRoleConstraints(guild.id);
-	const endRole = constraints?.ROLE_END ? guild.roles.cache.get(constraints.ROLE_END) : null;
-	if (!endRole) {
+	const allRatings = await db.getAllStaffRatings(serverId);
+	const withRoles = allRatings.filter((rating) => rating.rating_role_id && guild.roles.cache.has(rating.rating_role_id));
+	if (withRoles.length === 0) {
 		return;
 	}
 
-	const allRatings = await db.getAllStaffRatings(serverId);
+	const anchor = await resolveStaffRatingAnchor(guild, withRoles.length);
+	if (!anchor.ok) {
+		return;
+	}
 
-	for (let i = 0; i < allRatings.length; i++) {
-		const rating = allRatings[i];
-		if (!rating.rating_role_id) continue;
-
-		const role = guild.roles.cache.get(rating.rating_role_id);
+	for (let i = 0; i < withRoles.length; i++) {
+		const role = guild.roles.cache.get(withRoles[i].rating_role_id);
 		if (!role) continue;
 
-		const targetPosition = endRole.position + 1 + (allRatings.length - i - 1);
+		const targetPosition = anchor.basePosition + (withRoles.length - i - 1);
 
 		if (role.position !== targetPosition) {
 			await role.setPosition(targetPosition).catch(() => null);
@@ -82,20 +83,19 @@ function buildRatingChannelEmbed(staffDiscordId, ratingValue, totalReports, embe
 async function ensureRatingRole(guild, serverId, member, ratingValue, ratingRecord) {
 	const desiredName = `⭐ ${ratingValue.toFixed(1)} • Staff Rating`.slice(0, 100);
 	const color = getRatingColor(ratingValue);
-	const constraints = await STAFF_RATING.getRoleConstraints(guild.id);
-	const endRole = constraints?.ROLE_END ? guild.roles.cache.get(constraints.ROLE_END) : null;
 
 	const ratingRoleId = await db.getStaffRatingRole(serverId, ratingRecord?.member_id);
 	let role = ratingRoleId ? guild.roles.cache.get(ratingRoleId) : null;
 	if (!role) {
+		const anchor = await resolveStaffRatingAnchor(guild);
 		const creationData = {
 			name: desiredName,
 			color,
 			reason: 'Staff rating role',
 			mentionable: false
 		};
-		if (endRole) {
-			creationData.position = endRole.position + 1;
+		if (anchor.ok) {
+			creationData.position = anchor.basePosition;
 		}
 		role = await guild.roles.create(creationData);
 		await db.upsertRole(serverId, {

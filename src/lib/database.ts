@@ -1406,6 +1406,38 @@ export async function listPublicWikis(limit = 300) {
 		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
 }
 
+export async function listPublicForwarderSources(limit = 300) {
+	await initializeDatabase();
+	const panelIds = await listPublicPanelIds();
+	if (!panelIds.length) return [];
+	const rows = await db
+		.select({
+			discord_server_id: schema.selfbotServers.discord_server_id,
+			name: schema.selfbotServers.name,
+			server_icon: schema.selfbotServers.server_icon,
+			total_members: schema.selfbotServers.total_members,
+			total_channels: schema.selfbotServers.total_channels,
+			boost_level: schema.selfbotServers.boost_level,
+			discord_created_at: schema.selfbotServers.discord_created_at,
+			updated_at: schema.selfbotServers.updated_at
+		})
+		.from(schema.selfbotServers)
+		.innerJoin(schema.selfbots, eq(schema.selfbots.id, schema.selfbotServers.selfbot_id))
+		.where(inArray(schema.selfbots.panel_id, panelIds))
+		.orderBy(asc(schema.selfbotServers.name));
+
+	const byDiscordId = new Map<string, (typeof rows)[number]>();
+	for (const row of rows) {
+		const key = String(row.discord_server_id);
+		const existing = byDiscordId.get(key);
+		if (!existing || Number(row.total_members ?? 0) > Number(existing.total_members ?? 0)) byDiscordId.set(key, row);
+	}
+
+	return [...byDiscordId.values()]
+		.sort((a, b) => Number(b.total_members ?? 0) - Number(a.total_members ?? 0))
+		.slice(0, Math.max(1, Math.min(500, Number(limit) || 300)));
+}
+
 export async function getMaxPublicXpEventId(): Promise<number> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT MAX(id) as max_id FROM server_member_level_logs`);
@@ -1831,45 +1863,74 @@ async function refreshMemberIsContentCreator(memberId: number, serverId: number,
 
 async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: string[], serverId: number) {
 	await initializeDatabase();
-	await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, memberId));
 
-	const customSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.custom_supporter_role).catch(() => null);
-	const roleStartDiscord = (customSettings as any)?.settings?.role_start as string | null | undefined;
-	const roleEndDiscord = (customSettings as any)?.settings?.role_end as string | null | undefined;
-	if (!roleStartDiscord || !roleEndDiscord || discordRoleIds.length === 0) return;
+	const ownedRows = await db
+		.select({ id: schema.serverMemberCustomSupporterRoles.id, discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverMemberCustomSupporterRoles)
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberCustomSupporterRoles.role_id, schema.serverRoles.id))
+		.where(and(eq(schema.serverMemberCustomSupporterRoles.member_id, memberId), eq(schema.serverRoles.server_id, Number(serverId))));
 
-	const startRows = await db
-		.select({ position: schema.serverRoles.position })
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleStartDiscord)))
+	if (ownedRows.length === 0) return;
+
+	const stillHeld = new Set(discordRoleIds);
+	const staleIds = ownedRows.filter((r) => !stillHeld.has(r.discord_role_id)).map((r) => r.id);
+
+	if (staleIds.length > 0) {
+		await db.delete(schema.serverMemberCustomSupporterRoles).where(inArray(schema.serverMemberCustomSupporterRoles.id, staleIds));
+	}
+}
+
+export async function setMemberCustomSupporterRole(serverId: any, discordMemberId: string, roleData: any) {
+	await initializeDatabase();
+	if (!serverId || !discordMemberId || !roleData?.id) return false;
+
+	const memberRows = await db
+		.select({ id: schema.serverMembers.id })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	const endRows = await db
-		.select({ position: schema.serverRoles.position })
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleEndDiscord)))
-		.limit(1);
-	if (!startRows[0]?.position || !endRows[0]?.position) return;
+	if (!memberRows[0]) return false;
 
-	const startPosition = startRows[0].position!;
-	const endPosition = endRows[0].position!;
-
-	const roleRows = await db
-		.select({
-			id: schema.serverRoles.id,
-			discord_role_id: schema.serverRoles.discord_role_id,
-			position: schema.serverRoles.position
-		})
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
+	const roleRow = await upsertRole(serverId, roleData);
+	if (!roleRow?.id) return false;
 
 	const now = toMySQLDateTime();
-	const toInsert = roleRows
-		.filter((r) => r.discord_role_id !== roleStartDiscord && r.position != null && r.position < startPosition && r.position > endPosition)
-		.map((r) => ({ member_id: memberId, role_id: r.id, created_at: now as any }));
+	await db.execute(sql`
+		INSERT INTO server_member_custom_supporter_roles (member_id, role_id, created_at)
+		VALUES (${memberRows[0].id}, ${roleRow.id}, ${now})
+		ON DUPLICATE KEY UPDATE member_id = VALUES(member_id)
+	`);
+	return true;
+}
 
-	if (toInsert.length > 0) {
-		await db.insert(schema.serverMemberCustomSupporterRoles).values(toInsert);
-	}
+export async function clearMemberCustomSupporterRole(serverId: any, discordRoleId: string) {
+	await initializeDatabase();
+	if (!serverId || !discordRoleId) return false;
+
+	const roleRows = await db
+		.select({ id: schema.serverRoles.id })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
+		.limit(1);
+	if (!roleRows[0]) return false;
+
+	await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.role_id, roleRows[0].id));
+	return true;
+}
+
+export async function listCustomSupporterRoles(serverId: any) {
+	await initializeDatabase();
+	if (!serverId) return [];
+
+	return db
+		.select({
+			discord_role_id: schema.serverRoles.discord_role_id,
+			discord_member_id: schema.serverMembers.discord_member_id
+		})
+		.from(schema.serverMemberCustomSupporterRoles)
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberCustomSupporterRoles.role_id, schema.serverRoles.id))
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberCustomSupporterRoles.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverRoles.server_id, Number(serverId)));
 }
 
 export async function syncMemberRoles(memberId: any, discordRoleIds: string[], serverId: any) {
@@ -4735,46 +4796,25 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 	};
 }
 
-export async function updateCustomRoleFlags(serverId: any, roleStartId: string, roleEndId: string) {
+export async function pruneOrphanedCustomSupporterRoles(serverId: any, liveDiscordRoleIds: string[]) {
 	await initializeDatabase();
-	if (!roleStartId || !roleEndId) {
-		await db.execute(sql`
-			DELETE smcsr FROM server_member_custom_supporter_roles smcsr
-			INNER JOIN server_roles sr ON smcsr.role_id = sr.id
-			WHERE sr.server_id = ${Number(serverId)}
-		`);
-		return true;
+	if (!serverId) return true;
+	if (!Array.isArray(liveDiscordRoleIds) || liveDiscordRoleIds.length === 0) return true;
+
+	const ownedRows = await db
+		.select({ id: schema.serverMemberCustomSupporterRoles.id, discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverMemberCustomSupporterRoles)
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberCustomSupporterRoles.role_id, schema.serverRoles.id))
+		.where(eq(schema.serverRoles.server_id, Number(serverId)));
+
+	if (ownedRows.length === 0) return true;
+
+	const live = new Set(liveDiscordRoleIds || []);
+	const staleIds = ownedRows.filter((r) => !live.has(r.discord_role_id)).map((r) => r.id);
+
+	if (staleIds.length > 0) {
+		await db.delete(schema.serverMemberCustomSupporterRoles).where(inArray(schema.serverMemberCustomSupporterRoles.id, staleIds));
 	}
-
-	const startRows = await db
-		.select({ position: schema.serverRoles.position })
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleStartId)))
-		.limit(1);
-	const endRows = await db
-		.select({ position: schema.serverRoles.position })
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleEndId)))
-		.limit(1);
-
-	if (!startRows[0] || !endRows[0]) {
-		return true;
-	}
-
-	const startPosition = startRows[0].position!;
-	const endPosition = endRows[0].position!;
-
-	await db.execute(sql`
-		DELETE smcsr FROM server_member_custom_supporter_roles smcsr
-		INNER JOIN server_roles sr ON smcsr.role_id = sr.id
-		WHERE sr.server_id = ${Number(serverId)}
-			AND NOT (
-				sr.position < ${startPosition}
-				AND sr.position > ${endPosition}
-				AND sr.discord_role_id != ${roleStartId}
-			)
-	`);
-
 	return true;
 }
 
@@ -7042,12 +7082,16 @@ export default {
 	countPublicRobloxItems,
 	listPublicRobloxItemsByNotifications,
 	listPublicWikis,
+	listPublicForwarderSources,
 	getMemberDashboard,
 	getMemberInsights,
 	recordLevelFriends,
 	getMemberLevelFriends,
-	updateCustomRoleFlags,
+	pruneOrphanedCustomSupporterRoles,
 	memberHasCustomSupporterRole,
+	setMemberCustomSupporterRole,
+	clearMemberCustomSupporterRole,
+	listCustomSupporterRoles,
 	getServerSettings,
 	upsertServerSettings,
 	getPanelSettings,

@@ -2,18 +2,45 @@ import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, Embed
 import { getEmbedConfig, CUSTOM_SUPPORTER_ROLE, getBotConfig } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
+import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
 
 const supporterRoles = new Map();
 
-async function cleanupInvalidRole(role) {
+async function getOwnedSupporterRoleIds(guild) {
 	try {
+		const botConfig = getBotConfig();
+		if (!botConfig?.id) return null;
+		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		if (!server) return null;
+		const owned = await db.listCustomSupporterRoles(server.id);
+		return new Map(owned.map((r) => [r.discord_role_id, r.discord_member_id]));
+	} catch (err) {
+		return null;
+	}
+}
+
+async function forgetSupporterRole(guild, discordRoleId) {
+	try {
+		const botConfig = getBotConfig();
+		const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
+		if (server) await db.clearMemberCustomSupporterRole(server.id, discordRoleId);
+	} catch (err) {}
+}
+
+async function cleanupInvalidRole(role, ownedRoleIds) {
+	try {
+		if (!ownedRoleIds || !ownedRoleIds.has(role.id)) {
+			return;
+		}
+
 		await role.guild.members.fetch();
 		const memberCount = role.members.size;
 
 		if (memberCount === 0) {
 			await role.delete(`Auto-cleanup: Custom role has no members`);
+			await forgetSupporterRole(role.guild, role.id);
 			await logger.log(`🗑️ Deleted unused custom role: ${role.name} (${role.id}) - no members`);
 		} else if (memberCount > 1) {
 			const members = Array.from(role.members.values());
@@ -21,6 +48,7 @@ async function cleanupInvalidRole(role) {
 				await member.roles.remove(role, `Auto-cleanup: Custom role has multiple members`);
 			}
 			await role.delete(`Auto-cleanup: Custom role has ${memberCount} members (should be exactly 1)`);
+			await forgetSupporterRole(role.guild, role.id);
 			await logger.log(`🗑️ Deleted invalid custom role: ${role.name} (${role.id}) - has ${memberCount} members (should be exactly 1)`);
 		}
 
@@ -68,23 +96,6 @@ async function hasSupporterRole(member) {
 				return { has: true, role };
 			}
 		}
-
-		try {
-			const constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(member.guild.id);
-			if (constraints && constraints.ROLE_START && constraints.ROLE_END) {
-				const startRole = member.guild.roles.cache.get(constraints.ROLE_START);
-				const endRole = member.guild.roles.cache.get(constraints.ROLE_END);
-
-				if (startRole && endRole) {
-					for (const role of member.roles.cache.values()) {
-						if (role.position < startRole.position && role.position > endRole.position && !role.managed) {
-							supporterRoles.set(member.id, role.id);
-							return { has: true, role };
-						}
-					}
-				}
-			}
-		} catch (err) {}
 
 		return { has: false };
 	} catch (error) {
@@ -162,21 +173,22 @@ function parseColor(colorInput) {
 	return null;
 }
 
+class AnchorError extends Error {}
+
 async function getRolePosition(guild) {
-	const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+	const anchor = resolveSupporterAnchor(guild);
 
-	if (!constraints.ROLE_START || !constraints.ROLE_END) {
-		throw new Error('Could not find role position constraints');
+	if (!anchor.ok) {
+		if (anchor.reason === 'no_booster_role') {
+			throw new AnchorError('This server has no Server Booster role yet. It appears once someone boosts the server.');
+		}
+		if (anchor.reason === 'bot_too_low') {
+			throw new AnchorError(`The bot's own role must be above ${anchor.anchorRole.name} to create supporter roles.`);
+		}
+		throw new AnchorError('Could not determine where to place the supporter role.');
 	}
 
-	const startRole = guild.roles.cache.get(constraints.ROLE_START);
-	const endRole = guild.roles.cache.get(constraints.ROLE_END);
-
-	if (!startRole || !endRole) {
-		throw new Error('Could not find role position constraints');
-	}
-
-	return endRole.position + 1;
+	return anchor.basePosition;
 }
 
 export async function handleCustomSupporterRoleButton(interaction) {
@@ -423,6 +435,7 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 
 		await existingRole.delete(`Custom supporter role deleted by ${member.user.tag} (${member.user.id})`);
 
+		await forgetSupporterRole(interaction.guild, roleId);
 		supporterRoles.delete(member.id);
 
 		const embedConfig = await getEmbedConfig(interaction.guild.id);
@@ -712,6 +725,22 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			await logger.log(`⚠️ Could not set role position: ${err.message}`);
 		}
 
+		try {
+			const botConfig = getBotConfig();
+			const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
+			if (server) {
+				await db.setMemberCustomSupporterRole(server.id, member.user.id, {
+					id: newRole.id,
+					name: newRole.name,
+					position: newRole.position,
+					hexColor: newRole.hexColor,
+					permissions: newRole.permissions
+				});
+			}
+		} catch (err) {
+			await logger.log(`⚠️ Could not record supporter role ownership: ${err.message}`);
+		}
+
 		if (iconToSet && !isEmojiIcon) {
 			try {
 				if (isValidImageUrl(iconToSet)) {
@@ -803,7 +832,9 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		try {
 			let errorMessage = '';
 
-			if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
+			if (error instanceof AnchorError) {
+				errorMessage = `❌ **Failed to Create Role**\n\n${error.message}`;
+			} else if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
 				errorMessage =
 					`❌ **Server Boost Required**\n\n` +
 					`This server needs **Level 2 Server Boost** to create custom supporter roles with certain features.\n\n` +
@@ -845,6 +876,7 @@ async function removeCustomRoleIfNoPermission(member) {
 
 		await role.delete(`User ${member.user.tag} (${member.user.id}) lost permission for custom role`);
 
+		await forgetSupporterRole(member.guild, role.id);
 		supporterRoles.delete(member.id);
 
 		await logger.log(`🗑️ Removed custom role ${role.name} (${role.id}) from ${member.user.tag} (${member.user.id}) - no longer has permission`);
@@ -861,56 +893,41 @@ async function cleanupCustomRoles(client) {
 
 		for (const guild of client.guilds.cache.values()) {
 			try {
-				const constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
+				const ownedRoleIds = await getOwnedSupporterRoleIds(guild);
 
-				if (!constraints.ROLE_START || !constraints.ROLE_END) {
-					continue;
-				}
-
-				const startRole = guild.roles.cache.get(constraints.ROLE_START);
-				const endRole = guild.roles.cache.get(constraints.ROLE_END);
-
-				if (!startRole || !endRole) {
+				if (!ownedRoleIds || ownedRoleIds.size === 0) {
 					continue;
 				}
 
 				await guild.members.fetch();
 
-				const customRoles = guild.roles.cache.filter((role) => role.position < startRole.position && role.position > endRole.position && !role.managed);
-
-				for (const role of customRoles.values()) {
+				for (const [roleId, ownerMemberId] of ownedRoleIds.entries()) {
 					try {
+						const role = guild.roles.cache.get(roleId);
+						if (!role) {
+							await forgetSupporterRole(guild, roleId);
+							continue;
+						}
+
 						const memberCount = role.members.size;
 
 						if (memberCount !== 1) {
-							await cleanupInvalidRole(role);
+							await cleanupInvalidRole(role, ownedRoleIds);
 							if (memberCount === 0 || memberCount > 1) {
 								cleanedCount++;
 							}
 							continue;
 						}
 
-						let ownerId = null;
-						for (const [userId, roleId] of supporterRoles.entries()) {
-							if (roleId === role.id) {
-								ownerId = userId;
-								break;
-							}
-						}
-
-						if (!ownerId && role.members.size === 1) {
-							const member = role.members.first();
-							if (member) {
-								ownerId = member.id;
-
-								supporterRoles.set(ownerId, role.id);
-							}
+						const ownerId = role.members.first()?.id || ownerMemberId || null;
+						if (ownerId) {
+							supporterRoles.set(ownerId, role.id);
 						}
 
 						if (ownerId) {
 							const owner = guild.members.cache.get(ownerId);
 							if (!owner) {
-								await cleanupInvalidRole(role);
+								await cleanupInvalidRole(role, ownedRoleIds);
 								cleanedCount++;
 								continue;
 							}
@@ -919,6 +936,7 @@ async function cleanupCustomRoles(client) {
 								try {
 									await owner.roles.remove(role, `User lost permission for custom role`);
 									await role.delete(`Auto-cleanup: Owner no longer has permission`);
+									await forgetSupporterRole(guild, role.id);
 									await logger.log(`🗑️ Deleted custom role: ${role.name} (${role.id}) - owner ${owner.user.tag} (${ownerId}) no longer has permission`);
 									supporterRoles.delete(ownerId);
 									cleanedCount++;
@@ -928,7 +946,7 @@ async function cleanupCustomRoles(client) {
 							}
 						}
 					} catch (err) {
-						await logger.log(`⚠️ Error checking role ${role.name} (${role.id}): ${err.message}`);
+						await logger.log(`⚠️ Error checking role ${roleId}: ${err.message}`);
 					}
 				}
 			} catch (err) {
@@ -946,55 +964,99 @@ async function cleanupCustomRoles(client) {
 	}
 }
 
+async function adoptLegacyCustomRoles(guild) {
+	let adopted = 0;
+
+	let constraints;
+	try {
+		constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
+	} catch (error) {
+		return adopted;
+	}
+
+	if (!constraints?.ROLE_START || !constraints?.ROLE_END) return adopted;
+
+	const startRole = guild.roles.cache.get(constraints.ROLE_START);
+	const endRole = guild.roles.cache.get(constraints.ROLE_END);
+	if (!startRole || !endRole) return adopted;
+
+	const botConfig = getBotConfig();
+	const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
+	if (!server) return adopted;
+
+	const legacyRoles = guild.roles.cache.filter((role) => role.position < startRole.position && role.position > endRole.position && !role.managed);
+
+	for (const role of legacyRoles.values()) {
+		if (role.members.size !== 1) {
+			await logger.log(`⏭️ Legacy custom role ${role.name} (${role.id}) has ${role.members.size} members - left untouched`);
+			continue;
+		}
+
+		const owner = role.members.first();
+		if (!owner) continue;
+
+		try {
+			await db.setMemberCustomSupporterRole(server.id, owner.id, {
+				id: role.id,
+				name: role.name,
+				position: role.position,
+				hexColor: role.hexColor,
+				permissions: role.permissions
+			});
+			supporterRoles.set(owner.id, role.id);
+			adopted++;
+
+			const anchor = resolveSupporterAnchor(guild);
+			if (anchor.ok && role.position !== anchor.basePosition) {
+				await role.setPosition(anchor.basePosition, { reason: 'Re-anchored above Server Booster role' }).catch(async (err) => {
+					await logger.log(`⚠️ Could not re-anchor ${role.name} (${role.id}): ${err.message}`);
+				});
+			}
+
+			await logger.log(`✅ Adopted legacy custom role: ${role.name} (${role.id}) for ${owner.user.tag} (${owner.id})`);
+		} catch (err) {
+			await logger.log(`⚠️ Could not adopt legacy custom role ${role.name} (${role.id}): ${err.message}`);
+		}
+	}
+
+	return adopted;
+}
+
 async function scanAndValidateCustomRoles(client) {
 	try {
 		await logger.log(`🔍 Scanning for existing custom roles...`);
 
 		let validatedCount = 0;
+		let adoptedCount = 0;
 
 		for (const guild of client.guilds.cache.values()) {
 			try {
-				let constraints;
-				try {
-					constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
-				} catch (error) {
-					if (error.message && error.message.includes('Server not found')) {
-						continue;
-					}
-					throw error;
-				}
-
-				if (!constraints.ROLE_START || !constraints.ROLE_END) {
-					continue;
-				}
-
-				const startRole = guild.roles.cache.get(constraints.ROLE_START);
-				const endRole = guild.roles.cache.get(constraints.ROLE_END);
-
-				if (!startRole || !endRole) {
-					continue;
-				}
-
 				await guild.members.fetch();
 
-				const customRoles = guild.roles.cache.filter((role) => role.position < startRole.position && role.position > endRole.position && !role.managed);
+				adoptedCount += await adoptLegacyCustomRoles(guild);
 
-				for (const role of customRoles.values()) {
+				const ownedRoleIds = await getOwnedSupporterRoleIds(guild);
+				if (!ownedRoleIds || ownedRoleIds.size === 0) continue;
+
+				for (const [roleId, ownerMemberId] of ownedRoleIds.entries()) {
 					try {
-						const memberCount = role.members.size;
+						const role = guild.roles.cache.get(roleId);
+						if (!role) {
+							await forgetSupporterRole(guild, roleId);
+							continue;
+						}
 
-						if (memberCount === 1) {
+						if (role.members.size === 1) {
 							const member = role.members.first();
 							if (member) {
 								supporterRoles.set(member.id, role.id);
 								validatedCount++;
-								await logger.log(`✅ Found valid custom role: ${role.name} (${role.id}) for ${member.user.tag} (${member.id})`);
 							}
-						} else {
-							await cleanupInvalidRole(role);
+						} else if (ownerMemberId) {
+							await cleanupInvalidRole(role, ownedRoleIds);
 						}
 					} catch (err) {
-						await logger.log(`⚠️ Error validating role ${role.name} (${role.id}): ${err.message}`);
+						await logger.log(`⚠️ Error validating role ${roleId}: ${err.message}`);
 					}
 				}
 			} catch (err) {
@@ -1002,7 +1064,7 @@ async function scanAndValidateCustomRoles(client) {
 			}
 		}
 
-		await logger.log(`✅ Scan complete: Validated ${validatedCount} custom role(s)`);
+		await logger.log(`✅ Scan complete: Validated ${validatedCount} custom role(s), adopted ${adoptedCount} legacy role(s)`);
 	} catch (err) {
 		await logger.log(`❌ Error scanning custom roles: ${err.message}`);
 	}
@@ -1035,6 +1097,7 @@ export function init(client) {
 						const updatedRole = member.guild.roles.cache.get(role.id);
 						if (updatedRole && updatedRole.members.size === 0) {
 							await updatedRole.delete(`Auto-cleanup: Member left server and role has no members`);
+							await forgetSupporterRole(member.guild, role.id);
 							await logger.log(`🗑️ Deleted custom role ${role.name} (${role.id}) - member left and role unused`);
 							supporterRoles.delete(member.id);
 						}

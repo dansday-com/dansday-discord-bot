@@ -203,7 +203,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let pending = EMPTY;
 	let pendingOffset = 0;
 	let lastAudioAt = 0;
-	let wasPlaying = false;
 	let turnOpen = false;
 	let turnOpenedAt = 0;
 	let turnTimer: ReturnType<typeof setTimeout> | null = null;
@@ -638,10 +637,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		stats.framesOut++;
 		if (filled === 0) {
 			stats.silenceOut++;
-			wasPlaying = false;
 		} else {
 			lastAudioAt = Date.now();
-			wasPlaying = true;
 		}
 		if (stats.framesOut % 500 === 0) {
 			const gates = [...voiceState.entries()]

@@ -36,6 +36,16 @@ export const MEMBER_PICKER_ACCENT = {
 	labelText: 'text-sky-100'
 } as const;
 
+export const SERVER_PICKER_ACCENT = {
+	chevron: 'fas fa-chevron-down text-xs text-teal-300',
+	modalTitleIcon: 'fas fa-server text-teal-400',
+	searchIcon: 'fas fa-search text-teal-300',
+	emptyStateIcon: 'mb-2 text-3xl text-teal-300/80',
+	listChevron: 'text-teal-300/80',
+	labelIcon: 'fas fa-server mr-1 text-teal-400',
+	labelText: 'text-teal-100'
+} as const;
+
 export const NUMERIC_SELECT_ACCENT = {
 	chevron: 'fas fa-chevron-down text-xs text-cyan-300'
 } as const;

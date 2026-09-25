@@ -4,6 +4,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import ServerPicker from '$lib/frontend/components/ServerPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
@@ -163,8 +164,7 @@
 		loadingChannels = false;
 	}
 
-	async function onSourceServerChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
+	async function onSourceServerChange(val: string) {
 		draft = { ...draft, source_guild_id: val, source_channels: [] };
 		sourceChannels = [];
 		sourceCategories = [];
@@ -375,21 +375,15 @@
 
 			<div class="flex-1 space-y-4 overflow-y-auto">
 				<div>
-					<label for="fw-source-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
-						><i class="fas fa-server mr-1.5 text-violet-400"></i>Source server</label
-					>
+					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-server mr-1.5 text-violet-400"></i>Source server</p>
 					<p class="text-ash-500 mb-2 text-xs">Select the server messages will be forwarded from.</p>
-					<select
-						id="fw-source-server"
+					<ServerPicker
+						servers={sourceServers}
 						value={draft.source_guild_id}
+						placeholder="Select server..."
+						emptyText="No linked source servers"
 						onchange={onSourceServerChange}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-					>
-						<option value="">Select server...</option>
-						{#each sourceServers as server}
-							<option value={server.discord_server_id}>{server.name || `Server ${server.discord_server_id}`}</option>
-						{/each}
-					</select>
+					/>
 				</div>
 
 				<div>
@@ -429,20 +423,14 @@
 					/>
 				</div>
 
-				<div>
-					<p class="text-ash-300 mb-1.5 text-xs font-medium">
-						<i class="fas fa-at mr-1.5 text-violet-400"></i>Mention filter
-					</p>
-					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the linked account.</p>
-					<label class="flex cursor-pointer items-center gap-3">
-						<div class="relative">
-							<input type="checkbox" bind:checked={draft.only_forward_when_mentions_member} class="peer sr-only" />
-							<div class="bg-ash-600 peer-checked:bg-ash-400 h-6 w-11 rounded-full transition-colors"></div>
-							<div class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
-						</div>
-						<span class="text-ash-300 text-sm">{draft.only_forward_when_mentions_member ? 'Yes' : 'No'}</span>
-					</label>
-				</div>
+				<ConfigToggleRow
+					label="Mention filter"
+					description="Only forward messages that mention the linked account."
+					labelIconClass="fas fa-at text-violet-400"
+					enabled={draft.only_forward_when_mentions_member}
+					onchange={(v) => (draft = { ...draft, only_forward_when_mentions_member: v })}
+					ariaLabel="Toggle mention filter"
+				/>
 
 				<div>
 					<label for="fw-keyword" class="text-ash-300 mb-1.5 block text-xs font-medium">

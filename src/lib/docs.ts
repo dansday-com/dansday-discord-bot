@@ -703,6 +703,10 @@ export const modules = [
 			{ label: 'Target Channel', desc: 'Where forwarded messages post in this server.' },
 			{ label: 'Role Pings (optional)', desc: 'Roles to mention on forwarded messages.' },
 			{ label: 'Mention filter', desc: 'Only forward messages that mention the linked account.' },
+			{
+				label: 'Keywords (optional)',
+				desc: 'Type a keyword and press Enter to add it. Only messages containing at least one keyword are forwarded; leave it empty to forward everything. Combines with the mention filter — a message must satisfy both.'
+			},
 			{ label: 'Tag (optional)', desc: 'A label so you can recognize this forwarder later.' }
 		]
 	},

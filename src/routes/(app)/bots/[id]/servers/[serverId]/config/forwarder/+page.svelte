@@ -17,6 +17,7 @@
 		target_channel_id: string;
 		role_pings: string[];
 		only_forward_when_mentions_member: boolean;
+		keywords: string[];
 		tag: string;
 	};
 
@@ -27,6 +28,7 @@
 	let modalOpen = $state(false);
 	let editIndex = $state<number | null>(null);
 	let draft = $state<Forwarder>(emptyForwarder());
+	let keywordInput = $state('');
 
 	let sourceServers = $state<any[]>(data.sourceServers ?? []);
 	let sourceChannels = $state<any[]>([]);
@@ -37,7 +39,15 @@
 	const channelsCacheByGuild = new Map<string, { channels: any[]; categories: any[] }>();
 
 	function emptyForwarder(): Forwarder {
-		return { source_guild_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
+		return {
+			source_guild_id: '',
+			source_channels: [],
+			target_channel_id: '',
+			role_pings: [],
+			only_forward_when_mentions_member: false,
+			keywords: [],
+			tag: ''
+		};
 	}
 
 	$effect(() => {
@@ -91,9 +101,34 @@
 		}
 	}
 
+	function addKeyword() {
+		const value = keywordInput.trim();
+		if (!value) return;
+		if (draft.keywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
+			keywordInput = '';
+			return;
+		}
+		draft = { ...draft, keywords: [...draft.keywords, value] };
+		keywordInput = '';
+	}
+
+	function removeKeyword(keyword: string) {
+		draft = { ...draft, keywords: draft.keywords.filter((k) => k !== keyword) };
+	}
+
+	function onKeywordKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ',') {
+			e.preventDefault();
+			addKeyword();
+		} else if (e.key === 'Backspace' && keywordInput === '' && draft.keywords.length > 0) {
+			draft = { ...draft, keywords: draft.keywords.slice(0, -1) };
+		}
+	}
+
 	async function openAdd() {
 		draft = emptyForwarder();
 		editIndex = null;
+		keywordInput = '';
 		sourceChannels = [];
 		sourceCategories = [];
 		modalOpen = true;
@@ -101,8 +136,14 @@
 
 	async function openEdit(i: number) {
 		const fw = forwarders[i];
-		draft = { ...fw, source_channels: [...(fw.source_channels ?? [])], role_pings: [...(fw.role_pings ?? [])] };
+		draft = {
+			...fw,
+			source_channels: [...(fw.source_channels ?? [])],
+			role_pings: [...(fw.role_pings ?? [])],
+			keywords: [...(fw.keywords ?? [])]
+		};
 		editIndex = i;
+		keywordInput = '';
 		sourceChannels = [];
 		sourceCategories = [];
 		if (draft.source_guild_id) await loadChannels(draft.source_guild_id);
@@ -151,7 +192,8 @@
 	}
 
 	function saveModal() {
-		const entry: Forwarder = { ...draft };
+		addKeyword();
+		const entry: Forwarder = { ...draft, keywords: [...draft.keywords] };
 		entry.source_guild_name = sourceServerName(entry.source_guild_id) || entry.source_guild_name;
 		if (sourceChannels?.length && entry.source_channels?.length) {
 			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, sourceChannels));
@@ -262,6 +304,12 @@
 								{/if}
 								{#if fw.tag}
 									<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
+								{/if}
+								{#if fw.keywords?.length}
+									<div class="text-ash-400">
+										<span class="text-ash-300 font-medium">Keywords:</span>
+										{fw.keywords.join(', ')}
+									</div>
 								{/if}
 								{#if fw.only_forward_when_mentions_member}
 									<div class="text-ash-400 text-xs">
@@ -394,6 +442,42 @@
 						</div>
 						<span class="text-ash-300 text-sm">{draft.only_forward_when_mentions_member ? 'Yes' : 'No'}</span>
 					</label>
+				</div>
+
+				<div>
+					<label for="fw-keyword" class="text-ash-300 mb-1.5 block text-xs font-medium">
+						<i class="fas fa-filter mr-1.5 text-violet-400"></i>Keywords <span class="text-ash-500">(optional)</span>
+					</label>
+					<p class="text-ash-500 mb-2 text-xs">
+						Type a keyword and press Enter to add it. Only messages containing at least one keyword are forwarded. Leave empty to forward everything.{#if draft.only_forward_when_mentions_member}
+							With the mention filter on, a message must mention the account <strong class="text-ash-300">and</strong> match a keyword.{/if}
+					</p>
+					<input
+						id="fw-keyword"
+						type="text"
+						bind:value={keywordInput}
+						onkeydown={onKeywordKeydown}
+						onblur={addKeyword}
+						placeholder="Type a keyword and press Enter..."
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+					/>
+					{#if draft.keywords.length > 0}
+						<div class="mt-2 flex flex-wrap gap-1.5">
+							{#each draft.keywords as keyword}
+								<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
+									{keyword}
+									<button
+										type="button"
+										onclick={() => removeKeyword(keyword)}
+										class="hover:text-ash-300 ml-0.5 transition-colors"
+										aria-label="Remove keyword {keyword}"
+									>
+										<i class="fas fa-times text-xs"></i>
+									</button>
+								</span>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
 				<div>

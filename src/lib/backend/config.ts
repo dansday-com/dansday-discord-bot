@@ -3,7 +3,7 @@ import { SERVER_SETTINGS, publicSubfeatureEnabled, type PublicStatisticsSubfeatu
 import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-settings.js';
 
 const serverSettingsComponent = SERVER_SETTINGS.component;
-import { normalizeForwarderSettings } from '../forwarder-settings.js';
+import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
@@ -850,21 +850,21 @@ export const FORWARDER = {
 
 	async shouldForwardChannel(channelId: string, guildId: string) {
 		requireBotConfig();
-		if (!channelId || !guildId) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+		if (!channelId || !guildId) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 		if (!botConfig!.isSelfbot) {
-			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 		}
 
 		try {
 			const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
-			if (!selfbotServer) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+			if (!selfbotServer) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 
 			const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
-			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 
 			const primarySelfbotId = await db.getPrimarySelfbotIdForSourceGuild(officialBot.id, guildId);
 			if (primarySelfbotId !== null && String(primarySelfbotId) !== String(botConfig!.id)) {
-				return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+				return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 			}
 
 			const officialServers = await db.getServersForBot(officialBot.id);
@@ -884,6 +884,7 @@ export const FORWARDER = {
 								return {
 									shouldForward: true,
 									onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
+									keywords: normalizeForwarderKeywords(forwarder.keywords),
 									target_guild_id: officialServer.discord_server_id
 								};
 							}
@@ -893,9 +894,9 @@ export const FORWARDER = {
 					continue;
 				}
 			}
-			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 		} catch (_) {
-			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 		}
 	},
 
@@ -925,7 +926,8 @@ export const FORWARDER = {
 						target_channel_id: forwarder.target_channel_id,
 						role_pings: forwarder.role_pings || forwarder.roles || [],
 						target_guild_id: officialServer.discord_server_id,
-						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true
+						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true,
+						keywords: normalizeForwarderKeywords(forwarder.keywords)
 					};
 				}
 			} catch (_) {

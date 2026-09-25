@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
 import { validateServerAiSettings } from '$lib/server-ai-settings.js';
+import { normalizeForwarderKeywords } from '$lib/forwarder-settings.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -66,6 +67,14 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (invalid) {
 				return json({ error: invalid }, { status: 400 });
 			}
+		}
+
+		if (component === SERVER_SETTINGS.component.forwarder && Array.isArray((settings as { forwarders?: unknown }).forwarders)) {
+			(settings as { forwarders: unknown[] }).forwarders = (settings as { forwarders: unknown[] }).forwarders.map((fw) =>
+				fw && typeof fw === 'object'
+					? { ...(fw as Record<string, unknown>), keywords: normalizeForwarderKeywords((fw as Record<string, unknown>).keywords) }
+					: fw
+			);
 		}
 
 		let targetServerId = panelServerId;

@@ -1,4 +1,5 @@
 import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
 
 function extractCustomEmojis(text) {
@@ -191,6 +192,10 @@ export async function processMessageFromSelfBot(messageData, client) {
 		if (!selfBotId || !mentionedUserIds.includes(selfBotId)) {
 			return;
 		}
+	}
+
+	if (!forwarderKeywordsMatch(forwarderConfig.keywords, forwarderKeywordHaystack(messageData.content, messageData.embeds))) {
+		return;
 	}
 
 	try {

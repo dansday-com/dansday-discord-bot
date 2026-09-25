@@ -17,7 +17,7 @@
 
 	const pd = $derived(page.data as any);
 
-	const accountBase = $derived(`${publicServerPath(data.server.slug)}/account`);
+	const accountBase = $derived(`${(data as any).serverBasePath ?? publicServerPath(data.server.slug)}/account`);
 	const readOnly = false;
 	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));

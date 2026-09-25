@@ -96,11 +96,6 @@ async function getConnectedSelfbots(officialBotId: number) {
 	}
 }
 
-function selfbotShouldAutoStartWithOfficial(sb: { status?: string | null }): boolean {
-	const st = (sb.status || '').toLowerCase();
-	return st === 'running' || st === 'starting';
-}
-
 function isSelfbotProcessAlive(sb: any): boolean {
 	const mapKey = botProcessMapKey('selfbot', sb.id);
 	const info = botProcesses.get(mapKey);
@@ -115,11 +110,9 @@ function isSelfbotProcessAlive(sb: any): boolean {
 }
 
 function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: number): void {
-	const eligible = (selfbots || []).filter(
-		(sb: any) => selfbotShouldAutoStartWithOfficial(sb) && typeof sb.token === 'string' && sb.token.trim() !== '' && !isSelfbotProcessAlive(sb)
-	);
+	const eligible = (selfbots || []).filter((sb: any) => typeof sb.token === 'string' && sb.token.trim() !== '' && !isSelfbotProcessAlive(sb));
 	if (eligible.length === 0) return;
-	logger.log(`🔗 Scheduling ${eligible.length} connected selfbot(s) for official bot ${officialBotId} (independent of official process)`);
+	logger.log(`🔗 Starting ${eligible.length} selfbot(s) with official bot ${officialBotId}`);
 	Promise.allSettled(eligible.map((sb: any) => startBotById(sb.id, sb))).then((results) => {
 		for (let i = 0; i < results.length; i++) {
 			const sb = eligible[i];
@@ -131,6 +124,14 @@ function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: numb
 			}
 		}
 	});
+}
+
+async function stopConnectedSelfbots(officialBotId: number): Promise<void> {
+	const selfbots = await getConnectedSelfbots(officialBotId);
+	const alive = (selfbots || []).filter((sb: any) => isSelfbotProcessAlive(sb) || sb.status === 'running' || sb.status === 'starting');
+	if (alive.length === 0) return;
+	logger.log(`🔗 Stopping ${alive.length} selfbot(s) with official bot ${officialBotId}`);
+	await Promise.allSettled(alive.map((sb: any) => stopBotById(sb.id, sb)));
 }
 
 export async function startBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
@@ -282,6 +283,10 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 
 export async function stopBotById(botId: number, bot?: any): Promise<{ success: boolean; error?: string; message?: string }> {
 	const mapKey = processKeyForStop(botId, bot);
+
+	if (!bot || !isSelfbot(bot)) {
+		await stopConnectedSelfbots(botId).catch(() => {});
+	}
 
 	if (bot) {
 		try {

@@ -1,4 +1,4 @@
-import { APP_URL } from './frontend/panelServer.js';
+import { APP_DOMAIN, APP_URL } from './frontend/panelServer.js';
 
 export const COMMUNITY_DISCORD_URL = 'https://discord.gg/7fEqEDSur3';
 
@@ -21,4 +21,112 @@ export function publicServerPath(slug: string): string {
 export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members' | 'account'): string | null {
 	if (!slug) return null;
 	return publicSiteOrigin() + publicServerPath(slug) + (page ? `/${page}` : '');
+}
+
+const APP_PROTOCOL = APP_URL.startsWith('http://') ? 'http:' : 'https:';
+
+const RESERVED_SUBDOMAIN_LABELS = new Set([
+	'www',
+	'api',
+	'app',
+	'admin',
+	'panel',
+	'dashboard',
+	'mail',
+	'email',
+	'webmail',
+	'smtp',
+	'imap',
+	'pop',
+	'pop3',
+	'mx',
+	'autodiscover',
+	'autoconfig',
+	'ftp',
+	'sftp',
+	'ns',
+	'ns1',
+	'ns2',
+	'dns',
+	'cdn',
+	'static',
+	'assets',
+	'media',
+	'img',
+	'images',
+	's3',
+	'storage',
+	'files',
+	'uploads',
+	'docs',
+	'doc',
+	'blog',
+	'status',
+	'health',
+	'metrics',
+	'grafana',
+	'otel',
+	'dev',
+	'staging',
+	'stage',
+	'test',
+	'preview',
+	'demo',
+	'local',
+	'localhost',
+	'git',
+	'ci',
+	'vpn',
+	'proxy',
+	'redis',
+	'db',
+	'database'
+]);
+
+export function serverSlugToSubdomainLabel(slug: string): string {
+	return String(slug ?? '').replace(/_/g, '-');
+}
+
+export function subdomainLabelToServerSlug(label: string): string {
+	return String(label ?? '').replace(/-/g, '_');
+}
+
+function subdomainRootHost(): string {
+	return APP_DOMAIN.toLowerCase().replace(/:\d+$/, '');
+}
+
+export function publicServerSlugFromHost(hostname: string | null | undefined): string | null {
+	const host = String(hostname ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/\.$/, '')
+		.replace(/:\d+$/, '');
+	const root = subdomainRootHost();
+	if (!host || !root || !host.endsWith(`.${root}`)) return null;
+	const label = host.slice(0, -(root.length + 1));
+	if (!label || label.includes('.')) return null;
+	if (!/^[a-z0-9]+(?:-[0-9]+)?$/.test(label)) return null;
+	if (RESERVED_SUBDOMAIN_LABELS.has(label)) return null;
+	return subdomainLabelToServerSlug(label);
+}
+
+export function publicServerSubdomainOrigin(slug: string): string | null {
+	const label = serverSlugToSubdomainLabel(slug);
+	if (!label || !APP_DOMAIN) return null;
+	return `${APP_PROTOCOL}//${label}.${APP_DOMAIN}`;
+}
+
+export function publicServerSubdomainUrl(slug: string, page?: 'leaderboard' | 'members' | 'account'): string | null {
+	const origin = publicServerSubdomainOrigin(slug);
+	if (!origin) return null;
+	return origin + (page ? `/${page}` : '');
+}
+
+export function apexHome(): string {
+	return `${publicSiteOrigin()}/`;
+}
+
+export function publicServerBasePath(slug: string, hostname?: string | null): string {
+	if (hostname && publicServerSlugFromHost(hostname) === slug) return '';
+	return publicServerPath(slug);
 }

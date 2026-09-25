@@ -6,6 +6,7 @@ import { verifyBotStatuses } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
 import { guardApiRoute } from '$lib/frontend/panelServer.js';
 import { pruneExpiredEmbedImages } from '$lib/backend/storage/embedImages.js';
+import { apexHome, publicServerSlugFromHost } from '$lib/url.js';
 
 export const init = async () => {
 	await verifyBotStatuses();
@@ -130,7 +131,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (wantsHtml && response.status === 404) {
 			return new Response(null, {
 				status: 302,
-				headers: { Location: '/' }
+				headers: { Location: publicServerSlugFromHost(event.url.hostname) ? apexHome() : '/' }
 			});
 		}
 	}

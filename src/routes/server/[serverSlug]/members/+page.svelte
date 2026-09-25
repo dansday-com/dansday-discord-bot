@@ -172,6 +172,7 @@
 	<meta name="description" content="Members, ranks, XP, and voice stats for {data.server.name || data.server.slug}." />
 	<meta property="og:title" content="{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
+	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 
 <div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">

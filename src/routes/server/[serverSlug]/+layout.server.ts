@@ -4,11 +4,12 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
+import { apexHome, publicServerPath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 
-export const load: LayoutServerLoad = async ({ params }) => {
+export const load: LayoutServerLoad = async ({ params, url }) => {
 	const slug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(slug);
-	if (!resolved) redirect(303, '/');
+	if (!resolved) redirect(303, apexHome());
 
 	const settingsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.public_statistics);
 	const settings = (settingsRow as any)?.settings || {};
@@ -19,11 +20,18 @@ export const load: LayoutServerLoad = async ({ params }) => {
 	const tasksEnabled = publicSubfeatureEnabled(settings, 'tasks');
 
 	const server = resolved.server;
+	const onSubdomain = publicServerSlugFromHost(url.hostname) === resolved.computedSlug;
+	const canonicalBase = publicServerPath(resolved.computedSlug);
+	const pathname = url.pathname.replace(/\/+$/, '');
+	const tail = onSubdomain ? pathname : pathname.slice(publicServerPath(slug).length);
 	return {
 		itemsEnabled,
 		assetsEnabled,
 		minigamesEnabled,
 		tasksEnabled,
+		onSubdomain,
+		serverBasePath: onSubdomain ? '' : canonicalBase,
+		canonicalUrl: publicSiteOrigin() + canonicalBase + tail,
 		server: {
 			id: server.id,
 			name: server.name,

@@ -360,6 +360,7 @@
 	<meta name="description" content="Top members leaderboard for {data.server.name || data.server.slug}." />
 	<meta property="og:title" content="{data.server.name || data.server.slug} Leaderboard | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
+	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 
 <div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">

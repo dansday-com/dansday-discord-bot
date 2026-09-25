@@ -1,6 +1,5 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { publicServerPath } from '$lib/url.js';
 import db from '$lib/database.js';
 import { loadItemsShared, computeCardToken, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
@@ -13,14 +12,14 @@ function safeParse(raw: any) {
 }
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server, itemsEnabled } = await parent();
+	const { server, serverBasePath, itemsEnabled } = await parent();
 
 	if (!itemsEnabled) return { featureDisabled: true, server, category: 'all' };
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');
-	if ('notFound' in shared) redirect(303, `${publicServerPath(server.slug)}/account/overview/${params.hash}`);
-	if ('guest' in shared) redirect(303, publicServerPath(server.slug));
+	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/overview/${params.hash}`);
+	if ('guest' in shared) redirect(303, serverBasePath || '/');
 
 	const category = String(params.category || 'all');
 	const visibleItems = category === 'all' ? shared.items : shared.items.filter((i: any) => i.effect_type === category);

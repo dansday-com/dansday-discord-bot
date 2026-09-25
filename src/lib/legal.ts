@@ -8,7 +8,7 @@ export const PRIVACY_PATH = '/privacy-policy';
 export const TERMS_URL = `${LEGAL_BASE_URL}${TERMS_PATH}`;
 export const PRIVACY_URL = `${LEGAL_BASE_URL}${PRIVACY_PATH}`;
 
-export const LEGAL_LAST_UPDATED = 'August 24, 2026';
+export const LEGAL_LAST_UPDATED = 'September 25, 2026';
 export const LEGAL_RETENTION_DAYS = 7;
 export const SECURITY_EMAIL = APP_EMAIL('security');
 
@@ -250,10 +250,6 @@ export const terms: LegalDoc = {
 						{ label: 'license', href: THIRD_PARTY_LINKS.license },
 						{ label: 'source repository', href: THIRD_PARTY_LINKS.repo }
 					]
-				},
-				{
-					kind: 'text',
-					text: 'The optional selfbot path uses a user token and is not supported by Discord. If you choose to enable it, you do so on your own risk assessment and remain responsible for any consequences to the account involved.'
 				}
 			]
 		},

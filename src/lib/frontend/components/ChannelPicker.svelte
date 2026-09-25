@@ -21,11 +21,12 @@
 		categories?: Category[];
 		value: string | string[];
 		placeholder?: string;
+		emptyText?: string;
 		multi?: boolean;
 		onchange: (value: string | string[]) => void;
 	}
 
-	let { channels, categories = [], value, placeholder = 'Select channel...', multi = false, onchange }: Props = $props();
+	let { channels, categories = [], value, placeholder = 'Select channel...', emptyText = 'No channels found', multi = false, onchange }: Props = $props();
 
 	let open = $state(false);
 	let search = $state('');
@@ -167,7 +168,7 @@
 				{#if channels.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
 						<i class="fas fa-inbox {CHANNEL_PICKER_ACCENT.emptyStateIcon}"></i>
-						<p>No channels found</p>
+						<p>{emptyText}</p>
 					</div>
 				{:else}
 					{#if !multi}

@@ -34,6 +34,21 @@ export const panel = mysqlTable(
 	(t) => [uniqueIndex('uq_panels_account_id').on(t.account_id)]
 );
 
+export const panelSettings = mysqlTable(
+	'panel_settings',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		panel_id: int('panel_id')
+			.notNull()
+			.references(() => panel.id, { onDelete: 'cascade' }),
+		component_name: varchar('component_name', { length: 150 }).notNull(),
+		settings: json('settings').notNull().default({}),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_panel_component').on(t.panel_id, t.component_name), index('idx_panel_settings_panel_id').on(t.panel_id)]
+);
+
 export const bots = mysqlTable('bots', {
 	id: int('id').primaryKey().autoincrement(),
 	name: text('name').notNull(),
@@ -194,13 +209,11 @@ export const serverAccountInvites = mysqlTable(
 	(t) => [index('idx_server_account_invites_token').on(t.token), index('idx_server_account_invites_server_id').on(t.server_id)]
 );
 
-export const serverBots = mysqlTable(
-	'server_bots',
+export const selfbots = mysqlTable(
+	'selfbots',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_id: int('server_id')
-			.notNull()
-			.references(() => servers.id, { onDelete: 'cascade' }),
+		panel_id: int('panel_id').references(() => panel.id, { onDelete: 'cascade' }),
 		name: text('name'),
 		token: text('token'),
 		bot_icon: text('bot_icon'),
@@ -210,16 +223,16 @@ export const serverBots = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at')
 	},
-	(t) => [index('idx_server_bots_server_id').on(t.server_id)]
+	(t) => [index('idx_selfbots_panel_id').on(t.panel_id)]
 );
 
-export const serverBotStatus = mysqlTable(
-	'server_bot_status',
+export const selfbotStatus = mysqlTable(
+	'selfbot_status',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_bot_id: int('server_bot_id')
+		selfbot_id: int('selfbot_id')
 			.notNull()
-			.references(() => serverBots.id, { onDelete: 'cascade' }),
+			.references(() => selfbots.id, { onDelete: 'cascade' }),
 		discord_status: mysqlEnum('discord_status', ['online', 'idle', 'dnd', 'invisible']).notNull().default('online'),
 		activity_type: mysqlEnum('activity_type', ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing']).notNull().default('playing'),
 		activity_name: varchar('activity_name', { length: 128 }).notNull().default(''),
@@ -228,7 +241,7 @@ export const serverBotStatus = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [uniqueIndex('uq_server_bot_status_server_bot_id').on(t.server_bot_id)]
+	(t) => [uniqueIndex('uq_selfbot_status_selfbot_id').on(t.selfbot_id)]
 );
 
 export const serverCategories = mysqlTable(
@@ -296,13 +309,13 @@ export const serverChannels = mysqlTable(
 	]
 );
 
-export const serverBotServers = mysqlTable(
-	'server_bot_servers',
+export const selfbotServers = mysqlTable(
+	'selfbot_servers',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_bot_id: int('server_bot_id')
+		selfbot_id: int('selfbot_id')
 			.notNull()
-			.references(() => serverBots.id, { onDelete: 'cascade' }),
+			.references(() => selfbots.id, { onDelete: 'cascade' }),
 		discord_server_id: varchar('discord_server_id', { length: 150 }).notNull(),
 		name: text('name'),
 		total_members: int('total_members').default(0),
@@ -317,19 +330,19 @@ export const serverBotServers = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('uq_server_bot_server').on(t.server_bot_id, t.discord_server_id),
-		index('idx_server_bot_servers_bot_id').on(t.server_bot_id),
-		index('idx_server_bot_servers_discord_id').on(t.discord_server_id)
+		uniqueIndex('uq_selfbot_server').on(t.selfbot_id, t.discord_server_id),
+		index('idx_selfbot_servers_selfbot_id').on(t.selfbot_id),
+		index('idx_selfbot_servers_discord_id').on(t.discord_server_id)
 	]
 );
 
-export const serverBotServerCategories = mysqlTable(
-	'server_bot_server_categories',
+export const selfbotServerCategories = mysqlTable(
+	'selfbot_server_categories',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_bot_server_id: int('server_bot_server_id')
+		selfbot_server_id: int('selfbot_server_id')
 			.notNull()
-			.references(() => serverBotServers.id, { onDelete: 'cascade' }),
+			.references(() => selfbotServers.id, { onDelete: 'cascade' }),
 		discord_category_id: varchar('discord_category_id', { length: 150 }).notNull(),
 		name: text('name'),
 		position: int('position'),
@@ -337,19 +350,19 @@ export const serverBotServerCategories = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('uq_server_bot_category').on(t.server_bot_server_id, t.discord_category_id),
-		index('idx_server_bot_server_categories_server_id').on(t.server_bot_server_id),
-		index('idx_server_bot_server_categories_discord_id').on(t.discord_category_id)
+		uniqueIndex('uq_selfbot_server_category').on(t.selfbot_server_id, t.discord_category_id),
+		index('idx_selfbot_server_categories_selfbot_server_id').on(t.selfbot_server_id),
+		index('idx_selfbot_server_categories_discord_id').on(t.discord_category_id)
 	]
 );
 
-export const serverBotServerChannels = mysqlTable(
-	'server_bot_server_channels',
+export const selfbotServerChannels = mysqlTable(
+	'selfbot_server_channels',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_bot_server_id: int('server_bot_server_id')
+		selfbot_server_id: int('selfbot_server_id')
 			.notNull()
-			.references(() => serverBotServers.id, { onDelete: 'cascade' }),
+			.references(() => selfbotServers.id, { onDelete: 'cascade' }),
 		discord_channel_id: varchar('discord_channel_id', { length: 150 }).notNull(),
 		name: text('name'),
 		type: text('type'),
@@ -359,10 +372,10 @@ export const serverBotServerChannels = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('uq_server_bot_channel').on(t.server_bot_server_id, t.discord_channel_id),
-		index('idx_server_bot_server_channels_server_id').on(t.server_bot_server_id),
-		index('idx_server_bot_server_channels_discord_id').on(t.discord_channel_id),
-		index('idx_server_bot_server_channels_parent_discord').on(t.discord_parent_category_id)
+		uniqueIndex('uq_selfbot_server_channel').on(t.selfbot_server_id, t.discord_channel_id),
+		index('idx_selfbot_server_channels_selfbot_server_id').on(t.selfbot_server_id),
+		index('idx_selfbot_server_channels_discord_id').on(t.discord_channel_id),
+		index('idx_selfbot_server_channels_parent_discord').on(t.discord_parent_category_id)
 	]
 );
 

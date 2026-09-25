@@ -25,7 +25,6 @@
 		startSteps,
 		setupChannels,
 		accountFields,
-		botKinds,
 		tiers,
 		permissionRoles,
 		modules,
@@ -73,16 +72,6 @@
 
 		<DocSection id="start" icon={sectionIcon('start')} heading={sectionHeading('start')} lead={sectionLead('start')}>
 			<StepGrid steps={startSteps} />
-		</DocSection>
-
-		<DocSection id="bots" icon={sectionIcon('bots')} heading={sectionHeading('bots')} lead={sectionLead('bots')}>
-			<div class="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
-				{#each botKinds as b}
-					<ModuleCard icon={b.icon} accent={b.accent} title={b.title} what={b.what}>
-						<FieldList fields={b.fields} />
-					</ModuleCard>
-				{/each}
-			</div>
 		</DocSection>
 
 		<DocSection id="setup-command" icon={sectionIcon('setup-command')} heading={sectionHeading('setup-command')} lead={sectionLead('setup-command')}>

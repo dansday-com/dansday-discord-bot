@@ -7,9 +7,11 @@
 	const tabs = $derived([
 		{ label: 'Overview', icon: 'fa-chart-pie', iconClass: 'text-sky-400', href: '/overview' },
 		{ label: 'Bots', icon: 'fa-robot', iconClass: 'text-violet-400', href: '/bots' },
+		{ label: 'Selfbots', icon: 'fa-user-secret', iconClass: 'text-fuchsia-400', href: '/selfbots' },
 		{ label: 'Greetings', icon: 'fa-hands-clapping', iconClass: 'text-amber-400', href: '/greetings' },
 		{ label: 'Global Embed', icon: 'fa-bullhorn', iconClass: 'text-rose-400', href: '/global-embed' },
-		{ label: 'Items', icon: 'fa-store', iconClass: 'text-teal-400', href: '/items' }
+		{ label: 'Items', icon: 'fa-store', iconClass: 'text-teal-400', href: '/items' },
+		{ label: 'Settings', icon: 'fa-sliders', iconClass: 'text-sky-400', href: '/settings' }
 	]);
 
 	function isActive(href: string) {

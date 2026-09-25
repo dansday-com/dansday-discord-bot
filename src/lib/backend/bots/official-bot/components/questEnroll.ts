@@ -11,6 +11,7 @@ import {
 import type { ButtonInteraction, ModalSubmitInteraction } from 'discord.js';
 import db from '../../../../database.js';
 import {
+	extractDiscordQuestSummaries,
 	fetchQuestsMe,
 	getBotConfig,
 	getEmbedConfig,
@@ -19,6 +20,7 @@ import {
 	serverSettingsComponent,
 	type DiscordQuestSummary
 } from '../../../config.js';
+import { logger } from '../../../../utils/index.js';
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, queueQuestClaimAllJob, isUserEnrollRunning } from './questEnrollWorker.js';
@@ -66,13 +68,21 @@ function tokenFromModal(interaction: ModalSubmitInteraction): string {
 	return interaction.fields.getTextInputValue(TOKEN_FIELD_ID)?.trim() || interaction.fields.getTextInputValue(LEGACY_TOKEN_FIELD_ID)?.trim() || '';
 }
 
-async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest: boolean; httpProxyUrl: string | null; channelId: string | null }> {
+async function isAutoQuestEnrollmentEnabled(serverId: number): Promise<boolean> {
+	const panelId = await db.getServerPanelId(serverId).catch(() => null);
+	if (!panelId) return false;
+	const row = await db.getPanelSettings(panelId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
+	const raw = row?.settings;
+	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+	return s.auto_quest === true;
+}
+
+async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest: boolean; channelId: string | null }> {
 	const row = await db.getServerSettings(serverId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 	const rawSettings = row && !Array.isArray(row) ? row.settings : null;
 	const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
 	return {
-		autoQuest: s.auto_quest !== false,
-		httpProxyUrl: typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null,
+		autoQuest: await isAutoQuestEnrollmentEnabled(serverId),
 		channelId: typeof s.channel_id === 'string' && s.channel_id.trim() ? s.channel_id.trim() : null
 	};
 }
@@ -119,6 +129,24 @@ function sortQuestsByExpiry(quests: DiscordQuestSummary[]): DiscordQuestSummary[
 		const tb = Date.parse(b.expiresAt || '');
 		return (Number.isFinite(ta) ? ta : Number.MAX_SAFE_INTEGER) - (Number.isFinite(tb) ? tb : Number.MAX_SAFE_INTEGER);
 	});
+}
+
+async function harvestQuestsFromMemberPayload(serverId: number, questsPayload: unknown): Promise<void> {
+	const botConfig = getBotConfig();
+	if (!botConfig) return;
+	const discovered = extractDiscordQuestSummaries(questsPayload);
+	if (discovered.length === 0) return;
+	const added = await db.addMissingBotDiscordQuests(botConfig.id, discovered).catch(() => [] as DiscordQuestSummary[]);
+	if (added.length === 0) return;
+	await db
+		.linkServerToBotDiscordQuests(
+			serverId,
+			added.map((q) => q.id)
+		)
+		.catch(() => null);
+	await logger.log(
+		`🔮 Quest enroll: discovered ${added.length} new quest(s) from a member token for bot ${botConfig.id} — ${added.map((q) => q.questName).join(', ')}`
+	);
 }
 
 async function listActiveQuestsForMember(serverId: number, memberId: number): Promise<{ quest: DiscordQuestSummary; claimed: boolean }[]> {
@@ -243,7 +271,7 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 
 	let questsPayload: unknown;
 	try {
-		questsPayload = await fetchQuestsMe(token, { httpProxyUrl: settings.httpProxyUrl });
+		questsPayload = await fetchQuestsMe(token);
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
 		const invalidEmbed = new EmbedBuilder()
@@ -255,6 +283,8 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
 		return;
 	}
+
+	await harvestQuestsFromMemberPayload(server.id, questsPayload);
 
 	const dbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
 	const rows = await listActiveQuestsForMember(server.id, dbMember?.id ?? 0);
@@ -313,7 +343,6 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 		requesterTag: interaction.user.tag,
 		requesterId: interaction.user.id,
 		userToken: token,
-		httpProxyUrl: settings.httpProxyUrl,
 		serverId: server.id,
 		memberId: dbMember?.id ?? 0
 	});
@@ -390,7 +419,7 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 
 	let questsPayload: unknown;
 	try {
-		questsPayload = await fetchQuestsMe(token, { httpProxyUrl: settings.httpProxyUrl });
+		questsPayload = await fetchQuestsMe(token);
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
 		const embedConfig = await getEmbedConfig(interaction.guild!.id);
@@ -403,6 +432,8 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
 		return;
 	}
+
+	await harvestQuestsFromMemberPayload(server.id, questsPayload);
 
 	const pre = precheckQuestPayloadForEnrollment(questsPayload, questId);
 	if (!pre.ok) {
@@ -447,7 +478,6 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 		requesterTag: interaction.user.tag,
 		requesterId: interaction.user.id,
 		userToken: token,
-		httpProxyUrl: settings.httpProxyUrl,
 		serverId: server.id,
 		memberId: member?.id ?? 0
 	});

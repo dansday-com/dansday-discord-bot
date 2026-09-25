@@ -32,10 +32,7 @@
 	const totalPages = $derived(Math.ceil(data.servers.length / SERVERS_PER_PAGE));
 	const pagedServers = $derived(data.servers.slice((page - 1) * SERVERS_PER_PAGE, page * SERVERS_PER_PAGE));
 
-	const canControlSelfbot = $derived(
-		data.user.authenticated &&
-			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
-	);
+	const canControlSelfbot = $derived(data.user.authenticated && data.user.account_source === 'accounts');
 
 	let liveOverride: { status: string; process_id: number | null } | null = $state(null);
 	const liveBot = $derived(liveOverride ?? { status: data.bot.status, process_id: data.bot.process_id ?? null });
@@ -139,7 +136,7 @@
 	async function deleteSelfbot() {
 		deleting = true;
 		try {
-			const res = await fetch(`/api/servers/${data.serverId}/selfbot`, {
+			const res = await fetch(`/api/panel/selfbots`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
@@ -148,7 +145,7 @@
 			const d = await res.json();
 			if (d.success) {
 				showToast('Selfbot deleted', 'success');
-				goto(`/bots/${data.botId}/servers/${data.serverId}/selfbot`);
+				goto('/selfbots');
 			} else {
 				showToast(d.error || 'Failed to delete', 'error');
 			}
@@ -214,19 +211,9 @@
 </svelte:head>
 
 <div class="space-y-4">
-	<a
-		href={`/bots/${data.botId}/servers/${data.serverId}/selfbot`}
-		class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors"
-	>
+	<a href={'/selfbots'} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left text-violet-300"></i>Back to Selfbots
 	</a>
-
-	{#if data.selfbotViewOnly}
-		<div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
-			<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
-			<span><strong class="text-amber-50">View only.</strong> Status and uptime update live; start, stop, restart, and delete are owner-only.</span>
-		</div>
-	{/if}
 
 	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -328,7 +315,6 @@
 					options={PRESENCE_DISCORD_OPTIONS}
 					bind:value={presence.discord_status}
 					ariaLabel="Discord visibility"
-					disabled={data.selfbotViewOnly}
 				/>
 			</div>
 			<div class="min-w-0">
@@ -341,7 +327,6 @@
 					options={PRESENCE_ACTIVITY_OPTIONS}
 					bind:value={presence.activity_type}
 					ariaLabel="Discord activity type"
-					disabled={data.selfbotViewOnly}
 				/>
 			</div>
 			{#if presence.activity_type === 'custom'}
@@ -353,7 +338,6 @@
 						maxlength="128"
 						bind:value={presence.activity_state}
 						placeholder="Text shown as custom status"
-						disabled={data.selfbotViewOnly}
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 					/>
 				</div>
@@ -366,7 +350,6 @@
 						maxlength="128"
 						bind:value={presence.activity_name}
 						placeholder="e.g. your community name or track title"
-						disabled={data.selfbotViewOnly}
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 					/>
 				</div>
@@ -381,7 +364,6 @@
 							autocomplete="url"
 							bind:value={presence.activity_url}
 							placeholder="https://twitch.tv/yourchannel or https://youtube.com/watch?v=…"
-							disabled={data.selfbotViewOnly}
 							class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 						/>
 					</div>
@@ -394,7 +376,6 @@
 						maxlength="128"
 						bind:value={presence.activity_state}
 						placeholder="Extra line under the activity, if supported"
-						disabled={data.selfbotViewOnly}
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 					/>
 				</div>

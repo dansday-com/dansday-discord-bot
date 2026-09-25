@@ -1,4 +1,5 @@
 import { FORWARDER, COMMUNICATION } from '../../../config.js';
+import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
 
 async function sendToOfficialBot(messageData: any) {
@@ -80,6 +81,8 @@ function init(client: any) {
 				const mentionedUsers = message.mentions?.users;
 				if (!mentionedUsers || mentionedUsers.size === 0 || !mentionedUsers.has(selfBotId)) return;
 			}
+
+			if (!forwarderKeywordsMatch(result.keywords, forwarderKeywordHaystack(message.content, message.embeds))) return;
 
 			await processMessage(message);
 		} catch (err: any) {

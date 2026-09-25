@@ -19,7 +19,6 @@ export type QuestEnrollJob = {
 	requesterTag: string;
 	requesterId: string;
 	userToken: string;
-	httpProxyUrl?: string | null;
 	serverId: number;
 	memberId: number;
 };
@@ -86,7 +85,7 @@ async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: s
 
 async function enrollOneQuest(job: QuestEnrollJob | QuestClaimAllJob, questId: string): Promise<boolean> {
 	try {
-		const result = await runQuestUserAutomation(job.userToken, questId, { httpProxyUrl: job.httpProxyUrl });
+		const result = await runQuestUserAutomation(job.userToken, questId);
 		if (result.ok) {
 			await db.markServerMemberDiscordQuestClaimed(job.serverId, job.memberId, questId).catch(() => null);
 		}

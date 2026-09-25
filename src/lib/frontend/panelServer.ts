@@ -250,22 +250,29 @@ export async function canUseEmbedBuilder(locals: App.Locals, serverId: string | 
 	return false;
 }
 
-export async function canViewSelfbots(locals: App.Locals, serverId: string | number): Promise<boolean> {
+export async function canReadSelfbotTopology(locals: App.Locals, selfbotId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return accountOwnsServer(locals, Number(serverId));
+	const db = await getDb();
+	const sb = await db.getSelfbotById(selfbotId);
+	if (!sb) return false;
+
+	const selfbotPanelId = sb.panel_id;
+	if (selfbotPanelId == null) return false;
+
+	if (locals.user.account_source === 'accounts') return locals.user.panel_id === selfbotPanelId;
 	if (locals.user.account_source === 'server_accounts') {
-		return locals.user.server_id === Number(serverId);
+		return (await db.getServerPanelId(locals.user.server_id)) === selfbotPanelId;
 	}
 	return false;
 }
 
-export async function canManageSelfbots(locals: App.Locals, serverId: string | number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return accountOwnsServer(locals, Number(serverId));
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
-		return locals.user.server_id === Number(serverId);
-	}
-	return false;
+export async function canManagePanelSelfbots(locals: App.Locals, selfbotId: number): Promise<boolean> {
+	const panelId = getPanelId(locals);
+	if (panelId == null) return false;
+	const db = await getDb();
+	const sb = await db.getSelfbotById(selfbotId);
+	if (!sb) return false;
+	return sb.panel_id === panelId;
 }
 
 export function isGuildStaffUser(user: App.Locals['user']): boolean {
@@ -289,20 +296,25 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		superadminOnly: true
 	},
 	{
+		pattern: /^\/api\/selfbots\/(\d+)\/servers(\/.*)?$/,
+		check: async (locals, match) => canReadSelfbotTopology(locals, Number(match[1]))
+	},
+	{
 		pattern: /^\/api\/selfbots\/(\d+)(\/.*)?$/,
 		check: async (locals, match) => {
-			if (!locals.user.authenticated) return false;
+			const panelId = getPanelId(locals);
+			if (panelId == null) return false;
 			const db = await getDb();
-			const sb = await db.getServerBotById(Number(match[1]));
+			const sb = await db.getSelfbotById(Number(match[1]));
 			if (!sb) return false;
-			if (locals.user.account_source === 'server_accounts') {
-				return locals.user.account_type === 'owner' && locals.user.server_id === sb.server_id;
-			}
-			if (locals.user.account_source === 'accounts') {
-				return accountOwnsServer(locals, sb.server_id);
-			}
-			return false;
-		}
+			return sb.panel_id === panelId;
+		},
+		superadminOnly: true
+	},
+	{
+		pattern: /^\/api\/panel\/(selfbots|settings)(\/.*)?$/,
+		check: async (locals) => getPanelId(locals) != null,
+		superadminOnly: true
 	},
 
 	{
@@ -317,6 +329,16 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	},
 	{
 		pattern: /^\/api\/servers\/(\d+)\/channels/,
+		check: async (locals, match) => {
+			const id = Number(match[1]);
+			if (!locals.user.authenticated) return false;
+			return locals.user.account_source === 'accounts'
+				? accountOwnsServer(locals, id)
+				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
+		}
+	},
+	{
+		pattern: /^\/api\/servers\/(\d+)\/source-servers/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
 			if (!locals.user.authenticated) return false;
@@ -356,10 +378,6 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	{
 		pattern: /^\/api\/servers\/(\d+)\/quest-notifier/,
 		check: async (locals, match) => canEditServerSettings(locals, match[1])
-	},
-	{
-		pattern: /^\/api\/servers\/(\d+)\/selfbot/,
-		check: async (locals, match) => canViewSelfbots(locals, match[1])
 	},
 	{
 		pattern: /^\/api\/servers\/(\d+)\/(send-embed|upload-embed-image|delete-embed-image)/,

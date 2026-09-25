@@ -113,18 +113,17 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	}
 }
 
-async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServerId: Map<number, string>): Promise<Map<string, string>> {
+async function prefetchBotWideQuests(officialBotId: number): Promise<Map<string, string>> {
 	const sourceByQuestId = new Map<string, string>();
 	const selfbots = await db.getRunningSelfbotsForOfficialBot(officialBotId);
 	if (selfbots.length === 0) {
-		await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no running selfbot on any server — relying on stored quests only`);
+		await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no running selfbot in its panel — relying on stored quests only`);
 		return sourceByQuestId;
 	}
 
 	const fetched = await mapWithConcurrency(selfbots, QUEST_FETCH_CONCURRENCY, async (selfbot) => {
-		const httpProxyUrl = httpProxyUrlByServerId.get(selfbot.server_id) ?? '';
 		try {
-			return { selfbot, payload: await fetchQuestsMe(selfbot.token, { httpProxyUrl }), error: null as string | null };
+			return { selfbot, payload: await fetchQuestsMe(selfbot.token as string), error: null as string | null };
 		} catch (accErr: any) {
 			return { selfbot, payload: null as unknown, error: String(accErr?.message || accErr) };
 		}
@@ -140,24 +139,15 @@ async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServer
 		}
 		okAccounts++;
 
-		for (const raw of (payload as any)?.quests ?? []) {
-			const assets = raw?.config?.assets;
-			const rewards = raw?.config?.rewards_config?.rewards ?? raw?.rewards_config?.rewards ?? raw?.config?.rewards;
-			await logger.log(
-				`🖼️ Quest ${raw?.id} via #${selfbot.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} rewards=${rewards ? JSON.stringify(rewards).slice(0, 900) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`
-			);
-		}
-
 		for (const q of extractDiscordQuestSummaries(payload)) {
 			if (mergedById.has(q.id)) continue;
 			mergedById.set(q.id, q);
 			sourceByQuestId.set(q.id, `#${selfbot.id} ${selfbot.name}`);
-			await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} rewardThumb=${q.thumbnailUrl ?? 'MISS'} via #${selfbot.id} ${selfbot.name}`);
 		}
 	}
 
 	if (okAccounts === 0) {
-		await logger.log(`⚠️ Quest notifier: all ${selfbots.length} bot-wide selfbot(s) failed quest fetch — relying on stored quests only`);
+		await logger.log(`⚠️ Quest notifier: all ${selfbots.length} panel selfbot(s) failed quest fetch — relying on stored quests only`);
 		return sourceByQuestId;
 	}
 
@@ -166,7 +156,7 @@ async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServer
 	}
 
 	await logger.log(
-		`🔮 Quest notifier: prefetched ${mergedById.size} unique quest(s) from ${okAccounts}/${selfbots.length} bot-wide selfbot(s) for bot ${officialBotId}`
+		`🔮 Quest notifier: prefetched ${mergedById.size} unique quest(s) from ${okAccounts}/${selfbots.length} panel selfbot(s) for bot ${officialBotId}`
 	);
 
 	return sourceByQuestId;
@@ -176,18 +166,13 @@ async function runTick(client: Client, officialBotId: number) {
 	const servers = await db.getServersForBot(officialBotId);
 
 	const settingsByServerId = new Map<number, Record<string, unknown>>();
-	const httpProxyUrlByServerId = new Map<number, string>();
 	for (const server of servers) {
 		const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 		const rawSettings = settingsRow && !Array.isArray(settingsRow) ? settingsRow.settings : null;
-		const parsed = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
-		settingsByServerId.set(server.id, parsed);
-		if (typeof parsed.http_proxy_url === 'string' && parsed.http_proxy_url.trim()) {
-			httpProxyUrlByServerId.set(server.id, parsed.http_proxy_url.trim());
-		}
+		settingsByServerId.set(server.id, rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {});
 	}
 
-	const sourceByQuestId = await prefetchBotWideQuests(officialBotId, httpProxyUrlByServerId);
+	const sourceByQuestId = await prefetchBotWideQuests(officialBotId);
 	const questSummaries = await db.listActiveBotDiscordQuests(officialBotId);
 
 	const postedTargets = new Set<string>();

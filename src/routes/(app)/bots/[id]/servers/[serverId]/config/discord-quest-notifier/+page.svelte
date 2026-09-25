@@ -4,7 +4,6 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
-	import { isValidQuestHttpProxyUrl } from '$lib/utils/questHttpProxyUrl.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -13,14 +12,8 @@
 	let testing = $state(false);
 	let featureEnabled = $state(data.settings.enabled === true);
 	let channelId = $state(data.settings.channel_id || '');
-	let httpProxyUrl = $state(data.settings.http_proxy_url || '');
-	let autoQuest = $state(data.settings.auto_quest !== false);
 
 	async function save() {
-		if (!isValidQuestHttpProxyUrl(httpProxyUrl)) {
-			showToast('HTTP proxy must be a valid http:// or https:// URL (or leave empty)', 'error');
-			return;
-		}
 		saving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
@@ -30,9 +23,7 @@
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.discord_quest_notifier,
 					enabled: featureEnabled,
-					channel_id: channelId,
-					http_proxy_url: httpProxyUrl.trim() || '',
-					auto_quest: autoQuest
+					channel_id: channelId
 				})
 			});
 			const d = await res.json();
@@ -77,12 +68,13 @@
 		<i class="fas fa-gem text-sky-400"></i>Discord Quest notifier
 	</h3>
 	<p class="text-ash-400 text-xs">
-		Discord Quest alerts from this server’s selfbot (all reward types). Not the same as <strong class="text-ash-200">Channel notification</strong>.
+		Discord Quest alerts discovered by the operator's linked accounts (all reward types). Not the same as
+		<strong class="text-ash-200">Channel notification</strong>.
 	</p>
 
 	<ConfigToggleRow
 		label="Quest notifier module"
-		description="When off, quest polling and posts are disabled. Requires a running selfbot when enabled."
+		description="When off, quest polling and posts are disabled."
 		labelIconClass="fas fa-gem text-sky-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle quest notifier module"
@@ -90,17 +82,17 @@
 	{#if !featureEnabled}
 		<p class="flex items-start gap-2 text-xs text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
-			<span>Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</span>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit the channel below.</span>
 		</p>
 	{/if}
-	{#if featureEnabled && !data.hasQuests}
+	{#if featureEnabled && !data.hasRunningSelfbot}
 		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
 				{#if !data.hasSelfbots}
-					<strong>No selfbot configured.</strong> Add a selfbot under the Selfbots section for this server to use this feature.
+					<strong>No linked account available.</strong> The operator has not linked an account, so quests cannot be discovered. Ask them to add one.
 				{:else}
-					<strong>No running selfbot.</strong> Start a selfbot under the Selfbots section for this server to use this feature.
+					<strong>No linked account running.</strong> An account is linked but not online. Ask the operator to start it.
 				{/if}
 			</span>
 		</p>
@@ -120,28 +112,15 @@
 			/>
 		</div>
 
-		<div>
-			<label for="questHttpProxy" class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-network-wired mr-1.5 text-sky-400"></i>HTTP(S) proxy <span class="text-ash-500">(optional)</span>
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">For <code class="text-ash-400">/quests/@me</code> only. Leave empty for direct connection.</p>
-			<input
-				id="questHttpProxy"
-				type="text"
-				autocomplete="off"
-				bind:value={httpProxyUrl}
-				placeholder="http://user:pass@host:8080"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-			/>
+		<div class="border-ash-700 bg-ash-800/40 rounded-lg border p-3">
+			<p class="text-ash-300 text-xs font-medium">
+				<i class="fas fa-bolt mr-1.5 text-sky-400"></i>Auto quest enrollment
+				<span class="ml-1.5 rounded px-1.5 py-0.5 text-[10px] {data.autoQuestEnabled ? 'bg-emerald-900/40 text-emerald-300' : 'bg-ash-700 text-ash-400'}">
+					{data.autoQuestEnabled ? 'On' : 'Off'}
+				</span>
+			</p>
+			<p class="text-ash-500 mt-1.5 text-xs">Set instance-wide by the operator, not per server. Off by default.</p>
 		</div>
-
-		<ConfigToggleRow
-			label="Auto quest enrollment"
-			description="When on, the bot menu shows Discord Quest with a 'Claim all' button that enrolls every open quest with a user token."
-			labelIconClass="fas fa-bolt text-sky-400"
-			bind:enabled={autoQuest}
-			ariaLabel="Toggle auto quest enrollment"
-		/>
 	</div>
 
 	<button

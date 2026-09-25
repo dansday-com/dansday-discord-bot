@@ -6,7 +6,7 @@ let botId: any = null;
 
 async function findBotById(id: any) {
 	try {
-		return await db.getServerBotById(Number(id));
+		return await db.getSelfbotById(Number(id));
 	} catch (error: any) {
 		logger.log(`❌ Error finding bot: ${error.message}`);
 		return null;
@@ -21,7 +21,7 @@ async function syncGuildData(guild: any) {
 		}
 
 		await guild.fetch();
-		const botServerRow = await (db as any).upsertServerBotServer(Number(botId), guild).catch(() => null);
+		const botServerRow = await (db as any).upsertSelfbotServer(Number(botId), guild).catch(() => null);
 		if (!botServerRow) {
 			logger.log(`⚠️  Failed to sync server info for ${guild.name}`);
 			return;
@@ -36,8 +36,8 @@ async function syncGuildData(guild: any) {
 
 			if (guild.channels.cache.size > 0) {
 				const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
-				await (db as any).syncServerBotCategories(botServerRow.id, mapCategoriesForSync(categories)).catch(() => null);
-				await (db as any).syncServerBotChannels(botServerRow.id, mapChannelsForSync(channels)).catch(() => null);
+				await (db as any).syncSelfbotCategories(botServerRow.id, mapCategoriesForSync(categories)).catch(() => null);
+				await (db as any).syncSelfbotChannels(botServerRow.id, mapChannelsForSync(channels)).catch(() => null);
 				logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels)`);
 			} else {
 				logger.log(`✅ Synced server info: ${guild.name} (${guild.memberCount} members)`);
@@ -82,7 +82,7 @@ async function updateBotInfo() {
 		try {
 			botIcon = typeof client.user.displayAvatarURL === 'function' ? String(client.user.displayAvatarURL({ size: 128 })) : null;
 		} catch (_) {}
-		await db.updateServerBot(Number(botId), { name: displayName, bot_icon: botIcon });
+		await db.updateSelfbot(Number(botId), { name: displayName, bot_icon: botIcon });
 		logger.log(`✅ Updated selfbot profile from Discord: ${displayName}`);
 	} catch (error: any) {
 		logger.log(`⚠️  Failed to update bot info: ${error.message}`);

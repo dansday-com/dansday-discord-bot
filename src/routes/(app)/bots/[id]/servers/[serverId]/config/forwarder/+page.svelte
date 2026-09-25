@@ -10,14 +10,14 @@
 	let { data }: PageProps = $props();
 
 	type Forwarder = {
-		selfbot_id: number | '';
-		selfbot_name?: string;
-		server_id: number | '';
+		source_guild_id: string;
+		source_guild_name?: string;
 		source_channels: string[];
 		source_channel_names?: string[];
 		target_channel_id: string;
 		role_pings: string[];
 		only_forward_when_mentions_member: boolean;
+		keywords: string[];
 		tag: string;
 	};
 
@@ -28,49 +28,41 @@
 	let modalOpen = $state(false);
 	let editIndex = $state<number | null>(null);
 	let draft = $state<Forwarder>(emptyForwarder());
+	let keywordInput = $state('');
 
-	let selfbots = $state<any[]>(data.selfbots ?? []);
-	let selfbotServers = $state<any[]>([]);
-	let selfbotChannels = $state<any[]>([]);
-	let selfbotCategories = $state<any[]>([]);
-	let loadingServers = $state(false);
+	let sourceServers = $state<any[]>(data.sourceServers ?? []);
+	let sourceChannels = $state<any[]>([]);
+	let sourceCategories = $state<any[]>([]);
 	let loadingChannels = $state(false);
 	let hydratedListNames = $state(false);
 
-	const serverCacheBySelfbotId = new Map<string, any[]>();
-	const channelsCacheBySelfbotAndServer = new Map<string, { channels: any[]; categories: any[] }>();
+	const channelsCacheByGuild = new Map<string, { channels: any[]; categories: any[] }>();
 
 	function emptyForwarder(): Forwarder {
-		return { selfbot_id: '', server_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
+		return {
+			source_guild_id: '',
+			source_channels: [],
+			target_channel_id: '',
+			role_pings: [],
+			only_forward_when_mentions_member: false,
+			keywords: [],
+			tag: ''
+		};
 	}
 
 	$effect(() => {
 		if (!hydratedListNames) hydrateForwarderSourceChannelNames();
 	});
 
-	async function fetchSelfbotServers(selfbotId: number): Promise<any[]> {
-		const key = String(selfbotId);
-		if (serverCacheBySelfbotId.has(key)) return serverCacheBySelfbotId.get(key) || [];
+	async function fetchSourceChannels(guildId: string): Promise<{ channels: any[]; categories: any[] }> {
+		const key = String(guildId);
+		if (channelsCacheByGuild.has(key)) return channelsCacheByGuild.get(key) || { channels: [], categories: [] };
 		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers`, { credentials: 'include' });
-			if (!res.ok) return [];
-			const list = await res.json();
-			serverCacheBySelfbotId.set(key, Array.isArray(list) ? list : []);
-			return serverCacheBySelfbotId.get(key) || [];
-		} catch (_) {
-			return [];
-		}
-	}
-
-	async function fetchSelfbotChannels(selfbotId: number, serverId: number): Promise<{ channels: any[]; categories: any[] }> {
-		const key = `${selfbotId}:${serverId}`;
-		if (channelsCacheBySelfbotAndServer.has(key)) return channelsCacheBySelfbotAndServer.get(key) || { channels: [], categories: [] };
-		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers/${serverId}/channels`, { credentials: 'include' });
+			const res = await fetch(`/api/servers/${data.serverId}/source-servers/${guildId}/channels`, { credentials: 'include' });
 			if (!res.ok) return { channels: [], categories: [] };
 			const d = await res.json();
 			const value = { channels: d?.channels ?? [], categories: d?.categories ?? [] };
-			channelsCacheBySelfbotAndServer.set(key, value);
+			channelsCacheByGuild.set(key, value);
 			return value;
 		} catch (_) {
 			return { channels: [], categories: [] };
@@ -79,7 +71,7 @@
 
 	async function hydrateForwarderSourceChannelNames() {
 		if (hydratedListNames) return;
-		const needs = (forwarders || []).filter((fw) => fw?.selfbot_id && fw?.server_id && Array.isArray(fw?.source_channels) && fw.source_channels.length > 0);
+		const needs = (forwarders || []).filter((fw) => fw?.source_guild_id && Array.isArray(fw?.source_channels) && fw.source_channels.length > 0);
 		if (needs.length === 0) {
 			hydratedListNames = true;
 			return;
@@ -94,10 +86,10 @@
 			const updated = [...forwarders];
 			for (let i = 0; i < updated.length; i++) {
 				const fw = updated[i];
-				if (!fw?.selfbot_id || !fw?.server_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
+				if (!fw?.source_guild_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
 				if (Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length) continue;
 
-				const { channels } = await fetchSelfbotChannels(Number(fw.selfbot_id), Number(fw.server_id));
+				const { channels } = await fetchSourceChannels(String(fw.source_guild_id));
 				if (!Array.isArray(channels) || channels.length === 0) continue;
 
 				const names = fw.source_channels.map((id) => channelName(id, channels));
@@ -109,83 +101,84 @@
 		}
 	}
 
+	function addKeyword() {
+		const value = keywordInput.trim();
+		if (!value) return;
+		if (draft.keywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
+			keywordInput = '';
+			return;
+		}
+		draft = { ...draft, keywords: [...draft.keywords, value] };
+		keywordInput = '';
+	}
+
+	function removeKeyword(keyword: string) {
+		draft = { ...draft, keywords: draft.keywords.filter((k) => k !== keyword) };
+	}
+
+	function onKeywordKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ',') {
+			e.preventDefault();
+			addKeyword();
+		} else if (e.key === 'Backspace' && keywordInput === '' && draft.keywords.length > 0) {
+			draft = { ...draft, keywords: draft.keywords.slice(0, -1) };
+		}
+	}
+
 	async function openAdd() {
 		draft = emptyForwarder();
 		editIndex = null;
-		selfbotServers = [];
-		selfbotChannels = [];
+		keywordInput = '';
+		sourceChannels = [];
+		sourceCategories = [];
 		modalOpen = true;
 	}
 
 	async function openEdit(i: number) {
 		const fw = forwarders[i];
-		draft = { ...fw, source_channels: [...(fw.source_channels ?? [])], role_pings: [...(fw.role_pings ?? [])] };
+		draft = {
+			...fw,
+			source_channels: [...(fw.source_channels ?? [])],
+			role_pings: [...(fw.role_pings ?? [])],
+			keywords: [...(fw.keywords ?? [])]
+		};
 		editIndex = i;
-		selfbotServers = [];
-		selfbotChannels = [];
-		if (draft.selfbot_id) await loadServers(draft.selfbot_id);
-		if (draft.selfbot_id && draft.server_id) await loadChannels(draft.selfbot_id, draft.server_id);
+		keywordInput = '';
+		sourceChannels = [];
+		sourceCategories = [];
+		if (draft.source_guild_id) await loadChannels(draft.source_guild_id);
 		modalOpen = true;
 	}
 
-	async function loadServers(selfbotId: number | '') {
-		if (!selfbotId) {
-			selfbotServers = [];
-			selfbotChannels = [];
-			selfbotCategories = [];
-			return;
-		}
-		loadingServers = true;
-		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers`, { credentials: 'include' });
-			if (res.ok) selfbotServers = await res.json();
-		} catch (_) {}
-		loadingServers = false;
-	}
-
-	async function loadChannels(selfbotId: number | '', serverId: number | '') {
-		if (!selfbotId || !serverId) {
-			selfbotChannels = [];
-			selfbotCategories = [];
+	async function loadChannels(guildId: string) {
+		if (!guildId) {
+			sourceChannels = [];
+			sourceCategories = [];
 			return;
 		}
 		loadingChannels = true;
-		try {
-			const res = await fetch(`/api/selfbots/${selfbotId}/servers/${serverId}/channels`, { credentials: 'include' });
-			if (res.ok) {
-				const d = await res.json();
-				selfbotChannels = d?.channels ?? [];
-				selfbotCategories = d?.categories ?? [];
-			}
-		} catch (_) {}
+		const { channels, categories } = await fetchSourceChannels(guildId);
+		sourceChannels = channels;
+		sourceCategories = categories;
 		loadingChannels = false;
 	}
 
-	async function onSelfbotChange(e: Event) {
+	async function onSourceServerChange(e: Event) {
 		const val = (e.target as HTMLSelectElement).value;
-		draft = { ...draft, selfbot_id: val ? Number(val) : '', server_id: '', source_channels: [] };
-		selfbotServers = [];
-		selfbotChannels = [];
-		selfbotCategories = [];
-		if (val) await loadServers(Number(val));
-	}
-
-	async function onServerChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
-		draft = { ...draft, server_id: val ? Number(val) : '', source_channels: [] };
-		selfbotChannels = [];
-		selfbotCategories = [];
-		if (val) await loadChannels(draft.selfbot_id, Number(val));
+		draft = { ...draft, source_guild_id: val, source_channels: [] };
+		sourceChannels = [];
+		sourceCategories = [];
+		if (val) await loadChannels(val);
 	}
 
 	function channelName(id: string, list: any[]) {
 		return list.find((c: any) => c.discord_channel_id === id)?.name ?? id;
 	}
 
-	function selfbotNameById(id: number | '') {
-		if (!id) return '';
-		const sb = selfbots.find((b: any) => String(b?.id) === String(id));
-		return (sb?.name || sb?.username || sb?.userTag || sb?.tag || '') as string;
+	function sourceServerName(guildId: string) {
+		if (!guildId) return '';
+		const s = sourceServers.find((sv: any) => String(sv?.discord_server_id) === String(guildId));
+		return (s?.name || '') as string;
 	}
 
 	function formatChannelList(names: string[], max = 3) {
@@ -199,10 +192,11 @@
 	}
 
 	function saveModal() {
-		const entry: Forwarder = { ...draft };
-		entry.selfbot_name = selfbotNameById(entry.selfbot_id) || entry.selfbot_name;
-		if (selfbotChannels?.length && entry.source_channels?.length) {
-			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, selfbotChannels));
+		addKeyword();
+		const entry: Forwarder = { ...draft, keywords: [...draft.keywords] };
+		entry.source_guild_name = sourceServerName(entry.source_guild_id) || entry.source_guild_name;
+		if (sourceChannels?.length && entry.source_channels?.length) {
+			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, sourceChannels));
 		}
 		if (editIndex !== null) {
 			const next = [...forwarders];
@@ -246,7 +240,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-forward text-violet-400"></i>Forwarder
 	</h3>
-	<p class="text-ash-400 text-xs">Forward messages from a selfbot's channel to a channel in this server.</p>
+	<p class="text-ash-400 text-xs">Forward messages from a linked account's channel to a channel in this server.</p>
 
 	<ConfigToggleRow
 		label="Forwarder module"
@@ -266,9 +260,9 @@
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
 				{#if !data.hasSelfbots}
-					<strong>No selfbot configured.</strong> Add a selfbot under the Selfbots section for this server to use this feature.
+					<strong>No linked account available.</strong> The operator has not linked an account that covers a source server. Ask them to add one.
 				{:else}
-					<strong>No running selfbot.</strong> Start a selfbot under the Selfbots section for this server to use this feature.
+					<strong>No linked account running.</strong> An account is linked but not online. Ask the operator to start it.
 				{/if}
 			</span>
 		</p>
@@ -285,9 +279,11 @@
 					<div class="bg-ash-700 border-ash-600 rounded-lg border p-3">
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1 space-y-1 text-xs">
-								{#if fw.selfbot_id}
+								{#if fw.source_guild_id}
 									<div class="text-ash-100 flex items-center gap-1.5 font-medium">
-										<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Selfbot #${fw.selfbot_id}`}
+										<i class="fas fa-server text-violet-400"></i>{sourceServerName(fw.source_guild_id) ||
+											fw.source_guild_name ||
+											`Server ${fw.source_guild_id}`}
 									</div>
 								{/if}
 								{#if fw.source_channels?.length}
@@ -296,7 +292,7 @@
 										{#if fw.source_channel_names?.length}
 											{formatChannelList(fw.source_channel_names)}
 										{:else}
-											{formatChannelList(fw.source_channels.map((id) => channelName(id, selfbotChannels))) ||
+											{formatChannelList(fw.source_channels.map((id) => channelName(id, sourceChannels))) ||
 												`${fw.source_channels.length} channel${fw.source_channels.length !== 1 ? 's' : ''}`}
 										{/if}
 									</div>
@@ -309,9 +305,15 @@
 								{#if fw.tag}
 									<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
 								{/if}
+								{#if fw.keywords?.length}
+									<div class="text-ash-400">
+										<span class="text-ash-300 font-medium">Keywords:</span>
+										{fw.keywords.join(', ')}
+									</div>
+								{/if}
 								{#if fw.only_forward_when_mentions_member}
 									<div class="text-ash-400 text-xs">
-										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions selfbot
+										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions the account
 									</div>
 								{/if}
 							</div>
@@ -373,36 +375,19 @@
 
 			<div class="flex-1 space-y-4 overflow-y-auto">
 				<div>
-					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5 text-violet-400"></i>Selfbot</label>
-					<p class="text-ash-500 mb-2 text-xs">Pick the selfbot account that will forward messages.</p>
+					<label for="fw-source-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
+						><i class="fas fa-server mr-1.5 text-violet-400"></i>Source server</label
+					>
+					<p class="text-ash-500 mb-2 text-xs">Select the server messages will be forwarded from.</p>
 					<select
-						id="fw-selfbot"
-						value={draft.selfbot_id}
-						onchange={onSelfbotChange}
+						id="fw-source-server"
+						value={draft.source_guild_id}
+						onchange={onSourceServerChange}
 						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 					>
-						<option value="">Select selfbot...</option>
-						{#each selfbots as bot}
-							<option value={bot.id}>{bot.name || `Selfbot ${bot.id}`}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div>
-					<label for="fw-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
-						><i class="fas fa-server mr-1.5 text-violet-400"></i>Server (where selfbot is)</label
-					>
-					<p class="text-ash-500 mb-2 text-xs">Select the server the selfbot is connected to.</p>
-					<select
-						id="fw-server"
-						value={draft.server_id}
-						onchange={onServerChange}
-						disabled={!draft.selfbot_id || loadingServers}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none disabled:opacity-50"
-					>
-						<option value="">{loadingServers ? 'Loading...' : 'Select server...'}</option>
-						{#each selfbotServers as server}
-							<option value={server.id}>{server.name || `Server ${server.id}`}</option>
+						<option value="">Select server...</option>
+						{#each sourceServers as server}
+							<option value={server.discord_server_id}>{server.name || `Server ${server.discord_server_id}`}</option>
 						{/each}
 					</select>
 				</div>
@@ -410,20 +395,15 @@
 				<div>
 					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-hashtag mr-1.5 text-violet-400"></i>From Channels</p>
 					<p class="text-ash-500 mb-2 text-xs">Messages from these channels will be forwarded.</p>
-					{#if loadingChannels}
-						<p class="text-ash-500 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>Loading channels...</p>
-					{:else if !draft.server_id}
-						<p class="text-ash-500 text-xs italic">Select a server first.</p>
-					{:else}
-						<ChannelPicker
-							channels={selfbotChannels}
-							categories={selfbotCategories}
-							multi
-							value={draft.source_channels}
-							placeholder="Select source channels..."
-							onchange={(v) => (draft = { ...draft, source_channels: v as string[] })}
-						/>
-					{/if}
+					<ChannelPicker
+						channels={sourceChannels}
+						categories={sourceCategories}
+						multi
+						value={draft.source_channels}
+						placeholder={loadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'Select source channels...' : 'Select a server first...'}
+						emptyText={loadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'No channels found' : 'Select a source server first'}
+						onchange={(v) => (draft = { ...draft, source_channels: v as string[] })}
+					/>
 				</div>
 
 				<div>
@@ -453,7 +433,7 @@
 					<p class="text-ash-300 mb-1.5 text-xs font-medium">
 						<i class="fas fa-at mr-1.5 text-violet-400"></i>Mention filter
 					</p>
-					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the selfbot.</p>
+					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the linked account.</p>
 					<label class="flex cursor-pointer items-center gap-3">
 						<div class="relative">
 							<input type="checkbox" bind:checked={draft.only_forward_when_mentions_member} class="peer sr-only" />
@@ -462,6 +442,42 @@
 						</div>
 						<span class="text-ash-300 text-sm">{draft.only_forward_when_mentions_member ? 'Yes' : 'No'}</span>
 					</label>
+				</div>
+
+				<div>
+					<label for="fw-keyword" class="text-ash-300 mb-1.5 block text-xs font-medium">
+						<i class="fas fa-filter mr-1.5 text-violet-400"></i>Keywords <span class="text-ash-500">(optional)</span>
+					</label>
+					<p class="text-ash-500 mb-2 text-xs">
+						Type a keyword and press Enter to add it. Only messages containing at least one keyword are forwarded. Leave empty to forward everything.{#if draft.only_forward_when_mentions_member}
+							With the mention filter on, a message must mention the account <strong class="text-ash-300">and</strong> match a keyword.{/if}
+					</p>
+					<input
+						id="fw-keyword"
+						type="text"
+						bind:value={keywordInput}
+						onkeydown={onKeywordKeydown}
+						onblur={addKeyword}
+						placeholder="Type a keyword and press Enter..."
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+					/>
+					{#if draft.keywords.length > 0}
+						<div class="mt-2 flex flex-wrap gap-1.5">
+							{#each draft.keywords as keyword}
+								<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
+									{keyword}
+									<button
+										type="button"
+										onclick={() => removeKeyword(keyword)}
+										class="hover:text-ash-300 ml-0.5 transition-colors"
+										aria-label="Remove keyword {keyword}"
+									>
+										<i class="fas fa-times text-xs"></i>
+									</button>
+								</span>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
 				<div>

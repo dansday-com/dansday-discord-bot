@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { accountOwnsServer } from '$lib/frontend/panelServer.js';
+import { canReadSelfbotTopology } from '$lib/frontend/panelServer.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
@@ -10,25 +10,19 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 	try {
 		const selfbotId = Number(params.id);
-		const serverBotServerId = Number(params.serverId);
+		const selfbotServerId = Number(params.serverId);
 
-		const selfbot = await db.getServerBotById(selfbotId);
+		const selfbot = await db.getSelfbotById(selfbotId);
 		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
 
-		if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, selfbot.server_id))) {
-			return json({ error: 'Access denied' }, { status: 403 });
-		}
-		if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== selfbot.server_id) {
+		if (!(await canReadSelfbotTopology(locals, selfbotId))) {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 
-		const linked = await db.getServerBotServerForSelfbot(selfbotId, serverBotServerId);
+		const linked = await db.getSelfbotServer(selfbotId, selfbotServerId);
 		if (!linked) return json({ error: 'Server not found' }, { status: 404 });
 
-		const [rawChannels, categories] = await Promise.all([
-			db.getServerBotChannelsForServer(serverBotServerId),
-			db.getServerBotCategoriesForServer(serverBotServerId)
-		]);
+		const [rawChannels, categories] = await Promise.all([db.getSelfbotChannelsForServer(selfbotServerId), db.getSelfbotCategoriesForServer(selfbotServerId)]);
 
 		const discordCatIdToId = new Map<string, number>();
 		for (const cat of categories) {

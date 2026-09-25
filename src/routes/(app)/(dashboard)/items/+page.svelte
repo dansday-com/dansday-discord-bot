@@ -356,16 +356,19 @@
 </svelte:head>
 
 <div class="space-y-5">
-	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div class="min-w-0">
-			<h2 class="text-ash-100 flex items-center gap-2 text-lg font-semibold"><i class="fas fa-store text-teal-400"></i>Items</h2>
-			<p class="text-ash-400 text-xs">Global catalog. Items appear in every server with the items module enabled.</p>
+			<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+				<i class="fas fa-store mr-2 text-teal-400"></i>Items
+			</h2>
+			<p class="text-ash-400 text-xs sm:text-sm">Global catalog. Items appear in every server with the items module enabled.</p>
 		</div>
 		<button
 			onclick={startCreate}
-			class="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500"
+			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 		>
-			<i class="fas fa-plus"></i>Add Item
+			<i class="fas fa-plus text-xs text-teal-300 sm:text-sm"></i>
+			<span class="sm:inline">Add Item</span>
 		</button>
 	</div>
 

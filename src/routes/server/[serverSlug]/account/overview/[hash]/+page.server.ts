@@ -1,18 +1,18 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { publicServerPath } from '$lib/url.js';
+import { apexHome } from '$lib/url.js';
 import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 import { loadAssetPriceMap } from '$lib/frontend/public/assets/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server, assetsEnabled } = await parent();
+	const { server, serverBasePath, assetsEnabled } = await parent();
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, '/');
-	if ('guest' in shared || !shared.member) redirect(303, publicServerPath(server.slug));
+	if ('notFound' in shared) redirect(303, apexHome());
+	if ('guest' in shared || !shared.member) redirect(303, serverBasePath || '/');
 
 	const toSql = (v: any) => {
 		if (!v) return null;

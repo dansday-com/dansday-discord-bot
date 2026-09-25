@@ -243,10 +243,10 @@
 </svelte:head>
 
 <div class="mb-4">
-	<h2 class="text-base-content mb-1 text-xl font-bold sm:text-2xl">
-		<i class="fas fa-chart-pie text-primary mr-2"></i>Panel Overview
+	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+		<i class="fas fa-chart-pie mr-2 text-sky-400"></i>Panel Overview
 	</h2>
-	<p class="text-base-content/55 text-xs sm:text-sm">Everything across all your bots and servers.</p>
+	<p class="text-ash-400 text-xs sm:text-sm">Everything across all your bots and servers.</p>
 </div>
 
 <div class="space-y-3 sm:space-y-4 lg:space-y-5">

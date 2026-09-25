@@ -448,17 +448,14 @@
 					<label for="fw-keyword" class="text-ash-300 mb-1.5 block text-xs font-medium">
 						<i class="fas fa-filter mr-1.5 text-violet-400"></i>Keywords <span class="text-ash-500">(optional)</span>
 					</label>
-					<p class="text-ash-500 mb-2 text-xs">
-						Type a keyword and press Enter to add it. Only messages containing at least one keyword are forwarded. Leave empty to forward everything.{#if draft.only_forward_when_mentions_member}
-							With the mention filter on, a message must mention the account <strong class="text-ash-300">and</strong> match a keyword.{/if}
-					</p>
+					<p class="text-ash-500 mb-2 text-xs">Only forward messages containing a keyword. Empty forwards everything.</p>
 					<input
 						id="fw-keyword"
 						type="text"
 						bind:value={keywordInput}
 						onkeydown={onKeywordKeydown}
 						onblur={addKeyword}
-						placeholder="Type a keyword and press Enter..."
+						placeholder="Type keyword, press Enter..."
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 					/>
 					{#if draft.keywords.length > 0}

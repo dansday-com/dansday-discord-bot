@@ -72,6 +72,21 @@
 			</div>
 		{/if}
 
+		{#if data.publicStatsSubdomainUrl}
+			<div>
+				<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+					<i class="fas fa-globe mr-1 text-amber-400"></i>Short URL
+				</label>
+				<p class="text-ash-500 mb-2 text-xs">This server's own subdomain. Serves the same pages as the public URL above.</p>
+				<div class="bg-ash-900 border-ash-600 flex items-center gap-2 rounded-lg border px-3 py-2">
+					<input type="text" readonly value={data.publicStatsSubdomainUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
+					<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.publicStatsSubdomainUrl} target="_blank" rel="noreferrer">
+						Open
+					</a>
+				</div>
+			</div>
+		{/if}
+
 		<div class="border-ash-700 space-y-5 border-t pt-5">
 			<p class="text-ash-300 text-xs font-semibold">Account features</p>
 

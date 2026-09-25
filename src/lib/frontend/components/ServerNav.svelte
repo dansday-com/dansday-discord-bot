@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { publicServerPath } from '$lib/url.js';
+	import { publicServerBasePath } from '$lib/url.js';
 	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 
 	let {
@@ -9,7 +9,7 @@
 		server: { slug: string; name?: string | null; server_icon?: string | null };
 	} = $props();
 
-	const basePath = $derived(publicServerPath(server.slug));
+	const basePath = $derived((page.data as any)?.serverBasePath ?? publicServerBasePath(server.slug, page.url.hostname));
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
@@ -32,7 +32,7 @@
 
 	const tabs: NavTab[] = $derived(
 		[
-			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: true },
+			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath || '/', active: isOverview, show: true },
 			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: true },
 			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: true },
 			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: !isGuest }

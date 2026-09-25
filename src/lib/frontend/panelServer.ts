@@ -398,7 +398,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 const PUBLIC_PREFIXES = [
 	'/api/public-statistics/',
 	'/api/uploads/',
-	'/api/panel/',
+	'/api/panel/invite-link/',
 	'/api/items/',
 	'/api/assets/',
 	'/api/minigames/',

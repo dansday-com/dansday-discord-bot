@@ -7,7 +7,7 @@
 	let { data }: PageProps = $props();
 
 	onMount(() => {
-		const base = publicServerPath(data.server.slug);
+		const base = (data as any).serverBasePath ?? publicServerPath(data.server.slug);
 		let stored = '';
 		try {
 			stored = sessionStorage.getItem(`items_card_${data.server.slug}`) || '';
@@ -17,7 +17,7 @@
 		if (stored) {
 			goto(`${base}/account/overview/${stored}`, { replaceState: true });
 		} else {
-			goto(base, { replaceState: true });
+			goto(base || '/', { replaceState: true });
 		}
 	});
 </script>

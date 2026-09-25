@@ -79,19 +79,6 @@
 		for (const id of Object.keys(intervals)) clearInterval(intervals[Number(id)]);
 	});
 
-	async function botAction(selfbotId: number, action: 'start' | 'stop' | 'restart') {
-		const res = await fetch(`/api/selfbots/${selfbotId}/${action}`, {
-			method: 'POST',
-			credentials: 'include'
-		});
-		const d = await res.json();
-		if (d.success || res.ok) {
-			showToast(`Bot ${action} initiated`, 'success');
-		} else {
-			showToast(d.error || `Failed to ${action}`, 'error');
-		}
-	}
-
 	async function deleteBot(selfbotId: number, name: string) {
 		if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
 		const res = await fetch('/api/panel/selfbots', {
@@ -120,38 +107,55 @@
 
 <AddSelfbotModal open={showAdd} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />
 
-<div class="space-y-4">
-	<div class="flex items-center justify-between">
-		<h2 class="text-ash-100 flex items-center gap-2 text-xl font-bold">
-			<i class="fas fa-robot text-violet-400"></i>Selfbots
+<div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+	<div class="min-w-0">
+		<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+			<i class="fas fa-user-secret mr-2 text-fuchsia-400"></i>Selfbots
 		</h2>
+		<p class="text-ash-400 text-xs sm:text-sm">
+			{data.selfbots.length === 0 ? 'No selfbots yet' : `${data.selfbots.length} selfbot${data.selfbots.length === 1 ? '' : 's'}`}
+		</p>
+	</div>
+	<div class="flex items-center gap-2 sm:gap-3">
 		<button
 			onclick={() => (showAdd = true)}
-			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:scale-105 active:scale-95"
+			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 		>
-			<i class="fas fa-plus text-xs text-violet-300"></i>Add Selfbot
+			<i class="fas fa-plus text-xs text-fuchsia-300 sm:text-sm"></i>
+			<span class="sm:inline">Add Selfbot</span>
 		</button>
 	</div>
+</div>
 
-	{#if data.selfbots.length === 0}
-		<div class="bg-ash-800 border-ash-700 rounded-xl border p-8 text-center">
-			<i class="fas fa-robot mb-3 text-3xl text-violet-300"></i>
-			<p class="text-ash-400 text-sm">No selfbots yet.</p>
+{#if data.selfbots.length === 0}
+	<div class="py-8 text-center sm:py-12">
+		<div class="bg-ash-800 mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20">
+			<i class="fas fa-user-secret text-3xl text-fuchsia-300 sm:text-4xl"></i>
 		</div>
-	{:else}
+		<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No selfbots yet</h3>
+		<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first selfbot</p>
+		<button
+			onclick={() => (showAdd = true)}
+			class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
+		>
+			<i class="fas fa-plus text-fuchsia-300"></i>Add Your First Selfbot
+		</button>
+	</div>
+{:else}
+	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
 		{#each data.selfbots as bot (bot.id)}
 			{@const live = liveData[bot.id] ?? { status: bot.status, process_id: null, uptime_ms: 0 }}
 
 			<a
-				href={`/selfbots/${bot.id}`}
-				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
+				href="/selfbots/{bot.id}"
+				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
 			>
 				<div class="flex items-center gap-3">
 					<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
 						{#if bot.bot_icon}
 							<img src={bot.bot_icon} alt="" class="h-full w-full object-cover" />
 						{:else}
-							<i class="fas fa-robot text-lg text-violet-300"></i>
+							<i class="fas fa-user-secret text-lg text-fuchsia-300"></i>
 						{/if}
 					</div>
 					<div class="min-w-0">
@@ -174,5 +178,5 @@
 				</div>
 			</a>
 		{/each}
-	{/if}
-</div>
+	</div>
+{/if}

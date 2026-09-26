@@ -684,7 +684,7 @@
 						<i class="fas fa-arrow-right"></i>
 					</a>
 				</div>
-				<div class="border-base-300 grid grid-cols-1 gap-3 border-t pt-6 sm:grid-cols-2 lg:grid-cols-3">
+				<div class="border-base-300 grid grid-cols-1 gap-3 border-t pt-6 min-[420px]:grid-cols-2 lg:grid-cols-3">
 					{#each data.topForwarderSources as source, i (source.discord_server_id)}
 						<div
 							use:reveal
@@ -692,8 +692,17 @@
 							style="transition-delay: {i * 60}ms"
 						>
 							<span class="bg-base-200 text-primary grid size-10 shrink-0 place-items-center overflow-hidden rounded-sm text-[14px] leading-none">
-								{#if source.server_icon}
-									<img src={source.server_icon} alt={source.name} loading="lazy" decoding="async" width="40" height="40" class="size-full object-cover" />
+								{#if source.server_icon && !broken[source.discord_server_id]}
+									<img
+										src={source.server_icon}
+										alt={source.name}
+										loading="lazy"
+										decoding="async"
+										width="40"
+										height="40"
+										class="size-full object-cover"
+										onerror={() => (broken[source.discord_server_id] = true)}
+									/>
 								{:else}
 									<i class="fas fa-satellite-dish"></i>
 								{/if}

@@ -35,9 +35,9 @@ export const load: PageServerLoad = async () => {
 	]);
 
 	const notifiedAssetIds = new Set(robloxNotified.map((item) => item.asset_id));
-	const hasThumbnail = (item: { thumbnail_url: string | null }) => typeof item.thumbnail_url === 'string' && item.thumbnail_url.trim() !== '';
-	const fillers = roblox.filter((item) => !notifiedAssetIds.has(item.asset_id));
-	const topRoblox = [...robloxNotified, ...fillers.filter(hasThumbnail), ...fillers.filter((item) => !hasThumbnail(item))].slice(0, GRID_PREVIEW);
+	const topRoblox = [...robloxNotified, ...roblox.filter((item) => !notifiedAssetIds.has(item.asset_id))]
+		.filter((item) => item.thumbnail_url?.startsWith('http'))
+		.slice(0, GRID_PREVIEW);
 
 	let tasks = EMPTY_TASKS;
 	try {
@@ -61,7 +61,7 @@ export const load: PageServerLoad = async () => {
 		topWikis: wikis.slice(0, ROW_PREVIEW),
 		wikiCount: wikis.length,
 		activeWikiCount: wikis.filter((w) => w.active).length,
-		topForwarderSources: forwarderSources.slice(0, ROW_PREVIEW),
+		topForwarderSources: forwarderSources.slice(0, GRID_PREVIEW),
 		forwarderSourceCount: forwarderSources.length,
 		forwarderSourceMembers: forwarderSources.reduce((sum, s) => sum + s.members, 0)
 	};

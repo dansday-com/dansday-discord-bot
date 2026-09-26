@@ -77,49 +77,47 @@
 
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{#each filtered as source, i (source.discord_server_id)}
-						<article
-							use:reveal
-							class="{REVEAL_CLASS} border-base-300 bg-base-100 hover:border-primary/40 flex gap-3.5 rounded-sm border p-4 transition-colors"
-							style="transition-delay: {Math.min(i, 8) * 60}ms"
-						>
-							<span class="bg-base-200 text-primary grid size-11 shrink-0 place-items-center overflow-hidden rounded-sm text-[15px] leading-none">
-								{#if source.server_icon && !broken[source.discord_server_id]}
-									<img
-										src={source.server_icon}
-										alt={source.name}
-										loading="lazy"
-										decoding="async"
-										width="44"
-										height="44"
-										class="size-full object-cover"
-										onerror={() => (broken[source.discord_server_id] = true)}
-									/>
-								{:else}
-									<i class="fas fa-satellite-dish"></i>
-								{/if}
-							</span>
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {Math.min(i, 8) * 60}ms">
+							<article class="border-base-300 bg-base-100 hover:border-primary/40 flex h-full gap-3.5 rounded-sm border p-4 transition-colors">
+								<span class="bg-base-200 text-primary grid size-11 shrink-0 place-items-center overflow-hidden rounded-sm text-[15px] leading-none">
+									{#if source.server_icon && !broken[source.discord_server_id]}
+										<img
+											src={source.server_icon}
+											alt={source.name}
+											loading="lazy"
+											decoding="async"
+											width="44"
+											height="44"
+											class="size-full object-cover"
+											onerror={() => (broken[source.discord_server_id] = true)}
+										/>
+									{:else}
+										<i class="fas fa-satellite-dish"></i>
+									{/if}
+								</span>
 
-							<div class="min-w-0 flex-1">
-								<h2 class="text-base-content truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{source.name}</h2>
-								<p class="text-base-content/55 mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11.5px] tabular-nums">
-									<span>{fmt(source.members)} members</span>
-									{#if source.channels > 0}
-										<span class="opacity-40" aria-hidden="true">·</span>
-										<span>{fmt(source.channels)} channels</span>
-									{/if}
-									{#if source.created_at}
-										<span class="opacity-40" aria-hidden="true">·</span>
-										<span>since {when(source.created_at)}</span>
-									{/if}
-								</p>
-								{#if source.boost_level > 0}
-									<p class="text-secondary mt-2 text-[10px] font-extrabold tracking-[0.14em] uppercase">
-										<i class="fas fa-angles-up text-[9px]"></i>
-										Boost level {source.boost_level}
+								<div class="min-w-0 flex-1">
+									<h2 class="text-base-content truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{source.name}</h2>
+									<p class="text-base-content/55 mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11.5px] tabular-nums">
+										<span>{fmt(source.members)} members</span>
+										{#if source.channels > 0}
+											<span class="opacity-40" aria-hidden="true">·</span>
+											<span>{fmt(source.channels)} channels</span>
+										{/if}
+										{#if source.created_at}
+											<span class="opacity-40" aria-hidden="true">·</span>
+											<span>since {when(source.created_at)}</span>
+										{/if}
 									</p>
-								{/if}
-							</div>
-						</article>
+									{#if source.boost_level > 0}
+										<p class="text-secondary mt-2 text-[10px] font-extrabold tracking-[0.14em] uppercase">
+											<i class="fas fa-angles-up text-[9px]"></i>
+											Boost level {source.boost_level}
+										</p>
+									{/if}
+								</div>
+							</article>
+						</div>
 					{/each}
 				</div>
 

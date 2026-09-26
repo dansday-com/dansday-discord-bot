@@ -1,8 +1,11 @@
 import db from '../../../../database.js';
 import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../../../utils/index.js';
 
+const FULL_RESYNC_INTERVAL_MS = 30 * 60 * 1000;
+
 let client: any = null;
 let botId: any = null;
+let syncRunning = false;
 
 async function findBotById(id: any) {
 	try {
@@ -69,6 +72,9 @@ async function syncGuildData(guild: any) {
 }
 
 async function syncAllGuilds() {
+	if (syncRunning) return;
+	syncRunning = true;
+
 	try {
 		if (!client || !botId) {
 			logger.log(`⚠️  Client or selfbot ID not set, skipping sync`);
@@ -89,6 +95,8 @@ async function syncAllGuilds() {
 		await reapDepartedGuilds(guilds);
 	} catch (error: any) {
 		logger.log(`❌ Error syncing all guilds: ${error.message}`);
+	} finally {
+		syncRunning = false;
 	}
 }
 
@@ -150,6 +158,12 @@ async function init(discordClient: any, botIdFromEnv: any) {
 		await syncAllGuilds();
 		logger.log('✅ Selfbot startup sync complete');
 	}, 2000);
+
+	setInterval(() => {
+		if (!botId) return;
+		logger.log('🔄 Selfbot periodic guild re-sync...');
+		syncAllGuilds().catch((error: any) => logger.log(`❌ Periodic guild re-sync failed: ${error.message}`));
+	}, FULL_RESYNC_INTERVAL_MS);
 
 	client.on('guildCreate', async (guild: any) => {
 		logger.log(`🆕 Selfbot joined new guild: ${guild.name}`);

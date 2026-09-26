@@ -1243,7 +1243,6 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 						type: ch.type ?? null,
 						discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
 						position: ch.position ?? null,
-						viewable: ch.viewable !== false,
 						created_at: now as any,
 						updated_at: now as any
 					})
@@ -1253,7 +1252,6 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 							type: ch.type ?? null,
 							discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
 							position: ch.position ?? null,
-							viewable: ch.viewable !== false,
 							updated_at: now as any
 						}
 					})
@@ -1286,13 +1284,12 @@ export async function getSelfbotCategoriesForServer(selfbotServerId: number) {
 		.orderBy(asc(schema.selfbotServerCategories.position), asc(schema.selfbotServerCategories.name));
 }
 
-export async function getSelfbotChannelsForServer(selfbotServerId: number, opts?: { includeHidden?: boolean }) {
+export async function getSelfbotChannelsForServer(selfbotServerId: number) {
 	await initializeDatabase();
-	const scope = eq(schema.selfbotServerChannels.selfbot_server_id, selfbotServerId);
 	return db
 		.select()
 		.from(schema.selfbotServerChannels)
-		.where(opts?.includeHidden ? scope : and(scope, eq(schema.selfbotServerChannels.viewable, true)))
+		.where(eq(schema.selfbotServerChannels.selfbot_server_id, selfbotServerId))
 		.orderBy(asc(schema.selfbotServerChannels.position), asc(schema.selfbotServerChannels.name));
 }
 

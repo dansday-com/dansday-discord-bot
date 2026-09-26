@@ -13,36 +13,20 @@ async function findBotById(id: any) {
 	}
 }
 
-async function resolveSelfMember(guild: any) {
-	const cached = guild.members?.me;
-	if (cached && !cached.partial) return cached;
+async function keepViewable(guild: any, categories: any[], channels: any[]) {
 	try {
-		return await guild.members.fetchMe();
+		await guild.members.fetchMe();
 	} catch (error: any) {
-		logger.log(`⚠️  Could not resolve own member in ${guild.name}: ${error.message}. Treating all channels as visible.`);
-		return null;
+		logger.log(`⚠️  Could not resolve own member in ${guild.name}: ${error.message}. Keeping every channel this pass.`);
+		return { categories, channels };
 	}
-}
 
-function markChannelVisibility(channels: any[], guild: any, selfMember: any) {
-	if (!selfMember) return channels.map((ch) => ({ ...ch, viewable: true }));
+	const visibleCategories = categories.filter((cat) => cat.viewable);
+	const visibleChannels = channels.filter((ch) => ch.viewable);
+	const hidden = categories.length - visibleCategories.length + (channels.length - visibleChannels.length);
+	if (hidden > 0) logger.log(`🙈 ${hidden} channel(s)/category(s) in ${guild.name} are not readable by this account and were removed`);
 
-	let hidden = 0;
-	const marked = channels.map((ch) => {
-		const live = guild.channels?.cache?.get(String(ch.id));
-		if (!live) return { ...ch, viewable: true };
-		let viewable = true;
-		try {
-			viewable = live.permissionsFor(selfMember)?.has('VIEW_CHANNEL', false) ?? true;
-		} catch (_) {
-			viewable = true;
-		}
-		if (!viewable) hidden++;
-		return { ...ch, viewable };
-	});
-
-	if (hidden > 0) logger.log(`🙈 ${hidden} channel(s) in ${guild.name} are not visible to this account and stay out of the pickers`);
-	return marked;
+	return { categories: visibleCategories, channels: visibleChannels };
 }
 
 async function syncGuildData(guild: any) {
@@ -67,11 +51,10 @@ async function syncGuildData(guild: any) {
 			}
 
 			if (guild.channels.cache.size > 0) {
-				const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
-				const selfMember = await resolveSelfMember(guild);
-				const mappedChannels = markChannelVisibility(mapChannelsForSync(channels), guild, selfMember);
+				const all = separateChannelsAndCategories(guild.channels.cache);
+				const { categories, channels } = await keepViewable(guild, all.categories, all.channels);
 				await (db as any).syncSelfbotCategories(botServerRow.id, mapCategoriesForSync(categories)).catch(() => null);
-				await (db as any).syncSelfbotChannels(botServerRow.id, mappedChannels).catch(() => null);
+				await (db as any).syncSelfbotChannels(botServerRow.id, mapChannelsForSync(channels)).catch(() => null);
 				logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels)`);
 			} else {
 				logger.log(`✅ Synced server info: ${guild.name} (${guild.memberCount} members)`);

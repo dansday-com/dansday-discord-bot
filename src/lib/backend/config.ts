@@ -849,6 +849,7 @@ export const FORWARDER = {
 			}
 
 			const officialServers = await db.getServersForBot(officialBot.id);
+			const matches: { onlyForwardWhenMentionsSelfBot: boolean; keywords: string[]; target_guild_id: string }[] = [];
 
 			for (const officialServer of officialServers) {
 				try {
@@ -862,12 +863,11 @@ export const FORWARDER = {
 								typeof ch === 'string' ? String(ch) === String(channelId) : String(ch?.channel_id || '') === String(channelId)
 							);
 							if (foundChannel) {
-								return {
-									shouldForward: true,
+								matches.push({
 									onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
 									keywords: normalizeForwarderKeywords(forwarder.keywords),
 									target_guild_id: officialServer.discord_server_id
-								};
+								});
 							}
 						}
 					}
@@ -875,19 +875,22 @@ export const FORWARDER = {
 					continue;
 				}
 			}
-			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+
+			if (matches.length === 0) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+			return { shouldForward: true, matches, ...matches[0] };
 		} catch (_) {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 		}
 	},
 
-	async getForwarderConfigBySourceChannel(sourceChannelId: string, sourceGuildId: string) {
+	async getForwarderConfigsBySourceChannel(sourceChannelId: string, sourceGuildId: string) {
 		requireBotConfig();
 		if (!sourceChannelId || !sourceGuildId) {
 			throw new Error('Source channel ID and guild ID are required.');
 		}
 
 		const allGuilds = await db.getServersForBot(botConfig!.id);
+		const matches: any[] = [];
 
 		for (const officialServer of allGuilds) {
 			try {
@@ -903,20 +906,25 @@ export const FORWARDER = {
 					if (!foundChannel) continue;
 					if (!(await forwarderMatchesSourceGuild(forwarder, sourceGuildId))) continue;
 
-					return {
+					matches.push({
 						target_channel_id: forwarder.target_channel_id,
 						role_pings: forwarder.role_pings || forwarder.roles || [],
 						target_guild_id: officialServer.discord_server_id,
 						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true,
 						keywords: normalizeForwarderKeywords(forwarder.keywords)
-					};
+					});
 				}
 			} catch (_) {
 				continue;
 			}
 		}
 
-		return null;
+		return matches;
+	},
+
+	async getForwarderConfigBySourceChannel(sourceChannelId: string, sourceGuildId: string) {
+		const matches = await FORWARDER.getForwarderConfigsBySourceChannel(sourceChannelId, sourceGuildId);
+		return matches[0] ?? null;
 	}
 };
 

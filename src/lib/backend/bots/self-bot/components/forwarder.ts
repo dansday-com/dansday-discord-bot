@@ -76,13 +76,17 @@ function init(client: any) {
 
 			if (!result || !result.shouldForward) return;
 
-			if (result.onlyForwardWhenMentionsSelfBot) {
-				const selfBotId = message.client.user?.id;
-				const mentionedUsers = message.mentions?.users;
-				if (!mentionedUsers || mentionedUsers.size === 0 || !mentionedUsers.has(selfBotId)) return;
-			}
+			const candidates = Array.isArray((result as any).matches) && (result as any).matches.length > 0 ? (result as any).matches : [result];
+			const haystack = forwarderKeywordHaystack(message.content, message.embeds);
+			const selfBotId = message.client.user?.id;
+			const mentionedUsers = message.mentions?.users;
+			const mentionsSelfBot = !!mentionedUsers && mentionedUsers.size > 0 && mentionedUsers.has(selfBotId);
 
-			if (!forwarderKeywordsMatch(result.keywords, forwarderKeywordHaystack(message.content, message.embeds))) return;
+			const accepted = candidates.some((candidate: any) => {
+				if (candidate.onlyForwardWhenMentionsSelfBot && !mentionsSelfBot) return false;
+				return forwarderKeywordsMatch(candidate.keywords, haystack);
+			});
+			if (!accepted) return;
 
 			await processMessage(message);
 		} catch (err: any) {

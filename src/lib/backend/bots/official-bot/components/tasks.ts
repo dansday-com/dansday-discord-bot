@@ -370,9 +370,8 @@ export async function sweepBrokenStreaks(client: any) {
 		const freezes = Number(row.freezes_available) || 0;
 		const longest = Number(row.longest_streak) || streak;
 
-		if (freezes > 0) {
-			const settled = Math.min(freezes, missed);
-			await db.expireStreak(row.member_id, last + settled, freezes - settled, false).catch(() => null);
+		if (freezes >= missed) {
+			await db.expireStreak(row.member_id, last + missed, freezes - missed, false).catch(() => null);
 			await announceStreak(
 				client,
 				row.discord_server_id,
@@ -380,9 +379,9 @@ export async function sweepBrokenStreaks(client: any) {
 				{
 					streak,
 					previousStreak: streak,
-					freezeUsed: settled,
-					freezesLeft: freezes - settled,
-					daysMissed: settled,
+					freezeUsed: missed,
+					freezesLeft: freezes - missed,
+					daysMissed: missed,
 					reset: false,
 					row: { longest_streak: longest }
 				},
@@ -391,12 +390,12 @@ export async function sweepBrokenStreaks(client: any) {
 			continue;
 		}
 
-		await db.expireStreak(row.member_id, today - 1, 0, true).catch(() => null);
+		await db.expireStreak(row.member_id, today - 1, freezes, true).catch(() => null);
 		await announceStreak(
 			client,
 			row.discord_server_id,
 			row.discord_member_id,
-			{ streak: 0, previousStreak: streak, freezeUsed: 0, freezesLeft: 0, daysMissed: missed, reset: true, row: { longest_streak: longest } },
+			{ streak: 0, previousStreak: streak, freezeUsed: 0, freezesLeft: freezes, daysMissed: missed, reset: true, row: { longest_streak: longest } },
 			null
 		).catch(() => null);
 	}

@@ -161,19 +161,25 @@ export async function processMessageFromSelfBot(messageData, client) {
 		return;
 	}
 
-	let forwarderConfig;
+	let forwarderConfigs;
 	try {
-		forwarderConfig = await FORWARDER.getForwarderConfigBySourceChannel(sourceChannelId, sourceGuildId);
+		forwarderConfigs = await FORWARDER.getForwarderConfigsBySourceChannel(sourceChannelId, sourceGuildId);
 	} catch (err) {
 		await logger.log(`❌ Error finding forwarder config for source channel ${sourceChannelId}: ${err.message}`);
 		return;
 	}
 
-	if (!forwarderConfig) {
+	if (!forwarderConfigs || forwarderConfigs.length === 0) {
 		await logger.log(`⚠️ No forwarder config found for channel ${sourceChannelId} in guild ${sourceGuildId}`);
 		return;
 	}
 
+	for (const forwarderConfig of forwarderConfigs) {
+		await deliverToForwarder(messageData, client, forwarderConfig, sourceChannelId).catch(() => null);
+	}
+}
+
+async function deliverToForwarder(messageData, client, forwarderConfig, sourceChannelId) {
 	const targetChannelId = forwarderConfig.target_channel_id;
 	const targetGuildId = forwarderConfig.target_guild_id;
 	const rolePings = Array.isArray(forwarderConfig.role_pings) ? forwarderConfig.role_pings : [];

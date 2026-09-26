@@ -1,6 +1,6 @@
 export const DAILY_TASK_SLOTS = 18;
 export const WEEKLY_TASK_SLOTS = 18;
-export const STREAK_FREEZE_MAX = 2;
+export const STREAK_FREEZE_MAX = 3;
 export const STREAK_FREEZE_EARN_EVERY = 10;
 export const LOGIN_CYCLE_DAYS = 7;
 

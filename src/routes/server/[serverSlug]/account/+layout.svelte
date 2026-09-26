@@ -493,7 +493,7 @@
 					</div>
 				{:else if isTask}
 					<div class="flex flex-col items-center leading-tight">
-						<span class="text-lg font-extrabold text-white tabular-nums">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2}</span>
+						<span class="text-lg font-extrabold text-white tabular-nums">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 3}</span>
 						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Freezes</span>
 					</div>
 					{#if rank}

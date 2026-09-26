@@ -2146,10 +2146,10 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 	} else {
 		const missed = (gap ?? 1) - 1;
 		daysMissed = missed;
-		freezeUsed = Math.min(freezes, missed);
-		freezes -= freezeUsed;
 
-		if (freezeUsed >= missed) {
+		if (freezes >= missed) {
+			freezeUsed = missed;
+			freezes -= missed;
 			streak += 1;
 		} else {
 			reset = true;

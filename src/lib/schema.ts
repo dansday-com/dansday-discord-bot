@@ -1011,7 +1011,7 @@ export const serverMemberStreaks = mysqlTable(
 		current_streak: int('current_streak').notNull().default(0),
 		longest_streak: int('longest_streak').notNull().default(0),
 		last_claim_day_key: int('last_claim_day_key'),
-		freezes_available: int('freezes_available').notNull().default(2),
+		freezes_available: int('freezes_available').notNull().default(3),
 		total_claims: int('total_claims').notNull().default(0),
 		tz_offset_min: int('tz_offset_min'),
 		created_at: datetime('created_at').notNull(),

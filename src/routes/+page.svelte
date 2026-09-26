@@ -814,14 +814,22 @@
 									<span class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
 										{item.name}
 									</span>
-									<span class="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-										<span class="text-primary text-[11.5px] font-black tabular-nums">
-											{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
+									<span class="mt-auto flex flex-col gap-0.5">
+										<span class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+											<span class="text-primary text-[11.5px] font-black tabular-nums">
+												{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
+											</span>
+											{#if item.notification_count > 0}
+												<span class="text-base-content/70 text-[10.5px] font-bold tabular-nums">
+													<i class="fas fa-bell text-[9px]"></i>
+													{fmt(item.notification_count)}
+												</span>
+											{/if}
 										</span>
-										{#if item.notification_count > 0}
-											<span class="text-base-content/70 text-[10.5px] font-bold tabular-nums">
-												<i class="fas fa-bell text-[9px]"></i>
-												{fmt(item.notification_count)}
+										{#if item.resale_price > 0}
+											<span class="text-base-content/55 text-[10.5px] font-bold tabular-nums">
+												<i class="fas fa-repeat text-[9px]"></i>
+												{fmt(item.resale_price)} R$ resale
 											</span>
 										{/if}
 									</span>

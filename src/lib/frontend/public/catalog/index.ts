@@ -27,6 +27,7 @@ export type RobloxEntry = {
 	creator_name: string | null;
 	thumbnail_url: string | null;
 	price: number;
+	resale_price: number;
 	favorite_count: number;
 	units_available: number;
 	total_quantity: number;
@@ -195,6 +196,7 @@ export function resolveRobloxDirectory(limit: number | null = null, offset = 0):
 					creator_name: r.creator_name || null,
 					thumbnail_url: r.thumbnail_url || null,
 					price,
+					resale_price: num(r.lowest_resale_price),
 					favorite_count: num(r.favorite_count),
 					units_available: num(r.units_available),
 					total_quantity: num(r.total_quantity),
@@ -222,6 +224,7 @@ export function resolveRobloxMostNotified(limit = 6): Promise<RobloxEntry[]> {
 					creator_name: r.creator_name || null,
 					thumbnail_url: r.thumbnail_url || null,
 					price,
+					resale_price: num(r.lowest_resale_price),
 					favorite_count: num(r.favorite_count),
 					units_available: num(r.units_available),
 					total_quantity: num(r.total_quantity),

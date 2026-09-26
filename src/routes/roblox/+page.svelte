@@ -161,6 +161,12 @@
 												{item.price_delta > 0 ? '+' : '−'}{fmt(Math.abs(item.price_delta))}
 											</span>
 										{/if}
+										{#if item.resale_price > 0}
+											<span class="text-base-content/55 font-bold">
+												<i class="fas fa-repeat text-[9px]"></i>
+												{fmt(item.resale_price)} R$
+											</span>
+										{/if}
 										{#if item.limited}
 											<span class="text-base-content/45">{fmt(item.units_available)} / {fmt(item.total_quantity)} left</span>
 										{/if}

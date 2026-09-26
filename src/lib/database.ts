@@ -3633,6 +3633,7 @@ export async function listPublicRobloxItems(limit: number | null = 300, offset =
 		SELECT
 			r.asset_id, r.name, r.category, r.creator_name, r.thumbnail_url,
 			r.price, r.favorite_count, r.units_available, r.total_quantity, r.last_price,
+			r.lowest_resale_price,
 			(
 				SELECT COUNT(*) FROM server_member_roblox_item_notifications n
 				INNER JOIN server_members m ON m.id = n.member_id
@@ -3654,6 +3655,7 @@ export async function listPublicRobloxItemsByNotifications(limit = 6) {
 		SELECT
 			r.asset_id, r.name, r.category, r.creator_name, r.description, r.thumbnail_url,
 			r.price, r.favorite_count, r.units_available, r.total_quantity, r.last_price,
+			r.lowest_resale_price,
 			COUNT(*) AS notification_count
 		FROM server_member_roblox_item_notifications n
 		INNER JOIN server_members m ON m.id = n.member_id

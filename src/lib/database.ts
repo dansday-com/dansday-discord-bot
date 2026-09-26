@@ -5708,39 +5708,13 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 	if (!items || items.length === 0) return;
 	const now = toMySQLDateTime();
 
-	for (const it of items) {
-		if (!it) continue;
-		let assetIdBi: bigint;
-		try {
-			assetIdBi = snapshotAssetIdBigInt(it.assetId);
-		} catch {
-			continue;
-		}
-
-		const itemCreatedAt = it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null;
-
-		await db
-			.insert(schema.botRobloxItems)
-			.values({
-				bot_id: botId,
-				asset_id: assetIdBi,
-				asset_type: it.assetType == null ? null : Number(it.assetType),
-				category: it.category ?? null,
-				name: it.name ?? null,
-				description: it.description ?? null,
-				creator_name: it.creatorName ?? null,
-				price: snapshotBigIntOrNull(it.price),
-				lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
-				total_quantity: snapshotBigIntOrNull(it.totalQuantity),
-				favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
-				units_available: snapshotBigIntOrNull(it.unitsAvailable),
-				thumbnail_url: it.thumbnailUrl ?? null,
-				item_created_at: itemCreatedAt as any,
-				created_at: now as any
-			})
-			.onDuplicateKeyUpdate({
-				set: {
+	const rows = items
+		.filter((it) => !!it)
+		.map((it) => {
+			try {
+				return {
 					bot_id: botId,
+					asset_id: snapshotAssetIdBigInt(it.assetId),
 					asset_type: it.assetType == null ? null : Number(it.assetType),
 					category: it.category ?? null,
 					name: it.name ?? null,
@@ -5752,19 +5726,78 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 					favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
 					units_available: snapshotBigIntOrNull(it.unitsAvailable),
 					thumbnail_url: it.thumbnailUrl ?? null,
-					item_created_at: itemCreatedAt as any,
+					item_created_at: (it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null) as any,
 					created_at: now as any
-				} as any
-			});
+				};
+			} catch {
+				return null;
+			}
+		})
+		.filter((r): r is NonNullable<typeof r> => r !== null);
 
-		const [row] = await db.select({ id: schema.botRobloxItems.id }).from(schema.botRobloxItems).where(eq(schema.botRobloxItems.asset_id, assetIdBi)).limit(1);
-		if (!row) continue;
+	if (rows.length === 0) return;
 
-		await db
-			.insert(schema.serverRobloxItems)
-			.values({ server_id: serverId, item_id: row.id, message_posted_at: null })
-			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
+	await batchUpsert(
+		'roblox item',
+		rows,
+		(batch) =>
+			db
+				.insert(schema.botRobloxItems)
+				.values(batch)
+				.onDuplicateKeyUpdate({
+					set: {
+						bot_id: sql`values(${schema.botRobloxItems.bot_id})`,
+						asset_type: sql`values(${schema.botRobloxItems.asset_type})`,
+						category: sql`values(${schema.botRobloxItems.category})`,
+						name: sql`values(${schema.botRobloxItems.name})`,
+						description: sql`values(${schema.botRobloxItems.description})`,
+						creator_name: sql`values(${schema.botRobloxItems.creator_name})`,
+						price: sql`values(${schema.botRobloxItems.price})`,
+						lowest_resale_price: sql`values(${schema.botRobloxItems.lowest_resale_price})`,
+						total_quantity: sql`values(${schema.botRobloxItems.total_quantity})`,
+						favorite_count: sql`values(${schema.botRobloxItems.favorite_count})`,
+						units_available: sql`values(${schema.botRobloxItems.units_available})`,
+						thumbnail_url: sql`values(${schema.botRobloxItems.thumbnail_url})`,
+						item_created_at: sql`values(${schema.botRobloxItems.item_created_at})`,
+						created_at: sql`values(${schema.botRobloxItems.created_at})`
+					} as any
+				}),
+		(row) => {
+			const { asset_id, ...updatable } = row;
+			return db
+				.insert(schema.botRobloxItems)
+				.values(row)
+				.onDuplicateKeyUpdate({ set: updatable as any });
+		}
+	);
+
+	const assetIds = rows.map((r) => r.asset_id);
+	const idRows: { id: number; asset_id: bigint }[] = [];
+	for (const batch of chunkRows(assetIds)) {
+		const found = await db
+			.select({ id: schema.botRobloxItems.id, asset_id: schema.botRobloxItems.asset_id })
+			.from(schema.botRobloxItems)
+			.where(inArray(schema.botRobloxItems.asset_id, batch as any));
+		idRows.push(...(found as any));
 	}
+	if (idRows.length === 0) return;
+
+	const links = idRows.map((r) => ({ server_id: serverId, item_id: r.id, message_posted_at: null }));
+
+	await batchUpsert(
+		'roblox server link',
+		links,
+		(batch) =>
+			db
+				.insert(schema.serverRobloxItems)
+				.values(batch)
+				.onDuplicateKeyUpdate({ set: { server_id: sql`values(${schema.serverRobloxItems.server_id})` } as any }),
+		(row) =>
+			db
+				.insert(schema.serverRobloxItems)
+				.values(row)
+				.onDuplicateKeyUpdate({ set: { server_id: serverId } as any })
+	);
 }
 
 async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds: readonly (number | bigint)[]): Promise<bigint[]> {

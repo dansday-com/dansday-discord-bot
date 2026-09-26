@@ -9,6 +9,46 @@ let webhookServer = null;
 let client = null;
 let currentBotId = null;
 
+const FORWARD_MAX_CONCURRENT = 4;
+const FORWARD_QUEUE_MAX = 500;
+const forwardQueue = [];
+let forwardActive = 0;
+let forwardDropped = 0;
+
+function enqueueForwardDelivery(messageData, deliveryClient) {
+	if (forwardQueue.length >= FORWARD_QUEUE_MAX) {
+		forwardQueue.shift();
+		forwardDropped++;
+		if (forwardDropped % 25 === 1) {
+			logger.log(`🚨 Forward queue full (${FORWARD_QUEUE_MAX}), dropping oldest message(s); ${forwardDropped} dropped so far`);
+		}
+	}
+
+	forwardQueue.push({ messageData, deliveryClient, queuedAt: Date.now() });
+	drainForwardQueue();
+}
+
+function drainForwardQueue() {
+	while (forwardActive < FORWARD_MAX_CONCURRENT && forwardQueue.length > 0) {
+		const job = forwardQueue.shift();
+		forwardActive++;
+
+		(async () => {
+			const waited = Date.now() - job.queuedAt;
+			if (waited > 5000) {
+				await logger.log(`🐌 Forward of message ${job.messageData.id} waited ${waited}ms in the queue (depth ${forwardQueue.length})`);
+			}
+			const { processMessageFromSelfBot } = await import('./forwarder.js');
+			await processMessageFromSelfBot(job.messageData, job.deliveryClient);
+		})()
+			.catch((err) => logger.log(`❌ Failed to process forwarded message ${job.messageData?.id}: ${err?.message || err}`))
+			.finally(() => {
+				forwardActive--;
+				drainForwardQueue();
+			});
+	}
+}
+
 function parseColor(colorInput) {
 	if (!colorInput || colorInput.trim() === '') {
 		return null;
@@ -379,20 +419,10 @@ async function handleWebhookRequest(req, res) {
 				const payload = JSON.parse(body);
 
 				if (payload.type === 'message_forward' && payload.data) {
-					try {
-						await logger.log(`📥 Received message_forward webhook: channel ${payload.data.channel?.id} in guild ${payload.data.guild?.id}`);
+					res.writeHead(202, { 'Content-Type': 'application/json' });
+					res.end(JSON.stringify({ success: true, message: 'Message accepted' }));
 
-						const { processMessageFromSelfBot } = await import('./forwarder.js');
-						await processMessageFromSelfBot(payload.data, client);
-
-						await logger.log(`✅ Successfully processed message_forward webhook`);
-						res.writeHead(200, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ success: true, message: 'Message processed' }));
-					} catch (forwardErr) {
-						await logger.log(`❌ Failed to process message: ${forwardErr.message}`);
-						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to process message', details: forwardErr.message }));
-					}
+					enqueueForwardDelivery(payload.data, client);
 				} else if (payload.type === 'send_global_embed') {
 					try {
 						await logger.log(`📥 Received send_global_embed webhook`);

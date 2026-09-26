@@ -2,7 +2,10 @@ import { FORWARDER, COMMUNICATION } from '../../../config.js';
 import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
 
+const WEBHOOK_TIMEOUT_MS = 10_000;
+
 async function sendToOfficialBot(messageData: any) {
+	const startedAt = Date.now();
 	try {
 		const response = await fetch(COMMUNICATION.WEBHOOK_URL, {
 			method: 'POST',
@@ -15,16 +18,20 @@ async function sendToOfficialBot(messageData: any) {
 				type: 'message_forward',
 				data: messageData,
 				timestamp: Date.now()
-			})
+			}),
+			signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS)
 		});
 
 		if (!response.ok) {
 			throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
 		}
 
-		await logger.log(`📤 Sent message ${messageData.id} to official bot via webhook (${response.status})`);
+		const lag = Date.now() - messageData.createdTimestamp;
+		await logger.log(
+			`📤 Sent message ${messageData.id} to official bot (${response.status}, webhook ${Date.now() - startedAt}ms, ${lag}ms after it was posted)`
+		);
 	} catch (err: any) {
-		await logger.log(`❌ Failed to send message ${messageData.id} to official bot: ${err.message}`);
+		await logger.log(`❌ Failed to send message ${messageData.id} to official bot after ${Date.now() - startedAt}ms: ${err.message}`);
 	}
 }
 
@@ -58,13 +65,7 @@ async function processMessage(message: any) {
 		timestamp: Date.now()
 	};
 
-	try {
-		await sendToOfficialBot(messageData);
-		await logger.log(`✅ Forwarded message ${message.id} from channel ${message.channel.id} to official bot`);
-	} catch (err: any) {
-		await logger.log(`❌ Failed to forward message ${message.id}: ${err.message}`);
-		throw err;
-	}
+	sendToOfficialBot(messageData).catch((err: any) => logger.log(`❌ Failed to forward message ${message.id}: ${err?.message || err}`));
 }
 
 function init(client: any) {

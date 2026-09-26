@@ -5,6 +5,7 @@ import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-s
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
+import { logger } from '../utils/index.js';
 import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
 interface BotConfig {
@@ -816,6 +817,117 @@ async function forwarderMatchesSourceGuild(forwarder: any, sourceGuildId: string
 	return legacyGuildId != null && String(legacyGuildId) === String(sourceGuildId);
 }
 
+async function forwarderSourceGuildId(forwarder: any): Promise<string | null> {
+	if (forwarder?.source_guild_id) return String(forwarder.source_guild_id);
+	if (!forwarder?.server_id) return null;
+	const legacyGuildId = await db.getSelfbotServerDiscordId(Number(forwarder.server_id));
+	return legacyGuildId != null ? String(legacyGuildId) : null;
+}
+
+type ForwardMatch = { onlyForwardWhenMentionsSelfBot: boolean; keywords: string[]; target_guild_id: string };
+
+const FORWARD_INDEX_TTL_MS = 60 * 1000;
+let forwardIndex: Map<string, ForwardMatch[]> | null = null;
+let forwardIndexAt = 0;
+let forwardIndexBuilding: Promise<Map<string, ForwardMatch[]>> | null = null;
+
+async function buildForwardIndex(): Promise<{ index: Map<string, ForwardMatch[]>; failed: number }> {
+	const index = new Map<string, ForwardMatch[]>();
+	let failed = 0;
+
+	const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
+	if (!officialBot) return { index, failed };
+
+	const officialServers = await db.getServersForBot(officialBot.id);
+	const guildAllowed = new Map<string, boolean>();
+
+	const isSourceGuildAllowed = async (guildId: string) => {
+		const cached = guildAllowed.get(guildId);
+		if (cached !== undefined) return cached;
+
+		let allowed = false;
+		const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
+		if (selfbotServer) {
+			const primarySelfbotId = await db.getPrimarySelfbotIdForSourceGuild(officialBot.id, guildId);
+			allowed = primarySelfbotId === null || String(primarySelfbotId) === String(botConfig!.id);
+		}
+		guildAllowed.set(guildId, allowed);
+		return allowed;
+	};
+
+	for (const officialServer of officialServers) {
+		try {
+			const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
+			const list = (forwarders.forwarders || []) as any[];
+
+			for (const forwarder of list) {
+				if (!Array.isArray(forwarder?.source_channels) || forwarder.source_channels.length === 0) continue;
+
+				const sourceGuildId = await forwarderSourceGuildId(forwarder);
+				if (!sourceGuildId) continue;
+				if (!(await isSourceGuildAllowed(sourceGuildId))) continue;
+
+				const match: ForwardMatch = {
+					onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
+					keywords: normalizeForwarderKeywords(forwarder.keywords),
+					target_guild_id: officialServer.discord_server_id
+				};
+
+				for (const ch of forwarder.source_channels) {
+					const channelId = typeof ch === 'string' ? String(ch) : String(ch?.channel_id || '');
+					if (!channelId) continue;
+					const key = `${sourceGuildId}:${channelId}`;
+					const existing = index.get(key);
+					if (existing) existing.push(match);
+					else index.set(key, [match]);
+				}
+			}
+		} catch (error: any) {
+			failed++;
+			logger.log(`⚠️  Forward index: could not read forwarder config for server ${officialServer.discord_server_id}: ${error?.message || error}`);
+		}
+	}
+
+	return { index, failed };
+}
+
+async function getForwardIndex(): Promise<Map<string, ForwardMatch[]>> {
+	if (forwardIndex && Date.now() - forwardIndexAt < FORWARD_INDEX_TTL_MS) return forwardIndex;
+	if (forwardIndexBuilding) return forwardIndexBuilding;
+
+	forwardIndexBuilding = buildForwardIndex()
+		.then(({ index, failed }) => {
+			if (failed > 0 && index.size === 0 && forwardIndex) {
+				logger.log(`⏸️  Forward index rebuild failed on ${failed} server(s) and found no channels, keeping the previous map`);
+				return forwardIndex;
+			}
+			logger.log(`🔁 Forward index rebuilt: ${index.size} forwarded channel(s)${failed > 0 ? `, ${failed} server(s) failed` : ''}`);
+			forwardIndex = index;
+			forwardIndexAt = Date.now();
+			return index;
+		})
+		.catch((error: any) => {
+			logger.log(`❌ Forward index rebuild failed: ${error?.message || error}`);
+			if (forwardIndex) return forwardIndex;
+			throw error;
+		})
+		.finally(() => {
+			forwardIndexBuilding = null;
+		});
+
+	return forwardIndexBuilding;
+}
+
+export function peekForwardChannel(guildId: string, channelId: string): boolean | null {
+	if (!forwardIndex) return null;
+	if (Date.now() - forwardIndexAt > FORWARD_INDEX_TTL_MS) getForwardIndex().catch(() => {});
+	return forwardIndex.has(`${guildId}:${channelId}`);
+}
+
+export async function primeForwardIndex(): Promise<void> {
+	await getForwardIndex().catch(() => {});
+}
+
 export const FORWARDER = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
@@ -837,46 +949,9 @@ export const FORWARDER = {
 		}
 
 		try {
-			const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
-			if (!selfbotServer) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
-
-			const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
-			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
-
-			const primarySelfbotId = await db.getPrimarySelfbotIdForSourceGuild(officialBot.id, guildId);
-			if (primarySelfbotId !== null && String(primarySelfbotId) !== String(botConfig!.id)) {
-				return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
-			}
-
-			const officialServers = await db.getServersForBot(officialBot.id);
-			const matches: { onlyForwardWhenMentionsSelfBot: boolean; keywords: string[]; target_guild_id: string }[] = [];
-
-			for (const officialServer of officialServers) {
-				try {
-					const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
-					const list = (forwarders.forwarders || []) as any[];
-
-					for (const forwarder of list) {
-						if (!(await forwarderMatchesSourceGuild(forwarder, guildId))) continue;
-						if (forwarder.source_channels && Array.isArray(forwarder.source_channels)) {
-							const foundChannel = forwarder.source_channels.find((ch: any) =>
-								typeof ch === 'string' ? String(ch) === String(channelId) : String(ch?.channel_id || '') === String(channelId)
-							);
-							if (foundChannel) {
-								matches.push({
-									onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
-									keywords: normalizeForwarderKeywords(forwarder.keywords),
-									target_guild_id: officialServer.discord_server_id
-								});
-							}
-						}
-					}
-				} catch (_) {
-					continue;
-				}
-			}
-
-			if (matches.length === 0) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+			const index = await getForwardIndex();
+			const matches = index.get(`${guildId}:${channelId}`);
+			if (!matches || matches.length === 0) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 			return { shouldForward: true, matches, ...matches[0] };
 		} catch (_) {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };

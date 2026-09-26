@@ -1,5 +1,6 @@
 import { Client, Options } from 'discord.js-selfbot-v13';
-import { getBotToken, initializeConfig } from '../../config.js';
+import { getBotToken, initializeConfig, peekForwardChannel, primeForwardIndex } from '../../config.js';
+import { installPacketFilter } from './packetFilter.js';
 import { logger } from '../../../utils/index.js';
 import { applySelfbotDiscordPresenceFromDb } from './applySelfbotDiscordPresence.js';
 import forwarder from './components/forwarder.js';
@@ -95,6 +96,9 @@ process.on('SIGTERM', shutdown);
 		logger.error('Another self-bot instance is already running; exiting', { botId: BOT_ID ?? 'unknown' });
 		process.exit(0);
 	}
+
+	await primeForwardIndex();
+	installPacketFilter(client, peekForwardChannel);
 
 	await client.login(BOT_TOKEN);
 })().catch((err: Error) => {

@@ -40,7 +40,7 @@ function getDb() {
 		const pool = mysql.createPool({
 			...getConnectionConfig(),
 			waitForConnections: true,
-			connectionLimit: 10,
+			connectionLimit: Number(process.env.DB_POOL_SIZE) || 25,
 			queueLimit: 0,
 			dateStrings: true,
 			timezone: tzOffset,

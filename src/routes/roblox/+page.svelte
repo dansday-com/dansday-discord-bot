@@ -4,6 +4,7 @@
 	import type { PageProps } from './$types';
 	import type { RobloxEntry } from '$lib/frontend/public/catalog/index.js';
 	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { isUsableRobloxThumbnail } from '$lib/roblox-thumbnails.js';
 
 	let { data }: PageProps = $props();
 
@@ -127,7 +128,7 @@
 								rel="noopener noreferrer"
 								class="group border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-sm border transition-colors"
 							>
-								{#if item.thumbnail_url && !broken[item.asset_id]}
+								{#if isUsableRobloxThumbnail(item.thumbnail_url) && !broken[item.asset_id]}
 									<img
 										src={item.thumbnail_url}
 										alt={item.name}

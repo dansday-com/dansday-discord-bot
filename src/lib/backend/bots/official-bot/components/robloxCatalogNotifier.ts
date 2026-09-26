@@ -2,13 +2,13 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, Str
 import type { ButtonInteraction, StringSelectMenuInteraction } from 'discord.js';
 import { randomInt } from 'node:crypto';
 import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../database.js';
+import { isUsableRobloxThumbnail } from '../../../../roblox-thumbnails.js';
 import {
 	fetchCatalogFirstPage,
 	fetchCatalogItemsByRefs,
 	getEmbedConfig,
 	getServerForCurrentBot,
 	isComponentFeatureEnabled,
-	PERMISSIONS,
 	robloxCatalogEmbedColors,
 	robloxCatalogItemUrl,
 	robloxCatalogStreams,
@@ -294,7 +294,7 @@ async function sendItemEmbed(
 	} else if (item.description?.trim()) {
 		embed.setDescription(item.description.trim().slice(0, 4096));
 	}
-	if (item.thumbnailUrl?.startsWith('http')) embed.setThumbnail(item.thumbnailUrl);
+	if (isUsableRobloxThumbnail(item.thumbnailUrl)) embed.setThumbnail(item.thumbnailUrl as string);
 
 	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️'),

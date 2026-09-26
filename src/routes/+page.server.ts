@@ -16,6 +16,7 @@ import {
 	EMPTY_WIKIS,
 	EMPTY_FORWARDER_SOURCES
 } from '$lib/frontend/public/catalog/index.js';
+import { isUsableRobloxThumbnail } from '$lib/roblox-thumbnails.js';
 
 const ROW_PREVIEW = 5;
 const GRID_PREVIEW = 6;
@@ -36,7 +37,7 @@ export const load: PageServerLoad = async () => {
 
 	const notifiedAssetIds = new Set(robloxNotified.map((item) => item.asset_id));
 	const topRoblox = [...robloxNotified, ...roblox.filter((item) => !notifiedAssetIds.has(item.asset_id))]
-		.filter((item) => item.thumbnail_url?.startsWith('http'))
+		.filter((item) => isUsableRobloxThumbnail(item.thumbnail_url))
 		.slice(0, GRID_PREVIEW);
 
 	let tasks = EMPTY_TASKS;

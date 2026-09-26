@@ -2,6 +2,7 @@ import axios from 'axios';
 import { fetchApi } from 'rozod';
 import { getSearchItemsDetails } from 'rozod/lib/endpoints/catalogv2.js';
 import { ROBLOX_CATALOG_ABORT_MS, ROBLOX_CATALOG_NEXT_PAGE_MS, ROBLOX_CATALOG_POLL_MS } from '../config.js';
+import { isUsableRobloxThumbnail } from '../../roblox-thumbnails.js';
 import { logger } from '../../utils/index.js';
 
 export type RobloxCatalogItem = {
@@ -151,7 +152,8 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 		for (const r of Array.isArray(data?.data) ? data.data : []) {
 			const id = Number(r?.targetId);
 			const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
-			if (Number.isFinite(id) && url.startsWith('http')) out.set(id, url);
+			if (r?.state !== 'Completed' || !isUsableRobloxThumbnail(url)) continue;
+			if (Number.isFinite(id)) out.set(id, url);
 		}
 	}
 
@@ -219,7 +221,10 @@ export async function fetchCatalogItemsByRefs(refs: RobloxCatalogItemRef[], know
 		const items = filterVerifiedCreators(rows.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 		if (items.length === 0) continue;
 
-		for (const item of items) item.thumbnailUrl = knownThumbnails?.get(item.id) ?? null;
+		for (const item of items) {
+			const known = knownThumbnails?.get(item.id) ?? null;
+			item.thumbnailUrl = isUsableRobloxThumbnail(known) ? known : null;
+		}
 
 		const missingThumbnails = items.filter((x) => !x.thumbnailUrl);
 		if (missingThumbnails.length > 0) {

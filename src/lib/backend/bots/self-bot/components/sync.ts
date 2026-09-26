@@ -1,5 +1,13 @@
 import db from '../../../../database.js';
-import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync, createGuildSyncDebouncer } from '../../../../utils/index.js';
+import {
+	logger,
+	separateChannelsAndCategories,
+	mapCategoriesForSync,
+	mapChannelsForSync,
+	createGuildSyncDebouncer,
+	isSyncedChannelType,
+	channelSyncSignature
+} from '../../../../utils/index.js';
 
 const FULL_RESYNC_INTERVAL_MS = 30 * 60 * 1000;
 const EVENT_SYNC_DEBOUNCE_MS = 15 * 1000;
@@ -8,6 +16,13 @@ const EVENT_SYNC_MAX_WAIT_MS = 2 * 60 * 1000;
 let client: any = null;
 let botId: any = null;
 let syncRunning = false;
+
+function channelLabel(channel: any) {
+	if (channel.type === 4 || channel.type === 'GUILD_CATEGORY') return 'Category';
+	if (channel.type === 0 || channel.type === 'GUILD_TEXT') return 'Text Channel';
+	if (channel.type === 5 || channel.type === 'GUILD_NEWS') return 'News Channel';
+	return 'Channel';
+}
 
 async function findBotById(id: any) {
 	try {
@@ -204,33 +219,29 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('channelCreate', async (channel: any) => {
-		if (channel.guild && botId) {
-			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
-			await logger.log(`📁 ${channelType} created: **${channel.name || 'Unknown'}** (${channel.id})`);
-			queueGuildSync(channel.guild);
-		}
+		if (!channel.guild || !botId || !isSyncedChannelType(channel)) return;
+		await logger.log(`📁 ${channelLabel(channel)} created: **${channel.name || 'Unknown'}** (${channel.id})`);
+		queueGuildSync(channel.guild);
 	});
 
 	client.on('channelUpdate', async (oldChannel: any, newChannel: any) => {
-		if (newChannel.guild && botId) {
-			const channelType = newChannel.type === 4 ? 'Category' : newChannel.type === 0 ? 'Text Channel' : newChannel.type === 5 ? 'News Channel' : 'Channel';
-			const oldName = oldChannel.name || 'Unknown';
-			const newName = newChannel.name || 'Unknown';
-			if (oldName !== newName) {
-				await logger.log(`✏️ ${channelType} renamed: **${oldName}** → **${newName}** (${newChannel.id})`);
-			} else {
-				await logger.log(`✏️ ${channelType} updated: **${newName}** (${newChannel.id})`);
-			}
-			queueGuildSync(newChannel.guild);
+		if (!newChannel.guild || !botId || !isSyncedChannelType(newChannel)) return;
+		if (channelSyncSignature(oldChannel) === channelSyncSignature(newChannel)) return;
+
+		const oldName = oldChannel.name || 'Unknown';
+		const newName = newChannel.name || 'Unknown';
+		if (oldName !== newName) {
+			await logger.log(`✏️ ${channelLabel(newChannel)} renamed: **${oldName}** → **${newName}** (${newChannel.id})`);
+		} else {
+			await logger.log(`✏️ ${channelLabel(newChannel)} updated: **${newName}** (${newChannel.id})`);
 		}
+		queueGuildSync(newChannel.guild);
 	});
 
 	client.on('channelDelete', async (channel: any) => {
-		if (channel.guild && botId) {
-			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
-			await logger.log(`🗑️ ${channelType} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
-			queueGuildSync(channel.guild);
-		}
+		if (!channel.guild || !botId || !isSyncedChannelType(channel)) return;
+		await logger.log(`🗑️ ${channelLabel(channel)} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
+		queueGuildSync(channel.guild);
 	});
 
 	logger.log('🔄 Selfbot sync component initialized');

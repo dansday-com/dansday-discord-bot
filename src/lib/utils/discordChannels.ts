@@ -43,6 +43,28 @@ export function separateChannelsAndCategories(guildChannels: Map<string, any>) {
 	return { categories, channels };
 }
 
+const SYNCED_CHANNEL_TYPES = new Set([0, 2, 4, 5, 13]);
+const SYNCED_CHANNEL_TYPE_NAMES = new Set(['GUILD_TEXT', 'GUILD_VOICE', 'GUILD_CATEGORY', 'GUILD_NEWS', 'GUILD_STAGE_VOICE']);
+
+export function isSyncedChannelType(channel: any): boolean {
+	if (!channel) return false;
+	if (channel.isThread ? channel.isThread() : false) return false;
+	if (typeof channel.type === 'number') return SYNCED_CHANNEL_TYPES.has(channel.type);
+	if (typeof channel.type === 'string') return SYNCED_CHANNEL_TYPE_NAMES.has(channel.type);
+	return false;
+}
+
+export function channelSyncSignature(channel: any): string {
+	if (!channel) return '';
+	let viewable: any = null;
+	try {
+		viewable = channel.viewable;
+	} catch (_) {
+		viewable = null;
+	}
+	return [channel.id, channel.name, channel.type, channel.parentId ?? null, channel.position ?? null, viewable].join('\u001f');
+}
+
 export function mapCategoriesForSync(categories: any[]) {
 	return categories.map((cat) => ({
 		id: cat.id,

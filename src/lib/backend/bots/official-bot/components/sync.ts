@@ -1,11 +1,26 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import db from '../../../../database.js';
-import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync, createGuildSyncDebouncer } from '../../../../utils/index.js';
+import {
+	logger,
+	separateChannelsAndCategories,
+	mapCategoriesForSync,
+	mapChannelsForSync,
+	createGuildSyncDebouncer,
+	isSyncedChannelType,
+	channelSyncSignature
+} from '../../../../utils/index.js';
 import { COMMUNITY_DISCORD_URL, DEFAULT_BOT_NICKNAME, getEmbedConfig, publicSiteOrigin } from '../../../config.js';
 import { translate } from '../i18n.js';
 
 let client = null;
 let botId = null;
+
+function channelLabel(channel) {
+	if (channel.type === 4 || channel.type === 'GUILD_CATEGORY') return 'Category';
+	if (channel.type === 0 || channel.type === 'GUILD_TEXT') return 'Text Channel';
+	if (channel.type === 5 || channel.type === 'GUILD_NEWS') return 'News Channel';
+	return 'Channel';
+}
 
 const MEMBER_LEAVE_DELETE_DELAY_MS = 30000;
 const RETENTION_PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -361,36 +376,30 @@ async function init(discordClient, botToken) {
 	});
 
 	client.on('channelCreate', async (channel) => {
-		if (channel.guild) {
-			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
-			const channelName = channel.name || 'Unknown';
-			await logger.log(`📁 ${channelType} created: **${channelName}** (${channel.id})`);
-			queueGuildSync(channel.guild);
-		}
+		if (!channel.guild || !isSyncedChannelType(channel)) return;
+		await logger.log(`📁 ${channelLabel(channel)} created: **${channel.name || 'Unknown'}** (${channel.id})`);
+		queueGuildSync(channel.guild);
 	});
 
 	client.on('channelUpdate', async (oldChannel, newChannel) => {
-		if (newChannel.guild) {
-			const channelType = newChannel.type === 4 ? 'Category' : newChannel.type === 0 ? 'Text Channel' : newChannel.type === 5 ? 'News Channel' : 'Channel';
-			const oldName = oldChannel.name || 'Unknown';
-			const newName = newChannel.name || 'Unknown';
+		if (!newChannel.guild || !isSyncedChannelType(newChannel)) return;
+		if (channelSyncSignature(oldChannel) === channelSyncSignature(newChannel)) return;
 
-			if (oldName !== newName) {
-				await logger.log(`✏️ ${channelType} renamed: **${oldName}** → **${newName}** (${newChannel.id})`);
-			} else {
-				await logger.log(`✏️ ${channelType} updated: **${newName}** (${newChannel.id})`);
-			}
-			queueGuildSync(newChannel.guild);
+		const oldName = oldChannel.name || 'Unknown';
+		const newName = newChannel.name || 'Unknown';
+
+		if (oldName !== newName) {
+			await logger.log(`✏️ ${channelLabel(newChannel)} renamed: **${oldName}** → **${newName}** (${newChannel.id})`);
+		} else {
+			await logger.log(`✏️ ${channelLabel(newChannel)} updated: **${newName}** (${newChannel.id})`);
 		}
+		queueGuildSync(newChannel.guild);
 	});
 
 	client.on('channelDelete', async (channel) => {
-		if (channel.guild) {
-			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
-			const channelName = channel.name || 'Unknown';
-			await logger.log(`🗑️ ${channelType} deleted: **${channelName}** (${channel.id})`);
-			queueGuildSync(channel.guild);
-		}
+		if (!channel.guild || !isSyncedChannelType(channel)) return;
+		await logger.log(`🗑️ ${channelLabel(channel)} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
+		queueGuildSync(channel.guild);
 	});
 
 	client.on('roleCreate', async (role) => {

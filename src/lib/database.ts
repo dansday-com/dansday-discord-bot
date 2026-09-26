@@ -912,6 +912,42 @@ export async function getOfficialServerByDiscordId(officialBotId: number, discor
 	return rows[0] || null;
 }
 
+export async function removeSelfbotServer(selfbotId: number, discordServerId: string) {
+	await initializeDatabase();
+	const server = await getSelfbotServerByDiscordId(Number(selfbotId), String(discordServerId));
+	if (!server) return null;
+	await db.delete(schema.selfbotServers).where(eq(schema.selfbotServers.id, Number(server.id)));
+	return server;
+}
+
+export async function removeDepartedSelfbotServers(selfbotId: number, keepDiscordServerIds: string[]) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ id: schema.selfbotServers.id, discord_server_id: schema.selfbotServers.discord_server_id, name: schema.selfbotServers.name })
+		.from(schema.selfbotServers)
+		.where(eq(schema.selfbotServers.selfbot_id, Number(selfbotId)));
+
+	if (rows.length === 0) return [];
+
+	if (!Array.isArray(keepDiscordServerIds) || keepDiscordServerIds.length === 0) {
+		logger.log('⚠️  removeDepartedSelfbotServers called with an empty keep list; refusing to remove every source server');
+		return [];
+	}
+
+	const keep = new Set(keepDiscordServerIds.map((id) => String(id)));
+	const stale = rows.filter((r) => !keep.has(String(r.discord_server_id)));
+
+	if (stale.length === rows.length) {
+		logger.log(`⚠️  removeDepartedSelfbotServers would remove all ${rows.length} source server(s); refusing as a safety guard`);
+		return [];
+	}
+
+	for (const row of stale) {
+		await db.delete(schema.selfbotServers).where(eq(schema.selfbotServers.id, Number(row.id)));
+	}
+	return stale;
+}
+
 export async function getSelfbotServerByDiscordId(selfbotId: number, discordServerId: string) {
 	await initializeDatabase();
 	const rows = await db
@@ -1207,6 +1243,7 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 						type: ch.type ?? null,
 						discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
 						position: ch.position ?? null,
+						viewable: ch.viewable !== false,
 						created_at: now as any,
 						updated_at: now as any
 					})
@@ -1216,6 +1253,7 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 							type: ch.type ?? null,
 							discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
 							position: ch.position ?? null,
+							viewable: ch.viewable !== false,
 							updated_at: now as any
 						}
 					})
@@ -1248,12 +1286,13 @@ export async function getSelfbotCategoriesForServer(selfbotServerId: number) {
 		.orderBy(asc(schema.selfbotServerCategories.position), asc(schema.selfbotServerCategories.name));
 }
 
-export async function getSelfbotChannelsForServer(selfbotServerId: number) {
+export async function getSelfbotChannelsForServer(selfbotServerId: number, opts?: { includeHidden?: boolean }) {
 	await initializeDatabase();
+	const scope = eq(schema.selfbotServerChannels.selfbot_server_id, selfbotServerId);
 	return db
 		.select()
 		.from(schema.selfbotServerChannels)
-		.where(eq(schema.selfbotServerChannels.selfbot_server_id, selfbotServerId))
+		.where(opts?.includeHidden ? scope : and(scope, eq(schema.selfbotServerChannels.viewable, true)))
 		.orderBy(asc(schema.selfbotServerChannels.position), asc(schema.selfbotServerChannels.name));
 }
 
@@ -6959,6 +6998,8 @@ export default {
 	getSelfbotServerDiscordId,
 	getOfficialServerByDiscordId,
 	getSelfbotServerByDiscordId,
+	removeSelfbotServer,
+	removeDepartedSelfbotServers,
 	getServerByDiscordId,
 	getOfficialBotServerIdForServer,
 	claimGuildGreeting,

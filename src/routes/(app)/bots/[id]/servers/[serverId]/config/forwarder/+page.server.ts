@@ -14,14 +14,18 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const runningSelfbot = selfbots.find((sb) => sb.status === 'running' && typeof sb.token === 'string' && sb.token.trim() !== '');
 
 	const settings = normalizeForwarderSettings(row?.settings ?? {});
+	const reachableGuildIds = new Set(sourceServers.map((s) => String(s.discord_server_id)));
 	settings.forwarders = await Promise.all(
 		settings.forwarders.map(async (raw) => {
 			const fw = raw as Record<string, unknown>;
-			if (typeof fw?.source_guild_id === 'string' && fw.source_guild_id) return fw;
-			if (!fw?.server_id) return fw;
-			const discordServerId = await db.getSelfbotServerDiscordId(Number(fw.server_id)).catch(() => null);
-			if (!discordServerId) return fw;
-			return { ...fw, source_guild_id: discordServerId };
+			let resolved = fw;
+			if (!(typeof fw?.source_guild_id === 'string' && fw.source_guild_id) && fw?.server_id) {
+				const discordServerId = await db.getSelfbotServerDiscordId(Number(fw.server_id)).catch(() => null);
+				if (discordServerId) resolved = { ...fw, source_guild_id: discordServerId };
+			}
+			const guildId = resolved.source_guild_id;
+			const unreachable = typeof guildId === 'string' && guildId !== '' ? !reachableGuildIds.has(guildId) : false;
+			return { ...resolved, source_unreachable: unreachable };
 		})
 	);
 

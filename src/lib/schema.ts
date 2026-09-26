@@ -368,6 +368,7 @@ export const selfbotServerChannels = mysqlTable(
 		type: text('type'),
 		discord_parent_category_id: varchar('discord_parent_category_id', { length: 150 }),
 		position: int('position'),
+		viewable: boolean('viewable').notNull().default(true),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
@@ -375,7 +376,8 @@ export const selfbotServerChannels = mysqlTable(
 		uniqueIndex('uq_selfbot_server_channel').on(t.selfbot_server_id, t.discord_channel_id),
 		index('idx_selfbot_server_channels_selfbot_server_id').on(t.selfbot_server_id),
 		index('idx_selfbot_server_channels_discord_id').on(t.discord_channel_id),
-		index('idx_selfbot_server_channels_parent_discord').on(t.discord_parent_category_id)
+		index('idx_selfbot_server_channels_parent_discord').on(t.discord_parent_category_id),
+		index('idx_selfbot_server_channels_viewable').on(t.selfbot_server_id, t.viewable)
 	]
 );
 

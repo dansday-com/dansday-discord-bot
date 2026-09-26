@@ -20,6 +20,7 @@
 		only_forward_when_mentions_member: boolean;
 		keywords: string[];
 		tag: string;
+		source_unreachable?: boolean;
 	};
 
 	let saving = $state(false);
@@ -222,7 +223,7 @@
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.forwarder,
 					enabled: featureEnabled,
-					forwarders
+					forwarders: forwarders.map(({ source_unreachable, ...rest }) => rest)
 				})
 			});
 			const d = await res.json();
@@ -314,6 +315,12 @@
 								{#if fw.only_forward_when_mentions_member}
 									<div class="text-ash-400 text-xs">
 										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions the account
+									</div>
+								{/if}
+								{#if fw.source_unreachable}
+									<div class="flex items-start gap-2 rounded-lg border border-amber-800/30 bg-amber-900/20 p-2 text-amber-200/90">
+										<i class="fas fa-unlink mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+										<span>No linked account is in this source server anymore. This forwarder stays inactive until an account rejoins.</span>
 									</div>
 								{/if}
 							</div>

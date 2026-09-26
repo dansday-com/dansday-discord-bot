@@ -13,6 +13,38 @@ async function findBotById(id: any) {
 	}
 }
 
+async function resolveSelfMember(guild: any) {
+	const cached = guild.members?.me;
+	if (cached && !cached.partial) return cached;
+	try {
+		return await guild.members.fetchMe();
+	} catch (error: any) {
+		logger.log(`⚠️  Could not resolve own member in ${guild.name}: ${error.message}. Treating all channels as visible.`);
+		return null;
+	}
+}
+
+function markChannelVisibility(channels: any[], guild: any, selfMember: any) {
+	if (!selfMember) return channels.map((ch) => ({ ...ch, viewable: true }));
+
+	let hidden = 0;
+	const marked = channels.map((ch) => {
+		const live = guild.channels?.cache?.get(String(ch.id));
+		if (!live) return { ...ch, viewable: true };
+		let viewable = true;
+		try {
+			viewable = live.permissionsFor(selfMember)?.has('VIEW_CHANNEL', false) ?? true;
+		} catch (_) {
+			viewable = true;
+		}
+		if (!viewable) hidden++;
+		return { ...ch, viewable };
+	});
+
+	if (hidden > 0) logger.log(`🙈 ${hidden} channel(s) in ${guild.name} are not visible to this account and stay out of the pickers`);
+	return marked;
+}
+
 async function syncGuildData(guild: any) {
 	try {
 		if (!botId) {
@@ -36,8 +68,10 @@ async function syncGuildData(guild: any) {
 
 			if (guild.channels.cache.size > 0) {
 				const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
+				const selfMember = await resolveSelfMember(guild);
+				const mappedChannels = markChannelVisibility(mapChannelsForSync(channels), guild, selfMember);
 				await (db as any).syncSelfbotCategories(botServerRow.id, mapCategoriesForSync(categories)).catch(() => null);
-				await (db as any).syncSelfbotChannels(botServerRow.id, mapChannelsForSync(channels)).catch(() => null);
+				await (db as any).syncSelfbotChannels(botServerRow.id, mappedChannels).catch(() => null);
 				logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels)`);
 			} else {
 				logger.log(`✅ Synced server info: ${guild.name} (${guild.memberCount} members)`);
@@ -68,8 +102,24 @@ async function syncAllGuilds() {
 		}
 
 		logger.log(`✅ Selfbot sync completed: ${completed}/${guilds.size} server(s)`);
+
+		await reapDepartedGuilds(guilds);
 	} catch (error: any) {
 		logger.log(`❌ Error syncing all guilds: ${error.message}`);
+	}
+}
+
+async function reapDepartedGuilds(guilds: Map<string, any>) {
+	if (!botId) return;
+	try {
+		const stale = await (db as any).removeDepartedSelfbotServers(Number(botId), Array.from(guilds.keys()));
+		if (stale.length > 0) {
+			logger.log(
+				`🗑️  Removed ${stale.length} source server(s) this account is no longer in: ${stale.map((s: any) => s.name || s.discord_server_id).join(', ')}`
+			);
+		}
+	} catch (error: any) {
+		logger.log(`❌ Error removing departed source servers: ${error.message}`);
 	}
 }
 
@@ -123,8 +173,33 @@ async function init(discordClient: any, botIdFromEnv: any) {
 		await syncGuildData(guild);
 	});
 
+	client.on('guildDelete', async (guild: any) => {
+		if (!botId) return;
+		if (guild.available === false || guild.unavailable === true) {
+			logger.log(`⏸️  Source server unavailable (Discord outage), keeping data: ${guild.name || guild.id}`);
+			return;
+		}
+
+		try {
+			const removed = await (db as any).removeSelfbotServer(Number(botId), String(guild.id));
+			if (removed) logger.log(`🗑️  Account left source server, forwarder data removed: ${guild.name || guild.id}`);
+		} catch (error: any) {
+			logger.log(`❌ Failed to remove source server ${guild.name || guild.id}: ${error.message}`);
+		}
+	});
+
 	client.on('guildUpdate', async (_oldGuild: any, newGuild: any) => {
 		if (botId) await syncGuildData(newGuild);
+	});
+
+	client.on('guildMemberUpdate', async (oldMember: any, newMember: any) => {
+		if (!botId || !newMember?.guild) return;
+		if (String(newMember.id) !== String(client.user?.id)) return;
+		const before = [...(oldMember?.roles?.cache?.keys() ?? [])].sort().join(',');
+		const after = [...(newMember?.roles?.cache?.keys() ?? [])].sort().join(',');
+		if (before === after) return;
+		await logger.log(`🔐 Own roles changed in ${newMember.guild.name}, re-checking channel visibility`);
+		await syncGuildData(newMember.guild);
 	});
 
 	client.on('channelCreate', async (channel: any) => {

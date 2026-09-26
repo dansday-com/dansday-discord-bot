@@ -1186,27 +1186,61 @@ export async function upsertSelfbotServer(selfbotId: number, guild: any) {
 	return rows[0] || null;
 }
 
+const SYNC_UPSERT_CHUNK = 500;
+
+function chunkRows<T>(rows: T[], size = SYNC_UPSERT_CHUNK): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+	return out;
+}
+
+async function batchUpsert<T>(label: string, rows: T[], runBatch: (batch: T[]) => Promise<unknown>, runSingle: (row: T) => Promise<unknown>) {
+	for (const batch of chunkRows(rows)) {
+		try {
+			await runBatch(batch);
+		} catch (error: any) {
+			logger.log(`⚠️  Batch ${label} of ${batch.length} row(s) failed (${error?.message || error}), falling back to one row at a time`);
+			for (const row of batch) {
+				await runSingle(row).catch(() => null);
+			}
+		}
+	}
+}
+
 export async function syncSelfbotCategories(selfbotServerId: number, categories: any[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const sid = Number(selfbotServerId);
 
 	if (categories && categories.length > 0) {
-		await Promise.all(
-			categories.map((cat) =>
+		const rows = categories.map((cat) => ({
+			selfbot_server_id: sid,
+			discord_category_id: String(cat.id),
+			name: cat.name ?? null,
+			position: cat.position ?? null,
+			created_at: now as any,
+			updated_at: now as any
+		}));
+
+		await batchUpsert(
+			'selfbot category upsert',
+			rows,
+			(batch) =>
 				db
 					.insert(schema.selfbotServerCategories)
-					.values({
-						selfbot_server_id: sid,
-						discord_category_id: String(cat.id),
-						name: cat.name ?? null,
-						position: cat.position ?? null,
-						created_at: now as any,
-						updated_at: now as any
-					})
-					.onDuplicateKeyUpdate({ set: { name: cat.name ?? null, position: cat.position ?? null, updated_at: now as any } })
-					.catch(() => null)
-			)
+					.values(batch)
+					.onDuplicateKeyUpdate({
+						set: {
+							name: sql`values(${schema.selfbotServerCategories.name})`,
+							position: sql`values(${schema.selfbotServerCategories.position})`,
+							updated_at: now as any
+						}
+					}),
+			(row) =>
+				db
+					.insert(schema.selfbotServerCategories)
+					.values(row)
+					.onDuplicateKeyUpdate({ set: { name: row.name, position: row.position, updated_at: now as any } })
 		);
 	}
 
@@ -1232,31 +1266,46 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 	const valid = (channels ?? []).filter((ch) => ch.type !== 4);
 
 	if (valid.length > 0) {
-		await Promise.all(
-			valid.map((ch) =>
+		const rows = valid.map((ch) => ({
+			selfbot_server_id: sid,
+			discord_channel_id: String(ch.id),
+			name: ch.name ?? null,
+			type: ch.type ?? null,
+			discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
+			position: ch.position ?? null,
+			created_at: now as any,
+			updated_at: now as any
+		}));
+
+		await batchUpsert(
+			'selfbot channel upsert',
+			rows,
+			(batch) =>
 				db
 					.insert(schema.selfbotServerChannels)
-					.values({
-						selfbot_server_id: sid,
-						discord_channel_id: String(ch.id),
-						name: ch.name ?? null,
-						type: ch.type ?? null,
-						discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
-						position: ch.position ?? null,
-						created_at: now as any,
-						updated_at: now as any
-					})
+					.values(batch)
 					.onDuplicateKeyUpdate({
 						set: {
-							name: ch.name ?? null,
-							type: ch.type ?? null,
-							discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
-							position: ch.position ?? null,
+							name: sql`values(${schema.selfbotServerChannels.name})`,
+							type: sql`values(${schema.selfbotServerChannels.type})`,
+							discord_parent_category_id: sql`values(${schema.selfbotServerChannels.discord_parent_category_id})`,
+							position: sql`values(${schema.selfbotServerChannels.position})`,
+							updated_at: now as any
+						}
+					}),
+			(row) =>
+				db
+					.insert(schema.selfbotServerChannels)
+					.values(row)
+					.onDuplicateKeyUpdate({
+						set: {
+							name: row.name,
+							type: row.type,
+							discord_parent_category_id: row.discord_parent_category_id,
+							position: row.position,
 							updated_at: now as any
 						}
 					})
-					.catch(() => null)
-			)
 		);
 	}
 

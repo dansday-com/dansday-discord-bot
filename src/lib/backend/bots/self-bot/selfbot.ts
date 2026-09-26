@@ -1,4 +1,4 @@
-import { Client } from 'discord.js-selfbot-v13';
+import { Client, Options } from 'discord.js-selfbot-v13';
 import { getBotToken, initializeConfig } from '../../config.js';
 import { logger } from '../../../utils/index.js';
 import { applySelfbotDiscordPresenceFromDb } from './applySelfbotDiscordPresence.js';
@@ -20,7 +20,21 @@ let BOT_TOKEN: string | undefined;
 });
 
 const BOT_ID = process.env.BOT_ID;
-const client = new Client();
+const client = new Client({
+	makeCache: Options.cacheWithLimits({
+		...Options.defaultMakeCacheSettings,
+		MessageManager: 25,
+		GuildMemberManager: { maxSize: 1, keepOverLimit: (member: any) => member.id === member.client.user?.id },
+		UserManager: { maxSize: 1, keepOverLimit: (user: any) => user.id === user.client.user?.id },
+		PresenceManager: 0,
+		ReactionManager: 0,
+		GuildStickerManager: 0,
+		GuildScheduledEventManager: 0,
+		GuildBanManager: 0,
+		GuildInviteManager: 0,
+		StageInstanceManager: 0
+	})
+});
 
 let initialized = false;
 

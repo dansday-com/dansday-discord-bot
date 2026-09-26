@@ -17,7 +17,7 @@ Leveling, moderation, embed builder, Discord Quests, creator tools, public stati
 
 ### Public directories
 
-No login needed. The site indexes every public server, quest, item, task and wiki in one place.
+No login needed. The site indexes every public server, quest, item, task, wiki and forwarder source in one place.
 
 <table>
 <tr>
@@ -144,16 +144,16 @@ Each member signs in to their own account on those same pages.
 - **Welcomer** - Custom welcome messages and embeds.
 - **Giveaways** - Entries, winner selection and role-based eligibility.
 - **AFK** - Members set a status; the bot warns anyone who mentions them.
-- **Staff rating** - Structured staff evaluation tied to moderation.
+- **Staff rating** - Members rate staff; approved ratings drive roles placed automatically above your staff roles.
 - **Booster messages** - Thank Nitro boosters with configurable channels and templates.
-- **Custom supporter roles** - Supporters personalize role name and color within your rules.
+- **Custom supporter roles** - Boosters pick their own role name and color, placed automatically above the Server Booster role so the color shows.
 - **Feedback** - Collect suggestions through Discord flows.
 
 ### Safety & operations
 
 - **Moderation** - Warnings, mutes, bans and staff actions from the panel.
 - **Channel notifications** - Alerts for important channel activity.
-- **Message forwarder** - Mirror or sync messages across channels.
+- **Message forwarder** - Pull messages out of servers the operator has linked, into your own channels. Filter by keyword, matched against embeds too. Forwarders are independent, so a catch-all and a filtered one can both take the same message. Available sources are listed at `/forwarder-servers`.
 
 ### AI
 

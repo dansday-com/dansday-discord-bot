@@ -707,7 +707,7 @@ export const modules = [
 			{ label: 'Mention filter', desc: 'Only forward messages that mention the linked account.' },
 			{
 				label: 'Keywords (optional)',
-				desc: 'Type a keyword and press Enter to add it. Only messages containing at least one keyword are forwarded; leave it empty to forward everything. Combines with the mention filter — a message must satisfy both.'
+				desc: 'Type a keyword and press Enter to add it. Only messages containing at least one keyword are forwarded; leave it empty to forward everything. Combines with the mention filter — a message must satisfy both. Keywords are matched against embeds too, not just plain text. Forwarders are independent: if two share a source channel, each one decides on its own keywords, so a catch-all forwarder and a filtered one can both receive the same message.'
 			},
 			{ label: 'Tag (optional)', desc: 'A label so you can recognize this forwarder later.' }
 		]

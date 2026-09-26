@@ -1,7 +1,9 @@
 import db from '../../../../database.js';
-import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../../../utils/index.js';
+import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync, createGuildSyncDebouncer } from '../../../../utils/index.js';
 
 const FULL_RESYNC_INTERVAL_MS = 30 * 60 * 1000;
+const EVENT_SYNC_DEBOUNCE_MS = 15 * 1000;
+const EVENT_SYNC_MAX_WAIT_MS = 2 * 60 * 1000;
 
 let client: any = null;
 let botId: any = null;
@@ -70,6 +72,8 @@ async function syncGuildData(guild: any) {
 		logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
 	}
 }
+
+const queueGuildSync = createGuildSyncDebouncer(syncGuildData, EVENT_SYNC_DEBOUNCE_MS, EVENT_SYNC_MAX_WAIT_MS);
 
 async function syncAllGuilds() {
 	if (syncRunning) return;
@@ -186,7 +190,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('guildUpdate', async (_oldGuild: any, newGuild: any) => {
-		if (botId) await syncGuildData(newGuild);
+		if (botId) queueGuildSync(newGuild);
 	});
 
 	client.on('guildMemberUpdate', async (oldMember: any, newMember: any) => {
@@ -196,14 +200,14 @@ async function init(discordClient: any, botIdFromEnv: any) {
 		const after = [...(newMember?.roles?.cache?.keys() ?? [])].sort().join(',');
 		if (before === after) return;
 		await logger.log(`🔐 Own roles changed in ${newMember.guild.name}, re-checking channel visibility`);
-		await syncGuildData(newMember.guild);
+		queueGuildSync(newMember.guild);
 	});
 
 	client.on('channelCreate', async (channel: any) => {
 		if (channel.guild && botId) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			await logger.log(`📁 ${channelType} created: **${channel.name || 'Unknown'}** (${channel.id})`);
-			await syncGuildData(channel.guild);
+			queueGuildSync(channel.guild);
 		}
 	});
 
@@ -217,7 +221,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 			} else {
 				await logger.log(`✏️ ${channelType} updated: **${newName}** (${newChannel.id})`);
 			}
-			await syncGuildData(newChannel.guild);
+			queueGuildSync(newChannel.guild);
 		}
 	});
 
@@ -225,7 +229,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 		if (channel.guild && botId) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			await logger.log(`🗑️ ${channelType} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
-			await syncGuildData(channel.guild);
+			queueGuildSync(channel.guild);
 		}
 	});
 

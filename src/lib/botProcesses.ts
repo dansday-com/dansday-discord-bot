@@ -40,6 +40,25 @@ export interface BotProcessInfo {
 	pid: number | null;
 	startTime: number | null;
 	status: string;
+	spawnId?: number;
+}
+
+const RESTART_BASE_DELAY_MS = 35_000;
+const RESTART_MAX_DELAY_MS = 5 * 60_000;
+const RESTART_MAX_ATTEMPTS = 5;
+const RESTART_STABLE_UPTIME_MS = 10 * 60_000;
+
+let spawnCounter = 0;
+const manualStopSpawns = new Set<number>();
+const restartAttempts = new Map<string, number>();
+const restartTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function cancelScheduledRestart(mapKey: string): void {
+	const timer = restartTimers.get(mapKey);
+	if (timer) {
+		clearTimeout(timer);
+		restartTimers.delete(mapKey);
+	}
 }
 
 export type BotProcessKind = 'official' | 'selfbot';
@@ -202,13 +221,18 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			}
 		});
 
+		const spawnId = ++spawnCounter;
+		const spawnedAt = Date.now();
+
 		const processInfo: BotProcessInfo = {
 			process: botProcess,
 			pid: botProcess.pid ?? null,
-			startTime: Date.now(),
-			status: 'running'
+			startTime: spawnedAt,
+			status: 'running',
+			spawnId
 		};
 
+		cancelScheduledRestart(mapKey);
 		botProcesses.set(mapKey, processInfo);
 
 		botProcess.stdout?.on('data', (data: Buffer) => {
@@ -220,7 +244,11 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 		});
 
 		botProcess.on('exit', async (code: number | null, signal: string | null) => {
+			const stoppedByHand = manualStopSpawns.delete(spawnId);
+
 			const info = botProcesses.get(mapKey);
+			if (info !== undefined && info.spawnId !== spawnId) return;
+
 			if (info) {
 				info.status = 'stopped';
 				info.pid = null;
@@ -234,11 +262,53 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			if (code !== 0 && code !== null) {
 				logger.log(`❌ Bot ${mapKey} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
 			}
-			if (!selfbot && !isOfficialProcessAlive(bot)) await stopConnectedSelfbots(botId).catch(() => {});
+
+			if (!selfbot && !isOfficialProcessAlive(bot)) {
+				if (stoppedByHand) await stopConnectedSelfbots(botId).catch(() => {});
+				else logger.log(`🔗 Official bot ${mapKey} exited unexpectedly, leaving connected selfbot(s) running`);
+			}
+
+			if (stoppedByHand) {
+				restartAttempts.delete(mapKey);
+				return;
+			}
+
+			const crashed = code === null ? signal !== 'SIGINT' && signal !== 'SIGTERM' : code !== 0;
+			if (!crashed) {
+				restartAttempts.delete(mapKey);
+				logger.log(`⏹️  Bot ${mapKey} exited cleanly on its own, not restarting`);
+				return;
+			}
+
+			if (Date.now() - spawnedAt >= RESTART_STABLE_UPTIME_MS) restartAttempts.delete(mapKey);
+
+			const attempt = (restartAttempts.get(mapKey) ?? 0) + 1;
+			if (attempt > RESTART_MAX_ATTEMPTS) {
+				logger.log(`🛑 Bot ${mapKey} crashed ${RESTART_MAX_ATTEMPTS} times without staying up, giving up until started by hand`);
+				return;
+			}
+			restartAttempts.set(mapKey, attempt);
+
+			const delay = Math.min(RESTART_BASE_DELAY_MS * Math.pow(2, attempt - 1), RESTART_MAX_DELAY_MS);
+			logger.log(`🔁 Bot ${mapKey} crashed, restarting in ${Math.round(delay / 1000)}s (attempt ${attempt}/${RESTART_MAX_ATTEMPTS})`);
+
+			cancelScheduledRestart(mapKey);
+			const timer = setTimeout(async () => {
+				restartTimers.delete(mapKey);
+				if (hasLiveChildProcess(mapKey)) return;
+				const fresh = await (selfbot ? db.getSelfbotById(Number(botId)) : db.getBot(botId)).catch(() => null);
+				const target = fresh ?? bot;
+				const result = await startBotById(botId, target).catch((err: any) => ({ success: false, error: String(err?.message || err) }));
+				if (!result.success) logger.log(`⚠️  Auto-restart of ${mapKey} failed: ${result.error ?? 'unknown error'}`);
+			}, delay);
+			timer.unref?.();
+			restartTimers.set(mapKey, timer);
 		});
 
 		botProcess.on('error', async (err: Error) => {
+			manualStopSpawns.delete(spawnId);
 			const info = botProcesses.get(mapKey);
+			if (info && info.spawnId !== spawnId) return;
 			if (info) {
 				info.status = 'stopped';
 				info.pid = null;
@@ -304,6 +374,11 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 
 export async function stopBotById(botId: number, bot?: any): Promise<{ success: boolean; error?: string; message?: string }> {
 	const mapKey = processKeyForStop(botId, bot);
+
+	cancelScheduledRestart(mapKey);
+	restartAttempts.delete(mapKey);
+	const stoppingSpawnId = botProcesses.get(mapKey)?.spawnId;
+	if (stoppingSpawnId !== undefined) manualStopSpawns.add(stoppingSpawnId);
 
 	if (!bot || !isSelfbot(bot)) {
 		await stopConnectedSelfbots(botId).catch(() => {});

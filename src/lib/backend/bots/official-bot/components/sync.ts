@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import db from '../../../../database.js';
-import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../../../utils/index.js';
+import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync, createGuildSyncDebouncer } from '../../../../utils/index.js';
 import { COMMUNITY_DISCORD_URL, DEFAULT_BOT_NICKNAME, getEmbedConfig, publicSiteOrigin } from '../../../config.js';
 import { translate } from '../i18n.js';
 
@@ -11,6 +11,8 @@ const MEMBER_LEAVE_DELETE_DELAY_MS = 30000;
 const RETENTION_PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const FULL_RESYNC_INTERVAL_MS = 30 * 60 * 1000;
 const MEMBER_FETCH_MIN_RATIO = 0.9;
+const EVENT_SYNC_DEBOUNCE_MS = 15 * 1000;
+const EVENT_SYNC_MAX_WAIT_MS = 2 * 60 * 1000;
 
 let syncRunning = false;
 
@@ -117,6 +119,8 @@ async function syncGuildData(guild) {
 		return false;
 	}
 }
+
+const queueGuildSync = createGuildSyncDebouncer(syncGuildData, EVENT_SYNC_DEBOUNCE_MS, EVENT_SYNC_MAX_WAIT_MS);
 
 async function syncAllGuilds() {
 	if (!client || syncRunning) return;
@@ -361,7 +365,7 @@ async function init(discordClient, botToken) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			const channelName = channel.name || 'Unknown';
 			await logger.log(`📁 ${channelType} created: **${channelName}** (${channel.id})`);
-			await syncGuildData(channel.guild);
+			queueGuildSync(channel.guild);
 		}
 	});
 
@@ -376,7 +380,7 @@ async function init(discordClient, botToken) {
 			} else {
 				await logger.log(`✏️ ${channelType} updated: **${newName}** (${newChannel.id})`);
 			}
-			await syncGuildData(newChannel.guild);
+			queueGuildSync(newChannel.guild);
 		}
 	});
 
@@ -385,7 +389,7 @@ async function init(discordClient, botToken) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			const channelName = channel.name || 'Unknown';
 			await logger.log(`🗑️ ${channelType} deleted: **${channelName}** (${channel.id})`);
-			await syncGuildData(channel.guild);
+			queueGuildSync(channel.guild);
 		}
 	});
 
@@ -418,7 +422,7 @@ async function init(discordClient, botToken) {
 		if (role.guild) {
 			const roleName = role.name || 'Unknown';
 			await logger.log(`🗑️ Role deleted: **${roleName}** (${role.id})`);
-			await syncGuildData(role.guild);
+			queueGuildSync(role.guild);
 		}
 	});
 
@@ -436,7 +440,7 @@ async function init(discordClient, botToken) {
 			} catch (error) {
 				await logger.log(`⚠️ Failed to upsert member ${member.id} on join: ${error.message}`);
 			}
-			await syncGuildData(member.guild);
+			queueGuildSync(member.guild);
 		}
 	});
 
@@ -447,7 +451,7 @@ async function init(discordClient, botToken) {
 				return;
 			}
 
-			await syncGuildData(member.guild);
+			queueGuildSync(member.guild);
 
 			if (!member.user?.bot) {
 				const guildName = member.guild.name;
@@ -498,7 +502,7 @@ async function init(discordClient, botToken) {
 
 	client.on('guildUpdate', async (oldGuild, newGuild) => {
 		if (botId) {
-			await syncGuildData(newGuild);
+			queueGuildSync(newGuild);
 		}
 	});
 }

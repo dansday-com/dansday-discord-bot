@@ -675,8 +675,8 @@
 						<p class={EYEBROW}>03 — Forwarder sources</p>
 						<h2 class={H2}>Forward from here</h2>
 						<p class={LEAD}>
-							{data.forwarderSourceCount} servers are available to forward messages from, reaching {fmt(data.forwarderSourceMembers)} members. Duplicates are already
-							merged, so this is the whole list.
+							Pull drops, jobs and announcements out of {data.forwarderSourceCount} servers reaching {fmt(data.forwarderSourceMembers)} members, straight into your
+							own channels. Filter by keyword so only what you care about lands.
 						</p>
 					</div>
 					<a href="/forwarder-servers" class="{BTN} btn-outline btn-primary shrink-0">

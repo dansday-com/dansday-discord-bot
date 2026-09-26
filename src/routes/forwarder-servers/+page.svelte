@@ -28,7 +28,7 @@
 	<title>Forwarder source servers | {APP_NAME} Discord Bot</title>
 	<meta
 		name="description"
-		content="Every Discord server you can forward messages from with {APP_NAME} Bot's message forwarder, pooled into one list with duplicates removed. Check what is available before you ask."
+		content="Every Discord server you can forward messages from with {APP_NAME} Bot. Pull drops, jobs and announcements into your own channels, filtered by keyword so only what you care about lands."
 	/>
 </svelte:head>
 
@@ -38,8 +38,8 @@
 			<p class="text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">Directory</p>
 			<h1 class="text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase">Forward from here</h1>
 			<p class="text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]">
-				Every server the message forwarder can pull from, pooled into one list with duplicates removed. Pick a source here, then set the channels and target in
-				your panel.
+				Pull drops, jobs and announcements out of any server on this list, straight into your own channels. Filter by keyword so only what you care about lands.
+				Pick a source, then set the channels and target in your panel.
 			</p>
 
 			{#if data.sources.length > 0}
@@ -61,20 +61,18 @@
 						<i class="fas fa-magnifying-glass text-base-content/40 text-[12px]"></i>
 						<input type="search" bind:value={query} placeholder="Filter servers" aria-label="Filter source servers by name" />
 					</label>
-					<div class="join">
-						{#each [{ id: 'members' as const, label: 'Biggest' }, { id: 'name' as const, label: 'A–Z' }] as option (option.id)}
-							<button
-								type="button"
-								class="btn join-item btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {sortBy === option.id
-									? 'btn-primary'
-									: 'btn-outline btn-primary'}"
-								onclick={() => (sortBy = option.id)}
-								aria-pressed={sortBy === option.id}
-							>
-								{option.label}
-							</button>
-						{/each}
-					</div>
+					{#each [{ id: 'members' as const, label: 'Biggest' }, { id: 'name' as const, label: 'A–Z' }] as option (option.id)}
+						<button
+							type="button"
+							class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {sortBy === option.id
+								? 'btn-primary'
+								: 'btn-outline btn-primary'}"
+							onclick={() => (sortBy = option.id)}
+							aria-pressed={sortBy === option.id}
+						>
+							{option.label}
+						</button>
+					{/each}
 				</div>
 
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

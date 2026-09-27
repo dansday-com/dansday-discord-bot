@@ -2,10 +2,16 @@
 	"menu": {
 		"title": "📋 Menu Bot {botName}",
 		"description": "Pilih fitur dari tombol di bawah:",
+		"website": "🌐 Halaman server: {url}",
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
 		"statistics": "🌐 Statistik",
-		"account": "👤 Akun"
+		"account": "👤 Akun",
+		"stats": {
+			"members": "👥 Anggota",
+			"totalXp": "📊 Total XP",
+			"topLevel": "⭐ Level Tertinggi"
+		}
 	},
 	"interface": {
 		"panel": {

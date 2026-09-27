@@ -2,10 +2,16 @@
 	"menu": {
 		"title": "📋 Menú del bot {botName}",
 		"description": "Selecciona una función con los botones de abajo:",
+		"website": "🌐 Página del servidor: {url}",
 		"noAccess": "❌ No tienes acceso a ninguna función.",
 		"button": "📋 Menú",
 		"statistics": "🌐 Estadísticas",
-		"account": "👤 Cuenta"
+		"account": "👤 Cuenta",
+		"stats": {
+			"members": "👥 Miembros",
+			"totalXp": "📊 XP total",
+			"topLevel": "⭐ Nivel más alto"
+		}
 	},
 	"interface": {
 		"panel": {

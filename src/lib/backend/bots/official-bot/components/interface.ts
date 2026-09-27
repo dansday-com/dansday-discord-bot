@@ -3,6 +3,7 @@ import {
 	getEmbedConfig,
 	getServerForCurrentBot,
 	isComponentFeatureEnabled,
+	publicServerSubdomainOrigin,
 	publicServerUrl,
 	serverSettingsComponent
 } from '../../../config.js';
@@ -78,6 +79,8 @@ import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import db from '../../../../database.js';
 import { computeCardToken } from '../../../../frontend/public/items/index.js';
+import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
+import type { PublicPageStats } from '../../../../frontend/public/statistics/shape.js';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
 	if (!interaction.guild) return false;
@@ -204,12 +207,53 @@ async function handleMenuButton(interaction) {
 	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id, { botName: embedConfig.NICKNAME });
 	const menuDesc = await translate('menu.description', interaction.guild.id, interaction.user.id);
 
+	let publicServer: { base: string; subdomain: string | null; stats: PublicPageStats | null } | null = null;
+	try {
+		const server = await getServerForCurrentBot(interaction.guild.id);
+		const slug = await computePublicServerSlugForServerId(Number(server.id));
+		const base = slug ? publicServerUrl(slug) : null;
+		if (base) {
+			const snapshot = await resolvePublicStatisticsSnapshot(Number(server.id)).catch(() => null);
+			publicServer = { base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null };
+		}
+	} catch (_) {}
+
+	let description = menuDesc;
+	if (publicServer?.subdomain) {
+		let siteLink = publicServer.subdomain;
+		try {
+			siteLink = `[${new URL(publicServer.subdomain).host}](${publicServer.subdomain})`;
+		} catch (_) {}
+		description = `${menuDesc}\n\n${await translate('menu.website', interaction.guild.id, interaction.user.id, { url: siteLink })}`;
+	}
+
 	const menuEmbed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
 		.setTitle(menuTitle)
-		.setDescription(menuDesc)
+		.setDescription(description)
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
+
+	if (publicServer?.stats) {
+		const stats = publicServer.stats;
+		menuEmbed.addFields(
+			{
+				name: await translate('menu.stats.members', interaction.guild.id, interaction.user.id),
+				value: stats.members_total.toLocaleString(),
+				inline: true
+			},
+			{
+				name: await translate('menu.stats.totalXp', interaction.guild.id, interaction.user.id),
+				value: stats.leveling_total_xp.toLocaleString(),
+				inline: true
+			},
+			{
+				name: await translate('menu.stats.topLevel', interaction.guild.id, interaction.user.id),
+				value: stats.leveling_max_level.toLocaleString(),
+				inline: true
+			}
+		);
+	}
 
 	const rows = [];
 	for (let i = 0; i < buttons.length; i += 5) {
@@ -232,29 +276,24 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
-	try {
-		const server = await getServerForCurrentBot(interaction.guild.id);
-		const slug = await computePublicServerSlugForServerId(Number(server.id));
-		const base = slug ? publicServerUrl(slug) : null;
+	if (publicServer) {
+		const base = publicServer.base;
+		const addLinkButton = (btn: ButtonBuilder) => {
+			const targetRow = rows[rows.length - 1];
+			if (targetRow.components.length < 5) {
+				targetRow.addComponents(btn);
+			} else if (rows.length < 5) {
+				rows.push(new ActionRowBuilder().addComponents(btn));
+			}
+		};
 
-		if (base) {
-			const addLinkButton = (btn: ButtonBuilder) => {
-				const targetRow = rows[rows.length - 1];
-				if (targetRow.components.length < 5) {
-					targetRow.addComponents(btn);
-				} else if (rows.length < 5) {
-					rows.push(new ActionRowBuilder().addComponents(btn));
-				}
-			};
+		const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
+		addLinkButton(new ButtonBuilder().setLabel(statisticsLabel).setURL(base).setStyle(ButtonStyle.Link));
 
-			const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
-			addLinkButton(new ButtonBuilder().setLabel(statisticsLabel).setURL(base).setStyle(ButtonStyle.Link));
-
-			const cardHash = computeCardToken(String(interaction.user.id));
-			const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
-			addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/${cardHash}`).setStyle(ButtonStyle.Link));
-		}
-	} catch (_) {}
+		const cardHash = computeCardToken(String(interaction.user.id));
+		const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
+		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/${cardHash}`).setStyle(ButtonStyle.Link));
+	}
 
 	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
 

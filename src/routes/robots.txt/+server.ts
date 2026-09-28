@@ -7,6 +7,7 @@ export const GET: RequestHandler = async () => {
 		`User-Agent: *
 Allow: /
 Disallow: /server/*/account
+Disallow: /admin/
 Disallow: /api/
 
 Host: ${baseUrl}

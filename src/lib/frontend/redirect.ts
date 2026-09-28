@@ -1,6 +1,36 @@
-export const DASHBOARD_PATH = '/overview' as const;
+export const ADMIN_BASE = '/admin' as const;
 
-const BOT_SECTION_RE = /^\/bots\/[^/]+(?:\/(?:presence|ai|wikis))?\/?$/;
+export const DASHBOARD_PATH = `${ADMIN_BASE}/overview` as const;
+
+const BOTS_ROOT = `${ADMIN_BASE}/bots` as const;
+
+export const ADMIN_TAB_PATHS = {
+	overview: DASHBOARD_PATH,
+	bots: BOTS_ROOT,
+	selfbots: `${ADMIN_BASE}/selfbots`,
+	greetings: `${ADMIN_BASE}/greetings`,
+	globalEmbed: `${ADMIN_BASE}/global-embed`,
+	items: `${ADMIN_BASE}/items`,
+	settings: `${ADMIN_BASE}/settings`
+} as const;
+
+export function adminBotPath(botId: string | number): string {
+	return `${BOTS_ROOT}/${botId}`;
+}
+
+export function adminServerPath(botId: string | number, serverId: string | number): string {
+	return `${adminBotPath(botId)}/servers/${serverId}`;
+}
+
+export function adminServerSectionPath(botId: string | number, serverId: string | number, section: string): string {
+	const suffix = section.replace(/^\/+/, '');
+	return suffix ? `${adminServerPath(botId, serverId)}/${suffix}` : adminServerPath(botId, serverId);
+}
+
+const BOT_SECTION_RE = new RegExp(`^${BOTS_ROOT}/[^/]+(?:/(?:presence|ai|wikis))?/?$`);
+const BOT_SERVERS_ROOT_RE = new RegExp(`^${BOTS_ROOT}/[^/]+/servers$`);
+const GUILD_CONFIG_RE = new RegExp(`^(${BOTS_ROOT}/[^/]+/servers/[^/]+)/config(?:/|$)`);
+const BOT_ID_RE = new RegExp(`^${BOTS_ROOT}/([^/]+)`);
 
 export function isBotSectionPath(pathname: string): boolean {
 	return BOT_SECTION_RE.test(pathname);
@@ -11,14 +41,14 @@ export function parentPathname(pathname: string): string {
 	if (p === '/') return '/';
 	const i = p.lastIndexOf('/');
 	const out = i <= 0 ? '/' : p.slice(0, i);
-	if (out === '/bots') return '/';
+	if (out === BOTS_ROOT || out === ADMIN_BASE) return '/';
 	return out;
 }
 
 export function webRouteUp(pathname: string): string {
 	const p = pathname.replace(/\/+$/, '') || '/';
 	let up = parentPathname(p);
-	if (/\/bots\/[^/]+\/servers$/.test(up)) {
+	if (BOT_SERVERS_ROOT_RE.test(up)) {
 		up = parentPathname(up);
 	}
 	return up;
@@ -26,12 +56,12 @@ export function webRouteUp(pathname: string): string {
 
 export function exitConfigToGuildOverview(pathname: string): string {
 	const p = pathname.replace(/\/+$/, '') || '/';
-	const m = p.match(/^(\/bots\/[^/]+\/servers\/[^/]+)\/config(?:\/|$)/);
+	const m = p.match(GUILD_CONFIG_RE);
 	return m ? m[1] : webRouteUp(p);
 }
 
 export function webBotHome(pathname: string): string {
-	const m = pathname.match(/^\/bots\/([^/]+)/);
-	if (m) return `/bots/${m[1]}`;
+	const m = pathname.match(BOT_ID_RE);
+	if (m) return adminBotPath(m[1]);
 	return webRouteUp(pathname);
 }

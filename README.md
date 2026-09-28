@@ -1,21 +1,70 @@
-# &lt;/DANSDAY&gt; Discord Bot
+<div align="center">
 
-Leveling, moderation, embed builder, Discord Quests, creator tools, public statistics pages and Roblox catalog alerts — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot. AGPL-3.0 licensed.
+<img src="static/favicon.svg" alt="" width="72">
+
+# &lt;/DANSDAY&gt;
+
+**A Discord bot you configure in a browser — and an account for every member, not just admins.**
+
+Leveling, an XP economy, moderation, AI chat and voice, public server pages, Discord Quests and Roblox catalog alerts. Run it on your own box or add the hosted bot.
+
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-1a7f37?style=flat-square)](LICENSE)
+[![Self-hostable](https://img.shields.io/badge/self--host-Docker%20%7C%20Node%2025-2b7489?style=flat-square)](#quick-start)
+[![discord.js](https://img.shields.io/badge/discord.js-14.26-5865F2?style=flat-square)](https://discord.js.org/)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-2.70-ff3e00?style=flat-square)](https://kit.svelte.dev/)
+[![Chat on Discord](https://img.shields.io/badge/community-Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/7fEqEDSur3)
+
+**[Live demo](https://dansday.dev)** · **[Docs](https://dansday.dev/docs)** · **[Self-host](#quick-start)** · **[Discord](https://discord.gg/7fEqEDSur3)** · **[Contributing](CONTRIBUTING.md)**
 
 ![The web panel's landing page, listing every module](.github/screenshots/landing.gif)
 
-<table>
-<tr>
-<td width="50%"><img src=".github/screenshots/panel-overview.png" alt="Panel overview with live totals for members, XP, shop, PvP, market and minigames"></td>
-<td width="50%"><img src=".github/screenshots/bot-configuration.png" alt="Per-bot configuration with one tab per module"></td>
-</tr>
-<tr>
-<td><strong>Overview</strong> — every bot and server at a glance: members, XP, voice hours, shop, PvP, market, minigames.</td>
-<td><strong>Configuration</strong> — one tab per module. Set embed style, colors and channels without slash commands.</td>
-</tr>
-</table>
+</div>
 
-### Public directories
+---
+
+## What makes it different
+
+Most Discord bots give the admin a dashboard. This one gives **every member their own account** on a public web page — their XP, their bag, their streaks, their portfolio, their animated card — and gives you one panel that configures every bot and every server you run from a single browser tab.
+
+- **No slash-command archaeology.** Every module is a tab with live preview. `/setup` builds the channels once; the rest is point-and-click.
+- **Members get a real profile.** Sign-in accounts at `/server/<slug>` with leaderboards on any metric, 18 daily and 18 weekly tasks generated per person, an XP shop, a crypto-priced assets market and spin-unlocked card themes. No real money anywhere.
+- **One panel, every server.** Multi-bot and multi-server from one login, with owner and staff tiers, rather than a separate subscription per guild.
+- **AI that reads your own server.** Chat and Gemini Live voice that can answer from your live statistics, leaderboards, shop prices and XP formula — and from any MediaWiki or Fandom wiki you add.
+- **Yours to run.** AGPL-3.0, self-hostable, no feature held back behind a tier.
+
+---
+
+## Quick start
+
+You need **Node.js 25**, **MySQL**, and **Redis** (optional — there is an in-process fallback, but voice needs it).
+
+```bash
+git clone https://github.com/dansday-com/dansday-discord-bot.git
+cd dansday-discord-bot
+npm install
+cp .env.example .env   # database, session secret, mail, Redis
+npm run dev            # panel on http://localhost:5173
+```
+
+Docker builds the panel image and expects MySQL and Redis to already exist — point `.env` at them, then:
+
+```bash
+make up     # build and start, serving on :80 behind your reverse proxy
+make logs   # follow output
+make down   # stop
+```
+
+Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal or the bot will not start. AI, voice, tools and wikis are set per bot **in the panel**, not in `.env`.
+
+Prefer not to host anything? **[Add the hosted bot](https://dansday.dev)** — same features, nothing to run.
+
+---
+
+## Screenshots
+
+<details>
+<summary><b>Public directories</b> — servers, quests, Roblox catalog, items, tasks, wikis</summary>
+<br>
 
 No login needed. The site indexes every public server, quest, item, task, wiki and forwarder source in one place.
 
@@ -45,7 +94,28 @@ No login needed. The site indexes every public server, quest, item, task, wiki a
 </tr>
 </table>
 
-### Public server pages
+</details>
+
+<details>
+<summary><b>The panel</b> — overview and per-module configuration</summary>
+<br>
+
+<table>
+<tr>
+<td width="50%"><img src=".github/screenshots/panel-overview.png" alt="Panel overview with live totals for members, XP, shop, PvP, market and minigames"></td>
+<td width="50%"><img src=".github/screenshots/bot-configuration.png" alt="Per-bot configuration with one tab per module"></td>
+</tr>
+<tr>
+<td><strong>Overview</strong> — every bot and server at a glance: members, XP, voice hours, shop, PvP, market, minigames.</td>
+<td><strong>Configuration</strong> — one tab per module. Set embed style, colors and channels without slash commands.</td>
+</tr>
+</table>
+
+</details>
+
+<details>
+<summary><b>Public server pages</b> — statistics, leaderboard, members</summary>
+<br>
 
 Every server gets its own live pages at `/server/<slug>`.
 
@@ -62,7 +132,11 @@ Every server gets its own live pages at `/server/<slug>`.
 </tr>
 </table>
 
-### Member accounts
+</details>
+
+<details>
+<summary><b>Member accounts</b> — overview, tasks, shop, market, minigames, themes</summary>
+<br>
 
 Each member signs in to their own account on those same pages.
 
@@ -103,7 +177,11 @@ Each member signs in to their own account on those same pages.
 </tr>
 </table>
 
-### Documentation
+</details>
+
+<details>
+<summary><b>Documentation</b></summary>
+<br>
 
 <table>
 <tr>
@@ -113,6 +191,8 @@ Each member signs in to their own account on those same pages.
 <td><strong>Docs</strong> — add the bot, connect a server, configure each module.</td>
 </tr>
 </table>
+
+</details>
 
 ---
 
@@ -219,10 +299,22 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 - **Voice** needs AI chat enabled first, plus its own Google AI key and voice model, plus Redis.
 - **Wikis** live on the bot's **Wikis** tab. Add an `api.php` endpoint, press Test, done — no restart. If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), copy [`scripts/relay.php`](scripts/relay.php) to hosting it does accept, replace `RELAY_KEY` with a long random string, and fill in **Relay URL** and **Relay key** for that wiki.
 
+## Contributing
+
+Issues and pull requests are welcome — a typo fix in the panel copy counts. Start with [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and the project layout, and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+Questions, ideas or just want to see it running? **[Join the Discord](https://discord.gg/7fEqEDSur3)**.
+
 ## Security
 
 Found a vulnerability? Email **security@dansday.dev** instead of opening an issue. See [SECURITY.md](SECURITY.md).
 
 ---
 
-AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.7.4
+<div align="center">
+
+**[Live demo](https://dansday.dev)** · **[Docs](https://dansday.dev/docs)** · **[Discord](https://discord.gg/7fEqEDSur3)**
+
+AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.8.0
+
+</div>

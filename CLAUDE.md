@@ -4,10 +4,12 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 
 Rules:
 
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>" --undirected` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- The graph is built undirected, so `graphify path` without `--undirected` reports "no directed path found" even when the two nodes are connected.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A post-commit git hook rebuilds the graph on every commit, so the graph is current as of the last commit. Run `graphify update .` only to pick up uncommitted edits (AST-only, no API cost).
+- `.svelte` files log "syntax errors" during extraction — expected, not breakage: tree-sitter parses the JS grammar and cannot read the markup layer, so a regex fallback rescues the imports. Symbol-level detail inside components is thinner than for plain `.ts`.
 
 ## Formatting
 

@@ -120,8 +120,8 @@
 		"modal": {
 			"messageLabel": "Pesan AFK (Opsional)",
 			"messagePlaceholder": "misalnya, Istirahat, Belajar, dll.",
-			"deafenLabel": "Deafen di Voice? (ya/tidak, default: ya)",
-			"deafenPlaceholder": "ya atau tidak (kosongkan untuk ya)"
+			"deafenLabel": "Deafen di Voice? (yes/no, default: yes)",
+			"deafenPlaceholder": "yes atau no (kosongkan untuk yes)"
 		},
 		"buttons": {
 			"remove": "🔄 Hapus AFK"
@@ -161,8 +161,8 @@
 			"durationPlaceholder": "misalnya, 60 untuk 1 jam, 1440 untuk 1 hari",
 			"winnerCountLabel": "Jumlah Pemenang",
 			"winnerCountPlaceholder": "Berapa banyak pemenang? (default: 1)",
-			"multipleEntriesLabel": "Boleh Masuk Beberapa Kali? (ya/tidak)",
-			"multipleEntriesPlaceholder": "ya atau tidak (default: tidak)"
+			"multipleEntriesLabel": "Boleh Masuk Beberapa Kali? (yes/no)",
+			"multipleEntriesPlaceholder": "yes atau no (default: no)"
 		},
 		"created": {
 			"title": "✅ Giveaway Dibuat!",
@@ -208,8 +208,8 @@
 			"label": "Feedback Kamu",
 			"placeholder": "Silakan bagikan feedback, saran, atau kekhawatiran kamu...",
 			"maxLength": 2000,
-			"anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
-			"anonymousPlaceholder": "ya atau tidak (default: tidak)"
+			"anonymousLabel": "Kirim Secara Anonim? (yes/no)",
+			"anonymousPlaceholder": "yes atau no (default: no)"
 		},
 		"submitted": {
 			"title": "✅ Feedback Terkirim!",
@@ -257,8 +257,8 @@
 			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Deskripsi",
 			"descriptionPlaceholder": "Jelaskan pengalaman kamu dengan staff ini...",
-			"anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
-			"anonymousPlaceholder": "ya atau tidak (default: tidak)"
+			"anonymousLabel": "Kirim Secara Anonim? (yes/no)",
+			"anonymousPlaceholder": "yes atau no (default: no)"
 		},
 		"submitted": {
 			"title": "✅ Laporan Terkirim",
@@ -375,7 +375,7 @@
 			"nameLabel": "Nama Role",
 			"namePlaceholder": "Masukkan nama role kustom kamu...",
 			"colorLabel": "Warna Role (Hex/Desimal/Nama)",
-			"colorPlaceholder": "#FF5733 atau 16729395 atau merah (opsional)",
+			"colorPlaceholder": "#FF5733 atau 16729395 atau red (opsional)",
 			"iconLabel": "Ikon Role (Emoji atau URL Gambar)",
 			"iconPlaceholder": "🔥 atau https://example.com/icon.png (opsional)"
 		},

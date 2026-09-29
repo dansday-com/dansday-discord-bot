@@ -1,0 +1,508 @@
+{
+	"menu": {
+		"title": "📋 {botName} 机器人菜单",
+		"description": "从下方按钮中选择一个功能：",
+		"website": "🌐 服务器页面：{url}",
+		"noAccess": "❌ 你没有任何功能的使用权限。",
+		"button": "📋 菜单",
+		"statistics": "🌐 统计",
+		"account": "👤 账户",
+		"stats": {
+			"members": "👥 成员",
+			"totalXp": "📊 XP 总量",
+			"topLevel": "⭐ 最高等级"
+		}
+	},
+	"interface": {
+		"panel": {
+			"title": "{botName} 机器人面板",
+			"description": "点击 **菜单**，根据你的身份组权限使用机器人功能。",
+			"sent": "✅ 机器人界面已发送到 {channel}！",
+			"setupHasOwnerAccount": "✅ 机器人界面已发送到 {channel}。本服务器已有所有者账户，请直接在网页面板登录。未创建新的邀请。",
+			"setupSignInLinkLine": "[**点击这里打开面板**]({url})",
+			"setupOpenPanelButton": "打开面板",
+			"setupOwnerInviteReady": "✅ 机器人界面已发送到 {channel}。\n\n只有你能看到这条消息。未使用的所有者邀请链接将在创建后 **24 小时** 失效。\n\n[**点击这里注册为所有者**]({url})",
+			"setupOwnerInviteButton": "打开注册页",
+			"setupOwnerInviteEmbedTitle": "所有者注册",
+			"setupNotOwnerTitle": "权限不足",
+			"setupNotOwnerBody": "只有 **服务器所有者** 才能使用 `/setup`。",
+			"setupNotTextChannelTitle": "频道无效",
+			"setupNotTextChannelBody": "请选择一个 **文字频道**。",
+			"joinTitle": "感谢你添加 {botName}！",
+			"joinBody": "运行 `/setup` 来创建频道并完成设置。",
+			"joinAskAi": "不知道从哪开始？提及 {botMention} 直接提问就行，它会阅读文档并带你完成设置。",
+			"joinDocsButton": "使用文档",
+			"joinSupportButton": "支持服务器",
+			"setupChannelsCreated": "已创建 **{count}** 个新频道。",
+			"setupChannelsAllPresent": "所有频道都已存在，无需新建。",
+			"setupWarnNoBotConfig": "⚠️ 界面已发送，但机器人配置不可用。",
+			"setupWarnNoServer": "⚠️ 界面已发送，但未找到服务器记录，无法生成邀请。",
+			"error": "❌ 界面发送失败：{error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ 本服务器已关闭此功能。管理员可在机器人配置面板中启用。",
+			"memberNotFound": "❌ 获取成员信息失败。",
+			"unknownButton": "❌ 未知的按钮交互。",
+			"buttonError": "❌ **按钮错误**：处理你的点击时发生错误。\\n\\n请重试或联系管理员。",
+			"modalError": "❌ **表单错误**：处理你提交的表单时发生错误。\\n\\n请重试或联系管理员。",
+			"selectionError": "❌ **选择错误**：处理你的选择时发生错误。\\n\\n请重试或联系管理员。"
+		},
+		"timeUnits": {
+			"hour": "小时",
+			"hours": "小时",
+			"day": "天",
+			"days": "天"
+		}
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **赞助者特权**",
+			"description": "拥有自定义名称和颜色的专属身份组属于赞助者特权。请为本服务器助力，或持有以下身份组之一：\\n{roles}",
+			"footer": "为服务器助力即可解锁。"
+		},
+		"denied": {
+			"title": "❌ **权限不足**",
+			"description": "使用 **{action}** 需要以下身份组之一：\\n{roles}",
+			"footer": "如果你认为这是误判，请联系服务器管理员。"
+		},
+		"ownerRequired": {
+			"title": "❌ **需要所有者注册**",
+			"description": "服务器所有者必须先在网页面板注册账户，其他人才能使用 **{action}** 功能。"
+		},
+		"notConfigured": {
+			"title": "❌ **权限未配置**",
+			"description": "服务器所有者或管理员必须先配置身份组权限，其他人才能使用 **{action}** 功能。"
+		}
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 语言设置",
+			"description": "选择你想使用的语言：",
+			"current": "当前语言",
+			"select": "选择语言",
+			"updated": "✅ 语言更新成功！",
+			"failed": "❌ 语言更新失败：{error}"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 你的账户页面：{url}",
+			"noMember": "⚠️ 本服务器还没有你的记录。请先发一条消息或加入语音频道。",
+			"unavailable": "⚠️ 本服务器未开放公开页面。"
+		},
+		"errors": {
+			"notRegistered": "⚠️ 本服务器尚未在机器人中注册。请先执行一次同步。",
+			"createRecordFailed": "❌ 创建成员记录失败，请重试。"
+		}
+	},
+	"afk": {
+		"title": "⏸️ 设置 AFK 状态",
+		"current": {
+			"title": "⏸️ 你当前处于 AFK",
+			"description": "**状态：** {message}\\n**时长：** {duration}",
+			"howToRemove": "💡 如何解除",
+			"howToRemoveValue": "• 点击下方按钮解除 AFK\\n• 发送任意消息（自动解除 AFK 并取消静音）\\n• 若此前是机器人将你静音，解除 AFK 时会自动取消静音"
+		},
+		"set": {
+			"title": "✅ AFK 状态已设置！",
+			"description": "你已被标记为 AFK：**{message}**{voiceInfo}",
+			"howToRemove": "💡 如何解除",
+			"howToRemoveValue": "• 发送任意消息（自动解除 AFK 并取消静音）\\n• 点击 AFK 按钮并解除（若是机器人将你静音，会一并取消）\\n• 若此前是机器人将你静音，解除 AFK 时会自动取消静音",
+			"voiceMutedDeafened": "\\n\\n你在语音中将被静音并关闭收听。",
+			"voiceMutedOnly": "\\n\\n你在语音中将被静音（不关闭收听）。"
+		},
+		"removed": {
+			"title": "✅ AFK 状态已解除！",
+			"description": "欢迎回来！你的 AFK 状态已解除。"
+		},
+		"modal": {
+			"messageLabel": "AFK 留言（可选）",
+			"messagePlaceholder": "例如：休息一下、学习中等等。",
+			"deafenLabel": "语音中关闭收听？（yes/no，默认：yes）",
+			"deafenPlaceholder": "yes 或 no（留空视为 yes）"
+		},
+		"buttons": {
+			"remove": "🔄 解除 AFK"
+		},
+		"errors": {
+			"disabledOnServer": "❌ 本服务器已关闭 AFK 功能。管理员可在机器人配置面板中启用。",
+			"notAFK": "❌ 你当前并不处于 AFK。",
+			"failed": "❌ 打开 AFK 表单失败：{error}",
+			"setFailed": "❌ **AFK 设置失败**\\n\\n错误：{error}\\n\\n请稍后重试。",
+			"removeFailed": "❌ **AFK 解除失败**\\n\\n错误：{error}\\n\\n请稍后重试。"
+		},
+		"messages": {
+			"welcomeBack": "✅ 欢迎回来，{member}！你的 AFK 状态已解除。",
+			"dmEmbedTitle": "📬 有人提到了你",
+			"dmMentioned": "{sender} 在 **{server}** · #{channel} 提到了你\\n\\n**消息：** {message}"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 创建抽奖",
+			"step1Title": "**第 1 步，共 2 步：选择身份组（可选）**",
+			"step1Description": "在下方菜单中选择可以参加本次抽奖的身份组。留空或点击“继续填写表单”则所有身份组都可参加。",
+			"roleSelectPlaceholder": "选择可参加的身份组（可选）……",
+			"continueButton": "继续填写表单"
+		},
+		"active": {
+			"title": "🎉 发现进行中的抽奖",
+			"description": "你已经有一个进行中的抽奖：\\n\\n**{title}**\\n**奖品：** {prize}\\n\\n你想怎么做？",
+			"ends": "⏰ 结束时间"
+		},
+		"modal": {
+			"titleLabel": "标题",
+			"titlePlaceholder": "输入抽奖标题……",
+			"prizeLabel": "奖品",
+			"prizePlaceholder": "奖品是什么？",
+			"durationLabel": "持续时间（分钟）",
+			"durationPlaceholder": "例如：60 表示 1 小时，1440 表示 1 天",
+			"winnerCountLabel": "中奖人数",
+			"winnerCountPlaceholder": "中奖几人？（默认：1）",
+			"multipleEntriesLabel": "允许重复参加？（yes/no）",
+			"multipleEntriesPlaceholder": "yes 或 no（默认：no）"
+		},
+		"created": {
+			"title": "✅ 抽奖已创建！",
+			"description": "你的抽奖已创建，并发布在 {channel}！"
+		},
+		"entered": {
+			"title": "✅ 参加成功！",
+			"description": "你已成功参加抽奖，祝你好运！🍀"
+		},
+		"buttons": {
+			"finish": "🏁 结束抽奖"
+		},
+		"errors": {
+			"memberNotFound": "❌ 获取成员信息失败。",
+			"activeExists": "❌ 你已经有一个进行中的抽奖，请先把它结束。",
+			"invalidTitle": "❌ **抽奖无效**\\n\\n标题不能为空。",
+			"invalidPrize": "❌ **抽奖无效**\\n\\n奖品不能为空。",
+			"invalidDuration": "❌ **抽奖无效**\\n\\n持续时间必须是正数（单位：分钟）。",
+			"invalidWinnerCount": "❌ **抽奖无效**\\n\\n中奖人数必须是正数。",
+			"channelNotConfigured": "❌ 创建抽奖失败：未配置抽奖频道。请在面板中完成配置。",
+			"channelNotFound": "❌ 创建抽奖失败：未找到抽奖频道。",
+			"channelError": "❌ 创建抽奖失败：读取抽奖频道配置时出错。",
+			"createFailed": "❌ **抽奖创建失败**\\n\\n错误：{error}\\n\\n请稍后重试。",
+			"invalidMessage": "❌ 抽奖消息无效。",
+			"invalidId": "❌ 抽奖 ID 无效。",
+			"notFound": "❌ 未找到该抽奖，或抽奖已结束。",
+			"ended": "❌ 该抽奖已经结束。",
+			"roleRestriction": "❌ **身份组限制**\\n\\n本次抽奖仅限以下身份组参加：\\n{roles}\\n\\n你需要同时拥有全部身份组才能参加。",
+			"memberNotFoundDB": "❌ 数据库中未找到该成员，请稍后重试。",
+			"cannotEnterOwn": "❌ 你不能参加自己发起的抽奖！",
+			"alreadyEntered": "❌ 你已经参加过这次抽奖了！",
+			"finishOwnOnly": "❌ 你只能结束自己发起的抽奖。",
+			"finishNotActive": "❌ 该抽奖当前并未进行中。",
+			"finishChannelError": "❌ 获取抽奖频道失败。",
+			"finishChannelNotConfigured": "❌ 未配置抽奖频道。",
+			"finishChannelNotFound": "❌ 未找到抽奖频道。",
+			"failed": "❌ 打开抽奖表单失败：{error}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 提交反馈",
+			"label": "你的反馈",
+			"placeholder": "欢迎分享你的反馈、建议或问题……",
+			"maxLength": 2000,
+			"anonymousLabel": "匿名提交？（yes/no）",
+			"anonymousPlaceholder": "yes 或 no（默认：no）"
+		},
+		"submitted": {
+			"title": "✅ 反馈已提交！",
+			"description": "感谢你的反馈！内容已成功提交。",
+			"anonymous": "\\n\\n🔒 你的反馈已匿名提交。"
+		},
+		"errors": {
+			"invalid": "❌ **反馈无效**\\n\\n反馈内容不能为空。",
+			"channelError": "❌ 提交反馈失败：读取反馈频道配置时出错。",
+			"channelNotConfigured": "❌ 提交反馈失败：未配置反馈频道。",
+			"channelNotFound": "❌ 提交反馈失败：未找到反馈频道。",
+			"failed": "❌ 打开反馈表单失败：{error}",
+			"submitFailed": "❌ **反馈提交失败**\\n\\n错误：{error}\\n\\n请稍后重试。"
+		}
+	},
+	"staffRating": {
+		"title": "📋 举报管理人员",
+		"selectStaff": "选择管理人员",
+		"selectStaffPlaceholder": "选择要举报的管理人员……",
+		"button": "🛡️ 管理评价",
+		"selectRatingPrompt": "选择评分",
+		"selectCategoryPrompt": "选择分类",
+		"status": {
+			"staff": "管理人员：{staff}",
+			"ratingPending": "评分：未选择",
+			"ratingSelected": "评分：{rating}/5",
+			"categoryPending": "分类：未选择",
+			"categorySelected": "分类：{category}"
+		},
+		"buttons": {
+			"continue": "继续",
+			"changeStaff": "更换人员"
+		},
+		"reviewModal": {
+			"titleApprove": "通过管理举报",
+			"titleReject": "驳回管理举报",
+			"reasonLabel": "理由（必填）",
+			"reasonPlaceholder": "向举报者说明你的判定理由…"
+		},
+		"modal": {
+			"title": "举报管理人员",
+			"ratingLabel": "评分（1-5 星）",
+			"ratingPlaceholder": "1 = 很差，5 = 非常好",
+			"categoryLabel": "分类",
+			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"descriptionLabel": "详细说明",
+			"descriptionPlaceholder": "请描述你与这位管理人员的经历……",
+			"anonymousLabel": "匿名提交？（yes/no）",
+			"anonymousPlaceholder": "yes 或 no（默认：no）"
+		},
+		"submitted": {
+			"title": "✅ 举报已提交",
+			"description": "你的举报已成功提交，正在等待管理员审核。审核完成后我们会通知你。",
+			"anonymous": "\\n\\n🔒 你的举报已匿名提交。",
+			"roleUpdated": "\\n\\n⭐ **管理评分已更新**\\n{roleName}\\n评分：{rating}/5.00（共 {totalReports} 条举报）"
+		},
+		"dm": {
+			"approved": "你在 **{server}** 对 {staff} 的举报已通过。\\n\\n**评分：** {rating}/5\\n**分类：** {category}\\n**反馈内容：** {description}\\n\\n**管理备注：** {reason}\\n\\n感谢你帮助我们监督团队。",
+			"rejected": "你在 **{server}** 对 {staff} 的举报未通过。\\n\\n**理由：** {reason}\\n\\n如果你还有更多情况要补充，可以联系管理团队。",
+			"embedTitleApproved": "✅ 举报已通过",
+			"embedTitleRejected": "❌ 举报未通过"
+		},
+		"categories": {
+			"helpful": "👍 乐于助人",
+			"unhelpful": "👎 帮助有限",
+			"abuse": "⚠️ 滥用职权",
+			"slow_response": "⏰ 响应缓慢",
+			"excellent": "⭐ 服务出色",
+			"rude": "😠 态度粗鲁"
+		},
+		"errors": {
+			"noStaffSelected": "❌ 请选择要举报的管理人员。",
+			"invalidRating": "❌ **评分无效**\\n\\n评分必须是 1 到 5 之间的数字。",
+			"invalidCategory": "❌ **分类无效**\\n\\n请使用以下之一：helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"emptyDescription": "❌ **需要填写说明**\\n\\n请描述一下你的经历。",
+			"cannotReportSelf": "❌ 你不能举报自己！",
+			"notStaff": "❌ 所选成员不是管理人员。",
+			"onCooldown": "❌ **评价冷却中**\\n\\n再次评价这位管理人员需要等待 {time} {unit}。\\n\\n上次评价：{lastRated}",
+			"submitFailed": "❌ **举报提交失败**\\n\\n错误：{error}\\n\\n请稍后重试。",
+			"notConfigured": "❌ 本服务器尚未配置管理评价系统。",
+			"noStaffConfigured": "❌ 本服务器尚未配置管理身份组。请先让管理员配置管理权限。",
+			"noStaffAvailable": "❌ 目前找不到任何管理人员。请稍后重试或联系服务器管理员。",
+			"missingRating": "❌ 请先选择评分再继续。",
+			"missingCategory": "❌ 请先选择分类再继续。",
+			"permissionDenied": "❌ **权限不足**\\n\\n审核管理举报需要管理员权限。",
+			"reviewReasonRequired": "❌ 请填写你的判定理由。"
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 内容创作者",
+		"list": {
+			"title": "🎬 内容创作者",
+			"description": "本服务器已通过审核的内容创作者：",
+			"none": "目前还没有通过审核的内容创作者。",
+			"applyButton": "申请"
+		},
+		"dismiss": {
+			"button": "退出内容创作者",
+			"confirmTitle": "⚠️ 移除内容创作者身份组？",
+			"confirmDescription": "你将失去本服务器的内容创作者身份组。若管理团队允许，之后可以再次申请。\n\n**确定要继续吗？**",
+			"yes": "确定移除",
+			"no": "取消",
+			"removed": "✅ 你的内容创作者身份组已被移除。"
+		},
+		"reviewModal": {
+			"titleApprove": "通过申请",
+			"titleReject": "驳回申请",
+			"reasonLabel": "理由（必填）",
+			"reasonPlaceholder": "向申请者说明你的判定理由…"
+		},
+		"modal": {
+			"title": "申请成为内容创作者",
+			"usernameLabel": "TikTok 用户名",
+			"usernamePlaceholder": "示例：dansday",
+			"reasonLabel": "你为什么想成为内容创作者？",
+			"reasonPlaceholder": "简单说说我们为什么应该接受你的申请……"
+		},
+		"submitted": "✅ 你以 **{username}** 提交的内容创作者申请已送出，正在等待管理团队审核。",
+		"dm": {
+			"approved": "你在 **{server}** 的申请已通过。\\n\\nTikTok：**{username}**\\n内容创作者身份组已分配给你。",
+			"rejected": "你在 **{server}** 的申请这次未通过。\\n\\nTikTok：**{username}**\\n\\n**理由：** {reason}\\n\\n冷却期结束后你可以再次申请（如果你的服务器设置了冷却期）。",
+			"embedTitleApproved": "✅ 内容创作者申请已通过",
+			"embedTitleRejected": "❌ 内容创作者申请未通过"
+		},
+		"autoRejectApplicantReason": "重复或冒充：该 TikTok 用户名已绑定到另一个 Discord 账户。",
+		"errors": {
+			"notConfigured": "❌ 本服务器尚未配置内容创作者招募功能。",
+			"alreadyCreator": "✅ 你已经拥有本服务器的内容创作者身份组。",
+			"invalidUsername": "❌ TikTok 用户名无效。只能使用字母、数字、句点和下划线。",
+			"reasonRequired": "❌ 请填写你想成为内容创作者的理由。",
+			"pendingExists": "❌ 你已有一份待审核的内容创作者申请。",
+			"cooldown": "❌ 你需要等待 **{days} 天** 才能再次提交内容创作者申请。",
+			"submitFailed": "❌ 内容创作者申请提交失败：{error}",
+			"permissionDenied": "❌ 审核内容创作者申请需要管理员权限。",
+			"reviewReasonRequired": "❌ 请填写你的判定理由。"
+		}
+	},
+	"notifications": {
+		"button": "🔔 通知",
+		"title": "🔔 通知偏好",
+		"description": "选择你想接收通知的频道。有通知时会单独 @ 你。",
+		"selectPlaceholder": "选择通知频道……",
+		"updated": "✅ 你的通知偏好已更新。",
+		"errors": {
+			"notConfigured": "❌ 本服务器尚未配置通知功能。",
+			"noRoles": "❌ 目前还没有设置任何通知频道。请让管理员在控制面板中配置通知。",
+			"noneEnabled": "❌ 本服务器未启用任何通知功能。"
+		},
+		"hub": {
+			"title": "🔔 通知偏好",
+			"description": "选择你想管理的通知类型。",
+			"channels": "📢 频道通知",
+			"roblox": "🛍️ Roblox 物品通知",
+			"back": "⬅️ 通知"
+		},
+		"active": "**已开启：** {channels}",
+		"none": "**已开启：** 暂无。"
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 创建赞助者专属身份组",
+			"editTitle": "💎 编辑赞助者专属身份组",
+			"nameLabel": "身份组名称",
+			"namePlaceholder": "输入你的专属身份组名称……",
+			"colorLabel": "身份组颜色（十六进制/十进制/颜色名）",
+			"colorPlaceholder": "#FF5733 或 16729395 或 red（可选）",
+			"iconLabel": "身份组图标（emoji 或图片链接）",
+			"iconPlaceholder": "🔥 或 https://example.com/icon.png（可选）"
+		},
+		"existing": {
+			"title": "💎 赞助者专属身份组",
+			"description": "你已经有一个专属身份组：**{roleName}**\\n\\n请选择操作：",
+			"currentRole": "📋 当前身份组"
+		},
+		"created": {
+			"title": "✅ 赞助者专属身份组已创建！",
+			"description": "你的专属身份组 **{roleName}** 已创建并分配给你！{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **无法使用自定义图标：** 本服务器需要 2 级助力才能使用身份组自定义图标（图片）。你可以改用 emoji！",
+			"iconWarningGeneric": "\\n\\n⚠️ **提示：** 图标未能设置，但身份组已成功创建。",
+			"roleDetails": "🎨 身份组详情",
+			"roleDetailsValue": "**名称：** {name}\\n**颜色：** {color}\\n**图标：** {icon}",
+			"role": "💎 身份组",
+			"iconStatusSet": "已设置",
+			"iconStatusNone": "无",
+			"iconStatusFailed": "失败（身份组已创建，但无图标）",
+			"iconStatusInvalid": "格式无效（身份组已创建，但无图标）"
+		},
+		"updated": {
+			"title": "✅ 赞助者专属身份组已更新！",
+			"description": "你的专属身份组 **{roleName}** 已更新！{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **无法使用自定义图标：** 本服务器需要 2 级助力才能使用身份组自定义图标（图片）。你可以改用 emoji！",
+			"iconWarningGeneric": "\\n\\n⚠️ **提示：** 图标未能设置，但身份组已成功更新。",
+			"roleDetails": "🎨 身份组详情",
+			"roleDetailsValue": "**名称：** {name}\\n**颜色：** {color}\\n**图标：** {icon}",
+			"role": "💎 身份组",
+			"iconStatusUnchanged": "未更改",
+			"iconStatusUpdated": "已更新",
+			"iconStatusRemoved": "已移除",
+			"iconStatusFailed": "失败（身份组已更新，但无图标）",
+			"iconStatusInvalid": "格式无效（身份组已更新，但无图标）"
+		},
+		"deleted": {
+			"title": "✅ 赞助者专属身份组已删除",
+			"description": "你的专属身份组 **{roleName}** 已被删除。"
+		},
+		"buttons": {
+			"edit": "✏️ 编辑身份组",
+			"delete": "🗑️ 删除身份组"
+		},
+		"errors": {
+			"noRole": "❌ 你没有可编辑的专属身份组。",
+			"noRoleDelete": "❌ 你没有可删除的专属身份组。",
+			"alreadyHasRole": "❌ **你已经有一个专属身份组**\\n\\n同一时间只能拥有一个赞助者专属身份组。\\n\\n💡 用 **✏️ 编辑身份组** 修改它，或先用 **🗑️ 删除身份组** 再创建新的。",
+			"invalidName": "❌ **身份组名称无效**\\n\\n名称长度必须在 1 到 100 个字符之间。",
+			"boostRequired": "❌ **无法使用自定义图标**\\n\\n本服务器需要 **2 级服务器助力** 才能使用身份组自定义图标（图片）。\\n\\n💡 **小提示：** 你可以改用 **emoji**（例如 🔥、⭐ 或任意自定义表情），这不需要服务器助力。",
+			"boostRequiredCreate": "❌ **需要服务器助力**\\n\\n本服务器需要 **2 级服务器助力** 才能创建带有部分功能的赞助者专属身份组。\\n\\n💡 **你可以这样做：**\\n- 请服务器管理员把服务器助力提升到 2 级\\n- 或联系服务器管理团队寻求帮助\\n\\n**错误详情：** {error}",
+			"createFailed": "❌ **身份组创建失败**\\n\\n错误：{error}\\n\\n请确认：\\n- 机器人拥有创建身份组的权限\\n- 机器人拥有管理身份组的权限\\n- 身份组的位置限制有效",
+			"updateFailed": "❌ **身份组更新失败**\\n\\n错误：{error}\\n\\n请确认：\\n- 机器人拥有管理身份组的权限\\n- 身份组的各项限制有效",
+			"deleteFailed": "❌ 身份组删除失败：{error}",
+			"failed": "❌ 打开身份组创建表单失败：{error}",
+			"editFailed": "❌ 打开编辑表单失败：{error}"
+		}
+	},
+	"questEnroll": {
+		"menuButton": "🔮 Discord 任务",
+		"listTitle": "🔮 Discord 任务",
+		"listEmpty": "目前没有进行中的 Discord 任务。",
+		"listAllClaimed": "✅ 你已领取所有进行中的 Discord 任务奖励。",
+		"listClaimedTag": "已领取",
+		"claimAllButton": "全部领取",
+		"alreadyClaimed": "已领取",
+		"alreadyClaimedDescription": "你此前已参加 **{questName}**，奖励也已领取。每个任务每位成员只能领取一次。",
+		"pendingTitle": "⏳ 正在后台运行",
+		"pendingDescription": "我们 **不会** 在数据库中保存你的令牌。\n\n**风险：** Discord 可能限制或封禁与该令牌绑定的 **用户账户**，某些情况下 **机器人或服务器** 也可能受影响。这并非 Discord 官方支持的行为，是否继续由你自行决定。",
+		"precheckNotFoundTitle": "该账户没有这个任务",
+		"precheckNotFoundDescription": "与你的令牌绑定的 Discord 账户中没有这个任务。请打开 **Discord → 任务**，需要的话先接受任务，然后重试。",
+		"precheckExpiredTitle": "任务已过期",
+		"precheckExpiredDescription": "该 Discord 账户的这个任务已经过期。",
+		"precheckRewardClaimedTitle": "奖励已领取",
+		"precheckRewardClaimedDescription": "这个任务的奖励已在该 **Discord 账户** 上领取过（例如在其他服务器或 Discord 客户端中完成）。自动参加功能无法重复领取。",
+		"precheckCompletedTitle": "任务已完成",
+		"precheckCompletedDescription": "这个 **Discord 账户** 已完成该任务的所有目标。如果还有未领取的奖励，请到 **Discord → 任务** 中领取，自动参加功能无法再增加进度。",
+		"claimAllPendingTitle": "⏳ 正在领取全部任务",
+		"claimAllPendingDescription": "正在逐个参加 **{count}** 个任务。\n\n我们 **不会** 在数据库中保存你的令牌。\n\n**风险：** Discord 可能限制或封禁与该令牌绑定的 **用户账户**，某些情况下 **机器人或服务器** 也可能受影响。这并非 Discord 官方支持的行为，是否继续由你自行决定。",
+		"claimAllNothingTitle": "没有可领取的内容",
+		"claimAllNothingDescription": "该 Discord 账户目前没有可参加的进行中任务。",
+		"autoQuestDisabled": "自动参加任务功能当前已关闭，请联系服务器管理员。",
+		"alreadyRunning": "你已经有一个自动任务在进行中，请等它完成后再开始新的。",
+		"announceInChannel": "每个结果都会发布在 {channel}。",
+		"announceDisabled": "未设置任务频道，因此不会发布任何消息，已领取的任务只会在任务列表中标记。"
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"removed": "🔕 我们不会再因为 **{item}** 而 @ 你。",
+			"saved": "🔔 已保存。**{item}** 出现以下变化时会 @ 你：{types}。共 {count} 人关注。",
+			"noTypes": "无",
+			"types": {
+				"price": {
+					"label": "价格",
+					"description": "卖家设定的价格发生变化。"
+				},
+				"lowest_resale_price": {
+					"label": "转售价格",
+					"description": "最低转售价格发生变化。"
+				},
+				"units_available": {
+					"label": "剩余库存",
+					"description": "仍可购买的数量发生变化。"
+				},
+				"total_quantity": {
+					"label": "总供应量",
+					"description": "总发行数量发生变化。"
+				}
+			},
+			"item": {
+				"title": "🔔 物品通知",
+				"description": "选择 [{item}]({url}) 在什么情况下 @ 你。取消全部选择即可停止该物品的通知。",
+				"active": "**通知条件：** {types}",
+				"placeholder": "选择你想接收的通知……"
+			},
+			"menu": {
+				"title": "🛍️ Roblox 物品通知",
+				"description": "你正在关注 {count} 件物品。选择其中一件即可修改通知条件。",
+				"empty": "你还没有关注任何 Roblox 物品。在商品帖子下点击 🔔 Notify me 即可开始。",
+				"placeholder": "选择要编辑的物品……",
+				"disableAll": "🔕 全部关闭",
+				"disabledAll": "🔕 已关闭 {count} 件物品的通知。",
+				"back": "⬅️ 返回"
+			},
+			"errors": {
+				"invalidItem": "❌ 无法从这个按钮读取对应的商品信息。",
+				"memberNotFound": "❌ 你的成员资料尚未同步完成，请稍后再试。"
+			}
+		}
+	}
+}

@@ -763,7 +763,10 @@ export const discordMenu = [
 		label: '🔔 Notifications',
 		desc: 'Opens two choices: channel notifications (subscribe to the channels you enabled) and Roblox item notifications (the items a member follows, what each one alerts on, and a disable-all).'
 	},
-	{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English, Indonesian, German or Spanish).' },
+	{
+		label: '🌐 Select Language',
+		desc: 'Switches the Discord interface language (English, Indonesian, German, Spanish, Arabic, Malay or Simplified Chinese).'
+	},
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
 	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Themes, Guide).' }
 ];

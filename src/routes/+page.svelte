@@ -358,7 +358,7 @@
 		{
 			icon: 'fa-language',
 			title: 'Multi-language',
-			desc: 'English, Indonesian, German and Spanish across Discord flows.',
+			desc: 'English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese across Discord flows.',
 			more: 'Buttons, selects and labels all follow the choice.'
 		},
 		{

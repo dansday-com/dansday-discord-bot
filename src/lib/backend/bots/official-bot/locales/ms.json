@@ -1,0 +1,508 @@
+{
+	"menu": {
+		"title": "📋 Menu Bot {botName}",
+		"description": "Pilih ciri daripada butang di bawah:",
+		"website": "🌐 Halaman server: {url}",
+		"noAccess": "❌ Anda tiada akses kepada mana-mana ciri.",
+		"button": "📋 Menu",
+		"statistics": "🌐 Statistik",
+		"account": "👤 Akaun",
+		"stats": {
+			"members": "👥 Ahli",
+			"totalXp": "📊 Jumlah XP",
+			"topLevel": "⭐ Tahap Tertinggi"
+		}
+	},
+	"interface": {
+		"panel": {
+			"title": "Panel Bot {botName}",
+			"description": "Klik **Menu** untuk guna ciri bot mengikut kebenaran role anda.",
+			"sent": "✅ Antara muka bot dihantar ke {channel}!",
+			"setupHasOwnerAccount": "✅ Antara muka bot dihantar ke {channel}. Server ini sudah ada akaun pemilik — log masuk di panel web. Tiada jemputan baharu dibuat.",
+			"setupSignInLinkLine": "[**Klik di sini untuk buka panel**]({url})",
+			"setupOpenPanelButton": "Buka panel",
+			"setupOwnerInviteReady": "✅ Antara muka bot dihantar ke {channel}.\n\nHanya anda yang nampak mesej ini. Pautan jemputan pemilik yang tidak digunakan akan luput **24 jam** selepas dibuat.\n\n[**Klik di sini untuk daftar sebagai pemilik**]({url})",
+			"setupOwnerInviteButton": "Buka pendaftaran",
+			"setupOwnerInviteEmbedTitle": "Pendaftaran pemilik",
+			"setupNotOwnerTitle": "Kebenaran ditolak",
+			"setupNotOwnerBody": "Hanya **pemilik server** boleh guna `/setup`.",
+			"setupNotTextChannelTitle": "Channel tidak sah",
+			"setupNotTextChannelBody": "Sila pilih **channel teks**.",
+			"joinTitle": "Terima kasih kerana tambah {botName}!",
+			"joinBody": "Jalankan `/setup` untuk buat channel dan siapkan tetapan.",
+			"joinAskAi": "Tak pasti nak mula di mana? Sebut {botMention} dan terus tanya — ia membaca dokumentasi dan boleh pandu anda buat tetapan.",
+			"joinDocsButton": "Dokumentasi",
+			"joinSupportButton": "Server sokongan",
+			"setupChannelsCreated": "**{count}** channel baharu telah dibuat.",
+			"setupChannelsAllPresent": "Semua channel sudah wujud — tiada yang perlu dibuat.",
+			"setupWarnNoBotConfig": "⚠️ Antara muka dihantar, tetapi konfigurasi bot tiada.",
+			"setupWarnNoServer": "⚠️ Antara muka dihantar, tetapi rekod server tidak dijumpai untuk jana jemputan.",
+			"error": "❌ Gagal hantar antara muka: {error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ Ciri ini dimatikan untuk server ini. Pentadbir boleh hidupkannya dalam panel konfigurasi bot.",
+			"memberNotFound": "❌ Gagal dapatkan maklumat ahli.",
+			"unknownButton": "❌ Interaksi butang tidak dikenali.",
+			"buttonError": "❌ **Ralat Butang**: Berlaku ralat semasa memproses klikan butang anda.\\n\\nSila cuba lagi atau hubungi pentadbir.",
+			"modalError": "❌ **Ralat Borang**: Berlaku ralat semasa memproses penghantaran borang anda.\\n\\nSila cuba lagi atau hubungi pentadbir.",
+			"selectionError": "❌ **Ralat Pilihan**: Berlaku ralat semasa memproses pilihan anda.\\n\\nSila cuba lagi atau hubungi pentadbir."
+		},
+		"timeUnits": {
+			"hour": "jam",
+			"hours": "jam",
+			"day": "hari",
+			"days": "hari"
+		}
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Kelebihan Penyokong**",
+			"description": "Role sendiri dengan nama dan warna pilihan anda ialah kelebihan penyokong. Boost server ini, atau miliki salah satu role berikut:\\n{roles}",
+			"footer": "Boost server untuk membukanya."
+		},
+		"denied": {
+			"title": "❌ **Kebenaran Ditolak**",
+			"description": "Anda perlukan salah satu role berikut untuk guna **{action}**:\\n{roles}",
+			"footer": "Sila hubungi pentadbir server jika anda rasa ini satu kesilapan."
+		},
+		"ownerRequired": {
+			"title": "❌ **Pendaftaran Pemilik Diperlukan**",
+			"description": "Pemilik server mesti daftar akaun di panel web sebelum sesiapa boleh guna ciri **{action}**."
+		},
+		"notConfigured": {
+			"title": "❌ **Kebenaran Belum Ditetapkan**",
+			"description": "Pemilik server atau pentadbir mesti tetapkan kebenaran role sebelum sesiapa boleh guna ciri **{action}**."
+		}
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 Tetapan Bahasa",
+			"description": "Pilih bahasa pilihan anda:",
+			"current": "Bahasa Semasa",
+			"select": "Pilih Bahasa",
+			"updated": "✅ Bahasa berjaya dikemas kini!",
+			"failed": "❌ Gagal kemas kini bahasa: {error}"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 Halaman akaun anda: {url}",
+			"noMember": "⚠️ Anda belum direkod di server ini. Hantar mesej atau masuk voice dahulu.",
+			"unavailable": "⚠️ Halaman awam tiada untuk server ini."
+		},
+		"errors": {
+			"notRegistered": "⚠️ Server ini belum didaftarkan dengan bot. Sila jalankan sync dahulu.",
+			"createRecordFailed": "❌ Gagal buat rekod ahli. Sila cuba lagi."
+		}
+	},
+	"afk": {
+		"title": "⏸️ Tetapkan Status AFK",
+		"current": {
+			"title": "⏸️ Anda sedang AFK",
+			"description": "**Status:** {message}\\n**Tempoh:** {duration}",
+			"howToRemove": "💡 Cara membuangnya",
+			"howToRemoveValue": "• Klik butang di bawah untuk buang AFK\\n• Hantar apa-apa mesej (AFK dibuang dan mute ditanggalkan automatik)\\n• Membuang AFK akan tanggalkan mute anda automatik jika bot yang mute anda"
+		},
+		"set": {
+			"title": "✅ Status AFK Ditetapkan!",
+			"description": "Anda kini ditanda sebagai AFK: **{message}**{voiceInfo}",
+			"howToRemove": "💡 Cara membuangnya",
+			"howToRemoveValue": "• Hantar apa-apa mesej (AFK dibuang dan mute ditanggalkan automatik)\\n• Klik butang AFK dan buang (mute ditanggalkan jika bot yang mute anda)\\n• Membuang AFK akan tanggalkan mute anda automatik jika anda dimute oleh bot",
+			"voiceMutedDeafened": "\\n\\nAnda akan dimute dan dideafen dalam voice.",
+			"voiceMutedOnly": "\\n\\nAnda akan dimute dalam voice (tidak dideafen)."
+		},
+		"removed": {
+			"title": "✅ Status AFK Dibuang!",
+			"description": "Selamat kembali! Status AFK anda telah dibuang."
+		},
+		"modal": {
+			"messageLabel": "Mesej AFK (Pilihan)",
+			"messagePlaceholder": "cth., Berehat, Belajar, dll.",
+			"deafenLabel": "Deafen dalam Voice? (yes/no, lalai: yes)",
+			"deafenPlaceholder": "yes atau no (kosongkan untuk yes)"
+		},
+		"buttons": {
+			"remove": "🔄 Buang AFK"
+		},
+		"errors": {
+			"disabledOnServer": "❌ AFK dimatikan untuk server ini. Pentadbir boleh hidupkannya dalam panel konfigurasi bot.",
+			"notAFK": "❌ Anda tidak sedang AFK.",
+			"failed": "❌ Gagal buka borang AFK: {error}",
+			"setFailed": "❌ **Gagal Tetapkan AFK**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti.",
+			"removeFailed": "❌ **Gagal Buang AFK**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti."
+		},
+		"messages": {
+			"welcomeBack": "✅ Selamat kembali, {member}! Status AFK anda telah dibuang.",
+			"dmEmbedTitle": "📬 Anda telah disebut",
+			"dmMentioned": "{sender} menyebut anda dalam **{server}** · #{channel}\\n\\n**Mesej:** {message}"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 Buat Giveaway",
+			"step1Title": "**Langkah 1 daripada 2: Pilih Role (Pilihan)**",
+			"step1Description": "Pilih role yang boleh sertai giveaway ini dari senarai di bawah. Biarkan kosong atau klik \"Teruskan ke Borang\" untuk benarkan semua role.",
+			"roleSelectPlaceholder": "Pilih role yang boleh sertai (pilihan)...",
+			"continueButton": "Teruskan ke Borang"
+		},
+		"active": {
+			"title": "🎉 Giveaway Aktif Dijumpai",
+			"description": "Anda sudah ada giveaway yang aktif:\\n\\n**{title}**\\n**Hadiah:** {prize}\\n\\nApa yang anda mahu buat?",
+			"ends": "⏰ Tamat"
+		},
+		"modal": {
+			"titleLabel": "Tajuk",
+			"titlePlaceholder": "Masukkan tajuk giveaway...",
+			"prizeLabel": "Hadiah",
+			"prizePlaceholder": "Apa hadiahnya?",
+			"durationLabel": "Tempoh (minit)",
+			"durationPlaceholder": "cth., 60 untuk 1 jam, 1440 untuk 1 hari",
+			"winnerCountLabel": "Bilangan Pemenang",
+			"winnerCountPlaceholder": "Berapa ramai pemenang? (lalai: 1)",
+			"multipleEntriesLabel": "Benarkan Sertai Berkali-kali? (yes/no)",
+			"multipleEntriesPlaceholder": "yes atau no (lalai: no)"
+		},
+		"created": {
+			"title": "✅ Giveaway Dibuat!",
+			"description": "Giveaway anda telah dibuat dan disiarkan dalam {channel}!"
+		},
+		"entered": {
+			"title": "✅ Berjaya Sertai Giveaway!",
+			"description": "Anda berjaya menyertai giveaway ini! Semoga bertuah! 🍀"
+		},
+		"buttons": {
+			"finish": "🏁 Tamatkan Giveaway"
+		},
+		"errors": {
+			"memberNotFound": "❌ Gagal dapatkan maklumat ahli.",
+			"activeExists": "❌ Anda sudah ada giveaway yang aktif. Sila tamatkannya dahulu.",
+			"invalidTitle": "❌ **Giveaway Tidak Sah**\\n\\nTajuk tidak boleh kosong.",
+			"invalidPrize": "❌ **Giveaway Tidak Sah**\\n\\nHadiah tidak boleh kosong.",
+			"invalidDuration": "❌ **Giveaway Tidak Sah**\\n\\nTempoh mesti nombor positif (dalam minit).",
+			"invalidWinnerCount": "❌ **Giveaway Tidak Sah**\\n\\nBilangan pemenang mesti nombor positif.",
+			"channelNotConfigured": "❌ Gagal buat giveaway: Channel giveaway belum ditetapkan. Sila tetapkannya dalam panel.",
+			"channelNotFound": "❌ Gagal buat giveaway: Channel giveaway tidak dijumpai.",
+			"channelError": "❌ Gagal buat giveaway: Ralat semasa dapatkan tetapan channel giveaway.",
+			"createFailed": "❌ **Gagal Buat Giveaway**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti.",
+			"invalidMessage": "❌ Mesej giveaway tidak sah.",
+			"invalidId": "❌ ID giveaway tidak sah.",
+			"notFound": "❌ Giveaway tidak dijumpai atau sudah tamat.",
+			"ended": "❌ Giveaway ini sudah tamat.",
+			"roleRestriction": "❌ **Sekatan Role**\\n\\nGiveaway ini terhad kepada role berikut:\\n{roles}\\n\\nAnda perlukan semua role ini untuk menyertainya.",
+			"memberNotFoundDB": "❌ Ahli tidak dijumpai dalam pangkalan data. Sila cuba lagi nanti.",
+			"cannotEnterOwn": "❌ Anda tidak boleh sertai giveaway anda sendiri!",
+			"alreadyEntered": "❌ Anda sudah menyertai giveaway ini!",
+			"finishOwnOnly": "❌ Anda hanya boleh tamatkan giveaway anda sendiri.",
+			"finishNotActive": "❌ Giveaway ini tidak aktif.",
+			"finishChannelError": "❌ Gagal dapatkan channel giveaway.",
+			"finishChannelNotConfigured": "❌ Channel giveaway belum ditetapkan.",
+			"finishChannelNotFound": "❌ Channel giveaway tidak dijumpai.",
+			"failed": "❌ Gagal buka borang giveaway: {error}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 Hantar Maklum Balas",
+			"label": "Maklum Balas Anda",
+			"placeholder": "Sila kongsi maklum balas, cadangan atau kebimbangan anda...",
+			"maxLength": 2000,
+			"anonymousLabel": "Hantar Tanpa Nama? (yes/no)",
+			"anonymousPlaceholder": "yes atau no (lalai: no)"
+		},
+		"submitted": {
+			"title": "✅ Maklum Balas Dihantar!",
+			"description": "Terima kasih atas maklum balas anda! Maklum balas anda telah berjaya dihantar.",
+			"anonymous": "\\n\\n🔒 Maklum balas anda dihantar tanpa nama."
+		},
+		"errors": {
+			"invalid": "❌ **Maklum Balas Tidak Sah**\\n\\nMesej maklum balas tidak boleh kosong.",
+			"channelError": "❌ Gagal hantar maklum balas: Ralat semasa dapatkan tetapan channel maklum balas.",
+			"channelNotConfigured": "❌ Gagal hantar maklum balas: Channel maklum balas belum ditetapkan.",
+			"channelNotFound": "❌ Gagal hantar maklum balas: Channel maklum balas tidak dijumpai.",
+			"failed": "❌ Gagal buka borang maklum balas: {error}",
+			"submitFailed": "❌ **Gagal Hantar Maklum Balas**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti."
+		}
+	},
+	"staffRating": {
+		"title": "📋 Laporkan Staf",
+		"selectStaff": "Pilih Staf",
+		"selectStaffPlaceholder": "Pilih staf yang mahu dilaporkan...",
+		"button": "🛡️ Penilaian Staf",
+		"selectRatingPrompt": "Pilih penilaian",
+		"selectCategoryPrompt": "Pilih kategori",
+		"status": {
+			"staff": "Staf: {staff}",
+			"ratingPending": "Penilaian: Belum dipilih",
+			"ratingSelected": "Penilaian: {rating}/5",
+			"categoryPending": "Kategori: Belum dipilih",
+			"categorySelected": "Kategori: {category}"
+		},
+		"buttons": {
+			"continue": "Teruskan",
+			"changeStaff": "Tukar Staf"
+		},
+		"reviewModal": {
+			"titleApprove": "Luluskan laporan staf",
+			"titleReject": "Tolak laporan staf",
+			"reasonLabel": "Sebab (wajib)",
+			"reasonPlaceholder": "Terangkan keputusan anda kepada pelapor…"
+		},
+		"modal": {
+			"title": "Laporkan Staf",
+			"ratingLabel": "Penilaian (1-5 bintang)",
+			"ratingPlaceholder": "1 = Sangat Teruk, 5 = Cemerlang",
+			"categoryLabel": "Kategori",
+			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"descriptionLabel": "Penerangan",
+			"descriptionPlaceholder": "Sila ceritakan pengalaman anda dengan staf ini...",
+			"anonymousLabel": "Hantar Tanpa Nama? (yes/no)",
+			"anonymousPlaceholder": "yes atau no (lalai: no)"
+		},
+		"submitted": {
+			"title": "✅ Laporan Dihantar",
+			"description": "Laporan anda berjaya dihantar dan sedang menunggu kelulusan admin. Kami akan maklumkan anda sebaik sahaja ia disemak.",
+			"anonymous": "\\n\\n🔒 Laporan anda dihantar tanpa nama.",
+			"roleUpdated": "\\n\\n⭐ **Penilaian Staf Dikemas Kini**\\n{roleName}\\nPenilaian: {rating}/5.00 ({totalReports} laporan)"
+		},
+		"dm": {
+			"approved": "Laporan anda tentang {staff} dalam **{server}** telah diluluskan.\\n\\n**Penilaian:** {rating}/5\\n**Kategori:** {category}\\n**Maklum balas:** {description}\\n\\n**Nota staf:** {reason}\\n\\nTerima kasih kerana membantu kami menjaga kualiti pasukan.",
+			"rejected": "Laporan anda tentang {staff} dalam **{server}** tidak diluluskan.\\n\\n**Sebab:** {reason}\\n\\nAnda boleh hubungi pasukan admin jika ada maklumat tambahan untuk dikongsi.",
+			"embedTitleApproved": "✅ Laporan diluluskan",
+			"embedTitleRejected": "❌ Laporan tidak diluluskan"
+		},
+		"categories": {
+			"helpful": "👍 Membantu",
+			"unhelpful": "👎 Tidak Membantu",
+			"abuse": "⚠️ Salah Guna Kuasa",
+			"slow_response": "⏰ Respons Lambat",
+			"excellent": "⭐ Layanan Cemerlang",
+			"rude": "😠 Perangai Biadab"
+		},
+		"errors": {
+			"noStaffSelected": "❌ Sila pilih staf yang mahu dilaporkan.",
+			"invalidRating": "❌ **Penilaian Tidak Sah**\\n\\nPenilaian mesti nombor antara 1 hingga 5.",
+			"invalidCategory": "❌ **Kategori Tidak Sah**\\n\\nSila guna salah satu: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"emptyDescription": "❌ **Penerangan Diperlukan**\\n\\nSila berikan penerangan tentang pengalaman anda.",
+			"cannotReportSelf": "❌ Anda tidak boleh laporkan diri sendiri!",
+			"notStaff": "❌ Ahli yang dipilih bukan staf.",
+			"onCooldown": "❌ **Tempoh Menunggu Penilaian**\\n\\nAnda perlu tunggu {time} {unit} sebelum menilai staf ini lagi.\\n\\nKali terakhir dinilai: {lastRated}",
+			"submitFailed": "❌ **Gagal Hantar Laporan**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti.",
+			"notConfigured": "❌ Sistem penilaian staf belum ditetapkan untuk server ini.",
+			"noStaffConfigured": "❌ Role staf belum ditetapkan untuk server ini. Sila minta admin tetapkan kebenaran staf dahulu.",
+			"noStaffAvailable": "❌ Tiada staf yang dapat dijumpai sekarang. Sila cuba lagi nanti atau hubungi admin server.",
+			"missingRating": "❌ Sila pilih penilaian sebelum teruskan.",
+			"missingCategory": "❌ Sila pilih kategori sebelum teruskan.",
+			"permissionDenied": "❌ **Kebenaran Ditolak**\\n\\nAnda perlukan kebenaran admin untuk luluskan atau tolak laporan staf.",
+			"reviewReasonRequired": "❌ Sila isi sebab untuk keputusan anda."
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 Content Creator",
+		"list": {
+			"title": "🎬 Content Creator",
+			"description": "Content creator yang diluluskan untuk server ini:",
+			"none": "Belum ada content creator yang diluluskan.",
+			"applyButton": "Mohon"
+		},
+		"dismiss": {
+			"button": "Berhenti Jadi Content Creator",
+			"confirmTitle": "⚠️ Buang role Content Creator?",
+			"confirmDescription": "Anda akan hilang role Content Creator di server ini. Anda boleh mohon semula nanti jika staf membenarkan.\n\n**Anda pasti?**",
+			"yes": "Ya, buang role",
+			"no": "Tidak, batal",
+			"removed": "✅ Role Content Creator anda telah dibuang."
+		},
+		"reviewModal": {
+			"titleApprove": "Luluskan permohonan",
+			"titleReject": "Tolak permohonan",
+			"reasonLabel": "Sebab (wajib)",
+			"reasonPlaceholder": "Terangkan keputusan anda kepada pemohon…"
+		},
+		"modal": {
+			"title": "Mohon Jadi Content Creator",
+			"usernameLabel": "Nama Pengguna TikTok",
+			"usernamePlaceholder": "contoh: dansday",
+			"reasonLabel": "Kenapa anda mahu jadi content creator?",
+			"reasonPlaceholder": "Ceritakan ringkas kenapa anda patut diterima..."
+		},
+		"submitted": "✅ Permohonan content creator anda untuk **{username}** telah dihantar dan menunggu kelulusan staf.",
+		"dm": {
+			"approved": "Permohonan anda dalam **{server}** telah diluluskan.\\n\\nTikTok: **{username}**\\nRole Content Creator anda sudah diberikan.",
+			"rejected": "Permohonan anda dalam **{server}** tidak diluluskan kali ini.\\n\\nTikTok: **{username}**\\n\\n**Sebab:** {reason}\\n\\nAnda boleh mohon semula selepas tempoh menunggu (jika server anda menggunakannya).",
+			"embedTitleApproved": "✅ Content creator diluluskan",
+			"embedTitleRejected": "❌ Content creator tidak diluluskan"
+		},
+		"autoRejectApplicantReason": "Pendua atau penyamaran: nama pengguna TikTok ini sudah dipautkan ke akaun Discord lain.",
+		"errors": {
+			"notConfigured": "❌ Kemasukan content creator belum ditetapkan untuk server ini.",
+			"alreadyCreator": "✅ Anda sudah ada role Content Creator di server ini.",
+			"invalidUsername": "❌ Nama pengguna TikTok tidak sah. Guna huruf, nombor, titik dan garis bawah sahaja.",
+			"reasonRequired": "❌ Sila berikan sebab anda mahu jadi content creator.",
+			"pendingExists": "❌ Anda sudah ada permohonan content creator yang belum diproses.",
+			"cooldown": "❌ Anda perlu tunggu **{days} hari** sebelum hantar permohonan content creator lagi.",
+			"submitFailed": "❌ Gagal hantar permohonan content creator: {error}",
+			"permissionDenied": "❌ Anda perlukan kebenaran admin untuk luluskan atau tolak permohonan content creator.",
+			"reviewReasonRequired": "❌ Sila isi sebab untuk keputusan anda."
+		}
+	},
+	"notifications": {
+		"button": "🔔 Notifikasi",
+		"title": "🔔 Pilihan Notifikasi",
+		"description": "Pilih channel yang anda mahu terima notifikasi. Anda akan ditag satu persatu apabila ada notifikasi.",
+		"selectPlaceholder": "Pilih channel notifikasi...",
+		"updated": "✅ Pilihan notifikasi anda telah dikemas kini.",
+		"errors": {
+			"notConfigured": "❌ Notifikasi belum ditetapkan untuk server ini.",
+			"noRoles": "❌ Belum ada channel notifikasi disediakan. Minta admin tetapkan notifikasi dalam dashboard.",
+			"noneEnabled": "❌ Tiada ciri notifikasi yang dihidupkan di server ini."
+		},
+		"hub": {
+			"title": "🔔 Pilihan Notifikasi",
+			"description": "Pilih jenis notifikasi yang anda mahu uruskan.",
+			"channels": "📢 Notifikasi Channel",
+			"roblox": "🛍️ Notifikasi Item Roblox",
+			"back": "⬅️ Notifikasi"
+		},
+		"active": "**Aktif:** {channels}",
+		"none": "**Aktif:** belum ada."
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 Buat Role Penyokong Tersuai",
+			"editTitle": "💎 Edit Role Penyokong Tersuai",
+			"nameLabel": "Nama Role",
+			"namePlaceholder": "Masukkan nama role tersuai anda...",
+			"colorLabel": "Warna Role (Hex/Perpuluhan/Nama)",
+			"colorPlaceholder": "#FF5733 atau 16729395 atau red (pilihan)",
+			"iconLabel": "Ikon Role (Emoji atau URL Imej)",
+			"iconPlaceholder": "🔥 atau https://example.com/icon.png (pilihan)"
+		},
+		"existing": {
+			"title": "💎 Role Penyokong Tersuai",
+			"description": "Anda sudah ada role tersuai: **{roleName}**\\n\\nPilih tindakan:",
+			"currentRole": "📋 Role Semasa"
+		},
+		"created": {
+			"title": "✅ Role Penyokong Tersuai Dibuat!",
+			"description": "Role tersuai anda **{roleName}** telah dibuat dan diberikan kepada anda!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Ikon Tersuai Tiada:** Server ini perlukan Server Boost Tahap 2 untuk guna ikon role tersuai (imej). Anda boleh guna emoji sebagai gantinya!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Nota:** Ikon tidak dapat ditetapkan, tetapi role berjaya dibuat.",
+			"roleDetails": "🎨 Butiran Role",
+			"roleDetailsValue": "**Nama:** {name}\\n**Warna:** {color}\\n**Ikon:** {icon}",
+			"role": "💎 Role",
+			"iconStatusSet": "Ditetapkan",
+			"iconStatusNone": "Tiada",
+			"iconStatusFailed": "Gagal (role dibuat tanpa ikon)",
+			"iconStatusInvalid": "Format tidak sah (role dibuat tanpa ikon)"
+		},
+		"updated": {
+			"title": "✅ Role Penyokong Tersuai Dikemas Kini!",
+			"description": "Role tersuai anda **{roleName}** telah dikemas kini!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Ikon Tersuai Tiada:** Server ini perlukan Server Boost Tahap 2 untuk guna ikon role tersuai (imej). Anda boleh guna emoji sebagai gantinya!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Nota:** Ikon tidak dapat ditetapkan, tetapi role berjaya dikemas kini.",
+			"roleDetails": "🎨 Butiran Role",
+			"roleDetailsValue": "**Nama:** {name}\\n**Warna:** {color}\\n**Ikon:** {icon}",
+			"role": "💎 Role",
+			"iconStatusUnchanged": "Tidak berubah",
+			"iconStatusUpdated": "Dikemas kini",
+			"iconStatusRemoved": "Dibuang",
+			"iconStatusFailed": "Gagal (role dikemas kini tanpa ikon)",
+			"iconStatusInvalid": "Format tidak sah (role dikemas kini tanpa ikon)"
+		},
+		"deleted": {
+			"title": "✅ Role Penyokong Tersuai Dipadam",
+			"description": "Role tersuai anda **{roleName}** telah dipadam."
+		},
+		"buttons": {
+			"edit": "✏️ Edit Role",
+			"delete": "🗑️ Padam Role"
+		},
+		"errors": {
+			"noRole": "❌ Anda tiada role tersuai untuk diedit.",
+			"noRoleDelete": "❌ Anda tiada role tersuai untuk dipadam.",
+			"alreadyHasRole": "❌ **Anda Sudah Ada Role Tersuai**\\n\\nAnda hanya boleh ada satu role penyokong tersuai pada satu masa.\\n\\n💡 Guna **✏️ Edit Role** untuk mengubahnya, atau **🗑️ Padam Role** dahulu jika mahu yang baharu.",
+			"invalidName": "❌ **Nama Role Tidak Sah**\\n\\nNama role mesti antara 1 hingga 100 aksara.",
+			"boostRequired": "❌ **Ikon Tersuai Tiada**\\n\\nServer ini perlukan **Server Boost Tahap 2** untuk guna ikon role tersuai (imej).\\n\\n💡 **Petua:** Anda boleh guna **emoji** sebagai gantinya (seperti 🔥, ⭐, atau mana-mana emoji tersuai) yang tidak perlukan server boost.",
+			"boostRequiredCreate": "❌ **Server Boost Diperlukan**\\n\\nServer ini perlukan **Server Boost Tahap 2** untuk buat role penyokong tersuai dengan ciri tertentu.\\n\\n💡 **Apa yang anda boleh buat:**\\n- Minta pentadbir server boost server ke Tahap 2\\n- Atau hubungi staf server untuk bantuan\\n\\n**Butiran ralat:** {error}",
+			"createFailed": "❌ **Gagal Buat Role**\\n\\nRalat: {error}\\n\\nSila pastikan:\\n- Bot ada kebenaran untuk buat role\\n- Bot ada kebenaran untuk urus role\\n- Had kedudukan role adalah sah",
+			"updateFailed": "❌ **Gagal Kemas Kini Role**\\n\\nRalat: {error}\\n\\nSila pastikan:\\n- Bot ada kebenaran untuk urus role\\n- Had role adalah sah",
+			"deleteFailed": "❌ Gagal padam role: {error}",
+			"failed": "❌ Gagal buka borang pembuatan role: {error}",
+			"editFailed": "❌ Gagal buka borang edit: {error}"
+		}
+	},
+	"questEnroll": {
+		"menuButton": "🔮 Discord Quest",
+		"listTitle": "🔮 Discord Quest",
+		"listEmpty": "Tiada Discord quest yang aktif sekarang.",
+		"listAllClaimed": "✅ Anda sudah tuntut semua Discord quest yang aktif.",
+		"listClaimedTag": "sudah dituntut",
+		"claimAllButton": "Tuntut semua",
+		"alreadyClaimed": "Sudah Dituntut",
+		"alreadyClaimedDescription": "Anda pernah mendaftar dalam **{questName}** sebelum ini dan ganjaran anda sudah dituntut. Setiap quest hanya boleh dituntut sekali bagi setiap ahli.",
+		"pendingTitle": "⏳ Sedang berjalan di latar belakang",
+		"pendingDescription": "Token anda **tidak** disimpan dalam pangkalan data kami.\n\n**Risiko:** Discord boleh sekat atau ban **akaun pengguna** yang terikat dengan token itu; dalam sesetengah kes **bot atau server** juga boleh terkesan. Ini bukan kelakuan rasmi Discord — anda yang pilih untuk teruskan.",
+		"precheckNotFoundTitle": "Quest tiada pada akaun ini",
+		"precheckNotFoundDescription": "Quest ini tidak tersenarai untuk akaun Discord yang terikat dengan token anda. Buka **Discord → Quests**, terima quest itu jika perlu, kemudian cuba lagi.",
+		"precheckExpiredTitle": "Quest sudah luput",
+		"precheckExpiredDescription": "Quest ini sudah luput untuk akaun Discord itu.",
+		"precheckRewardClaimedTitle": "Ganjaran sudah dituntut",
+		"precheckRewardClaimedDescription": "Ganjaran untuk quest ini sudah dituntut pada **akaun Discord** ini (contohnya selepas disiapkan di server lain atau dalam klien Discord). Pendaftaran automatik tidak boleh tuntut sekali lagi.",
+		"precheckCompletedTitle": "Quest sudah selesai",
+		"precheckCompletedDescription": "Objektif quest sudah disiapkan pada **akaun Discord** ini. Tuntut baki ganjaran di **Discord → Quests** jika belum — pendaftaran automatik tidak boleh tambah kemajuan lagi.",
+		"claimAllPendingTitle": "⏳ Menuntut semua quest",
+		"claimAllPendingDescription": "Mendaftarkan **{count}** quest satu persatu.\n\nToken anda **tidak** disimpan dalam pangkalan data kami.\n\n**Risiko:** Discord boleh sekat atau ban **akaun pengguna** yang terikat dengan token itu; dalam sesetengah kes **bot atau server** juga boleh terkesan. Ini bukan kelakuan rasmi Discord — anda yang pilih untuk teruskan.",
+		"claimAllNothingTitle": "Tiada apa untuk dituntut",
+		"claimAllNothingDescription": "Tiada quest aktif yang boleh didaftarkan pada akaun Discord ini sekarang.",
+		"autoQuestDisabled": "Pendaftaran quest automatik sedang dimatikan. Sila hubungi pentadbir server.",
+		"alreadyRunning": "Anda sudah ada quest automatik yang sedang berjalan. Sila tunggu ia selesai sebelum mula yang lain.",
+		"announceInChannel": "Setiap keputusan disiarkan dalam {channel}.",
+		"announceDisabled": "Tiada channel quest ditetapkan, jadi tiada apa diumumkan — quest yang dituntut hanya ditanda dalam senarai quest."
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"removed": "🔕 Anda tidak akan ditag lagi untuk **{item}**.",
+			"saved": "🔔 Disimpan. Anda akan ditag untuk **{item}** pada: {types}. {count} sedang memantau.",
+			"noTypes": "tiada",
+			"types": {
+				"price": {
+					"label": "Harga",
+					"description": "Harga yang ditetapkan penjual berubah."
+				},
+				"lowest_resale_price": {
+					"label": "Harga jual semula",
+					"description": "Harga penjual semula termurah berubah."
+				},
+				"units_available": {
+					"label": "Baki stok",
+					"description": "Unit yang masih boleh dibeli berubah."
+				},
+				"total_quantity": {
+					"label": "Jumlah bekalan",
+					"description": "Jumlah keseluruhan salinan berubah."
+				}
+			},
+			"item": {
+				"title": "🔔 Notifikasi Item",
+				"description": "Pilih perkara yang patut tag anda untuk [{item}]({url}). Nyahpilih semuanya untuk berhenti terima notifikasi item ini.",
+				"active": "**Notifikasi untuk:** {types}",
+				"placeholder": "Pilih apa yang mahu dimaklumkan..."
+			},
+			"menu": {
+				"title": "🛍️ Notifikasi Item Roblox",
+				"description": "Anda sedang memantau {count} item. Pilih satu untuk ubah apa yang memaklumkan anda.",
+				"empty": "Anda belum memantau mana-mana item Roblox. Tekan 🔔 Notify me di bawah siaran katalog untuk mula.",
+				"placeholder": "Pilih item untuk diedit...",
+				"disableAll": "🔕 Matikan semua",
+				"disabledAll": "🔕 Notifikasi untuk {count} item dimatikan.",
+				"back": "⬅️ Kembali"
+			},
+			"errors": {
+				"invalidItem": "❌ Item katalog itu tidak dapat dibaca daripada butang ini.",
+				"memberNotFound": "❌ Profil ahli anda belum disegerakkan. Cuba lagi sebentar nanti."
+			}
+		}
+	}
+}

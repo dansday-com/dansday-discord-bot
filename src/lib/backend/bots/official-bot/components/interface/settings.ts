@@ -9,7 +9,10 @@ const languageNames = {
 	en: 'English',
 	id: 'Bahasa Indonesia',
 	de: 'Deutsch',
-	es: 'Español'
+	es: 'Español',
+	ar: 'العربية',
+	ms: 'Bahasa Melayu',
+	zh: '简体中文'
 };
 
 export async function handleLanguageButton(interaction) {

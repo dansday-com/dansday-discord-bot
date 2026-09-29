@@ -120,8 +120,8 @@
 		"modal": {
 			"messageLabel": "Mensaje de AFK (opcional)",
 			"messagePlaceholder": "p. ej., Tomando un descanso, Estudiando, etc.",
-			"deafenLabel": "¿Ensordecer en voz? (sí/no, predeterminado: sí)",
-			"deafenPlaceholder": "sí o no (déjalo vacío para sí)"
+			"deafenLabel": "¿Ensordecer en voz? (yes/no)",
+			"deafenPlaceholder": "yes o no (déjalo vacío para yes)"
 		},
 		"buttons": {
 			"remove": "🔄 Quitar AFK"
@@ -161,8 +161,8 @@
 			"durationPlaceholder": "p. ej., 60 para 1 hora, 1440 para 1 día",
 			"winnerCountLabel": "Número de ganadores",
 			"winnerCountPlaceholder": "¿Cuántos ganadores? (predeterminado: 1)",
-			"multipleEntriesLabel": "¿Se permiten varias participaciones? (sí/no)",
-			"multipleEntriesPlaceholder": "sí o no (predeterminado: no)"
+			"multipleEntriesLabel": "¿Permitir varias participaciones? (yes/no)",
+			"multipleEntriesPlaceholder": "yes o no (predeterminado: no)"
 		},
 		"created": {
 			"title": "✅ ¡Sorteo creado!",
@@ -208,8 +208,8 @@
 			"label": "Tus comentarios",
 			"placeholder": "Comparte tus comentarios, sugerencias o inquietudes...",
 			"maxLength": 2000,
-			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
-			"anonymousPlaceholder": "sí o no (predeterminado: no)"
+			"anonymousLabel": "¿Enviar de forma anónima? (yes/no)",
+			"anonymousPlaceholder": "yes o no (predeterminado: no)"
 		},
 		"submitted": {
 			"title": "✅ ¡Comentarios enviados!",
@@ -257,8 +257,8 @@
 			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Descripción",
 			"descriptionPlaceholder": "Describe tu experiencia con este miembro del staff...",
-			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
-			"anonymousPlaceholder": "sí o no (predeterminado: no)"
+			"anonymousLabel": "¿Enviar de forma anónima? (yes/no)",
+			"anonymousPlaceholder": "yes o no (predeterminado: no)"
 		},
 		"submitted": {
 			"title": "✅ Reporte enviado",

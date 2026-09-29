@@ -30,7 +30,7 @@ function resolveLocalesDir(): string | null {
 }
 
 function loadTranslations() {
-	const languages = ['en', 'id', 'de', 'es'];
+	const languages = ['en', 'id', 'de', 'es', 'ar', 'ms', 'zh'];
 
 	const localesDir = resolveLocalesDir();
 	if (!localesDir) return;

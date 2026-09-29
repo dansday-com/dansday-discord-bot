@@ -120,8 +120,8 @@
 		"modal": {
 			"messageLabel": "AFK-Nachricht (optional)",
 			"messagePlaceholder": "z. B. Mache Pause, Lerne usw.",
-			"deafenLabel": "Ton im Sprachkanal deaktivieren? (ja/nein, Standard: ja)",
-			"deafenPlaceholder": "ja oder nein (leer lassen für ja)"
+			"deafenLabel": "Im Voice stummschalten? (yes/no)",
+			"deafenPlaceholder": "yes oder no (leer lassen für yes)"
 		},
 		"buttons": {
 			"remove": "🔄 AFK entfernen"
@@ -161,8 +161,8 @@
 			"durationPlaceholder": "z. B. 60 für 1 Stunde, 1440 für 1 Tag",
 			"winnerCountLabel": "Anzahl der Gewinner",
 			"winnerCountPlaceholder": "Wie viele Gewinner? (Standard: 1)",
-			"multipleEntriesLabel": "Mehrfachteilnahme erlaubt? (ja/nein)",
-			"multipleEntriesPlaceholder": "ja oder nein (Standard: nein)"
+			"multipleEntriesLabel": "Mehrfachteilnahme erlaubt? (yes/no)",
+			"multipleEntriesPlaceholder": "yes oder no (Standard: no)"
 		},
 		"created": {
 			"title": "✅ Gewinnspiel erstellt!",
@@ -208,8 +208,8 @@
 			"label": "Dein Feedback",
 			"placeholder": "Teile uns dein Feedback, deine Vorschläge oder Anliegen mit...",
 			"maxLength": 2000,
-			"anonymousLabel": "Anonym senden? (ja/nein)",
-			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
+			"anonymousLabel": "Anonym senden? (yes/no)",
+			"anonymousPlaceholder": "yes oder no (Standard: no)"
 		},
 		"submitted": {
 			"title": "✅ Feedback gesendet!",
@@ -257,8 +257,8 @@
 			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Beschreibung",
 			"descriptionPlaceholder": "Beschreibe bitte deine Erfahrung mit diesem Teammitglied...",
-			"anonymousLabel": "Anonym senden? (ja/nein)",
-			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
+			"anonymousLabel": "Anonym senden? (yes/no)",
+			"anonymousPlaceholder": "yes oder no (Standard: no)"
 		},
 		"submitted": {
 			"title": "✅ Meldung gesendet",

@@ -42,6 +42,7 @@ import {
 import { handleNotificationsButton, handleNotificationChannelsButton, handleNotificationsSelect } from './interface/notifications.js';
 import {
 	handleContentCreatorButton,
+	handleContentCreatorHubButton,
 	handleContentCreatorApplyButton,
 	handleContentCreatorDismissRequest,
 	handleContentCreatorDismissYes,
@@ -485,6 +486,9 @@ export async function handleButtonInteraction(interaction) {
 			await handleCreatorNotificationsRecentButton(interaction);
 			break;
 		case 'bot_content_creator':
+			await handleContentCreatorHubButton(interaction);
+			break;
+		case 'content_creator_list':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorButton(interaction);
 			break;

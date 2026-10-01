@@ -44,14 +44,12 @@ export async function handleNotificationsButton(interaction) {
 					.setStyle(ButtonStyle.Success)
 			);
 		}
-		if (creatorsEnabled) {
-			buttons.push(
-				new ButtonBuilder()
-					.setCustomId('notifications_creators')
-					.setLabel(await translate('notifications.hub.creators', guildId, userId))
-					.setStyle(ButtonStyle.Success)
-			);
-		}
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('notifications_creators')
+				.setLabel(await translate('notifications.hub.creators', guildId, userId))
+				.setStyle(ButtonStyle.Success)
+		);
 
 		const rows = [
 			new ActionRowBuilder().addComponents(...buttons),

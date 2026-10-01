@@ -7082,6 +7082,19 @@ export async function getApprovedContentCreators(serverId: any) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
+export async function getPendingContentCreatorApplications(serverId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT cca.id, cca.member_id, cca.tiktok_username, cca.submitted_at, sm.discord_member_id
+		FROM server_member_content_creator_reviews cca
+		INNER JOIN server_members sm ON cca.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)}
+		  AND cca.status = 'pending'
+		ORDER BY cca.submitted_at ASC, cca.id ASC
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
 export async function createContentCreatorStream(memberId: number, roomId: string | null) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -7624,6 +7637,7 @@ export default {
 	getContentCreatorApplicationById,
 	updateContentCreatorApplicationStatus,
 	getApprovedContentCreators,
+	getPendingContentCreatorApplications,
 	createContentCreatorStream,
 	endContentCreatorStream,
 	incrementContentCreatorStreamCounters,

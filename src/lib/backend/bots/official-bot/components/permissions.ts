@@ -46,16 +46,18 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 		const perms = await getGuildPermissions(guild.id);
 		const roleNames: string[] = [];
 
+		const isBotOnlyRole = (role: any) => role.members.size > 0 && role.members.every((m: any) => m.user.bot);
+
 		const addRoles = (ids: string[]) => {
 			ids?.forEach((roleId: string) => {
 				const role = guild.roles.cache.get(roleId);
-				if (role) roleNames.push(role.name);
+				if (role && !isBotOnlyRole(role)) roleNames.push(role.name);
 			});
 		};
 
 		const addAdminRoles = () => {
 			for (const role of guild.roles.cache.values()) {
-				if (role.id === guild.id || role.managed) continue;
+				if (role.id === guild.id || role.managed || isBotOnlyRole(role)) continue;
 				if (role.permissions?.has?.(PermissionFlagsBits.Administrator)) roleNames.push(role.name);
 			}
 		};

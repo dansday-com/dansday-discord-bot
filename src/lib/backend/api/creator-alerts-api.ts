@@ -220,6 +220,17 @@ async function resolveYouTube(handle: string): Promise<CreatorProfile | null> {
 	return youtubeProfileFromPage(text);
 }
 
+function youtubeVideo(id: string, title: string | null, kind: 'video' | 'short', publishedAt: string | null): CreatorContent {
+	return {
+		contentId: id,
+		type: 'video',
+		title,
+		url: kind === 'short' ? `https://www.youtube.com/shorts/${id}` : `https://www.youtube.com/watch?v=${id}`,
+		thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+		publishedAt
+	};
+}
+
 async function youtubeFeed(playlistId: string, kind: 'video' | 'short'): Promise<CreatorContent[]> {
 	const { status, text } = await fetchText(`https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`, YOUTUBE_HEADERS);
 	if (status === 404) return [];
@@ -231,14 +242,7 @@ async function youtubeFeed(playlistId: string, kind: 'video' | 'short'): Promise
 	for (const e of entries) {
 		const id = str(e?.['yt:videoId']);
 		if (!id) continue;
-		out.push({
-			contentId: id,
-			type: 'video',
-			title: str(typeof e.title === 'object' ? e.title?.['#text'] : e.title),
-			url: kind === 'short' ? `https://www.youtube.com/shorts/${id}` : `https://www.youtube.com/watch?v=${id}`,
-			thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-			publishedAt: isoOrNull(e.published)
-		});
+		out.push(youtubeVideo(id, str(typeof e.title === 'object' ? e.title?.['#text'] : e.title), kind, isoOrNull(e.published)));
 	}
 	return out;
 }
@@ -278,14 +282,63 @@ function collectRenderers(node: any, key: string, out: any[]) {
 	}
 }
 
-async function youtubePosts(accountId: string): Promise<CreatorContent[]> {
-	const { status, text } = await fetchText(`https://www.youtube.com/channel/${accountId}/posts?hl=en`, YOUTUBE_HEADERS);
-	if (status === 404) return [];
-	if (status !== 200) throw new Error(`youtube posts ${status}`);
+async function youtubeInitialData(accountId: string, tab: string): Promise<any | null> {
+	const { status, text } = await fetchText(`https://www.youtube.com/channel/${accountId}/${tab}?hl=en`, YOUTUBE_HEADERS);
+	if (status === 404) return null;
+	if (status !== 200) throw new Error(`youtube ${tab} ${status}`);
 	const raw = text.match(/var ytInitialData = (\{.*?\});<\/script>/s)?.[1];
-	if (!raw) throw new Error('youtube posts initial data missing');
+	if (!raw) throw new Error(`youtube ${tab} initial data missing`);
+	return JSON.parse(raw);
+}
+
+function youtubeSelectedTab(data: any, tab: string): any {
+	const tabs: any[] = [];
+	collectRenderers(data, 'tabRenderer', tabs);
+	const selected = tabs.find((t) => t?.selected === true);
+	const url = str(selected?.endpoint?.commandMetadata?.webCommandMetadata?.url) ?? '';
+	return url.endsWith(`/${tab}`) ? (selected.content ?? null) : null;
+}
+
+async function youtubeTab(accountId: string, kind: 'video' | 'short'): Promise<CreatorContent[]> {
+	const tab = kind === 'short' ? 'shorts' : 'videos';
+	const data = await youtubeInitialData(accountId, tab);
+	const content = data ? youtubeSelectedTab(data, tab) : null;
+	if (!content) return [];
+	const out: CreatorContent[] = [];
+	if (kind === 'short') {
+		const items: any[] = [];
+		collectRenderers(content, 'shortsLockupViewModel', items);
+		for (const item of items) {
+			const id = str(item?.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId);
+			if (id) out.push(youtubeVideo(id, str(item.overlayMetadata?.primaryText?.content), kind, null));
+		}
+		return out;
+	}
+	const items: any[] = [];
+	collectRenderers(content, 'lockupViewModel', items);
+	for (const item of items) {
+		const id = str(item?.contentId);
+		if (!id || item.contentType !== 'LOCKUP_CONTENT_TYPE_VIDEO') continue;
+		out.push(youtubeVideo(id, str(item.metadata?.lockupMetadataViewModel?.title?.content), kind, null));
+	}
+	return out;
+}
+
+async function youtubeUploads(accountId: string, kind: 'video' | 'short'): Promise<CreatorContent[]> {
+	try {
+		return await youtubeTab(accountId, kind);
+	} catch (err) {
+		const feed = await youtubeFeed(`${kind === 'short' ? 'UUSH' : 'UULF'}${accountId.slice(2)}`, kind).catch(() => null);
+		if (feed && feed.length > 0) return feed;
+		throw err;
+	}
+}
+
+async function youtubePosts(accountId: string): Promise<CreatorContent[]> {
+	const data = await youtubeInitialData(accountId, 'posts');
+	if (!data) return [];
 	const posts: any[] = [];
-	collectRenderers(JSON.parse(raw), 'backstagePostRenderer', posts);
+	collectRenderers(data, 'backstagePostRenderer', posts);
 	const out: CreatorContent[] = [];
 	for (const p of posts) {
 		const id = str(p?.postId);
@@ -307,10 +360,9 @@ async function youtubePosts(accountId: string): Promise<CreatorContent[]> {
 }
 
 async function fetchYouTubeSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
-	const tail = ref.accountId.slice(2);
 	const results = await Promise.allSettled([
-		youtubeFeed(`UULF${tail}`, 'video'),
-		youtubeFeed(`UUSH${tail}`, 'short'),
+		youtubeUploads(ref.accountId, 'video'),
+		youtubeUploads(ref.accountId, 'short'),
 		youtubeLive(ref.accountId),
 		youtubePosts(ref.accountId)
 	]);

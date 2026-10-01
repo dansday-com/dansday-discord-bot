@@ -207,7 +207,7 @@ async function runTick(client: Client, officialBotId: number) {
 			const fresh = await db.recordBotCreatorContents(creator.id, snap.contents).catch(() => []);
 			await db.markBotCreatorChecked(creator.id, snap.profile).catch(() => null);
 
-			const announce = baseline ? [] : fresh.filter((c) => c.type === 'live' || knownTypes.has(c.type));
+			const announce = fresh.filter((c) => c.type === 'live' || (!baseline && knownTypes.has(c.type)));
 			if (fresh.length > announce.length) {
 				await logger.log(`📡 Creator alerts: baselined ${fresh.length - announce.length} ${creator.platform} items for ${creator.handle ?? creator.accountId}`);
 			}

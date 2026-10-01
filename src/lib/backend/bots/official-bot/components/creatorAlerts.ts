@@ -407,10 +407,9 @@ async function buildCreatorTypesPayload(
 	return { embeds: [embed], components: rows };
 }
 
-async function buildCreatorNotificationsMenuPayload(guildId: string, userId: string, serverId: number, memberId: number, statusLine?: string) {
+async function buildCreatorNotificationsMenuPayload(guildId: string, userId: string, memberId: number, statusLine?: string) {
 	const embedConfig = await getEmbedConfig(guildId);
 	const subscriptions = await db.listServerMemberCreatorNotifications(memberId).catch(() => []);
-	const hasTargetChannel = (await readTargetChannelId(serverId)) !== '';
 
 	const description =
 		subscriptions.length === 0
@@ -459,17 +458,12 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 		new ButtonBuilder()
 			.setCustomId(CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID)
 			.setLabel(await translate('creatorAlerts.menu.follow', guildId, userId))
-			.setStyle(ButtonStyle.Success)
+			.setStyle(ButtonStyle.Success),
+		new ButtonBuilder()
+			.setCustomId(CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID)
+			.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
+			.setStyle(ButtonStyle.Primary)
 	];
-
-	if (!hasTargetChannel) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId(CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID)
-				.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
-				.setStyle(ButtonStyle.Primary)
-		);
-	}
 
 	if (subscriptions.length > 0) {
 		buttons.push(
@@ -499,7 +493,7 @@ export async function handleCreatorNotificationsMenuButton(interaction: ButtonIn
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
 
-	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.server.id, context.member.id);
+	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id);
 	await respondEphemeral(interaction, payload, true);
 }
 
@@ -531,7 +525,7 @@ export async function handleCreatorNotificationsDisableAll(interaction: ButtonIn
 
 	const cleared = await db.clearServerMemberCreatorNotifications(context.member.id).catch(() => 0);
 	const statusLine = await translate('creatorAlerts.menu.disabledAll', guildId, interaction.user.id, { count: formatCount(cleared) });
-	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.server.id, context.member.id, statusLine);
+	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, statusLine);
 	await respondEphemeral(interaction, payload, true);
 
 	await logger.log(`🔕 Creator alerts: ${interaction.user.tag} disabled all ${cleared} creator notifications`);

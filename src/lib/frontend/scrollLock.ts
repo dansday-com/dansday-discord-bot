@@ -44,3 +44,8 @@ export function lockScroll(): () => void {
 		}
 	};
 }
+
+export function scrollLocked(_node: HTMLElement) {
+	const release = lockScroll();
+	return { destroy: release };
+}

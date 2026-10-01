@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -35,7 +36,7 @@
 
 <svelte:window {onkeydown} />
 
-<div class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
+<div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
 	<div class="modal-box border-base-300 max-w-[380px] border p-5 text-center">
 		<div class="mx-auto mb-3 grid size-14 place-items-center rounded-full border text-[24px] {halo}">
 			<i class="fas {icon}"></i>

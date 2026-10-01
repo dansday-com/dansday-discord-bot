@@ -14,6 +14,7 @@ import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
+import { menuBackButton } from './menuBack.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 
@@ -313,7 +314,7 @@ export async function handleStaffRatingButton(interaction) {
 
 		const staffSelect = new StringSelectMenuBuilder().setCustomId('staff_rating_select_user').setPlaceholder(selectStaffPlaceholder).addOptions(staffOptions);
 
-		const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+		const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'community');
 
 		const selectRow = new ActionRowBuilder().addComponents(staffSelect);
 		const buttonRow = new ActionRowBuilder().addComponents(menuButton);

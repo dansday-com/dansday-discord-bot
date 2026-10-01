@@ -5,6 +5,7 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
+import { menuBackButton } from './menuBack.js';
 
 const supporterRoles = new Map();
 
@@ -219,7 +220,7 @@ export async function handleCustomSupporterRoleButton(interaction) {
 
 			const deleteButton = new ButtonBuilder().setCustomId('custom_supporter_role_delete').setLabel(deleteLabel).setStyle(ButtonStyle.Danger);
 
-			const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+			const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'perks');
 
 			const buttonRow = new ActionRowBuilder().addComponents(editButton, deleteButton, menuButton);
 

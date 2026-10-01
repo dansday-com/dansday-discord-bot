@@ -21,6 +21,7 @@
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
 	let botUpdatesChannel = $state(data.settings?.bot_updates_channel_id ?? '');
+	let moderationLogChannel = $state(data.settings?.moderation_log_channel_id ?? '');
 	let botNickname = $state(data.settings?.bot_nickname ?? '');
 	let botBio = $state(data.settings?.bot_bio ?? '');
 	let staffRoles = $state<string[]>(data.settings?.staff_roles ?? []);
@@ -66,6 +67,7 @@
 					color: defaultColor,
 					footer: defaultFooter,
 					bot_updates_channel_id: botUpdatesChannel,
+					moderation_log_channel_id: moderationLogChannel,
 					bot_nickname: botNickname,
 					bot_bio: botBio,
 					...(pending.avatar !== undefined && { bot_avatar: pending.avatar }),
@@ -233,6 +235,14 @@
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Channel to receive announcements and changelogs from the bot developers.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={botUpdatesChannel} onchange={(id) => (botUpdatesChannel = id)} />
+	</div>
+
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-gavel mr-1.5 text-emerald-400"></i>Moderation Logs Channel
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Optional. Where moderation case embeds post. Every case is always in the panel's Moderation tab.</p>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={moderationLogChannel} onchange={(id) => (moderationLogChannel = id)} />
 	</div>
 
 	<div>

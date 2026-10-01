@@ -5,12 +5,41 @@
 		"website": "🌐 صفحة الخادم: {url}",
 		"noAccess": "❌ لا تملك صلاحية الوصول إلى أي ميزة.",
 		"button": "📋 القائمة",
-		"statistics": "🌐 الإحصائيات",
 		"account": "👤 الحساب",
 		"stats": {
 			"members": "👥 الأعضاء",
 			"totalXp": "📊 إجمالي الخبرة",
 			"topLevel": "⭐ أعلى مستوى"
+		},
+		"back": "⬅️ رجوع",
+		"categories": {
+			"me": {
+				"button": "👤 أنا",
+				"description": "حالتك وتنبيهاتك."
+			},
+			"community": {
+				"button": "🎉 المجتمع",
+				"description": "السحوبات والملاحظات وتقييمات الطاقم."
+			},
+			"perks": {
+				"button": "💎 المزايا",
+				"description": "مزايا الداعمين وصناع المحتوى."
+			},
+			"staff": {
+				"button": "🔨 الطاقم",
+				"description": "أدوات للطاقم والمشرفين."
+			}
+		},
+		"items": {
+			"afk": "عيّن حالة الغياب أو أزلها.",
+			"notifications": "اختر القنوات التي تنبهك.",
+			"quest": "اطلب مهام ديسكورد النشطة.",
+			"giveaway": "ابدأ سحبًا في هذا الخادم.",
+			"feedback": "أرسل ملاحظاتك لفريق الخادم.",
+			"staffRating": "قيّم أحد أفراد الطاقم أو أبلغ عنه.",
+			"customSupporterRole": "أنشئ رتبتك الخاصة أو عدّلها.",
+			"contentCreator": "اعرض صناع المحتوى أو قدّم طلب انضمام.",
+			"moderation": "حذّر الأعضاء أو أسكتهم أو اطردهم أو احظرهم."
 		}
 	},
 	"interface": {
@@ -565,7 +594,7 @@
 		}
 	},
 	"moderation": {
-		"button": "🛡️ الإشراف",
+		"button": "🔨 الإشراف",
 		"selectUser": "اختر العضو المراد الإشراف عليه.",
 		"selectUserPlaceholder": "اختر عضوًا",
 		"selectAction": "اختر إجراءً لـ {member}.",
@@ -585,6 +614,7 @@
 		},
 		"done": "✅ تم تطبيق {action} على {member}. القضية #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ أدخل مدة مثل 10m أو 2h أو 7d."
+		"invalidDuration": "❌ أدخل مدة مثل 10m أو 2h أو 7d.",
+		"notAllowed": "❌ لا يمكن الإشراف على مالك الخادم أو البوتات."
 	}
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -24,7 +25,7 @@
 	const aura = $derived(state === 'win' ? 'from-success/25' : state === 'lose' ? 'from-error/25' : 'from-warning/16');
 </script>
 
-<div class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
+<div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
 	<div class="modal-box border-base-300 relative isolate max-w-[420px] overflow-hidden border p-4 min-[600px]:p-5 {shake ? 'animate-game-shake' : ''}">
 		<div class="pointer-events-none absolute -inset-[40%] -z-1 bg-radial-[circle_at_50%_0%] to-transparent to-55% opacity-50 {aura}"></div>
 

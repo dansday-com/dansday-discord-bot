@@ -24,6 +24,7 @@ import { logger } from '../../../../utils/index.js';
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, queueQuestClaimAllJob, isUserEnrollRunning } from './questEnrollWorker.js';
+import { menuBackButton } from './interface/menuBack.js';
 
 export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';
 export const LEGACY_ENROLL_BUTTON_PREFIX = '\u006f\u0072\u0062_enroll:';
@@ -205,12 +206,7 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 				.setEmoji('⚠️')
 		);
 	}
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_menu')
-			.setLabel(await translate('menu.button', guildId, interaction.user.id))
-			.setStyle(ButtonStyle.Secondary)
-	);
+	buttons.push(await menuBackButton(guildId, interaction.user.id, 'me'));
 
 	const payload = { embeds: [embed], components: [new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons)] };
 	if (interaction.replied || interaction.deferred) {

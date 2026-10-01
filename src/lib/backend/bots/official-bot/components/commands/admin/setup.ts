@@ -167,7 +167,8 @@ export async function execute(interaction: any, client: any) {
 		const mainSettings = (await getSettings(SERVER_SETTINGS.component.main)) || {};
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.main, {
 			...mainSettings,
-			bot_updates_channel_id: channelMap['bot_updates']
+			bot_updates_channel_id: channelMap['bot_updates'],
+			moderation_log_channel_id: channelMap['moderation']
 		});
 
 		const lvlRaw = (await getSettings(SERVER_SETTINGS.component.leveling)) || {};
@@ -203,13 +204,6 @@ export async function execute(interaction: any, client: any) {
 			messages: DEFAULT_BOOSTER_MESSAGES,
 			...boostRaw,
 			channels: [channelMap['booster']]
-		});
-
-		const modRaw = (await getSettings(SERVER_SETTINGS.component.moderation)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.moderation, {
-			enabled: true,
-			...modRaw,
-			log_channel_id: channelMap['moderation']
 		});
 
 		const giveRaw = (await getSettings(SERVER_SETTINGS.component.giveaway)) || {};

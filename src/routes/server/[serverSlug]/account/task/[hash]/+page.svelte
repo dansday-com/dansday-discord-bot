@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { lockScroll } from '$lib/frontend/scrollLock.js';
+	import { lockScroll, scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
@@ -286,7 +286,7 @@
 	{/snippet}
 
 	{#snippet celebrationModal(emoji: string, title: string, body: string, close: () => void)}
-		<div class="modal modal-open" role="dialog" aria-modal="true">
+		<div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true">
 			<div class="modal-box border-base-300 max-w-sm border text-center">
 				<div class="mb-2 text-[58px] leading-none">{emoji}</div>
 				<h3 class="text-base-content text-lg font-extrabold">{title}</h3>
@@ -470,7 +470,7 @@
 	</div>
 
 	{#if itemRoll}
-		<div class="modal modal-open" role="dialog" aria-modal="true" aria-label="Daily reward roll">
+		<div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label="Daily reward roll">
 			<div
 				class="modal-box w-full max-w-[560px] border text-center transition-colors {itemRoll.jackpot && reelSettled
 					? 'border-error/60 shadow-error/50 shadow-2xl'

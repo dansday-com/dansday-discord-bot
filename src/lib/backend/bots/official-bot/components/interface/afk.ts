@@ -4,6 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
+import { menuBackButton } from './menuBack.js';
 
 function stripAfkPrefix(name) {
 	if (!name || typeof name !== 'string') return '';
@@ -196,7 +197,7 @@ export async function handleAFKButton(interaction) {
 			const removeButtonLabel = await translate('afk.buttons.remove', interaction.guild.id, interaction.user.id);
 			const removeButton = new ButtonBuilder().setCustomId('afk_remove').setLabel(removeButtonLabel).setStyle(ButtonStyle.Danger);
 
-			const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+			const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'me');
 
 			const buttonRow = new ActionRowBuilder().addComponents(removeButton, menuButton);
 

@@ -19,6 +19,7 @@
 		voice_minutes_afk: number;
 		is_afk: boolean;
 		is_booster: boolean;
+		is_owner?: boolean;
 		member_since: string;
 		profile_created_at: string;
 		roles: { id: string; name: string; color: string; position: number }[];
@@ -235,7 +236,7 @@
 									<i class="fas fa-moon text-xs"></i>AFK
 								</span>
 							{/if}
-							{#if serverId != null}
+							{#if serverId != null && !member.is_owner}
 								<button
 									type="button"
 									onclick={() => (moderating = { id: member.discord_member_id, name: listDisplayName(member) })}

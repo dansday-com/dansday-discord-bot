@@ -5,12 +5,41 @@
 		"website": "🌐 服务器页面：{url}",
 		"noAccess": "❌ 你没有任何功能的使用权限。",
 		"button": "📋 菜单",
-		"statistics": "🌐 统计",
 		"account": "👤 账户",
 		"stats": {
 			"members": "👥 成员",
 			"totalXp": "📊 XP 总量",
 			"topLevel": "⭐ 最高等级"
+		},
+		"back": "⬅️ 返回",
+		"categories": {
+			"me": {
+				"button": "👤 我的",
+				"description": "你的状态和提醒。"
+			},
+			"community": {
+				"button": "🎉 社区",
+				"description": "抽奖、反馈和工作人员评分。"
+			},
+			"perks": {
+				"button": "💎 福利",
+				"description": "支持者和创作者福利。"
+			},
+			"staff": {
+				"button": "🔨 工作人员",
+				"description": "工作人员和管理员工具。"
+			}
+		},
+		"items": {
+			"afk": "设置或清除你的 AFK 状态。",
+			"notifications": "选择会提醒你的频道。",
+			"quest": "领取进行中的 Discord 任务。",
+			"giveaway": "在此服务器发起抽奖。",
+			"feedback": "向服务器团队发送反馈。",
+			"staffRating": "为工作人员评分或举报。",
+			"customSupporterRole": "创建或编辑你的专属身份组。",
+			"contentCreator": "查看创作者或申请加入。",
+			"moderation": "警告、禁言、踢出或封禁成员。"
 		}
 	},
 	"interface": {
@@ -565,7 +594,7 @@
 		}
 	},
 	"moderation": {
-		"button": "🛡️ 管理",
+		"button": "🔨 管理",
 		"selectUser": "选择要处理的成员。",
 		"selectUserPlaceholder": "选择成员",
 		"selectAction": "为 {member} 选择操作。",
@@ -585,6 +614,7 @@
 		},
 		"done": "✅ 已对 {member} 执行{action}。案件 #{case}。",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ 请输入时长，如 10m、2h 或 7d。"
+		"invalidDuration": "❌ 请输入时长，如 10m、2h 或 7d。",
+		"notAllowed": "❌ 无法处理服务器所有者和机器人。"
 	}
 }

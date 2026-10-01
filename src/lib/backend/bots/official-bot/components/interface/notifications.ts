@@ -3,6 +3,7 @@ import { getEmbedConfig, isComponentFeatureEnabled, NOTIFICATIONS, serverSetting
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { logger } from '../../../../../utils/index.js';
 import { translate } from '../../i18n.js';
+import { menuBackButton } from './menuBack.js';
 
 export async function handleNotificationsButton(interaction) {
 	try {
@@ -51,10 +52,7 @@ export async function handleNotificationsButton(interaction) {
 				.setStyle(ButtonStyle.Success)
 		);
 
-		const rows = [
-			new ActionRowBuilder().addComponents(...buttons),
-			new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary))
-		];
+		const rows = [new ActionRowBuilder().addComponents(...buttons), new ActionRowBuilder().addComponents(await menuBackButton(guildId, userId, 'me'))];
 
 		const payload = { embeds: [embed], components: rows };
 		if (interaction.replied || interaction.deferred) {

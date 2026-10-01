@@ -176,7 +176,6 @@ export async function performModerationAction(
 
 	const guild = client.guilds.cache.get(String(payload.guild_id));
 	if (!guild) return { ok: false, error: 'Bot is not in this server' };
-	if (!(await MODERATION_CONFIG.isEnabled(guild.id))) return { ok: false, error: 'Moderation is disabled for this server' };
 
 	const botConfig = getBotConfig();
 	const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
@@ -230,7 +229,7 @@ export async function performModerationAction(
 
 	if (member) {
 		if (member.id === guild.ownerId) return { ok: false, error: 'The server owner cannot be moderated' };
-		if (member.user?.bot && action !== 'ban' && action !== 'kick') return { ok: false, error: 'Bots cannot be moderated this way' };
+		if (member.user?.bot) return { ok: false, error: 'Bots cannot be moderated' };
 		if (staffId) {
 			const staff = await guild.members.fetch(staffId).catch(() => null);
 			if (staff && staff.id !== guild.ownerId && staff.roles.highest.position <= member.roles.highest.position) {
@@ -255,6 +254,7 @@ export async function performModerationAction(
 
 	const auditReason = clip(`${reason || 'No reason provided'} · by ${payload.staff_name || 'staff'} via ${source}`, 512);
 	const user = member?.user ?? (await client.users.fetch(targetId).catch(() => null));
+	if (user?.bot) return { ok: false, error: 'Bots cannot be moderated' };
 
 	try {
 		if (action === 'warn') {
@@ -350,7 +350,6 @@ async function recordNativeCase(
 	if (executorId && executorId === client.user.id) return;
 	const botConfig = getBotConfig();
 	if (!botConfig?.id) return;
-	if (!(await MODERATION_CONFIG.isEnabled(guild.id))) return;
 	const server = await db.getServerByDiscordId(botConfig.id, guild.id);
 	if (!server) return;
 	const serverId = Number(server.id);

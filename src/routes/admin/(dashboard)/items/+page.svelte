@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
@@ -480,7 +481,12 @@
 </div>
 
 {#if editing}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={() => (editing = null)} role="presentation">
+	<div
+		use:scrollLocked
+		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"
+		onclick={() => (editing = null)}
+		role="presentation"
+	>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
@@ -842,7 +848,12 @@
 />
 
 {#if giftItem}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={() => (giftItem = null)} role="presentation">
+	<div
+		use:scrollLocked
+		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"
+		onclick={() => (giftItem = null)}
+		role="presentation"
+	>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border shadow-2xl"
 			onclick={(e) => e.stopPropagation()}

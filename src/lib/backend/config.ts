@@ -732,17 +732,11 @@ export const GIVEAWAY = {
 };
 
 export const MODERATION_CONFIG = {
-	async isEnabled(guildId: string): Promise<boolean> {
-		requireBotConfig();
-		requireGuildId(guildId, 'checking moderation logs enabled');
-		return isComponentFeatureEnabled(guildId, serverSettingsComponent.moderation);
-	},
 	async getLogChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting moderation log channel');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.moderation))) return null;
-		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.moderation);
-		return settings?.settings?.log_channel_id || null;
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.main);
+		return settings?.settings?.moderation_log_channel_id || null;
 	}
 };
 

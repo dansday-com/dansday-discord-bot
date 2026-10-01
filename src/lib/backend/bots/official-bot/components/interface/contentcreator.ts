@@ -14,6 +14,7 @@ import { CREATOR_CONTENT_HUB_SUFFIX, CREATOR_NOTIFICATIONS_MENU_BUTTON_ID } from
 import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
+import { menuBackButton } from './menuBack.js';
 
 const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();
@@ -573,12 +574,7 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
 
 	const row = new ActionRowBuilder<ButtonBuilder>();
-	row.addComponents(
-		new ButtonBuilder()
-			.setCustomId('bot_menu')
-			.setLabel(await translate('menu.button', guild.id, localeUserId))
-			.setStyle(ButtonStyle.Secondary)
-	);
+	row.addComponents(await menuBackButton(guild.id, localeUserId, 'perks'));
 
 	const canApply = !alreadyCreator && lastApplication?.status !== 'pending';
 	if (canApply) {
@@ -654,12 +650,7 @@ export async function handleContentCreatorHubButton(interaction: any) {
 					.setLabel(await translate('notifications.hub.creators', guildId, userId))
 					.setStyle(ButtonStyle.Success)
 			),
-			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				new ButtonBuilder()
-					.setCustomId('bot_menu')
-					.setLabel(await translate('menu.button', guildId, userId))
-					.setStyle(ButtonStyle.Secondary)
-			)
+			new ActionRowBuilder<ButtonBuilder>().addComponents(await menuBackButton(guildId, userId, 'perks'))
 		];
 
 		const payload = { embeds: [embed], components: rows };

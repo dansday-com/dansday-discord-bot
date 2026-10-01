@@ -27,14 +27,49 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const serverIds = [...new Set([serverId, ...(officialServerId != null ? [Number(officialServerId)] : [])])];
 	const rows = await db.getServerSettingLogs(serverIds).catch(() => []);
 
+	const parsed = (rows as any[]).map((r) => {
+		let changes: { key: string; before: string | null; after: string | null }[] = [];
+		try {
+			changes = typeof r.changes === 'string' ? JSON.parse(r.changes) : (r.changes ?? []);
+		} catch {
+			changes = [];
+		}
+		return { r, changes };
+	});
+
+	const SNOWFLAKE = /\b\d{17,20}\b/g;
+	const ids = new Set<string>();
+	for (const { changes } of parsed) {
+		for (const c of changes) {
+			for (const v of [c.before, c.after]) for (const id of v?.match(SNOWFLAKE) ?? []) ids.add(id);
+		}
+	}
+
+	const names = new Map<string, string>();
+	if (ids.size > 0) {
+		const lookups = await Promise.all(
+			serverIds.map(async (sid) => {
+				const [channels, roles, members] = await Promise.all([
+					db.getChannelsForServer(sid).catch(() => []),
+					db.getRoles(sid).catch(() => []),
+					db.getMemberNamesByDiscordIds(sid, [...ids]).catch(() => [])
+				]);
+				return { channels, roles, members };
+			})
+		);
+		for (const { channels, roles, members } of lookups) {
+			for (const c of channels as any[]) if (ids.has(c.discord_channel_id) && c.name) names.set(c.discord_channel_id, `#${c.name}`);
+			for (const r of roles as any[]) if (ids.has(r.discord_role_id) && r.name) names.set(r.discord_role_id, `@${r.name}`);
+			for (const m of members as any[])
+				if (!names.has(m.discord_member_id) && (m.username || m.name)) names.set(m.discord_member_id, `@${m.username || m.name}`);
+		}
+	}
+
+	const resolve = (value: string | null) => (value ? value.replace(SNOWFLAKE, (id) => names.get(id) ?? id) : value);
+
 	return {
-		logs: (rows as any[]).map((r) => {
-			let changes: { key: string; before: string | null; after: string | null }[] = [];
-			try {
-				changes = typeof r.changes === 'string' ? JSON.parse(r.changes) : (r.changes ?? []);
-			} catch {
-				changes = [];
-			}
+		logs: parsed.map(({ r, changes: raw }) => {
+			const changes = raw.map((c) => ({ key: c.key, before: resolve(c.before), after: resolve(c.after) }));
 			const isPanelAdmin = r.account_id != null;
 			return {
 				id: String(r.id),

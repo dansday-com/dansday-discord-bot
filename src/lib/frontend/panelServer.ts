@@ -95,14 +95,6 @@ const REGISTRY = [
 		iconClass: 'text-cyan-400'
 	},
 	{
-		id: 'moderation',
-		label: 'Moderation',
-		featureSwitch: true,
-		hrefSuffix: '/moderation',
-		icon: 'fa-gavel',
-		iconClass: 'text-red-400'
-	},
-	{
 		id: 'staff_rating',
 		label: 'Staff Rating',
 		featureSwitch: true,
@@ -201,7 +193,6 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.leveling,
 	component.welcomer,
 	component.booster,
-	component.moderation,
 	component.afk,
 	component.notifications,
 	component.discord_quest_notifier,

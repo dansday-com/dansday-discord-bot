@@ -34,11 +34,32 @@ function logValue(value: unknown): string | null {
 	return text.length > LOG_VALUE_MAX ? `${text.slice(0, LOG_VALUE_MAX)}…` : text;
 }
 
+function canonical(value: unknown): unknown {
+	if (value === undefined || value === null || value === '') return null;
+	if (typeof value === 'number') return String(value);
+	if (typeof value === 'string') return value.trim() === '' ? null : value;
+	if (Array.isArray(value)) {
+		const items = value.map(canonical);
+		return items.length === 0 ? null : items;
+	}
+	if (typeof value === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+			const v = canonical((value as Record<string, unknown>)[key]);
+			if (v !== null) out[key] = v;
+		}
+		return Object.keys(out).length === 0 ? null : out;
+	}
+	return value;
+}
+
 function diffSettings(before: Record<string, unknown>, after: Record<string, unknown>) {
 	const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
 	const changes: { key: string; before: string | null; after: string | null }[] = [];
-	for (const key of keys) {
-		if (JSON.stringify(before[key]) === JSON.stringify(after[key])) continue;
+	for (const key of [...keys].sort()) {
+		const next = canonical(after[key]);
+		if (before[key] === undefined && (next === null || next === false)) continue;
+		if (JSON.stringify(canonical(before[key])) === JSON.stringify(next)) continue;
 		changes.push({ key, before: logValue(before[key]), after: logValue(after[key]) });
 	}
 	return changes;

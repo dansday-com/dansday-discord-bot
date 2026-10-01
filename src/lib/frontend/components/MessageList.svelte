@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	interface Props {
 		label: string;
 		values: string[];
@@ -98,7 +99,7 @@
 </div>
 
 {#if modalOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 		<div class="bg-ash-800 border-ash-700 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-5">
 			<div class="mb-4 flex items-center justify-between">
 				<h3 class="text-ash-100 flex items-center gap-2 font-bold">

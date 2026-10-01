@@ -114,6 +114,89 @@ async function replyIfFeatureDisabled(interaction: any, component: string): Prom
 	return true;
 }
 
+const MENU_CATEGORIES: { id: string; style: ButtonStyle; items: { customId: string; label: string; desc: string; style?: ButtonStyle }[] }[] = [
+	{
+		id: 'me',
+		style: ButtonStyle.Primary,
+		items: [
+			{ customId: 'bot_afk', label: 'afk.title', desc: 'afk' },
+			{ customId: 'bot_notifications', label: 'notifications.button', desc: 'notifications' },
+			{ customId: DISCORD_QUEST_BUTTON_ID, label: 'questEnroll.menuButton', desc: 'quest' }
+		]
+	},
+	{
+		id: 'community',
+		style: ButtonStyle.Primary,
+		items: [
+			{ customId: 'bot_giveaway', label: 'giveaway.create.title', desc: 'giveaway' },
+			{ customId: 'bot_feedback', label: 'feedback.modal.title', desc: 'feedback' },
+			{ customId: 'bot_staff_rating', label: 'staffRating.button', desc: 'staffRating' }
+		]
+	},
+	{
+		id: 'perks',
+		style: ButtonStyle.Primary,
+		items: [
+			{ customId: 'bot_custom_supporter_role', label: 'customSupporterRole.existing.title', desc: 'customSupporterRole' },
+			{ customId: 'bot_content_creator', label: 'contentCreator.button', desc: 'contentCreator' }
+		]
+	},
+	{
+		id: 'staff',
+		style: ButtonStyle.Danger,
+		items: [{ customId: 'bot_moderation', label: 'moderation.button', desc: 'moderation', style: ButtonStyle.Danger }]
+	}
+];
+
+async function handleMenuCategory(interaction, categoryId: string) {
+	const category = MENU_CATEGORIES.find((c) => c.id === categoryId);
+	if (!category) return;
+	const g = interaction.guild.id;
+	const u = interaction.user.id;
+
+	const lines: string[] = [];
+	const buttons = [];
+	for (const item of category.items) {
+		const label = await translate(item.label, g, u);
+		lines.push(`**${label}**\n${await translate(`menu.items.${item.desc}`, g, u)}`);
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId(item.customId)
+				.setLabel(label)
+				.setStyle(item.style ?? ButtonStyle.Success)
+		);
+	}
+
+	const rows = [];
+	for (let i = 0; i < buttons.length; i += 5) {
+		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
+	}
+	rows.push(
+		new ActionRowBuilder().addComponents(
+			new ButtonBuilder()
+				.setCustomId('bot_menu')
+				.setLabel(await translate('menu.back', g, u))
+				.setStyle(ButtonStyle.Secondary)
+		)
+	);
+
+	const embedConfig = await getEmbedConfig(g);
+	const embed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(await translate(`menu.categories.${category.id}.button`, g, u))
+		.setDescription(`${await translate(`menu.categories.${category.id}.description`, g, u)}\n\n${lines.join('\n\n')}`)
+		.setFooter({ text: embedConfig.FOOTER })
+		.setTimestamp();
+
+	if (interaction.replied || interaction.deferred) {
+		await interaction.editReply({ embeds: [embed], components: rows });
+	} else if (interaction.message?.flags?.has(64)) {
+		await interaction.update({ embeds: [embed], components: rows });
+	} else {
+		await interaction.reply({ embeds: [embed], components: rows, flags: 64 });
+	}
+}
+
 async function handleMenuButton(interaction) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
 	if (!member) {
@@ -153,69 +236,14 @@ async function handleMenuButton(interaction) {
 	}
 
 	const buttons = [];
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_custom_supporter_role')
-			.setLabel(await translate('customSupporterRole.existing.title', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_giveaway')
-			.setLabel(await translate('giveaway.create.title', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_afk')
-			.setLabel(await translate('afk.title', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_feedback')
-			.setLabel(await translate('feedback.modal.title', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_staff_rating')
-			.setLabel(await translate('staffRating.button', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_content_creator')
-			.setLabel(await translate('contentCreator.button', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_notifications')
-			.setLabel(await translate('notifications.button', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId(DISCORD_QUEST_BUTTON_ID)
-			.setLabel(await translate('questEnroll.menuButton', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Success)
-	);
-
-	buttons.push(
-		new ButtonBuilder()
-			.setCustomId('bot_moderation')
-			.setLabel(await translate('moderation.button', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Danger)
-	);
+	for (const category of MENU_CATEGORIES) {
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId(`menu_cat|${category.id}`)
+				.setLabel(await translate(`menu.categories.${category.id}.button`, interaction.guild.id, interaction.user.id))
+				.setStyle(category.style)
+		);
+	}
 
 	if (buttons.length === 0) {
 		const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);
@@ -250,10 +278,11 @@ async function handleMenuButton(interaction) {
 	} catch (_) {}
 
 	let description = menuDesc;
-	if (publicServer?.subdomain) {
-		let siteLink = publicServer.subdomain;
+	const siteUrl = publicServer ? (publicServer.subdomain ?? publicServer.base) : null;
+	if (siteUrl) {
+		let siteLink = siteUrl;
 		try {
-			siteLink = `[${new URL(publicServer.subdomain).host}](${publicServer.subdomain})`;
+			siteLink = `[${new URL(siteUrl).host}${new URL(siteUrl).pathname.replace(/\/$/, '')}](${siteUrl})`;
 		} catch (_) {}
 		description = `${menuDesc}\n\n${await translate('menu.website', interaction.guild.id, interaction.user.id, { url: siteLink })}`;
 	}
@@ -296,16 +325,7 @@ async function handleMenuButton(interaction) {
 		.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
 		.setStyle(ButtonStyle.Secondary);
 
-	if (rows.length === 0) {
-		rows.push(new ActionRowBuilder().addComponents(settingsButton));
-	} else {
-		const lastRow = rows[rows.length - 1];
-		if (lastRow.components.length < 5) {
-			lastRow.addComponents(settingsButton);
-		} else {
-			rows.push(new ActionRowBuilder().addComponents(settingsButton));
-		}
-	}
+	rows.push(new ActionRowBuilder().addComponents(settingsButton));
 
 	if (publicServer) {
 		const base = publicServer.base;
@@ -317,9 +337,6 @@ async function handleMenuButton(interaction) {
 				rows.push(new ActionRowBuilder().addComponents(btn));
 			}
 		};
-
-		const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
-		addLinkButton(new ButtonBuilder().setLabel(statisticsLabel).setURL(base).setStyle(ButtonStyle.Link));
 
 		const cardHash = computeCardToken(String(interaction.user.id));
 		const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
@@ -523,7 +540,6 @@ export async function handleButtonInteraction(interaction) {
 			await handleContentCreatorDismissNo(interaction);
 			break;
 		case 'bot_moderation':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.moderation)) break;
 			await handleModerationButton(interaction);
 			break;
 		case 'bot_afk':
@@ -546,7 +562,9 @@ export async function handleButtonInteraction(interaction) {
 			await handleStaffRatingButton(interaction);
 			break;
 		default:
-			if (customId.startsWith('staff_rating_continue') || customId.startsWith('staff_report_continue')) {
+			if (customId.startsWith('menu_cat|')) {
+				await handleMenuCategory(interaction, customId.split('|')[1]);
+			} else if (customId.startsWith('staff_rating_continue') || customId.startsWith('staff_report_continue')) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 				await handleStaffRatingContinue(interaction);
 			} else if (customId.startsWith('staff_rating_approve') || customId.startsWith('staff_report_approve')) {

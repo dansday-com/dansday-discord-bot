@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -20,7 +21,7 @@
 	} = $props();
 </script>
 
-<div class="modal modal-open" role="dialog" aria-modal="true" aria-label="Pick a target">
+<div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label="Pick a target">
 	<div class="modal-box border-base-300 max-h-[85vh] max-w-[440px] border">
 		<button type="button" class="btn btn-ghost btn-sm text-base-content/60 mb-2 -ml-2 gap-1.5 px-2" onclick={onback}>
 			<i class="fas fa-arrow-left"></i>Back

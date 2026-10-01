@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -30,7 +31,7 @@
 	const topBorder = $derived(tone === 'win' ? 'border-t-success' : tone === 'lose' ? 'border-t-error' : 'border-t-primary');
 </script>
 
-<div class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
+<div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
 	<div
 		class="modal-box border-base-300 flex flex-col border border-t-4 text-center {topBorder} {wide
 			? 'max-w-[440px] px-5 pt-5.5 pb-5'

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 
 	interface Props {
@@ -80,6 +81,7 @@
 
 {#if member}
 	<div
+		use:scrollLocked
 		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"
 		role="dialog"
 		aria-modal="true"

@@ -24,6 +24,7 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 	color: string;
 	footer: string;
 	bot_updates_channel_id: string;
+	moderation_log_channel_id: string;
 	bot_nickname: string;
 	bot_bio: string;
 	bot_avatar_url: string;
@@ -40,6 +41,7 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 		color,
 		footer,
 		bot_updates_channel_id: updateCh,
+		moderation_log_channel_id: trimStr(base.moderation_log_channel_id),
 		bot_nickname: nickname,
 		bot_bio: trimStr(base.bot_bio),
 		bot_avatar_url: trimStr(base.bot_avatar_url),

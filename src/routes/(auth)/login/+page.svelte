@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -204,6 +205,7 @@
 
 {#if showCaptchaModal}
 	<div
+		use:scrollLocked
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		role="presentation"
 		tabindex="-1"

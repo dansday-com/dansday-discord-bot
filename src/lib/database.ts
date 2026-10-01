@@ -1726,10 +1726,12 @@ export async function upsertMember(serverId: any, memberData: any) {
 	const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
 	const now = toMySQLDateTime();
 	const isBot = typeof user?.bot === 'boolean' ? (user.bot ? 1 : 0) : null;
+	const ownerId = memberData.guild?.ownerId ?? null;
+	const isOwner = ownerId ? (ownerId === (user?.id || memberData.id) ? 1 : 0) : null;
 
 	await db.execute(sql`
 		INSERT INTO server_members (server_id, discord_member_id, username, display_name, server_display_name, avatar,
-			profile_created_at, member_since, is_booster, booster_since, is_bot, created_at, updated_at)
+			profile_created_at, member_since, is_booster, booster_since, is_bot, is_owner, created_at, updated_at)
 		VALUES (
 			${Number(serverId)}, ${user?.id || memberData.id},
 			${user?.username || null}, ${user?.globalName || user?.displayName || null},
@@ -1739,6 +1741,7 @@ export async function upsertMember(serverId: any, memberData: any) {
 			${memberData.premiumSince != null ? 1 : 0},
 			${memberData.premiumSince ? toMySQLDateTime(memberData.premiumSince) : null},
 			${isBot ?? 0},
+			${isOwner ?? 0},
 			${now}, ${now}
 		)
 		ON DUPLICATE KEY UPDATE
@@ -1748,6 +1751,7 @@ export async function upsertMember(serverId: any, memberData: any) {
 			member_since = COALESCE(VALUES(member_since), member_since),
 			is_booster = VALUES(is_booster), booster_since = VALUES(booster_since),
 			is_bot = ${isBot === null ? sql`is_bot` : sql`VALUES(is_bot)`},
+			is_owner = ${isOwner === null ? sql`is_owner` : sql`VALUES(is_owner)`},
 			deleted_at = NULL,
 			updated_at = VALUES(updated_at)
 	`);
@@ -4580,7 +4584,7 @@ export async function getServerMembersList(serverId: any) {
 	const rows = await db.execute(sql`
 		SELECT
 			sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
-			sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
+			sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since, sm.is_owner,
 			sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk,
 			sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank,
 			sma.message as afk_message, sma.created_at as afk_since,
@@ -4598,7 +4602,7 @@ export async function getServerMembersList(serverId: any) {
 		LEFT JOIN server_roles sr ON smr.role_id = sr.id
 		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
-		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
+		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since, sm.is_owner,
 		         sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
 		         sml.voice_minutes_afk, sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank, sma.message, sma.created_at
 		ORDER BY sml.xp DESC, sml.level DESC, sm.created_at ASC
@@ -4616,7 +4620,8 @@ export async function getServerMembersList(serverId: any) {
 					})
 					.sort((a: any, b: any) => b.position - a.position)
 			: [],
-		is_afk: !!member.afk_message
+		is_afk: !!member.afk_message,
+		is_owner: !!Number(member.is_owner)
 	}));
 }
 
@@ -7452,7 +7457,21 @@ export async function getServerSettingLogs(serverIds: number[], limit = 300) {
 	return (rows as any[]) ?? [];
 }
 
+export async function getMemberNamesByDiscordIds(serverId: number | string, discordIds: string[]) {
+	if (discordIds.length === 0) return [];
+	const [rows] = (await db.execute(sql`
+		SELECT discord_member_id, username, COALESCE(server_display_name, display_name, username) AS name
+		FROM server_members
+		WHERE server_id = ${Number(serverId)} AND discord_member_id IN (${sql.join(
+			discordIds.map((id) => sql`${id}`),
+			sql`, `
+		)})
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
 export default {
+	getMemberNamesByDiscordIds,
 	createServerSettingLog,
 	getServerSettingLogs,
 	createModerationLog,

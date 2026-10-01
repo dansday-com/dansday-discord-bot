@@ -5,12 +5,41 @@
 		"website": "🌐 Server page: {url}",
 		"noAccess": "❌ You don't have access to any features.",
 		"button": "📋 Menu",
-		"statistics": "🌐 Statistics",
 		"account": "👤 Account",
 		"stats": {
 			"members": "👥 Members",
 			"totalXp": "📊 Total XP",
 			"topLevel": "⭐ Top Level"
+		},
+		"back": "⬅️ Back",
+		"categories": {
+			"me": {
+				"button": "👤 Me",
+				"description": "Your own status and alerts."
+			},
+			"community": {
+				"button": "🎉 Community",
+				"description": "Giveaways, feedback and staff ratings."
+			},
+			"perks": {
+				"button": "💎 Perks",
+				"description": "Supporter and creator perks."
+			},
+			"staff": {
+				"button": "🔨 Staff",
+				"description": "Tools for staff and admins."
+			}
+		},
+		"items": {
+			"afk": "Set or clear your AFK status.",
+			"notifications": "Pick channels that notify you.",
+			"quest": "Claim active Discord quests.",
+			"giveaway": "Start a giveaway in this server.",
+			"feedback": "Send feedback to the server team.",
+			"staffRating": "Rate or report a staff member.",
+			"customSupporterRole": "Create or edit your own role.",
+			"contentCreator": "See creators or apply to join.",
+			"moderation": "Warn, time out, kick or ban members."
 		}
 	},
 	"interface": {
@@ -614,7 +643,7 @@
 		}
 	},
 	"moderation": {
-		"button": "🛡️ Moderation",
+		"button": "🔨 Moderation",
 		"selectUser": "Choose the member to moderate.",
 		"selectUserPlaceholder": "Select a member",
 		"selectAction": "Choose an action for {member}.",
@@ -634,6 +663,7 @@
 		},
 		"done": "✅ {action} applied to {member}. Case #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Enter a duration like 10m, 2h or 7d."
+		"invalidDuration": "❌ Enter a duration like 10m, 2h or 7d.",
+		"notAllowed": "❌ The server owner and bots cannot be moderated."
 	}
 }

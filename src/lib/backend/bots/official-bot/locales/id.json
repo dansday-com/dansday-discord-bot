@@ -5,12 +5,41 @@
 		"website": "🌐 Halaman server: {url}",
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
-		"statistics": "🌐 Statistik",
 		"account": "👤 Akun",
 		"stats": {
 			"members": "👥 Anggota",
 			"totalXp": "📊 Total XP",
 			"topLevel": "⭐ Level Tertinggi"
+		},
+		"back": "⬅️ Kembali",
+		"categories": {
+			"me": {
+				"button": "👤 Saya",
+				"description": "Status dan notifikasi kamu."
+			},
+			"community": {
+				"button": "🎉 Komunitas",
+				"description": "Giveaway, masukan dan penilaian staf."
+			},
+			"perks": {
+				"button": "💎 Keuntungan",
+				"description": "Keuntungan supporter dan kreator."
+			},
+			"staff": {
+				"button": "🔨 Staf",
+				"description": "Alat untuk staf dan admin."
+			}
+		},
+		"items": {
+			"afk": "Atur atau hapus status AFK kamu.",
+			"notifications": "Pilih channel yang memberi notifikasi.",
+			"quest": "Klaim Discord quest yang aktif.",
+			"giveaway": "Mulai giveaway di server ini.",
+			"feedback": "Kirim masukan ke tim server.",
+			"staffRating": "Nilai atau laporkan anggota staf.",
+			"customSupporterRole": "Buat atau ubah role milikmu.",
+			"contentCreator": "Lihat kreator atau daftar bergabung.",
+			"moderation": "Peringatkan, timeout, kick atau ban member."
 		}
 	},
 	"interface": {
@@ -565,7 +594,7 @@
 		}
 	},
 	"moderation": {
-		"button": "🛡️ Moderasi",
+		"button": "🔨 Moderasi",
 		"selectUser": "Pilih member yang akan dimoderasi.",
 		"selectUserPlaceholder": "Pilih member",
 		"selectAction": "Pilih tindakan untuk {member}.",
@@ -585,6 +614,7 @@
 		},
 		"done": "✅ {action} diterapkan ke {member}. Kasus #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Masukkan durasi seperti 10m, 2h atau 7d."
+		"invalidDuration": "❌ Masukkan durasi seperti 10m, 2h atau 7d.",
+		"notAllowed": "❌ Pemilik server dan bot tidak bisa dimoderasi."
 	}
 }

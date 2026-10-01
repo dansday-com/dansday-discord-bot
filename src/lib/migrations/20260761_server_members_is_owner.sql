@@ -1,0 +1,5 @@
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_members' AND COLUMN_NAME = 'is_owner');
+SET @stmt := IF(@c = 0, 'ALTER TABLE server_members ADD COLUMN is_owner BOOLEAN NOT NULL DEFAULT FALSE AFTER is_bot', 'SELECT 1');
+PREPARE s FROM @stmt;
+EXECUTE s;
+DEALLOCATE PREPARE s;

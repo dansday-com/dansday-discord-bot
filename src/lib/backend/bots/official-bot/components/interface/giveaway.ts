@@ -4,6 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
+import { menuBackButton } from './menuBack.js';
 
 export async function handleGiveawayButton(interaction) {
 	try {
@@ -50,7 +51,7 @@ export async function handleGiveawayButton(interaction) {
 			const finishLabel = await translate('giveaway.buttons.finish', interaction.guild.id, interaction.user.id);
 			const finishButton = new ButtonBuilder().setCustomId(`giveaway_finish_${activeGiveaway.id}`).setLabel(finishLabel).setStyle(ButtonStyle.Success);
 
-			const backButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+			const backButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'community');
 
 			const buttonRow = new ActionRowBuilder().addComponents(finishButton, backButton);
 
@@ -98,7 +99,7 @@ export async function handleGiveawayButton(interaction) {
 		const continueLabel = await translate('giveaway.create.continueButton', interaction.guild.id, interaction.user.id);
 		const continueButton = new ButtonBuilder().setCustomId('giveaway_continue_form').setLabel(continueLabel).setStyle(ButtonStyle.Primary);
 
-		const backButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+		const backButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'community');
 
 		const roleSelectRow = new ActionRowBuilder().addComponents(roleSelect);
 		const buttonRow = new ActionRowBuilder().addComponents(continueButton, backButton);

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { MEMBER_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
 
 	interface Member {
@@ -167,7 +168,7 @@
 {/if}
 
 {#if open}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
+	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
 			onclick={(e) => e.stopPropagation()}

@@ -5,12 +5,41 @@
 		"website": "🌐 Serverseite: {url}",
 		"noAccess": "❌ Du hast keinen Zugriff auf Funktionen.",
 		"button": "📋 Menü",
-		"statistics": "🌐 Statistiken",
 		"account": "👤 Konto",
 		"stats": {
 			"members": "👥 Mitglieder",
 			"totalXp": "📊 Gesamt-XP",
 			"topLevel": "⭐ Höchstes Level"
+		},
+		"back": "⬅️ Zurück",
+		"categories": {
+			"me": {
+				"button": "👤 Ich",
+				"description": "Dein Status und deine Benachrichtigungen."
+			},
+			"community": {
+				"button": "🎉 Community",
+				"description": "Giveaways, Feedback und Staff-Bewertungen."
+			},
+			"perks": {
+				"button": "💎 Vorteile",
+				"description": "Vorteile für Supporter und Creator."
+			},
+			"staff": {
+				"button": "🔨 Staff",
+				"description": "Werkzeuge für Staff und Admins."
+			}
+		},
+		"items": {
+			"afk": "AFK-Status setzen oder entfernen.",
+			"notifications": "Kanäle wählen, die dich benachrichtigen.",
+			"quest": "Aktive Discord-Quests einlösen.",
+			"giveaway": "Ein Giveaway auf diesem Server starten.",
+			"feedback": "Feedback an das Serverteam senden.",
+			"staffRating": "Ein Staff-Mitglied bewerten oder melden.",
+			"customSupporterRole": "Eigene Rolle erstellen oder bearbeiten.",
+			"contentCreator": "Creator ansehen oder dich bewerben.",
+			"moderation": "Mitglieder verwarnen, stummschalten, kicken oder bannen."
 		}
 	},
 	"interface": {
@@ -565,7 +594,7 @@
 		}
 	},
 	"moderation": {
-		"button": "🛡️ Moderation",
+		"button": "🔨 Moderation",
 		"selectUser": "Wähle das Mitglied, das moderiert werden soll.",
 		"selectUserPlaceholder": "Mitglied auswählen",
 		"selectAction": "Wähle eine Aktion für {member}.",
@@ -585,6 +614,7 @@
 		},
 		"done": "✅ {action} auf {member} angewendet. Fall #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Gib eine Dauer wie 10m, 2h oder 7d ein."
+		"invalidDuration": "❌ Gib eine Dauer wie 10m, 2h oder 7d ein.",
+		"notAllowed": "❌ Der Serverbesitzer und Bots können nicht moderiert werden."
 	}
 }

@@ -5,12 +5,41 @@
 		"website": "🌐 Página del servidor: {url}",
 		"noAccess": "❌ No tienes acceso a ninguna función.",
 		"button": "📋 Menú",
-		"statistics": "🌐 Estadísticas",
 		"account": "👤 Cuenta",
 		"stats": {
 			"members": "👥 Miembros",
 			"totalXp": "📊 XP total",
 			"topLevel": "⭐ Nivel más alto"
+		},
+		"back": "⬅️ Volver",
+		"categories": {
+			"me": {
+				"button": "👤 Yo",
+				"description": "Tu estado y tus avisos."
+			},
+			"community": {
+				"button": "🎉 Comunidad",
+				"description": "Sorteos, comentarios y valoraciones del staff."
+			},
+			"perks": {
+				"button": "💎 Ventajas",
+				"description": "Ventajas para supporters y creadores."
+			},
+			"staff": {
+				"button": "🔨 Staff",
+				"description": "Herramientas para staff y admins."
+			}
+		},
+		"items": {
+			"afk": "Activa o quita tu estado AFK.",
+			"notifications": "Elige qué canales te avisan.",
+			"quest": "Reclama misiones de Discord activas.",
+			"giveaway": "Inicia un sorteo en este servidor.",
+			"feedback": "Envía comentarios al equipo del servidor.",
+			"staffRating": "Valora o reporta a un miembro del staff.",
+			"customSupporterRole": "Crea o edita tu propio rol.",
+			"contentCreator": "Ve a los creadores o solicita unirte.",
+			"moderation": "Advierte, aísla, expulsa o banea miembros."
 		}
 	},
 	"interface": {
@@ -565,7 +594,7 @@
 		}
 	},
 	"moderation": {
-		"button": "🛡️ Moderación",
+		"button": "🔨 Moderación",
 		"selectUser": "Elige el miembro a moderar.",
 		"selectUserPlaceholder": "Selecciona un miembro",
 		"selectAction": "Elige una acción para {member}.",
@@ -585,6 +614,7 @@
 		},
 		"done": "✅ {action} aplicado a {member}. Caso #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Introduce una duración como 10m, 2h o 7d."
+		"invalidDuration": "❌ Introduce una duración como 10m, 2h o 7d.",
+		"notAllowed": "❌ El dueño del servidor y los bots no se pueden moderar."
 	}
 }

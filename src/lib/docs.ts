@@ -518,6 +518,7 @@ export const modules = [
 			{ label: 'Bot Banner', desc: 'Profile banner in this server only. PNG, JPG or GIF up to 4MB.' },
 			{ label: 'Bot Bio', desc: 'About Me in this server, up to 190 characters.' },
 			{ label: 'Default Color & Footer', desc: 'Accent color and footer used on bot embeds.' },
+			{ label: 'Moderation Logs Channel', desc: 'Optional channel for moderation case embeds.' },
 			{ label: 'Staff Roles', desc: 'Roles treated as staff across the bot.' }
 		]
 	},
@@ -646,10 +647,11 @@ export const modules = [
 		icon: 'fa-gavel',
 		accent: '#c0392b',
 		title: 'Moderation',
-		what: 'Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
+		what: 'Always on. Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
 		fields: [
-			{ label: 'Moderation module', desc: 'When off, panel and menu actions are blocked and no cases are logged.' },
-			{ label: 'Moderation Logs Channel', desc: 'Where case embeds post, including actions taken directly in Discord.' }
+			{ label: 'Moderate button', desc: 'On every member card in the Members tab.' },
+			{ label: 'Moderation tab', desc: 'Every case, with remove, clear and unban.' },
+			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Optional; cases are always kept in the panel.' }
 		]
 	},
 	{

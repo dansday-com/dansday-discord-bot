@@ -36,6 +36,11 @@ export async function handleModerationUserSelect(interaction: any) {
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 	const targetId = interaction.values[0];
+	const target = interaction.users?.get?.(targetId) ?? (await interaction.client.users.fetch(targetId).catch(() => null));
+	if (target?.bot || targetId === interaction.guild.ownerId) {
+		await interaction.update({ content: await translate('moderation.notAllowed', g, u), components: [] });
+		return;
+	}
 	const options = [];
 	for (const action of MENU_ACTIONS) {
 		options.push({ label: await translate(`moderation.actions.${action}`, g, u), value: action });

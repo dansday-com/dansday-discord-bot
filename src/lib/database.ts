@@ -5303,6 +5303,7 @@ async function updateSelfbot(
 		status: string;
 		process_id: number | null;
 		uptime_started_at: string | null;
+		auto_start: boolean;
 	}>
 ) {
 	await db

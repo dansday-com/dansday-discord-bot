@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -28,14 +28,12 @@
 	);
 </script>
 
-<svelte:head>
-	<title>Task directory | {APP_NAME} Discord Bot</title>
-	<meta
-		name="description"
-		content="Every daily and weekly task {APP_NAME} Bot can hand out, with what each one asks for and the module it needs. {data.tasks
-			.length} tasks in the pool."
-	/>
-</svelte:head>
+<PageMeta
+	title="Task directory | {APP_NAME} Discord Bot"
+	description="Every daily and weekly task {APP_NAME} Bot can hand out, with what each one asks for and the module it needs. {data.tasks
+		.length} tasks in the pool."
+	path="/tasks"
+/>
 
 <PageShell trailing="home">
 	<div class="@container">

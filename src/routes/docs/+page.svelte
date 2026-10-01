@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { AccentCard, DocHero, DocSection, FieldList, ModuleCard, PageShell, StepGrid } from '$lib/frontend/components/shell';
+	import { AccentCard, DocHero, DocSection, FieldList, ModuleCard, PageMeta, PageShell, StepGrid } from '$lib/frontend/components/shell';
 
 	import {
 		DOCS_HERO,
@@ -33,13 +33,11 @@
 	import { OFFICIAL_BOT_INVITE_URL } from '$lib/url.js';
 </script>
 
-<svelte:head>
-	<title>Documentation | {APP_NAME} Discord Bot</title>
-	<meta
-		name="description"
-		content="Set up {APP_NAME} Bot from scratch: run /setup, register, invite staff, set permissions, and configure every module field by field."
-	/>
-</svelte:head>
+<PageMeta
+	title="Documentation | {APP_NAME} Discord Bot"
+	description="Set up {APP_NAME} Bot from scratch: run /setup, register, invite staff, set permissions, and configure every module field by field."
+	path="/docs"
+/>
 
 {#snippet subHead(text: string, lead?: string)}
 	<h3 class="text-base-content mt-5.5 mb-1 text-sm font-extrabold">{text}</h3>

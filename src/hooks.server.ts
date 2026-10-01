@@ -2,7 +2,7 @@ import '../console-instrumentation.js';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
 import db from '$lib/database.js';
-import { verifyBotStatuses } from '$lib/botProcesses.js';
+import { resumeAutoStartBots, shutdownAllBots, verifyBotStatuses } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
 import { guardApiRoute } from '$lib/frontend/panelServer.js';
 import { pruneExpiredEmbedImages } from '$lib/backend/storage/embedImages.js';
@@ -10,7 +10,11 @@ import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOr
 
 export const init = async () => {
 	await verifyBotStatuses();
+	void resumeAutoStartBots();
 	setInterval(() => void verifyBotStatuses(), 30 * 1000);
+	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+		process.on(signal, () => void shutdownAllBots().finally(() => process.exit(0)));
+	}
 	await startDemoSessionExpiryListener();
 	await pruneExpiredEmbedImages();
 	setInterval(() => void pruneExpiredEmbedImages(), 5 * 60 * 1000);
@@ -52,6 +56,10 @@ function isFileLikePath(pathname: string): boolean {
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const start = Date.now();
+
+	if (event.url.hostname.startsWith('www.')) {
+		redirect(301, publicSiteOrigin() + event.url.pathname + event.url.search);
+	}
 
 	if (
 		publicServerSlugFromHost(event.url.hostname) &&

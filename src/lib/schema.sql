@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS bots (
     status ENUM('running', 'stopped', 'starting', 'stopping') DEFAULT 'stopped',
     process_id INT,
     uptime_started_at DATETIME NULL,
+    auto_start BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
@@ -115,6 +116,7 @@ CREATE TABLE IF NOT EXISTS selfbots (
     status ENUM('running','stopped','starting','stopping') DEFAULT 'stopped',
     process_id INT NULL,
     uptime_started_at DATETIME NULL,
+    auto_start BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NULL,
     INDEX idx_selfbots_panel_id (panel_id),

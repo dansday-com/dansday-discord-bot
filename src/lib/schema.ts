@@ -63,6 +63,7 @@ export const bots = mysqlTable('bots', {
 	status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 	process_id: int('process_id'),
 	uptime_started_at: datetime('uptime_started_at'),
+	auto_start: boolean('auto_start').notNull().default(false),
 	created_at: datetime('created_at').notNull(),
 	updated_at: datetime('updated_at').notNull()
 });
@@ -220,6 +221,7 @@ export const selfbots = mysqlTable(
 		status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 		process_id: int('process_id'),
 		uptime_started_at: datetime('uptime_started_at'),
+		auto_start: boolean('auto_start').notNull().default(false),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at')
 	},

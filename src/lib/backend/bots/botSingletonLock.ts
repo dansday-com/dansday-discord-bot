@@ -4,6 +4,8 @@ import { logger } from '../../utils/index.js';
 const LOCK_TTL_SECONDS = 30;
 const RENEW_INTERVAL_MS = 10_000;
 const FENCE_AFTER_MS = (LOCK_TTL_SECONDS - RENEW_INTERVAL_MS / 1000) * 1000;
+const ACQUIRE_WAIT_MS = (LOCK_TTL_SECONDS + 10) * 1000;
+const ACQUIRE_POLL_MS = 2_000;
 
 function lockKey(kind: string, botId: string): string {
 	return `bot:lock:${kind}:${botId}`;
@@ -27,10 +29,23 @@ export async function acquireBotSingletonLock(kind: string, botId: string): Prom
 	const key = lockKey(kind, botId);
 	const token = `${process.pid}:${process.hrtime.bigint().toString()}`;
 
-	const acquired = await redis.set(key, token, { NX: true, EX: LOCK_TTL_SECONDS });
+	let acquired = await redis.set(key, token, { NX: true, EX: LOCK_TTL_SECONDS });
 	if (acquired !== 'OK') {
 		const holder = await redis.get(key).catch(() => null);
-		logger.error('Bot singleton lock already held by another process; refusing to start', {
+		logger.warn('Bot singleton lock held by another process; waiting for it to expire', {
+			kind,
+			botId,
+			holder: holder ?? 'unknown'
+		});
+		const deadline = Date.now() + ACQUIRE_WAIT_MS;
+		while (acquired !== 'OK' && Date.now() < deadline) {
+			await new Promise((resolve) => setTimeout(resolve, ACQUIRE_POLL_MS));
+			acquired = await redis.set(key, token, { NX: true, EX: LOCK_TTL_SECONDS });
+		}
+	}
+	if (acquired !== 'OK') {
+		const holder = await redis.get(key).catch(() => null);
+		logger.error('Bot singleton lock still held by another process; refusing to start', {
 			kind,
 			botId,
 			holder: holder ?? 'unknown'

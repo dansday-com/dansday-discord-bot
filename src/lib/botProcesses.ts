@@ -47,8 +47,11 @@ const RESTART_BASE_DELAY_MS = 35_000;
 const RESTART_MAX_DELAY_MS = 5 * 60_000;
 const RESTART_MAX_ATTEMPTS = 5;
 const RESTART_STABLE_UPTIME_MS = 10 * 60_000;
+const SHUTDOWN_GRACE_MS = 7_000;
 
 let spawnCounter = 0;
+let shuttingDown = false;
+let shutdownPromise: Promise<void> | null = null;
 const manualStopSpawns = new Set<number>();
 const restartAttempts = new Map<string, number>();
 const restartTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -99,7 +102,7 @@ function isSelfbot(bot: any): boolean {
 	return !!bot && !('secret_key' in bot);
 }
 
-async function updateBotStatus(bot: any, data: { status: string; process_id?: number | null; uptime_started_at?: any }) {
+async function updateBotStatus(bot: any, data: { status: string; process_id?: number | null; uptime_started_at?: any; auto_start?: boolean }) {
 	if (isSelfbot(bot)) {
 		await db.updateSelfbot(bot.id, data);
 	} else {
@@ -173,11 +176,17 @@ async function stopConnectedSelfbots(officialBotId: number): Promise<void> {
 	await Promise.allSettled(alive.map((sb: any) => stopBotById(sb.id, sb)));
 }
 
-export async function startBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
+export async function startBotById(
+	botId: number,
+	bot: any,
+	options: { linkedSelfbots?: boolean } = {}
+): Promise<{ success: boolean; error?: string; pid?: number }> {
 	const mapKey = processKeyForBot(bot);
 
+	if (shuttingDown) return { success: false, error: 'Server is shutting down' };
+
 	try {
-		await updateBotStatus(bot, { status: 'starting' });
+		await updateBotStatus(bot, { status: 'starting', auto_start: true });
 		emitBotStatus(mapKey, 'starting', null, null);
 	} catch (err: any) {
 		logger.log(`⚠️  Failed to update bot status: ${err.message}`);
@@ -259,6 +268,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 			} catch (_) {}
 			emitBotStatus(mapKey, 'stopped', null, null);
+			if (shuttingDown) return;
 			if (code !== 0 && code !== null) {
 				logger.log(`❌ Bot ${mapKey} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
 			}
@@ -356,7 +366,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 		logger.log(`✅ Started bot ${mapKey} with PID ${botProcess.pid}`);
 
 		let connectedSelfbotsScheduled = 0;
-		if (!selfbot) {
+		if (!selfbot && options.linkedSelfbots !== false) {
 			const linked = await getConnectedSelfbots(botId);
 			connectedSelfbotsScheduled = linked.length;
 			startConnectedSelfbotsInBackground(linked, botId);
@@ -386,12 +396,12 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 
 	if (bot) {
 		try {
-			await updateBotStatus(bot, { status: 'stopping' });
+			await updateBotStatus(bot, { status: 'stopping', auto_start: false });
 			emitBotStatus(mapKey, 'stopping', null, null);
 		} catch (_) {}
 	} else {
 		try {
-			await db.updateBot(botId, { status: 'stopping' });
+			await db.updateBot(botId, { status: 'stopping', auto_start: false });
 			emitBotStatus(mapKey, 'stopping', null, null);
 		} catch (_) {}
 	}
@@ -585,6 +595,70 @@ export async function verifyBotStatuses() {
 	} catch (error: any) {
 		logger.log(`⚠️  Error verifying bot statuses: ${error.message}`);
 	}
+}
+
+function hasStartableToken(row: any): boolean {
+	return typeof row.token === 'string' && row.token.trim() !== '';
+}
+
+export async function resumeAutoStartBots(): Promise<void> {
+	try {
+		const bots = (await db.getAllBots()).filter((b: any) => b.auto_start && hasStartableToken(b) && !isOfficialProcessAlive(b));
+		const selfbots = (await db.getAllSelfbots()).filter((sb: any) => sb.auto_start && hasStartableToken(sb) && !isSelfbotProcessAlive(sb));
+		if (bots.length + selfbots.length === 0) return;
+		logger.log(`▶️  Resuming ${bots.length} official bot(s) and ${selfbots.length} selfbot(s) marked to run`);
+		for (const row of [...bots, ...selfbots]) {
+			if (shuttingDown) return;
+			const result = await startBotById(row.id, row, { linkedSelfbots: false }).catch((err: any) => ({ success: false, error: String(err?.message || err) }));
+			if (!result.success) logger.log(`⚠️  Resume of ${processKeyForBot(row)} failed: ${result.error ?? 'unknown error'}`);
+		}
+	} catch (error: any) {
+		logger.log(`⚠️  Error resuming bots: ${error.message}`);
+	}
+}
+
+function waitForChildExit(child: ReturnType<typeof spawn>, timeoutMs: number): Promise<void> {
+	return new Promise((resolve) => {
+		const timer = setTimeout(() => {
+			try {
+				child.kill('SIGKILL');
+			} catch (_) {}
+			resolve();
+		}, timeoutMs);
+		child.once('exit', () => {
+			clearTimeout(timer);
+			resolve();
+		});
+		try {
+			child.kill('SIGTERM');
+		} catch (_) {}
+	});
+}
+
+export function shutdownAllBots(): Promise<void> {
+	if (shutdownPromise) return shutdownPromise;
+	shuttingDown = true;
+	for (const mapKey of [...restartTimers.keys()]) cancelScheduledRestart(mapKey);
+
+	const waits: Promise<void>[] = [];
+	for (const [mapKey, info] of botProcesses) {
+		const child = info.process;
+		if (child && !child.killed && (child as any).exitCode === null) {
+			waits.push(waitForChildExit(child, SHUTDOWN_GRACE_MS));
+			continue;
+		}
+		const scriptName = mapKey.startsWith('selfbot:') ? 'selfbot.js' : 'officialbot.js';
+		if (info.pid && pidMatchesBotScript(info.pid, scriptName)) {
+			try {
+				process.kill(info.pid, 'SIGTERM');
+			} catch (_) {}
+			waits.push(waitForProcessExit(info.pid, scriptName, SHUTDOWN_GRACE_MS));
+		}
+	}
+
+	logger.log(`⏹️  Server shutting down, stopping ${waits.length} bot process(es)`);
+	shutdownPromise = Promise.allSettled(waits).then(() => {});
+	return shutdownPromise;
 }
 
 export function getBotUptimeMs(bot: any): number {

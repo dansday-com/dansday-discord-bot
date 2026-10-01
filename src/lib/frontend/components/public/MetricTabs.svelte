@@ -25,7 +25,7 @@
 <div
 	role="tablist"
 	aria-label={label}
-	class="tabs tabs-box border-base-300 flex-nowrap overflow-x-auto border p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {DEPTH_BG[depth]} {size ===
+	class="tabs tabs-box border-base-300 [scrollbar-width:none] flex-nowrap overflow-x-auto border p-1.5 [&::-webkit-scrollbar]:hidden {DEPTH_BG[depth]} {size ===
 	'sm'
 		? 'tabs-sm'
 		: ''} {margin ? 'mb-3' : ''} {fit ? 'w-fit' : ''}"

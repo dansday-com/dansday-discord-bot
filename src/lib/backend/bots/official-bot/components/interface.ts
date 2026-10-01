@@ -75,6 +75,26 @@ import {
 	ROBLOX_NOTIFICATIONS_MENU_BUTTON_ID,
 	ROBLOX_NOTIFICATIONS_SELECT_ID
 } from './robloxCatalogNotifier.js';
+import {
+	handleCreatorFollowButton,
+	handleCreatorFollowModalSubmit,
+	handleCreatorFollowPlatformButton,
+	handleCreatorNotificationTypesSelect,
+	handleCreatorNotificationsDisableAll,
+	handleCreatorNotificationsFollowButton,
+	handleCreatorNotificationsMenuButton,
+	handleCreatorNotificationsRecentButton,
+	handleCreatorNotificationsSelect,
+	isCreatorFollowButtonId,
+	isCreatorFollowModalId,
+	isCreatorFollowPlatformButtonId,
+	isCreatorNotificationTypesSelectId,
+	CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID,
+	CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID,
+	CREATOR_NOTIFICATIONS_MENU_BUTTON_ID,
+	CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID,
+	CREATOR_NOTIFICATIONS_SELECT_ID
+} from './creatorAlerts.js';
 import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import db from '../../../../database.js';
@@ -448,6 +468,22 @@ export async function handleButtonInteraction(interaction) {
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
 			await handleRobloxNotificationsDisableAll(interaction);
 			break;
+		case CREATOR_NOTIFICATIONS_MENU_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			await handleCreatorNotificationsMenuButton(interaction);
+			break;
+		case CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			await handleCreatorNotificationsDisableAll(interaction);
+			break;
+		case CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			await handleCreatorNotificationsFollowButton(interaction);
+			break;
+		case CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			await handleCreatorNotificationsRecentButton(interaction);
+			break;
 		case 'bot_content_creator':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorButton(interaction);
@@ -524,6 +560,12 @@ export async function handleButtonInteraction(interaction) {
 			} else if (isRobloxItemNotificationButtonId(customId)) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
 				await handleRobloxItemNotificationButton(interaction);
+			} else if (isCreatorFollowPlatformButtonId(customId)) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+				await handleCreatorFollowPlatformButton(interaction);
+			} else if (isCreatorFollowButtonId(customId)) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+				await handleCreatorFollowButton(interaction);
 			} else {
 				await logger.log(`🔍 Unknown button interaction: ${customId}`);
 				const errorMsg = await translate('common.errors.unknownButton', interaction.guild?.id, interaction.user?.id);
@@ -680,6 +722,9 @@ function init(client) {
 				} else if (isQuestEnrollModalId(interaction.customId)) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
 					await handleQuestEnrollModalSubmit(interaction);
+				} else if (isCreatorFollowModalId(interaction.customId)) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
+					await handleCreatorFollowModalSubmit(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
 				}
@@ -730,6 +775,12 @@ function init(client) {
 				} else if (isRobloxItemNotificationTypesSelectId(customId)) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) return;
 					await handleRobloxItemNotificationTypesSelect(interaction);
+				} else if (customId === CREATOR_NOTIFICATIONS_SELECT_ID) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
+					await handleCreatorNotificationsSelect(interaction);
+				} else if (isCreatorNotificationTypesSelectId(customId)) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
+					await handleCreatorNotificationTypesSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown string select: "${customId}" by ${user.tag} (${user.id})`);
 				}

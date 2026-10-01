@@ -363,6 +363,7 @@
 			"description": "Wähle aus, welche Art von Benachrichtigungen du verwalten möchtest.",
 			"channels": "📢 Kanal-Benachrichtigungen",
 			"roblox": "🛍️ Roblox-Artikel-Benachrichtigungen",
+			"creators": "📡 Creator-Benachrichtigungen",
 			"back": "⬅️ Benachrichtigungen"
 		},
 		"active": "**Aktiv:** {channels}",
@@ -503,6 +504,64 @@
 				"invalidItem": "❌ Der Katalogartikel dieses Buttons konnte nicht gelesen werden.",
 				"memberNotFound": "❌ Dein Mitgliedsprofil ist noch nicht synchronisiert. Versuche es gleich erneut."
 			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "Neues Video",
+				"description": "Ein neues Video, Short oder VOD wird veröffentlicht."
+			},
+			"live": {
+				"label": "Livestream",
+				"description": "Der Creator geht live."
+			},
+			"post": {
+				"label": "Neuer Beitrag",
+				"description": "Ein neuer Community-Beitrag wird veröffentlicht."
+			}
+		},
+		"saved": "🔔 Gespeichert. Du wirst für **{creator}** markiert bei: {types}. {count} folgen.",
+		"removed": "🔕 Du wirst für **{creator}** nicht mehr markiert.",
+		"noTypes": "nichts",
+		"creator": {
+			"title": "🔔 Creator-Benachrichtigungen",
+			"description": "Wähle, wofür du bei [{creator}]({url}) auf {platform} markiert wirst. Alles abwählen, um nicht mehr zu folgen.",
+			"active": "**Benachrichtigung bei:** {types}",
+			"placeholder": "Wähle, worüber du benachrichtigt wirst..."
+		},
+		"menu": {
+			"title": "📡 Creator-Benachrichtigungen",
+			"description": "Du folgst {count} Creator(n). Wähle einen aus, um die Benachrichtigungen zu ändern.",
+			"empty": "Du folgst noch keinem Creator. Drücke ➕ Creator folgen, um zu starten.",
+			"placeholder": "Creator zum Bearbeiten wählen...",
+			"follow": "➕ Creator folgen",
+			"recent": "🕘 Letzte Meldungen",
+			"disableAll": "🔕 Allen entfolgen",
+			"disabledAll": "🔕 {count} Creator(n) entfolgt.",
+			"back": "⬅️ Zurück"
+		},
+		"follow": {
+			"title": "➕ Creator folgen",
+			"description": "Wähle die Plattform und füge dann den Profil-Link oder Handle ein.",
+			"modalTitle": "Auf {platform} folgen",
+			"inputLabel": "{platform}-Link oder Handle"
+		},
+		"recent": {
+			"title": "🕘 Letzte Creator-Meldungen",
+			"empty": "Noch keine Creator-Meldungen. Sie erscheinen hier, sobald ein gefolgter Creator etwas postet."
+		},
+		"errors": {
+			"invalidCreator": "❌ Dieser Creator-Link oder Handle konnte nicht gelesen werden.",
+			"memberNotFound": "❌ Dein Mitgliedsprofil ist noch nicht synchronisiert. Versuche es gleich erneut.",
+			"notFound": "❌ Kein Creator mit diesem Link oder Handle gefunden.",
+			"tiktokCooling": "⏳ TikTok begrenzt gerade Abfragen. Versuche es in ein paar Minuten erneut.",
+			"lookupFailed": "❌ Dieser Creator kann gerade nicht gesucht werden. Versuche es später erneut."
 		}
 	}
 }

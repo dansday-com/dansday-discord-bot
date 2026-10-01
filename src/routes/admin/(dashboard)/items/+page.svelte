@@ -521,8 +521,7 @@
 							bind:value={form.description}
 							rows="2"
 							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-							placeholder="Shown on the item hover card"
-						></textarea>
+							placeholder="Shown on the item hover card"></textarea>
 					</div>
 
 					<div>

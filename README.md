@@ -259,6 +259,7 @@ Each member signs in to their own account on those same pages.
 - **Discord Quest notifier** - Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
+- **Creator alerts** - Each member follows their own YouTube, Twitch and TikTok creators and is tagged on new videos, live streams and posts.
 
 ### Public web pages
 

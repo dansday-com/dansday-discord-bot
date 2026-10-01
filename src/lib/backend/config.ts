@@ -481,6 +481,34 @@ export const robloxCatalogEmbedColors = {
 	itemUpdated: 0xffc107
 } as const;
 
+export const CREATOR_ALERTS_POLL_MS = 120_000;
+export const CREATOR_ALERTS_FETCH_TIMEOUT_MS = 15_000;
+export const CREATOR_ALERTS_YOUTUBE_CONCURRENCY = 4;
+export const CREATOR_ALERTS_TIKTOK_SPACING_MS = 1_500;
+export const CREATOR_ALERTS_TIKTOK_MAX_PER_TICK = 20;
+export const CREATOR_ALERTS_TIKTOK_COOLDOWN_MS = 15 * 60_000;
+export const CREATOR_ALERTS_HISTORY_LIMIT = 20;
+
+export const creatorAlertsEmbedColors = {
+	youtube: 0xff0000,
+	twitch: 0x9146ff,
+	tiktok: 0x25f4ee
+} as const;
+
+export {
+	CREATOR_PLATFORM_TYPES,
+	creatorRefKey,
+	fetchCreatorSnapshots,
+	parseCreatorInput,
+	resolveCreator,
+	type CreatorContent,
+	type CreatorContentType,
+	type CreatorPlatform,
+	type CreatorProfile,
+	type CreatorRef,
+	type CreatorSnapshot
+} from './api/creator-alerts-api.js';
+
 export {
 	fetchCatalogFirstPage,
 	fetchCatalogItemsByRefs,

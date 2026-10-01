@@ -363,6 +363,7 @@
 			"description": "选择你想管理的通知类型。",
 			"channels": "📢 频道通知",
 			"roblox": "🛍️ Roblox 物品通知",
+			"creators": "📡 创作者提醒",
 			"back": "⬅️ 通知"
 		},
 		"active": "**已开启：** {channels}",
@@ -503,6 +504,64 @@
 				"invalidItem": "❌ 无法从这个按钮读取对应的商品信息。",
 				"memberNotFound": "❌ 你的成员资料尚未同步完成，请稍后再试。"
 			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "新视频",
+				"description": "发布了新视频、短视频或回放。"
+			},
+			"live": {
+				"label": "直播",
+				"description": "创作者开始直播。"
+			},
+			"post": {
+				"label": "新动态",
+				"description": "发布了新的社区动态。"
+			}
+		},
+		"saved": "🔔 已保存。**{creator}** 在以下情况会提醒你：{types}。{count} 人关注中。",
+		"removed": "🔕 你将不再收到 **{creator}** 的提醒。",
+		"noTypes": "无",
+		"creator": {
+			"title": "🔔 创作者提醒",
+			"description": "选择 [{creator}]({url})（{platform}）的哪些更新会提醒你。取消全部选择即取消关注。",
+			"active": "**提醒内容：** {types}",
+			"placeholder": "选择要提醒的内容..."
+		},
+		"menu": {
+			"title": "📡 创作者提醒",
+			"description": "你关注了 {count} 位创作者。选择一位来修改提醒。",
+			"empty": "你还没有关注任何创作者。点击 ➕ 关注创作者 开始。",
+			"placeholder": "选择要编辑的创作者...",
+			"follow": "➕ 关注创作者",
+			"recent": "🕘 最近提醒",
+			"disableAll": "🔕 全部取消关注",
+			"disabledAll": "🔕 已取消关注 {count} 位创作者。",
+			"back": "⬅️ 返回"
+		},
+		"follow": {
+			"title": "➕ 关注创作者",
+			"description": "选择平台，然后粘贴创作者的主页链接或用户名。",
+			"modalTitle": "在 {platform} 上关注",
+			"inputLabel": "{platform} 链接或用户名"
+		},
+		"recent": {
+			"title": "🕘 最近的创作者提醒",
+			"empty": "还没有创作者提醒。关注的创作者发布内容后会显示在这里。"
+		},
+		"errors": {
+			"invalidCreator": "❌ 无法识别该创作者链接或用户名。",
+			"memberNotFound": "❌ 你的成员资料尚未同步完成，请稍后再试。",
+			"notFound": "❌ 未找到该链接或用户名对应的创作者。",
+			"tiktokCooling": "⏳ TikTok 目前限制查询，请几分钟后再试。",
+			"lookupFailed": "❌ 暂时无法查询该创作者，请稍后再试。"
 		}
 	}
 }

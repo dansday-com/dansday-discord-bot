@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { ADMIN_TAB_PATHS } from '$lib/frontend/redirect.js';
 	import AddSelfbotModal from '$lib/frontend/components/AddSelfbotModal.svelte';
 	import type { PageProps } from './$types';
 
@@ -147,7 +148,7 @@
 			{@const live = liveData[bot.id] ?? { status: bot.status, process_id: null, uptime_ms: 0 }}
 
 			<a
-				href="/selfbots/{bot.id}"
+				href="{ADMIN_TAB_PATHS.selfbots}/{bot.id}"
 				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
 			>
 				<div class="flex items-center gap-3">

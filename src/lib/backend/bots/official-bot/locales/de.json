@@ -269,8 +269,7 @@
 			"categorySelected": "Kategorie: {category}"
 		},
 		"buttons": {
-			"continue": "Weiter",
-			"changeStaff": "Teammitglied wechseln"
+			"continue": "Weiter"
 		},
 		"reviewModal": {
 			"titleApprove": "Team-Meldung genehmigen",
@@ -392,8 +391,7 @@
 			"description": "Wähle aus, welche Art von Benachrichtigungen du verwalten möchtest.",
 			"channels": "📢 Kanal-Benachrichtigungen",
 			"roblox": "🛍️ Roblox-Artikel-Benachrichtigungen",
-			"creators": "📡 Creator-Benachrichtigungen",
-			"back": "⬅️ Benachrichtigungen"
+			"creators": "📡 Creator-Benachrichtigungen"
 		},
 		"active": "**Aktiv:** {channels}",
 		"none": "**Aktiv:** noch nichts."
@@ -526,8 +524,7 @@
 				"empty": "Du beobachtest noch keinen Roblox-Artikel. Drücke 🔔 Notify me unter einem Katalogbeitrag, um zu starten.",
 				"placeholder": "Artikel zum Bearbeiten auswählen...",
 				"disableAll": "🔕 Alle deaktivieren",
-				"disabledAll": "🔕 Benachrichtigungen für {count} Artikel deaktiviert.",
-				"back": "⬅️ Zurück"
+				"disabledAll": "🔕 Benachrichtigungen für {count} Artikel deaktiviert."
 			},
 			"errors": {
 				"invalidItem": "❌ Der Katalogartikel dieses Buttons konnte nicht gelesen werden.",
@@ -572,8 +569,7 @@
 			"follow": "➕ Creator folgen",
 			"recent": "🕘 Letzte Meldungen",
 			"disableAll": "🔕 Allen entfolgen",
-			"disabledAll": "🔕 {count} Creator(n) entfolgt.",
-			"back": "⬅️ Zurück"
+			"disabledAll": "🔕 {count} Creator(n) entfolgt."
 		},
 		"follow": {
 			"title": "➕ Creator folgen",

@@ -269,8 +269,7 @@
 			"categorySelected": "Categoría: {category}"
 		},
 		"buttons": {
-			"continue": "Continuar",
-			"changeStaff": "Cambiar de staff"
+			"continue": "Continuar"
 		},
 		"reviewModal": {
 			"titleApprove": "Aprobar reporte de staff",
@@ -392,8 +391,7 @@
 			"description": "Elige qué tipo de notificaciones quieres gestionar.",
 			"channels": "📢 Notificaciones de canal",
 			"roblox": "🛍️ Notificaciones de artículos de Roblox",
-			"creators": "📡 Alertas de creadores",
-			"back": "⬅️ Notificaciones"
+			"creators": "📡 Alertas de creadores"
 		},
 		"active": "**Activo:** {channels}",
 		"none": "**Activo:** todavía nada."
@@ -526,8 +524,7 @@
 				"empty": "Todavía no sigues ningún artículo de Roblox. Pulsa 🔔 Notify me debajo de una publicación del catálogo para empezar.",
 				"placeholder": "Selecciona un artículo para editarlo...",
 				"disableAll": "🔕 Desactivar todo",
-				"disabledAll": "🔕 Notificaciones desactivadas para {count} artículo(s).",
-				"back": "⬅️ Atrás"
+				"disabledAll": "🔕 Notificaciones desactivadas para {count} artículo(s)."
 			},
 			"errors": {
 				"invalidItem": "❌ No se pudo leer el artículo del catálogo de este botón.",
@@ -572,8 +569,7 @@
 			"follow": "➕ Seguir a un creador",
 			"recent": "🕘 Alertas recientes",
 			"disableAll": "🔕 Dejar de seguir a todos",
-			"disabledAll": "🔕 Dejaste de seguir a {count} creador(es).",
-			"back": "⬅️ Volver"
+			"disabledAll": "🔕 Dejaste de seguir a {count} creador(es)."
 		},
 		"follow": {
 			"title": "➕ Seguir a un creador",

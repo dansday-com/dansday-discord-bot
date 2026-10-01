@@ -146,7 +146,7 @@ export async function handleNotificationChannelsButton(interaction) {
 
 		const backButton = new ButtonBuilder()
 			.setCustomId('bot_notifications')
-			.setLabel(await translate('notifications.hub.back', interaction.guild.id, interaction.user.id))
+			.setLabel(await translate('menu.back', interaction.guild.id, interaction.user.id))
 			.setStyle(ButtonStyle.Secondary);
 
 		const backRow = new ActionRowBuilder().addComponents(backButton);

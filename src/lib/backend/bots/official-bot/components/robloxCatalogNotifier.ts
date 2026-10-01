@@ -643,7 +643,7 @@ async function buildItemTypesPayload(
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder()
 					.setCustomId(ROBLOX_NOTIFICATIONS_MENU_BUTTON_ID)
-					.setLabel(await translate('robloxCatalog.notifications.menu.back', guildId, userId))
+					.setLabel(await translate('menu.back', guildId, userId))
 					.setStyle(ButtonStyle.Secondary)
 			)
 		);
@@ -702,7 +702,7 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 	const buttons = [
 		new ButtonBuilder()
 			.setCustomId('bot_notifications')
-			.setLabel(await translate('robloxCatalog.notifications.menu.back', guildId, userId))
+			.setLabel(await translate('menu.back', guildId, userId))
 			.setStyle(ButtonStyle.Secondary)
 	];
 

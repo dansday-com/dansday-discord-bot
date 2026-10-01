@@ -64,7 +64,7 @@ async function buildStaffRatingComponents(guild, userId, staffUserId, selectedRa
 
 	const backButton = new ButtonBuilder()
 		.setCustomId('staff_rating_back_to_staff')
-		.setLabel(await translate('staffRating.buttons.changeStaff', guild.id, userId))
+		.setLabel(await translate('menu.back', guild.id, userId))
 		.setStyle(ButtonStyle.Secondary);
 
 	return [

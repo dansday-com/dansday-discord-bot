@@ -269,8 +269,7 @@
 			"categorySelected": "Kategori: {category}"
 		},
 		"buttons": {
-			"continue": "Teruskan",
-			"changeStaff": "Tukar Staf"
+			"continue": "Teruskan"
 		},
 		"reviewModal": {
 			"titleApprove": "Luluskan laporan staf",
@@ -392,8 +391,7 @@
 			"description": "Pilih jenis notifikasi yang anda mahu uruskan.",
 			"channels": "📢 Notifikasi Channel",
 			"roblox": "🛍️ Notifikasi Item Roblox",
-			"creators": "📡 Notifikasi Pencipta",
-			"back": "⬅️ Notifikasi"
+			"creators": "📡 Notifikasi Pencipta"
 		},
 		"active": "**Aktif:** {channels}",
 		"none": "**Aktif:** belum ada."
@@ -526,8 +524,7 @@
 				"empty": "Anda belum memantau mana-mana item Roblox. Tekan 🔔 Notify me di bawah siaran katalog untuk mula.",
 				"placeholder": "Pilih item untuk diedit...",
 				"disableAll": "🔕 Matikan semua",
-				"disabledAll": "🔕 Notifikasi untuk {count} item dimatikan.",
-				"back": "⬅️ Kembali"
+				"disabledAll": "🔕 Notifikasi untuk {count} item dimatikan."
 			},
 			"errors": {
 				"invalidItem": "❌ Item katalog itu tidak dapat dibaca daripada butang ini.",
@@ -572,8 +569,7 @@
 			"follow": "➕ Ikuti pencipta",
 			"recent": "🕘 Notifikasi terkini",
 			"disableAll": "🔕 Nyahikut semua",
-			"disabledAll": "🔕 Berhenti mengikuti {count} pencipta.",
-			"back": "⬅️ Kembali"
+			"disabledAll": "🔕 Berhenti mengikuti {count} pencipta."
 		},
 		"follow": {
 			"title": "➕ Ikuti Pencipta",

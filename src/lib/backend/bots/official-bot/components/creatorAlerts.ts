@@ -418,7 +418,7 @@ async function buildCreatorTypesPayload(
 	const rows: ActionRowBuilder<any>[] = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
 
 	if (origin != null) {
-		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId), origin)));
+		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', guildId, userId), origin)));
 	}
 
 	return { embeds: [embed], components: rows };
@@ -494,7 +494,7 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 	buttons.push(
 		new ButtonBuilder()
 			.setCustomId(origin ? 'bot_content_creator' : 'bot_notifications')
-			.setLabel(await translate(origin ? 'creatorAlerts.menu.back' : 'notifications.hub.back', guildId, userId))
+			.setLabel(await translate('menu.back', guildId, userId))
 			.setStyle(ButtonStyle.Secondary)
 	);
 
@@ -574,7 +574,7 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 
 	const rows = [
 		new ActionRowBuilder<ButtonBuilder>().addComponents(...platformButtons),
-		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId), origin))
+		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', guildId, userId), origin))
 	];
 
 	await respondEphemeral(interaction, { embeds: [embed], components: rows }, true);
@@ -751,9 +751,7 @@ export async function handleCreatorNotificationsRecentButton(interaction: Button
 		.setTimestamp();
 
 	const rows = [
-		new ActionRowBuilder<ButtonBuilder>().addComponents(
-			backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId), menuOrigin(interaction.customId))
-		)
+		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', guildId, userId), menuOrigin(interaction.customId)))
 	];
 	await respondEphemeral(interaction, { embeds: [embed], components: rows }, true);
 }

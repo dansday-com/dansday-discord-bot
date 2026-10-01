@@ -86,7 +86,7 @@ export async function handleLanguageButton(interaction) {
 
 		const backButton = new ButtonBuilder()
 			.setCustomId('bot_menu')
-			.setLabel(await translate('menu.button', interaction.guild.id, interaction.user.id))
+			.setLabel(await translate('menu.back', interaction.guild.id, interaction.user.id))
 			.setStyle(ButtonStyle.Secondary);
 
 		const backRow = new ActionRowBuilder().addComponents(backButton);
@@ -187,7 +187,7 @@ export async function handleLanguageSelect(interaction) {
 
 			const backButton = new ButtonBuilder()
 				.setCustomId('bot_menu')
-				.setLabel(await translate('menu.button', interaction.guild.id, interaction.user.id))
+				.setLabel(await translate('menu.back', interaction.guild.id, interaction.user.id))
 				.setStyle(ButtonStyle.Secondary);
 
 			const backRow = new ActionRowBuilder().addComponents(backButton);

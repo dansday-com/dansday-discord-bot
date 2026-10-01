@@ -269,8 +269,7 @@
 			"categorySelected": "Category: {category}"
 		},
 		"buttons": {
-			"continue": "Continue",
-			"changeStaff": "Change Staff"
+			"continue": "Continue"
 		},
 		"reviewModal": {
 			"titleApprove": "Approve staff report",
@@ -441,8 +440,7 @@
 			"description": "Pick which kind of notifications you want to manage.",
 			"channels": "📢 Channel Notifications",
 			"roblox": "🛍️ Roblox Item Notifications",
-			"creators": "📡 Creator Alerts",
-			"back": "⬅️ Notifications"
+			"creators": "📡 Creator Alerts"
 		},
 		"active": "**Active:** {channels}",
 		"none": "**Active:** nothing yet."
@@ -575,8 +573,7 @@
 				"empty": "You are not watching any Roblox item yet. Press 🔔 Notify me under a catalog post to start.",
 				"placeholder": "Select an item to edit...",
 				"disableAll": "🔕 Disable all",
-				"disabledAll": "🔕 Disabled notifications for {count} item(s).",
-				"back": "⬅️ Back"
+				"disabledAll": "🔕 Disabled notifications for {count} item(s)."
 			},
 			"errors": {
 				"invalidItem": "❌ That catalog item could not be read from this button.",
@@ -621,8 +618,7 @@
 			"follow": "➕ Follow a creator",
 			"recent": "🕘 Recent alerts",
 			"disableAll": "🔕 Unfollow all",
-			"disabledAll": "🔕 Unfollowed {count} creator(s).",
-			"back": "⬅️ Back"
+			"disabledAll": "🔕 Unfollowed {count} creator(s)."
 		},
 		"follow": {
 			"title": "➕ Follow a Creator",

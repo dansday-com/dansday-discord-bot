@@ -269,8 +269,7 @@
 			"categorySelected": "分类：{category}"
 		},
 		"buttons": {
-			"continue": "继续",
-			"changeStaff": "更换人员"
+			"continue": "继续"
 		},
 		"reviewModal": {
 			"titleApprove": "通过管理举报",
@@ -392,8 +391,7 @@
 			"description": "选择你想管理的通知类型。",
 			"channels": "📢 频道通知",
 			"roblox": "🛍️ Roblox 物品通知",
-			"creators": "📡 创作者提醒",
-			"back": "⬅️ 通知"
+			"creators": "📡 创作者提醒"
 		},
 		"active": "**已开启：** {channels}",
 		"none": "**已开启：** 暂无。"
@@ -526,8 +524,7 @@
 				"empty": "你还没有关注任何 Roblox 物品。在商品帖子下点击 🔔 Notify me 即可开始。",
 				"placeholder": "选择要编辑的物品……",
 				"disableAll": "🔕 全部关闭",
-				"disabledAll": "🔕 已关闭 {count} 件物品的通知。",
-				"back": "⬅️ 返回"
+				"disabledAll": "🔕 已关闭 {count} 件物品的通知。"
 			},
 			"errors": {
 				"invalidItem": "❌ 无法从这个按钮读取对应的商品信息。",
@@ -572,8 +569,7 @@
 			"follow": "➕ 关注创作者",
 			"recent": "🕘 最近提醒",
 			"disableAll": "🔕 全部取消关注",
-			"disabledAll": "🔕 已取消关注 {count} 位创作者。",
-			"back": "⬅️ 返回"
+			"disabledAll": "🔕 已取消关注 {count} 位创作者。"
 		},
 		"follow": {
 			"title": "➕ 关注创作者",

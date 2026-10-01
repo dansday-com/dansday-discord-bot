@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { CREATOR_NOTIFICATIONS_MENU_BUTTON_ID } from '../creatorAlerts.js';
+import { CREATOR_CONTENT_HUB_SUFFIX, CREATOR_NOTIFICATIONS_MENU_BUTTON_ID } from '../creatorAlerts.js';
 import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
@@ -650,7 +650,7 @@ export async function handleContentCreatorHubButton(interaction: any) {
 					.setLabel(await translate('contentCreator.modal.title', guildId, userId))
 					.setStyle(ButtonStyle.Success),
 				new ButtonBuilder()
-					.setCustomId(CREATOR_NOTIFICATIONS_MENU_BUTTON_ID)
+					.setCustomId(`${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`)
 					.setLabel(await translate('notifications.hub.creators', guildId, userId))
 					.setStyle(ButtonStyle.Success)
 			),

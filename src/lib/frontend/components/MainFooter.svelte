@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { APP_DOMAIN, APP_URL } from '$lib/frontend/panelServer.js';
 	import { legalNav } from '$lib/legal.js';
-	import { apexLink, DISCORD_APP_DIRECTORY_URL } from '$lib/url.js';
+	import { apexLink } from '$lib/url.js';
 	type Palette = 'light' | 'dark';
 
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
@@ -21,11 +21,6 @@
 				{/if}
 				<a class="link link-hover" href={apexLink(link.href, page.url.hostname)}>{link.label}</a>
 			{/each}
-		</p>
-		<p class="text-base-content/70 text-xs leading-relaxed">
-			Free and open source on
-			<a class="link link-hover" href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>, listed on the
-			<a class="link link-hover" href={DISCORD_APP_DIRECTORY_URL} target="_blank" rel="noopener noreferrer">Discord App Directory</a>.
 		</p>
 		<p class="text-primary text-[10.5px] font-extrabold tracking-[0.2em] uppercase">#fromdevtocommunity</p>
 	</div>

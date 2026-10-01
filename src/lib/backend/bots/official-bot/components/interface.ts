@@ -94,7 +94,9 @@ import {
 	CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID,
 	CREATOR_NOTIFICATIONS_MENU_BUTTON_ID,
 	CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID,
-	CREATOR_NOTIFICATIONS_SELECT_ID
+	CREATOR_NOTIFICATIONS_SELECT_ID,
+	CREATOR_CONTENT_HUB_SUFFIX,
+	isCreatorMenuId
 } from './creatorAlerts.js';
 import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
@@ -470,18 +472,22 @@ export async function handleButtonInteraction(interaction) {
 			await handleRobloxNotificationsDisableAll(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_MENU_BUTTON_ID:
+		case `${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
 			await handleCreatorNotificationsMenuButton(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID:
+		case `${CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
 			await handleCreatorNotificationsDisableAll(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID:
+		case `${CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
 			await handleCreatorNotificationsFollowButton(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID:
+		case `${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
 			await handleCreatorNotificationsRecentButton(interaction);
 			break;
@@ -779,7 +785,7 @@ function init(client) {
 				} else if (isRobloxItemNotificationTypesSelectId(customId)) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) return;
 					await handleRobloxItemNotificationTypesSelect(interaction);
-				} else if (customId === CREATOR_NOTIFICATIONS_SELECT_ID) {
+				} else if (isCreatorMenuId(customId, CREATOR_NOTIFICATIONS_SELECT_ID)) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
 					await handleCreatorNotificationsSelect(interaction);
 				} else if (isCreatorNotificationTypesSelectId(customId)) {

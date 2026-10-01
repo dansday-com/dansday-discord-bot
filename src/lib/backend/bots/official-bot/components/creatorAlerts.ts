@@ -44,6 +44,7 @@ export const CREATOR_FOLLOW_PLATFORM_BUTTON_PREFIX = 'creator_follow_platform:';
 export const CREATOR_FOLLOW_MODAL_PREFIX = 'creator_follow_modal:';
 export const CREATOR_FOLLOW_BUTTON_PREFIX = 'creator_follow:';
 export const CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX = 'creator_notification_types:';
+export const CREATOR_CONTENT_HUB_SUFFIX = ':cc';
 
 const CREATOR_FOLLOW_INPUT_ID = 'creator_follow_input';
 
@@ -202,12 +203,20 @@ async function runTick(client: Client, officialBotId: number) {
 			if (!snap) continue;
 
 			const baseline = creator.checkedAt == null;
-			const knownTypes = baseline ? new Set<string>() : await db.listBotCreatorContentTypes(creator.id).catch(() => null);
-			if (!knownTypes) continue;
-			const fresh = await db.recordBotCreatorContents(creator.id, snap.contents).catch(() => []);
+			const fresh = await db.recordBotCreatorContents(creator.id, snap.feeds.flat()).catch(() => null);
+			if (!fresh) continue;
 			await db.markBotCreatorChecked(creator.id, snap.profile).catch(() => null);
 
-			const announce = fresh.filter((c) => c.type === 'live' || (!baseline && knownTypes.has(c.type)));
+			const freshIds = new Set(fresh.map((c) => c.contentId));
+			const newerIds = new Set<string>();
+			if (!baseline) {
+				for (const feed of snap.feeds) {
+					const newestKnown = feed.findIndex((c) => !freshIds.has(c.contentId));
+					const newer = newestKnown === -1 ? (feed.length === 1 ? feed : []) : feed.slice(0, newestKnown);
+					for (const c of newer) newerIds.add(c.contentId);
+				}
+			}
+			const announce = fresh.filter((c) => c.type === 'live' || newerIds.has(c.contentId));
 			if (fresh.length > announce.length) {
 				await logger.log(`📡 Creator alerts: baselined ${fresh.length - announce.length} ${creator.platform} items for ${creator.handle ?? creator.accountId}`);
 			}
@@ -292,6 +301,14 @@ export function isCreatorNotificationTypesSelectId(customId: string): boolean {
 	return customId.startsWith(CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX);
 }
 
+export function isCreatorMenuId(customId: string, id: string): boolean {
+	return customId === id || customId === `${id}${CREATOR_CONTENT_HUB_SUFFIX}`;
+}
+
+function menuOrigin(customId: string): string {
+	return customId.endsWith(CREATOR_CONTENT_HUB_SUFFIX) ? CREATOR_CONTENT_HUB_SUFFIX : '';
+}
+
 function creatorIdFromCustomId(customId: string, prefix: string): number | null {
 	const raw = customId.slice(prefix.length).split(':')[0].trim();
 	if (!/^\d+$/.test(raw)) return null;
@@ -349,8 +366,8 @@ async function respondEphemeral(interaction: ButtonInteraction | StringSelectMen
 	await interaction.reply({ ...payload, flags: 64 }).catch(() => null);
 }
 
-function backToMenuButton(label: string) {
-	return new ButtonBuilder().setCustomId(CREATOR_NOTIFICATIONS_MENU_BUTTON_ID).setLabel(label).setStyle(ButtonStyle.Secondary);
+function backToMenuButton(label: string, origin: string) {
+	return new ButtonBuilder().setCustomId(`${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${origin}`).setLabel(label).setStyle(ButtonStyle.Secondary);
 }
 
 async function buildCreatorTypesPayload(
@@ -358,7 +375,7 @@ async function buildCreatorTypesPayload(
 	userId: string,
 	creator: CreatorIdentity,
 	selectedTypes: string[],
-	fromMenu: boolean,
+	origin: string | null,
 	statusLine?: string
 ) {
 	const embedConfig = await getEmbedConfig(guildId);
@@ -392,7 +409,7 @@ async function buildCreatorTypesPayload(
 	);
 
 	const selectMenu = new StringSelectMenuBuilder()
-		.setCustomId(`${CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX}${creator.id}${fromMenu ? ':menu' : ''}`)
+		.setCustomId(`${CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX}${creator.id}${origin == null ? '' : `:menu${origin}`}`)
 		.setPlaceholder((await translate('creatorAlerts.creator.placeholder', guildId, userId)).slice(0, 150))
 		.setMinValues(0)
 		.setMaxValues(options.length)
@@ -400,14 +417,14 @@ async function buildCreatorTypesPayload(
 
 	const rows: ActionRowBuilder<any>[] = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
 
-	if (fromMenu) {
-		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId))));
+	if (origin != null) {
+		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId), origin)));
 	}
 
 	return { embeds: [embed], components: rows };
 }
 
-async function buildCreatorNotificationsMenuPayload(guildId: string, userId: string, memberId: number, statusLine?: string) {
+async function buildCreatorNotificationsMenuPayload(guildId: string, userId: string, memberId: number, origin: string, statusLine?: string) {
 	const embedConfig = await getEmbedConfig(guildId);
 	const subscriptions = await db.listServerMemberCreatorNotifications(memberId).catch(() => []);
 
@@ -445,7 +462,7 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 		rows.push(
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				new StringSelectMenuBuilder()
-					.setCustomId(CREATOR_NOTIFICATIONS_SELECT_ID)
+					.setCustomId(`${CREATOR_NOTIFICATIONS_SELECT_ID}${origin}`)
 					.setPlaceholder((await translate('creatorAlerts.menu.placeholder', guildId, userId)).slice(0, 150))
 					.setMinValues(1)
 					.setMaxValues(1)
@@ -456,11 +473,11 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 
 	const buttons = [
 		new ButtonBuilder()
-			.setCustomId(CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID)
+			.setCustomId(`${CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID}${origin}`)
 			.setLabel(await translate('creatorAlerts.menu.follow', guildId, userId))
 			.setStyle(ButtonStyle.Success),
 		new ButtonBuilder()
-			.setCustomId(CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID)
+			.setCustomId(`${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${origin}`)
 			.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
 			.setStyle(ButtonStyle.Primary)
 	];
@@ -468,7 +485,7 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 	if (subscriptions.length > 0) {
 		buttons.push(
 			new ButtonBuilder()
-				.setCustomId(CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID)
+				.setCustomId(`${CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID}${origin}`)
 				.setLabel(await translate('creatorAlerts.menu.disableAll', guildId, userId))
 				.setStyle(ButtonStyle.Danger)
 		);
@@ -476,8 +493,8 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 
 	buttons.push(
 		new ButtonBuilder()
-			.setCustomId('bot_notifications')
-			.setLabel(await translate('notifications.hub.back', guildId, userId))
+			.setCustomId(origin ? 'bot_content_creator' : 'bot_notifications')
+			.setLabel(await translate(origin ? 'creatorAlerts.menu.back' : 'notifications.hub.back', guildId, userId))
 			.setStyle(ButtonStyle.Secondary)
 	);
 
@@ -493,7 +510,7 @@ export async function handleCreatorNotificationsMenuButton(interaction: ButtonIn
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
 
-	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id);
+	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, menuOrigin(interaction.customId));
 	await respondEphemeral(interaction, payload, true);
 }
 
@@ -512,7 +529,7 @@ export async function handleCreatorNotificationsSelect(interaction: StringSelect
 	if (!creator) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
 
 	const currentTypes = await db.getServerMemberCreatorNotificationTypes(context.member.id, creator.id).catch(() => [] as string[]);
-	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, creator, currentTypes, true);
+	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, creator, currentTypes, menuOrigin(interaction.customId));
 	await respondEphemeral(interaction, payload, true);
 }
 
@@ -525,7 +542,7 @@ export async function handleCreatorNotificationsDisableAll(interaction: ButtonIn
 
 	const cleared = await db.clearServerMemberCreatorNotifications(context.member.id).catch(() => 0);
 	const statusLine = await translate('creatorAlerts.menu.disabledAll', guildId, interaction.user.id, { count: formatCount(cleared) });
-	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, statusLine);
+	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, menuOrigin(interaction.customId), statusLine);
 	await respondEphemeral(interaction, payload, true);
 
 	await logger.log(`🔕 Creator alerts: ${interaction.user.tag} disabled all ${cleared} creator notifications`);
@@ -535,6 +552,7 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 	const guildId = interaction.guild?.id;
 	if (!guildId) return;
 	const userId = interaction.user.id;
+	const origin = menuOrigin(interaction.customId);
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const embed = new EmbedBuilder()
@@ -547,7 +565,7 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 	const platformButtons = await Promise.all(
 		PLATFORMS.map(async (platform) =>
 			new ButtonBuilder()
-				.setCustomId(`${CREATOR_FOLLOW_PLATFORM_BUTTON_PREFIX}${platform}`)
+				.setCustomId(`${CREATOR_FOLLOW_PLATFORM_BUTTON_PREFIX}${platform}${origin}`)
 				.setLabel(await translate(`creatorAlerts.platforms.${platform}`, guildId, userId))
 				.setEmoji(PLATFORM_EMOJI[platform])
 				.setStyle(ButtonStyle.Primary)
@@ -556,7 +574,7 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 
 	const rows = [
 		new ActionRowBuilder<ButtonBuilder>().addComponents(...platformButtons),
-		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId)))
+		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId), origin))
 	];
 
 	await respondEphemeral(interaction, { embeds: [embed], components: rows }, true);
@@ -572,7 +590,7 @@ export async function handleCreatorFollowPlatformButton(interaction: ButtonInter
 
 	const platformName = await translate(`creatorAlerts.platforms.${platform}`, guildId, userId);
 	const modal = new ModalBuilder()
-		.setCustomId(`${CREATOR_FOLLOW_MODAL_PREFIX}${platform}`)
+		.setCustomId(`${CREATOR_FOLLOW_MODAL_PREFIX}${platform}${menuOrigin(interaction.customId)}`)
 		.setTitle((await translate('creatorAlerts.follow.modalTitle', guildId, userId, { platform: platformName })).slice(0, 45));
 
 	const input = new TextInputBuilder()
@@ -641,7 +659,7 @@ export async function handleCreatorFollowModalSubmit(interaction: ModalSubmitInt
 		count: formatCount(watchers)
 	});
 
-	const payload = await buildCreatorTypesPayload(guildId, userId, creator, types, true, statusLine);
+	const payload = await buildCreatorTypesPayload(guildId, userId, creator, types, menuOrigin(interaction.customId), statusLine);
 	await interaction.editReply(payload).catch(() => null);
 
 	await logger.log(`🔔 Creator alerts: ${interaction.user.tag} followed ${creator.platform} ${creator.handle ?? creator.account_id} (${watchers} watching)`);
@@ -663,7 +681,7 @@ export async function handleCreatorFollowButton(interaction: ButtonInteraction):
 	if (!creator) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
 
 	const currentTypes = await db.getServerMemberCreatorNotificationTypes(context.member.id, creator.id).catch(() => [] as string[]);
-	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, creator, currentTypes, false);
+	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, creator, currentTypes, null);
 	await interaction.editReply(payload).catch(() => null);
 }
 
@@ -673,7 +691,7 @@ export async function handleCreatorNotificationTypesSelect(interaction: StringSe
 	const userId = interaction.user.id;
 
 	const creatorId = creatorIdFromCustomId(interaction.customId, CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX);
-	const fromMenu = interaction.customId.endsWith(':menu');
+	const fromMenu = interaction.customId.slice(CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX.length).split(':')[1] === 'menu';
 	if (creatorId == null) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
 
 	const context = await resolveMemberContext(guildId, userId);
@@ -693,7 +711,7 @@ export async function handleCreatorNotificationTypesSelect(interaction: StringSe
 		count: formatCount(watchers)
 	});
 
-	const payload = await buildCreatorTypesPayload(guildId, userId, creator, types, fromMenu, statusLine);
+	const payload = await buildCreatorTypesPayload(guildId, userId, creator, types, fromMenu ? menuOrigin(interaction.customId) : null, statusLine);
 	await respondEphemeral(interaction, payload, true);
 
 	await logger.log(
@@ -732,6 +750,10 @@ export async function handleCreatorNotificationsRecentButton(interaction: Button
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
-	const rows = [new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId)))];
+	const rows = [
+		new ActionRowBuilder<ButtonBuilder>().addComponents(
+			backToMenuButton(await translate('creatorAlerts.menu.back', guildId, userId), menuOrigin(interaction.customId))
+		)
+	];
 	await respondEphemeral(interaction, { embeds: [embed], components: rows }, true);
 }

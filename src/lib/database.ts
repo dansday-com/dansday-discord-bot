@@ -6153,15 +6153,6 @@ async function markBotCreatorChecked(creatorId: number, profile?: Pick<CreatorPr
 		.where(eq(schema.botCreators.id, creatorId));
 }
 
-async function listBotCreatorContentTypes(creatorId: number): Promise<Set<CreatorContentType>> {
-	await initializeDatabase();
-	const rows = await db
-		.selectDistinct({ type: schema.botCreatorContents.type })
-		.from(schema.botCreatorContents)
-		.where(eq(schema.botCreatorContents.creator_id, creatorId));
-	return new Set(rows.map((r) => r.type));
-}
-
 async function recordBotCreatorContents(creatorId: number, contents: CreatorContent[]): Promise<(CreatorContent & { id: number })[]> {
 	await initializeDatabase();
 	const unique = [...new Map(contents.map((c) => [c.contentId, c])).values()];
@@ -7544,7 +7535,6 @@ export default {
 	getBotCreatorById,
 	listNotifiedCreatorsForBot,
 	markBotCreatorChecked,
-	listBotCreatorContentTypes,
 	recordBotCreatorContents,
 	listCreatorFollowerServerIds,
 	addServerCreatorContent,

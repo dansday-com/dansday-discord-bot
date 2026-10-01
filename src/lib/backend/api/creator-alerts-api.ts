@@ -36,7 +36,7 @@ export type CreatorContent = {
 
 export type CreatorSnapshot = {
 	profile: CreatorProfile;
-	contents: CreatorContent[];
+	feeds: CreatorContent[][];
 };
 
 export type CreatorRef = {
@@ -134,10 +134,11 @@ function twitchSnapshot(user: any): CreatorSnapshot | null {
 	const accountId = str(user?.id);
 	const login = str(user?.login);
 	if (!accountId || !login) return null;
-	const contents: CreatorContent[] = [];
+	const live: CreatorContent[] = [];
+	const videos: CreatorContent[] = [];
 	const stream = user.stream;
 	if (stream && str(stream.id)) {
-		contents.push({
+		live.push({
 			contentId: String(stream.id),
 			type: 'live',
 			title: str(stream.title),
@@ -148,11 +149,11 @@ function twitchSnapshot(user: any): CreatorSnapshot | null {
 	}
 	for (const edge of user.videos?.edges ?? []) {
 		const video = twitchVideoContent(edge?.node);
-		if (video) contents.push(video);
+		if (video) videos.push(video);
 	}
 	return {
 		profile: { platform: 'twitch', accountId, handle: login, name: str(user.displayName) ?? login, thumbnailUrl: str(user.profileImageURL) },
-		contents
+		feeds: [live, videos]
 	};
 }
 
@@ -367,11 +368,10 @@ async function fetchYouTubeSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 		youtubePosts(ref.accountId)
 	]);
 	if (results[0].status === 'rejected') throw results[0].reason;
-	const contents: CreatorContent[] = [];
-	for (const r of results) {
-		if (r.status === 'fulfilled') contents.push(...r.value);
-	}
-	return { profile: { platform: 'youtube', accountId: ref.accountId, handle: ref.handle, name: null, thumbnailUrl: null }, contents };
+	return {
+		profile: { platform: 'youtube', accountId: ref.accountId, handle: ref.handle, name: null, thumbnailUrl: null },
+		feeds: results.map((r) => (r.status === 'fulfilled' ? r.value : []))
+	};
 }
 
 async function fetchYouTubeSnapshots(refs: CreatorRef[]): Promise<Map<string, CreatorSnapshot>> {
@@ -452,11 +452,12 @@ async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 	if (!uniqueId) throw new Error('tiktok handle missing');
 	const room = await tiktokRoomInfo(uniqueId);
 	const profile = tiktokProfile(room.user);
-	const contents: CreatorContent[] = [];
+	const live: CreatorContent[] = [];
+	const posts: CreatorContent[] = [];
 	const liveRoom = room.liveRoom;
 	const roomId = str(room.user.roomId);
 	if (liveRoom && Number(liveRoom.status) !== 4 && roomId) {
-		contents.push({
+		live.push({
 			contentId: roomId,
 			type: 'live',
 			title: str(liveRoom.title),
@@ -470,7 +471,7 @@ async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 	for (const v of embed.videoList ?? []) {
 		const id = str(v?.id);
 		if (!id) continue;
-		contents.push({
+		posts.push({
 			contentId: id,
 			type: 'post',
 			title: str(v.desc),
@@ -479,7 +480,8 @@ async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 			publishedAt: null
 		});
 	}
-	return { profile, contents };
+	posts.sort((a, b) => b.contentId.length - a.contentId.length || b.contentId.localeCompare(a.contentId));
+	return { profile, feeds: [live, posts] };
 }
 
 async function fetchTikTokSnapshots(refs: CreatorRef[]): Promise<Map<string, CreatorSnapshot>> {

@@ -505,6 +505,21 @@ export const permissionRoles = [
 
 export const modules = [
 	{
+		id: 'main',
+		icon: 'fa-gear',
+		accent: '#2f8f4e',
+		title: 'Main',
+		what: 'How the bot looks in this server, plus the embed style and staff roles used everywhere.',
+		fields: [
+			{ label: 'Bot Nickname', desc: 'Name the bot shows in this server. Empty uses the default.' },
+			{ label: 'Bot Avatar', desc: 'Profile picture in this server only. PNG, JPG or GIF up to 2MB.' },
+			{ label: 'Bot Banner', desc: 'Profile banner in this server only. PNG, JPG or GIF up to 4MB.' },
+			{ label: 'Bot Bio', desc: 'About Me in this server, up to 190 characters.' },
+			{ label: 'Default Color & Footer', desc: 'Accent color and footer used on bot embeds.' },
+			{ label: 'Staff Roles', desc: 'Roles treated as staff across the bot.' }
+		]
+	},
+	{
 		id: 'leveling',
 		icon: 'fa-star',
 		accent: '#d9a528',

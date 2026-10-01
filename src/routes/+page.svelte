@@ -266,6 +266,12 @@
 			more: 'Applies live, no restart.'
 		},
 		{
+			icon: 'fa-user-pen',
+			title: 'Bot appearance',
+			desc: 'Give the bot its own name, avatar, banner and bio in each server.',
+			more: 'Every server sees its own profile, no extra bot needed.'
+		},
+		{
 			icon: 'fa-boxes-stacked',
 			title: 'Global item catalog',
 			desc: 'Build items once and push them to every server you run.',

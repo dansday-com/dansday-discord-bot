@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
@@ -176,15 +177,7 @@
 
 		<div class="min-w-0 sm:max-w-xs">
 			<label for="ai-reasoning" class="text-ash-400 mb-1.5 block text-xs font-medium">Reasoning</label>
-			<select
-				id="ai-reasoning"
-				bind:value={ai.reasoning}
-				class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-			>
-				{#each AI_REASONING_OPTIONS as option}
-					<option value={option.value}>{option.label}</option>
-				{/each}
-			</select>
+			<LabeledSelect id="ai-reasoning" appearance="field" options={AI_REASONING_OPTIONS} bind:value={ai.reasoning} ariaLabel="Reasoning" />
 		</div>
 
 		<div class="min-w-0">
@@ -250,29 +243,19 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div class="min-w-0">
 					<label for="ai-voice-name" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice</label>
-					<select
-						id="ai-voice-name"
-						bind:value={ai.voice_name}
-						class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-					>
-						{#each AI_VOICE_OPTIONS as option}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</select>
+					<LabeledSelect id="ai-voice-name" appearance="field" options={AI_VOICE_OPTIONS} bind:value={ai.voice_name} ariaLabel="Voice" />
 					<p class="text-ash-500 mt-1.5 text-xs">Preview every voice in Google AI Studio before picking.</p>
 				</div>
 				<div class="min-w-0">
 					<label for="ai-voice-thinking" class="text-ash-400 mb-1.5 block text-xs font-medium">Thinking</label>
-					<select
+					<LabeledSelect
 						id="ai-voice-thinking"
+						appearance="field"
+						options={AI_VOICE_THINKING_OPTIONS}
 						bind:value={ai.voice_thinking}
 						disabled={!voiceThinkingSupported}
-						class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{#each AI_VOICE_THINKING_OPTIONS as option}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</select>
+						ariaLabel="Thinking"
+					/>
 					<p class="text-ash-500 mt-1.5 text-xs">
 						{voiceThinkingSupported
 							? 'Higher means slower replies.'

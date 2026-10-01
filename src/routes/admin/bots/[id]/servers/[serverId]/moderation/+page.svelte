@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -22,6 +23,12 @@
 		...Object.fromEntries(ACTIONS.map((a) => [a.value, a])),
 		unwarn: { label: 'Remove warning', icon: 'fa-eraser', color: 'text-violet-400' }
 	};
+	const ACTION_FILTER_OPTIONS = [{ value: 'all', label: 'All actions' }, ...Object.entries(LOG_META).map(([value, meta]) => ({ value, label: meta.label }))];
+	const STATUS_FILTER_OPTIONS = [
+		{ value: 'all', label: 'Any status' },
+		{ value: 'active', label: 'Active' },
+		{ value: 'revoked', label: 'Revoked' }
+	];
 
 	let busy = $state(false);
 	let filterAction = $state('all');
@@ -122,23 +129,18 @@
 	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<h3 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold"><i class="fas fa-scroll text-sky-400"></i>Moderation logs</h3>
 
-		<div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-			<input
-				bind:value={search}
-				placeholder="Search member, staff, reason or #case"
-				class="bg-ash-700 border-ash-600 text-ash-100 rounded-lg border px-3 py-2 text-sm"
-			/>
-			<select bind:value={filterAction} aria-label="Action filter" class="bg-ash-700 border-ash-600 text-ash-100 rounded-lg border px-3 py-2 text-sm">
-				<option value="all">All actions</option>
-				{#each Object.entries(LOG_META) as [value, meta] (value)}
-					<option {value}>{meta.label}</option>
-				{/each}
-			</select>
-			<select bind:value={filterStatus} aria-label="Status filter" class="bg-ash-700 border-ash-600 text-ash-100 rounded-lg border px-3 py-2 text-sm">
-				<option value="all">Any status</option>
-				<option value="active">Active</option>
-				<option value="revoked">Revoked</option>
-			</select>
+		<div class="mb-4 flex flex-col gap-3 sm:flex-row">
+			<div class="relative flex-1">
+				<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
+				<input
+					type="text"
+					bind:value={search}
+					placeholder="Search member, staff, reason or #case"
+					class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
+				/>
+			</div>
+			<LabeledSelect appearance="members-toolbar" options={ACTION_FILTER_OPTIONS} bind:value={filterAction} ariaLabel="Action filter" />
+			<LabeledSelect appearance="members-toolbar" options={STATUS_FILTER_OPTIONS} bind:value={filterStatus} ariaLabel="Status filter" />
 		</div>
 
 		{#if filtered.length === 0}

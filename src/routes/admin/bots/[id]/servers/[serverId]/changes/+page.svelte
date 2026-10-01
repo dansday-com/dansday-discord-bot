@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
@@ -10,6 +11,14 @@
 	let filterRole = $state('all');
 
 	const components = $derived([...new Map(data.logs.map((l) => [l.component, l.component_label])).entries()].sort((a, b) => a[1].localeCompare(b[1])));
+
+	const componentOptions = $derived([{ value: 'all', label: 'All modules' }, ...components.map(([value, label]) => ({ value, label }))]);
+	const ROLE_OPTIONS = [
+		{ value: 'all', label: 'Any account' },
+		{ value: 'Admin', label: 'Admin' },
+		{ value: 'Owner', label: 'Owner' },
+		{ value: 'Staff', label: 'Staff' }
+	];
 
 	const ROLE_CLASS: Record<string, string> = {
 		Admin: 'bg-violet-500/15 text-violet-300',
@@ -43,24 +52,18 @@
 <section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold"><i class="fas fa-clock-rotate-left text-sky-400"></i>Configuration changes</h3>
 
-	<div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-		<input
-			bind:value={search}
-			placeholder="Search account, module or setting"
-			class="bg-ash-700 border-ash-600 text-ash-100 rounded-lg border px-3 py-2 text-sm"
-		/>
-		<select bind:value={filterComponent} aria-label="Module filter" class="bg-ash-700 border-ash-600 text-ash-100 rounded-lg border px-3 py-2 text-sm">
-			<option value="all">All modules</option>
-			{#each components as [value, name] (value)}
-				<option {value}>{name}</option>
-			{/each}
-		</select>
-		<select bind:value={filterRole} aria-label="Account filter" class="bg-ash-700 border-ash-600 text-ash-100 rounded-lg border px-3 py-2 text-sm">
-			<option value="all">Any account</option>
-			<option value="Admin">Admin</option>
-			<option value="Owner">Owner</option>
-			<option value="Staff">Staff</option>
-		</select>
+	<div class="mb-4 flex flex-col gap-3 sm:flex-row">
+		<div class="relative flex-1">
+			<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
+			<input
+				type="text"
+				bind:value={search}
+				placeholder="Search account, module or setting"
+				class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
+			/>
+		</div>
+		<LabeledSelect appearance="members-toolbar" options={componentOptions} bind:value={filterComponent} ariaLabel="Module filter" />
+		<LabeledSelect appearance="members-toolbar" options={ROLE_OPTIONS} bind:value={filterRole} ariaLabel="Account filter" />
 	</div>
 
 	{#if filtered.length === 0}

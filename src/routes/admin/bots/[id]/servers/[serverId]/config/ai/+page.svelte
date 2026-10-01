@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -84,15 +85,7 @@
 
 	<div class="min-w-0 sm:max-w-xs">
 		<label for="server-ai-voice-name" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice</label>
-		<select
-			id="server-ai-voice-name"
-			bind:value={voiceName}
-			class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-		>
-			{#each VOICE_OPTIONS as option}
-				<option value={option.value}>{option.label}</option>
-			{/each}
-		</select>
+		<LabeledSelect id="server-ai-voice-name" appearance="field" options={VOICE_OPTIONS} bind:value={voiceName} ariaLabel="Voice" />
 		<p class="text-ash-500 mt-1.5 text-xs">Preview every voice in Google AI Studio before picking.</p>
 	</div>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 
@@ -20,9 +21,9 @@
 		{ value: 'clearwarns', label: 'Clear warnings', icon: 'fa-broom', color: 'text-violet-400' }
 	];
 	const UNITS = [
-		{ value: 60, label: 'Minutes' },
-		{ value: 3600, label: 'Hours' },
-		{ value: 86400, label: 'Days' }
+		{ value: '60', label: 'Minutes' },
+		{ value: '3600', label: 'Hours' },
+		{ value: '86400', label: 'Days' }
 	];
 	const TIMED = ['timeout', 'tempban'];
 	const REASON_OPTIONAL = ['untimeout', 'clearwarns'];
@@ -30,7 +31,7 @@
 	let action = $state('warn');
 	let reason = $state('');
 	let amount = $state(10);
-	let unit = $state(60);
+	let unit = $state('60');
 	let busy = $state(false);
 
 	const current = $derived(ACTIONS.find((a) => a.value === action)!);
@@ -40,7 +41,7 @@
 			action = 'warn';
 			reason = '';
 			amount = 10;
-			unit = 60;
+			unit = '60';
 		}
 	});
 
@@ -57,7 +58,7 @@
 					action,
 					target_id: member.id,
 					reason: reason.trim() || null,
-					duration_seconds: TIMED.includes(action) ? Math.round(amount * unit) : null
+					duration_seconds: TIMED.includes(action) ? Math.round(amount * Number(unit)) : null
 				})
 			});
 			const out = await res.json().catch(() => ({}));
@@ -125,15 +126,9 @@
 							aria-label="Duration amount"
 							class="bg-ash-700 border-ash-600 text-ash-100 w-24 rounded-lg border px-3 py-2.5 text-sm"
 						/>
-						<select
-							bind:value={unit}
-							aria-label="Duration unit"
-							class="bg-ash-700 border-ash-600 text-ash-100 min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-sm"
-						>
-							{#each UNITS as u (u.value)}
-								<option value={u.value}>{u.label}</option>
-							{/each}
-						</select>
+						<div class="min-w-0 flex-1">
+							<LabeledSelect appearance="field" options={UNITS} bind:value={unit} ariaLabel="Duration unit" />
+						</div>
 					</div>
 				</div>
 			{/if}

@@ -3,7 +3,7 @@
 	import { LABELED_SELECT_ACCENT } from '$lib/frontend/controlAccents.js';
 	import type { LabeledSelectOption } from './labeledSelect.js';
 
-	type Appearance = 'dashboard' | 'members-toolbar' | 'form-inline';
+	type Appearance = 'dashboard' | 'members-toolbar' | 'form-inline' | 'field';
 
 	type LabelTone = 'neutral' | 'cyan';
 
@@ -41,13 +41,15 @@
 		'members-toolbar':
 			'bg-ash-800 border-ash-700 hover:border-ash-600 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors sm:min-w-[12rem]',
 		'form-inline':
-			'bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-colors sm:w-36'
+			'bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-colors sm:w-36',
+		field: 'bg-ash-700 border-ash-600 hover:border-ash-500 flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-3 transition-colors'
 	};
 
 	const selectTextClass: Record<Appearance, string> = {
 		dashboard: 'text-xs sm:text-sm',
 		'members-toolbar': 'text-sm',
-		'form-inline': 'text-sm'
+		'form-inline': 'text-sm',
+		field: 'text-sm'
 	};
 
 	const mergedButtonText = $derived(`${selectTextClass[appearance]} ${selectClass}`.trim());
@@ -122,7 +124,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="w-full shrink-0 sm:w-auto {rowClass[appearance]} {disabled || options.length === 0 ? 'opacity-50' : ''}">
+	<div class="{appearance === 'field' ? 'w-full' : 'w-full shrink-0 sm:w-auto'} {rowClass[appearance]} {disabled || options.length === 0 ? 'opacity-50' : ''}">
 		<button
 			type="button"
 			{id}

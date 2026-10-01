@@ -596,11 +596,18 @@
 							>
 							<label class="text-ash-300 text-xs sm:col-span-2"
 								>Scope
-								<select bind:value={form.cfg.scope} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
-									<option value="all">All XP</option>
-									<option value="message">Message only</option>
-									<option value="voice">Voice only</option>
-								</select>
+								<div class="mt-1">
+									<LabeledSelect
+										appearance="field"
+										ariaLabel="Scope"
+										options={[
+											{ value: 'all', label: 'All XP' },
+											{ value: 'message', label: 'Message only' },
+											{ value: 'voice', label: 'Voice only' }
+										]}
+										bind:value={form.cfg.scope}
+									/>
+								</div>
 							</label>
 						</div>
 						<p class="text-ash-500 text-[11px]">Multiplies earned XP for the duration.</p>

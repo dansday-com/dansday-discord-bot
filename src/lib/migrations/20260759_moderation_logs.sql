@@ -15,5 +15,14 @@ CREATE TABLE IF NOT EXISTS server_member_moderation_logs (
     FOREIGN KEY (staff_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_server_member_moderation_logs_member ON server_member_moderation_logs(member_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_server_member_moderation_logs_expiry ON server_member_moderation_logs(action, active, expires_at);
+SET @i := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_member_moderation_logs' AND INDEX_NAME = 'idx_server_member_moderation_logs_member');
+SET @stmt := IF(@i = 0, 'CREATE INDEX idx_server_member_moderation_logs_member ON server_member_moderation_logs (member_id, created_at)', 'SELECT 1');
+PREPARE s FROM @stmt;
+EXECUTE s;
+DEALLOCATE PREPARE s;
+
+SET @i := (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_member_moderation_logs' AND INDEX_NAME = 'idx_server_member_moderation_logs_expiry');
+SET @stmt := IF(@i = 0, 'CREATE INDEX idx_server_member_moderation_logs_expiry ON server_member_moderation_logs (action, active, expires_at)', 'SELECT 1');
+PREPARE s FROM @stmt;
+EXECUTE s;
+DEALLOCATE PREPARE s;

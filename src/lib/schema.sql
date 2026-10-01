@@ -337,6 +337,18 @@ CREATE TABLE IF NOT EXISTS server_settings (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_setting_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    server_setting_id INT NOT NULL,
+    server_account_id INT NULL,
+    account_id INT NULL,
+    changes JSON NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (server_setting_id) REFERENCES server_settings(id) ON DELETE CASCADE,
+    FOREIGN KEY (server_account_id) REFERENCES server_accounts(id) ON DELETE SET NULL,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS bot_discord_quests (
     id INT PRIMARY KEY AUTO_INCREMENT,
     bot_id INT NOT NULL,
@@ -708,6 +720,23 @@ CREATE TABLE IF NOT EXISTS server_member_asset_logs (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_member_moderation_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    staff_member_id INT NULL,
+    case_number INT NOT NULL,
+    action VARCHAR(16) NOT NULL,
+    reason TEXT NULL,
+    duration_seconds INT NULL,
+    expires_at DATETIME NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    source VARCHAR(16) NOT NULL DEFAULT 'panel',
+    revoked_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (staff_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
@@ -730,6 +759,7 @@ CREATE INDEX IF NOT EXISTS idx_server_member_custom_supporter_roles_role ON serv
 CREATE INDEX IF NOT EXISTS idx_server_member_afks_member_id ON server_member_afks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
+CREATE INDEX IF NOT EXISTS idx_server_setting_logs_setting ON server_setting_logs(server_setting_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username);
 CREATE INDEX IF NOT EXISTS idx_server_accounts_server_id ON server_accounts(server_id);
@@ -778,6 +808,8 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_created ON server_mem
 CREATE INDEX IF NOT EXISTS idx_server_member_assets_member ON server_member_assets(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_assets_held ON server_member_assets(asset_type, asset_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_asset_logs_member ON server_member_asset_logs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_moderation_logs_member ON server_member_moderation_logs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_moderation_logs_expiry ON server_member_moderation_logs(action, active, expires_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member_created_source ON server_member_level_logs(member_id, created_at, source);
 CREATE INDEX IF NOT EXISTS idx_level_friends_a ON server_member_level_friends(member_a_id, ticks);

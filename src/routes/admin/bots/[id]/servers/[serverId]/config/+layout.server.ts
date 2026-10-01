@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerPath } from '$lib/frontend/redirect.js';
-import { isServerConfigReadOnly, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -56,7 +56,6 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 		channels: channels ?? [],
 		roles: roles ?? [],
 		categories: categories ?? [],
-		featureEnabledByComponent: Object.fromEntries(featureEnabledEntries) as Record<string, boolean>,
-		configReadOnly: isServerConfigReadOnly(locals)
+		featureEnabledByComponent: Object.fromEntries(featureEnabledEntries) as Record<string, boolean>
 	};
 };

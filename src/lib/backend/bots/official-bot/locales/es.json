@@ -563,5 +563,28 @@
 			"tiktokCooling": "⏳ TikTok está limitando las búsquedas ahora. Inténtalo en unos minutos.",
 			"lookupFailed": "❌ No se pudo buscar ese creador ahora. Inténtalo más tarde."
 		}
+	},
+	"moderation": {
+		"button": "🛡️ Moderación",
+		"selectUser": "Elige el miembro a moderar.",
+		"selectUserPlaceholder": "Selecciona un miembro",
+		"selectAction": "Elige una acción para {member}.",
+		"selectActionPlaceholder": "Selecciona una acción",
+		"actions": {
+			"warn": "Advertir",
+			"timeout": "Aislar",
+			"untimeout": "Quitar aislamiento",
+			"kick": "Expulsar",
+			"ban": "Banear",
+			"tempban": "Baneo temporal",
+			"clearwarns": "Borrar advertencias"
+		},
+		"modal": {
+			"reason": "Motivo",
+			"duration": "Duración (p. ej. 10m, 2h, 7d)"
+		},
+		"done": "✅ {action} aplicado a {member}. Caso #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ Introduce una duración como 10m, 2h o 7d."
 	}
 }

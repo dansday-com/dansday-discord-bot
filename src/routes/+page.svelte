@@ -250,7 +250,7 @@
 			icon: 'fa-shield-halved',
 			title: 'Panel permissions',
 			desc: 'Owner and staff tiers control who can change what.',
-			more: 'Helpers contribute without full control of the server.',
+			more: 'Every configuration change is logged with who made it.',
 			stat: (s: Totals): Live[] => [{ label: 'Roles mapped', value: fmt(s.roles_total) }]
 		},
 		{
@@ -321,8 +321,8 @@
 		{
 			icon: 'fa-gavel',
 			title: 'Moderation',
-			desc: 'Warnings, mutes, bans and staff actions, all from the panel.',
-			more: 'Every action stays recorded against the member.'
+			desc: 'Warnings, timeouts, kicks and bans from the panel or the staff menu.',
+			more: 'Every action becomes a numbered case against the member.'
 		},
 		{
 			icon: 'fa-clipboard-check',

@@ -563,5 +563,28 @@
 			"tiktokCooling": "⏳ يقيّد TikTok عمليات البحث حاليًا. حاول بعد بضع دقائق.",
 			"lookupFailed": "❌ تعذر البحث عن صانع المحتوى الآن. حاول لاحقًا."
 		}
+	},
+	"moderation": {
+		"button": "🛡️ الإشراف",
+		"selectUser": "اختر العضو المراد الإشراف عليه.",
+		"selectUserPlaceholder": "اختر عضوًا",
+		"selectAction": "اختر إجراءً لـ {member}.",
+		"selectActionPlaceholder": "اختر إجراءً",
+		"actions": {
+			"warn": "تحذير",
+			"timeout": "إسكات مؤقت",
+			"untimeout": "إزالة الإسكات",
+			"kick": "طرد",
+			"ban": "حظر",
+			"tempban": "حظر مؤقت",
+			"clearwarns": "مسح التحذيرات"
+		},
+		"modal": {
+			"reason": "السبب",
+			"duration": "المدة (مثل 10m، 2h، 7d)"
+		},
+		"done": "✅ تم تطبيق {action} على {member}. القضية #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ أدخل مدة مثل 10m أو 2h أو 7d."
 	}
 }

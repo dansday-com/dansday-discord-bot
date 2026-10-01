@@ -563,5 +563,28 @@
 			"tiktokCooling": "⏳ TikTok begrenzt gerade Abfragen. Versuche es in ein paar Minuten erneut.",
 			"lookupFailed": "❌ Dieser Creator kann gerade nicht gesucht werden. Versuche es später erneut."
 		}
+	},
+	"moderation": {
+		"button": "🛡️ Moderation",
+		"selectUser": "Wähle das Mitglied, das moderiert werden soll.",
+		"selectUserPlaceholder": "Mitglied auswählen",
+		"selectAction": "Wähle eine Aktion für {member}.",
+		"selectActionPlaceholder": "Aktion auswählen",
+		"actions": {
+			"warn": "Verwarnen",
+			"timeout": "Timeout",
+			"untimeout": "Timeout aufheben",
+			"kick": "Kicken",
+			"ban": "Bannen",
+			"tempban": "Temporär bannen",
+			"clearwarns": "Verwarnungen löschen"
+		},
+		"modal": {
+			"reason": "Grund",
+			"duration": "Dauer (z. B. 10m, 2h, 7d)"
+		},
+		"done": "✅ {action} auf {member} angewendet. Fall #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ Gib eine Dauer wie 10m, 2h oder 7d ein."
 	}
 }

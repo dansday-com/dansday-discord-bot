@@ -244,9 +244,7 @@ export async function accountOwnsBot(locals: App.Locals, botId: number): Promise
 export async function canEditServerSettings(locals: App.Locals, serverId: string | number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
 	if (locals.user.account_source === 'accounts') return accountOwnsServer(locals, Number(serverId));
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
-		return locals.user.server_id === Number(serverId);
-	}
+	if (locals.user.account_source === 'server_accounts') return locals.user.server_id === Number(serverId);
 	return false;
 }
 
@@ -283,14 +281,6 @@ export async function canManagePanelSelfbots(locals: App.Locals, selfbotId: numb
 	const sb = await db.getSelfbotById(selfbotId);
 	if (!sb) return false;
 	return sb.panel_id === panelId;
-}
-
-export function isGuildStaffUser(user: App.Locals['user']): boolean {
-	return user.authenticated && user.account_source === 'server_accounts' && user.account_type === 'staff';
-}
-
-export function isServerConfigReadOnly(locals: App.Locals): boolean {
-	return isGuildStaffUser(locals.user);
 }
 
 type RouteGuard = {

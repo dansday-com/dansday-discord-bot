@@ -3,6 +3,7 @@
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
+	import ModerateMemberModal from '$lib/frontend/components/ModerateMemberModal.svelte';
 
 	export type Member = {
 		discord_member_id: string;
@@ -33,9 +34,12 @@
 		configureHref?: string;
 		configureLabel?: string;
 		boostersOnly?: boolean;
+		serverId?: number | string;
 	}
 
-	let { members, filterRoleIds, configureHref, configureLabel = 'Open configuration', boostersOnly = false }: Props = $props();
+	let { members, filterRoleIds, configureHref, configureLabel = 'Open configuration', boostersOnly = false, serverId }: Props = $props();
+
+	let moderating = $state<{ id: string; name: string } | null>(null);
 
 	const MEMBER_SORT_OPTIONS: LabeledSelectOption[] = [
 		{ value: 'rank_asc', label: 'Rank (Low → High)' },
@@ -231,6 +235,15 @@
 									<i class="fas fa-moon text-xs"></i>AFK
 								</span>
 							{/if}
+							{#if serverId != null}
+								<button
+									type="button"
+									onclick={() => (moderating = { id: member.discord_member_id, name: listDisplayName(member) })}
+									class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 self-center rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors sm:ml-auto"
+								>
+									<i class="fas fa-gavel text-red-400"></i>Moderate
+								</button>
+							{/if}
 						</div>
 
 						<div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
@@ -357,4 +370,8 @@
 			</button>
 		</div>
 	{/if}
+{/if}
+
+{#if serverId != null}
+	<ModerateMemberModal {serverId} member={moderating} onclose={() => (moderating = null)} />
 {/if}

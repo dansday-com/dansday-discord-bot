@@ -7321,7 +7321,148 @@ export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
 	return rows[0]?.discord_role_id || null;
 }
 
+export async function createModerationLog(data: {
+	server_id: number;
+	member_id: number;
+	staff_member_id?: number | null;
+	action: string;
+	reason?: string | null;
+	duration_seconds?: number | null;
+	expires_at?: Date | null;
+	active?: boolean;
+	source?: string;
+}) {
+	const [rows] = (await db.execute(sql`
+		SELECT COALESCE(MAX(l.case_number), 0) + 1 AS next
+		FROM server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		WHERE m.server_id = ${data.server_id}
+	`)) as any;
+	const caseNumber = Number(rows?.[0]?.next ?? 1);
+	await db.execute(sql`
+		INSERT INTO server_member_moderation_logs
+			(member_id, staff_member_id, case_number, action, reason, duration_seconds, expires_at, active, source, created_at)
+		VALUES (${data.member_id}, ${data.staff_member_id ?? null}, ${caseNumber}, ${data.action}, ${data.reason ?? null}, ${data.duration_seconds ?? null},
+			${data.expires_at ?? null}, ${data.active === false ? 0 : 1}, ${data.source ?? 'panel'}, ${toMySQLDateTime()})
+	`);
+	return caseNumber;
+}
+
+export async function getModerationLogs(serverId: number | string, limit = 500) {
+	const [rows] = (await db.execute(sql`
+		SELECT l.id, l.case_number, l.action, l.reason, l.duration_seconds, l.expires_at, l.active, l.source, l.revoked_at, l.created_at,
+			m.discord_member_id, COALESCE(m.server_display_name, m.display_name, m.username) AS member_name, m.avatar AS member_avatar,
+			sm.discord_member_id AS staff_discord_id, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS staff_name
+		FROM server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		LEFT JOIN server_members sm ON sm.id = l.staff_member_id
+		WHERE m.server_id = ${Number(serverId)}
+		ORDER BY l.case_number DESC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
+export async function getModerationCase(serverId: number | string, caseNumber: number) {
+	const [rows] = (await db.execute(sql`
+		SELECT l.*, m.discord_member_id
+		FROM server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		WHERE m.server_id = ${Number(serverId)} AND l.case_number = ${Number(caseNumber)}
+		LIMIT 1
+	`)) as any;
+	return (rows as any[])?.[0] ?? null;
+}
+
+export async function revokeModerationCase(id: number | string) {
+	const [result] = (await db.execute(sql`
+		UPDATE server_member_moderation_logs SET active = 0, revoked_at = ${toMySQLDateTime()} WHERE id = ${String(id)} AND active = 1
+	`)) as any;
+	return Number(result?.affectedRows ?? 0);
+}
+
+export async function endActiveModeration(memberId: number, actions: string[], revoked = false) {
+	if (actions.length === 0) return 0;
+	const [result] = (await db.execute(sql`
+		UPDATE server_member_moderation_logs
+		SET active = 0, revoked_at = ${revoked ? toMySQLDateTime() : null}
+		WHERE member_id = ${memberId} AND active = 1 AND action IN (${sql.join(
+			actions.map((a) => sql`${a}`),
+			sql`, `
+		)})
+	`)) as any;
+	return Number(result?.affectedRows ?? 0);
+}
+
+export async function countActiveWarnings(memberId: number) {
+	const [rows] = (await db.execute(sql`
+		SELECT COUNT(*) AS c FROM server_member_moderation_logs WHERE member_id = ${memberId} AND action = 'warn' AND active = 1
+	`)) as any;
+	return Number(rows?.[0]?.c ?? 0);
+}
+
+export async function getDueTempbans(botId: number) {
+	const [rows] = (await db.execute(sql`
+		SELECT l.id, l.member_id, l.case_number, m.discord_member_id, m.server_id, s.discord_server_id
+		FROM server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		JOIN servers s ON s.id = m.server_id
+		WHERE l.action = 'tempban' AND l.active = 1 AND l.expires_at IS NOT NULL AND l.expires_at <= UTC_TIMESTAMP() AND s.bot_id = ${botId}
+		LIMIT 50
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
+export async function expireModerationTimeouts() {
+	await db.execute(sql`
+		UPDATE server_member_moderation_logs SET active = 0
+		WHERE action = 'timeout' AND active = 1 AND expires_at IS NOT NULL AND expires_at <= UTC_TIMESTAMP()
+	`);
+}
+
+export async function createServerSettingLog(
+	serverSettingId: number,
+	actor: { server_account_id?: number | null; account_id?: number | null },
+	changes: { key: string; before: string | null; after: string | null }[]
+) {
+	if (!changes.length) return;
+	await db.execute(sql`
+		INSERT INTO server_setting_logs (server_setting_id, server_account_id, account_id, changes, created_at)
+		VALUES (${serverSettingId}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
+	`);
+}
+
+export async function getServerSettingLogs(serverIds: number[], limit = 300) {
+	if (serverIds.length === 0) return [];
+	const [rows] = (await db.execute(sql`
+		SELECT l.id, l.changes, l.created_at, s.component_name,
+			sa.username AS server_account_username, sa.account_type AS server_account_type,
+			a.username AS account_username, l.server_account_id, l.account_id
+		FROM server_setting_logs l
+		JOIN server_settings s ON s.id = l.server_setting_id
+		LEFT JOIN server_accounts sa ON sa.id = l.server_account_id
+		LEFT JOIN accounts a ON a.id = l.account_id
+		WHERE s.server_id IN (${sql.join(
+			serverIds.map((id) => sql`${id}`),
+			sql`, `
+		)})
+		ORDER BY l.id DESC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
 export default {
+	createServerSettingLog,
+	getServerSettingLogs,
+	createModerationLog,
+	getModerationLogs,
+	getModerationCase,
+	revokeModerationCase,
+	endActiveModeration,
+	countActiveWarnings,
+	getDueTempbans,
+	expireModerationTimeouts,
 	getAllBots,
 	getBot,
 	getBotPanelId,

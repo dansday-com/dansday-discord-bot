@@ -4,4 +4,4 @@
 	let { data }: LayoutProps = $props();
 </script>
 
-<MemberList members={data.members} />
+<MemberList members={data.members} serverId={data.serverId} />

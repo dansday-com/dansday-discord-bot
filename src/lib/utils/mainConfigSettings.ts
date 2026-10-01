@@ -4,6 +4,7 @@ import { APP_NAME, APP_DOMAIN } from '../frontend/panelServer.js';
 
 export const DEFAULT_BOT_NICKNAME = APP_NAME;
 export const DEFAULT_MAIN_EMBED_FOOTER = `Powered by ${APP_DOMAIN} {year}`;
+export const BOT_BIO_MAX_LENGTH = 190;
 
 function trimStr(v: unknown): string {
 	return typeof v === 'string' ? v.trim() : '';
@@ -24,6 +25,9 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 	footer: string;
 	bot_updates_channel_id: string;
 	bot_nickname: string;
+	bot_bio: string;
+	bot_avatar_url: string;
+	bot_banner_url: string;
 	staff_roles: string[];
 } {
 	const { color, footer } = getEffectiveMainEmbedAppearance(raw);
@@ -37,6 +41,9 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 		footer,
 		bot_updates_channel_id: updateCh,
 		bot_nickname: nickname,
+		bot_bio: trimStr(base.bot_bio),
+		bot_avatar_url: trimStr(base.bot_avatar_url),
+		bot_banner_url: trimStr(base.bot_banner_url),
 		staff_roles: staffRoles
 	};
 }

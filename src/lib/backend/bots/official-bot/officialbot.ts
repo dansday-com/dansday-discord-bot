@@ -50,7 +50,8 @@ const client = new Client({
 		GatewayIntentBits.GuildVoiceStates,
 		GatewayIntentBits.GuildMessageReactions
 	],
-	partials: [Partials.Message, Partials.Channel, Partials.Reaction]
+	partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+	rest: { rejectOnRateLimit: ['/guilds/:id/members/@me'] }
 });
 
 let initialized = false;

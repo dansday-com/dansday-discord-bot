@@ -1,6 +1,6 @@
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder, PermissionFlagsBits } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder, PermissionFlagsBits, RateLimitError } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { resendJoinGreeting } from './sync.js';
@@ -393,6 +393,13 @@ function getClientIp(req) {
 	return address.startsWith('::ffff:') ? address.slice(7) : address || 'unknown';
 }
 
+function botProfileErrorMessage(err) {
+	if (err instanceof RateLimitError) {
+		return `Discord is rate limiting profile changes. Try again in ${Math.max(1, Math.ceil(err.retryAfter / 1000))}s.`;
+	}
+	return err?.message || 'Unknown error';
+}
+
 async function handleWebhookRequest(req, res) {
 	try {
 		if (req.method !== 'POST') {
@@ -590,10 +597,9 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to resend greeting', details: err.message }));
 					}
-				} else if (payload.type === 'sync_bot_nickname') {
+				} else if (payload.type === 'sync_bot_profile' || payload.type === 'sync_bot_nickname') {
 					try {
 						const guildId = payload.guild_id;
-						const nickname = payload.nickname;
 						if (!guildId) {
 							res.writeHead(400, { 'Content-Type': 'application/json' });
 							res.end(JSON.stringify({ error: 'Missing guild_id' }));
@@ -604,20 +610,51 @@ async function handleWebhookRequest(req, res) {
 						if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
 						if (!guild) throw new Error('Guild not found');
 
-						const me = guild.members.me || (await guild.members.fetch(client.user.id).catch(() => null));
-						if (me) {
-							await me.setNickname(nickname || null);
-							await logger.log(`✅ Synced bot nickname for guild ${guildId} to "${nickname}"`);
-						} else {
-							throw new Error('Bot member not found in guild');
+						const me = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+						if (!me) throw new Error('Bot member not found in guild');
+
+						const failures = [];
+						const result = { success: true };
+
+						const nickname = typeof payload.nickname === 'string' && payload.nickname.trim() ? payload.nickname.trim() : null;
+						if ('nickname' in payload && (me.nickname ?? null) !== nickname) {
+							try {
+								await guild.members.editMe({ nick: nickname });
+								await logger.log(`✅ Synced bot nickname for guild ${guildId} to "${nickname ?? ''}"`);
+							} catch (err) {
+								failures.push(`Nickname: ${botProfileErrorMessage(err)}`);
+							}
 						}
 
-						res.writeHead(200, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ success: true }));
+						const profile = {};
+						for (const key of ['avatar', 'banner', 'bio']) {
+							if (key in payload) profile[key] = payload[key] || null;
+						}
+						if (Object.keys(profile).length > 0) {
+							try {
+								const updated = await guild.members.editMe(profile);
+								result.profile = {
+									avatar_url: updated.avatarURL({ size: 512 }) ?? '',
+									banner_url: updated.bannerURL({ size: 1024 }) ?? ''
+								};
+								await logger.log(`✅ Synced bot profile (${Object.keys(profile).join(', ')}) for guild ${guildId}`);
+							} catch (err) {
+								failures.push(`Profile: ${botProfileErrorMessage(err)}`);
+							}
+						}
+
+						if (failures.length > 0) {
+							result.success = false;
+							result.error = failures.join(' ');
+							await logger.log(`❌ Failed to sync bot profile for guild ${guildId}: ${result.error}`);
+						}
+
+						res.writeHead(failures.length > 0 ? 500 : 200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
 					} catch (err) {
-						await logger.log(`❌ Failed to sync bot nickname: ${err.message}`);
+						await logger.log(`❌ Failed to sync bot profile: ${err.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to sync bot nickname', details: err.message }));
+						res.end(JSON.stringify({ error: 'Failed to sync bot profile', details: err.message }));
 					}
 				} else if (payload.type === 'sync_component_runtime') {
 					try {

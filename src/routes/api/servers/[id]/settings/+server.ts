@@ -5,6 +5,9 @@ import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
 import { validateServerAiSettings } from '$lib/server-ai-settings.js';
 import { normalizeForwarderKeywords } from '$lib/forwarder-settings.js';
+import { BOT_BIO_MAX_LENGTH, normalizeMainConfigForPanel } from '$lib/utils/mainConfigSettings.js';
+import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
+import { BOT_PROFILE_IMAGE, BOT_PROFILE_IMAGE_FORMATS_LABEL, sniffBotProfileImage, tooLargeMessage, type BotProfileImageKind } from '$lib/images.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -49,6 +52,60 @@ async function postOfficialBotWebhook(
 	});
 }
 
+async function callOfficialBotWebhook(
+	bot: { port: number | null; secret_key: string | null; status?: string | null } | null | undefined,
+	payload: Record<string, unknown>
+): Promise<{ status: number; body: unknown }> {
+	if (!bot || bot.status !== 'running') return { status: 503, body: { error: 'Bot is not running' } };
+	if (!bot.port || !bot.secret_key) return { status: 503, body: { error: 'Bot webhook not configured' } };
+	const { request } = await import('http');
+	const body = JSON.stringify(payload);
+	return new Promise((resolve) => {
+		const req = request(
+			{
+				hostname: 'localhost',
+				port: bot.port,
+				path: '/',
+				method: 'POST',
+				timeout: 30_000,
+				headers: {
+					'Content-Type': 'application/json',
+					'Content-Length': Buffer.byteLength(body),
+					'X-Secret-Key': bot.secret_key
+				}
+			},
+			(res) => {
+				let data = '';
+				res.on('data', (chunk) => (data += chunk));
+				res.on('end', () => {
+					try {
+						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
+					} catch {
+						resolve({ status: res.statusCode ?? 500, body: { error: data } });
+					}
+				});
+			}
+		);
+		req.on('timeout', () => req.destroy(new Error('Bot did not respond in time')));
+		req.on('error', (err) => resolve({ status: 502, body: { error: err.message } }));
+		req.write(body);
+		req.end();
+	});
+}
+
+function parseBotProfileImage(kind: BotProfileImageKind, value: unknown): string | null | undefined {
+	if (value === undefined) return undefined;
+	if (value === null || value === '') return null;
+	const spec = BOT_PROFILE_IMAGE[kind];
+	const match = typeof value === 'string' ? /^data:image\/[\w+.-]+;base64,(.+)$/.exec(value) : null;
+	if (!match) throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
+	const bytes = Buffer.from(match[1], 'base64');
+	const type = sniffBotProfileImage(bytes);
+	if (!type) throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
+	if (bytes.length > spec.maxBytes) throw new Error(`${spec.label}: ${tooLargeMessage(spec.maxBytes)}`);
+	return `data:${type};base64,${bytes.toString('base64')}`;
+}
+
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const panelServerId = params.id;
 	if (!panelServerId) {
@@ -83,29 +140,69 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (officialServerId) targetServerId = officialServerId;
 		}
 
-		const result = await db.upsertServerSettings(targetServerId, component, settings);
-
 		const panelServer = await db.getServer(panelServerId);
 		const officialBotId = panelServer ? await db.resolveOfficialBotIdForServer(panelServer) : null;
 		const bot = officialBotId ? await db.getBot(officialBotId) : null;
+
+		let profileError = '';
+		if (component === SERVER_SETTINGS.component.main) {
+			const { bot_avatar, bot_banner, ...rest } = settings as Record<string, unknown>;
+			let avatar: string | null | undefined;
+			let banner: string | null | undefined;
+			try {
+				avatar = parseBotProfileImage('avatar', bot_avatar);
+				banner = parseBotProfileImage('banner', bot_banner);
+			} catch (err: any) {
+				return json({ error: err.message }, { status: 400 });
+			}
+			const bio = typeof rest.bot_bio === 'string' ? rest.bot_bio.trim() : '';
+			if (bio.length > BOT_BIO_MAX_LENGTH) {
+				return json({ error: `Bot bio must be ${BOT_BIO_MAX_LENGTH} characters or fewer` }, { status: 400 });
+			}
+
+			const existing = await db.getServerSettings(targetServerId, component).catch(() => null);
+			const existingRaw = existing?.settings && typeof existing.settings === 'object' ? (existing.settings as Record<string, unknown>) : {};
+			const prev = normalizeMainConfigForPanel(existingRaw);
+			const next = { ...existingRaw, ...rest, bot_bio: prev.bot_bio, bot_avatar_url: prev.bot_avatar_url, bot_banner_url: prev.bot_banner_url };
+
+			const profile: Record<string, string | null> = {};
+			if (avatar !== undefined) profile.avatar = avatar;
+			if (banner !== undefined) profile.banner = banner;
+			if (bio !== prev.bot_bio) profile.bio = bio || null;
+			const nickname = typeof rest.bot_nickname === 'string' ? rest.bot_nickname : '';
+
+			if (panelServer?.discord_server_id) {
+				const hasProfile = Object.keys(profile).length > 0;
+				const synced = await callOfficialBotWebhook(bot, {
+					type: 'sync_bot_profile',
+					guild_id: panelServer.discord_server_id,
+					nickname,
+					...profile
+				});
+				const reply = (synced.body ?? {}) as { success?: boolean; profile?: { avatar_url?: string; banner_url?: string } };
+				if (reply.profile) {
+					if ('bio' in profile) next.bot_bio = bio;
+					if ('avatar' in profile) next.bot_avatar_url = reply.profile.avatar_url ?? '';
+					if ('banner' in profile) next.bot_banner_url = reply.profile.banner_url ?? '';
+				}
+				if (hasProfile && (synced.status !== 200 || reply.success !== true)) {
+					profileError = messageFromBotWebhookPayload(synced.body);
+				}
+			} else if (Object.keys(profile).length > 0) {
+				profileError = 'This server is not linked to Discord yet';
+			}
+
+			Object.keys(settings).forEach((key) => delete (settings as Record<string, unknown>)[key]);
+			Object.assign(settings, next);
+		}
+
+		const result = await db.upsertServerSettings(targetServerId, component, settings);
 
 		if (component === SERVER_SETTINGS.component.notifications) {
 			try {
 				const notifServer = await db.getServer(targetServerId);
 				if (notifServer?.discord_server_id && bot) {
 					await postOfficialBotWebhook(bot, { type: 'sync_notification_roles', guild_id: notifServer.discord_server_id });
-				}
-			} catch (_) {}
-		}
-
-		if (component === SERVER_SETTINGS.component.main) {
-			try {
-				if (panelServer?.discord_server_id && bot) {
-					await postOfficialBotWebhook(bot, {
-						type: 'sync_bot_nickname',
-						guild_id: panelServer.discord_server_id,
-						nickname: (settings as { bot_nickname?: string }).bot_nickname || ''
-					});
 				}
 			} catch (_) {}
 		}
@@ -127,6 +224,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const actor = locals.user.authenticated && 'username' in locals.user ? locals.user.username : 'unknown';
 		logger.log(`${actor} changed ${component} configuration on server "${serverName}"`);
 
+		if (profileError) {
+			return json({ success: false, saved: true, error: `Settings saved, but the bot profile was not updated: ${profileError}` });
+		}
 		return json({ success: true, data: result });
 	} catch (error: any) {
 		return json({ error: error.message }, { status: 500 });

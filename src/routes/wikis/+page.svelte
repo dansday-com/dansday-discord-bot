@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -20,11 +20,10 @@
 	const index = (n: number) => String(n).padStart(2, '0');
 </script>
 
-<PageMeta
-	title="Wiki knowledge directory | {APP_NAME} Discord Bot"
-	description="Every wiki {APP_NAME} Bot can look up, and whether it is active or disabled."
-	path="/wikis"
-/>
+<svelte:head>
+	<title>Wiki knowledge directory | {APP_NAME} Discord Bot</title>
+	<meta name="description" content="Every wiki {APP_NAME} Bot can look up, and whether it is active or disabled." />
+</svelte:head>
 
 <PageShell trailing="home">
 	<div class="@container">

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { publicServerPath, publicSiteOrigin, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
+	import { publicServerPath, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
 	import { effectIcon, effectLabel, effectAccentHex } from '$lib/items.js';
 	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
@@ -72,13 +72,12 @@
 		};
 	}
 
-	const heroStats = $derived(
-		[
-			{ label: 'Members', raw: feed.totals.members_total },
-			{ label: 'XP tracked', raw: feed.totals.leveling_total_xp },
-			{ label: 'Voice hours', raw: feed.totals.leveling_total_voice_minutes / 60 }
-		].filter((s) => Math.round(s.raw) > 0)
-	);
+	const heroStats = $derived([
+		{ label: 'Servers', raw: feed.totals.servers_counted },
+		{ label: 'Members', raw: feed.totals.members_total },
+		{ label: 'XP tracked', raw: feed.totals.leveling_total_xp },
+		{ label: 'Voice hours', raw: feed.totals.leveling_total_voice_minutes / 60 }
+	]);
 
 	const ICON_TONES = ['text-primary', 'text-secondary', 'text-brand-gold-deep'];
 
@@ -92,7 +91,7 @@
 		},
 		{
 			icon: 'fa-sliders',
-			title: 'Web dashboard',
+			title: 'Web panel',
 			desc: 'Every module configured in the browser, with live bot and server state where it applies.',
 			more: 'No slash command trees to memorise.',
 			stat: (s: Totals): Live[] => [{ label: 'Servers configured', value: fmt(s.servers_counted) }]
@@ -138,7 +137,7 @@
 			icon: 'fa-chart-line',
 			title: 'Leveling & XP',
 			desc: 'Messages, voice, video and streaming time all earn XP.',
-			more: 'Drives levels, level-up messages, role rewards and leaderboards. Reactions are tracked for tasks.',
+			more: 'Drives levels, role rewards and leaderboards. Reactions are tracked for tasks.',
 			stat: (s: Totals): Live[] => [
 				{ label: 'XP earned', value: fmt(s.leveling_total_xp) },
 				{ label: 'Top level', value: fmt(s.leveling_max_level) },
@@ -457,7 +456,7 @@
 			...f,
 			n: String(i + 1).padStart(2, '0'),
 			tone: ICON_TONES[i % ICON_TONES.length],
-			live: hasLive && f.stat ? f.stat(data.totals).filter((s) => s.value !== '0') : []
+			live: hasLive && f.stat ? f.stat(data.totals) : []
 		}))
 	);
 
@@ -473,59 +472,6 @@
 
 	const META = ['Free forever', 'AGPL-3.0 licensed', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
 
-	const TITLE = `Free Discord Bot with Web Dashboard — Leveling, Economy & Alerts | ${APP_NAME}`;
-	const DESCRIPTION =
-		'Free, open-source Discord bot with a web dashboard: leveling and role rewards, an XP economy, moderation, giveaways, and Twitch, YouTube and TikTok alerts.';
-
-	const faq = [
-		{
-			q: 'Is it a free MEE6 alternative?',
-			a: 'Yes. Leveling, role rewards, moderation, giveaways and creator alerts are all free forever, and the code is open source under AGPL-3.0.'
-		},
-		{
-			q: 'Is there a web dashboard?',
-			a: 'Every module is configured from a web dashboard instead of slash commands, with owner and staff access per server.'
-		},
-		{
-			q: 'Does it post level-up messages?',
-			a: 'Messages, voice, video and streaming time earn XP, with level-up messages, role rewards and all-time, monthly and weekly leaderboards.'
-		},
-		{
-			q: 'Is it an economy bot?',
-			a: 'XP is the currency: a per-server item shop, bounties, minigames and an assets market. No real money.'
-		},
-		{
-			q: 'Does it send Twitch and YouTube notifications?',
-			a: 'Members follow their own YouTube, Twitch and TikTok creators and get tagged on new videos, live streams and posts.'
-		},
-		{
-			q: 'Can I self-host it?',
-			a: 'The source is on GitHub with Docker Compose and a Node adapter. Or add the hosted bot and skip the infrastructure.'
-		}
-	];
-
-	const jsonLd = JSON.stringify({
-		'@context': 'https://schema.org',
-		'@graph': [
-			{
-				'@type': 'SoftwareApplication',
-				name: `${APP_NAME} Discord Bot`,
-				applicationCategory: 'CommunicationApplication',
-				operatingSystem: 'Discord',
-				url: `${publicSiteOrigin()}/`,
-				image: `${publicSiteOrigin()}/og.png`,
-				description: DESCRIPTION,
-				license: 'https://www.gnu.org/licenses/agpl-3.0.html',
-				offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-				sameAs: [SOURCE_REPO_URL, DISCORD_APP_DIRECTORY_URL]
-			},
-			{
-				'@type': 'FAQPage',
-				mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } }))
-			}
-		]
-	}).replace(/</g, '\\u003c');
-
 	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase 2xl:text-[13px]';
 	const H2 = 'text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
 	const LEAD = 'text-base-content/70 text-[13.5px] leading-[1.55] sm:max-w-[54ch] 2xl:text-[16px]';
@@ -534,10 +480,12 @@
 	const FULLBLEED = 'w-screen ml-[calc(50%-50vw)]';
 </script>
 
-<PageMeta title={TITLE} description={DESCRIPTION} path="/" />
-
 <svelte:head>
-	{@html `<script type="application/ld+json">${jsonLd}<\/script>`}
+	<title>{APP_NAME} Discord Bot | All in one server management</title>
+	<meta
+		name="description"
+		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, an XP economy, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, YouTube, Twitch and TikTok creator alerts, Roblox catalog watch, and more. Free ten minute demo on login."
+	/>
 </svelte:head>
 
 <PageShell>
@@ -551,14 +499,14 @@
 					<p class="display-line display-fill text-primary block whitespace-nowrap uppercase" style="--ch: 12; --sweep-delay: 720ms">Every module</p>
 				</span>
 				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
-					<strong class="text-base-content font-extrabold">Free, open-source Discord bot with a web dashboard.</strong>
-					Leveling, an XP economy, moderation, giveaways, Twitch and YouTube alerts — all set up in the browser, not slash commands.
+					Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
+					commands.
 				</h1>
 			</div>
 
 			<div bind:this={heroFoot} class="flex flex-col gap-8">
-				{#if hasLive && heroStats.length > 0}
-					<div class="border-base-300 grid grid-cols-3 gap-x-6 gap-y-4 border-t pt-5">
+				{#if hasLive}
+					<div class="border-base-300 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
 						{#each heroStats as stat, i}
 							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
 								<p use:countUp={stat.raw} class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{fmt(stat.raw)}</p>
@@ -632,7 +580,7 @@
 						<i class="fas {card.icon} text-[18px] {card.tone}"></i>
 						<span class="text-base-content/20 text-[22px] leading-none font-black tabular-nums">{card.n}</span>
 					</div>
-					<p class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{card.title}</p>
+					<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{card.title}</h3>
 					<p class="text-base-content/70 text-[12.5px] leading-[1.5]">{card.desc}</p>
 					<p class="text-base-content/70 mt-1.5 hidden text-[12px] leading-[1.5] sm:block">{card.more}</p>
 					{#if card.live.length > 0}
@@ -1035,27 +983,8 @@
 			</div>
 		</section>
 
-		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
-			<div class="mb-6">
-				<p class={EYEBROW}>10 — Questions</p>
-				<h2 class={H2}>Before you add it</h2>
-			</div>
-			<dl class="border-base-300 border-t">
-				{#each faq as item, i}
-					<div
-						use:reveal
-						class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
-						style="transition-delay: {i * 60}ms"
-					>
-						<dt class="text-base-content min-w-0 text-[clamp(15px,2.4cqw,24px)] leading-[1.05] font-black tracking-[-0.02em] uppercase">{item.q}</dt>
-						<dd class="text-base-content/70 min-w-0 text-[12.5px] leading-[1.5]">{item.a}</dd>
-					</div>
-				{/each}
-			</dl>
-		</section>
-
 		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
-			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">11 — Start</p>
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">09 — Start</p>
 			<p class="font-black">
 				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
 			</p>

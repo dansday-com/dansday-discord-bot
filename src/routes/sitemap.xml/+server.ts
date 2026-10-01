@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
-import { TERMS_URL, PRIVACY_URL, LEGAL_LAST_UPDATED } from '$lib/legal.js';
+import { TERMS_URL, PRIVACY_URL } from '$lib/legal.js';
 import { APP_URL } from '$lib/frontend/panelServer.js';
 
 function escapeXml(unsafe: string): string {
@@ -45,24 +45,21 @@ export const GET: RequestHandler = async () => {
 		];
 	});
 
-	const newestServer = publicPageRows.reduce<string | undefined>((max, r) => (r.lastmod && (!max || r.lastmod > max) ? r.lastmod : max), undefined);
-	const legalLastmod = toLastmod(new Date(`${LEGAL_LAST_UPDATED} UTC`));
-
 	const staticPages = [
-		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: newestServer },
-		{ loc: `${baseUrl}/servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: newestServer },
-		{ loc: `${baseUrl}/tasks`, changefreq: 'weekly' as const, priority: 0.8 },
-		{ loc: `${baseUrl}/shop`, changefreq: 'daily' as const, priority: 0.8 },
-		{ loc: `${baseUrl}/quests`, changefreq: 'daily' as const, priority: 0.9 },
-		{ loc: `${baseUrl}/roblox`, changefreq: 'daily' as const, priority: 0.9 },
-		{ loc: `${baseUrl}/wikis`, changefreq: 'weekly' as const, priority: 0.8 },
-		{ loc: `${baseUrl}/forwarder-servers`, changefreq: 'daily' as const, priority: 0.9 },
-		{ loc: `${baseUrl}/docs`, changefreq: 'monthly' as const, priority: 0.7 },
-		{ loc: TERMS_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: legalLastmod },
-		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: legalLastmod }
+		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/tasks`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/shop`, changefreq: 'daily' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/quests`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/roblox`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/wikis`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/forwarder-servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() },
+		{ loc: TERMS_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: new Date().toISOString() },
+		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: new Date().toISOString() }
 	];
 
-	const allUrlData: { loc: string; changefreq: string; priority: number; lastmod?: string }[] = [...staticPages, ...publicPageRows];
+	const allUrlData = [...staticPages, ...publicPageRows];
 
 	const urlElements = allUrlData
 		.map(({ loc, lastmod, changefreq, priority }) => {
@@ -78,7 +75,7 @@ export const GET: RequestHandler = async () => {
 
 	return new Response(
 		`<?xml version="1.0" encoding="UTF-8" ?>
-		<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+		<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
 			${urlElements}
 		</urlset>`.trim(),
 		{

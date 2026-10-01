@@ -3,7 +3,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import type { RobloxEntry } from '$lib/frontend/public/catalog/index.js';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import { isUsableRobloxThumbnail } from '$lib/roblox-thumbnails.js';
 
 	let { data }: PageProps = $props();
@@ -76,11 +76,13 @@
 	);
 </script>
 
-<PageMeta
-	title="Roblox catalog directory | {APP_NAME} Discord Bot"
-	description="Every Roblox catalog item {APP_NAME} Bot watches, with price, lowest resale, favourites and remaining stock. Filter by category or narrow to limited items."
-	path="/roblox"
-/>
+<svelte:head>
+	<title>Roblox catalog directory | {APP_NAME} Discord Bot</title>
+	<meta
+		name="description"
+		content="Every Roblox catalog item {APP_NAME} Bot watches, with price, lowest resale, favourites and remaining stock. Filter by category or narrow to limited items."
+	/>
+</svelte:head>
 
 <PageShell trailing="home">
 	<div class="@container">

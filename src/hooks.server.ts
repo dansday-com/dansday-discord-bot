@@ -53,10 +53,6 @@ function isFileLikePath(pathname: string): boolean {
 export const handle: Handle = async ({ event, resolve }) => {
 	const start = Date.now();
 
-	if (event.url.hostname.startsWith('www.')) {
-		redirect(301, publicSiteOrigin() + event.url.pathname + event.url.search);
-	}
-
 	if (
 		publicServerSlugFromHost(event.url.hostname) &&
 		!event.url.pathname.startsWith('/api/') &&

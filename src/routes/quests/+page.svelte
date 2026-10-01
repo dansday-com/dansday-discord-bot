@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -23,11 +23,13 @@
 	const liveCount = $derived(data.quests.filter((q) => q.live).length);
 </script>
 
-<PageMeta
-	title="Discord Quest directory | {APP_NAME} Discord Bot"
-	description="Every Discord Quest {APP_NAME} Bot has tracked, with the game, the task, the reward and when it runs. Filter to the quests live right now."
-	path="/quests"
-/>
+<svelte:head>
+	<title>Discord Quest directory | {APP_NAME} Discord Bot</title>
+	<meta
+		name="description"
+		content="Every Discord Quest {APP_NAME} Bot has tracked, with the game, the task, the reward and when it runs. Filter to the quests live right now."
+	/>
+</svelte:head>
 
 <PageShell trailing="home">
 	<div class="@container">

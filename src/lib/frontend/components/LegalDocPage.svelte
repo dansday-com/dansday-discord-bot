@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { legalNav, type LegalDoc } from '$lib/legal.js';
-	import { PageMeta, PageShell } from '$lib/frontend/components/shell';
+	import { PageShell } from '$lib/frontend/components/shell';
 
-	let { doc, path }: { doc: LegalDoc; path: string } = $props();
+	let { doc }: { doc: LegalDoc } = $props();
 </script>
 
-<PageMeta title={doc.title} description={doc.description} {path} />
+<svelte:head>
+	<title>{doc.title}</title>
+	<meta name="description" content={doc.description} />
+</svelte:head>
 
 <PageShell width="flush">
 	<section class="py-9 sm:py-11 lg:py-14">

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -24,11 +24,13 @@
 	const totalChannels = $derived(data.sources.reduce((sum, s) => sum + s.channels, 0));
 </script>
 
-<PageMeta
-	title="Forwarder source servers | {APP_NAME} Discord Bot"
-	description="Every Discord server you can forward messages from with {APP_NAME} Bot. Pull drops, jobs and announcements into your own channels, filtered by keyword so only what you care about lands."
-	path="/forwarder-servers"
-/>
+<svelte:head>
+	<title>Forwarder source servers | {APP_NAME} Discord Bot</title>
+	<meta
+		name="description"
+		content="Every Discord server you can forward messages from with {APP_NAME} Bot. Pull drops, jobs and announcements into your own channels, filtered by keyword so only what you care about lands."
+	/>
+</svelte:head>
 
 <PageShell trailing="home">
 	<div class="@container">

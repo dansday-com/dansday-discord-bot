@@ -84,96 +84,21 @@
 
 	const features: Feature[] = [
 		{
-			icon: 'fa-terminal',
-			title: 'One-command setup',
-			desc: '/setup creates every channel and wires it to the module that uses it.',
-			more: 'Nothing to name or pick by hand.',
-			stat: (s: Totals): Live[] => [{ label: 'Channels wired', value: fmt(s.channels_total) }]
-		},
-		{
-			icon: 'fa-sliders',
-			title: 'Web dashboard',
-			desc: 'Every module configured in the browser, with live bot and server state where it applies.',
-			more: 'No slash command trees to memorise.',
-			stat: (s: Totals): Live[] => [{ label: 'Servers configured', value: fmt(s.servers_counted) }]
-		},
-		{
-			icon: 'fa-toggle-on',
-			title: 'Per-module toggles',
-			desc: 'Every feature has its own switch, per server.',
-			more: 'Turn a module off and it disappears everywhere, including from the AI.'
-		},
-		{
-			icon: 'fa-shield-halved',
-			title: 'Panel permissions',
-			desc: 'Owner and staff tiers control who can change what.',
-			more: 'Helpers contribute without full control of the server.',
-			stat: (s: Totals): Live[] => [{ label: 'Roles mapped', value: fmt(s.roles_total) }]
-		},
-		{
-			icon: 'fa-id-card',
-			title: 'Server accounts',
-			desc: 'Invite owners and staff into the panel with roles that fit your team.',
-			more: 'Separate from who can chat or moderate in Discord.'
-		},
-		{
-			icon: 'fa-robot',
-			title: 'Multiple bots',
-			desc: 'Run as many bots as you like from one panel, each with its own token and servers.',
-			more: 'Start, stop and restart any of them from the browser.'
-		},
-		{
-			icon: 'fa-circle-dot',
-			title: 'Bot presence',
-			desc: "Set each bot's status and activity from the panel.",
-			more: 'Applies live, no restart.'
-		},
-		{
-			icon: 'fa-hand-sparkles',
-			title: 'Join greeting',
-			desc: 'The bot introduces itself when it joins, with your docs and support links.',
-			more: 'Only the first of your bots greets a shared server. Resend it any time.'
-		},
-		{
-			icon: 'fa-chart-line',
-			title: 'Leveling & XP',
-			desc: 'Messages, voice, video and streaming time all earn XP.',
-			more: 'Drives levels, level-up messages, role rewards and leaderboards. Reactions are tracked for tasks.',
-			stat: (s: Totals): Live[] => [
-				{ label: 'XP earned', value: fmt(s.leveling_total_xp) },
-				{ label: 'Top level', value: fmt(s.leveling_max_level) },
-				{ label: 'Voice hours', value: fmt(s.leveling_total_voice_minutes / 60) }
-			]
-		},
-		{
-			icon: 'fa-trophy',
-			title: 'Role rewards',
-			desc: 'Hand out roles automatically as members hit the levels you set.',
-			more: 'No manual role assignment.'
+			icon: 'fa-user',
+			title: 'Member accounts',
+			desc: 'Every member gets their own page, one tap from the Discord menu.',
+			more: 'XP sources, bag, tasks, history and portfolio. No signup.'
 		},
 		{
 			icon: 'fa-store',
 			title: 'Items & XP economy',
-			desc: 'A per-server shop priced in XP, a 50-slot bag and optional timed availability.',
+			desc: 'XP becomes a currency: a per-server shop, a 50-slot bag and items that hit other members.',
 			more: 'Thirteen effects: steal, bomb, leech, bounty, shield, reflect, insurance, boost, gift, spy, disguise, purifier and luck.',
 			stat: (s: Totals): Live[] => [
 				{ label: 'Activations', value: fmt(s.items_activations) },
 				{ label: 'XP stolen', value: fmt(s.items_stolen) },
 				{ label: 'Biggest steal', value: fmt(s.items_biggest_steal) }
 			]
-		},
-		{
-			icon: 'fa-clover',
-			title: 'Luck',
-			desc: 'Raises steal and bomb rolls, minigame odds, spy success, leech skim and insurance refunds.',
-			more: 'Cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.'
-		},
-		{
-			icon: 'fa-user-secret',
-			title: 'Spy & disguise',
-			desc: 'Scout a target before you attack, or hide your own name from every public list.',
-			more: 'A lucky spy can still unmask a disguise.',
-			stat: (s: Totals): Live[] => [{ label: 'Spies', value: fmt(s.items_spies) }]
 		},
 		{
 			icon: 'fa-crosshairs',
@@ -185,6 +110,49 @@
 				{ label: 'Collected', value: fmt(s.bounties_collected) },
 				{ label: 'XP pooled', value: fmt(s.bounties_pooled) }
 			]
+		},
+		{
+			icon: 'fa-user-secret',
+			title: 'Spy & disguise',
+			desc: 'Scout a target before you attack, or hide your own name from every public list.',
+			more: 'A lucky spy can still unmask a disguise.',
+			stat: (s: Totals): Live[] => [{ label: 'Spies', value: fmt(s.items_spies) }]
+		},
+		{
+			icon: 'fa-clover',
+			title: 'Luck',
+			desc: 'Raises steal and bomb rolls, minigame odds, spy success, leech skim and insurance refunds.',
+			more: 'Cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.'
+		},
+		{
+			icon: 'fa-list-check',
+			title: 'Daily & weekly tasks',
+			desc: 'Eighteen daily and eighteen weekly, generated per member from a 96-goal catalog.',
+			more: "Sized from that member's own last seven days, so no two lists match. No admin setup."
+		},
+		{
+			icon: 'fa-fire',
+			title: 'Streaks',
+			desc: 'Clear all eighteen daily for two percent more reward XP a day, up to double.',
+			more: 'Milestones at 7, 30, 100 and 365. Two freezes cover missed days.'
+		},
+		{
+			icon: 'fa-calendar-check',
+			title: 'Daily check-in',
+			desc: 'A seven-day cycle, one claim per local day, up to 50,000 XP.',
+			more: 'Fifty percent chance of a shop item instead, rolled by rarity tier.'
+		},
+		{
+			icon: 'fa-swatchbook',
+			title: 'Card themes',
+			desc: 'Spin 1,000 XP for one of 70 animated effects, from fire to a black hole.',
+			more: 'It repaints their account, their leaderboard row and their members-list card.'
+		},
+		{
+			icon: 'fa-id-badge',
+			title: 'Shareable member card',
+			desc: 'Members render their own card and download it as an image.',
+			more: 'Straight to Instagram, X, Facebook or Discord.'
 		},
 		{
 			icon: 'fa-coins',
@@ -209,39 +177,21 @@
 			]
 		},
 		{
-			icon: 'fa-list-check',
-			title: 'Daily & weekly tasks',
-			desc: 'Eighteen daily and eighteen weekly, generated per member from a 96-goal catalog.',
-			more: "Sized from that member's own last seven days, so no two lists match. No admin setup."
-		},
-		{
-			icon: 'fa-fire',
-			title: 'Streaks',
-			desc: 'Clear all eighteen daily for two percent more reward XP a day, up to double.',
-			more: 'Milestones at 7, 30, 100 and 365. Two freezes cover missed days.'
-		},
-		{
-			icon: 'fa-calendar-check',
-			title: 'Daily check-in',
-			desc: 'A seven-day cycle, one claim per local day, up to 50,000 XP.',
-			more: 'Fifty percent chance of a shop item instead, rolled by rarity tier.'
-		},
-		{
-			icon: 'fa-boxes-stacked',
-			title: 'Global item catalog',
-			desc: 'Build items once and push them to every server you run.',
-			more: 'Per-server pricing and availability on top.'
-		},
-		{
-			icon: 'fa-chart-pie',
-			title: 'Public statistics',
-			desc: 'Live server totals across every module, at a public URL.',
-			more: 'No login. Search engines can index it.',
+			icon: 'fa-chart-line',
+			title: 'Leveling & XP',
+			desc: 'Messages, voice, video and streaming time all earn XP.',
+			more: 'Drives levels, level-up messages, role rewards and leaderboards. Reactions are tracked for tasks.',
 			stat: (s: Totals): Live[] => [
-				{ label: 'Live pages', value: fmt(s.servers_counted), live: true },
-				{ label: 'Members listed', value: fmt(s.members_total) },
-				{ label: 'Channels', value: fmt(s.channels_total) }
+				{ label: 'XP earned', value: fmt(s.leveling_total_xp) },
+				{ label: 'Top level', value: fmt(s.leveling_max_level) },
+				{ label: 'Voice hours', value: fmt(s.leveling_total_voice_minutes / 60) }
 			]
+		},
+		{
+			icon: 'fa-trophy',
+			title: 'Role rewards',
+			desc: 'Hand out roles automatically as members hit the levels you set.',
+			more: 'No manual role assignment.'
 		},
 		{
 			icon: 'fa-ranking-star',
@@ -260,16 +210,66 @@
 			]
 		},
 		{
-			icon: 'fa-user',
-			title: 'Member accounts',
-			desc: 'Members sign in to their own page for XP sources, history and portfolio.',
-			more: 'Reached by a per-member link.'
+			icon: 'fa-chart-pie',
+			title: 'Public statistics',
+			desc: 'Live server totals across every module, at a public URL.',
+			more: 'No login. Search engines can index it.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Live pages', value: fmt(s.servers_counted), live: true },
+				{ label: 'Members listed', value: fmt(s.members_total) },
+				{ label: 'Channels', value: fmt(s.channels_total) }
+			]
 		},
 		{
-			icon: 'fa-id-badge',
-			title: 'Shareable member card',
-			desc: 'Members render their own card and download it as an image.',
-			more: 'Straight to Instagram, X, Facebook or Discord.'
+			icon: 'fa-sliders',
+			title: 'Web dashboard',
+			desc: 'Every module configured in the browser, with live bot and server state where it applies.',
+			more: 'No slash command trees to memorise.',
+			stat: (s: Totals): Live[] => [{ label: 'Servers configured', value: fmt(s.servers_counted) }]
+		},
+		{
+			icon: 'fa-terminal',
+			title: 'One-command setup',
+			desc: '/setup creates every channel and wires it to the module that uses it.',
+			more: 'Nothing to name or pick by hand.',
+			stat: (s: Totals): Live[] => [{ label: 'Channels wired', value: fmt(s.channels_total) }]
+		},
+		{
+			icon: 'fa-toggle-on',
+			title: 'Per-module toggles',
+			desc: 'Every feature has its own switch, per server.',
+			more: 'Turn a module off and it disappears everywhere, including from the AI.'
+		},
+		{
+			icon: 'fa-robot',
+			title: 'Multiple bots',
+			desc: 'Run as many bots as you like from one panel, each with its own token and servers.',
+			more: 'Start, stop and restart any of them from the browser.'
+		},
+		{
+			icon: 'fa-shield-halved',
+			title: 'Panel permissions',
+			desc: 'Owner and staff tiers control who can change what.',
+			more: 'Helpers contribute without full control of the server.',
+			stat: (s: Totals): Live[] => [{ label: 'Roles mapped', value: fmt(s.roles_total) }]
+		},
+		{
+			icon: 'fa-id-card',
+			title: 'Server accounts',
+			desc: 'Invite owners and staff into the panel with roles that fit your team.',
+			more: 'Separate from who can chat or moderate in Discord.'
+		},
+		{
+			icon: 'fa-circle-dot',
+			title: 'Bot presence',
+			desc: "Set each bot's status and activity from the panel.",
+			more: 'Applies live, no restart.'
+		},
+		{
+			icon: 'fa-boxes-stacked',
+			title: 'Global item catalog',
+			desc: 'Build items once and push them to every server you run.',
+			more: 'Per-server pricing and availability on top.'
 		},
 		{
 			icon: 'fa-palette',
@@ -284,10 +284,22 @@
 			more: 'For announcements and downtime notices.'
 		},
 		{
+			icon: 'fa-language',
+			title: 'Multi-language',
+			desc: 'English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese across Discord flows.',
+			more: 'Buttons, selects and labels all follow the choice.'
+		},
+		{
 			icon: 'fa-hand',
 			title: 'Welcomer',
 			desc: 'Greet new members with your own message and a rich embed.',
 			more: 'Placeholders for the member, the server, the member count and account age.'
+		},
+		{
+			icon: 'fa-hand-sparkles',
+			title: 'Join greeting',
+			desc: 'The bot introduces itself when it joins, with your docs and support links.',
+			more: 'Only the first of your bots greets a shared server. Resend it any time.'
 		},
 		{
 			icon: 'fa-gift',
@@ -351,16 +363,21 @@
 			more: 'Pick the events and the channel they post to.'
 		},
 		{
-			icon: 'fa-forward',
-			title: 'Message forwarder',
-			desc: 'Mirror or sync messages across channels and servers.',
-			more: 'Keeps announcements aligned across communities.'
+			icon: 'fa-tower-broadcast',
+			title: 'Creator alerts',
+			desc: 'Members follow their own YouTube, Twitch and TikTok creators.',
+			more: 'Tagged on new videos, live streams and posts.'
 		},
 		{
-			icon: 'fa-language',
-			title: 'Multi-language',
-			desc: 'English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese across Discord flows.',
-			more: 'Buttons, selects and labels all follow the choice.'
+			icon: 'fa-video',
+			title: 'Content creator',
+			desc: 'Creator applications, approvals and TikTok live session digests.',
+			more: 'Tied to the channels you nominate.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Live now', value: fmt(s.streams_live_now), live: true },
+				{ label: 'Creators', value: fmt(s.streams_creators) },
+				{ label: 'Peak viewers', value: fmt(s.streams_peak_viewers) }
+			]
 		},
 		{
 			icon: 'fa-scroll',
@@ -392,21 +409,10 @@
 			]
 		},
 		{
-			icon: 'fa-video',
-			title: 'Content creator',
-			desc: 'Creator applications, approvals and TikTok live session digests.',
-			more: 'Tied to the channels you nominate.',
-			stat: (s: Totals): Live[] => [
-				{ label: 'Live now', value: fmt(s.streams_live_now), live: true },
-				{ label: 'Creators', value: fmt(s.streams_creators) },
-				{ label: 'Peak viewers', value: fmt(s.streams_peak_viewers) }
-			]
-		},
-		{
-			icon: 'fa-tower-broadcast',
-			title: 'Creator alerts',
-			desc: 'Members follow their own YouTube, Twitch and TikTok creators.',
-			more: 'Tagged on new videos, live streams and posts.'
+			icon: 'fa-forward',
+			title: 'Message forwarder',
+			desc: 'Mirror or sync messages across channels and servers.',
+			more: 'Keeps announcements aligned across communities.'
 		},
 		{
 			icon: 'fa-comments',
@@ -421,6 +427,12 @@
 			more: 'Wakes on a phrase, one speaker at a time, mutes itself when idle.'
 		},
 		{
+			icon: 'fa-database',
+			title: 'Server knowledge',
+			desc: "The AI reads your server's own live data with no extra key.",
+			more: "Statistics, leaderboards, the shop, XP rates and the asker's own account only."
+		},
+		{
 			icon: 'fa-book',
 			title: 'Wiki knowledge',
 			desc: 'Point the bot at any MediaWiki or Fandom site from the panel.',
@@ -431,12 +443,6 @@
 			title: 'Search, fetch & images',
 			desc: 'Web search, page reading and image generation, each on its own key.',
 			more: 'Invisible until configured. The model decides when to use them.'
-		},
-		{
-			icon: 'fa-database',
-			title: 'Server knowledge',
-			desc: "The AI reads your server's own live data with no extra key.",
-			more: "Statistics, leaderboards, the shop, XP rates and the asker's own account only."
 		},
 		{
 			icon: 'fa-code-branch',
@@ -473,30 +479,73 @@
 
 	const META = ['Free forever', 'AGPL-3.0 licensed', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
 
-	const TITLE = `Free Discord Bot with Web Dashboard — Leveling, Economy & Alerts | ${APP_NAME}`;
+	const TITLE = `Free Discord Leveling Bot Where Members Steal XP | ${APP_NAME}`;
 	const DESCRIPTION =
-		'Free, open-source Discord bot with a web dashboard: leveling and role rewards, an XP economy, moderation, giveaways, and Twitch, YouTube and TikTok alerts.';
+		"Free Discord leveling bot where members steal, bomb and leech each other's XP and defend it. Daily tasks, Roblox alerts, server-aware AI. Open source.";
+
+	const different = [
+		{
+			title: 'Members steal XP',
+			desc: 'A steal takes it, a bomb burns it and credits no one, a leech skims what they earn next. Shield, reflect and insure against it. Put a bounty on the leader, or disguise yourself off every leaderboard.'
+		},
+		{
+			title: 'Roblox alerts per member',
+			desc: "A member taps Notify me under any catalog post and gets tagged when that item's price, resale price, stock or total supply changes. Their own watchlist, not a channel-wide feed."
+		},
+		{
+			title: 'AI that knows your server',
+			desc: 'Ask it in chat, or say "hey stupid" in voice. It answers from your live leaderboards, shop prices, XP rates and stats, and from any wiki you add.'
+		},
+		{
+			title: 'XP they can spend',
+			desc: 'A per-server shop, a market priced from live crypto data and a gamble table, all paid in XP. Wagers only touch XP above your level, so a bad bet never drops one.'
+		},
+		{
+			title: 'Tasks nobody had to write',
+			desc: 'Eighteen daily and eighteen weekly per member, sized from their own last seven days and priced against your shop. Streaks and a check-in on top. Admins set up nothing.'
+		},
+		{
+			title: 'Every member gets an account',
+			desc: 'One tap on the Discord menu opens their own page: where their XP came from, their bag, tasks, portfolio, minigames and history. No signup, no password.'
+		},
+		{
+			title: '70 card themes to win',
+			desc: 'Spin 1,000 XP for an animated effect, from fire and aurora to a black hole. It repaints their card, their leaderboard row and their spot in the members list.'
+		}
+	];
 
 	const faq = [
 		{
 			q: 'Is it a free MEE6 alternative?',
-			a: 'Yes. Leveling, role rewards, moderation, giveaways and creator alerts are all free forever, and the code is open source under AGPL-3.0.'
+			a: "Leveling, role rewards and level-up messages are free forever. On top of that, members steal, bomb and leech each other's XP and defend it with shields, reflects and insurance. Open source under AGPL-3.0."
 		},
 		{
-			q: 'Is there a web dashboard?',
-			a: 'Every module is configured from a web dashboard instead of slash commands, with owner and staff access per server.'
+			q: 'Can it alert on Roblox item prices?',
+			a: "Yes, per member. Anyone can tap Notify me under a catalog post and get tagged when that item's price, resale price, stock or total supply changes."
 		},
 		{
-			q: 'Does it post level-up messages?',
-			a: 'Messages, voice, video and streaming time earn XP, with level-up messages, role rewards and all-time, monthly and weekly leaderboards.'
+			q: 'Does the AI know my server?',
+			a: 'Chat and Gemini Live voice answer from your live leaderboards, shop prices, XP rates and statistics, and from any MediaWiki or Fandom wiki you add.'
+		},
+		{
+			q: 'What do members actually get?',
+			a: 'Their own account page, one tap from the Discord menu: a bag of items, eighteen daily and eighteen weekly tasks, a streak, a check-in, a market portfolio and an animated card. No signup.'
 		},
 		{
 			q: 'Is it an economy bot?',
-			a: 'XP is the currency: a per-server item shop, bounties, minigames and an assets market. No real money.'
+			a: 'XP is the currency. Members buy items with it, wager it, invest it in a market priced from live crypto data and steal it from each other. No real money.'
 		},
 		{
-			q: 'Does it send Twitch and YouTube notifications?',
-			a: 'Members follow their own YouTube, Twitch and TikTok creators and get tagged on new videos, live streams and posts.'
+			q: 'Do I have to write the tasks?',
+			a: 'No. Tasks generate per member, sized from their own last seven days, so every list fits the member and nobody on staff maintains them.'
+		},
+		{
+			q: 'Is there a web dashboard?',
+			a: 'Every module is configured in the browser instead of slash commands, with owner and staff access per server. /setup builds the channels once.'
+		},
+		{
+			q: 'Does it do the basics too?',
+			a: 'Level-up messages, role rewards, a welcomer, giveaways, moderation, and Twitch, YouTube and TikTok alerts. All free, all in the same panel.'
 		},
 		{
 			q: 'Can I self-host it?',
@@ -546,13 +595,13 @@
 			<GlobeScene gains={feed.gains} avoid={[heroText, heroFoot]} />
 
 			<div bind:this={heroText}>
-				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
+				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 7; --rise-delay: 80ms">Earn XP</p>
 				<span class="animate-rise block" style="--rise-delay: 200ms">
-					<p class="display-line display-fill text-primary block whitespace-nowrap uppercase" style="--ch: 12; --sweep-delay: 720ms">Every module</p>
+					<p class="display-line display-fill text-primary block whitespace-nowrap uppercase" style="--ch: 8; --sweep-delay: 720ms">Steal it</p>
 				</span>
 				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
-					<strong class="text-base-content font-extrabold">Free, open-source Discord bot with a web dashboard.</strong>
-					Leveling, an XP economy, moderation, giveaways, Twitch and YouTube alerts — all set up in the browser, not slash commands.
+					<strong class="text-base-content font-extrabold">Free Discord leveling bot where members steal each other's XP.</strong>
+					Shield it, insure it, spend what's left. Personal daily tasks, Roblox price alerts and AI that knows your server, all set up in a browser.
 				</h1>
 			</div>
 
@@ -570,8 +619,8 @@
 
 				<div class="grid grid-cols-1 items-end gap-6 sm:grid-cols-3">
 					<a
-						href="#features"
-						aria-label="Scroll to the modules"
+						href="#different"
+						aria-label="Scroll to what makes it different"
 						class="text-primary hover:text-accent flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:text-[14px] {scrolled
 							? 'pointer-events-none translate-y-1 opacity-0'
 							: 'opacity-100'}"
@@ -611,9 +660,32 @@
 			</div>
 		</section>
 
+		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="different">
+			<div class="mb-6">
+				<p class={EYEBROW}>01 — Why it's different</p>
+				<h2 class={H2}>Members play it</h2>
+				<p class={LEAD}>
+					On most leveling bots, XP only ever goes up. Here members take it from each other and fight to keep it, and that gives them a reason to come back
+					tomorrow.
+				</p>
+			</div>
+			<dl class="border-base-300 border-t">
+				{#each different as item, i}
+					<div
+						use:reveal
+						class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
+						style="transition-delay: {i * 60}ms"
+					>
+						<dt class="text-base-content min-w-0 text-[clamp(15px,2.4cqw,24px)] leading-[1.05] font-black tracking-[-0.02em] uppercase">{item.title}</dt>
+						<dd class="text-base-content/70 min-w-0 text-[12.5px] leading-[1.5]">{item.desc}</dd>
+					</div>
+				{/each}
+			</dl>
+		</section>
+
 		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="features">
 			<div class="mb-7">
-				<p class={EYEBROW}>01 — Modules</p>
+				<p class={EYEBROW}>02 — Modules</p>
 				<h2 class={H2}>Everything your server needs</h2>
 				<p class={LEAD}>
 					All {features.length} of them, drifting past on their own.
@@ -679,7 +751,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>02 — Communities</p>
+						<p class={EYEBROW}>03 — Communities</p>
 						<h2 class={H2}>Top servers by XP</h2>
 						<p class={LEAD}>The five busiest communities running it right now. Each has its own live public pages, no login needed.</p>
 					</div>
@@ -727,7 +799,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>03 — Forwarder sources</p>
+						<p class={EYEBROW}>04 — Forwarder sources</p>
 						<h2 class={H2}>Forward from here</h2>
 						<p class={LEAD}>
 							Pull drops, jobs and announcements out of {data.forwarderSourceCount} servers reaching {fmt(data.forwarderSourceMembers)} members, straight into your
@@ -776,7 +848,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>04 — Discord Quests</p>
+						<p class={EYEBROW}>05 — Discord Quests</p>
 						<h2 class={H2}>Quests worth running</h2>
 						<p class={LEAD}>{data.liveQuestCount} live of {data.questCount} tracked, with the game, the task and the reward.</p>
 					</div>
@@ -839,7 +911,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>05 — Roblox catalog</p>
+						<p class={EYEBROW}>06 — Roblox catalog</p>
 						<h2 class={H2}>Items under watch</h2>
 						<p class={LEAD}>
 							The most notified, then the most favourited, of {data.robloxCount} catalog items the notifier tracks for price and stock changes.
@@ -909,7 +981,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>06 — Wiki knowledge</p>
+						<p class={EYEBROW}>07 — Wiki knowledge</p>
 						<h2 class={H2}>What it can look up</h2>
 						<p class={LEAD}>
 							{data.activeWikiCount} of {data.wikiCount} connected wikis answer questions right now. Every server the bot is in can ask about all of them.
@@ -956,7 +1028,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>07 — Tasks</p>
+						<p class={EYEBROW}>08 — Tasks</p>
 						<h2 class={H2}>A pool of {data.taskCount} tasks</h2>
 						<p class={LEAD}>Daily and weekly cards deal from this pool. Goals scale to each member, so nobody gets the same card.</p>
 					</div>
@@ -988,7 +1060,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>08 — Items</p>
+						<p class={EYEBROW}>09 — Items</p>
 						<h2 class={H2}>The shop catalog</h2>
 						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once they are in a bag.</p>
 					</div>
@@ -1021,7 +1093,7 @@
 
 		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>09 — The panel</p>
+				<p class={EYEBROW}>10 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
 				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
 			</div>
@@ -1037,7 +1109,7 @@
 
 		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>10 — Questions</p>
+				<p class={EYEBROW}>11 — Questions</p>
 				<h2 class={H2}>Before you add it</h2>
 			</div>
 			<dl class="border-base-300 border-t">
@@ -1055,7 +1127,7 @@
 		</section>
 
 		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
-			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">11 — Start</p>
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">12 — Start</p>
 			<p class="font-black">
 				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
 			</p>

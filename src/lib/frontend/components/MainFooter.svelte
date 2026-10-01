@@ -27,5 +27,6 @@
 			<a class="link link-hover" href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>, listed on the
 			<a class="link link-hover" href={DISCORD_APP_DIRECTORY_URL} target="_blank" rel="noopener noreferrer">Discord App Directory</a>.
 		</p>
+		<p class="text-primary text-[10.5px] font-extrabold tracking-[0.2em] uppercase">#fromdevtocommunity</p>
 	</div>
 </footer>

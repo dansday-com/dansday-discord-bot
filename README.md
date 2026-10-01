@@ -4,9 +4,9 @@
 
 # &lt;/DANSDAY&gt;
 
-**A Discord bot you configure in a browser — and an account for every member, not just admins.**
+**The free Discord leveling bot where members steal each other's XP — and fight to keep it.**
 
-Leveling, an XP economy, moderation, AI chat and voice, public server pages, Discord Quests and Roblox catalog alerts. Run it on your own box or add the hosted bot.
+Steal, bomb and leech on one side, shield, reflect and insurance on the other. Per-member Roblox price alerts, AI chat and voice that answer from your server's own numbers, personal daily tasks and 70 animated card themes. Configured in a browser. Self-host it or add the hosted bot.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-1a7f37?style=flat-square)](LICENSE)
 [![Self-hostable](https://img.shields.io/badge/self--host-Docker%20%7C%20Node%2025-2b7489?style=flat-square)](#quick-start)
@@ -24,13 +24,18 @@ Leveling, an XP economy, moderation, AI chat and voice, public server pages, Dis
 
 ## What makes it different
 
-Most Discord bots give the admin a dashboard. This one gives **every member their own account** on a public web page — their XP, their bag, their streaks, their portfolio, their animated card — and gives you one panel that configures every bot and every server you run from a single browser tab.
+On most leveling bots, XP only ever goes up. Here **members take it from each other** and fight to keep it, and that gives them a reason to come back tomorrow.
 
-- **No slash-command archaeology.** Every module is a tab with live preview. `/setup` builds the channels once; the rest is point-and-click.
-- **Members get a real profile.** Sign-in accounts at `/server/<slug>` with leaderboards on any metric, 18 daily and 18 weekly tasks generated per person, an XP shop, a crypto-priced assets market and spin-unlocked card themes. No real money anywhere.
-- **One panel, every server.** Multi-bot and multi-server from one login, with owner and staff tiers, rather than a separate subscription per guild.
-- **AI that reads your own server.** Chat and Gemini Live voice that can answer from your live statistics, leaderboards, shop prices and XP formula — and from any MediaWiki or Fandom wiki you add.
-- **Yours to run.** AGPL-3.0, self-hostable, no feature held back behind a tier.
+- **Members steal XP.** A steal takes it, a bomb burns it and credits no one, a leech skims what the victim earns next. Shield, reflect and insure against it. Put a bounty on the leader, spy before you strike, disguise yourself off every public board. Luck tilts the rolls.
+- **Roblox alerts per member.** A member taps 🔔 Notify me under any catalog post and gets tagged when that item's price, resale price, stock or total supply changes. Their own watchlist, not a channel-wide feed.
+- **AI that reads your own server.** Chat and Gemini Live voice, woken by "hey stupid", that answer from your live statistics, leaderboards, shop prices and XP rates, and from any MediaWiki or Fandom wiki you add.
+- **XP is a currency.** Spend it in a per-server shop, invest it in a market priced from live CoinGecko data, or wager it. Wagers only touch XP above your current level, so a bad bet never costs one. No real money anywhere.
+- **Tasks nobody had to write.** 18 daily and 18 weekly per member from a 96-goal catalog, sized from their own last 7 days and priced against your shop. Streaks up to +100% and a 7-day check-in. Free, with zero admin setup.
+- **Every member gets an account.** One tap on the Account button in the Discord menu opens their own page: where their XP came from, a 14-day flow, who they talk to in voice, their bag, tasks, portfolio, minigames and history. No signup, no password.
+- **70 card themes to win.** Spin 1,000 XP for an animated effect, from fire and aurora to a black hole. It repaints their account, their leaderboard row and their members-list card.
+- **One panel, every server, yours to run.** Every module is a tab in the browser, not a slash command. Multi-bot and multi-server from one login, AGPL-3.0, nothing held back behind a tier.
+
+The basics are here too: leveling, role rewards, a welcomer, giveaways, moderation, and YouTube, Twitch and TikTok alerts. Free, in the same panel.
 
 ---
 
@@ -198,42 +203,27 @@ Each member signs in to their own account on those same pages.
 
 ## Features
 
-### Panel
+### Member accounts
 
-- **One-command setup** - `/setup` creates every channel and wires it to its module. Nothing to pick by hand.
-- **Granular permissions** - Owner and staff tiers control who changes what.
-- **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
-- **Per-module toggles** - Enable or disable each feature per server.
-- **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
-- **Embed builder** - Rich embeds with live preview, placeholders and images.
-- **Multi-language** - English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese for Discord buttons, selects and labels.
+- **Account page** - The Account button in the Discord menu opens the member's own page. XP sources, a 14-day XP flow, voice buddies, bag, tasks, portfolio, minigames and history. No signup, no password.
+- **Member themes** - Each member sets a background image and an accent colour read from it, then spins 1,000 XP for an animated effect. It repaints their account, cards, their leaderboard row and their members-list card.
+- **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles, all on by default. Off means everything public goes dark.
 
-### Community & engagement
+### XP economy & PvP
 
 - **Items & XP economy** - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
   - 🍀 **Luck** raises steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.
 - **Assets market** - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
 - **Minigames** - Wager XP. 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level.
-- **Tasks, streaks & check-in** - No admin setup; goals, difficulty and rewards generate per member.
+
+### Tasks, streaks & check-in
+
+- **No admin setup** - Goals, difficulty and rewards generate per member.
   - 18 daily tasks (6 easy, 6 medium, 6 hard from a 96-goal catalog) and 18 weekly, on the member's local clock. No two members get the same list.
   - Goals are sized from that member's own last 7 days of the exact metric, capped by what the period physically allows, and graded as real effort rather than by rank.
   - Rewards are XP or a shop item at a 30% item chance. Tasks that cost XP always pay back more than they cost.
   - 🔥 **Streaks** - Clear all 18 daily for +2% reward XP per day up to +100%, milestones at 7 / 30 / 100 / 365. Two ❄️ freezes cover missed days, one back every 10 claims.
   - 📆 **Check-in** - 7-day cycle, one claim per local day, 1,000 → 50,000 XP, identical on every server. 50% chance of a shop item instead, rolled by rarity tier.
-- **Leveling & XP** - Messages and voice feed levels, role rewards and leaderboards. Reactions are tracked for tasks.
-- **Welcomer** - Custom welcome messages and embeds.
-- **Giveaways** - Entries, winner selection and role-based eligibility.
-- **AFK** - Members set a status; the bot warns anyone who mentions them.
-- **Staff rating** - Members rate staff; approved ratings drive roles placed automatically above your staff roles.
-- **Booster messages** - Thank Nitro boosters with configurable channels and templates.
-- **Custom supporter roles** - Boosters pick their own role name and color, placed automatically above the Server Booster role so the color shows.
-- **Feedback** - Collect suggestions through Discord flows.
-
-### Safety & operations
-
-- **Moderation** - Warnings, mutes, bans and staff actions from the panel.
-- **Channel notifications** - Alerts for important channel activity.
-- **Message forwarder** - Pull messages out of servers the operator has linked, into your own channels. Filter by keyword, matched against embeds too. Forwarders are independent, so a catch-all and a filtered one can both take the same message. Available sources are listed at `/forwarder-servers`.
 
 ### AI
 
@@ -254,17 +244,39 @@ Each member signs in to their own account on those same pages.
   - ⭐ **XP rates** - Reads your server's own leveling configuration, so "how much XP for an hour in voice", "how much per message" and "how much XP to reach level 10" get exact answers off your settings, not guesses. Covers voice, AFK voice, video, streaming and chat rates, the message cooldown, the friend and luck bonuses, and the level-up formula.
   - 🎒 **Their own account** - Level, bag, assets, minigames, history, tasks and streak — always the asker's own and never anyone else's, so "what is in my bag" works and "what is in theirs" does not.
 
+### Panel
+
+- **One-command setup** - `/setup` creates every channel and wires it to its module. Nothing to pick by hand.
+- **Granular permissions** - Owner and staff tiers control who changes what.
+- **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
+- **Per-module toggles** - Enable or disable each feature per server.
+- **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
+- **Embed builder** - Rich embeds with live preview, placeholders and images.
+- **Multi-language** - English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese for Discord buttons, selects and labels.
+
+### Community
+
+- **Leveling & XP** - Messages and voice feed levels, role rewards and leaderboards. Reactions are tracked for tasks.
+- **Welcomer** - Custom welcome messages and embeds.
+- **Giveaways** - Entries, winner selection and role-based eligibility.
+- **AFK** - Members set a status; the bot warns anyone who mentions them.
+- **Staff rating** - Members rate staff; approved ratings drive roles placed automatically above your staff roles.
+- **Booster messages** - Thank Nitro boosters with configurable channels and templates.
+- **Custom supporter roles** - Boosters pick their own role name and color, placed automatically above the Server Booster role so the color shows.
+- **Feedback** - Collect suggestions through Discord flows.
+
+### Safety & operations
+
+- **Moderation** - Warnings, mutes, bans and staff actions from the panel.
+- **Channel notifications** - Alerts for important channel activity.
+- **Message forwarder** - Pull messages out of servers the operator has linked, into your own channels. Filter by keyword, matched against embeds too. Forwarders are independent, so a catch-all and a filtered one can both take the same message. Available sources are listed at `/forwarder-servers`.
+
 ### Integrations
 
 - **Discord Quest notifier** - Quest activity, with optional per-server enrollment automation.
-- **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
+- **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities. Each member taps 🔔 Notify me on an item to be tagged when its price, resale price, stock or total supply moves.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
 - **Creator alerts** - Each member follows their own YouTube, Twitch and TikTok creators and is tagged on new videos, live streams and posts, from the Content Creator or Notifications menu.
-
-### Public web pages
-
-- **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles, all on by default. Off means everything public goes dark.
-- **Member themes** - Each member sets a background image and an accent colour read from it, then spins 1,000 XP for an animated effect. It repaints their account, cards, their leaderboard row and their members-list card.
 
 ### Advanced
 

@@ -268,7 +268,9 @@ Each member signs in to their own account on those same pages.
 
 ### Safety & operations
 
-- **Moderation** - Warnings, mutes, bans and staff actions from the panel.
+- **Moderation** - Warn, time out, kick, ban and tempban from the panel or the staff menu, each logged as a numbered case.
+  - Remove one warning or clear them all; tempbans lift themselves.
+  - Bans, kicks and timeouts done directly in Discord are recorded too.
 - **Channel notifications** - Alerts for important channel activity.
 - **Message forwarder** - Pull messages out of servers the operator has linked, into your own channels. Filter by keyword, matched against embeds too. Forwarders are independent, so a catch-all and a filtered one can both take the same message. Available sources are listed at `/forwarder-servers`.
 

@@ -612,5 +612,28 @@
 			"tiktokCooling": "⏳ TikTok is rate limiting lookups right now. Try again in a few minutes.",
 			"lookupFailed": "❌ Could not look up that creator right now. Try again later."
 		}
+	},
+	"moderation": {
+		"button": "🛡️ Moderation",
+		"selectUser": "Choose the member to moderate.",
+		"selectUserPlaceholder": "Select a member",
+		"selectAction": "Choose an action for {member}.",
+		"selectActionPlaceholder": "Select an action",
+		"actions": {
+			"warn": "Warn",
+			"timeout": "Timeout",
+			"untimeout": "Remove timeout",
+			"kick": "Kick",
+			"ban": "Ban",
+			"tempban": "Temporary ban",
+			"clearwarns": "Clear warnings"
+		},
+		"modal": {
+			"reason": "Reason",
+			"duration": "Duration (e.g. 10m, 2h, 7d)"
+		},
+		"done": "✅ {action} applied to {member}. Case #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ Enter a duration like 10m, 2h or 7d."
 	}
 }

@@ -424,7 +424,7 @@ export const setupChannels = [
 	{ name: '「⚙️」bot-updates', desc: 'Bot update notifications.' },
 	{ name: '「🚪」welcome', desc: 'Where welcome messages post.' },
 	{ name: '「🚀」booster', desc: 'Where server boost messages post.' },
-	{ name: '「🔨」moderation', desc: 'Moderation (ban/kick) log embeds.' },
+	{ name: '「🔨」moderation', desc: 'Numbered moderation case embeds.' },
 	{ name: '「🆙」level', desc: 'Level and rank progress notifications.' },
 	{ name: '「🎁」giveaway', desc: 'Giveaway posts and winner announcements.' },
 	{ name: '「⭐」staff-rating', desc: 'Staff rating reports and updates.' },
@@ -644,10 +644,10 @@ export const modules = [
 		icon: 'fa-gavel',
 		accent: '#c0392b',
 		title: 'Moderation',
-		what: 'Logs ban and kick actions to a channel.',
+		what: 'Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
 		fields: [
-			{ label: 'Moderation module', desc: 'When off, moderation is disabled, including ban and kick log embeds.' },
-			{ label: 'Moderation Logs Channel', desc: 'Where moderation logs post.' }
+			{ label: 'Moderation module', desc: 'When off, panel and menu actions are blocked and no cases are logged.' },
+			{ label: 'Moderation Logs Channel', desc: 'Where case embeds post, including actions taken directly in Discord.' }
 		]
 	},
 	{

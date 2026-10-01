@@ -23,7 +23,8 @@
 			? [{ label: 'Accounts', icon: 'fa-user-shield', iconClass: 'text-amber-400', href: `${base}/accounts` }]
 			: []),
 		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/embed` },
-		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` }
+		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` },
+		{ label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: `${base}/moderation` }
 	]);
 
 	function isActive(href: string) {

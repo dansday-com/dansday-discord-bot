@@ -5,7 +5,7 @@ import { logger } from '../../../utils/index.js';
 import forwarder from './components/forwarder.js';
 import welcomer from './components/welcomer.js';
 import booster from './components/booster.js';
-import moderation from './components/moderation.js';
+import moderation, { initModerationSweeper, stopModerationSweeper } from './components/moderation.js';
 import webhook from './components/webhook.js';
 import commands from './components/commands.js';
 import interfaceComponent from './components/interface.js';
@@ -111,6 +111,7 @@ client.on('clientReady', async () => {
 	initRobloxCatalogNotifier(client, officialBotId);
 	initCreatorAlerts(client, officialBotId);
 	initExpirySweeper(client);
+	initModerationSweeper(client);
 	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(client, guildId, discordMemberId, streakResult, milestone));
 	startAssetMarketPoller(String(officialBotId));
 	webhook.startWebhookServer(client, officialBotId);
@@ -126,6 +127,7 @@ async function shutdown() {
 	stopRobloxCatalogNotifier();
 	stopCreatorAlerts();
 	stopExpirySweeper();
+	stopModerationSweeper();
 	stopAssetMarketPoller();
 	webhook.stopWebhookServer();
 	client.destroy();

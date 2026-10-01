@@ -19,6 +19,7 @@ import {
 } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
+import { handleModerationButton, handleModerationUserSelect, handleModerationActionSelect, handleModerationModal } from './interface/moderation.js';
 import {
 	handleGiveawayButton,
 	handleGiveawayModal,
@@ -207,6 +208,13 @@ async function handleMenuButton(interaction) {
 			.setCustomId(DISCORD_QUEST_BUTTON_ID)
 			.setLabel(await translate('questEnroll.menuButton', interaction.guild.id, interaction.user.id))
 			.setStyle(ButtonStyle.Success)
+	);
+
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_moderation')
+			.setLabel(await translate('moderation.button', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Danger)
 	);
 
 	if (buttons.length === 0) {
@@ -514,6 +522,10 @@ export async function handleButtonInteraction(interaction) {
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorDismissNo(interaction);
 			break;
+		case 'bot_moderation':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.moderation)) break;
+			await handleModerationButton(interaction);
+			break;
 		case 'bot_afk':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) break;
 			await handleAFKButton(interaction);
@@ -699,7 +711,9 @@ function init(client) {
 				const customId = interaction.customId;
 				await logger.log(`📝 Modal submitted: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-				if (interaction.customId === 'custom_supporter_role_create') {
+				if (interaction.customId.startsWith('moderation_modal|')) {
+					await handleModerationModal(interaction);
+				} else if (interaction.customId === 'custom_supporter_role_create') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
 					await handleCustomSupporterRoleModal(interaction);
 				} else if (interaction.customId === 'custom_supporter_role_edit') {
@@ -775,6 +789,8 @@ function init(client) {
 					await handleStaffRatingScoreSelect(interaction);
 				} else if (customId.startsWith('staff_rating_category') || customId.startsWith('staff_report_category')) {
 					await handleStaffRatingCategorySelect(interaction);
+				} else if (customId.startsWith('moderation_action|')) {
+					await handleModerationActionSelect(interaction);
 				} else if (customId === 'settings_language_select') {
 					await handleLanguageSelect(interaction);
 				} else if (customId === 'notifications_select') {
@@ -855,6 +871,8 @@ function init(client) {
 
 				if (customId === 'staff_rating_select_user' || customId === 'staff_report_select_user') {
 					await handleStaffRatingUserSelect(interaction);
+				} else if (customId === 'moderation_select_user') {
+					await handleModerationUserSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown user select: "${customId}" by ${user.tag} (${user.id})`);
 				}

@@ -563,5 +563,28 @@
 			"tiktokCooling": "⏳ TikTok sedang mengehadkan carian. Cuba lagi dalam beberapa minit.",
 			"lookupFailed": "❌ Tidak dapat mencari pencipta itu sekarang. Cuba lagi nanti."
 		}
+	},
+	"moderation": {
+		"button": "🛡️ Moderasi",
+		"selectUser": "Pilih ahli untuk dimoderasi.",
+		"selectUserPlaceholder": "Pilih ahli",
+		"selectAction": "Pilih tindakan untuk {member}.",
+		"selectActionPlaceholder": "Pilih tindakan",
+		"actions": {
+			"warn": "Amaran",
+			"timeout": "Timeout",
+			"untimeout": "Buang timeout",
+			"kick": "Tendang",
+			"ban": "Ban",
+			"tempban": "Ban sementara",
+			"clearwarns": "Padam amaran"
+		},
+		"modal": {
+			"reason": "Sebab",
+			"duration": "Tempoh (cth. 10m, 2h, 7d)"
+		},
+		"done": "✅ {action} dikenakan pada {member}. Kes #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ Masukkan tempoh seperti 10m, 2h atau 7d."
 	}
 }

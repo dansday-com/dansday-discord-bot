@@ -682,6 +682,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
 					}
+				} else if (payload.type === 'moderation_action') {
+					try {
+						const { performModerationAction } = await import('./moderation.js');
+						const result = await performModerationAction(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (modErr: any) {
+						await logger.log(`❌ moderation_action failed: ${modErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'moderation_action failed', details: modErr.message }));
+					}
 				} else if (payload.type === 'use_item') {
 					try {
 						const { handleItemUse } = await import('./items.js');

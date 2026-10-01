@@ -321,8 +321,8 @@
 		{
 			icon: 'fa-gavel',
 			title: 'Moderation',
-			desc: 'Warnings, mutes, bans and staff actions, all from the panel.',
-			more: 'Every action stays recorded against the member.'
+			desc: 'Warnings, timeouts, kicks and bans from the panel or the staff menu.',
+			more: 'Every action becomes a numbered case against the member.'
 		},
 		{
 			icon: 'fa-clipboard-check',

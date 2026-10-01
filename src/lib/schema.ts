@@ -1225,3 +1225,27 @@ export const serverMemberAssetLogs = mysqlTable(
 	},
 	(t) => [index('idx_server_member_asset_logs_member').on(t.member_id, t.created_at)]
 );
+
+export const serverMemberModerationLogs = mysqlTable(
+	'server_member_moderation_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		staff_member_id: int('staff_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		case_number: int('case_number').notNull(),
+		action: varchar('action', { length: 16 }).notNull(),
+		reason: text('reason'),
+		duration_seconds: int('duration_seconds'),
+		expires_at: datetime('expires_at'),
+		active: boolean('active').notNull().default(true),
+		source: varchar('source', { length: 16 }).notNull().default('panel'),
+		revoked_at: datetime('revoked_at'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_member_moderation_logs_member').on(t.member_id, t.created_at),
+		index('idx_server_member_moderation_logs_expiry').on(t.action, t.active, t.expires_at)
+	]
+);

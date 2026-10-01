@@ -7,4 +7,4 @@
 	const configureHref = $derived(adminServerSectionPath(data.botId, data.serverId, 'config/content-creator'));
 </script>
 
-<MemberList members={data.members} filterRoleIds={roleIds} {configureHref} configureLabel="Open Content Creator configuration" />
+<MemberList members={data.members} serverId={data.serverId} filterRoleIds={roleIds} {configureHref} configureLabel="Open Content Creator configuration" />

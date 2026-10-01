@@ -10,6 +10,7 @@ import {
 } from 'discord.js';
 import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
+import { CREATOR_NOTIFICATIONS_MENU_BUTTON_ID } from '../creatorAlerts.js';
 import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
@@ -555,41 +556,19 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 	const dbMember = await db.upsertMember(server.id, actingMember).catch(() => null);
 	const lastApplication = dbMember ? await db.getLastContentCreatorApplication(server.id, dbMember.id).catch(() => null) : null;
 
-	const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
-
-	const title = await translate('contentCreator.list.title', guild.id, localeUserId);
-	const desc = await translate('contentCreator.list.description', guild.id, localeUserId);
-
-	type ListRow = { live: boolean; username: string; line: string };
-	const rows: ListRow[] = [];
-	for (const c of creators) {
-		const discordId = String(c.discord_member_id || '');
-		const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
-		if (!discordId || !username) continue;
-		const live = isLive(guild.id, discordId);
-		rows.push({
-			live,
-			username,
-			line: `${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`
-		});
-	}
-	rows.sort((a, b) => {
-		if (a.live !== b.live) return a.live ? -1 : 1;
-		return a.username.localeCompare(b.username, undefined, { sensitivity: 'base' });
+	const pending = await db.getPendingContentCreatorApplications(server.id).catch(() => []);
+	const pendingLines = pending.slice(0, 10).map((p: any) => {
+		const submitted = parseMySQLDateTimeUtc(p.submitted_at);
+		const when = submitted ? ` • <t:${Math.floor(submitted.getTime() / 1000)}:R>` : '';
+		return `🕒 <@${p.discord_member_id}> — **@${normalizeTikTokUsername(String(p.tiktok_username || ''))}**${when}`;
 	});
-	const lines = rows.slice(0, 10).map((r) => r.line);
-
-	const creatorListText = lines.length > 0 ? lines.join('\n\n') : await translate('contentCreator.list.none', guild.id, localeUserId);
-
-	let body = `${desc}\n\n${creatorListText}`;
-	if (options.bannerNote) {
-		body = `${options.bannerNote}\n\n${body}`;
-	}
+	const pendingTitle = await translate('contentCreator.channelEmbed.pendingStatus', guild.id, localeUserId);
+	const pendingText = pendingLines.length > 0 ? `**${pendingTitle}**\n${pendingLines.join('\n')}` : `**${pendingTitle}**\n—`;
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig?.COLOR ?? 0xec4899)
-		.setTitle(title)
-		.setDescription(body)
+		.setTitle(await translate('contentCreator.modal.title', guild.id, localeUserId))
+		.setDescription(options.bannerNote ? `${options.bannerNote}\n\n${pendingText}` : pendingText)
 		.setTimestamp();
 	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
 
@@ -621,6 +600,77 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 	}
 
 	return { embed, components: [row] };
+}
+
+async function buildContentCreatorRoster(guild: any, localeUserId: string): Promise<string> {
+	const botConfig = getBotConfig();
+	const server = botConfig ? await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null) : null;
+	const creators = server ? await db.getApprovedContentCreators(server.id).catch(() => []) : [];
+
+	type ListRow = { live: boolean; username: string; line: string };
+	const rows: ListRow[] = [];
+	for (const c of creators) {
+		const discordId = String(c.discord_member_id || '');
+		const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
+		if (!discordId || !username) continue;
+		const live = isLive(guild.id, discordId);
+		rows.push({
+			live,
+			username,
+			line: `${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`
+		});
+	}
+	rows.sort((a, b) => {
+		if (a.live !== b.live) return a.live ? -1 : 1;
+		return a.username.localeCompare(b.username, undefined, { sensitivity: 'base' });
+	});
+	const lines = rows.slice(0, 10).map((r) => r.line);
+
+	const desc = await translate('contentCreator.list.description', guild.id, localeUserId);
+	const creatorListText = lines.length > 0 ? lines.join('\n\n') : await translate('contentCreator.list.none', guild.id, localeUserId);
+	return `${desc}\n\n${creatorListText}`;
+}
+
+export async function handleContentCreatorHubButton(interaction: any) {
+	try {
+		const guildId = interaction.guild.id;
+		const userId = interaction.user.id;
+		const embedConfig = await getEmbedConfig(guildId).catch(() => null);
+		const embed = new EmbedBuilder()
+			.setColor(embedConfig?.COLOR ?? 0xec4899)
+			.setTitle(await translate('contentCreator.list.title', guildId, userId))
+			.setDescription(await buildContentCreatorRoster(interaction.guild, userId))
+			.setTimestamp();
+		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+
+		const rows = [
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				new ButtonBuilder()
+					.setCustomId('content_creator_list')
+					.setLabel(await translate('contentCreator.modal.title', guildId, userId))
+					.setStyle(ButtonStyle.Success),
+				new ButtonBuilder()
+					.setCustomId(CREATOR_NOTIFICATIONS_MENU_BUTTON_ID)
+					.setLabel(await translate('notifications.hub.creators', guildId, userId))
+					.setStyle(ButtonStyle.Success)
+			),
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				new ButtonBuilder()
+					.setCustomId('bot_menu')
+					.setLabel(await translate('menu.button', guildId, userId))
+					.setStyle(ButtonStyle.Secondary)
+			)
+		];
+
+		const payload = { embeds: [embed], components: rows };
+		if (interaction.replied || interaction.deferred) {
+			await interaction.editReply(payload).catch(() => null);
+		} else {
+			await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
+		}
+	} catch (error: any) {
+		await logger.log(`❌ Error opening content creator hub: ${error.message}`);
+	}
 }
 
 export async function handleContentCreatorButton(interaction: any) {

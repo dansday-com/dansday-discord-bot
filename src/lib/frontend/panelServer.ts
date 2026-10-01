@@ -119,6 +119,14 @@ const REGISTRY = [
 		iconClass: 'text-pink-400'
 	},
 	{
+		id: 'creator_alerts',
+		label: 'Creator Alerts',
+		featureSwitch: true,
+		hrefSuffix: '/creator-alerts',
+		icon: 'fa-tower-broadcast',
+		iconClass: 'text-rose-400'
+	},
+	{
 		id: 'discord_quest_notifier',
 		label: 'Discord Quest',
 		featureSwitch: true,
@@ -197,6 +205,7 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.afk,
 	component.notifications,
 	component.discord_quest_notifier,
+	component.creator_alerts,
 	component.custom_supporter_role
 ]);
 

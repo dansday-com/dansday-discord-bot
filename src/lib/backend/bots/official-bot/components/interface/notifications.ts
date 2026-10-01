@@ -11,8 +11,9 @@ export async function handleNotificationsButton(interaction) {
 
 		const channelsEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications);
 		const robloxEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.roblox_catalog_notifier);
+		const creatorsEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.creator_alerts);
 
-		if (!channelsEnabled && !robloxEnabled) {
+		if (!channelsEnabled && !robloxEnabled && !creatorsEnabled) {
 			const errorMsg = await translate('notifications.errors.noneEnabled', guildId, userId);
 			await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
 			return;
@@ -43,6 +44,12 @@ export async function handleNotificationsButton(interaction) {
 					.setStyle(ButtonStyle.Success)
 			);
 		}
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('notifications_creators')
+				.setLabel(await translate('notifications.hub.creators', guildId, userId))
+				.setStyle(ButtonStyle.Success)
+		);
 
 		const rows = [
 			new ActionRowBuilder().addComponents(...buttons),

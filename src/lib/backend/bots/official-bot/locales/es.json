@@ -363,6 +363,7 @@
 			"description": "Elige qué tipo de notificaciones quieres gestionar.",
 			"channels": "📢 Notificaciones de canal",
 			"roblox": "🛍️ Notificaciones de artículos de Roblox",
+			"creators": "📡 Alertas de creadores",
 			"back": "⬅️ Notificaciones"
 		},
 		"active": "**Activo:** {channels}",
@@ -503,6 +504,64 @@
 				"invalidItem": "❌ No se pudo leer el artículo del catálogo de este botón.",
 				"memberNotFound": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento."
 			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "Nuevo video",
+				"description": "Se publica un nuevo video, short o VOD."
+			},
+			"live": {
+				"label": "Directo",
+				"description": "El creador empieza un directo."
+			},
+			"post": {
+				"label": "Nueva publicación",
+				"description": "Se publica una nueva publicación de comunidad de YouTube o de TikTok."
+			}
+		},
+		"saved": "🔔 Guardado. Te etiquetaremos para **{creator}** en: {types}. {count} siguiendo.",
+		"removed": "🔕 Ya no te etiquetaremos para **{creator}**.",
+		"noTypes": "nada",
+		"creator": {
+			"title": "🔔 Alertas de creadores",
+			"description": "Elige qué debe etiquetarte para [{creator}]({url}) en {platform}. Deselecciona todo para dejar de seguir.",
+			"active": "**Notificando en:** {types}",
+			"placeholder": "Selecciona sobre qué recibir avisos..."
+		},
+		"menu": {
+			"title": "📡 Alertas de creadores",
+			"description": "Sigues a {count} creador(es). Selecciona uno para cambiar sus avisos.",
+			"empty": "Aún no sigues a ningún creador. Pulsa ➕ Seguir a un creador para empezar.",
+			"placeholder": "Selecciona un creador para editar...",
+			"follow": "➕ Seguir a un creador",
+			"recent": "🕘 Alertas recientes",
+			"disableAll": "🔕 Dejar de seguir a todos",
+			"disabledAll": "🔕 Dejaste de seguir a {count} creador(es).",
+			"back": "⬅️ Volver"
+		},
+		"follow": {
+			"title": "➕ Seguir a un creador",
+			"description": "Elige la plataforma y pega el enlace del perfil o el usuario del creador.",
+			"modalTitle": "Seguir en {platform}",
+			"inputLabel": "Enlace o usuario de {platform}"
+		},
+		"recent": {
+			"title": "🕘 Alertas recientes de creadores",
+			"empty": "Aún no hay alertas. Aparecerán aquí cuando un creador seguido publique algo."
+		},
+		"errors": {
+			"invalidCreator": "❌ No se pudo leer ese enlace o usuario del creador.",
+			"memberNotFound": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento.",
+			"notFound": "❌ No se encontró ningún creador con ese enlace o usuario.",
+			"tiktokCooling": "⏳ TikTok está limitando las búsquedas ahora. Inténtalo en unos minutos.",
+			"lookupFailed": "❌ No se pudo buscar ese creador ahora. Inténtalo más tarde."
 		}
 	}
 }

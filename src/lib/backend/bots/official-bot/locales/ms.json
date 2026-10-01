@@ -363,6 +363,7 @@
 			"description": "Pilih jenis notifikasi yang anda mahu uruskan.",
 			"channels": "📢 Notifikasi Channel",
 			"roblox": "🛍️ Notifikasi Item Roblox",
+			"creators": "📡 Notifikasi Pencipta",
 			"back": "⬅️ Notifikasi"
 		},
 		"active": "**Aktif:** {channels}",
@@ -503,6 +504,64 @@
 				"invalidItem": "❌ Item katalog itu tidak dapat dibaca daripada butang ini.",
 				"memberNotFound": "❌ Profil ahli anda belum disegerakkan. Cuba lagi sebentar nanti."
 			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "Video baharu",
+				"description": "Video, short atau VOD baharu diterbitkan."
+			},
+			"live": {
+				"label": "Siaran langsung",
+				"description": "Pencipta mula bersiaran langsung."
+			},
+			"post": {
+				"label": "Hantaran baharu",
+				"description": "Hantaran komuniti YouTube atau hantaran TikTok baharu diterbitkan."
+			}
+		},
+		"saved": "🔔 Disimpan. Anda akan ditag untuk **{creator}** apabila: {types}. {count} mengikuti.",
+		"removed": "🔕 Anda tidak akan ditag lagi untuk **{creator}**.",
+		"noTypes": "tiada",
+		"creator": {
+			"title": "🔔 Notifikasi Pencipta",
+			"description": "Pilih apa yang akan tag anda untuk [{creator}]({url}) di {platform}. Nyahpilih semua untuk berhenti mengikuti.",
+			"active": "**Notifikasi apabila:** {types}",
+			"placeholder": "Pilih jenis notifikasi..."
+		},
+		"menu": {
+			"title": "📡 Notifikasi Pencipta",
+			"description": "Anda mengikuti {count} pencipta. Pilih satu untuk menukar notifikasinya.",
+			"empty": "Anda belum mengikuti mana-mana pencipta. Tekan ➕ Ikuti pencipta untuk bermula.",
+			"placeholder": "Pilih pencipta untuk diubah...",
+			"follow": "➕ Ikuti pencipta",
+			"recent": "🕘 Notifikasi terkini",
+			"disableAll": "🔕 Nyahikut semua",
+			"disabledAll": "🔕 Berhenti mengikuti {count} pencipta.",
+			"back": "⬅️ Kembali"
+		},
+		"follow": {
+			"title": "➕ Ikuti Pencipta",
+			"description": "Pilih platform, kemudian tampal pautan profil atau handle pencipta.",
+			"modalTitle": "Ikuti di {platform}",
+			"inputLabel": "Pautan atau handle {platform}"
+		},
+		"recent": {
+			"title": "🕘 Notifikasi Pencipta Terkini",
+			"empty": "Belum ada notifikasi pencipta. Ia akan muncul di sini apabila pencipta yang diikuti membuat hantaran."
+		},
+		"errors": {
+			"invalidCreator": "❌ Pautan atau handle pencipta tidak dapat dibaca.",
+			"memberNotFound": "❌ Profil ahli anda belum disegerakkan. Cuba lagi sebentar nanti.",
+			"notFound": "❌ Tiada pencipta ditemui dengan pautan atau handle itu.",
+			"tiktokCooling": "⏳ TikTok sedang mengehadkan carian. Cuba lagi dalam beberapa minit.",
+			"lookupFailed": "❌ Tidak dapat mencari pencipta itu sekarang. Cuba lagi nanti."
 		}
 	}
 }

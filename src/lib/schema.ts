@@ -670,6 +670,76 @@ export const serverMemberRobloxItemNotifications = mysqlTable(
 	]
 );
 
+export const botCreators = mysqlTable(
+	'bot_creators',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		platform: mysqlEnum('platform', ['youtube', 'twitch', 'tiktok']).notNull(),
+		account_id: varchar('account_id', { length: 64 }).notNull(),
+		handle: varchar('handle', { length: 191 }),
+		name: text('name'),
+		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
+		checked_at: datetime('checked_at'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_bot_creators_account').on(t.platform, t.account_id), index('idx_bot_creators_bot_id').on(t.bot_id)]
+);
+
+export const botCreatorContents = mysqlTable(
+	'bot_creator_contents',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		creator_id: int('creator_id')
+			.notNull()
+			.references(() => botCreators.id, { onDelete: 'cascade' }),
+		content_id: varchar('content_id', { length: 64 }).notNull(),
+		type: mysqlEnum('type', ['video', 'live', 'post']).notNull(),
+		title: text('title'),
+		url: varchar('url', { length: 512 }),
+		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
+		published_at: datetime('published_at'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_bot_creator_contents').on(t.creator_id, t.content_id), index('idx_bot_creator_contents_created_at').on(t.created_at)]
+);
+
+export const serverCreatorContents = mysqlTable(
+	'server_creator_contents',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		content_id: int('content_id')
+			.notNull()
+			.references(() => botCreatorContents.id, { onDelete: 'cascade' }),
+		message_posted_at: datetime('message_posted_at')
+	},
+	(t) => [uniqueIndex('unique_server_creator_contents').on(t.server_id, t.content_id), index('idx_server_creator_contents_server_id').on(t.server_id)]
+);
+
+export const serverMemberCreatorNotifications = mysqlTable(
+	'server_member_creator_notifications',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		creator_id: int('creator_id')
+			.notNull()
+			.references(() => botCreators.id, { onDelete: 'cascade' }),
+		types: varchar('types', { length: 191 }).notNull().default('video,live,post'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('unique_member_creator_notification').on(t.member_id, t.creator_id),
+		index('idx_server_member_creator_notifications_creator').on(t.creator_id)
+	]
+);
+
 export const serverMemberGiveaways = mysqlTable(
 	'server_member_giveaways',
 	{

@@ -247,6 +247,13 @@ export async function execute(interaction: any, client: any) {
 			target_channel_id: channelMap['content_creator']
 		});
 
+		const caRaw = (await getSettings(SERVER_SETTINGS.component.creator_alerts)) || {};
+		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.creator_alerts, {
+			enabled: true,
+			...caRaw,
+			target_channel_id: channelMap['content_creator']
+		});
+
 		const notifRaw = (await getSettings(SERVER_SETTINGS.component.notifications)) || {};
 		const notifChannelIds = Object.entries(channelMap)
 			.filter(([key]) => key !== 'menu')

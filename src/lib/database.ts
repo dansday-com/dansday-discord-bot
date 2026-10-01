@@ -9,6 +9,7 @@ import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './uti
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
+import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -6074,6 +6075,289 @@ async function getBotRobloxItemByAssetId(assetId: number | bigint) {
 	return row ?? null;
 }
 
+function splitNotificationTypes(types: unknown): string[] {
+	return String(types || '')
+		.split(',')
+		.map((x) => x.trim())
+		.filter(Boolean);
+}
+
+async function upsertBotCreator(botId: number, profile: CreatorProfile): Promise<number> {
+	await initializeDatabase();
+	await db
+		.insert(schema.botCreators)
+		.values({
+			bot_id: botId,
+			platform: profile.platform,
+			account_id: profile.accountId,
+			handle: profile.handle,
+			name: profile.name,
+			thumbnail_url: profile.thumbnailUrl?.slice(0, 512) ?? null,
+			created_at: toMySQLDateTime() as any
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				handle: sql`coalesce(values(${schema.botCreators.handle}), ${schema.botCreators.handle})`,
+				name: sql`coalesce(values(${schema.botCreators.name}), ${schema.botCreators.name})`,
+				thumbnail_url: sql`coalesce(values(${schema.botCreators.thumbnail_url}), ${schema.botCreators.thumbnail_url})`
+			} as any
+		});
+	const [row] = await db
+		.select({ id: schema.botCreators.id })
+		.from(schema.botCreators)
+		.where(and(eq(schema.botCreators.platform, profile.platform), eq(schema.botCreators.account_id, profile.accountId)))
+		.limit(1);
+	return row.id;
+}
+
+async function getBotCreatorById(creatorId: number) {
+	await initializeDatabase();
+	const [row] = await db.select().from(schema.botCreators).where(eq(schema.botCreators.id, creatorId)).limit(1);
+	return row ?? null;
+}
+
+async function listNotifiedCreatorsForBot(
+	botId: number
+): Promise<{ id: number; platform: CreatorPlatform; accountId: string; handle: string | null; checkedAt: Date | null }[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT c.id, c.platform, c.account_id, c.handle, c.checked_at
+		FROM server_member_creator_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN servers s ON s.id = m.server_id
+		INNER JOIN bot_creators c ON c.id = n.creator_id
+		WHERE s.bot_id = ${Number(botId)} AND s.deleted_at IS NULL AND m.deleted_at IS NULL
+		GROUP BY c.id, c.platform, c.account_id, c.handle, c.checked_at
+		ORDER BY c.id
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => ({
+		id: Number(r.id),
+		platform: r.platform as CreatorPlatform,
+		accountId: String(r.account_id),
+		handle: typeof r.handle === 'string' && r.handle ? r.handle : null,
+		checkedAt: r.checked_at ? parseMySQLDateTimeUtc(r.checked_at) : null
+	}));
+}
+
+async function markBotCreatorChecked(creatorId: number, profile?: Pick<CreatorProfile, 'handle' | 'name' | 'thumbnailUrl'>): Promise<void> {
+	await initializeDatabase();
+	await db
+		.update(schema.botCreators)
+		.set({
+			checked_at: toMySQLDateTime() as any,
+			...(profile?.handle ? { handle: profile.handle } : {}),
+			...(profile?.name ? { name: profile.name } : {}),
+			...(profile?.thumbnailUrl ? { thumbnail_url: profile.thumbnailUrl.slice(0, 512) } : {})
+		})
+		.where(eq(schema.botCreators.id, creatorId));
+}
+
+async function listBotCreatorContentTypes(creatorId: number): Promise<Set<CreatorContentType>> {
+	await initializeDatabase();
+	const rows = await db
+		.selectDistinct({ type: schema.botCreatorContents.type })
+		.from(schema.botCreatorContents)
+		.where(eq(schema.botCreatorContents.creator_id, creatorId));
+	return new Set(rows.map((r) => r.type));
+}
+
+async function recordBotCreatorContents(creatorId: number, contents: CreatorContent[]): Promise<(CreatorContent & { id: number })[]> {
+	await initializeDatabase();
+	const unique = [...new Map(contents.map((c) => [c.contentId, c])).values()];
+	if (unique.length === 0) return [];
+	const existing = await db
+		.select({ content_id: schema.botCreatorContents.content_id })
+		.from(schema.botCreatorContents)
+		.where(
+			and(
+				eq(schema.botCreatorContents.creator_id, creatorId),
+				inArray(
+					schema.botCreatorContents.content_id,
+					unique.map((c) => c.contentId)
+				)
+			)
+		);
+	const seen = new Set(existing.map((r) => r.content_id));
+	const fresh = unique.filter((c) => !seen.has(c.contentId));
+	if (fresh.length === 0) return [];
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.botCreatorContents)
+		.values(
+			fresh.map((c) => ({
+				creator_id: creatorId,
+				content_id: c.contentId,
+				type: c.type,
+				title: c.title,
+				url: c.url.slice(0, 512),
+				thumbnail_url: c.thumbnailUrl?.slice(0, 512) ?? null,
+				published_at: (c.publishedAt ? toMySQLDateTime(c.publishedAt) : null) as any,
+				created_at: now as any
+			}))
+		)
+		.onDuplicateKeyUpdate({ set: { content_id: sql`${schema.botCreatorContents.content_id}` } as any });
+	const rows = await db
+		.select({ id: schema.botCreatorContents.id, content_id: schema.botCreatorContents.content_id })
+		.from(schema.botCreatorContents)
+		.where(
+			and(
+				eq(schema.botCreatorContents.creator_id, creatorId),
+				inArray(
+					schema.botCreatorContents.content_id,
+					fresh.map((c) => c.contentId)
+				)
+			)
+		);
+	const ids = new Map(rows.map((r) => [r.content_id, r.id]));
+	return fresh.filter((c) => ids.has(c.contentId)).map((c) => ({ ...c, id: ids.get(c.contentId) as number }));
+}
+
+async function listCreatorFollowerServerIds(botId: number, creatorId: number, type: CreatorContentType): Promise<number[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT DISTINCT m.server_id
+		FROM server_member_creator_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN servers s ON s.id = m.server_id
+		WHERE s.bot_id = ${Number(botId)} AND s.deleted_at IS NULL AND m.deleted_at IS NULL
+			AND n.creator_id = ${Number(creatorId)} AND FIND_IN_SET(${type}, n.types) > 0
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => Number(r.server_id));
+}
+
+async function addServerCreatorContent(serverId: number, contentId: number): Promise<void> {
+	await initializeDatabase();
+	await db
+		.insert(schema.serverCreatorContents)
+		.values({ server_id: serverId, content_id: contentId })
+		.onDuplicateKeyUpdate({ set: { content_id: sql`${schema.serverCreatorContents.content_id}` } as any });
+}
+
+async function markServerCreatorContentMessagePosted(serverId: number, contentId: number): Promise<void> {
+	await initializeDatabase();
+	await db
+		.update(schema.serverCreatorContents)
+		.set({ message_posted_at: toMySQLDateTime() as any })
+		.where(and(eq(schema.serverCreatorContents.server_id, serverId), eq(schema.serverCreatorContents.content_id, contentId)));
+}
+
+async function listServerCreatorContents(serverId: number, limit = 20) {
+	await initializeDatabase();
+	return await db
+		.select({
+			id: schema.botCreatorContents.id,
+			type: schema.botCreatorContents.type,
+			title: schema.botCreatorContents.title,
+			url: schema.botCreatorContents.url,
+			thumbnail_url: schema.botCreatorContents.thumbnail_url,
+			published_at: schema.botCreatorContents.published_at,
+			created_at: schema.botCreatorContents.created_at,
+			creator_id: schema.botCreators.id,
+			platform: schema.botCreators.platform,
+			handle: schema.botCreators.handle,
+			name: schema.botCreators.name
+		})
+		.from(schema.serverCreatorContents)
+		.innerJoin(schema.botCreatorContents, eq(schema.botCreatorContents.id, schema.serverCreatorContents.content_id))
+		.innerJoin(schema.botCreators, eq(schema.botCreators.id, schema.botCreatorContents.creator_id))
+		.where(eq(schema.serverCreatorContents.server_id, serverId))
+		.orderBy(desc(schema.serverCreatorContents.id))
+		.limit(limit);
+}
+
+async function getServerMemberCreatorNotificationTypes(memberId: number, creatorId: number): Promise<string[]> {
+	await initializeDatabase();
+	const [existing] = await db
+		.select({ types: schema.serverMemberCreatorNotifications.types })
+		.from(schema.serverMemberCreatorNotifications)
+		.where(and(eq(schema.serverMemberCreatorNotifications.member_id, memberId), eq(schema.serverMemberCreatorNotifications.creator_id, creatorId)))
+		.limit(1);
+	return existing ? splitNotificationTypes(existing.types) : [];
+}
+
+async function setServerMemberCreatorNotificationTypes(memberId: number, creatorId: number, types: string[]): Promise<'saved' | 'removed'> {
+	await initializeDatabase();
+	const cleaned = Array.from(new Set(types.map((x) => x.trim()).filter(Boolean)));
+
+	if (cleaned.length === 0) {
+		await db
+			.delete(schema.serverMemberCreatorNotifications)
+			.where(and(eq(schema.serverMemberCreatorNotifications.member_id, memberId), eq(schema.serverMemberCreatorNotifications.creator_id, creatorId)));
+		return 'removed';
+	}
+
+	const joined = cleaned.join(',');
+	await db
+		.insert(schema.serverMemberCreatorNotifications)
+		.values({ member_id: memberId, creator_id: creatorId, types: joined, created_at: toMySQLDateTime() as any })
+		.onDuplicateKeyUpdate({ set: { types: joined } as any });
+	return 'saved';
+}
+
+async function listServerMemberCreatorNotifications(
+	memberId: number
+): Promise<{ creatorId: number; platform: CreatorPlatform; handle: string | null; name: string | null; types: string[] }[]> {
+	await initializeDatabase();
+	const rows = await db
+		.select({
+			creatorId: schema.botCreators.id,
+			platform: schema.botCreators.platform,
+			handle: schema.botCreators.handle,
+			name: schema.botCreators.name,
+			types: schema.serverMemberCreatorNotifications.types
+		})
+		.from(schema.serverMemberCreatorNotifications)
+		.innerJoin(schema.botCreators, eq(schema.botCreators.id, schema.serverMemberCreatorNotifications.creator_id))
+		.where(eq(schema.serverMemberCreatorNotifications.member_id, memberId))
+		.orderBy(schema.serverMemberCreatorNotifications.id);
+
+	return rows.map((r) => ({ ...r, types: splitNotificationTypes(r.types) }));
+}
+
+async function clearServerMemberCreatorNotifications(memberId: number): Promise<number> {
+	await initializeDatabase();
+	const rows = await db
+		.select({ id: schema.serverMemberCreatorNotifications.id })
+		.from(schema.serverMemberCreatorNotifications)
+		.where(eq(schema.serverMemberCreatorNotifications.member_id, memberId));
+	if (rows.length === 0) return 0;
+	await db.delete(schema.serverMemberCreatorNotifications).where(eq(schema.serverMemberCreatorNotifications.member_id, memberId));
+	return rows.length;
+}
+
+async function countServerCreatorNotifications(serverId: number, creatorId: number): Promise<number> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT COUNT(*) AS total
+		FROM server_member_creator_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		WHERE m.server_id = ${Number(serverId)} AND m.deleted_at IS NULL AND n.creator_id = ${Number(creatorId)}
+	`);
+	const row = ((rows[0] as unknown as any[]) || [])[0];
+	return Number(row?.total) || 0;
+}
+
+async function listServerCreatorNotificationDiscordIds(serverId: number, creatorId: number, types?: string[]): Promise<string[]> {
+	await initializeDatabase();
+	const typeFilter =
+		types && types.length > 0 ? or(...types.map((f) => sql`FIND_IN_SET(${f}, ${schema.serverMemberCreatorNotifications.types}) > 0`)) : undefined;
+
+	const rows = await db
+		.select({ discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberCreatorNotifications)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberCreatorNotifications.member_id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, serverId),
+				isNull(schema.serverMembers.deleted_at),
+				eq(schema.serverMemberCreatorNotifications.creator_id, creatorId),
+				...(typeFilter ? [typeFilter] : [])
+			)
+		)
+		.orderBy(schema.serverMemberCreatorNotifications.id);
+	return rows.map((r) => r.discord_member_id);
+}
+
 async function getBotDiscordQuestByQuestId(questId: string) {
 	await initializeDatabase();
 	const [row] = await db.select().from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
@@ -6798,6 +7082,19 @@ export async function getApprovedContentCreators(serverId: any) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
+export async function getPendingContentCreatorApplications(serverId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT cca.id, cca.member_id, cca.tiktok_username, cca.submitted_at, sm.discord_member_id
+		FROM server_member_content_creator_reviews cca
+		INNER JOIN server_members sm ON cca.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)}
+		  AND cca.status = 'pending'
+		ORDER BY cca.submitted_at ASC, cca.id ASC
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
 export async function createContentCreatorStream(memberId: number, roomId: string | null) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -7242,6 +7539,22 @@ export default {
 	listServerRobloxItemNotificationDiscordIds,
 	listNotifiedRobloxItemsForBot,
 	getBotRobloxItemByAssetId,
+	upsertBotCreator,
+	getBotCreatorById,
+	listNotifiedCreatorsForBot,
+	markBotCreatorChecked,
+	listBotCreatorContentTypes,
+	recordBotCreatorContents,
+	listCreatorFollowerServerIds,
+	addServerCreatorContent,
+	markServerCreatorContentMessagePosted,
+	listServerCreatorContents,
+	getServerMemberCreatorNotificationTypes,
+	setServerMemberCreatorNotificationTypes,
+	listServerMemberCreatorNotifications,
+	clearServerMemberCreatorNotifications,
+	countServerCreatorNotifications,
+	listServerCreatorNotificationDiscordIds,
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,
@@ -7324,6 +7637,7 @@ export default {
 	getContentCreatorApplicationById,
 	updateContentCreatorApplicationStatus,
 	getApprovedContentCreators,
+	getPendingContentCreatorApplications,
 	createContentCreatorStream,
 	endContentCreatorStream,
 	incrementContentCreatorStreamCounters,

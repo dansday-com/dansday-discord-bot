@@ -412,6 +412,7 @@
 			"description": "Pick which kind of notifications you want to manage.",
 			"channels": "📢 Channel Notifications",
 			"roblox": "🛍️ Roblox Item Notifications",
+			"creators": "📡 Creator Alerts",
 			"back": "⬅️ Notifications"
 		},
 		"active": "**Active:** {channels}",
@@ -552,6 +553,64 @@
 				"invalidItem": "❌ That catalog item could not be read from this button.",
 				"memberNotFound": "❌ Your member profile is not synced yet. Try again in a moment."
 			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "New video",
+				"description": "A new video, short or VOD is published."
+			},
+			"live": {
+				"label": "Live stream",
+				"description": "The creator goes live."
+			},
+			"post": {
+				"label": "New post",
+				"description": "A new YouTube community post or TikTok post is published."
+			}
+		},
+		"saved": "🔔 Saved. You will be tagged for **{creator}** on: {types}. {count} watching.",
+		"removed": "🔕 You will no longer be tagged for **{creator}**.",
+		"noTypes": "nothing",
+		"creator": {
+			"title": "🔔 Creator Alerts",
+			"description": "Pick what should tag you for [{creator}]({url}) on {platform}. Deselect everything to unfollow.",
+			"active": "**Notifying on:** {types}",
+			"placeholder": "Select what to be notified about..."
+		},
+		"menu": {
+			"title": "📡 Creator Alerts",
+			"description": "You follow {count} creator(s). Select one to change what notifies you.",
+			"empty": "You are not following any creator yet. Press ➕ Follow a creator to start.",
+			"placeholder": "Select a creator to edit...",
+			"follow": "➕ Follow a creator",
+			"recent": "🕘 Recent alerts",
+			"disableAll": "🔕 Unfollow all",
+			"disabledAll": "🔕 Unfollowed {count} creator(s).",
+			"back": "⬅️ Back"
+		},
+		"follow": {
+			"title": "➕ Follow a Creator",
+			"description": "Pick the platform, then paste the creator's profile link or handle.",
+			"modalTitle": "Follow on {platform}",
+			"inputLabel": "{platform} link or handle"
+		},
+		"recent": {
+			"title": "🕘 Recent Creator Alerts",
+			"empty": "No creator alerts yet. They show up here once a followed creator posts."
+		},
+		"errors": {
+			"invalidCreator": "❌ That creator link or handle could not be read.",
+			"memberNotFound": "❌ Your member profile is not synced yet. Try again in a moment.",
+			"notFound": "❌ No creator found with that link or handle.",
+			"tiktokCooling": "⏳ TikTok is rate limiting lookups right now. Try again in a few minutes.",
+			"lookupFailed": "❌ Could not look up that creator right now. Try again later."
 		}
 	}
 }

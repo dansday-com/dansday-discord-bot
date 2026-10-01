@@ -20,6 +20,7 @@ import { wakeModelAvailable, warmWakeModel } from './components/wakeWord.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
+import { initCreatorAlerts, stopCreatorAlerts } from './components/creatorAlerts.js';
 import { initExpirySweeper, stopExpirySweeper } from './components/items.js';
 import { initStreakWatch } from '../../streak-watch.js';
 import { announceStreak } from './components/tasks.js';
@@ -107,6 +108,7 @@ client.on('clientReady', async () => {
 	}
 	questNotifier.initQuestNotifier(client, officialBotId);
 	initRobloxCatalogNotifier(client, officialBotId);
+	initCreatorAlerts(client, officialBotId);
 	initExpirySweeper(client);
 	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(client, guildId, discordMemberId, streakResult, milestone));
 	startAssetMarketPoller(String(officialBotId));
@@ -121,6 +123,7 @@ async function shutdown() {
 	}
 	questNotifier.stopQuestNotifier();
 	stopRobloxCatalogNotifier();
+	stopCreatorAlerts();
 	stopExpirySweeper();
 	stopAssetMarketPoller();
 	webhook.stopWebhookServer();

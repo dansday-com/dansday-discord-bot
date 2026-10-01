@@ -363,6 +363,7 @@
 			"description": "Pilih jenis notifikasi yang ingin kamu atur.",
 			"channels": "📢 Notifikasi Channel",
 			"roblox": "🛍️ Notifikasi Item Roblox",
+			"creators": "📡 Notifikasi Kreator",
 			"back": "⬅️ Notifikasi"
 		},
 		"active": "**Aktif:** {channels}",
@@ -503,6 +504,64 @@
 				"invalidItem": "❌ Item katalog dari tombol ini tidak bisa dibaca.",
 				"memberNotFound": "❌ Profil member kamu belum tersinkron. Coba lagi sebentar."
 			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "Video baru",
+				"description": "Video, short atau VOD baru diunggah."
+			},
+			"live": {
+				"label": "Siaran langsung",
+				"description": "Kreator mulai live."
+			},
+			"post": {
+				"label": "Postingan baru",
+				"description": "Postingan komunitas YouTube atau postingan TikTok baru diterbitkan."
+			}
+		},
+		"saved": "🔔 Tersimpan. Kamu akan di-tag untuk **{creator}** saat: {types}. {count} mengikuti.",
+		"removed": "🔕 Kamu tidak akan di-tag lagi untuk **{creator}**.",
+		"noTypes": "tidak ada",
+		"creator": {
+			"title": "🔔 Notifikasi Kreator",
+			"description": "Pilih apa yang membuatmu di-tag untuk [{creator}]({url}) di {platform}. Hapus semua pilihan untuk berhenti mengikuti.",
+			"active": "**Notifikasi saat:** {types}",
+			"placeholder": "Pilih jenis notifikasi..."
+		},
+		"menu": {
+			"title": "📡 Notifikasi Kreator",
+			"description": "Kamu mengikuti {count} kreator. Pilih salah satu untuk mengubah notifikasinya.",
+			"empty": "Kamu belum mengikuti kreator mana pun. Tekan ➕ Ikuti kreator untuk mulai.",
+			"placeholder": "Pilih kreator untuk diubah...",
+			"follow": "➕ Ikuti kreator",
+			"recent": "🕘 Notifikasi terbaru",
+			"disableAll": "🔕 Berhenti ikuti semua",
+			"disabledAll": "🔕 Berhenti mengikuti {count} kreator.",
+			"back": "⬅️ Kembali"
+		},
+		"follow": {
+			"title": "➕ Ikuti Kreator",
+			"description": "Pilih platform, lalu tempel link profil atau handle kreator.",
+			"modalTitle": "Ikuti di {platform}",
+			"inputLabel": "Link atau handle {platform}"
+		},
+		"recent": {
+			"title": "🕘 Notifikasi Kreator Terbaru",
+			"empty": "Belum ada notifikasi kreator. Akan muncul di sini saat kreator yang diikuti memposting."
+		},
+		"errors": {
+			"invalidCreator": "❌ Link atau handle kreator tidak bisa dibaca.",
+			"memberNotFound": "❌ Profil member kamu belum tersinkron. Coba lagi sebentar.",
+			"notFound": "❌ Kreator dengan link atau handle itu tidak ditemukan.",
+			"tiktokCooling": "⏳ TikTok sedang membatasi pencarian. Coba lagi beberapa menit lagi.",
+			"lookupFailed": "❌ Tidak bisa mencari kreator itu sekarang. Coba lagi nanti."
 		}
 	}
 }

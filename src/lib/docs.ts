@@ -674,6 +674,19 @@ export const modules = [
 		]
 	},
 	{
+		id: 'creator-alerts',
+		icon: 'fa-tower-broadcast',
+		accent: '#e11d48',
+		title: 'Creator alerts',
+		what: 'Each member follows their own YouTube, Twitch and TikTok creators and is tagged when they post.',
+		fields: [
+			{ label: 'Creator alerts module', desc: 'When off, creator polling, posts and the member menu are disabled.' },
+			{ label: 'Target Broadcast Channel', desc: 'Where new videos, live streams and posts are announced, tagging every member who follows that creator.' },
+			{ label: 'No channel set', desc: 'Nothing is posted. Members see the last 20 alerts in Notifications instead.' },
+			{ label: 'Per-member follows', desc: 'Members follow a creator from Notifications or Notify me under a post, and pick new video, live stream or post.' }
+		]
+	},
+	{
 		id: 'discord-quest-notifier',
 		icon: 'fa-scroll',
 		accent: '#5865f2',
@@ -761,7 +774,7 @@ export const discordMenu = [
 	{ label: '🎬 Content Creator', desc: 'Shows the creator list and an Apply button (TikTok username plus reason).' },
 	{
 		label: '🔔 Notifications',
-		desc: 'Opens two choices: channel notifications (subscribe to the channels you enabled) and Roblox item notifications (the items a member follows, what each one alerts on, and a disable-all).'
+		desc: 'Opens three choices: channel notifications (subscribe to the channels you enabled), Roblox item notifications (the items a member follows, what each one alerts on, and a disable-all) and creator alerts (the creators a member follows and what each one alerts on).'
 	},
 	{
 		label: '🌐 Select Language',

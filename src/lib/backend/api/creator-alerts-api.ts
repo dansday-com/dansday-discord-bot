@@ -206,11 +206,11 @@ function youtubeProfileFromPage(html: string): CreatorProfile | null {
 
 function decodeEntities(s: string): string {
 	return s
-		.replace(/&amp;/g, '&')
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/&lt;/g, '<')
-		.replace(/&gt;/g, '>');
+		.replace(/&gt;/g, '>')
+		.replace(/&amp;/g, '&');
 }
 
 async function resolveYouTube(handle: string): Promise<CreatorProfile | null> {

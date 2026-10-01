@@ -26,6 +26,24 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	}
 };
 
+const LOG_VALUE_MAX = 1000;
+
+function logValue(value: unknown): string | null {
+	if (value === undefined) return null;
+	const text = typeof value === 'string' ? value : JSON.stringify(value);
+	return text.length > LOG_VALUE_MAX ? `${text.slice(0, LOG_VALUE_MAX)}…` : text;
+}
+
+function diffSettings(before: Record<string, unknown>, after: Record<string, unknown>) {
+	const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+	const changes: { key: string; before: string | null; after: string | null }[] = [];
+	for (const key of keys) {
+		if (JSON.stringify(before[key]) === JSON.stringify(after[key])) continue;
+		changes.push({ key, before: logValue(before[key]), after: logValue(after[key]) });
+	}
+	return changes;
+}
+
 async function postOfficialBotWebhook(
 	bot: { port: number | null; secret_key: string | null } | null | undefined,
 	payload: Record<string, unknown>
@@ -140,6 +158,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (officialServerId) targetServerId = officialServerId;
 		}
 
+		const previousRow = await db.getServerSettings(targetServerId, component).catch(() => null);
+		const previous =
+			previousRow?.settings && typeof previousRow.settings === 'object'
+				? { ...(previousRow.settings as Record<string, unknown>) }
+				: ({} as Record<string, unknown>);
+
 		const panelServer = await db.getServer(panelServerId);
 		const officialBotId = panelServer ? await db.resolveOfficialBotIdForServer(panelServer) : null;
 		const bot = officialBotId ? await db.getBot(officialBotId) : null;
@@ -197,6 +221,17 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 
 		const result = await db.upsertServerSettings(targetServerId, component, settings);
+
+		if (result?.id && locals.user.authenticated) {
+			const changes = diffSettings(previous, settings as Record<string, unknown>);
+			await db
+				.createServerSettingLog(
+					Number(result.id),
+					locals.user.account_source === 'server_accounts' ? { server_account_id: locals.user.account_id } : { account_id: locals.user.account_id },
+					changes
+				)
+				.catch((err: any) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
+		}
 
 		if (component === SERVER_SETTINGS.component.notifications) {
 			try {

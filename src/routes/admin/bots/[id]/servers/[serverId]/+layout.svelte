@@ -24,7 +24,8 @@
 			: []),
 		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/embed` },
 		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` },
-		{ label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: `${base}/moderation` }
+		{ label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: `${base}/moderation` },
+		{ label: 'Change Log', icon: 'fa-clock-rotate-left', iconClass: 'text-sky-400', href: `${base}/changes` }
 	]);
 
 	function isActive(href: string) {

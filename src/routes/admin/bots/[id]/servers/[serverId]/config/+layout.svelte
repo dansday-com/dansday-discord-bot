@@ -44,8 +44,6 @@
 	</nav>
 
 	<div class="min-w-0 flex-1">
-		<div class="min-w-0 transition-opacity" class:opacity-50={data.configReadOnly} class:pointer-events-none={data.configReadOnly} inert={data.configReadOnly}>
-			{@render children()}
-		</div>
+		{@render children()}
 	</div>
 </div>

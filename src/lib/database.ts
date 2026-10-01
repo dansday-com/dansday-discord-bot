@@ -7420,7 +7420,41 @@ export async function expireModerationTimeouts() {
 	`);
 }
 
+export async function createServerSettingLog(
+	serverSettingId: number,
+	actor: { server_account_id?: number | null; account_id?: number | null },
+	changes: { key: string; before: string | null; after: string | null }[]
+) {
+	if (!changes.length) return;
+	await db.execute(sql`
+		INSERT INTO server_setting_logs (server_setting_id, server_account_id, account_id, changes, created_at)
+		VALUES (${serverSettingId}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
+	`);
+}
+
+export async function getServerSettingLogs(serverIds: number[], limit = 300) {
+	if (serverIds.length === 0) return [];
+	const [rows] = (await db.execute(sql`
+		SELECT l.id, l.changes, l.created_at, s.component_name,
+			sa.username AS server_account_username, sa.account_type AS server_account_type,
+			a.username AS account_username, l.server_account_id, l.account_id
+		FROM server_setting_logs l
+		JOIN server_settings s ON s.id = l.server_setting_id
+		LEFT JOIN server_accounts sa ON sa.id = l.server_account_id
+		LEFT JOIN accounts a ON a.id = l.account_id
+		WHERE s.server_id IN (${sql.join(
+			serverIds.map((id) => sql`${id}`),
+			sql`, `
+		)})
+		ORDER BY l.id DESC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
 export default {
+	createServerSettingLog,
+	getServerSettingLogs,
 	createModerationLog,
 	getModerationLogs,
 	getModerationCase,

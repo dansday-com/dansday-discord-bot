@@ -467,16 +467,18 @@ export const tiers = [
 			'Configure every module and permission for the server',
 			'Invite, freeze and delete staff accounts (not other owners)',
 			'Create and expire invite links',
-			'Invite more owners'
+			'Invite more owners',
+			'See who changed what in the Change Log'
 		]
 	},
 	{
 		icon: 'fa-user-tie',
 		accent: '#e43d12',
 		title: 'Staff',
-		what: 'Helper access invited by an owner. What they can change depends on the permission roles.',
+		what: 'Helper access invited by an owner. Every configuration change they save is logged under their name.',
 		can: [
-			'View and change settings allowed by their permission roles',
+			'Configure every module for the server',
+			'Moderate members and send embeds from the panel',
 			'Use staff features like the rating review queue',
 			'Cannot invite, freeze or delete any account',
 			'Cannot run /setup'

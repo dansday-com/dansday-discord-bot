@@ -337,6 +337,18 @@ CREATE TABLE IF NOT EXISTS server_settings (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_setting_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    server_setting_id INT NOT NULL,
+    server_account_id INT NULL,
+    account_id INT NULL,
+    changes JSON NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (server_setting_id) REFERENCES server_settings(id) ON DELETE CASCADE,
+    FOREIGN KEY (server_account_id) REFERENCES server_accounts(id) ON DELETE SET NULL,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS bot_discord_quests (
     id INT PRIMARY KEY AUTO_INCREMENT,
     bot_id INT NOT NULL,
@@ -747,6 +759,7 @@ CREATE INDEX IF NOT EXISTS idx_server_member_custom_supporter_roles_role ON serv
 CREATE INDEX IF NOT EXISTS idx_server_member_afks_member_id ON server_member_afks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
+CREATE INDEX IF NOT EXISTS idx_server_setting_logs_setting ON server_setting_logs(server_setting_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username);
 CREATE INDEX IF NOT EXISTS idx_server_accounts_server_id ON server_accounts(server_id);

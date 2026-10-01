@@ -250,7 +250,7 @@
 			icon: 'fa-shield-halved',
 			title: 'Panel permissions',
 			desc: 'Owner and staff tiers control who can change what.',
-			more: 'Helpers contribute without full control of the server.',
+			more: 'Every configuration change is logged with who made it.',
 			stat: (s: Totals): Live[] => [{ label: 'Roles mapped', value: fmt(s.roles_total) }]
 		},
 		{

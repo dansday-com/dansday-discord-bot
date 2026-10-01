@@ -523,7 +523,7 @@
 			},
 			"post": {
 				"label": "Nueva publicación",
-				"description": "Se publica una nueva publicación de comunidad."
+				"description": "Se publica una nueva publicación de comunidad de YouTube o de TikTok."
 			}
 		},
 		"saved": "🔔 Guardado. Te etiquetaremos para **{creator}** en: {types}. {count} siguiendo.",

@@ -14,7 +14,7 @@ export type CreatorContentType = 'video' | 'live' | 'post';
 export const CREATOR_PLATFORM_TYPES: Record<CreatorPlatform, readonly CreatorContentType[]> = {
 	youtube: ['video', 'live', 'post'],
 	twitch: ['video', 'live'],
-	tiktok: ['video', 'live']
+	tiktok: ['post', 'live']
 };
 
 export type CreatorProfile = {
@@ -420,7 +420,7 @@ async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 		if (!id) continue;
 		contents.push({
 			contentId: id,
-			type: 'video',
+			type: 'post',
 			title: str(v.desc),
 			url: `https://www.tiktok.com/@${profile.handle ?? uniqueId}/video/${id}`,
 			thumbnailUrl: str(v.originCoverUrl) ?? str(v.coverUrl),

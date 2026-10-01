@@ -523,7 +523,7 @@
 			},
 			"post": {
 				"label": "Postingan baru",
-				"description": "Postingan komunitas baru diterbitkan."
+				"description": "Postingan komunitas YouTube atau postingan TikTok baru diterbitkan."
 			}
 		},
 		"saved": "🔔 Tersimpan. Kamu akan di-tag untuk **{creator}** saat: {types}. {count} mengikuti.",

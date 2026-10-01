@@ -523,7 +523,7 @@
 			},
 			"post": {
 				"label": "Hantaran baharu",
-				"description": "Hantaran komuniti baharu diterbitkan."
+				"description": "Hantaran komuniti YouTube atau hantaran TikTok baharu diterbitkan."
 			}
 		},
 		"saved": "🔔 Disimpan. Anda akan ditag untuk **{creator}** apabila: {types}. {count} mengikuti.",

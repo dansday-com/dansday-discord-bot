@@ -572,7 +572,7 @@
 			},
 			"post": {
 				"label": "New post",
-				"description": "A new community post is published."
+				"description": "A new YouTube community post or TikTok post is published."
 			}
 		},
 		"saved": "🔔 Saved. You will be tagged for **{creator}** on: {types}. {count} watching.",

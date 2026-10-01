@@ -523,7 +523,7 @@
 			},
 			"post": {
 				"label": "新动态",
-				"description": "发布了新的社区动态。"
+				"description": "发布了新的 YouTube 社区动态或 TikTok 作品。"
 			}
 		},
 		"saved": "🔔 已保存。**{creator}** 在以下情况会提醒你：{types}。{count} 人关注中。",

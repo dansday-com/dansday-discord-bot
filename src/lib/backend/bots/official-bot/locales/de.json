@@ -523,7 +523,7 @@
 			},
 			"post": {
 				"label": "Neuer Beitrag",
-				"description": "Ein neuer Community-Beitrag wird veröffentlicht."
+				"description": "Ein neuer YouTube-Community-Beitrag oder TikTok-Beitrag wird veröffentlicht."
 			}
 		},
 		"saved": "🔔 Gespeichert. Du wirst für **{creator}** markiert bei: {types}. {count} folgen.",

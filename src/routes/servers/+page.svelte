@@ -2,7 +2,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath } from '$lib/url.js';
-	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -16,13 +16,11 @@
 	const MEDAL = ['text-brand-gold', 'text-neutral', 'text-secondary'];
 </script>
 
-<svelte:head>
-	<title>Server directory | {APP_NAME} Discord Bot</title>
-	<meta
-		name="description"
-		content="Every Discord server running {APP_NAME} Bot with public pages switched on, ranked by total XP earned. Browse member counts, messages and voice hours, then open any server's live public statistics."
-	/>
-</svelte:head>
+<PageMeta
+	title="Server directory | {APP_NAME} Discord Bot"
+	description="Every Discord server running {APP_NAME} Bot with public pages switched on, ranked by total XP earned. Browse member counts, messages and voice hours, then open any server's live public statistics."
+	path="/servers"
+/>
 
 <PageShell trailing="home">
 	<div class="@container">

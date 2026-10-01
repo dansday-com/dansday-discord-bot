@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import { effectLabel, effectIcon, effectAccentHex, effectSummary, effectMeta, itemAvailability } from '$lib/items.js';
 	import type { ItemEntry } from '$lib/frontend/public/catalog/index.js';
 
@@ -66,13 +66,11 @@
 	);
 </script>
 
-<svelte:head>
-	<title>Item directory | {APP_NAME} Discord Bot</title>
-	<meta
-		name="description"
-		content="Every item in the {APP_NAME} Bot shop catalog — what each one does, what it costs in XP, when it is on sale, and whether it can be bought right now."
-	/>
-</svelte:head>
+<PageMeta
+	title="Item directory | {APP_NAME} Discord Bot"
+	description="Every item in the {APP_NAME} Bot shop catalog — what each one does, what it costs in XP, when it is on sale, and whether it can be bought right now."
+	path="/shop"
+/>
 
 <PageShell trailing="home">
 	<div class="@container">

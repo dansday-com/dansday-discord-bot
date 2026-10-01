@@ -429,7 +429,7 @@ export const setupChannels = [
 	{ name: '「🎁」giveaway', desc: 'Giveaway posts and winner announcements.' },
 	{ name: '「⭐」staff-rating', desc: 'Staff rating reports and updates.' },
 	{ name: '「📜」discord-quest', desc: 'Discord Quest notifications.' },
-	{ name: '「📽️」content-creator', desc: 'Content creator posts and TikTok LIVE alerts.' },
+	{ name: '「📽️」content-creator', desc: 'Content creator posts, TikTok LIVE alerts and YouTube, Twitch and TikTok creator alerts.' },
 	{ name: '「👗」roblox-catalog', desc: 'Roblox catalog item alerts.' },
 	{ name: '「🛍️」items', desc: 'Link to the items shop.' }
 ];
@@ -681,7 +681,10 @@ export const modules = [
 		what: 'Each member follows their own YouTube, Twitch and TikTok creators and is tagged when they post.',
 		fields: [
 			{ label: 'Creator alerts module', desc: 'When off, creator polling, posts and the member menu are disabled.' },
-			{ label: 'Target Broadcast Channel', desc: 'Where new videos, live streams and posts are announced, tagging every member who follows that creator.' },
+			{
+				label: 'Target Broadcast Channel',
+				desc: 'Where new videos, live streams and posts are announced, tagging every member who follows that creator. Defaults to the content creator channel.'
+			},
 			{ label: 'No channel set', desc: 'Nothing is posted. Members see the last 20 alerts in Notifications instead.' },
 			{ label: 'Per-member follows', desc: 'Members follow a creator from Notifications or Notify me under a post, and pick new video, live stream or post.' }
 		]
@@ -771,7 +774,10 @@ export const discordMenu = [
 	{ label: '⏸️ Set AFK Status', desc: 'Opens the AFK modal, or shows your current AFK status with a Remove AFK button.' },
 	{ label: '💬 Submit Feedback', desc: 'Opens the feedback modal with a message field and an anonymous option.' },
 	{ label: '🛡️ Staff Rating', desc: 'Pick a staff member, choose a 1 to 5 score and category, and submit a rating.' },
-	{ label: '🎬 Content Creator', desc: 'Shows the creator list and an Apply button (TikTok username plus reason).' },
+	{
+		label: '🎬 Content Creator',
+		desc: 'Shows the approved creators, live first, with two choices: Apply as Content Creator (pending applications plus an Apply button for TikTok username and reason) and creator alerts (the creators a member follows and what each one alerts on).'
+	},
 	{
 		label: '🔔 Notifications',
 		desc: 'Opens three choices: channel notifications (subscribe to the channels you enabled), Roblox item notifications (the items a member follows, what each one alerts on, and a disable-all) and creator alerts (the creators a member follows and what each one alerts on).'

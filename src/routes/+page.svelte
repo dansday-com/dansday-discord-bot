@@ -402,6 +402,12 @@
 			]
 		},
 		{
+			icon: 'fa-tower-broadcast',
+			title: 'Creator alerts',
+			desc: 'Members follow their own YouTube, Twitch and TikTok creators.',
+			more: 'Tagged on new videos, live streams and posts.'
+		},
+		{
 			icon: 'fa-comments',
 			title: 'AI chat',
 			desc: 'Optional. Mention the bot, or reply to keep going without mentioning again.',
@@ -478,7 +484,7 @@
 	<title>{APP_NAME} Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, an XP economy, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free ten minute demo on login."
+		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, an XP economy, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, YouTube, Twitch and TikTok creator alerts, Roblox catalog watch, and more. Free ten minute demo on login."
 	/>
 </svelte:head>
 

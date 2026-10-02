@@ -552,8 +552,8 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			const row = {
 				member_id: seededMemberIds[i],
 				inviter_member_id: inviterId,
-				code: `demo${inviterId}`,
-				source: 'invite',
+				code: i % 2 === 0 ? `demo${inviterId}` : `demoDiscord${inviterId}`,
+				source: i % 2 === 0 ? 'personal' : 'invite',
 				fake_reason: kind === 1 ? 'account_age' : null,
 				xp: paid ? 1000 : 0,
 				rewarded_at: paid ? joinedAt : null,

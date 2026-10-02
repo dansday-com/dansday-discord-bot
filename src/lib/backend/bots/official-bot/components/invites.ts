@@ -157,8 +157,10 @@ async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | nul
 	if (attribution.code && attribution.source === 'invite') {
 		const owners = await db.getInviteLinkOwners(server.id).catch(() => []);
 		const owner = owners.find((o: any) => o.code === attribution.code);
-		if (owner) inviterDiscordId = String(owner.discord_member_id);
-		else if ((await db.getServer(server.id).catch(() => null))?.invite_code === attribution.code) source = 'server';
+		if (owner) {
+			inviterDiscordId = String(owner.discord_member_id);
+			source = 'personal';
+		} else if ((await db.getServer(server.id).catch(() => null))?.invite_code === attribution.code) source = 'server';
 	}
 	if (inviterDiscordId && inviterDiscordId === guild.client?.user?.id) inviterDiscordId = null;
 
@@ -189,7 +191,7 @@ async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | nul
 	const inviterTotal = storedInviter?.id ? ((await db.getMemberInviteStats(Number(storedInviter.id)).catch(() => null))?.total ?? null) : null;
 	const storedFake = stored?.fake_reason ?? null;
 	const storedSource = stored?.source ?? attribution.source;
-	const sourceLabel = storedSource === 'invite' ? `code ${stored?.code ?? attribution.code}` : storedSource;
+	const sourceLabel = storedSource === 'invite' || storedSource === 'personal' ? `${storedSource} code ${stored?.code ?? attribution.code}` : storedSource;
 	await logger.log(
 		`📨 Join attributed: ${member.user?.tag || member.id} → ${storedInviterId ? `inviter ${storedInviterId}` : 'no inviter'} (${sourceLabel}${storedFake ? `, fake: ${storedFake}` : ''}${rejoin ? ', rejoin' : ''})`
 	);

@@ -4,6 +4,7 @@ import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
 import { attributeJoin, type JoinInviteResult } from './invites.js';
+import { INVITE_SOURCE_LABEL } from '../../../../invites.js';
 
 const INVITE_WAIT_MS = 5_000;
 
@@ -16,6 +17,12 @@ function inviterText(invite: JoinInviteResult | null): string {
 	if (invite?.source === 'vanity') return 'the vanity link';
 	if (invite?.source === 'server') return 'the server invite link';
 	return 'someone';
+}
+
+function invitedByText(invite: JoinInviteResult): string {
+	if (!invite.inviterDiscordId) return inviterText(invite);
+	const link = INVITE_SOURCE_LABEL[invite.source];
+	return `<@${invite.inviterDiscordId}> (${invite.inviterTotal ?? 0} invites)${link ? `\n${link}` : ''}`;
 }
 
 function replacePlaceholders(message, memberId, serverData, memberData, memberCount, invite: JoinInviteResult | null = null) {
@@ -127,7 +134,7 @@ async function welcomeUser(member, client) {
 					? [
 							{
 								name: '📨 Invited By',
-								value: invite.inviterDiscordId ? `<@${invite.inviterDiscordId}> (${invite.inviterTotal ?? 0} invites)` : inviterText(invite),
+								value: invitedByText(invite),
 								inline: true
 							}
 						]

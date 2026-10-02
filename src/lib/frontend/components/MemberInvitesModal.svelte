@@ -217,7 +217,10 @@
 								{@const meta = statusMeta(i.status)}
 								<li class="bg-ash-700 border-ash-600 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs">
 									<i class="fas {meta.icon} {meta.tone} shrink-0"></i>
-									<span class="text-ash-100 min-w-0 flex-1 truncate font-medium">{i.name ?? i.discord_member_id}</span>
+									<div class="min-w-0 flex-1">
+										<p class="text-ash-100 truncate font-medium">{i.name ?? i.discord_member_id}</p>
+										<p class="text-ash-400 truncate text-[0.65rem]">{INVITE_SOURCE_LABEL[i.source] ?? i.source}{i.code ? ` · ${i.code}` : ''}</p>
+									</div>
 									<span class="text-ash-400 hidden shrink-0 sm:inline"><LocalTime value={i.created_at} fallback="" /></span>
 									<span class="shrink-0 {meta.tone}">
 										{i.fake_reason ? (INVITE_FAKE_REASON_LABEL[i.fake_reason] ?? meta.label) : meta.label}

@@ -6,7 +6,7 @@
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import { formatMultiplier, formatSeconds } from '$lib/frontend/numericSelectFormatters.js';
-	import { INVITE_STAFF_MULTIPLIER } from '$lib/invites.js';
+	import { INVITE_SHARE_PERCENT_OPTIONS, INVITE_STAFF_MULTIPLIER } from '$lib/invites.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -30,6 +30,7 @@
 	let inviteXP = $state<number>(data.settings?.INVITE?.XP ?? 1000);
 	let inviteMinAccountAge = $state<number>(data.settings?.INVITE?.MIN_ACCOUNT_AGE_DAYS ?? 7);
 	let inviteHoldHours = $state<number>(data.settings?.INVITE?.HOLD_HOURS ?? 24);
+	let inviteSharePercent = $state<number>(data.settings?.INVITE?.SHARE_PERCENT ?? 25);
 
 	let progressChannel = $state<string>(data.settings?.PROGRESS_CHANNEL_ID ?? '');
 
@@ -60,7 +61,7 @@
 					VOICE: { XP_PER_MINUTE: voiceXPPerMinute, AFK_XP_PER_MINUTE: voiceAfkXPPerMinute, COOLDOWN_SECONDS: voiceCooldown },
 					VIDEO: { XP_PER_MINUTE: videoXPPerMinute },
 					STREAMING: { XP_PER_MINUTE: streamingXPPerMinute },
-					INVITE: { XP: inviteXP, MIN_ACCOUNT_AGE_DAYS: inviteMinAccountAge, HOLD_HOURS: inviteHoldHours }
+					INVITE: { XP: inviteXP, MIN_ACCOUNT_AGE_DAYS: inviteMinAccountAge, HOLD_HOURS: inviteHoldHours, SHARE_PERCENT: inviteSharePercent }
 				})
 			});
 			const d = await res.json();
@@ -180,6 +181,22 @@
 			<p class="text-ash-400 flex items-center gap-2 text-xs">
 				<i class="fas fa-shield-halved text-lime-400"></i>Staff earn {(inviteXP * INVITE_STAFF_MULTIPLIER).toLocaleString()} XP per invite ({INVITE_STAFF_MULTIPLIER}×).
 			</p>
+		</div>
+
+		<div class="space-y-3">
+			<ConfigNumberSelect
+				label="Invite share"
+				description="Share of the chat and voice XP an invited member earns that also goes to their inviter, for as long as they stay. Off disables it."
+				labelIconClass="fas fa-people-arrows mr-1 text-lime-400"
+				values={INVITE_SHARE_PERCENT_OPTIONS}
+				bind:value={inviteSharePercent}
+				formatOption={(v) => (v === 0 ? 'Off' : `${v}%`)}
+			/>
+			{#if inviteSharePercent > 0}
+				<p class="text-ash-400 flex items-center gap-2 text-xs">
+					<i class="fas fa-shield-halved text-lime-400"></i>Staff get {inviteSharePercent * INVITE_STAFF_MULTIPLIER}% ({INVITE_STAFF_MULTIPLIER}×).
+				</p>
+			{/if}
 		</div>
 
 		<ConfigNumberSelect

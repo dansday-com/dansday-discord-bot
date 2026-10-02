@@ -1,5 +1,7 @@
 export const INVITE_STAFF_MULTIPLIER = 2;
 
+export const INVITE_SHARE_PERCENT_OPTIONS = [0, 5, 10, 15, 20, 25];
+
 export type InviteStatus = 'active' | 'left' | 'fake';
 
 export const INVITE_STATUS_META: Record<InviteStatus, { label: string; icon: string; tone: string }> = {

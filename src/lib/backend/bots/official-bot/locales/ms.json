@@ -133,6 +133,7 @@
 		"reward": "Dapatkan **{xp} XP** untuk setiap ahli baharu yang menyertai melalui pautan anda{hold}.",
 		"hold": " dan kekal {hours} jam",
 		"staffNote": "🛡️ Staf mendapat {multiplier}× XP jemputan.",
+		"share": "📈 Anda juga mendapat **{percent}%** daripada XP chat dan voice yang diperoleh ahli jemputan anda, selagi mereka kekal.",
 		"link": "🔗 Pautan jemputan peribadi anda: {url}",
 		"noLink": "⚠️ Saya tidak dapat membuat pautan jemputan di sini. Minta staf beri saya kebenaran Create Invite.",
 		"copyButton": "Buka pautan jemputan",
@@ -144,7 +145,8 @@
 			"bonus": "➕ Bonus",
 			"xp": "⭐ XP diperoleh",
 			"pending": "⏳ Menunggu",
-			"invitedBy": "👤 Dijemput oleh"
+			"invitedBy": "👤 Dijemput oleh",
+			"shareXp": "🤝 Daripada bahagian"
 		},
 		"error": "❌ Gagal memuatkan jemputan anda. Cuba lagi sebentar nanti."
 	},

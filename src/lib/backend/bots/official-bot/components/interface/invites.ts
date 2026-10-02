@@ -65,7 +65,9 @@ export async function handleInvitesButton(interaction: any) {
 		const embedConfig = await getEmbedConfig(g);
 		const hold = settings.HOLD_HOURS > 0 ? await translate('invites.hold', g, u, { hours: settings.HOLD_HOURS }) : '';
 		const staffNote = reward.multiplier > 1 ? `\n${await translate('invites.staffNote', g, u, { multiplier: reward.multiplier })}` : '';
-		const rewardLine = `${await translate('invites.reward', g, u, { xp: reward.xp.toLocaleString(), hold })}${staffNote}`;
+		const sharePercent = settings.SHARE_PERCENT * reward.multiplier;
+		const shareLine = sharePercent > 0 ? `\n${await translate('invites.share', g, u, { percent: sharePercent })}` : '';
+		const rewardLine = `${await translate('invites.reward', g, u, { xp: reward.xp.toLocaleString(), hold })}${staffNote}${shareLine}`;
 		const linkLine = code ? await translate('invites.link', g, u, { url: `https://discord.gg/${code}` }) : await translate('invites.noLink', g, u);
 
 		const fields = [
@@ -74,7 +76,8 @@ export async function handleInvitesButton(interaction: any) {
 			{ name: await translate('invites.fields.left', g, u), value: stats.left.toLocaleString(), inline: true },
 			{ name: await translate('invites.fields.fake', g, u), value: stats.fake.toLocaleString(), inline: true },
 			{ name: await translate('invites.fields.bonus', g, u), value: stats.bonus.toLocaleString(), inline: true },
-			{ name: await translate('invites.fields.xp', g, u), value: stats.xp.toLocaleString(), inline: true }
+			{ name: await translate('invites.fields.xp', g, u), value: stats.xp.toLocaleString(), inline: true },
+			{ name: await translate('invites.fields.shareXp', g, u), value: stats.share_xp.toLocaleString(), inline: true }
 		];
 		if (stats.pending > 0) {
 			fields.push({ name: await translate('invites.fields.pending', g, u), value: stats.pending.toLocaleString(), inline: true });

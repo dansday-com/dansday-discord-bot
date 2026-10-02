@@ -133,6 +133,7 @@
 		"reward": "Dapatkan **{xp} XP** untuk setiap member baru yang bergabung lewat link-mu{hold}.",
 		"hold": " dan bertahan {hours} jam",
 		"staffNote": "🛡️ Staff mendapat {multiplier}× XP undangan.",
+		"share": "📈 Kamu juga dapat **{percent}%** dari XP chat dan voice yang didapat member undanganmu, selama mereka bertahan.",
 		"link": "🔗 Link undangan pribadimu: {url}",
 		"noLink": "⚠️ Aku tidak bisa membuat link undangan di sini. Minta staff memberiku izin Create Invite.",
 		"copyButton": "Buka link undangan",
@@ -144,7 +145,8 @@
 			"bonus": "➕ Bonus",
 			"xp": "⭐ XP didapat",
 			"pending": "⏳ Menunggu",
-			"invitedBy": "👤 Diundang oleh"
+			"invitedBy": "👤 Diundang oleh",
+			"shareXp": "🤝 Dari bagian"
 		},
 		"error": "❌ Gagal memuat undanganmu. Coba lagi sebentar lagi."
 	},

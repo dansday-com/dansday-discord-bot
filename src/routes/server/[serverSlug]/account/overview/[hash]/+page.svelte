@@ -282,12 +282,15 @@
 		<StatCard icon="fa-user-plus" title="Invites" tone="cyan" note={p.invitedBy ? `Invited by ${p.invitedBy}` : undefined}>
 			<StatHero label="invites" value={fmt(inv.total)} countTo={inv.total} />
 			<MiniGrid cols={3}>
+				<MiniStat icon="fa-right-to-bracket" value={fmt(inv.joins)} label="Joins" />
 				<MiniStat icon="fa-user-check" value={fmt(inv.active)} label="Still here" />
 				<MiniStat icon="fa-user-minus" value={fmt(inv.left)} label="Left" />
 				<MiniStat icon="fa-user-secret" value={fmt(inv.fake)} label="Fake" />
 				<MiniStat icon="fa-hourglass-half" value={fmt(inv.pending)} label="Waiting" />
 				<MiniStat icon="fa-shield-halved" value={fmt(inv.bonus)} label="Staff bonus" />
-				<MiniStat icon="fa-star" value={fmt(inv.xp)} label="XP earned" />
+				<MiniStat icon="fa-user-plus" value={fmt(inv.join_xp)} label="Join XP" />
+				<MiniStat icon="fa-people-arrows" value={fmt(inv.share_xp)} label="Share XP" />
+				<MiniStat icon="fa-star" value={fmt(inv.xp)} label="Total XP" />
 			</MiniGrid>
 		</StatCard>
 	{/if}

@@ -133,6 +133,7 @@
 		"reward": "Verdiene **{xp} XP** für jedes neue Mitglied, das über deinen Link beitritt{hold}.",
 		"hold": " und {hours} Std. bleibt",
 		"staffNote": "🛡️ Staff erhält {multiplier}× Einladungs-XP.",
+		"share": "📈 Du bekommst außerdem **{percent}%** der Chat- und Voice-XP deiner eingeladenen Mitglieder, solange sie bleiben.",
 		"link": "🔗 Dein persönlicher Einladungslink: {url}",
 		"noLink": "⚠️ Ich konnte hier keinen Einladungslink erstellen. Bitte das Team, mir die Berechtigung „Einladung erstellen“ zu geben.",
 		"copyButton": "Einladungslink öffnen",
@@ -144,7 +145,8 @@
 			"bonus": "➕ Bonus",
 			"xp": "⭐ XP verdient",
 			"pending": "⏳ Ausstehend",
-			"invitedBy": "👤 Eingeladen von"
+			"invitedBy": "👤 Eingeladen von",
+			"shareXp": "🤝 Aus Anteilen"
 		},
 		"error": "❌ Deine Einladungen konnten nicht geladen werden. Versuch es gleich nochmal."
 	},

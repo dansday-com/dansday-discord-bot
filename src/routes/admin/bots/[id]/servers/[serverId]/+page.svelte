@@ -184,7 +184,8 @@
 				{ icon: 'fa-link', label: 'Vanity link', value: fmt(inv?.vanity) },
 				{ icon: 'fa-circle-question', label: 'Unknown', value: fmt(inv?.unknown) },
 				{ icon: 'fa-hourglass-half', label: 'Waiting payout', value: fmt(inv?.pending) },
-				{ icon: 'fa-star', label: 'XP paid', value: fmt(inv?.xp_paid) },
+				{ icon: 'fa-star', label: 'Join XP paid', value: fmt(inv?.xp_paid) },
+				{ icon: 'fa-people-arrows', label: 'XP shared', value: fmt(inv?.share_xp) },
 				{ icon: 'fa-users', label: 'Inviters', value: fmt(inv?.inviters) },
 				{ icon: 'fa-plus-minus', label: 'Staff bonus', value: fmt(inv?.bonus) }
 			]

@@ -133,6 +133,7 @@
 		"reward": "Earn **{xp} XP** for each new member who joins with your link{hold}.",
 		"hold": " and stays {hours}h",
 		"staffNote": "🛡️ Staff earn {multiplier}× invite XP.",
+		"share": "📈 You also get **{percent}%** of the chat and voice XP your invited members earn, for as long as they stay.",
 		"link": "🔗 Your personal invite link: {url}",
 		"noLink": "⚠️ I couldn't create an invite link here. Ask staff to give me the Create Invite permission.",
 		"copyButton": "Open invite link",
@@ -144,7 +145,8 @@
 			"bonus": "➕ Bonus",
 			"xp": "⭐ XP earned",
 			"pending": "⏳ Waiting",
-			"invitedBy": "👤 Invited by"
+			"invitedBy": "👤 Invited by",
+			"shareXp": "🤝 From shares"
 		},
 		"error": "❌ Couldn't load your invites. Try again in a moment."
 	},

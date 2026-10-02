@@ -14,7 +14,18 @@
 
 	let { serverId, member, onclose, onchange }: Props = $props();
 
-	type Stats = { joins: number; active: number; left: number; fake: number; pending: number; bonus: number; total: number; xp: number };
+	type Stats = {
+		joins: number;
+		active: number;
+		left: number;
+		fake: number;
+		pending: number;
+		bonus: number;
+		total: number;
+		xp: number;
+		join_xp: number;
+		share_xp: number;
+	};
 
 	let loading = $state(false);
 	let busy = $state(false);
@@ -35,7 +46,8 @@
 					{ icon: 'fa-user-secret', label: 'Fake', value: stats.fake, tone: 'text-red-400' },
 					{ icon: 'fa-plus-minus', label: 'Bonus', value: stats.bonus, tone: 'text-violet-400' },
 					{ icon: 'fa-hourglass-half', label: 'Waiting', value: stats.pending, tone: 'text-sky-400' },
-					{ icon: 'fa-star', label: 'XP earned', value: stats.xp, tone: 'text-yellow-400' }
+					{ icon: 'fa-star', label: 'Join XP', value: stats.join_xp, tone: 'text-yellow-400' },
+					{ icon: 'fa-people-arrows', label: 'Share XP', value: stats.share_xp, tone: 'text-teal-400' }
 				]
 			: []
 	);
@@ -204,6 +216,9 @@
 									</span>
 									{#if Number(i.xp) > 0}
 										<span class="shrink-0 text-yellow-400">+{Number(i.xp).toLocaleString()} XP</span>
+									{/if}
+									{#if Number(i.share_xp) > 0}
+										<span class="shrink-0 text-teal-400">+{Number(i.share_xp).toLocaleString()} shared</span>
 									{/if}
 								</li>
 							{/each}

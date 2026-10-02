@@ -747,6 +747,7 @@ CREATE TABLE IF NOT EXISTS server_member_invites (
     source VARCHAR(16) NOT NULL DEFAULT 'unknown',
     fake_reason VARCHAR(16) NULL,
     xp INT NOT NULL DEFAULT 0,
+    share_xp BIGINT NOT NULL DEFAULT 0,
     rewarded_at DATETIME NULL,
     joined_at DATETIME NOT NULL,
     left_at DATETIME NULL,

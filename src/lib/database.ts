@@ -2455,7 +2455,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
 		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
 		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
-		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily', 'invite')`);
+		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share')`);
 		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
 		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
 		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
@@ -7580,6 +7580,24 @@ export async function getDueInviteRewards(serverId: number, joinedBefore: Date, 
 	return (rows as any[]) ?? [];
 }
 
+export async function getActiveInviterForShare(memberId: number) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT i.id, i.inviter_member_id, m.discord_member_id AS inviter_discord_id, ${INVITE_NAME} AS inviter_name
+		FROM server_member_invites i
+		JOIN server_members m ON m.id = i.inviter_member_id
+		WHERE i.member_id = ${Number(memberId)} AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.source <> 'manual'
+			AND i.rewarded_at IS NOT NULL AND m.deleted_at IS NULL AND m.is_bot = 0
+		LIMIT 1
+	`)) as any;
+	return (rows as any[])?.[0] ?? null;
+}
+
+export async function addInviteShareXp(inviteId: number, xp: number) {
+	await initializeDatabase();
+	await db.execute(sql`UPDATE server_member_invites SET share_xp = share_xp + ${Math.max(0, Math.floor(Number(xp) || 0))} WHERE id = ${Number(inviteId)}`);
+}
+
 export async function releaseInviteReward(inviteId: number) {
 	await initializeDatabase();
 	await db.execute(sql`UPDATE server_member_invites SET rewarded_at = NULL, xp = 0 WHERE id = ${Number(inviteId)}`);
@@ -7596,7 +7614,7 @@ export async function claimInviteReward(inviteId: number, xp: number) {
 
 export async function getMemberInviteStats(memberId: number) {
 	await initializeDatabase();
-	const empty = { joins: 0, active: 0, left: 0, fake: 0, pending: 0, bonus: 0, total: 0, xp: 0 };
+	const empty = { joins: 0, active: 0, left: 0, fake: 0, pending: 0, bonus: 0, total: 0, xp: 0, join_xp: 0, share_xp: 0 };
 	if (!memberId) return empty;
 	const [rows] = (await db.execute(sql`
 		SELECT
@@ -7605,7 +7623,8 @@ export async function getMemberInviteStats(memberId: number) {
 			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NOT NULL), 0) AS left_count,
 			COALESCE(SUM(i.fake_reason IS NOT NULL), 0) AS fake,
 			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL), 0) AS pending,
-			COALESCE(SUM(i.xp), 0) AS xp
+			COALESCE(SUM(i.xp), 0) AS xp,
+			COALESCE(SUM(i.share_xp), 0) AS share_xp
 		FROM server_member_invites i
 		WHERE i.inviter_member_id = ${Number(memberId)}
 	`)) as any;
@@ -7623,7 +7642,9 @@ export async function getMemberInviteStats(memberId: number) {
 		pending: Number(r.pending) || 0,
 		bonus,
 		total: active + bonus,
-		xp: Number(r.xp) || 0
+		join_xp: Number(r.xp) || 0,
+		share_xp: Number(r.share_xp) || 0,
+		xp: (Number(r.xp) || 0) + (Number(r.share_xp) || 0)
 	};
 }
 
@@ -7646,7 +7667,7 @@ export async function getMemberInvitees(memberId: number, limit = 100) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
 	const [rows] = (await db.execute(sql`
-		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
+		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.share_xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
 			m.discord_member_id, ${INVITE_NAME} AS name, m.avatar
 		FROM server_member_invites i
 		JOIN server_members m ON m.id = i.member_id
@@ -7706,6 +7727,7 @@ export async function getServerInviteStats(serverId: number | string) {
 			COALESCE(SUM(i.source = 'vanity'), 0) AS vanity,
 			COALESCE(SUM(i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL), 0) AS pending,
 			COALESCE(SUM(i.xp), 0) AS xp_paid,
+			COALESCE(SUM(i.share_xp), 0) AS share_xp,
 			COUNT(DISTINCT i.inviter_member_id) AS inviters
 		FROM server_member_invites i
 		JOIN server_members m ON m.id = i.member_id
@@ -7738,6 +7760,7 @@ export async function getServerInviteStats(serverId: number | string) {
 		vanity: Number(r.vanity) || 0,
 		pending: Number(r.pending) || 0,
 		xp_paid: Number(r.xp_paid) || 0,
+		share_xp: Number(r.share_xp) || 0,
 		inviters: Number(r.inviters) || 0,
 		bonus: Number((bonusRows as any[])?.[0]?.bonus) || 0,
 		codes: ((codeRows as any[]) ?? []).map((c) => ({
@@ -8201,6 +8224,8 @@ export default {
 	recordMemberJoinInvite,
 	markMemberInviteLeft,
 	releaseInviteReward,
+	getActiveInviterForShare,
+	addInviteShareXp,
 	getPendingInviteServers,
 	getDueInviteRewards,
 	claimInviteReward,

@@ -543,6 +543,10 @@ export const modules = [
 			{ label: 'Video / camera XP', desc: 'Extra XP per voice tick while your camera is on, even if muted. 0 disables. Stacks with voice XP.' },
 			{ label: 'Live stream XP', desc: 'Extra XP per voice tick while using Go Live, even if muted. 0 disables. Stacks with voice and video XP.' },
 			{ label: 'Invite XP', desc: 'XP paid to the inviter per new member who stays (50 to 1000). Staff earn double.' },
+			{
+				label: 'Invite share',
+				desc: "Share of an invited member's chat and voice XP that also goes to the inviter while they stay (off to 25%). Staff get double."
+			},
 			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
 			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
 			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications.' }

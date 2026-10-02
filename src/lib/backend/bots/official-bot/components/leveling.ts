@@ -7,8 +7,10 @@ import {
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
 	computePublicServerSlugForServerId,
-	publicServerUrl
+	publicServerUrl,
+	PERMISSIONS
 } from '../../../config.js';
+import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
 import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -634,14 +636,105 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
 		const boostSuffix = award?.staff ? ` (${award.multiplier}× Staff 🛡️)` : award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
 		const noteSuffix = award?.note ? ` ${award.note}` : '';
+		const share = award?.inviteShare;
+		const shareSuffix =
+			share?.amount > 0 && share.inviterName
+				? ` · 📨 +${share.amount} to ${share.inviterName} (${share.percent}% invite share${share.staff ? ' 🛡️' : ''})`
+				: '';
 		const friendSuffix = award?.friendBoosted ? ` (+${luckRateLabel(award.friendPercent, award.luckPercent)} Friend boost 🤝)` : '';
 		const leechSuffix = award?.leeched ? ` (−${luckRateLabel(award.skimPercent, 0)} Leech 🩸)` : '';
-		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${noteSuffix}${boostSuffix}${friendSuffix}${leechSuffix}`;
+		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${noteSuffix}${boostSuffix}${friendSuffix}${leechSuffix}${shareSuffix}`;
 
 		await channel.send(logMessage);
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);
 		await logger.log(`⚠️ Failed to send XP log to channel: ${msg}`);
+	}
+}
+
+const SHARE_CACHE_MS = 60_000;
+const inviterShareCache = new Map<number, { at: number; row: any }>();
+const staffCache = new Map<string, { at: number; staff: boolean | null }>();
+
+async function inviterForShare(memberId: number) {
+	const hit = inviterShareCache.get(memberId);
+	if (hit && Date.now() - hit.at < SHARE_CACHE_MS) return hit.row;
+	const row = await db.getActiveInviterForShare(memberId).catch(() => null);
+	inviterShareCache.set(memberId, { at: Date.now(), row });
+	return row;
+}
+
+async function isStaffInviter(guild, discordId: string): Promise<boolean | null> {
+	const key = `${guild.id}:${discordId}`;
+	const hit = staffCache.get(key);
+	if (hit && Date.now() - hit.at < SHARE_CACHE_MS) return hit.staff;
+	const guildMember = guild.members.cache.get(discordId) ?? (await guild.members.fetch(discordId).catch(() => null));
+	if (!guildMember) {
+		staffCache.set(key, { at: Date.now(), staff: null });
+		return null;
+	}
+	let staff = false;
+	try {
+		const perms = await PERMISSIONS.getPermissions(guild.id);
+		staff = await PERMISSIONS.hasAnyRole(guildMember, perms.STAFF_ROLES);
+	} catch (_) {}
+	staffCache.set(key, { at: Date.now(), staff });
+	return staff;
+}
+
+async function getInviteSharePercent(guildId: string): Promise<number> {
+	try {
+		return (await getLevelingSettings(guildId)).INVITE.SHARE_PERCENT;
+	} catch (_) {
+		return 0;
+	}
+}
+
+async function creditInviteShare(guild, server, invitee, earnedXp: number) {
+	try {
+		if (!guild || !server || !invitee?.id || !(earnedXp > 0)) return null;
+		const basePercent = await getInviteSharePercent(guild.id);
+		if (basePercent <= 0) return null;
+		const link = await inviterForShare(Number(invitee.id));
+		if (!link?.inviter_member_id || !link.inviter_discord_id) return null;
+
+		const staff = await isStaffInviter(guild, String(link.inviter_discord_id));
+		if (staff === null) return null;
+		const percent = staff ? basePercent * INVITE_STAFF_MULTIPLIER : basePercent;
+		const amount = Math.floor((earnedXp * percent) / 100);
+		if (amount <= 0) return null;
+
+		const inviterId = Number(link.inviter_member_id);
+		await db.ensureMemberLevel(inviterId);
+		const before = await db.getMemberLevel(inviterId);
+		const stats = await db.updateMemberLevelStats(inviterId, { xpIncrement: amount });
+		await db.addInviteShareXp(Number(link.id), amount).catch(() => null);
+		await db
+			.logMemberLevelGain(inviterId, {
+				source: 'invite_share',
+				xp: amount,
+				xp_total: stats?.xp != null ? Number(stats.xp) : null,
+				level: stats?.level != null ? Number(stats.level) : null,
+				rank: stats?.rank != null ? Number(stats.rank) : null,
+				multiplier: percent / 100
+			})
+			.catch(() => null);
+
+		const inviter = await db.getServerMemberById(inviterId).catch(() => null);
+		if (inviter && stats) {
+			await handleLevelEvaluation(server, inviter, stats, guild.id, {
+				previousLevel: before?.level ?? null,
+				previousXp: before?.xp ?? null,
+				previousRank: before?.rank ?? null,
+				reason: 'invite-share'
+			});
+		}
+
+		const hidden = await isMemberDisguised(guild, inviterId);
+		return { amount, percent, staff, inviterName: hidden ? null : (link.inviter_name ?? null) };
+	} catch (error) {
+		await logger.log(`⚠️ Invite share failed for member ${invitee?.id}: ${error.message}`);
+		return null;
 	}
 }
 
@@ -772,6 +865,7 @@ async function handleMessageCreate(message) {
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
 		const leechApplied = await creditLeechers(leechCredits, guildId);
+		(award as any).inviteShare = await creditInviteShare(message.guild, server, dbMember, memberXp);
 
 		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award, stats);
 		await announceLeechCredits(message.guild, dbMember, leechApplied);
@@ -844,17 +938,16 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
+		let inviteShare = await creditInviteShare(discordGuild, server, dbMember, xpGained);
 		const rate = rawXpGained > 0 ? xpGained / rawXpGained : 1;
 		const shown = (bucket: number) => Math.max(0, Math.round(bucket * rate));
-		if (baseXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award, stats);
-		}
-		if (videoXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award, stats);
-		}
-		if (streamXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award, stats);
-		}
+		const send = async (amount: number, type: string) => {
+			await sendXPLogToChannel(discordGuild, dbMember, amount, type, { ...award, inviteShare }, stats);
+			inviteShare = null;
+		};
+		if (baseXp > 0) await send(shown(baseXp), isAFK ? 'AFK Voice' : 'Voice');
+		if (videoXp > 0) await send(shown(videoXp), 'Video');
+		if (streamXp > 0) await send(shown(streamXp), 'Streaming');
 		await announceLeechCredits(discordGuild, dbMember, leechApplied);
 	}
 

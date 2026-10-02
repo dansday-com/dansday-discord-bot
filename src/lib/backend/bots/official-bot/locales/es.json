@@ -133,6 +133,7 @@
 		"reward": "Gana **{xp} XP** por cada miembro nuevo que se una con tu enlace{hold}.",
 		"hold": " y se quede {hours} h",
 		"staffNote": "🛡️ El staff gana {multiplier}× XP por invitación.",
+		"share": "📈 También recibes el **{percent}%** de la XP de chat y voz que ganan tus invitados, mientras sigan en el servidor.",
 		"link": "🔗 Tu enlace de invitación personal: {url}",
 		"noLink": "⚠️ No pude crear un enlace de invitación aquí. Pide al staff que me dé el permiso Crear invitación.",
 		"copyButton": "Abrir enlace de invitación",
@@ -144,7 +145,8 @@
 			"bonus": "➕ Bonus",
 			"xp": "⭐ XP ganada",
 			"pending": "⏳ En espera",
-			"invitedBy": "👤 Invitado por"
+			"invitedBy": "👤 Invitado por",
+			"shareXp": "🤝 De participaciones"
 		},
 		"error": "❌ No se pudieron cargar tus invitaciones. Inténtalo de nuevo en un momento."
 	},

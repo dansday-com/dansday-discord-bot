@@ -71,6 +71,8 @@ async function accountOverview(ctx, shared, member) {
 					fake: inviteStats.fake,
 					staff_bonus: inviteStats.bonus,
 					waiting_for_payout: inviteStats.pending,
+					xp_from_joins: inviteStats.join_xp,
+					xp_from_shares: inviteStats.share_xp,
 					xp_earned: inviteStats.xp
 				}
 			: null,

@@ -1279,6 +1279,7 @@ export const serverMemberInvites = mysqlTable(
 		source: varchar('source', { length: 16 }).notNull().default('unknown'),
 		fake_reason: varchar('fake_reason', { length: 16 }),
 		xp: int('xp').notNull().default(0),
+		share_xp: bigint('share_xp', { mode: 'number' }).notNull().default(0),
 		rewarded_at: datetime('rewarded_at'),
 		joined_at: datetime('joined_at').notNull(),
 		left_at: datetime('left_at'),

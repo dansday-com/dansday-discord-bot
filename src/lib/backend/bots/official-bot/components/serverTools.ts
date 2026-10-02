@@ -179,7 +179,9 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 			xp_per_invite_staff: num(settings.INVITE.XP) * INVITE_STAFF_MULTIPLIER,
 			hold_hours: num(settings.INVITE.HOLD_HOURS),
 			min_account_age_days: num(settings.INVITE.MIN_ACCOUNT_AGE_DAYS),
-			note: 'Paid to the inviter once the new member has stayed the hold time. Accounts younger than the minimum age, own links and rejoins pay nothing. Each member gets a personal invite link from the Invites button in the bot menu.'
+			share_percent: num(settings.INVITE.SHARE_PERCENT),
+			share_percent_staff: num(settings.INVITE.SHARE_PERCENT) * INVITE_STAFF_MULTIPLIER,
+			note: 'The one-off invite XP is paid once the new member has stayed the hold time. After that the inviter also gets share_percent of every chat and voice XP gain that member makes, for as long as they stay (staff get share_percent_staff). Accounts younger than the minimum age, own links and rejoins pay nothing. Each member gets a personal invite link from the Invites button in the bot menu.'
 		},
 		bonuses: {
 			voice_friend_bonus_percent_each: 10,

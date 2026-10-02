@@ -401,15 +401,16 @@ export async function handleEditCustomSupporterRole(interaction) {
 
 export async function handleDeleteCustomSupporterRole(interaction) {
 	try {
-		await interaction.deferReply({ flags: 64 });
+		await interaction.deferUpdate();
 
 		const member = interaction.member;
 
 		if (!(await hasPermission(member, 'custom_supporter_role'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'custom_supporter_role', interaction.user.id);
 			await interaction
-				.editReply({
-					content: errorMessage
+				.followUp({
+					content: errorMessage,
+					flags: 64
 				})
 				.catch(() => null);
 			return;
@@ -423,8 +424,9 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 
 		if (!has || !existingRole) {
 			const errorMsg = await translate('customSupporterRole.errors.noRoleDelete', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
+			await interaction.followUp({
+				content: errorMsg,
+				flags: 64
 			});
 			return;
 		}
@@ -450,15 +452,17 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 			.setFooter({ text: embedConfig.FOOTER });
 
 		await interaction.editReply({
-			embeds: [successEmbed]
+			embeds: [successEmbed],
+			components: [new ActionRowBuilder().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'perks'))]
 		});
 
 		await logger.log(`🗑️ Deleted custom supporter role "${roleName}" (${roleId}) for ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error deleting supporter role: ${error.message}`);
 		const errorMsg = await translate('customSupporterRole.errors.deleteFailed', interaction.guild.id, interaction.user.id, { error: error.message });
-		await interaction.editReply({
-			content: errorMsg
+		await interaction.followUp({
+			content: errorMsg,
+			flags: 64
 		});
 	}
 }

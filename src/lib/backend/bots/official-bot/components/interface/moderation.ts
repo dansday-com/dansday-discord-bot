@@ -1,10 +1,15 @@
-import { ActionRowBuilder, ModalBuilder, StringSelectMenuBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ModalBuilder, StringSelectMenuBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder } from 'discord.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate } from '../../i18n.js';
 import { performModerationAction, parseDuration } from '../moderation.js';
+import { menuBackButton } from './menuBack.js';
 
 const MENU_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'clearwarns'];
 const TIMED_ACTIONS = ['timeout', 'tempban'];
+
+async function backRow(g: string, u: string) {
+	return new ActionRowBuilder<ButtonBuilder>().addComponents(await menuBackButton(g, u, 'staff'));
+}
 
 async function ensureStaff(interaction: any) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
@@ -24,11 +29,12 @@ export async function handleModerationButton(interaction: any) {
 		.setPlaceholder(await translate('moderation.selectUserPlaceholder', g, u))
 		.setMinValues(1)
 		.setMaxValues(1);
-	await interaction.reply({
+	const payload = {
 		content: await translate('moderation.selectUser', g, u),
-		components: [new ActionRowBuilder().addComponents(select)],
-		flags: 64
-	});
+		embeds: [],
+		components: [new ActionRowBuilder().addComponents(select), await backRow(g, u)]
+	};
+	await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 }
 
 export async function handleModerationUserSelect(interaction: any) {
@@ -38,7 +44,7 @@ export async function handleModerationUserSelect(interaction: any) {
 	const targetId = interaction.values[0];
 	const target = interaction.users?.get?.(targetId) ?? (await interaction.client.users.fetch(targetId).catch(() => null));
 	if (target?.bot || targetId === interaction.guild.ownerId) {
-		await interaction.update({ content: await translate('moderation.notAllowed', g, u), components: [] });
+		await interaction.reply({ content: await translate('moderation.notAllowed', g, u), flags: 64 });
 		return;
 	}
 	const options = [];
@@ -51,7 +57,7 @@ export async function handleModerationUserSelect(interaction: any) {
 		.addOptions(options);
 	await interaction.update({
 		content: await translate('moderation.selectAction', g, u, { member: `<@${targetId}>` }),
-		components: [new ActionRowBuilder().addComponents(select)]
+		components: [new ActionRowBuilder().addComponents(select), await backRow(g, u)]
 	});
 }
 

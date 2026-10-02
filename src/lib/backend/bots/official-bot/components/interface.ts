@@ -194,9 +194,9 @@ async function handleMenuCategory(interaction, categoryId: string) {
 		.setTimestamp();
 
 	if (interaction.replied || interaction.deferred) {
-		await interaction.editReply({ embeds: [embed], components: rows });
+		await interaction.editReply({ content: '', embeds: [embed], components: rows });
 	} else if (interaction.message?.flags?.has(64)) {
-		await interaction.update({ embeds: [embed], components: rows });
+		await interaction.update({ content: '', embeds: [embed], components: rows });
 	} else {
 		await interaction.reply({ embeds: [embed], components: rows, flags: 64 });
 	}
@@ -365,11 +365,13 @@ async function handleMenuButton(interaction) {
 	if (isFromEphemeral) {
 		if (interaction.replied || interaction.deferred) {
 			await interaction.editReply({
+				content: '',
 				embeds: [menuEmbed],
 				components: rows
 			});
 		} else {
 			await interaction.update({
+				content: '',
 				embeds: [menuEmbed],
 				components: rows
 			});

@@ -681,10 +681,11 @@ export async function handleContentCreatorButton(interaction: any) {
 			return;
 		}
 
+		const payload = { embeds: [built.embed], components: built.components };
 		if (interaction.replied || interaction.deferred) {
-			await interaction.editReply({ embeds: [built.embed], components: built.components }).catch(() => null);
+			await interaction.editReply(payload).catch(() => null);
 		} else {
-			await interaction.reply({ embeds: [built.embed], components: built.components, flags: 64 }).catch(() => null);
+			await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 		}
 	} catch (error: any) {
 		await logger.log(`❌ Error opening content creator view: ${error.message}`);

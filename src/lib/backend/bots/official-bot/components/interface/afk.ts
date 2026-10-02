@@ -395,10 +395,11 @@ export async function handleRemoveAFKButton(interaction) {
 			.setTimestamp()
 			.setFooter({ text: embedConfig.FOOTER });
 
-		await interaction.reply({
+		const payload = {
 			embeds: [embed],
-			flags: 64
-		});
+			components: [new ActionRowBuilder().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'me'))]
+		};
+		await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 
 		await logger.log(`✅ AFK manually removed by ${member.id}`);
 	} catch (error) {

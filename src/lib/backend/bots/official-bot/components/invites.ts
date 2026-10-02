@@ -1,4 +1,4 @@
-import { PermissionFlagsBits } from 'discord.js';
+import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import {
@@ -32,12 +32,14 @@ const DELETED_INVITE_GRACE_MS = 15_000;
 const JOIN_RESULT_TTL_MS = 60_000;
 const WARMUP_GAP_MS = 750;
 const UNKNOWN_MEMBER_CODES = new Set([10007, 10013]);
+const SERVER_INVITE_CHECK_MS = 30 * 60_000;
 
 const guildStates = new Map<string, GuildInviteState>();
 const guildQueues = new Map<string, Promise<unknown>>();
 const joinResults = new Map<string, Promise<JoinInviteResult | null>>();
 let clientRef: any = null;
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
+let serverInviteTimer: ReturnType<typeof setInterval> | null = null;
 
 function enqueue<T>(guildId: string, task: () => Promise<T>): Promise<T> {
 	const previous = guildQueues.get(guildId) ?? Promise.resolve();
@@ -304,15 +306,61 @@ async function sweepRewards() {
 	}
 }
 
+export function pickInviteChannel(guild: any) {
+	const me = guild.members.me;
+	const everyone = guild.roles.everyone;
+	const usable = (channel: any) =>
+		channel &&
+		(channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) &&
+		channel.permissionsFor(me)?.has(PermissionFlagsBits.CreateInstantInvite) &&
+		channel.permissionsFor(everyone)?.has(PermissionFlagsBits.ViewChannel);
+	const preferred = [guild.rulesChannel, guild.systemChannel].find(usable);
+	if (preferred) return preferred;
+	return [...guild.channels.cache.values()].filter(usable).sort((a: any, b: any) => a.rawPosition - b.rawPosition)[0] ?? null;
+}
+
+async function ensureServerInvite(guild: any) {
+	if (guild.vanityURLCode) return;
+	if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.public_statistics).catch(() => false))) return;
+	const state = guildStates.get(guild.id);
+	if (!state) return;
+
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(guild.id);
+	} catch (_) {
+		return;
+	}
+	const current = (await db.getServer(server.id).catch(() => null))?.invite_code ?? null;
+	const botUserId = guild.client?.user?.id;
+	const cached = current ? state.invites.get(current) : null;
+	if (cached && cached.inviterId === botUserId && !cached.expiresAt && !(await db.getPersonalInviteCodes([current])).has(current)) return;
+
+	const channel = pickInviteChannel(guild);
+	if (!channel) return;
+	const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Server invite link' }).catch(() => null);
+	if (!invite?.code) return;
+	rememberCreatedInvite(guild.id, invite);
+	await db.setServerInviteCode(Number(server.id), invite.code);
+}
+
 async function warmGuild(guild: any) {
 	const state = await snapshotGuild(guild);
 	if (state) guildStates.set(guild.id, state);
 	else guildStates.delete(guild.id);
+	await ensureServerInvite(guild).catch(() => null);
 }
 
 async function warmAll(client: any) {
 	for (const guild of client.guilds.cache.values()) {
 		await enqueue(guild.id, () => warmGuild(guild)).catch(() => null);
+		await new Promise((resolve) => setTimeout(resolve, WARMUP_GAP_MS));
+	}
+}
+
+async function checkServerInvites(client: any) {
+	for (const guild of client.guilds.cache.values()) {
+		await enqueue(guild.id, () => ensureServerInvite(guild)).catch(() => null);
 		await new Promise((resolve) => setTimeout(resolve, WARMUP_GAP_MS));
 	}
 }
@@ -362,11 +410,17 @@ function init(client: any) {
 		sweepRewards().catch(() => null);
 	}, REWARD_SWEEP_MS);
 	sweepRewards().catch(() => null);
+	if (serverInviteTimer) clearInterval(serverInviteTimer);
+	serverInviteTimer = setInterval(() => {
+		checkServerInvites(client).catch(() => null);
+	}, SERVER_INVITE_CHECK_MS);
 }
 
 export function stopInviteRewards() {
 	if (sweepTimer) clearInterval(sweepTimer);
 	sweepTimer = null;
+	if (serverInviteTimer) clearInterval(serverInviteTimer);
+	serverInviteTimer = null;
 }
 
 export default { init };

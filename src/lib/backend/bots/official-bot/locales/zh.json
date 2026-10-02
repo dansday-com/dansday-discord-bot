@@ -3,6 +3,7 @@
 		"title": "📋 {botName} 机器人菜单",
 		"description": "从下方按钮中选择一个功能：",
 		"website": "🌐 服务器页面：{url}",
+		"join": "📨 邀请链接：{url}",
 		"noAccess": "❌ 你没有任何功能的使用权限。",
 		"button": "📋 菜单",
 		"account": "👤 账户",

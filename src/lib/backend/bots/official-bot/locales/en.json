@@ -3,6 +3,7 @@
 		"title": "📋 {botName} Bot Menu",
 		"description": "Select a feature from the buttons below:",
 		"website": "🌐 Server page: {url}",
+		"join": "📨 Invite link: {url}",
 		"noAccess": "❌ You don't have access to any features.",
 		"button": "📋 Menu",
 		"account": "👤 Account",

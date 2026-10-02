@@ -3,6 +3,7 @@
 		"title": "📋 Menú del bot {botName}",
 		"description": "Selecciona una función con los botones de abajo:",
 		"website": "🌐 Página del servidor: {url}",
+		"join": "📨 Enlace de invitación: {url}",
 		"noAccess": "❌ No tienes acceso a ninguna función.",
 		"button": "📋 Menú",
 		"account": "👤 Cuenta",

@@ -259,7 +259,7 @@ Each member signs in to their own account on those same pages.
 ### Community
 
 - **Leveling & XP** - Messages and voice feed levels, role rewards and leaderboards. Reactions are tracked for tasks.
-- **Invite tracking** - Every join is credited to the inviter's link, and they earn XP once the new member stays past a hold time. After that they also get a share of that member's chat and voice XP, up to 25%, for as long as the member stays. Staff earn double on both. New accounts, own links and rejoins never pay. Each member gets a personal invite link from the Discord menu, with its own public page at `/join/their-name` that search engines can index, and invites have their own leaderboard, staff bonus adjustments and a weekly task.
+- **Invite tracking** - Every join is credited to the inviter's link, and they earn XP once the new member stays past a hold time. After that they also get a share of that member's chat and voice XP, up to 25%, for as long as the member stays. Staff earn double on both. New accounts, own links and rejoins never pay. Each member gets a personal invite link from the Discord menu, with its own public page at `/join/their-name` that search engines can index (each public server gets `/join/server-name` for its own invite, which no member can claim), and invites have their own leaderboard, staff bonus adjustments and a weekly task.
 - **Welcomer** - Custom welcome messages and embeds.
 - **Giveaways** - Entries, winner selection, role-based eligibility and an optional invite minimum.
 - **AFK** - Members set a status; the bot warns anyone who mentions them.

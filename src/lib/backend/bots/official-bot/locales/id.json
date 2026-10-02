@@ -3,6 +3,7 @@
 		"title": "📋 Menu Bot {botName}",
 		"description": "Pilih fitur dari tombol di bawah:",
 		"website": "🌐 Halaman server: {url}",
+		"join": "📨 Link undangan: {url}",
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
 		"account": "👤 Akun",

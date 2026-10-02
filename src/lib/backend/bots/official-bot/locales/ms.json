@@ -3,6 +3,7 @@
 		"title": "📋 Menu Bot {botName}",
 		"description": "Pilih ciri daripada butang di bawah:",
 		"website": "🌐 Halaman server: {url}",
+		"join": "📨 Pautan jemputan: {url}",
 		"noAccess": "❌ Anda tiada akses kepada mana-mana ciri.",
 		"button": "📋 Menu",
 		"account": "👤 Akaun",

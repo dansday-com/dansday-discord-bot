@@ -20,6 +20,7 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const tasksEnabled = publicSubfeatureEnabled(settings, 'tasks');
 
 	const server = resolved.server;
+	const serverRow = await db.getServer(server.id).catch(() => null);
 	const onSubdomain = publicServerSlugFromHost(url.hostname) === resolved.computedSlug;
 	const canonicalBase = publicServerPath(resolved.computedSlug);
 	const pathname = url.pathname.replace(/\/+$/, '');
@@ -36,7 +37,8 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 			id: server.id,
 			name: server.name,
 			slug: resolved.computedSlug,
-			server_icon: server.server_icon ?? null
+			server_icon: server.server_icon ?? null,
+			join_available: !!(serverRow?.vanity_url_code || serverRow?.invite_code)
 		}
 	};
 };

@@ -1104,8 +1104,11 @@ async function collectGuildSnapshotForUpsert(guild: any) {
 	let inviteCode: string | null = null;
 	try {
 		const invites = await guild?.invites?.fetch?.();
-		const first = invites && typeof invites.values === 'function' ? invites.values().next()?.value : null;
-		if (first?.code) inviteCode = String(first.code);
+		const botUserId = guild?.client?.user?.id ?? null;
+		const owned = invites && typeof invites.values === 'function' ? [...invites.values()].filter((i: any) => i.inviterId === botUserId && !i.maxAge) : [];
+		const personal = await getPersonalInviteCodes(owned.map((i: any) => String(i.code)));
+		const serverInvite = owned.find((i: any) => !personal.has(String(i.code)));
+		if (serverInvite?.code) inviteCode = String(serverInvite.code);
 	} catch (_) {}
 
 	let boostLevel = 0;
@@ -7892,6 +7895,23 @@ export async function getMemberInviteLink(memberId: number): Promise<{ code: str
 	return row ? { code: String(row.code), slug: row.slug ?? null } : null;
 }
 
+export async function getPersonalInviteCodes(codes: string[]): Promise<Set<string>> {
+	await initializeDatabase();
+	if (codes.length === 0) return new Set();
+	const [rows] = (await db.execute(sql`
+		SELECT code FROM server_member_invite_links WHERE code IN (${sql.join(
+			codes.map((c) => sql`${c}`),
+			sql`, `
+		)})
+	`)) as any;
+	return new Set(((rows as any[]) ?? []).map((r) => String(r.code)));
+}
+
+export async function setServerInviteCode(serverId: number, code: string) {
+	await initializeDatabase();
+	await db.execute(sql`UPDATE servers SET invite_code = ${code} WHERE id = ${Number(serverId)}`);
+}
+
 export async function setMemberInviteSlug(memberId: number, slug: string): Promise<boolean> {
 	await initializeDatabase();
 	try {
@@ -8310,6 +8330,8 @@ export default {
 	getMemberInviteLink,
 	setMemberInviteLink,
 	setMemberInviteSlug,
+	getPersonalInviteCodes,
+	setServerInviteCode,
 	getInviteLinkBySlug,
 	listInviteSlugsForServers,
 	getInviteLinkOwners

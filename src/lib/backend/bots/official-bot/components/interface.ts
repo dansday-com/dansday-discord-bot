@@ -5,8 +5,10 @@ import {
 	isComponentFeatureEnabled,
 	publicServerSubdomainOrigin,
 	publicServerUrl,
+	publicSiteOrigin,
 	serverSettingsComponent
 } from '../../../config.js';
+import { inviteJoinPath } from '../../../../invites.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -268,14 +270,18 @@ async function handleMenuButton(interaction) {
 	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id, { botName: embedConfig.NICKNAME });
 	const menuDesc = await translate('menu.description', interaction.guild.id, interaction.user.id);
 
-	let publicServer: { base: string; subdomain: string | null; stats: PublicPageStats | null } | null = null;
+	let publicServer: { base: string; subdomain: string | null; stats: PublicPageStats | null; joinUrl: string | null } | null = null;
 	try {
 		const server = await getServerForCurrentBot(interaction.guild.id);
 		const slug = await computePublicServerSlugForServerId(Number(server.id));
 		const base = slug ? publicServerUrl(slug) : null;
 		if (base) {
-			const snapshot = await resolvePublicStatisticsSnapshot(Number(server.id)).catch(() => null);
-			publicServer = { base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null };
+			const [snapshot, serverRow] = await Promise.all([
+				resolvePublicStatisticsSnapshot(Number(server.id)).catch(() => null),
+				db.getServer(server.id).catch(() => null)
+			]);
+			const joinUrl = serverRow?.vanity_url_code || serverRow?.invite_code ? `${publicSiteOrigin()}${inviteJoinPath(slug)}` : null;
+			publicServer = { base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null, joinUrl };
 		}
 	} catch (_) {}
 
@@ -287,6 +293,13 @@ async function handleMenuButton(interaction) {
 			siteLink = `[${new URL(siteUrl).host}${new URL(siteUrl).pathname.replace(/\/$/, '')}](${siteUrl})`;
 		} catch (_) {}
 		description = `${menuDesc}\n\n${await translate('menu.website', interaction.guild.id, interaction.user.id, { url: siteLink })}`;
+		if (publicServer?.joinUrl) {
+			let joinLink = publicServer.joinUrl;
+			try {
+				joinLink = `[${new URL(publicServer.joinUrl).host}${new URL(publicServer.joinUrl).pathname}](${publicServer.joinUrl})`;
+			} catch (_) {}
+			description += `\n${await translate('menu.join', interaction.guild.id, interaction.user.id, { url: joinLink })}`;
+		}
 	}
 
 	const menuEmbed = new EmbedBuilder()

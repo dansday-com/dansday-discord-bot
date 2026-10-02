@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { publicServerBasePath } from '$lib/url.js';
+	import { publicServerBasePath, publicSiteOrigin } from '$lib/url.js';
+	import { APP_DOMAIN } from '$lib/frontend/panelServer.js';
+	import { inviteJoinPath } from '$lib/invites.js';
 	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 
 	let {
 		server
 	}: {
-		server: { slug: string; name?: string | null; server_icon?: string | null };
+		server: { slug: string; name?: string | null; server_icon?: string | null; join_available?: boolean };
 	} = $props();
 
 	const basePath = $derived((page.data as any)?.serverBasePath ?? publicServerBasePath(server.slug, page.url.hostname));
@@ -51,6 +53,15 @@
 		{/if}
 	</div>
 	<h1 class="text-base-content min-w-0 truncate text-lg font-extrabold tracking-tight sm:text-xl">{server.name || server.slug}</h1>
+	{#if server.join_available}
+		<a
+			href={publicSiteOrigin() + inviteJoinPath(server.slug)}
+			class="btn btn-primary btn-sm ml-auto shrink-0 rounded-sm"
+			title="{APP_DOMAIN}{inviteJoinPath(server.slug)}"
+		>
+			<i class="fa-brands fa-discord"></i>Join<span class="hidden font-normal opacity-80 md:inline">· {APP_DOMAIN}{inviteJoinPath(server.slug)}</span>
+		</a>
+	{/if}
 </header>
 
 {#if tabs.length > 1}

@@ -48,6 +48,12 @@ export const GET: RequestHandler = async () => {
 	});
 
 	const inviteSlugs = await db.listInviteSlugsForServers(servers.map((s) => Number(s.id))).catch(() => []);
+	const serverJoinRows = servers.map((s) => ({
+		loc: `${baseUrl}${inviteJoinPath(String(s.slug))}`,
+		lastmod: toLastmod(s.updated_at),
+		changefreq: 'weekly' as const,
+		priority: 0.7
+	}));
 	const joinRows = inviteSlugs.map((i) => ({
 		loc: `${baseUrl}${inviteJoinPath(i.slug)}`,
 		lastmod: toLastmod(i.created_at),
@@ -72,7 +78,12 @@ export const GET: RequestHandler = async () => {
 		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: legalLastmod }
 	];
 
-	const allUrlData: { loc: string; changefreq: string; priority: number; lastmod?: string }[] = [...staticPages, ...publicPageRows, ...joinRows];
+	const allUrlData: { loc: string; changefreq: string; priority: number; lastmod?: string }[] = [
+		...staticPages,
+		...publicPageRows,
+		...serverJoinRows,
+		...joinRows
+	];
 
 	const urlElements = allUrlData
 		.map(({ loc, lastmod, changefreq, priority }) => {

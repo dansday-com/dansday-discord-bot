@@ -1,20 +1,11 @@
-import {
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	ChannelType,
-	EmbedBuilder,
-	ModalBuilder,
-	PermissionFlagsBits,
-	TextInputBuilder,
-	TextInputStyle
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import { getEmbedConfig, getLevelingSettings, getServerForCurrentBot, DEFAULT_LEVELING_SETTINGS, publicSiteOrigin } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
-import { inviteRewardFor, rememberCreatedInvite } from '../invites.js';
+import { inviteRewardFor, pickInviteChannel, rememberCreatedInvite } from '../invites.js';
+import { listSluggedPublicServers } from '../../../../../frontend/public/server-slug/index.js';
 import { INVITE_SLUG_MAX, INVITE_SLUG_MIN, inviteJoinPath, isValidInviteSlug, normalizeInviteSlug } from '../../../../../invites.js';
 
 export const INVITE_SLUG_BUTTON_ID = 'invites_slug';
@@ -22,17 +13,14 @@ export const INVITE_SLUG_MODAL_ID = 'invites_slug_modal';
 const SLUG_INPUT_ID = 'invites_slug_value';
 const SLUG_ATTEMPTS = 50;
 
-function pickInviteChannel(guild: any) {
-	const me = guild.members.me;
-	const everyone = guild.roles.everyone;
-	const usable = (channel: any) =>
-		channel &&
-		(channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) &&
-		channel.permissionsFor(me)?.has(PermissionFlagsBits.CreateInstantInvite) &&
-		channel.permissionsFor(everyone)?.has(PermissionFlagsBits.ViewChannel);
-	const preferred = [guild.rulesChannel, guild.systemChannel].find(usable);
-	if (preferred) return preferred;
-	return [...guild.channels.cache.values()].filter(usable).sort((a: any, b: any) => a.rawPosition - b.rawPosition)[0] ?? null;
+async function isServerSlug(slug: string): Promise<boolean> {
+	const servers = await listSluggedPublicServers().catch(() => []);
+	return servers.some((s) => s.slug === slug);
+}
+
+async function claimSlug(memberId: number, slug: string): Promise<boolean> {
+	if (await isServerSlug(slug)) return false;
+	return db.setMemberInviteSlug(memberId, slug);
 }
 
 async function claimDefaultSlug(memberId: number, name: string): Promise<string | null> {
@@ -42,10 +30,10 @@ async function claimDefaultSlug(memberId: number, name: string): Promise<string 
 	if (base.length < INVITE_SLUG_MIN) base = base ? `${base}-member` : 'member';
 	for (let i = 1; i <= SLUG_ATTEMPTS; i++) {
 		const candidate = i === 1 ? base : `${base}-${i}`;
-		if (await db.setMemberInviteSlug(memberId, candidate)) return candidate;
+		if (await claimSlug(memberId, candidate)) return candidate;
 	}
 	const fallback = `${base}-${Math.random().toString(36).slice(2, 7)}`;
-	return (await db.setMemberInviteSlug(memberId, fallback)) ? fallback : null;
+	return (await claimSlug(memberId, fallback)) ? fallback : null;
 }
 
 async function ensurePersonalInvite(guild: any, member: any, userTag: string): Promise<{ code: string; slug: string | null } | null> {
@@ -197,7 +185,7 @@ export async function handleInviteSlugModal(interaction: any) {
 		return;
 	}
 
-	if (link.slug !== slug && !(await db.setMemberInviteSlug(Number(dbMember.id), slug))) {
+	if (link.slug !== slug && !(await claimSlug(Number(dbMember.id), slug))) {
 		await interaction.editReply({ content: await translate('invites.slugTaken', g, u, { slug }) });
 		return;
 	}

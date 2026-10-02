@@ -16,14 +16,14 @@
 			.map((w) => w[0])
 			.join('')
 			.toUpperCase() || '?';
+
+	const title = $derived(data.member ? `Join ${data.server.name} on Discord | Invited by ${data.member.name}` : `Join ${data.server.name} on Discord`);
+	const description = $derived(
+		`${data.member ? `${data.member.name} invited you to join` : 'Join'} ${data.server.name}, a Discord community with ${data.server.members.toLocaleString()} members running ${APP_NAME} Bot. Accept the invite to jump in.`
+	);
 </script>
 
-<PageMeta
-	title="Join {data.server.name} on Discord | Invited by {data.member.name}"
-	description="{data.member.name} invited you to join {data.server
-		.name}, a Discord community with {data.server.members.toLocaleString()} members running {APP_NAME} Bot. Accept the invite to jump in."
-	path={inviteJoinPath(data.slug)}
-/>
+<PageMeta {title} {description} path={inviteJoinPath(data.slug)} />
 
 <svelte:head>
 	{#if !data.indexable}
@@ -44,10 +44,14 @@
 		</div>
 
 		<p class="text-base-content/60 mb-2 flex items-center justify-center gap-2 text-sm">
-			{#if data.member.avatar}
-				<img src={data.member.avatar} alt="" class="size-6 rounded-full object-cover" />
+			{#if data.member}
+				{#if data.member.avatar}
+					<img src={data.member.avatar} alt="" class="size-6 rounded-full object-cover" />
+				{/if}
+				<span><span class="text-base-content font-semibold">{data.member.name}</span> invited you to join</span>
+			{:else}
+				<span>You're invited to join</span>
 			{/if}
-			<span><span class="text-base-content font-semibold">{data.member.name}</span> invited you to join</span>
 		</p>
 
 		<h1 class="text-base-content mb-3 text-[clamp(26px,7vw,44px)] leading-[1.02] font-black tracking-[-0.03em] break-words">{data.server.name}</h1>
@@ -58,9 +62,13 @@
 			</p>
 		{/if}
 
-		<a href={data.inviteUrl} rel="nofollow" class="btn btn-primary w-full rounded-sm text-base sm:w-auto sm:min-w-64">
-			<i class="fa-brands fa-discord"></i>Join on Discord
-		</a>
+		{#if data.inviteUrl}
+			<a href={data.inviteUrl} rel="nofollow" class="btn btn-primary w-full rounded-sm text-base sm:w-auto sm:min-w-64">
+				<i class="fa-brands fa-discord"></i>Join on Discord
+			</a>
+		{:else}
+			<p class="text-base-content/55 text-sm">This server's invite link isn't ready yet. Check back soon.</p>
+		{/if}
 
 		{#if data.serverSlug}
 			<a href={publicServerPath(data.serverSlug)} class="text-base-content/60 hover:text-primary mt-4 text-sm underline-offset-4 hover:underline">

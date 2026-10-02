@@ -5,6 +5,7 @@ import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
 import { getLevelingSettings } from '../../../config.js';
+import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
 import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, resolveToolFeatures } from './aiToolShared.js';
 
@@ -34,7 +35,8 @@ const LEADERBOARD_METRICS = [
 	'items_bomb_rate',
 	'items_bomb_big',
 	'items_gift_give',
-	'items_gift_receive'
+	'items_gift_receive',
+	'invites'
 ];
 
 const LEADERBOARD_PERIODS = ['all', 'month', 'week'];
@@ -172,6 +174,13 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 			xp_per_minute_streaming: streamXp,
 			note: 'Video and streaming XP stack on top of the voice rate for the same minute. Muted or deafened counts as AFK.'
 		},
+		invites: {
+			xp_per_invite: num(settings.INVITE.XP),
+			xp_per_invite_staff: num(settings.INVITE.XP) * INVITE_STAFF_MULTIPLIER,
+			hold_hours: num(settings.INVITE.HOLD_HOURS),
+			min_account_age_days: num(settings.INVITE.MIN_ACCOUNT_AGE_DAYS),
+			note: 'Paid to the inviter once the new member has stayed the hold time. Accounts younger than the minimum age, own links and rejoins pay nothing. Each member gets a personal invite link from the Invites button in the bot menu.'
+		},
 		bonuses: {
 			voice_friend_bonus_percent_each: 10,
 			note: 'Each other member in the same voice channel adds 10% to that voice XP, and an active luck buff adds its own percent on top. Both apply to voice only, not chat.'
@@ -234,6 +243,8 @@ function metricValue(metric, r) {
 			return num(r.gift_given);
 		case 'items_gift_receive':
 			return num(r.gift_received);
+		case 'invites':
+			return num(r.invites_total);
 		default:
 			return num(r.xp);
 	}
@@ -265,6 +276,9 @@ function metricDetail(metric, r) {
 		return { bounty_on_them: num(r.bounty_on_them), bounty_collected: num(r.bounty_collected), bounty_given: num(r.bounty_given) };
 	}
 	if (metric.startsWith('items_gift')) return { gift_given: num(r.gift_given), gift_received: num(r.gift_received) };
+	if (metric === 'invites') {
+		return { invites_total: num(r.invites_total), still_here: num(r.invites_active), left: num(r.invites_left), staff_bonus: num(r.invites_bonus) };
+	}
 	return { xp: num(r.xp), messages: num(r.chat_total), voice_minutes: num(r.voice_minutes_total) };
 }
 

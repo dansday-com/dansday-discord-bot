@@ -6,6 +6,7 @@
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import { formatMultiplier, formatSeconds } from '$lib/frontend/numericSelectFormatters.js';
+	import { INVITE_STAFF_MULTIPLIER } from '$lib/invites.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -26,12 +27,22 @@
 	let videoXPPerMinute = $state<number>(data.settings?.VIDEO?.XP_PER_MINUTE ?? 0);
 	let streamingXPPerMinute = $state<number>(data.settings?.STREAMING?.XP_PER_MINUTE ?? 0);
 
+	let inviteXP = $state<number>(data.settings?.INVITE?.XP ?? 1000);
+	let inviteMinAccountAge = $state<number>(data.settings?.INVITE?.MIN_ACCOUNT_AGE_DAYS ?? 7);
+	let inviteHoldHours = $state<number>(data.settings?.INVITE?.HOLD_HOURS ?? 24);
+
 	let progressChannel = $state<string>(data.settings?.PROGRESS_CHANNEL_ID ?? '');
 
 	const xpValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
 	const cooldownValues = Array.from({ length: 13 }, (_, i) => i * 15);
 	const baseXPValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
 	const multiplierValues = Array.from({ length: 11 }, (_, i) => parseFloat((1.0 + i * 0.1).toFixed(1)));
+	const inviteXPValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
+	const accountAgeValues = [0, 1, 3, 7, 14, 30, 60, 90];
+	const holdHourValues = [0, 1, 6, 12, 24, 48, 72, 168];
+
+	const formatDays = (v: number) => (v === 0 ? 'Off' : `${v} day${v === 1 ? '' : 's'}`);
+	const formatHours = (v: number) => (v === 0 ? 'Instant' : v % 24 === 0 ? `${v / 24} day${v === 24 ? '' : 's'}` : `${v} hour${v === 1 ? '' : 's'}`);
 
 	async function save() {
 		saving = true;
@@ -48,7 +59,8 @@
 					MESSAGE: { XP: messageXP, COOLDOWN_SECONDS: messageCooldown },
 					VOICE: { XP_PER_MINUTE: voiceXPPerMinute, AFK_XP_PER_MINUTE: voiceAfkXPPerMinute, COOLDOWN_SECONDS: voiceCooldown },
 					VIDEO: { XP_PER_MINUTE: videoXPPerMinute },
-					STREAMING: { XP_PER_MINUTE: streamingXPPerMinute }
+					STREAMING: { XP_PER_MINUTE: streamingXPPerMinute },
+					INVITE: { XP: inviteXP, MIN_ACCOUNT_AGE_DAYS: inviteMinAccountAge, HOLD_HOURS: inviteHoldHours }
 				})
 			});
 			const d = await res.json();
@@ -156,6 +168,42 @@
 			values={xpValues}
 			bind:value={streamingXPPerMinute}
 		/>
+
+		<div class="space-y-3">
+			<ConfigNumberSelect
+				label="Invite XP"
+				description="XP paid to the inviter for each member who joins and stays."
+				labelIconClass="fas fa-user-plus mr-1 text-lime-400"
+				values={inviteXPValues}
+				bind:value={inviteXP}
+			/>
+			<p class="text-ash-400 flex items-center gap-2 text-xs">
+				<i class="fas fa-shield-halved text-lime-400"></i>Staff earn {(inviteXP * INVITE_STAFF_MULTIPLIER).toLocaleString()} XP per invite ({INVITE_STAFF_MULTIPLIER}×).
+			</p>
+		</div>
+
+		<ConfigNumberSelect
+			label="Invite hold time"
+			description="How long the new member must stay before the inviter is paid. Leaving earlier pays nothing."
+			labelIconClass="fas fa-hourglass-half mr-1 text-lime-400"
+			values={holdHourValues}
+			bind:value={inviteHoldHours}
+			formatOption={formatHours}
+		/>
+
+		<ConfigNumberSelect
+			label="Minimum account age"
+			description="Accounts younger than this count as fake invites and pay no XP."
+			labelIconClass="fas fa-user-clock mr-1 text-lime-400"
+			values={accountAgeValues}
+			bind:value={inviteMinAccountAge}
+			formatOption={formatDays}
+		/>
+
+		<p class="text-ash-500 flex items-start gap-2 text-xs">
+			<i class="fas fa-circle-info mt-0.5 text-lime-400"></i>
+			<span>Invite tracking needs the bot to have the Manage Server permission. Without it, joins are logged with no inviter.</span>
+		</p>
 
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">

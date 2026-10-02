@@ -18,7 +18,8 @@ export const EARN_METHODS: GuideCard[] = [
 	{ icon: 'fa-comments', accent: '#5a8a1f', title: 'Chat', desc: 'Messages in enabled channels earn XP.' },
 	{ icon: 'fa-microphone', accent: '#a52a0b', title: 'Voice', desc: 'Active minutes in voice earn XP, AFK minutes earn less.' },
 	{ icon: 'fa-video', accent: '#7b5ea7', title: 'Video', desc: 'Camera on in voice pays bonus XP per minute.' },
-	{ icon: 'fa-tower-broadcast', accent: '#c8911a', title: 'Streaming', desc: 'Going live or screen-sharing pays extra per minute.' }
+	{ icon: 'fa-tower-broadcast', accent: '#c8911a', title: 'Streaming', desc: 'Going live or screen-sharing pays extra per minute.' },
+	{ icon: 'fa-user-plus', accent: '#2f7fa8', title: 'Invites', desc: 'Each new member who joins with your link and stays pays you XP.' }
 ];
 
 export const FRIEND_BOOST: GuideNote = {

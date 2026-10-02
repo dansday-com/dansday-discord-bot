@@ -3,7 +3,21 @@ import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
-function replacePlaceholders(message, memberId, serverData, memberData, memberCount) {
+import { attributeJoin, type JoinInviteResult } from './invites.js';
+
+const INVITE_WAIT_MS = 5_000;
+
+async function waitForInvite(member): Promise<JoinInviteResult | null> {
+	return Promise.race([attributeJoin(member), new Promise<null>((resolve) => setTimeout(() => resolve(null), INVITE_WAIT_MS))]).catch(() => null);
+}
+
+function inviterText(invite: JoinInviteResult | null): string {
+	if (invite?.inviterDiscordId) return `<@${invite.inviterDiscordId}>`;
+	if (invite?.source === 'vanity') return 'the vanity link';
+	return 'someone';
+}
+
+function replacePlaceholders(message, memberId, serverData, memberData, memberCount, invite: JoinInviteResult | null = null) {
 	const now = new Date();
 	let profileCreatedAt = null;
 	if (memberData?.profile_created_at) {
@@ -20,7 +34,9 @@ function replacePlaceholders(message, memberId, serverData, memberData, memberCo
 		.replace(/{user}/g, `<@${memberId}>`)
 		.replace(/{server}/g, serverData?.name || 'Unknown Server')
 		.replace(/{memberCount}/g, (memberCount || 0).toString())
-		.replace(/{accountAge}/g, accountAgeText);
+		.replace(/{accountAge}/g, accountAgeText)
+		.replace(/{inviter}/g, inviterText(invite))
+		.replace(/{inviteCount}/g, (invite?.inviterTotal ?? 0).toString());
 }
 
 async function welcomeUser(member, client) {
@@ -74,8 +90,9 @@ async function welcomeUser(member, client) {
 		const messages = generated?.length ? generated : configured;
 
 		const guildMemberCount = member.guild?.memberCount ?? (serverData?.total_members || 0);
+		const invite = await waitForInvite(member);
 		const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-		const welcomeMessage = replacePlaceholders(randomMessage, member.user.id, serverData, memberData, guildMemberCount);
+		const welcomeMessage = replacePlaceholders(randomMessage, member.user.id, serverData, memberData, guildMemberCount, invite);
 
 		const embedConfig = await getEmbedConfig(member.guild.id);
 
@@ -104,7 +121,16 @@ async function welcomeUser(member, client) {
 					name: '👥 Member Count',
 					value: `Member #${guildMemberCount || 0}`,
 					inline: true
-				}
+				},
+				...(invite?.inviterDiscordId || invite?.source === 'vanity'
+					? [
+							{
+								name: '📨 Invited By',
+								value: invite.inviterDiscordId ? `<@${invite.inviterDiscordId}> (${invite.inviterTotal ?? 0} invites)` : inviterText(invite),
+								inline: true
+							}
+						]
+					: [])
 			])
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();

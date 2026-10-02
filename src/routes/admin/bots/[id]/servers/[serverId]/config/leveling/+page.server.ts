@@ -14,6 +14,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const voi = settings.VOICE || DEFAULT_LEVELING_SETTINGS.VOICE;
 	const videoCfg = settings.VIDEO || DEFAULT_LEVELING_SETTINGS.VIDEO;
 	const streamCfg = settings.STREAMING || DEFAULT_LEVELING_SETTINGS.STREAMING;
+	const inviteCfg = settings.INVITE || DEFAULT_LEVELING_SETTINGS.INVITE;
 
 	const mergedSettings = {
 		...settings,
@@ -35,6 +36,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		},
 		STREAMING: {
 			XP_PER_MINUTE: streamCfg?.XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.STREAMING.XP_PER_MINUTE
+		},
+		INVITE: {
+			XP: inviteCfg?.XP ?? DEFAULT_LEVELING_SETTINGS.INVITE.XP,
+			MIN_ACCOUNT_AGE_DAYS: inviteCfg?.MIN_ACCOUNT_AGE_DAYS ?? DEFAULT_LEVELING_SETTINGS.INVITE.MIN_ACCOUNT_AGE_DAYS,
+			HOLD_HOURS: inviteCfg?.HOLD_HOURS ?? DEFAULT_LEVELING_SETTINGS.INVITE.HOLD_HOURS
 		}
 	};
 

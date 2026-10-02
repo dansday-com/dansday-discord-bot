@@ -2105,6 +2105,10 @@ export async function syncMembers(serverId: any, members: any[]) {
 			.update(schema.serverMembers)
 			.set({ deleted_at: toMySQLDateTime() as any })
 			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toMark)));
+		await db
+			.update(schema.serverMemberInvites)
+			.set({ left_at: toMySQLDateTime() as any })
+			.where(and(inArray(schema.serverMemberInvites.member_id, toMark), isNull(schema.serverMemberInvites.left_at)));
 	}
 
 	const toRestore = dbMembers.filter((m) => discordIds.has(m.discord_member_id) && m.deleted_at).map((m) => m.id);
@@ -2113,6 +2117,10 @@ export async function syncMembers(serverId: any, members: any[]) {
 			.update(schema.serverMembers)
 			.set({ deleted_at: null })
 			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toRestore)));
+		await db
+			.update(schema.serverMemberInvites)
+			.set({ left_at: null, joined_at: toMySQLDateTime() as any })
+			.where(and(inArray(schema.serverMemberInvites.member_id, toRestore), isNotNull(schema.serverMemberInvites.left_at)));
 	}
 
 	return true;
@@ -2395,6 +2403,13 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
+	if (metric === 'invites_joined') {
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
 	if (metric === 'gamble_wagered' || metric === 'gamble_wagered_lost') {
 		const lostOnly = metric === 'gamble_wagered_lost' ? sql` AND outcome = 'lose'` : sql``;
 		const rows: any = await db.execute(
@@ -2440,7 +2455,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
 		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
 		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
-		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily')`);
+		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily', 'invite')`);
 		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
 		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
 		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
@@ -4607,9 +4622,11 @@ export async function getServerMembersList(serverId: any) {
 		         sml.voice_minutes_afk, sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank, sma.message, sma.created_at
 		ORDER BY sml.xp DESC, sml.level DESC, sm.created_at ASC
 	`);
+	const inviteCounts = await getMemberInviteCountsByServer(serverId).catch(() => new Map<number, number>());
 
 	return (rows[0] as unknown as any[]).map((member: any) => ({
 		...member,
+		invites_total: inviteCounts.get(Number(member.id)) ?? 0,
 		roles: member.roles
 			? member.roles
 					.split('\x1e')
@@ -6596,6 +6613,7 @@ export async function createGiveaway(giveawayData: any) {
 		allowed_roles: giveawayData.allowed_roles ? JSON.stringify(giveawayData.allowed_roles) : null,
 		multiple_entries_allowed: giveawayData.multiple_entries_allowed || false,
 		winner_count: giveawayData.winner_count || 1,
+		min_invites: Math.max(0, Math.floor(Number(giveawayData.min_invites) || 0)),
 		status: 'active',
 		ends_at: endsAt as any,
 		created_at: createdAt as any,
@@ -7470,6 +7488,382 @@ export async function getMemberNamesByDiscordIds(serverId: number | string, disc
 	return (rows as any[]) ?? [];
 }
 
+const INVITE_NAME = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+
+function inviteStatus(row: any): 'active' | 'left' | 'fake' {
+	if (row.fake_reason) return 'fake';
+	if (row.left_at) return 'left';
+	return 'active';
+}
+
+const PRIOR_MEMBER_MARGIN_MS = 5 * 60_000;
+
+export async function recordMemberJoinInvite(data: {
+	member_id: number;
+	inviter_member_id: number | null;
+	code: string | null;
+	source: string;
+	fake_reason: string | null;
+	joined_at: Date;
+}) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const [existingRows] = (await db.execute(sql`
+		SELECT id, inviter_member_id, rewarded_at FROM server_member_invites WHERE member_id = ${data.member_id} LIMIT 1
+	`)) as any;
+	const existing = (existingRows as any[])?.[0] ?? null;
+
+	if (!existing) {
+		const cutoff = toMySQLDateTime(new Date(data.joined_at.getTime() - PRIOR_MEMBER_MARGIN_MS));
+		const [priorRows] = (await db.execute(sql`
+			SELECT created_at < ${cutoff} AS prior FROM server_members WHERE id = ${data.member_id} LIMIT 1
+		`)) as any;
+		const prior = Number((priorRows as any[])?.[0]?.prior) === 1;
+		const fakeReason = data.fake_reason ?? (prior && data.inviter_member_id != null ? 'rejoin' : null);
+		await db.execute(sql`
+			INSERT INTO server_member_invites (member_id, inviter_member_id, code, source, fake_reason, xp, joined_at, created_at)
+			VALUES (${data.member_id}, ${data.inviter_member_id}, ${data.code}, ${data.source}, ${fakeReason}, 0, ${now}, ${now})
+			ON DUPLICATE KEY UPDATE left_at = NULL, joined_at = VALUES(joined_at)
+		`);
+		return { rejoin: prior };
+	}
+
+	if (existing.inviter_member_id == null && data.inviter_member_id != null && existing.rewarded_at == null) {
+		await db.execute(sql`
+			UPDATE server_member_invites
+			SET inviter_member_id = ${data.inviter_member_id}, code = ${data.code}, source = ${data.source}, fake_reason = ${data.fake_reason ?? 'rejoin'},
+				left_at = NULL, joined_at = ${now}
+			WHERE id = ${existing.id}
+		`);
+		return { rejoin: true };
+	}
+
+	await db.execute(sql`UPDATE server_member_invites SET left_at = NULL, joined_at = ${now} WHERE id = ${existing.id}`);
+	return { rejoin: true };
+}
+
+export async function markMemberInviteLeft(memberId: number) {
+	await initializeDatabase();
+	const [result] = (await db.execute(sql`
+		UPDATE server_member_invites SET left_at = ${toMySQLDateTime()} WHERE member_id = ${Number(memberId)} AND left_at IS NULL
+	`)) as any;
+	return Number(result?.affectedRows ?? 0);
+}
+
+export async function getPendingInviteServers(botId: number) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT DISTINCT s.id AS server_id, s.discord_server_id
+		FROM server_member_invites i
+		JOIN server_members m ON m.id = i.member_id
+		JOIN servers s ON s.id = m.server_id
+		WHERE i.rewarded_at IS NULL AND i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL
+			AND m.deleted_at IS NULL AND s.bot_id = ${Number(botId)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
+export async function getDueInviteRewards(serverId: number, joinedBefore: Date, limit = 50) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT i.id, i.member_id, i.inviter_member_id, i.code, i.joined_at,
+			m.discord_member_id AS invitee_discord_id, ${INVITE_NAME} AS invitee_name,
+			im.discord_member_id AS inviter_discord_id
+		FROM server_member_invites i
+		JOIN server_members m ON m.id = i.member_id
+		JOIN server_members im ON im.id = i.inviter_member_id
+		WHERE m.server_id = ${Number(serverId)} AND i.rewarded_at IS NULL AND i.fake_reason IS NULL AND i.left_at IS NULL
+			AND m.deleted_at IS NULL AND im.deleted_at IS NULL AND i.joined_at <= ${toMySQLDateTime(joinedBefore)}
+		ORDER BY i.joined_at ASC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
+export async function releaseInviteReward(inviteId: number) {
+	await initializeDatabase();
+	await db.execute(sql`UPDATE server_member_invites SET rewarded_at = NULL, xp = 0 WHERE id = ${Number(inviteId)}`);
+}
+
+export async function claimInviteReward(inviteId: number, xp: number) {
+	await initializeDatabase();
+	const [result] = (await db.execute(sql`
+		UPDATE server_member_invites SET rewarded_at = ${toMySQLDateTime()}, xp = ${Math.max(0, Math.floor(Number(xp) || 0))}
+		WHERE id = ${Number(inviteId)} AND rewarded_at IS NULL
+	`)) as any;
+	return Number(result?.affectedRows ?? 0) > 0;
+}
+
+export async function getMemberInviteStats(memberId: number) {
+	await initializeDatabase();
+	const empty = { joins: 0, active: 0, left: 0, fake: 0, pending: 0, bonus: 0, total: 0, xp: 0 };
+	if (!memberId) return empty;
+	const [rows] = (await db.execute(sql`
+		SELECT
+			COUNT(*) AS joins,
+			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active,
+			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NOT NULL), 0) AS left_count,
+			COALESCE(SUM(i.fake_reason IS NOT NULL), 0) AS fake,
+			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL), 0) AS pending,
+			COALESCE(SUM(i.xp), 0) AS xp
+		FROM server_member_invites i
+		WHERE i.inviter_member_id = ${Number(memberId)}
+	`)) as any;
+	const [bonusRows] = (await db.execute(sql`
+		SELECT COALESCE(SUM(amount), 0) AS bonus FROM server_member_invite_logs WHERE member_id = ${Number(memberId)}
+	`)) as any;
+	const r = (rows as any[])?.[0] ?? {};
+	const active = Number(r.active) || 0;
+	const bonus = Number((bonusRows as any[])?.[0]?.bonus) || 0;
+	return {
+		joins: Number(r.joins) || 0,
+		active,
+		left: Number(r.left_count) || 0,
+		fake: Number(r.fake) || 0,
+		pending: Number(r.pending) || 0,
+		bonus,
+		total: active + bonus,
+		xp: Number(r.xp) || 0
+	};
+}
+
+export async function getMemberInviter(memberId: number) {
+	await initializeDatabase();
+	if (!memberId) return null;
+	const [rows] = (await db.execute(sql`
+		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
+			m.discord_member_id AS inviter_discord_id, ${INVITE_NAME} AS inviter_name, m.avatar AS inviter_avatar
+		FROM server_member_invites i
+		LEFT JOIN server_members m ON m.id = i.inviter_member_id
+		WHERE i.member_id = ${Number(memberId)}
+		LIMIT 1
+	`)) as any;
+	const row = (rows as any[])?.[0];
+	return row ? { ...row, status: inviteStatus(row) } : null;
+}
+
+export async function getMemberInvitees(memberId: number, limit = 100) {
+	await initializeDatabase();
+	if (!memberId) return [] as any[];
+	const [rows] = (await db.execute(sql`
+		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
+			m.discord_member_id, ${INVITE_NAME} AS name, m.avatar
+		FROM server_member_invites i
+		JOIN server_members m ON m.id = i.member_id
+		WHERE i.inviter_member_id = ${Number(memberId)}
+		ORDER BY i.created_at DESC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
+}
+
+export async function getMemberInviteLogs(memberId: number, limit = 50) {
+	await initializeDatabase();
+	if (!memberId) return [] as any[];
+	const [rows] = (await db.execute(sql`
+		SELECT l.id, l.amount, l.reason, l.created_at, sa.username AS server_account_username, a.username AS account_username
+		FROM server_member_invite_logs l
+		LEFT JOIN server_accounts sa ON sa.id = l.server_account_id
+		LEFT JOIN accounts a ON a.id = l.account_id
+		WHERE l.member_id = ${Number(memberId)}
+		ORDER BY l.id DESC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
+export async function addMemberInviteAdjustment(
+	memberId: number,
+	actor: { server_account_id?: number | null; account_id?: number | null },
+	amount: number,
+	reason: string | null
+) {
+	await initializeDatabase();
+	await db.execute(sql`
+		INSERT INTO server_member_invite_logs (member_id, server_account_id, account_id, amount, reason, created_at)
+		VALUES (${Number(memberId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${Math.trunc(amount)}, ${reason}, ${toMySQLDateTime()})
+	`);
+}
+
+export async function assignMemberInviter(inviteeMemberId: number, inviterMemberId: number) {
+	await initializeDatabase();
+	const [result] = (await db.execute(sql`
+		UPDATE server_member_invites SET inviter_member_id = ${Number(inviterMemberId)}, source = 'manual', rewarded_at = ${toMySQLDateTime()}, xp = 0
+		WHERE member_id = ${Number(inviteeMemberId)} AND inviter_member_id IS NULL AND rewarded_at IS NULL
+	`)) as any;
+	return Number(result?.affectedRows ?? 0) > 0;
+}
+
+export async function getServerInviteStats(serverId: number | string) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT
+			COUNT(*) AS tracked,
+			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active,
+			COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NOT NULL), 0) AS left_count,
+			COALESCE(SUM(i.fake_reason IS NOT NULL), 0) AS fake,
+			COALESCE(SUM(i.source = 'unknown' AND i.inviter_member_id IS NULL), 0) AS unknown_count,
+			COALESCE(SUM(i.source = 'vanity'), 0) AS vanity,
+			COALESCE(SUM(i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL), 0) AS pending,
+			COALESCE(SUM(i.xp), 0) AS xp_paid,
+			COUNT(DISTINCT i.inviter_member_id) AS inviters
+		FROM server_member_invites i
+		JOIN server_members m ON m.id = i.member_id
+		WHERE m.server_id = ${Number(serverId)}
+	`)) as any;
+	const [bonusRows] = (await db.execute(sql`
+		SELECT COALESCE(SUM(l.amount), 0) AS bonus
+		FROM server_member_invite_logs l
+		JOIN server_members m ON m.id = l.member_id
+		WHERE m.server_id = ${Number(serverId)}
+	`)) as any;
+	const [codeRows] = (await db.execute(sql`
+		SELECT i.code, ${INVITE_NAME} AS inviter_name, m.discord_member_id AS inviter_discord_id,
+			COUNT(*) AS joins, COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active
+		FROM server_member_invites i
+		JOIN server_members im ON im.id = i.member_id
+		LEFT JOIN server_members m ON m.id = i.inviter_member_id
+		WHERE im.server_id = ${Number(serverId)} AND i.code IS NOT NULL
+		GROUP BY i.code, m.id, m.discord_member_id, m.server_display_name, m.display_name, m.username
+		ORDER BY active DESC, joins DESC
+		LIMIT 10
+	`)) as any;
+	const r = (rows as any[])?.[0] ?? {};
+	return {
+		tracked: Number(r.tracked) || 0,
+		active: Number(r.active) || 0,
+		left: Number(r.left_count) || 0,
+		fake: Number(r.fake) || 0,
+		unknown: Number(r.unknown_count) || 0,
+		vanity: Number(r.vanity) || 0,
+		pending: Number(r.pending) || 0,
+		xp_paid: Number(r.xp_paid) || 0,
+		inviters: Number(r.inviters) || 0,
+		bonus: Number((bonusRows as any[])?.[0]?.bonus) || 0,
+		codes: ((codeRows as any[]) ?? []).map((c) => ({
+			code: String(c.code),
+			inviter_name: c.inviter_name ?? null,
+			inviter_discord_id: c.inviter_discord_id ?? null,
+			joins: Number(c.joins) || 0,
+			active: Number(c.active) || 0
+		}))
+	};
+}
+
+export async function getInvitesLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+	const sinceClause = since ? sql`AND i.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const bonusJoin = since
+		? sql``
+		: sql`LEFT JOIN (
+			SELECT l.member_id, SUM(l.amount) AS bonus
+			FROM server_member_invite_logs l
+			JOIN server_members bm ON bm.id = l.member_id
+			WHERE bm.server_id = ${Number(serverId)}
+			GROUP BY l.member_id
+		) b ON b.member_id = sm.id`;
+	const [rows] = (await db.execute(sql`
+		SELECT sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level,
+			COALESCE(inv.active, 0) AS invites_active, COALESCE(inv.left_count, 0) AS invites_left,
+			COALESCE(inv.fake, 0) AS invites_fake, ${since ? sql`0` : sql`COALESCE(b.bonus, 0)`} AS invites_bonus
+		FROM server_members sm
+		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+		LEFT JOIN (
+			SELECT i.inviter_member_id,
+				SUM(i.fake_reason IS NULL AND i.left_at IS NULL) AS active,
+				SUM(i.fake_reason IS NULL AND i.left_at IS NOT NULL) AS left_count,
+				SUM(i.fake_reason IS NOT NULL) AS fake
+			FROM server_member_invites i
+			JOIN server_members im ON im.id = i.member_id
+			WHERE im.server_id = ${Number(serverId)} AND i.inviter_member_id IS NOT NULL ${sinceClause}
+			GROUP BY i.inviter_member_id
+		) inv ON inv.inviter_member_id = sm.id
+		${bonusJoin}
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0 ${hideDisguised}
+			AND (inv.inviter_member_id IS NOT NULL ${since ? sql`` : sql`OR b.member_id IS NOT NULL`})
+	`)) as any;
+	return ((rows as any[]) ?? []).map((r) => {
+		const active = Number(r.invites_active) || 0;
+		const bonus = Number(r.invites_bonus) || 0;
+		return {
+			...r,
+			invites_active: active,
+			invites_left: Number(r.invites_left) || 0,
+			invites_fake: Number(r.invites_fake) || 0,
+			invites_bonus: bonus,
+			invites_total: active + bonus
+		};
+	});
+}
+
+export async function getMemberInviteCountsByServer(serverId: number | string) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT sm.id AS member_id,
+			COALESCE(inv.active, 0) + COALESCE(b.bonus, 0) AS invites_total
+		FROM server_members sm
+		LEFT JOIN (
+			SELECT i.inviter_member_id, SUM(i.fake_reason IS NULL AND i.left_at IS NULL) AS active
+			FROM server_member_invites i
+			JOIN server_members im ON im.id = i.member_id
+			WHERE im.server_id = ${Number(serverId)} AND i.inviter_member_id IS NOT NULL
+			GROUP BY i.inviter_member_id
+		) inv ON inv.inviter_member_id = sm.id
+		LEFT JOIN (
+			SELECT l.member_id, SUM(l.amount) AS bonus
+			FROM server_member_invite_logs l
+			JOIN server_members bm ON bm.id = l.member_id
+			WHERE bm.server_id = ${Number(serverId)}
+			GROUP BY l.member_id
+		) b ON b.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} AND (inv.inviter_member_id IS NOT NULL OR b.member_id IS NOT NULL)
+	`)) as any;
+	const map = new Map<number, number>();
+	for (const r of (rows as any[]) ?? []) map.set(Number(r.member_id), Number(r.invites_total) || 0);
+	return map;
+}
+
+export async function serverTracksInvites(serverId: number | string) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT 1 AS ok
+		FROM server_member_invites i
+		JOIN server_members m ON m.id = i.member_id
+		WHERE m.server_id = ${Number(serverId)} AND i.inviter_member_id IS NOT NULL AND i.created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
+		LIMIT 1
+	`)) as any;
+	return ((rows as any[]) ?? []).length > 0;
+}
+
+export async function getMemberInviteLink(memberId: number) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`SELECT code FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`)) as any;
+	return ((rows as any[])?.[0]?.code as string | undefined) ?? null;
+}
+
+export async function setMemberInviteLink(memberId: number, code: string) {
+	await initializeDatabase();
+	await db.execute(sql`
+		INSERT INTO server_member_invite_links (member_id, code, created_at)
+		VALUES (${Number(memberId)}, ${code}, ${toMySQLDateTime()})
+		ON DUPLICATE KEY UPDATE code = VALUES(code), created_at = VALUES(created_at)
+	`);
+}
+
+export async function getInviteLinkOwners(serverId: number | string) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT l.code, m.id AS member_id, m.discord_member_id
+		FROM server_member_invite_links l
+		JOIN server_members m ON m.id = l.member_id
+		WHERE m.server_id = ${Number(serverId)}
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
 export default {
 	getMemberNamesByDiscordIds,
 	createServerSettingLog,
@@ -7803,5 +8197,24 @@ export default {
 	createFeedback,
 	getFeedback,
 	getFeedbackByServer,
-	getFeedbackCount
+	getFeedbackCount,
+	recordMemberJoinInvite,
+	markMemberInviteLeft,
+	releaseInviteReward,
+	getPendingInviteServers,
+	getDueInviteRewards,
+	claimInviteReward,
+	getMemberInviteStats,
+	getMemberInviter,
+	getMemberInvitees,
+	getMemberInviteLogs,
+	addMemberInviteAdjustment,
+	assignMemberInviter,
+	getServerInviteStats,
+	getInvitesLeaderboard,
+	getMemberInviteCountsByServer,
+	serverTracksInvites,
+	getMemberInviteLink,
+	setMemberInviteLink,
+	getInviteLinkOwners
 };

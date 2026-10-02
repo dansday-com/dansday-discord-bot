@@ -36,6 +36,8 @@
 	const grow = $derived(growth.value);
 
 	const p = $derived(data.profile);
+	const inv = $derived(p.invites);
+	const showInvites = $derived(!!inv && (inv.joins > 0 || inv.bonus !== 0 || !!p.invitedBy));
 	const d = $derived((data.dashboard ?? {}) as Record<string, number>);
 	const ins = $derived(data.insights ?? { favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] });
 
@@ -275,6 +277,20 @@
 		{/if}
 		<BarList rows={activityBars} {grow} />
 	</StatCard>
+
+	{#if showInvites && inv}
+		<StatCard icon="fa-user-plus" title="Invites" tone="cyan" note={p.invitedBy ? `Invited by ${p.invitedBy}` : undefined}>
+			<StatHero label="invites" value={fmt(inv.total)} countTo={inv.total} />
+			<MiniGrid cols={3}>
+				<MiniStat icon="fa-user-check" value={fmt(inv.active)} label="Still here" />
+				<MiniStat icon="fa-user-minus" value={fmt(inv.left)} label="Left" />
+				<MiniStat icon="fa-user-secret" value={fmt(inv.fake)} label="Fake" />
+				<MiniStat icon="fa-hourglass-half" value={fmt(inv.pending)} label="Waiting" />
+				<MiniStat icon="fa-shield-halved" value={fmt(inv.bonus)} label="Staff bonus" />
+				<MiniStat icon="fa-star" value={fmt(inv.xp)} label="XP earned" />
+			</MiniGrid>
+		</StatCard>
+	{/if}
 
 	{#if buddies.length > 0}
 		<StatCard icon="fa-people-group" title="Voice buddies" tone="sky" note="Members you level up with most in voice">

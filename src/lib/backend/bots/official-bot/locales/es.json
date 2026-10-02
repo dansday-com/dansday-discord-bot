@@ -33,6 +33,7 @@
 		"items": {
 			"afk": "Activa o quita tu estado AFK.",
 			"notifications": "Elige qué canales te avisan.",
+			"invites": "Mira tus invitaciones y consigue tu enlace de invitación.",
 			"quest": "Reclama misiones de Discord activas.",
 			"giveaway": "Inicia un sorteo en este servidor.",
 			"feedback": "Envía comentarios al equipo del servidor.",
@@ -125,6 +126,27 @@
 			"notRegistered": "⚠️ Este servidor no está registrado en el bot. Realiza primero una sincronización.",
 			"createRecordFailed": "❌ No se pudo crear el registro del miembro. Inténtalo de nuevo."
 		}
+	},
+	"invites": {
+		"button": "📨 Invitaciones",
+		"title": "📨 Tus invitaciones",
+		"reward": "Gana **{xp} XP** por cada miembro nuevo que se una con tu enlace{hold}.",
+		"hold": " y se quede {hours} h",
+		"staffNote": "🛡️ El staff gana {multiplier}× XP por invitación.",
+		"link": "🔗 Tu enlace de invitación personal: {url}",
+		"noLink": "⚠️ No pude crear un enlace de invitación aquí. Pide al staff que me dé el permiso Crear invitación.",
+		"copyButton": "Abrir enlace de invitación",
+		"fields": {
+			"total": "📨 Total",
+			"active": "✅ Siguen aquí",
+			"left": "🚪 Se fueron",
+			"fake": "🕵️ Falsas",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP ganada",
+			"pending": "⏳ En espera",
+			"invitedBy": "👤 Invitado por"
+		},
+		"error": "❌ No se pudieron cargar tus invitaciones. Inténtalo de nuevo en un momento."
 	},
 	"afk": {
 		"title": "⏸️ Establecer estado AFK",
@@ -228,7 +250,8 @@
 			"finishChannelError": "❌ No se pudo obtener el canal de sorteos.",
 			"finishChannelNotConfigured": "❌ El canal de sorteos no está configurado.",
 			"finishChannelNotFound": "❌ No se encontró el canal de sorteos.",
-			"failed": "❌ No se pudo abrir el formulario de sorteo: {error}"
+			"failed": "❌ No se pudo abrir el formulario de sorteo: {error}",
+			"notEnoughInvites": "❌ Necesitas **{needed}** invitaciones para entrar en este sorteo. Tienes **{have}**."
 		}
 	},
 	"feedback": {

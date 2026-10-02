@@ -4,6 +4,7 @@
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import ModerateMemberModal from '$lib/frontend/components/ModerateMemberModal.svelte';
+	import MemberInvitesModal from '$lib/frontend/components/MemberInvitesModal.svelte';
 
 	export type Member = {
 		discord_member_id: string;
@@ -17,6 +18,7 @@
 		chat_total: number;
 		voice_minutes_active: number;
 		voice_minutes_afk: number;
+		invites_total?: number;
 		is_afk: boolean;
 		is_booster: boolean;
 		is_owner?: boolean;
@@ -41,6 +43,12 @@
 	let { members, filterRoleIds, configureHref, configureLabel = 'Open configuration', boostersOnly = false, serverId }: Props = $props();
 
 	let moderating = $state<{ id: string; name: string } | null>(null);
+	let invitesFor = $state<{ id: string; name: string } | null>(null);
+	let inviteOverrides = $state<Record<string, number>>({});
+
+	function invitesOf(m: Member): number {
+		return inviteOverrides[m.discord_member_id] ?? m.invites_total ?? 0;
+	}
 
 	const MEMBER_SORT_OPTIONS: LabeledSelectOption[] = [
 		{ value: 'rank_asc', label: 'Rank (Low → High)' },
@@ -55,6 +63,8 @@
 		{ value: 'voice_active_asc', label: 'Voice Active (Low → High)' },
 		{ value: 'voice_afk_desc', label: 'Voice AFK (High → Low)' },
 		{ value: 'voice_afk_asc', label: 'Voice AFK (Low → High)' },
+		{ value: 'invites_desc', label: 'Invites (High → Low)' },
+		{ value: 'invites_asc', label: 'Invites (Low → High)' },
 		{ value: 'name_asc', label: 'Name (A-Z)' },
 		{ value: 'name_desc', label: 'Name (Z-A)' },
 		{ value: 'member_since_asc', label: 'Member Since (Oldest First)' },
@@ -120,6 +130,10 @@
 					return (b.voice_minutes_afk ?? 0) - (a.voice_minutes_afk ?? 0);
 				case 'voice_afk_asc':
 					return (a.voice_minutes_afk ?? 0) - (b.voice_minutes_afk ?? 0);
+				case 'invites_desc':
+					return invitesOf(b) - invitesOf(a);
+				case 'invites_asc':
+					return invitesOf(a) - invitesOf(b);
 				case 'name_asc':
 					return (a.username ?? '').localeCompare(b.username ?? '');
 				case 'name_desc':
@@ -236,14 +250,25 @@
 									<i class="fas fa-moon text-xs"></i>AFK
 								</span>
 							{/if}
-							{#if serverId != null && !member.is_owner}
-								<button
-									type="button"
-									onclick={() => (moderating = { id: member.discord_member_id, name: listDisplayName(member) })}
-									class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 self-center rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors sm:ml-auto"
-								>
-									<i class="fas fa-gavel text-red-400"></i>Moderate
-								</button>
+							{#if serverId != null}
+								<div class="flex items-center gap-2 self-center sm:ml-auto">
+									<button
+										type="button"
+										onclick={() => (invitesFor = { id: member.discord_member_id, name: listDisplayName(member) })}
+										class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
+									>
+										<i class="fas fa-user-plus text-cyan-400"></i>Invites
+									</button>
+									{#if !member.is_owner}
+										<button
+											type="button"
+											onclick={() => (moderating = { id: member.discord_member_id, name: listDisplayName(member) })}
+											class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
+										>
+											<i class="fas fa-gavel text-red-400"></i>Moderate
+										</button>
+									{/if}
+								</div>
 							{/if}
 						</div>
 
@@ -303,6 +328,15 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/20">
+									<i class="fas fa-user-plus text-xs text-teal-400"></i>
+								</div>
+								<div class="min-w-0">
+									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Invites</div>
+									<div class="text-ash-100 text-sm font-bold">{fmtNum(invitesOf(member))}</div>
+								</div>
+							</div>
+							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20">
 									<i class="fas fa-calendar-alt text-xs text-indigo-400"></i>
 								</div>
@@ -315,7 +349,7 @@
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20">
-									<i class="fas fa-user-plus text-xs text-rose-400"></i>
+									<i class="fas fa-id-card text-xs text-rose-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Account Created</div>
@@ -375,4 +409,10 @@
 
 {#if serverId != null}
 	<ModerateMemberModal {serverId} member={moderating} onclose={() => (moderating = null)} />
+	<MemberInvitesModal
+		{serverId}
+		member={invitesFor}
+		onclose={() => (invitesFor = null)}
+		onchange={(id, total) => (inviteOverrides = { ...inviteOverrides, [id]: total })}
+	/>
 {/if}

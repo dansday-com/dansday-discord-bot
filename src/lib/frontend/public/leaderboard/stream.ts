@@ -301,6 +301,38 @@ function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number)
 	}));
 }
 
+function buildInviteRows(entries: any[], limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(100, limit));
+	const sorted = entries
+		.filter((e) => Number(e.invites_total ?? 0) > 0)
+		.sort((a, b) => {
+			const diff = Number(b.invites_total ?? 0) - Number(a.invites_total ?? 0);
+			if (diff !== 0) return diff;
+			return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
+		});
+
+	return sorted.slice(0, safe).map((e) => ({
+		discord_member_id: e.discord_member_id,
+		username: e.username,
+		display_name: e.display_name,
+		server_display_name: e.server_display_name,
+		avatar: e.avatar,
+		xp: 0,
+		level: e.level ?? 0,
+		chat_total: 0,
+		voice_minutes_total: 0,
+		voice_minutes_active: 0,
+		voice_minutes_afk: 0,
+		voice_minutes_video: 0,
+		voice_minutes_streaming: 0,
+		invites_total: Number(e.invites_total ?? 0),
+		invites_active: Number(e.invites_active ?? 0),
+		invites_left: Number(e.invites_left ?? 0),
+		invites_bonus: Number(e.invites_bonus ?? 0),
+		rank: null
+	}));
+}
+
 type Listener = (snap: LeaderboardSnapshot) => void;
 
 type StreamKey = string;
@@ -337,6 +369,9 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 	} else if (GIFT_METRICS.includes(metric)) {
 		const entries = await db.getItemsGiftLeaderboard(serverId, since).catch(() => []);
 		rows = buildGiftRows(entries, metric, limit);
+	} else if (metric === 'invites') {
+		const entries = await db.getInvitesLeaderboard(serverId, since).catch(() => []);
+		rows = buildInviteRows(entries, limit);
 	} else if (since) {
 		const entries = await db.getLeaderboardPeriodCounts(serverId, since).catch(() => []);
 		rows = buildPeriodRows(entries, metric, limit);

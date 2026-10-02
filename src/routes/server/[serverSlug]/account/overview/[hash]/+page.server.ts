@@ -38,12 +38,18 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const voiceStreaming = Number(m.voice_minutes_streaming) || 0;
 	const totalXp = Number(m.xp) || 0;
 
+	const [inviteStats, inviter] = await Promise.all([
+		db.getMemberInviteStats(Number(m.id)).catch(() => null),
+		db.getMemberInviter(Number(m.id)).catch(() => null)
+	]);
+
 	const xpSources = [
 		{ key: 'chat', label: 'Messages', icon: 'fa-comments', color: '#e43d12', xp: chatTotal * rateMsg },
 		{ key: 'voice', label: 'Voice', icon: 'fa-microphone', color: '#1f8a4c', xp: voiceActive * rateVoice },
 		{ key: 'video', label: 'Video', icon: 'fa-video', color: '#6d5bd0', xp: voiceVideo * rateVideo },
 		{ key: 'stream', label: 'Streaming', icon: 'fa-desktop', color: '#c8911a', xp: voiceStreaming * rateStream },
-		{ key: 'afk', label: 'AFK voice', icon: 'fa-moon', color: '#b23b3b', xp: voiceAfk * rateAfk }
+		{ key: 'afk', label: 'AFK voice', icon: 'fa-moon', color: '#b23b3b', xp: voiceAfk * rateAfk },
+		{ key: 'invite', label: 'Invites', icon: 'fa-user-plus', color: '#2f7fa8', xp: inviteStats?.xp ?? 0 }
 	]
 		.map((s) => ({ ...s, xp: Math.round(s.xp) }))
 		.filter((s) => s.xp > 0);
@@ -62,6 +68,8 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		voiceVideo,
 		voiceStreaming,
 		xpSources,
+		invites: inviteStats,
+		invitedBy: inviter?.inviter_name ?? null,
 		roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
 	};
 

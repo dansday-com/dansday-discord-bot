@@ -259,8 +259,9 @@ Each member signs in to their own account on those same pages.
 ### Community
 
 - **Leveling & XP** - Messages and voice feed levels, role rewards and leaderboards. Reactions are tracked for tasks.
+- **Invite tracking** - Every join is credited to the inviter's link, and they earn XP once the new member stays past a hold time (staff earn double). New accounts, own links and rejoins never pay. Each member gets a personal invite link from the Discord menu, and invites have their own leaderboard, staff bonus adjustments and a weekly task.
 - **Welcomer** - Custom welcome messages and embeds.
-- **Giveaways** - Entries, winner selection and role-based eligibility.
+- **Giveaways** - Entries, winner selection, role-based eligibility and an optional invite minimum.
 - **AFK** - Members set a status; the bot warns anyone who mentions them.
 - **Staff rating** - Members rate staff; approved ratings drive roles placed automatically above your staff roles.
 - **Booster messages** - Thank Nitro boosters with configurable channels and templates.

@@ -299,6 +299,7 @@ export async function getLevelingSettings(guildId: string) {
 	const voi = config.VOICE || DEFAULT_LEVELING_SETTINGS.VOICE;
 	const videoCfg = config.VIDEO || DEFAULT_LEVELING_SETTINGS.VIDEO;
 	const streamCfg = config.STREAMING || DEFAULT_LEVELING_SETTINGS.STREAMING;
+	const inviteCfg = config.INVITE || DEFAULT_LEVELING_SETTINGS.INVITE;
 
 	let progressChannelId = config.PROGRESS_CHANNEL_ID;
 	if (!progressChannelId) {
@@ -320,6 +321,11 @@ export async function getLevelingSettings(guildId: string) {
 		},
 		STREAMING: {
 			XP_PER_MINUTE: Math.max(0, Number(streamCfg?.XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.STREAMING.XP_PER_MINUTE))
+		},
+		INVITE: {
+			XP: Math.max(0, Number(inviteCfg?.XP ?? DEFAULT_LEVELING_SETTINGS.INVITE.XP)),
+			MIN_ACCOUNT_AGE_DAYS: Math.max(0, Number(inviteCfg?.MIN_ACCOUNT_AGE_DAYS ?? DEFAULT_LEVELING_SETTINGS.INVITE.MIN_ACCOUNT_AGE_DAYS)),
+			HOLD_HOURS: Math.max(0, Number(inviteCfg?.HOLD_HOURS ?? DEFAULT_LEVELING_SETTINGS.INVITE.HOLD_HOURS))
 		},
 		REQUIREMENTS: {
 			BASE_XP: req.BASE_XP ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
@@ -728,6 +734,13 @@ export const GIVEAWAY = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return false;
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		return settings?.settings?.giveaway_creator_can_participate ?? false;
+	},
+
+	async getMinInvites(guildId: string): Promise<number> {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting giveaway minimum invites');
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
+		return Math.max(0, Math.floor(Number(settings?.settings?.giveaway_min_invites) || 0));
 	}
 };
 
@@ -1058,7 +1071,8 @@ export const DEFAULT_LEVELING_SETTINGS = {
 	MESSAGE: { XP: 15, COOLDOWN_SECONDS: 15 },
 	VOICE: { XP_PER_MINUTE: 50, AFK_XP_PER_MINUTE: 10, COOLDOWN_SECONDS: 60 },
 	VIDEO: { XP_PER_MINUTE: 50 },
-	STREAMING: { XP_PER_MINUTE: 50 }
+	STREAMING: { XP_PER_MINUTE: 50 },
+	INVITE: { XP: 1000, MIN_ACCOUNT_AGE_DAYS: 7, HOLD_HOURS: 24 }
 };
 
 export const DEFAULT_WELCOMER_MESSAGES = [

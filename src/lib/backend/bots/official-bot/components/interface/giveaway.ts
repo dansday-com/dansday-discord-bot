@@ -432,6 +432,7 @@ export async function handleGiveawayModal(interaction) {
 		const now = new Date();
 		const endsAt = new Date(now.getTime() + duration * 60 * 1000);
 		const endsAtTimestamp = Math.floor(endsAt.getTime() / 1000);
+		const minInvites = await GIVEAWAY.getMinInvites(guild.id).catch(() => 0);
 
 		const giveawayData = {
 			server_id: server.id,
@@ -441,7 +442,8 @@ export async function handleGiveawayModal(interaction) {
 			duration_minutes: duration,
 			allowed_roles: allowedRoles,
 			multiple_entries_allowed: multipleEntriesAllowed,
-			winner_count: winnerCount
+			winner_count: winnerCount,
+			min_invites: minInvites
 		};
 
 		const giveaway = await db.createGiveaway(giveawayData);
@@ -459,7 +461,8 @@ export async function handleGiveawayModal(interaction) {
 
 		const entriesLabel = multipleEntriesAllowed ? 'Multiple entries allowed' : 'Single entry per member';
 		const embedTitle = `🎉 ${title}`;
-		const embedDescription = `**Prize:** ${prize}\n**Winner${winnerCount > 1 ? 's' : ''}:** ${winnerCount}\n**Entries:** ${entriesLabel}\n**Role Restrictions:** ${roleRestrictionText}`;
+		const invitesLine = minInvites > 0 ? `\n**Invites Needed:** ${minInvites}` : '';
+		const embedDescription = `**Prize:** ${prize}\n**Winner${winnerCount > 1 ? 's' : ''}:** ${winnerCount}\n**Entries:** ${entriesLabel}\n**Role Restrictions:** ${roleRestrictionText}${invitesLine}`;
 		const hostedByLabel = '👤 Hosted By';
 		const endsLabel = '⏰ Ends';
 		const giveawayEmbed = new EmbedBuilder()
@@ -624,6 +627,19 @@ export async function handleGiveawayEnterButton(interaction) {
 				content: errorMsg
 			});
 			return;
+		}
+
+		const minInvites = Number(giveaway.min_invites) || 0;
+		if (minInvites > 0) {
+			const inviteStats = await db.getMemberInviteStats(Number(dbMember.id)).catch(() => null);
+			const have = inviteStats?.total ?? 0;
+			if (have < minInvites) {
+				const errorMsg = await translate('giveaway.errors.notEnoughInvites', interaction.guild.id, interaction.user.id, { needed: minInvites, have });
+				await interaction.editReply({
+					content: errorMsg
+				});
+				return;
+			}
 		}
 
 		if (giveaway.member_id === dbMember.id) {

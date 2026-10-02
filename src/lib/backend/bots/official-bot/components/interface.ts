@@ -29,6 +29,7 @@ import {
 	handleGiveawayFinish
 } from './interface/giveaway.js';
 import { handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
+import { handleInvitesButton } from './interface/invites.js';
 import {
 	handleStaffRatingButton,
 	handleStaffRatingUserSelect,
@@ -121,6 +122,7 @@ const MENU_CATEGORIES: { id: string; style: ButtonStyle; items: { customId: stri
 		items: [
 			{ customId: 'bot_afk', label: 'afk.title', desc: 'afk' },
 			{ customId: 'bot_notifications', label: 'notifications.button', desc: 'notifications' },
+			{ customId: 'bot_invites', label: 'invites.button', desc: 'invites' },
 			{ customId: DISCORD_QUEST_BUTTON_ID, label: 'questEnroll.menuButton', desc: 'quest' }
 		]
 	},
@@ -552,6 +554,10 @@ export async function handleButtonInteraction(interaction) {
 		case 'level_my_account':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
 			await handleMyAccountLinkButton(interaction);
+			break;
+		case 'bot_invites':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
+			await handleInvitesButton(interaction);
 			break;
 		case 'settings_language':
 			await handleLanguageButton(interaction);

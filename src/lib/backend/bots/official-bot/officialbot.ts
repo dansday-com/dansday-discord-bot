@@ -14,6 +14,7 @@ import afk from './components/interface/afk.js';
 import giveaway from './components/interface/giveaway.js';
 import sync from './components/sync.js';
 import leveling from './components/leveling.js';
+import invites, { stopInviteRewards } from './components/invites.js';
 import ai from './components/ai.js';
 import voice from './components/voice.js';
 import { wakeModelAvailable, warmWakeModel } from './components/wakeWord.js';
@@ -48,7 +49,8 @@ const client = new Client({
 		GatewayIntentBits.GuildMembers,
 		GatewayIntentBits.GuildModeration,
 		GatewayIntentBits.GuildVoiceStates,
-		GatewayIntentBits.GuildMessageReactions
+		GatewayIntentBits.GuildMessageReactions,
+		GatewayIntentBits.GuildInvites
 	],
 	partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 	rest: { rejectOnRateLimit: ['/guilds/:id/members/@me'] }
@@ -82,6 +84,7 @@ client.on('clientReady', async () => {
 	afk.init(client);
 	giveaway.init(client);
 	leveling.init(client);
+	invites.init(client);
 	ai.init(client);
 	voice.init(client).catch(() => {});
 	contentCreator.init(client);
@@ -129,6 +132,7 @@ async function shutdown() {
 	stopExpirySweeper();
 	stopModerationSweeper();
 	stopAssetMarketPoller();
+	stopInviteRewards();
 	webhook.stopWebhookServer();
 	client.destroy();
 	if (singletonLock) {

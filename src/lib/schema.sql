@@ -404,6 +404,7 @@ CREATE TABLE IF NOT EXISTS server_member_giveaways (
     allowed_roles JSON NULL,
     multiple_entries_allowed BOOLEAN DEFAULT FALSE,
     winner_count INT NOT NULL DEFAULT 1,
+    min_invites INT NOT NULL DEFAULT 0,
     status ENUM('active', 'ended', 'ended_force') DEFAULT 'active',
     ends_at DATETIME NOT NULL,
     winners_announced BOOLEAN DEFAULT FALSE,
@@ -738,6 +739,46 @@ CREATE TABLE IF NOT EXISTS server_member_moderation_logs (
     FOREIGN KEY (staff_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS server_member_invites (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    inviter_member_id INT NULL,
+    code VARCHAR(32) NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'unknown',
+    fake_reason VARCHAR(16) NULL,
+    xp INT NOT NULL DEFAULT 0,
+    rewarded_at DATETIME NULL,
+    joined_at DATETIME NOT NULL,
+    left_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_member_invite (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (inviter_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_member_invite_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    server_account_id INT NULL,
+    account_id INT NULL,
+    amount INT NOT NULL,
+    reason TEXT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (server_account_id) REFERENCES server_accounts(id) ON DELETE SET NULL,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_member_invite_links (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    code VARCHAR(32) NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_member_invite_link (member_id),
+    UNIQUE KEY unique_member_invite_link_code (code),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
@@ -811,6 +852,9 @@ CREATE INDEX IF NOT EXISTS idx_server_member_assets_held ON server_member_assets
 CREATE INDEX IF NOT EXISTS idx_server_member_asset_logs_member ON server_member_asset_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_moderation_logs_member ON server_member_moderation_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_moderation_logs_expiry ON server_member_moderation_logs(action, active, expires_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_invites_inviter ON server_member_invites(inviter_member_id, joined_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_invites_pending ON server_member_invites(rewarded_at, joined_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_invite_logs_member ON server_member_invite_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member_created_source ON server_member_level_logs(member_id, created_at, source);
 CREATE INDEX IF NOT EXISTS idx_level_friends_a ON server_member_level_friends(member_a_id, ticks);

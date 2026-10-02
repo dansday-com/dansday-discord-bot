@@ -33,6 +33,7 @@
 		"items": {
 			"afk": "设置或清除你的 AFK 状态。",
 			"notifications": "选择会提醒你的频道。",
+			"invites": "查看你的邀请并获取邀请链接。",
 			"quest": "领取进行中的 Discord 任务。",
 			"giveaway": "在此服务器发起抽奖。",
 			"feedback": "向服务器团队发送反馈。",
@@ -125,6 +126,27 @@
 			"notRegistered": "⚠️ 本服务器尚未在机器人中注册。请先执行一次同步。",
 			"createRecordFailed": "❌ 创建成员记录失败，请重试。"
 		}
+	},
+	"invites": {
+		"button": "📨 邀请",
+		"title": "📨 你的邀请",
+		"reward": "每有一位新成员通过你的链接加入{hold}，你就能获得 **{xp} XP**。",
+		"hold": "并停留 {hours} 小时",
+		"staffNote": "🛡️ 工作人员获得 {multiplier} 倍邀请 XP。",
+		"link": "🔗 你的专属邀请链接：{url}",
+		"noLink": "⚠️ 我无法在这里创建邀请链接。请让工作人员给我“创建邀请”权限。",
+		"copyButton": "打开邀请链接",
+		"fields": {
+			"total": "📨 总数",
+			"active": "✅ 仍在服务器",
+			"left": "🚪 已离开",
+			"fake": "🕵️ 无效",
+			"bonus": "➕ 奖励",
+			"xp": "⭐ 获得 XP",
+			"pending": "⏳ 等待中",
+			"invitedBy": "👤 邀请人"
+		},
+		"error": "❌ 无法加载你的邀请，请稍后再试。"
 	},
 	"afk": {
 		"title": "⏸️ 设置 AFK 状态",
@@ -228,7 +250,8 @@
 			"finishChannelError": "❌ 获取抽奖频道失败。",
 			"finishChannelNotConfigured": "❌ 未配置抽奖频道。",
 			"finishChannelNotFound": "❌ 未找到抽奖频道。",
-			"failed": "❌ 打开抽奖表单失败：{error}"
+			"failed": "❌ 打开抽奖表单失败：{error}",
+			"notEnoughInvites": "❌ 你需要 **{needed}** 个邀请才能参加此抽奖。你目前有 **{have}** 个。"
 		}
 	},
 	"feedback": {

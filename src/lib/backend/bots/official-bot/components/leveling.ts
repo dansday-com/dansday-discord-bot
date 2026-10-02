@@ -561,7 +561,8 @@ const XP_LOG_EMOJI = {
 	Voice: '🎤',
 	'AFK Voice': '🔇',
 	Video: '📹',
-	Streaming: '📡'
+	Streaming: '📡',
+	Invite: '📨'
 };
 
 const XP_LOG_SOURCE: Record<string, string> = {
@@ -569,7 +570,8 @@ const XP_LOG_SOURCE: Record<string, string> = {
 	Voice: 'voice',
 	'AFK Voice': 'voice_afk',
 	Video: 'video',
-	Streaming: 'stream'
+	Streaming: 'stream',
+	Invite: 'invite'
 };
 
 const disguisedCache = new Map<string, { ids: Set<number>; at: number }>();
@@ -613,7 +615,7 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 				xp_total: stats?.xp != null ? Number(stats.xp) : null,
 				level: stats?.level != null ? Number(stats.level) : null,
 				rank: stats?.rank != null ? Number(stats.rank) : null,
-				multiplier: award?.boosted ? award.multiplier : null,
+				multiplier: award?.boosted || award?.staff ? award.multiplier : null,
 				skim_percent: award?.leeched ? award.skimPercent : null,
 				friend_percent: award?.friendBoosted ? award.friendPercent : null,
 				luck_percent: award?.victimLuckPercent > 0 ? award.victimLuckPercent : null
@@ -630,16 +632,52 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
-		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
+		const boostSuffix = award?.staff ? ` (${award.multiplier}× Staff 🛡️)` : award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
+		const noteSuffix = award?.note ? ` ${award.note}` : '';
 		const friendSuffix = award?.friendBoosted ? ` (+${luckRateLabel(award.friendPercent, award.luckPercent)} Friend boost 🤝)` : '';
 		const leechSuffix = award?.leeched ? ` (−${luckRateLabel(award.skimPercent, 0)} Leech 🩸)` : '';
-		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${friendSuffix}${leechSuffix}`;
+		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${noteSuffix}${boostSuffix}${friendSuffix}${leechSuffix}`;
 
 		await channel.send(logMessage);
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);
 		await logger.log(`⚠️ Failed to send XP log to channel: ${msg}`);
 	}
+}
+
+export async function awardInviteXp(guild, guildMember, xp: number, meta: { multiplier: number; inviteeName: string | null }) {
+	let server;
+	let dbMember;
+	let previousStats;
+	let stats;
+	try {
+		({ server, dbMember } = await resolveServerAndMember(guild, guildMember));
+		if (!server || !dbMember) return null;
+		await db.ensureMemberLevel(dbMember.id);
+		previousStats = await db.getMemberLevel(dbMember.id);
+		stats = await db.updateMemberLevelStats(dbMember.id, { xpIncrement: xp });
+	} catch (error) {
+		await logger.log(`❌ Invite XP award failed: ${error.message}`);
+		return null;
+	}
+
+	try {
+		const award = {
+			staff: meta.multiplier > 1,
+			multiplier: meta.multiplier,
+			note: meta.inviteeName ? `for inviting ${meta.inviteeName}` : null
+		};
+		await sendXPLogToChannel(guild, dbMember, xp, 'Invite', award, stats);
+		await handleLevelEvaluation(server, dbMember, stats, guild.id, {
+			previousLevel: previousStats?.level ?? null,
+			previousXp: previousStats?.xp ?? null,
+			previousRank: previousStats?.rank ?? null,
+			reason: 'invite'
+		});
+	} catch (error) {
+		await logger.log(`⚠️ Invite XP follow-up failed: ${error.message}`);
+	}
+	return stats ?? {};
 }
 
 async function announceLeechCredits(guild, victim, credits) {

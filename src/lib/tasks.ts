@@ -98,7 +98,8 @@ export type TaskMetric =
 	| 'xp_solo_voice'
 	| 'xp_solo_media'
 	| 'xp_solo_chat'
-	| 'xp_unleeched';
+	| 'xp_unleeched'
+	| 'invites_joined';
 
 export type TaskRequirement = 'leveling' | 'minigames' | 'items' | 'assets';
 
@@ -119,6 +120,9 @@ export type TaskDefinition = {
 	durationEffect?: string;
 	targetsItem?: boolean;
 	successChance?: number;
+	periods?: TaskPeriod[];
+	maxGoal?: number;
+	needsInvites?: boolean;
 	describe: (goal: number, ctx?: TaskDescribeContext) => string;
 };
 
@@ -142,6 +146,20 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'leveling',
 		baselineKey: 'chat_total',
 		describe: (g) => `Send ${g} messages`
+	},
+	{
+		id: 'invite',
+		metric: 'invites_joined',
+		label: 'Recruiter',
+		icon: 'fa-user-plus',
+		accent: '#2f7fa8',
+		unit: 'members',
+		requires: 'leveling',
+		baselineKey: null,
+		periods: ['weekly'],
+		maxGoal: 3,
+		needsInvites: true,
+		describe: (g) => (g === 1 ? 'Invite a new member who stays' : `Invite ${g} new members who stay`)
 	},
 	{
 		id: 'react',
@@ -1314,6 +1332,7 @@ export type TaskEligibility = {
 	levelingRates?: LevelingRates;
 	memberCount?: number;
 	measuredDailyEarn?: number;
+	invitesTracked?: boolean;
 };
 
 export const RECENT_WINDOW_DAYS = 7;
@@ -2054,6 +2073,8 @@ export function hardTierReach(def: TaskDefinition, elig: TaskEligibility, period
 		reach = Math.min(reach, others);
 	}
 
+	if (def.maxGoal) reach = Math.min(reach, def.maxGoal);
+
 	return Math.max(1, reach);
 }
 
@@ -2487,6 +2508,7 @@ function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
 	if (def.costExtraEffect && effectUnitCost(def.costExtraEffect, elig) <= 0) return false;
 	if (def.durationEffect && (effectDuration(def.durationEffect, elig) <= 0 || effectUnitCost(def.durationEffect, elig) <= 0)) return false;
 	if (def.targetsItem && (elig.catalog?.length ?? 0) === 0) return false;
+	if (def.needsInvites && !elig.invitesTracked) return false;
 
 	if (def.eligibilityKey && (Number(elig.baselines[def.eligibilityKey]) || 0) <= 0) return false;
 
@@ -2538,7 +2560,7 @@ export function generateDailyTasks(
 	elig: TaskEligibility,
 	period: TaskPeriod = 'daily'
 ): GeneratedTask[] {
-	const pool = TASK_DEFINITIONS.filter((d) => isEligible(d, elig));
+	const pool = TASK_DEFINITIONS.filter((d) => isEligible(d, elig) && (!d.periods || d.periods.includes(period)));
 	if (pool.length === 0) return [];
 
 	const plan = period === 'weekly' ? WEEKLY_DIFFICULTY_PLAN : DAILY_DIFFICULTY_PLAN;

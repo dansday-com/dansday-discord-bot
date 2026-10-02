@@ -33,6 +33,7 @@
 		"items": {
 			"afk": "Atur atau hapus status AFK kamu.",
 			"notifications": "Pilih channel yang memberi notifikasi.",
+			"invites": "Lihat undanganmu dan dapatkan link undangan.",
 			"quest": "Klaim Discord quest yang aktif.",
 			"giveaway": "Mulai giveaway di server ini.",
 			"feedback": "Kirim masukan ke tim server.",
@@ -125,6 +126,29 @@
 			"notRegistered": "⚠️ Server ini tidak terdaftar dengan bot. Silakan jalankan sync terlebih dahulu.",
 			"createRecordFailed": "❌ Gagal membuat catatan anggota. Silakan coba lagi."
 		}
+	},
+	"invites": {
+		"button": "📨 Undangan",
+		"title": "📨 Undanganmu",
+		"reward": "Dapatkan **{xp} XP** untuk setiap member baru yang bergabung lewat link-mu{hold}.",
+		"hold": " dan bertahan {hours} jam",
+		"staffNote": "🛡️ Staff mendapat {multiplier}× XP undangan.",
+		"share": "📈 Kamu juga dapat **{percent}%** dari XP chat dan voice yang didapat member undanganmu, selama mereka bertahan.",
+		"link": "🔗 Link undangan pribadimu: {url}",
+		"noLink": "⚠️ Aku tidak bisa membuat link undangan di sini. Minta staff memberiku izin Create Invite.",
+		"copyButton": "Buka link undangan",
+		"fields": {
+			"total": "📨 Total",
+			"active": "✅ Masih di sini",
+			"left": "🚪 Keluar",
+			"fake": "🕵️ Palsu",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP didapat",
+			"pending": "⏳ Menunggu",
+			"invitedBy": "👤 Diundang oleh",
+			"shareXp": "🤝 Dari bagian"
+		},
+		"error": "❌ Gagal memuat undanganmu. Coba lagi sebentar lagi."
 	},
 	"afk": {
 		"title": "⏸️ Atur Status AFK",
@@ -228,7 +252,8 @@
 			"finishChannelError": "❌ Gagal mendapatkan saluran giveaway.",
 			"finishChannelNotConfigured": "❌ Saluran giveaway tidak dikonfigurasi.",
 			"finishChannelNotFound": "❌ Saluran giveaway tidak ditemukan.",
-			"failed": "❌ Gagal membuka formulir giveaway: {error}"
+			"failed": "❌ Gagal membuka formulir giveaway: {error}",
+			"notEnoughInvites": "❌ Kamu butuh **{needed}** undangan untuk ikut giveaway ini. Kamu punya **{have}**."
 		}
 	},
 	"feedback": {

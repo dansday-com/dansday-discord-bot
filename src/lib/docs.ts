@@ -527,7 +527,7 @@ export const modules = [
 		icon: 'fa-star',
 		accent: '#d9a528',
 		title: 'Leveling & XP',
-		what: 'Chat and voice activity earn XP that feeds levels, role rewards and leaderboards.',
+		what: 'Chat, voice and invites earn XP that feeds levels, role rewards and leaderboards.',
 		fields: [
 			{ label: 'Leveling module', desc: 'Master toggle. When off, XP, voice time and the leveling Discord UI are disabled.' },
 			{ label: 'Base XP', desc: 'XP needed to reach level 2 (50 to 1000). Higher levels scale from this and the multiplier.' },
@@ -542,6 +542,13 @@ export const modules = [
 			{ label: 'Voice Cooldown (seconds)', desc: 'How often voice XP is awarded (0 to 180). The voice XP above is granted each interval.' },
 			{ label: 'Video / camera XP', desc: 'Extra XP per voice tick while your camera is on, even if muted. 0 disables. Stacks with voice XP.' },
 			{ label: 'Live stream XP', desc: 'Extra XP per voice tick while using Go Live, even if muted. 0 disables. Stacks with voice and video XP.' },
+			{ label: 'Invite XP', desc: 'XP paid to the inviter per new member who stays (50 to 1000). Staff earn double.' },
+			{
+				label: 'Invite share',
+				desc: "Share of an invited member's chat and voice XP that also goes to the inviter while they stay (off to 25%). Staff get double."
+			},
+			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
+			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
 			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications.' }
 		]
 	},
@@ -581,7 +588,7 @@ export const modules = [
 		fields: [
 			{ label: 'Welcomer module', desc: 'When off, welcome messages are not sent.' },
 			{ label: 'Welcome Channels', desc: 'One or more channels welcome messages post to.' },
-			{ label: 'Welcome Messages', desc: 'Your message templates. Placeholders: {user}, {server}, {memberCount}, {accountAge}.' }
+			{ label: 'Welcome Messages', desc: 'Your message templates. Placeholders: {user}, {server}, {memberCount}, {accountAge}, {inviter}, {inviteCount}.' }
 		]
 	},
 	{
@@ -605,7 +612,8 @@ export const modules = [
 		fields: [
 			{ label: 'Giveaway module', desc: 'When off, giveaways and their Discord UI are disabled.' },
 			{ label: 'Giveaway Channel', desc: 'Where giveaways post and winners are announced.' },
-			{ label: 'Creator can participate', desc: 'Allow giveaway creators to enter their own giveaways.' }
+			{ label: 'Creator can participate', desc: 'Allow giveaway creators to enter their own giveaways.' },
+			{ label: 'Invites needed to enter', desc: 'Members need this many invites to enter. Applies to giveaways created after saving.' }
 		]
 	},
 	{

@@ -375,6 +375,10 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		check: async (locals, match) => canUseEmbedBuilder(locals, match[1])
 	},
 	{
+		pattern: /^\/api\/servers\/(\d+)\/invites/,
+		check: async (locals, match) => canUseEmbedBuilder(locals, match[1])
+	},
+	{
 		pattern: /^\/api\/servers\/(\d+)\/accounts/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);

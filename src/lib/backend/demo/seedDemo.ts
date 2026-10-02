@@ -421,6 +421,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			};
 		});
 
+		const seededMemberIds: number[] = [];
 		for (const m of membersToSeed) {
 			await db
 				.insert(schema.serverMembers)
@@ -457,6 +458,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				.then((r: any[]) => r[0] ?? null);
 
 			if (!memberRow?.id) continue;
+			seededMemberIds.push(Number(memberRow.id));
 
 			await db
 				.insert(schema.serverMemberLevels)
@@ -539,6 +541,30 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					.values({ member_id: memberRow.id as any, role_id: assignedRoleId, created_at: nowDb })
 					.onDuplicateKeyUpdate({ set: { role_id: assignedRoleId as any } });
 			}
+		}
+
+		const inviterIds = seededMemberIds.slice(0, 5);
+		for (let i = inviterIds.length; i < seededMemberIds.length; i++) {
+			const kind = i % 9;
+			const inviterId = inviterIds[i % inviterIds.length];
+			const joinedAt = toMySQLDateTime(new Date(base - i * 5_400_000)) as any;
+			const paid = kind > 2;
+			const row = {
+				member_id: seededMemberIds[i],
+				inviter_member_id: inviterId,
+				code: `demo${inviterId}`,
+				source: 'invite',
+				fake_reason: kind === 1 ? 'account_age' : null,
+				xp: paid ? 1000 : 0,
+				rewarded_at: paid ? joinedAt : null,
+				joined_at: joinedAt,
+				left_at: kind === 0 ? nowDb : null,
+				created_at: joinedAt
+			};
+			await db
+				.insert(schema.serverMemberInvites)
+				.values(row as any)
+				.onDuplicateKeyUpdate({ set: { inviter_member_id: row.inviter_member_id, fake_reason: row.fake_reason, xp: row.xp, left_at: row.left_at } as any });
 		}
 
 		await db.execute(sql`

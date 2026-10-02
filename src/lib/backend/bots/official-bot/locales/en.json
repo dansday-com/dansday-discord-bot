@@ -33,6 +33,7 @@
 		"items": {
 			"afk": "Set or clear your AFK status.",
 			"notifications": "Pick channels that notify you.",
+			"invites": "See your invites and get your invite link.",
 			"quest": "Claim active Discord quests.",
 			"giveaway": "Start a giveaway in this server.",
 			"feedback": "Send feedback to the server team.",
@@ -125,6 +126,29 @@
 			"notRegistered": "⚠️ This server is not registered with the bot. Please run a sync first.",
 			"createRecordFailed": "❌ Failed to create member record. Please try again."
 		}
+	},
+	"invites": {
+		"button": "📨 Invites",
+		"title": "📨 Your Invites",
+		"reward": "Earn **{xp} XP** for each new member who joins with your link{hold}.",
+		"hold": " and stays {hours}h",
+		"staffNote": "🛡️ Staff earn {multiplier}× invite XP.",
+		"share": "📈 You also get **{percent}%** of the chat and voice XP your invited members earn, for as long as they stay.",
+		"link": "🔗 Your personal invite link: {url}",
+		"noLink": "⚠️ I couldn't create an invite link here. Ask staff to give me the Create Invite permission.",
+		"copyButton": "Open invite link",
+		"fields": {
+			"total": "📨 Total",
+			"active": "✅ Still here",
+			"left": "🚪 Left",
+			"fake": "🕵️ Fake",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP earned",
+			"pending": "⏳ Waiting",
+			"invitedBy": "👤 Invited by",
+			"shareXp": "🤝 From shares"
+		},
+		"error": "❌ Couldn't load your invites. Try again in a moment."
 	},
 	"afk": {
 		"title": "⏸️ Set AFK Status",
@@ -228,7 +252,8 @@
 			"finishChannelError": "❌ Failed to get giveaway channel.",
 			"finishChannelNotConfigured": "❌ Giveaway channel not configured.",
 			"finishChannelNotFound": "❌ Giveaway channel not found.",
-			"failed": "❌ Failed to open giveaway form: {error}"
+			"failed": "❌ Failed to open giveaway form: {error}",
+			"notEnoughInvites": "❌ You need **{needed}** invites to enter this giveaway. You have **{have}**."
 		}
 	},
 	"feedback": {

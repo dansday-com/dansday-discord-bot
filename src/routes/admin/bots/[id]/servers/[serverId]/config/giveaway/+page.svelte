@@ -4,6 +4,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import ConfigNumberSelect from '$lib/frontend/components/ConfigNumberSelect.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -12,6 +13,9 @@
 	let featureEnabled = $state(data.settings?.enabled === true);
 	let giveawayChannel = $state<string>(data.settings?.giveaway_channel ?? '');
 	let creatorCanParticipate = $state<boolean>(data.settings?.giveaway_creator_can_participate ?? false);
+	let minInvites = $state<number>(Number(data.settings?.giveaway_min_invites) || 0);
+
+	const minInviteValues = [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 50];
 
 	async function save() {
 		saving = true;
@@ -24,6 +28,7 @@
 					component: SERVER_SETTINGS.component.giveaway,
 					giveaway_channel: giveawayChannel,
 					giveaway_creator_can_participate: creatorCanParticipate,
+					giveaway_min_invites: minInvites,
 					enabled: featureEnabled
 				})
 			});
@@ -72,6 +77,15 @@
 			labelIconClass="fas fa-user-plus text-pink-400"
 			bind:enabled={creatorCanParticipate}
 			ariaLabel="Allow giveaway creator to participate"
+		/>
+
+		<ConfigNumberSelect
+			label="Invites needed to enter"
+			description="Members need this many invites to join a giveaway. 0 means no requirement. Applies to giveaways created after you save."
+			labelIconClass="fas fa-user-plus mr-1 text-pink-400"
+			values={minInviteValues}
+			bind:value={minInvites}
+			formatOption={(v) => (v === 0 ? 'No requirement' : `${v} invite${v === 1 ? '' : 's'}`)}
 		/>
 	</div>
 

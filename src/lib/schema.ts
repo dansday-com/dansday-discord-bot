@@ -772,6 +772,7 @@ export const serverMemberGiveaways = mysqlTable(
 		allowed_roles: json('allowed_roles'),
 		multiple_entries_allowed: boolean('multiple_entries_allowed').default(false),
 		winner_count: int('winner_count').notNull().default(1),
+		min_invites: int('min_invites').notNull().default(0),
 		status: mysqlEnum('status', ['active', 'ended', 'ended_force']).default('active'),
 		ends_at: datetime('ends_at').notNull(),
 		winners_announced: boolean('winners_announced').default(false),
@@ -1264,4 +1265,58 @@ export const serverMemberModerationLogs = mysqlTable(
 		index('idx_server_member_moderation_logs_member').on(t.member_id, t.created_at),
 		index('idx_server_member_moderation_logs_expiry').on(t.action, t.active, t.expires_at)
 	]
+);
+
+export const serverMemberInvites = mysqlTable(
+	'server_member_invites',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		inviter_member_id: int('inviter_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		code: varchar('code', { length: 32 }),
+		source: varchar('source', { length: 16 }).notNull().default('unknown'),
+		fake_reason: varchar('fake_reason', { length: 16 }),
+		xp: int('xp').notNull().default(0),
+		share_xp: bigint('share_xp', { mode: 'number' }).notNull().default(0),
+		rewarded_at: datetime('rewarded_at'),
+		joined_at: datetime('joined_at').notNull(),
+		left_at: datetime('left_at'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('unique_member_invite').on(t.member_id),
+		index('idx_server_member_invites_inviter').on(t.inviter_member_id, t.joined_at),
+		index('idx_server_member_invites_pending').on(t.rewarded_at, t.joined_at)
+	]
+);
+
+export const serverMemberInviteLogs = mysqlTable(
+	'server_member_invite_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		server_account_id: int('server_account_id').references(() => serverAccounts.id, { onDelete: 'set null' }),
+		account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+		amount: int('amount').notNull(),
+		reason: text('reason'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_invite_logs_member').on(t.member_id, t.created_at)]
+);
+
+export const serverMemberInviteLinks = mysqlTable(
+	'server_member_invite_links',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 32 }).notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_member_invite_link').on(t.member_id), uniqueIndex('unique_member_invite_link_code').on(t.code)]
 );

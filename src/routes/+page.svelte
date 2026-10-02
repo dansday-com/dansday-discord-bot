@@ -188,6 +188,12 @@
 			]
 		},
 		{
+			icon: 'fa-user-plus',
+			title: 'Invite tracking',
+			desc: 'See who invited every member, and pay the inviter XP once the new member stays.',
+			more: "Inviters keep a share of that member's XP for as long as they stay. Staff earn double."
+		},
+		{
 			icon: 'fa-trophy',
 			title: 'Role rewards',
 			desc: 'Hand out roles automatically as members hit the levels you set.',
@@ -197,7 +203,7 @@
 			icon: 'fa-ranking-star',
 			title: 'Leaderboard',
 			desc: 'All time, month or week, on any metric.',
-			more: 'XP, chat, voice, video, streaming, items, minigames.'
+			more: 'XP, chat, voice, video, streaming, invites, items, minigames.'
 		},
 		{
 			icon: 'fa-users',
@@ -299,7 +305,7 @@
 			icon: 'fa-hand',
 			title: 'Welcomer',
 			desc: 'Greet new members with your own message and a rich embed.',
-			more: 'Placeholders for the member, the server, the member count and account age.'
+			more: 'Placeholders for the member, the server, the member count, account age and who invited them.'
 		},
 		{
 			icon: 'fa-hand-sparkles',
@@ -310,7 +316,7 @@
 		{
 			icon: 'fa-gift',
 			title: 'Giveaways',
-			desc: 'Entry tracking, winner selection and role-based eligibility.',
+			desc: 'Entry tracking, winner selection, role-based eligibility and an invite minimum.',
 			more: 'Requirements are checked for you when you draw.',
 			stat: (s: Totals): Live[] => [
 				{ label: 'Running now', value: fmt(s.giveaways_active), live: true },

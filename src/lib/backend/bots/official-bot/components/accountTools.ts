@@ -28,11 +28,13 @@ async function sharedFor(ctx, hash) {
 }
 
 async function accountOverview(ctx, shared, member) {
-	const [dashboard, insights, buddies, levelingRow] = await Promise.all([
+	const [dashboard, insights, buddies, levelingRow, inviteStats, inviter] = await Promise.all([
 		db.getMemberDashboard(member.id, {}).catch(() => null),
 		db.getMemberInsights(member.id, ctx.server.id).catch(() => null),
 		db.getMemberLevelFriends(member.id, 5).catch(() => []),
-		db.getServerSettings(ctx.server.id, SERVER_SETTINGS.component.leveling).catch(() => null)
+		db.getServerSettings(ctx.server.id, SERVER_SETTINGS.component.leveling).catch(() => null),
+		db.getMemberInviteStats(Number(member.id)).catch(() => null),
+		db.getMemberInviter(Number(member.id)).catch(() => null)
 	]);
 
 	const rates = (levelingRow as any)?.settings ?? {};
@@ -41,7 +43,8 @@ async function accountOverview(ctx, shared, member) {
 		{ source: 'Voice', xp: num(member.voice_minutes_active) * num(rates.VOICE?.XP_PER_MINUTE) },
 		{ source: 'Video', xp: num(member.voice_minutes_video) * num(rates.VIDEO?.XP_PER_MINUTE) },
 		{ source: 'Streaming', xp: num(member.voice_minutes_streaming) * num(rates.STREAMING?.XP_PER_MINUTE) },
-		{ source: 'AFK voice', xp: num(member.voice_minutes_afk) * num(rates.VOICE?.AFK_XP_PER_MINUTE) }
+		{ source: 'AFK voice', xp: num(member.voice_minutes_afk) * num(rates.VOICE?.AFK_XP_PER_MINUTE) },
+		{ source: 'Invites', xp: num(inviteStats?.xp) }
 	]
 		.map((s) => ({ ...s, xp: Math.round(s.xp) }))
 		.filter((s) => s.xp > 0)
@@ -60,6 +63,20 @@ async function accountOverview(ctx, shared, member) {
 			streaming: num(member.voice_minutes_streaming)
 		},
 		xp_by_source: xpSources,
+		invites: inviteStats
+			? {
+					total: inviteStats.total,
+					still_here: inviteStats.active,
+					left: inviteStats.left,
+					fake: inviteStats.fake,
+					staff_bonus: inviteStats.bonus,
+					waiting_for_payout: inviteStats.pending,
+					xp_from_joins: inviteStats.join_xp,
+					xp_from_shares: inviteStats.share_xp,
+					xp_earned: inviteStats.xp
+				}
+			: null,
+		invited_by: inviter?.inviter_name ?? null,
 		voice_buddies: (buddies ?? []).map((b) => ({
 			name: b.name,
 			minutes_together: num(b.minutes),

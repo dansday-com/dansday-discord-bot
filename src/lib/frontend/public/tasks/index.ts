@@ -315,7 +315,8 @@ export async function loadTasksShared(opts: {
 		effectDurations: longestByEffect(catalog),
 		levelingRates: await loadLevelingRates(server.id),
 		memberCount: await db.countServerMembers(server.id).catch(() => 0),
-		measuredDailyEarn
+		measuredDailyEarn,
+		invitesTracked: await db.serverTracksInvites(server.id).catch(() => false)
 	};
 
 	if (opts.generate !== false && (await needsGeneration(member.id, dayKey, weekKey))) {

@@ -79,7 +79,9 @@
 				{ code: 'user', desc: 'Mentions the new member' },
 				{ code: 'server', desc: 'Server name' },
 				{ code: 'memberCount', desc: 'Total member count' },
-				{ code: 'accountAge', desc: 'Account age' }
+				{ code: 'accountAge', desc: 'Account age' },
+				{ code: 'inviter', desc: 'Mentions who invited them' },
+				{ code: 'inviteCount', desc: "Inviter's invite total" }
 			]}
 			onchange={(v) => (messages = v)}
 		/>

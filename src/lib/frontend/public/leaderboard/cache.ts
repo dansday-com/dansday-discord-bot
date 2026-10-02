@@ -21,7 +21,8 @@ export type LeaderboardMetric =
 	| 'items_bomb_rate'
 	| 'items_bomb_big'
 	| 'items_gift_give'
-	| 'items_gift_receive';
+	| 'items_gift_receive'
+	| 'invites';
 
 export type LeaderboardPeriod = 'all' | 'month' | 'week';
 
@@ -54,6 +55,10 @@ export type LeaderboardRow = {
 	attack_rate?: number | null;
 	gift_given?: number | null;
 	gift_received?: number | null;
+	invites_total?: number | null;
+	invites_active?: number | null;
+	invites_left?: number | null;
+	invites_bonus?: number | null;
 	rank: number | null;
 	theme_image?: string | null;
 	theme_accent?: string | null;

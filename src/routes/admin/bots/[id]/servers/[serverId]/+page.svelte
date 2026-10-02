@@ -2,14 +2,15 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { DashGrid, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
-	import type { LayoutProps } from './$types';
+	import type { PageProps } from './$types';
 
-	let { data }: LayoutProps = $props();
+	let { data }: PageProps = $props();
 
 	const o = $derived(data.overview);
 	const s = $derived(o.stats ?? {});
 	const sync = $derived(o.sync ?? {});
 	const enabledFeatures = $derived(Array.isArray(o.enabledFeatures) ? o.enabledFeatures : []);
+	const inv = $derived(data.invites);
 
 	function fmt(val: number | null | undefined): string {
 		if (val == null) return '0';
@@ -172,6 +173,24 @@
 			]
 		},
 		{
+			title: 'Invites',
+			icon: 'fa-user-plus',
+			tone: 'cyan',
+			rows: [
+				{ icon: 'fa-right-to-bracket', label: 'Joins tracked', value: fmt(inv?.tracked) },
+				{ icon: 'fa-user-check', label: 'Still here', value: fmt(inv?.active) },
+				{ icon: 'fa-user-minus', label: 'Left', value: fmt(inv?.left) },
+				{ icon: 'fa-user-secret', label: 'Fake', value: fmt(inv?.fake) },
+				{ icon: 'fa-link', label: 'Vanity link', value: fmt(inv?.vanity) },
+				{ icon: 'fa-circle-question', label: 'Unknown', value: fmt(inv?.unknown) },
+				{ icon: 'fa-hourglass-half', label: 'Waiting payout', value: fmt(inv?.pending) },
+				{ icon: 'fa-star', label: 'Join XP paid', value: fmt(inv?.xp_paid) },
+				{ icon: 'fa-people-arrows', label: 'XP shared', value: fmt(inv?.share_xp) },
+				{ icon: 'fa-users', label: 'Inviters', value: fmt(inv?.inviters) },
+				{ icon: 'fa-plus-minus', label: 'Staff bonus', value: fmt(inv?.bonus) }
+			]
+		},
+		{
 			title: 'Staff & feedback',
 			icon: 'fa-shield-halved',
 			tone: 'violet',
@@ -209,6 +228,17 @@
 				</div>
 			</StatCard>
 		{/each}
+
+		{#if inv && inv.codes.length > 0}
+			<StatCard icon="fa-link" title="Top invite links" tone="cyan">
+				<div class="flex flex-col gap-2">
+					{#each inv.codes as c}
+						<RowStat icon="fa-link" label="{c.code} · {c.inviter_name ?? 'Vanity / unknown'}" value="{fmt(c.active)} / {fmt(c.joins)}" />
+					{/each}
+				</div>
+				<p class="text-base-content/45 mt-2 text-xs">Still here / total joins per link.</p>
+			</StatCard>
+		{/if}
 
 		<StatCard icon="fa-database" title="Data sync" tone="teal">
 			<div class="flex flex-col gap-2">

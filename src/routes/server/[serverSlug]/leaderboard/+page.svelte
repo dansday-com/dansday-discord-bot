@@ -19,7 +19,7 @@
 	const GIFT_METRICS: Metric[] = ['items_gift_give', 'items_gift_receive'];
 	const ITEMS_METRICS: Metric[] = [...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS, ...GIFT_METRICS];
 	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk'];
-	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, 'video', 'streaming', ...ITEMS_METRICS, ...MINIGAMES_METRICS];
+	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, 'video', 'streaming', 'invites', ...ITEMS_METRICS, ...MINIGAMES_METRICS];
 	const PERIODS: { id: Period; label: string }[] = [
 		{ id: 'all', label: 'All time' },
 		{ id: 'month', label: 'This month' },
@@ -42,6 +42,7 @@
 	const isStealGroup = $derived(STEAL_METRICS.includes(metric));
 	const isBombGroup = $derived(BOMB_METRICS.includes(metric));
 	const isGiftGroup = $derived(GIFT_METRICS.includes(metric));
+	const isInvites = $derived(metric === 'invites');
 	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -89,6 +90,7 @@
 		if (m === 'items_bomb_big') return 'Bomber — Big bomb';
 		if (m === 'items_gift_give') return 'Gifts — Given';
 		if (m === 'items_gift_receive') return 'Gifts — Received';
+		if (m === 'invites') return 'Invites';
 		return 'XP';
 	}
 
@@ -115,6 +117,7 @@
 		if (m === 'items_steal_total' || m === 'items_bomb_total') return Number(r.attack_total || 0);
 		if (m === 'items_gift_give') return Number(r.gift_given || 0);
 		if (m === 'items_gift_receive') return Number(r.gift_received || 0);
+		if (m === 'invites') return Number(r.invites_total || 0);
 		return Number(r.xp || 0);
 	}
 
@@ -142,6 +145,7 @@
 		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
 		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) return 'xp';
 		if (m.startsWith('items_gift_')) return 'xp';
+		if (m === 'invites') return 'invites';
 		if (isPeriod) {
 			if (m === 'xp') return 'xp';
 			return 'times';
@@ -163,11 +167,17 @@
 		}
 		if (m === 'items_gift_give') return 'gifted';
 		if (m === 'items_gift_receive') return 'received';
+		if (m === 'invites') {
+			const parts = [`${Number(r.invites_active || 0)} still here`];
+			if (Number(r.invites_left || 0) > 0) parts.push(`${Number(r.invites_left)} left`);
+			if (Number(r.invites_bonus || 0) !== 0) parts.push(`${Number(r.invites_bonus) > 0 ? '+' : ''}${Number(r.invites_bonus)} bonus`);
+			return parts.join(' · ');
+		}
 		return '';
 	}
 
 	function rowSub(r: any) {
-		return isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`;
+		return isItemsGroup || isMinigamesGroup || isInvites ? itemsSub(r, metric) : `Level ${r.level ?? 0}`;
 	}
 
 	function barWidthPct(r: any, m: string) {
@@ -296,6 +306,7 @@
 		{ id: 'voice_total', label: 'Voice', icon: 'fa-microphone', active: isVoiceGroup },
 		{ id: 'video', label: 'Video', icon: 'fa-video', active: metric === 'video' },
 		{ id: 'streaming', label: 'Streaming', icon: 'fa-tv', active: metric === 'streaming' },
+		{ id: 'invites', label: 'Invites', icon: 'fa-user-plus', active: isInvites },
 		{ id: 'items_bounty_total', label: 'Items', icon: 'fa-store', active: isItemsGroup },
 		{ id: 'minigames_gamble_net', label: 'Minigames', icon: 'fa-dice', active: isMinigamesGroup }
 	]);

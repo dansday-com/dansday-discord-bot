@@ -33,6 +33,7 @@
 		"items": {
 			"afk": "Tetapkan atau buang status AFK anda.",
 			"notifications": "Pilih saluran yang memberitahu anda.",
+			"invites": "Lihat jemputan anda dan dapatkan pautan jemputan anda.",
 			"quest": "Tuntut Discord quest yang aktif.",
 			"giveaway": "Mulakan giveaway di server ini.",
 			"feedback": "Hantar maklum balas kepada pasukan server.",
@@ -125,6 +126,29 @@
 			"notRegistered": "⚠️ Server ini belum didaftarkan dengan bot. Sila jalankan sync dahulu.",
 			"createRecordFailed": "❌ Gagal buat rekod ahli. Sila cuba lagi."
 		}
+	},
+	"invites": {
+		"button": "📨 Jemputan",
+		"title": "📨 Jemputan Anda",
+		"reward": "Dapatkan **{xp} XP** untuk setiap ahli baharu yang menyertai melalui pautan anda{hold}.",
+		"hold": " dan kekal {hours} jam",
+		"staffNote": "🛡️ Staf mendapat {multiplier}× XP jemputan.",
+		"share": "📈 Anda juga mendapat **{percent}%** daripada XP chat dan voice yang diperoleh ahli jemputan anda, selagi mereka kekal.",
+		"link": "🔗 Pautan jemputan peribadi anda: {url}",
+		"noLink": "⚠️ Saya tidak dapat membuat pautan jemputan di sini. Minta staf beri saya kebenaran Create Invite.",
+		"copyButton": "Buka pautan jemputan",
+		"fields": {
+			"total": "📨 Jumlah",
+			"active": "✅ Masih di sini",
+			"left": "🚪 Keluar",
+			"fake": "🕵️ Palsu",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP diperoleh",
+			"pending": "⏳ Menunggu",
+			"invitedBy": "👤 Dijemput oleh",
+			"shareXp": "🤝 Daripada bahagian"
+		},
+		"error": "❌ Gagal memuatkan jemputan anda. Cuba lagi sebentar nanti."
 	},
 	"afk": {
 		"title": "⏸️ Tetapkan Status AFK",
@@ -228,7 +252,8 @@
 			"finishChannelError": "❌ Gagal dapatkan channel giveaway.",
 			"finishChannelNotConfigured": "❌ Channel giveaway belum ditetapkan.",
 			"finishChannelNotFound": "❌ Channel giveaway tidak dijumpai.",
-			"failed": "❌ Gagal buka borang giveaway: {error}"
+			"failed": "❌ Gagal buka borang giveaway: {error}",
+			"notEnoughInvites": "❌ Anda perlukan **{needed}** jemputan untuk menyertai giveaway ini. Anda ada **{have}**."
 		}
 	},
 	"feedback": {

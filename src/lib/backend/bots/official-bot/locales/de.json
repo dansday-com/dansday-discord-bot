@@ -33,6 +33,7 @@
 		"items": {
 			"afk": "AFK-Status setzen oder entfernen.",
 			"notifications": "Kanäle wählen, die dich benachrichtigen.",
+			"invites": "Sieh deine Einladungen und hol dir deinen Einladungslink.",
 			"quest": "Aktive Discord-Quests einlösen.",
 			"giveaway": "Ein Giveaway auf diesem Server starten.",
 			"feedback": "Feedback an das Serverteam senden.",
@@ -125,6 +126,29 @@
 			"notRegistered": "⚠️ Dieser Server ist nicht beim Bot registriert. Bitte führe zuerst eine Synchronisierung durch.",
 			"createRecordFailed": "❌ Mitgliedseintrag konnte nicht erstellt werden. Bitte versuche es erneut."
 		}
+	},
+	"invites": {
+		"button": "📨 Einladungen",
+		"title": "📨 Deine Einladungen",
+		"reward": "Verdiene **{xp} XP** für jedes neue Mitglied, das über deinen Link beitritt{hold}.",
+		"hold": " und {hours} Std. bleibt",
+		"staffNote": "🛡️ Staff erhält {multiplier}× Einladungs-XP.",
+		"share": "📈 Du bekommst außerdem **{percent}%** der Chat- und Voice-XP deiner eingeladenen Mitglieder, solange sie bleiben.",
+		"link": "🔗 Dein persönlicher Einladungslink: {url}",
+		"noLink": "⚠️ Ich konnte hier keinen Einladungslink erstellen. Bitte das Team, mir die Berechtigung „Einladung erstellen“ zu geben.",
+		"copyButton": "Einladungslink öffnen",
+		"fields": {
+			"total": "📨 Gesamt",
+			"active": "✅ Noch da",
+			"left": "🚪 Gegangen",
+			"fake": "🕵️ Fake",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP verdient",
+			"pending": "⏳ Ausstehend",
+			"invitedBy": "👤 Eingeladen von",
+			"shareXp": "🤝 Aus Anteilen"
+		},
+		"error": "❌ Deine Einladungen konnten nicht geladen werden. Versuch es gleich nochmal."
 	},
 	"afk": {
 		"title": "⏸️ AFK-Status setzen",
@@ -228,7 +252,8 @@
 			"finishChannelError": "❌ Gewinnspielkanal konnte nicht abgerufen werden.",
 			"finishChannelNotConfigured": "❌ Gewinnspielkanal ist nicht konfiguriert.",
 			"finishChannelNotFound": "❌ Gewinnspielkanal nicht gefunden.",
-			"failed": "❌ Gewinnspielformular konnte nicht geöffnet werden: {error}"
+			"failed": "❌ Gewinnspielformular konnte nicht geöffnet werden: {error}",
+			"notEnoughInvites": "❌ Du brauchst **{needed}** Einladungen, um an diesem Giveaway teilzunehmen. Du hast **{have}**."
 		}
 	},
 	"feedback": {

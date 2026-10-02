@@ -28,6 +28,8 @@
 		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' },
 		leech: { label: 'Leech', icon: 'fa-droplet' },
 		task: { label: 'Task Reward', icon: 'fa-list-check' },
+		invite: { label: 'Invite', icon: 'fa-user-plus' },
+		invite_share: { label: 'Invite Share', icon: 'fa-people-arrows' },
 		daily: { label: 'Daily Reward', icon: 'fa-calendar-check' }
 	};
 
@@ -39,7 +41,10 @@
 		if (h.level != null) badges.push({ icon: 'fa-arrow-up-right-dots', text: `Lv ${h.level}` });
 		if (h.rank != null) badges.push({ icon: 'fa-ranking-star', text: `#${h.rank}` });
 		if (h.totalXp != null) badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
-		if (h.multiplier) badges.push({ icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
+		if (h.multiplier && h.source === 'invite_share')
+			badges.push({ icon: 'fa-percent', text: `${Math.round(Number(h.multiplier) * 100)}% of an invited member's XP` });
+		else if (h.multiplier)
+			badges.push(h.source === 'invite' ? { icon: 'fa-shield-halved', text: `${h.multiplier}× Staff` } : { icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
 		if (h.friendPercent) badges.push({ icon: 'fa-handshake', text: `+${h.friendPercent}% Friend boost` });
 		if (h.skimPercent) {
 			const total = Number(h.skimPercent) || 0;

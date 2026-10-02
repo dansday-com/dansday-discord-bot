@@ -191,7 +191,7 @@
 			icon: 'fa-user-plus',
 			title: 'Invite tracking',
 			desc: 'See who invited every member, and pay the inviter XP once the new member stays.',
-			more: "Inviters keep a share of that member's XP for as long as they stay. Staff earn double."
+			more: "Inviters keep a share of that member's XP while they stay, staff earn double, and the server's own /join link counts its joins too."
 		},
 		{
 			icon: 'fa-trophy',

@@ -791,7 +791,7 @@ export const modules = [
 			},
 			{
 				label: 'Server invite',
-				desc: 'On by default. Shows a Join button on the public pages and an invite line in the bot menu, and lists the server join page (/join/server-name) in the sitemap. Off hides all three and the join page stops working. Members keep their own invite links either way.'
+				desc: 'On by default. Shows a Join button on the public pages and an invite line in the bot menu, and lists the server join page (/join/server-name) in the sitemap. Off hides all three and the join page stops working. Members keep their own invite links either way. Joins through this link credit no member and are counted as Server link on the server overview.'
 			},
 			{
 				label: 'Invite page theme',

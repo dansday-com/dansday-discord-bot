@@ -1404,6 +1404,8 @@ async function seedNewServerSettings(serverId: number) {
 			baseSettings.messages = DEFAULT_WELCOMER_MESSAGES;
 		} else if (component === SERVER_SETTINGS.component.booster) {
 			baseSettings.messages = DEFAULT_BOOSTER_MESSAGES;
+		} else if (component === SERVER_SETTINGS.component.giveaway) {
+			baseSettings.giveaway_min_invites = 0;
 		}
 
 		await upsertServerSettings(serverId, component, baseSettings);

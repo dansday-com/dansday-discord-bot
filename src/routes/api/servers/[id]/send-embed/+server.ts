@@ -7,6 +7,9 @@ import { request as httpRequest } from 'http';
 import { canUseEmbedBuilder, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { embedKeyBelongsTo, embedScope, readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
+import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
+
+const LOG_TEXT_MAX = 500;
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
@@ -135,6 +138,25 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (result.status === 200 && result.body.success) {
 			await removeTempUpload();
 			logger.log(`${locals.user.username} used embed builder on server "${server.name || serverId}"`);
+			const roleIds: string[] = Array.isArray(role_ids) ? role_ids.map(String).filter(Boolean) : [];
+			const descriptionText = description ? String(description) : '';
+			await db
+				.createServerPanelLog(serverId, panelActorIds(locals), 'embed_sent', [
+					{ key: 'channels', before: null, after: resolvedChannelIds.join(', ') },
+					...(roleIds.length > 0 ? [{ key: 'roles pinged', before: null, after: roleIds.join(', ') }] : []),
+					{ key: 'title', before: null, after: String(title).slice(0, LOG_TEXT_MAX) },
+					...(descriptionText
+						? [
+								{
+									key: 'description',
+									before: null,
+									after: descriptionText.length > LOG_TEXT_MAX ? `${descriptionText.slice(0, LOG_TEXT_MAX)}…` : descriptionText
+								}
+							]
+						: []),
+					...(imageFilename || finalImageUrl ? [{ key: 'image', before: null, after: imageFilename ?? finalImageUrl }] : [])
+				])
+				.catch(() => null);
 			return json({ success: true, message: 'Embed sent successfully' });
 		} else {
 			await removeTempUpload();

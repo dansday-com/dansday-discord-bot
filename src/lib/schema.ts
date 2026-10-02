@@ -555,19 +555,20 @@ export const serverSettings = mysqlTable(
 	]
 );
 
-export const serverSettingLogs = mysqlTable(
-	'server_setting_logs',
+export const serverPanelLogs = mysqlTable(
+	'server_panel_logs',
 	{
 		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
-		server_setting_id: int('server_setting_id')
+		server_id: int('server_id')
 			.notNull()
-			.references(() => serverSettings.id, { onDelete: 'cascade' }),
+			.references(() => servers.id, { onDelete: 'cascade' }),
 		server_account_id: int('server_account_id').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+		action: varchar('action', { length: 24 }).notNull(),
 		changes: json('changes').notNull(),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [index('idx_server_setting_logs_setting').on(t.server_setting_id, t.created_at)]
+	(t) => [index('idx_server_panel_logs_server').on(t.server_id, t.created_at)]
 );
 
 export const botDiscordQuest = mysqlTable(

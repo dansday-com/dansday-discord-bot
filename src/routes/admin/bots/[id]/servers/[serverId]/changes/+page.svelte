@@ -50,7 +50,7 @@
 </svelte:head>
 
 <section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-	<h3 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold"><i class="fas fa-clock-rotate-left text-sky-400"></i>Configuration changes</h3>
+	<h3 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold"><i class="fas fa-clock-rotate-left text-sky-400"></i>Change log</h3>
 
 	<div class="mb-4 flex flex-col gap-3 sm:flex-row">
 		<div class="relative flex-1">
@@ -67,7 +67,7 @@
 	</div>
 
 	{#if filtered.length === 0}
-		<p class="text-ash-400 py-8 text-center text-sm">No configuration changes yet.</p>
+		<p class="text-ash-400 py-8 text-center text-sm">No changes yet.</p>
 	{:else}
 		<ul class="divide-ash-700 divide-y">
 			{#each filtered as log (log.id)}

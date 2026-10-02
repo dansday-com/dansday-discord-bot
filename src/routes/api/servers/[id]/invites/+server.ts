@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
-import { guardMemberAction } from '$lib/frontend/panelGuards.server.js';
+import { guardMemberAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
 const MAX_ADJUST = 10_000;
 
@@ -54,13 +54,18 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ ok: false, error: `Amount must be a whole number between -${MAX_ADJUST} and ${MAX_ADJUST}, not 0` }, { status: 400 });
 		}
 		if (!reason) return json({ ok: false, error: 'Enter a reason' }, { status: 400 });
-		const actor = locals.user.authenticated
-			? locals.user.account_source === 'server_accounts'
-				? { server_account_id: locals.user.account_id }
-				: { account_id: locals.user.account_id }
-			: {};
+		const actor = panelActorIds(locals);
+		const before = await db.getMemberInviteStats(Number(member.id));
 		await db.addMemberInviteAdjustment(Number(member.id), actor, amount, reason);
-		return json({ ok: true, stats: await db.getMemberInviteStats(Number(member.id)) });
+		const stats = await db.getMemberInviteStats(Number(member.id));
+		await db
+			.createServerPanelLog(g.serverId, actor, 'invite_bonus', [
+				{ key: 'member', before: null, after: discordId },
+				{ key: 'bonus invites', before: String(before.bonus), after: String(stats.bonus) },
+				{ key: 'reason', before: null, after: reason }
+			])
+			.catch(() => null);
+		return json({ ok: true, stats });
 	}
 
 	if (action === 'assign') {
@@ -73,6 +78,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (inviterDenied) return inviterDenied;
 		const assigned = await db.assignMemberInviter(Number(member.id), Number(inviter.id));
 		if (!assigned) return json({ ok: false, error: 'This join already has an inviter or was not tracked' }, { status: 409 });
+		await db
+			.createServerPanelLog(g.serverId, panelActorIds(locals), 'invite_assign', [
+				{ key: 'member', before: null, after: discordId },
+				{ key: 'inviter', before: 'Unknown', after: inviterDiscordId }
+			])
+			.catch(() => null);
 		return json({ ok: true, inviter: await db.getMemberInviter(Number(member.id)) });
 	}
 

@@ -248,7 +248,7 @@ Each member signs in to their own account on those same pages.
 
 - **One-command setup** - `/setup` creates every channel and wires it to its module. Nothing to pick by hand.
 - **Granular permissions** - Owner and staff tiers control who changes what.
-- **Change log** - Every configuration save records who changed which setting, before and after.
+- **Change log** - Every configuration save records who changed which setting, before and after. Embeds sent from the builder, invite edits and panel moderation are logged with who did them too.
 - **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
 - **Per-module toggles** - Enable or disable each feature per server.
 - **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.

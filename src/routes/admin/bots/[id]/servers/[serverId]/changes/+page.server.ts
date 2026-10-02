@@ -4,6 +4,13 @@ import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { accountOwnsServer, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
+const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
+	embed_sent: { component: 'embed_builder', label: 'Embed builder' },
+	invite_bonus: { component: 'invites', label: 'Invites' },
+	invite_assign: { component: 'invites', label: 'Invites' },
+	moderation: { component: 'moderation', label: 'Moderation' }
+};
+
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
@@ -25,7 +32,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const officialServerId = await db.getOfficialBotServerIdForServer(serverId).catch(() => null);
 	const serverIds = [...new Set([serverId, ...(officialServerId != null ? [Number(officialServerId)] : [])])];
-	const rows = await db.getServerSettingLogs(serverIds).catch(() => []);
+	const rows = await db.getServerPanelLogs(serverIds).catch(() => []);
 
 	const parsed = (rows as any[]).map((r) => {
 		let changes: { key: string; before: string | null; after: string | null }[] = [];
@@ -34,7 +41,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		} catch {
 			changes = [];
 		}
-		return { r, changes };
+		const action = String(r.action);
+		const meta = PANEL_ACTIONS[action] ?? { component: action, label: SERVER_SETTINGS.featureLabel(action) };
+		return { r, id: String(r.id), component: meta.component, component_label: meta.label, changes };
 	});
 
 	const SNOWFLAKE = /\b\d{17,20}\b/g;
@@ -68,13 +77,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const resolve = (value: string | null) => (value ? value.replace(SNOWFLAKE, (id) => names.get(id) ?? id) : value);
 
 	return {
-		logs: parsed.map(({ r, changes: raw }) => {
+		logs: parsed.map(({ r, id, component, component_label, changes: raw }) => {
 			const changes = raw.map((c) => ({ key: c.key, before: resolve(c.before), after: resolve(c.after) }));
 			const isPanelAdmin = r.account_id != null;
 			return {
-				id: String(r.id),
-				component: String(r.component_name),
-				component_label: SERVER_SETTINGS.featureLabel(String(r.component_name)),
+				id,
+				component,
+				component_label,
 				created_at: r.created_at,
 				who: (isPanelAdmin ? r.account_username : r.server_account_username) ?? null,
 				role: isPanelAdmin ? 'Admin' : r.server_account_type === 'owner' ? 'Owner' : r.server_account_type === 'staff' ? 'Staff' : null,

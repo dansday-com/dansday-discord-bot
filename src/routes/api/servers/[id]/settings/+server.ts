@@ -8,6 +8,7 @@ import { normalizeForwarderKeywords } from '$lib/forwarder-settings.js';
 import { BOT_BIO_MAX_LENGTH, normalizeMainConfigForPanel } from '$lib/utils/mainConfigSettings.js';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { BOT_PROFILE_IMAGE, BOT_PROFILE_IMAGE_FORMATS_LABEL, sniffBotProfileImage, tooLargeMessage, type BotProfileImageKind } from '$lib/images.js';
+import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -246,11 +247,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (result?.id && locals.user.authenticated) {
 			const changes = diffSettings(previous, settings as Record<string, unknown>);
 			await db
-				.createServerSettingLog(
-					Number(result.id),
-					locals.user.account_source === 'server_accounts' ? { server_account_id: locals.user.account_id } : { account_id: locals.user.account_id },
-					changes
-				)
+				.createServerPanelLog(Number(targetServerId), panelActorIds(locals), component, changes)
 				.catch((err: any) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
 		}
 

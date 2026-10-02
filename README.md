@@ -207,7 +207,7 @@ Each member signs in to their own account on those same pages.
 
 - **Account page** - The Account button in the Discord menu opens the member's own page. XP sources, a 14-day XP flow, voice buddies, bag, tasks, portfolio, minigames and history. No signup, no password.
 - **Member themes** - Each member sets a background image and an accent colour read from it, then spins 1,000 XP for an animated effect. It repaints their account, cards, their leaderboard row and their members-list card.
-- **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles, all on by default. Off means everything public goes dark.
+- **Public** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets, Daily tasks and Server invite are sub-toggles, all on by default. The server join page takes its own background image, tone and animated effect. Off means everything public goes dark.
 
 ### XP economy & PvP
 

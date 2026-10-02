@@ -84,8 +84,8 @@ const DOCS_SECTIONS = {
 		summary: () => [
 			'On by default: Welcomer, Booster, Channel notification, Leveling, Giveaway, AFK and Roblox Catalog.',
 			'Off until enabled: Forwarder, Custom Supporter Role, Feedback, Staff Rating, Content Creator and Discord Quest.',
-			'Always on: Main settings, Permissions, Moderation and Public statistics cannot be switched off.',
-			'Items, Assets, Minigames and Daily tasks are sub-toggles of Public statistics, all on by default.',
+			'Always on: Main settings, Permissions, Moderation and Public cannot be switched off.',
+			'Items, Assets, Minigames, Daily tasks and Server invite are sub-toggles of Public, all on by default.',
 			`Ask for topic "modules" for every setting of a named module: ${modules.map((m) => m.title).join(', ')}.`
 		],
 		points: () => modules.flatMap((m) => [`${m.title}: ${m.what}`, ...(m.fields ?? []).map((f) => `${m.title} — ${f.label}: ${f.desc}`)])

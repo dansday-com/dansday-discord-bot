@@ -111,7 +111,7 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'assets' | 'minigames' | null) {
 	const { SERVER_SETTINGS, publicSubfeatureEnabled } = await import('../../panelServer.js');
 
-	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);
 	const ps = (psRow as any)?.settings ?? {};
 	if (subKey && !publicSubfeatureEnabled(ps, subKey)) return { notFound: true } as const;
 

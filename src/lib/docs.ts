@@ -147,7 +147,7 @@ export const shopSteps = [
 	{
 		icon: 'fa-toggle-on',
 		title: 'Enable Items',
-		desc: 'On the server Public statistics config page, turn on the Items toggle. This unlocks buy and use actions. Public statistics must be on.'
+		desc: 'On the server Public config page, turn on the Items toggle. This unlocks buy and use actions. Public must be on.'
 	},
 	{
 		icon: 'fa-hashtag',
@@ -557,9 +557,9 @@ export const modules = [
 		icon: 'fa-store',
 		accent: '#d6536d',
 		title: 'Items & economy',
-		what: 'A per-server shop of PvP and utility items bought with XP. Items are created in the global admin Items page; each server enables the system from the Public statistics config page (Items toggle + channel). Requires Public statistics to be on.',
+		what: 'A per-server shop of PvP and utility items bought with XP. Items are created in the global admin Items page; each server enables the system from the Public config page (Items toggle + channel). Requires Public to be on.',
 		fields: [
-			{ label: 'Items toggle (under Public statistics)', desc: 'When off, the Items tab and all buy/use actions are disabled for this server.' },
+			{ label: 'Items toggle (under Public)', desc: 'When off, the Items tab and all buy/use actions are disabled for this server.' },
 			{
 				label: 'Item Events Channel',
 				desc: 'Where steal, bomb, leech, gift and other item announcements post. Keep it separate from the level channel. If unset, item events are not announced.'
@@ -771,15 +771,15 @@ export const modules = [
 		]
 	},
 	{
-		id: 'public-statistics',
+		id: 'public',
 		icon: 'fa-chart-pie',
 		accent: '#e43d12',
-		title: 'Public statistics',
-		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Themes, Guide) — are always on. Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
+		title: 'Public',
+		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Themes, Guide) — are always on. Items, Minigames, Assets, Daily tasks and the server invite are enabled here as sub-toggles.',
 		fields: [
 			{
 				label: 'Items / Minigames / Assets',
-				desc: 'Sub-toggles under public statistics. Each unlocks its account tab (and channel, for Items/Minigames). Tabs stay visible when off and explain that the feature is disabled.'
+				desc: 'Sub-toggles under Public. Each unlocks its account tab (and channel, for Items/Minigames). Tabs stay visible when off and explain that the feature is disabled.'
 			},
 			{
 				label: 'Daily tasks',
@@ -788,6 +788,14 @@ export const modules = [
 			{
 				label: 'Themes',
 				desc: `Always on, nothing to configure. Each member uploads a background image (PNG, JPG, GIF or WEBP) on their account Themes tab. Everything is re-encoded and resized to WebP — animated GIFs become animated WebP, keeping their frames and looping — and the stored result must land under 10MB. The accent colour is read from the image and can be overridden by hand. Animated effects — ${EFFECT_NAMES} — are won by spinning a reel for ${EFFECT_SPIN_COST.toLocaleString('en-US')} XP on the Themes tab, and each spin also rolls a one-of-a-kind variant, so no two members look the same. An effect can be disabled and re-enabled without spinning again, so turning it off never costs the XP already paid. Spins post to the minigames channel and appear in the member’s History, but are excluded from the Minigames leaderboard because they are a fixed-price roll, not a wager. All of it repaints that member’s account pages, wallet card, their row on the leaderboard and their card in the members list, so every visitor sees it. Themes are per server, and a disguised member is already hidden from the public leaderboard.`
+			},
+			{
+				label: 'Server invite',
+				desc: 'On by default. Shows a Join button on the public pages and an invite line in the bot menu, and lists the server join page (/join/server-name) in the sitemap. Off hides all three and the join page stops working. Members keep their own invite links either way.'
+			},
+			{
+				label: 'Invite page theme',
+				desc: 'Background image, tone and animated effect for the server join page. The image is re-encoded to WebP, the tone is picked from it and can be changed by hand, and the tone recolours the page buttons and accents.'
 			},
 			{ label: 'Public URL', desc: 'The generated public address, derived from the server name.' }
 		]

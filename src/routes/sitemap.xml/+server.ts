@@ -5,6 +5,7 @@ import { TERMS_URL, PRIVACY_URL, LEGAL_LAST_UPDATED } from '$lib/legal.js';
 import { APP_URL } from '$lib/frontend/panelServer.js';
 import db from '$lib/database.js';
 import { inviteJoinPath } from '$lib/invites.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -48,7 +49,15 @@ export const GET: RequestHandler = async () => {
 	});
 
 	const inviteSlugs = await db.listInviteSlugsForServers(servers.map((s) => Number(s.id))).catch(() => []);
-	const serverJoinRows = servers.map((s) => ({
+	const inviteServers = (
+		await Promise.all(
+			servers.map(async (s) => {
+				const row = await db.getServerSettings(Number(s.id), SERVER_SETTINGS.component.public).catch(() => null);
+				return publicSubfeatureEnabled((row as any)?.settings, 'invite') ? s : null;
+			})
+		)
+	).filter((s): s is (typeof servers)[number] => s != null);
+	const serverJoinRows = inviteServers.map((s) => ({
 		loc: `${baseUrl}${inviteJoinPath(String(s.slug))}`,
 		lastmod: toLastmod(s.updated_at),
 		changefreq: 'weekly' as const,

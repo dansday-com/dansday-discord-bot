@@ -135,10 +135,10 @@ const REGISTRY = [
 		iconClass: 'text-emerald-400'
 	},
 	{
-		id: 'public_statistics',
-		label: 'Public statistics',
+		id: 'public',
+		label: 'Public',
 		featureSwitch: false,
-		hrefSuffix: '/public-statistics',
+		hrefSuffix: '/public',
 		icon: 'fa-chart-pie',
 		iconClass: 'text-amber-400'
 	}
@@ -179,7 +179,7 @@ export const SERVER_SETTINGS = {
 
 export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component;
 
-export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'assets', 'minigames', 'tasks'] as const;
+export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'assets', 'minigames', 'tasks', 'invite'] as const;
 
 export type PublicStatisticsSubfeature = (typeof PUBLIC_STATISTICS_SUBFEATURES)[number];
 
@@ -368,6 +368,10 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	},
 	{
 		pattern: /^\/api\/servers\/(\d+)\/quest-notifier/,
+		check: async (locals, match) => canEditServerSettings(locals, match[1])
+	},
+	{
+		pattern: /^\/api\/servers\/(\d+)\/invite-theme/,
 		check: async (locals, match) => canEditServerSettings(locals, match[1])
 	},
 	{

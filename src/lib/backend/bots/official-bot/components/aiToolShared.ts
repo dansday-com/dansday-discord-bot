@@ -39,7 +39,7 @@ async function serverFor(botId, guildId) {
 }
 
 async function publicSettings(serverId) {
-	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.public).catch(() => null);
 	return row?.settings ?? {};
 }
 

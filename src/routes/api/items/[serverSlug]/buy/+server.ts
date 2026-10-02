@@ -12,7 +12,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
 	const server = resolved.server;
 
-	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);
 	const psSettings = (psRow as any)?.settings || {};
 	if (!publicSubfeatureEnabled(psSettings, 'items')) {
 		return json({ success: false, error: 'The items shop is disabled for this server.' }, { status: 403 });

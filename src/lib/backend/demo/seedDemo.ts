@@ -211,7 +211,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.insert(schema.serverSettings)
 			.values({
 				server_id: serverRow.id,
-				component_name: SERVER_SETTINGS.component.public_statistics,
+				component_name: SERVER_SETTINGS.component.public,
 				settings: { slug, items_enabled: true, minigames_enabled: true, assets_enabled: true, tasks_enabled: true },
 				created_at: nowDb,
 				updated_at: nowDb

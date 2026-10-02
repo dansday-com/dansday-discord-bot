@@ -339,7 +339,7 @@ export async function getLevelingSettings(guildId: string) {
 async function getPublicStatsSettings(guildId: string): Promise<Record<string, any> | null> {
 	try {
 		const officialBotServer = await getOfficialBotServer(guildId);
-		const row = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.public_statistics);
+		const row = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.public);
 		if (!row || !row.settings || typeof row.settings !== 'object' || Array.isArray(row.settings)) return null;
 		return row.settings as Record<string, any>;
 	} catch (_) {

@@ -1368,7 +1368,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 	const rows = await db.execute(sql`
 		SELECT JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) AS slug
 		FROM server_settings
-		WHERE component_name = ${SERVER_SETTINGS.component.public_statistics}
+		WHERE component_name = ${SERVER_SETTINGS.component.public}
 		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
 		  AND (
 				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
@@ -1385,12 +1385,12 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 }
 
 async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
-	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.public_statistics);
+	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.public);
 	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
 	if (settings?.slug) return true;
 	const slug = await generateUniqueLeaderboardSlug(serverName);
 	const next: Record<string, unknown> = { ...settings, slug };
-	await upsertServerSettings(serverId, SERVER_SETTINGS.component.public_statistics, next);
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.public, next);
 	return true;
 }
 
@@ -1411,7 +1411,7 @@ async function seedNewServerSettings(serverId: number) {
 
 	await upsertServerSettings(
 		serverId,
-		SERVER_SETTINGS.component.public_statistics,
+		SERVER_SETTINGS.component.public,
 		Object.fromEntries(PUBLIC_STATISTICS_SUBFEATURES.map((sub) => [`${sub}_enabled`, true]))
 	);
 
@@ -1434,7 +1434,7 @@ export async function listPublicServers() {
 			sv.deleted_at
 		FROM servers sv
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public}
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -1457,7 +1457,7 @@ export async function listPublicPanelIds(): Promise<number[]> {
 		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
 		.innerJoin(
 			schema.serverSettings,
-			and(eq(schema.serverSettings.server_id, schema.servers.id), eq(schema.serverSettings.component_name, SERVER_SETTINGS.component.public_statistics))
+			and(eq(schema.serverSettings.server_id, schema.servers.id), eq(schema.serverSettings.component_name, SERVER_SETTINGS.component.public))
 		)
 		.where(isNull(schema.servers.deleted_at));
 	return rows.map((r) => Number(r.panel_id)).filter((n) => Number.isFinite(n));
@@ -1547,7 +1547,7 @@ export async function listPublicXpEventsAfter(afterId: any, limit = 40) {
 		INNER JOIN server_members sm ON sm.id = sll.member_id
 		INNER JOIN servers sv ON sv.id = sm.server_id
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public}
 		WHERE sll.id > ${safeAfter}
 		  AND sll.xp > 0
 		  AND sm.deleted_at IS NULL
@@ -1913,7 +1913,7 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		INNER JOIN servers sv ON sv.id = m.server_id AND sv.deleted_at IS NULL
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		LEFT JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public}
 		WHERE m.deleted_at IS NULL
 			AND m.is_bot = 0
 			AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.items_enabled')), 'true') <> 'false'
@@ -1947,7 +1947,7 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 		INNER JOIN servers sv ON sv.id = m.server_id AND sv.deleted_at IS NULL
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		LEFT JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public}
 		WHERE m.id = ${Number(memberId)}
 			AND m.deleted_at IS NULL
 			AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.items_enabled')), 'true') <> 'false'

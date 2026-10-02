@@ -8,6 +8,7 @@ import {
 	getLevelingSettings,
 	getServerForCurrentBot,
 	isComponentFeatureEnabled,
+	isPublicSubFeatureEnabled,
 	serverSettingsComponent
 } from '../../../config.js';
 import { awardInviteXp } from './leveling.js';
@@ -321,7 +322,8 @@ export function pickInviteChannel(guild: any) {
 
 async function ensureServerInvite(guild: any) {
 	if (guild.vanityURLCode) return;
-	if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.public_statistics).catch(() => false))) return;
+	if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.public).catch(() => false))) return;
+	if (!(await isPublicSubFeatureEnabled(guild.id, 'invite').catch(() => false))) return;
 	const state = guildStates.get(guild.id);
 	if (!state) return;
 

@@ -3,6 +3,7 @@
 	import { PageMeta, PageShell } from '$lib/frontend/components/shell';
 	import { inviteJoinPath } from '$lib/invites.js';
 	import { publicServerPath } from '$lib/url.js';
+	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -32,7 +33,12 @@
 </svelte:head>
 
 <PageShell trailing="home" center>
-	<section class="mx-auto flex w-full max-w-md flex-col items-center py-10 text-center">
+	<section
+		class="border-base-300 bg-base-100/85 relative isolate mx-auto my-8 flex w-full max-w-md flex-col items-center overflow-hidden rounded-2xl border px-5 py-10 text-center shadow-sm sm:px-8"
+	>
+		{#if data.memberTheme && data.memberTheme.effect !== 'none'}
+			<ThemeEffect effect={data.memberTheme.effect} seed={data.memberTheme.effectSeed} accent={data.memberTheme.accent} />
+		{/if}
 		<p class="text-primary mb-5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">Discord invite</p>
 
 		<div class="border-base-300 bg-base-200 mb-5 size-24 overflow-hidden rounded-3xl border">

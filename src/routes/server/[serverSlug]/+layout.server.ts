@@ -11,13 +11,14 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const resolved = await resolvePublicServerBySlug(slug);
 	if (!resolved) redirect(303, apexHome());
 
-	const settingsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.public_statistics);
+	const settingsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.public);
 	const settings = (settingsRow as any)?.settings || {};
 
 	const itemsEnabled = publicSubfeatureEnabled(settings, 'items');
 	const assetsEnabled = publicSubfeatureEnabled(settings, 'assets');
 	const minigamesEnabled = publicSubfeatureEnabled(settings, 'minigames');
 	const tasksEnabled = publicSubfeatureEnabled(settings, 'tasks');
+	const inviteEnabled = publicSubfeatureEnabled(settings, 'invite');
 
 	const server = resolved.server;
 	const serverRow = await db.getServer(server.id).catch(() => null);
@@ -38,7 +39,7 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 			name: server.name,
 			slug: resolved.computedSlug,
 			server_icon: server.server_icon ?? null,
-			join_available: !!(serverRow?.vanity_url_code || serverRow?.invite_code)
+			join_available: inviteEnabled && !!(serverRow?.vanity_url_code || serverRow?.invite_code)
 		}
 	};
 };

@@ -3,6 +3,7 @@ import {
 	getEmbedConfig,
 	getServerForCurrentBot,
 	isComponentFeatureEnabled,
+	isPublicSubFeatureEnabled,
 	publicServerSubdomainOrigin,
 	publicServerUrl,
 	publicSiteOrigin,
@@ -280,7 +281,8 @@ async function handleMenuButton(interaction) {
 				resolvePublicStatisticsSnapshot(Number(server.id)).catch(() => null),
 				db.getServer(server.id).catch(() => null)
 			]);
-			const joinUrl = serverRow?.vanity_url_code || serverRow?.invite_code ? `${publicSiteOrigin()}${inviteJoinPath(slug)}` : null;
+			const inviteOn = await isPublicSubFeatureEnabled(interaction.guild.id, 'invite').catch(() => false);
+			const joinUrl = inviteOn && (serverRow?.vanity_url_code || serverRow?.invite_code) ? `${publicSiteOrigin()}${inviteJoinPath(slug)}` : null;
 			publicServer = { base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null, joinUrl };
 		}
 	} catch (_) {}

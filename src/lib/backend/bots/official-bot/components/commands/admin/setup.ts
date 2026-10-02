@@ -179,8 +179,8 @@ export async function execute(interaction: any, client: any) {
 			PROGRESS_CHANNEL_ID: channelMap['leveling']
 		});
 
-		const psRaw = (await getSettings(SERVER_SETTINGS.component.public_statistics)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.public_statistics, {
+		const psRaw = (await getSettings(SERVER_SETTINGS.component.public)) || {};
+		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.public, {
 			items_enabled: true,
 			minigames_enabled: true,
 			assets_enabled: true,

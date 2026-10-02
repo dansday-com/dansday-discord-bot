@@ -8,6 +8,7 @@
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import { DEFAULT_ACCENT, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
+	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageExtension, imageSizeLabel } from '$lib/images.js';
 	import { EFFECTS, normalizeEffect, normalizeSeed, randomSeed } from '$lib/effects.js';
 	import type { PageProps } from './$types';
 
@@ -42,9 +43,21 @@
 		const picked = input.files?.[0];
 		input.value = '';
 		if (!picked) return;
+		if (!imageExtension(picked.type)) {
+			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
+			return;
+		}
+		if (picked.size > MEMBER_THEME_MAX_BYTES) {
+			showToast(`That image is ${imageSizeLabel(picked.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`, 'error');
+			return;
+		}
 		uploadingBackground = true;
 		try {
 			const prepared = await prepareThemeUpload(picked);
+			if (prepared.file.size > MEMBER_THEME_MAX_BYTES) {
+				showToast(`Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`, 'error');
+				return;
+			}
 			const form = new FormData();
 			form.append('image', prepared.file);
 			form.append('accent', prepared.accent);
@@ -180,7 +193,11 @@
 				<div class="space-y-4 pl-1">
 					<div>
 						<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-image mr-1 text-amber-400"></i>Invite page background</label>
-						<p class="text-ash-500 mb-2 text-xs">Fills the join page behind the invite card. The tone below is picked from it.</p>
+						<p class="text-ash-500 mb-2 text-xs">
+							Fills the join page behind the invite card. The tone below is picked from it. {IMAGE_FORMATS_LABEL} · max {imageSizeLabel(
+								MEMBER_THEME_MAX_BYTES
+							)}.
+						</p>
 						<div
 							class="border-ash-600 relative isolate mb-2 h-28 overflow-hidden rounded-lg border bg-cover bg-center"
 							style="background-color: {inviteAccent}; {inviteImageUrl ? `background-image: url('${inviteImageUrl}')` : ''}"
@@ -190,13 +207,7 @@
 						<div class="flex flex-wrap gap-2">
 							<label class="bg-ash-600 hover:bg-ash-500 text-ash-100 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition-colors">
 								<i class="fas {uploadingBackground ? 'fa-spinner fa-spin' : 'fa-upload'} mr-1"></i>{inviteImageUrl ? 'Change image' : 'Upload image'}
-								<input
-									type="file"
-									accept="image/png,image/jpeg,image/gif,image/webp"
-									class="hidden"
-									disabled={uploadingBackground}
-									onchange={uploadBackground}
-								/>
+								<input type="file" accept={IMAGE_ACCEPT} class="hidden" disabled={uploadingBackground} onchange={uploadBackground} />
 							</label>
 							{#if inviteImageUrl}
 								<button

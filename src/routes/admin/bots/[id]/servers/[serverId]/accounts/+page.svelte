@@ -9,21 +9,24 @@
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
+	import { canActOnAccount, invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
 	let { data }: PageProps = $props();
 
-	let inviteType = $state<'owner' | 'staff'>(data.user.authenticated && data.user.account_source === 'accounts' ? 'owner' : 'staff');
+	const actor = $derived(panelActorOf(data.user));
+	let inviteType = $state<'owner' | 'staff'>(invitableAccountTypes(panelActorOf(data.user))[0] ?? 'staff');
 	let generatedLink = $state<string | null>(null);
 	let copyIcon = $state('fa-copy');
 	let selectedDiscordMemberIds = $state<string[]>([]);
 	let inviting = $state(false);
 
-	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'staff'] : ['staff']);
+	const validTypes = $derived(invitableAccountTypes(actor));
 	const inviteTypeOptions = $derived<LabeledSelectOption[]>(validTypes.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })));
-	const canInvite = $derived(
-		data.user.authenticated &&
-			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
-	);
+	const canInvite = $derived(validTypes.length > 0);
+
+	function isOwnAccount(accountId: number) {
+		return data.user.authenticated && data.user.account_source === 'server_accounts' && data.user.account_id === accountId;
+	}
 
 	async function sendInvite() {
 		if (selectedDiscordMemberIds.length === 0) {
@@ -153,7 +156,6 @@
 	}
 
 	const isSuperadmin = $derived(data.user.authenticated && data.user.account_source === 'accounts');
-	const isOwner = $derived(data.user.authenticated && data.user.account_source === 'server_accounts' && data.user.account_type === 'owner');
 
 	function maskEmail(email: string) {
 		const at = email.indexOf('@');
@@ -285,7 +287,7 @@
 								{#if account.is_frozen}
 									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
 								{/if}
-								{#if isSuperadmin || (isOwner && account.account_type === 'staff' && account.id !== data.user.account_id)}
+								{#if canActOnAccount(actor, account.account_type) && !isOwnAccount(account.id)}
 									<button
 										onclick={() => confirmFreeze(account.id, account.is_frozen, account.username)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}
@@ -335,7 +337,7 @@
 								<span class="rounded-full px-2 py-0.5 text-xs {inviteStatusClass(invite)}">
 									{inviteStatusLabel(invite)}
 								</span>
-								{#if canInvite && !invite.used_by && !isInviteExpired(invite)}
+								{#if canActOnAccount(actor, invite.account_type) && !invite.used_by && !isInviteExpired(invite)}
 									<button
 										type="button"
 										title="Expire this link (it cannot be used to register)"

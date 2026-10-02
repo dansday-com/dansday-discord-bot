@@ -8,6 +8,7 @@ import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
+import { memberTier, type MemberTier } from './panelHierarchy.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -1676,6 +1677,29 @@ export async function getAdministratorRoleIds(serverId: any): Promise<string[]> 
 		WHERE server_id = ${Number(serverId)} AND (CAST(permissions AS UNSIGNED) & 8) = 8
 	`);
 	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
+}
+
+export async function getMemberTier(serverId: any, discordMemberId: string): Promise<MemberTier> {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT sm.is_owner, sr.discord_role_id
+		FROM server_members sm
+		LEFT JOIN server_member_roles smr ON smr.member_id = sm.id
+		LEFT JOIN server_roles sr ON sr.id = smr.role_id
+		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${String(discordMemberId)}
+	`)) as any;
+	const list = (rows as any[]) ?? [];
+	if (list.length === 0) return 'member';
+	const [main, adminRoleIds] = await Promise.all([
+		getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
+		getAdministratorRoleIds(serverId).catch(() => [] as string[])
+	]);
+	const staffRoleIds = ((main as any)?.settings?.staff_roles ?? []).map(String);
+	const roleIds = list
+		.map((r) => r.discord_role_id)
+		.filter((id) => id != null)
+		.map(String);
+	return memberTier({ is_owner: list[0].is_owner, roleIds }, staffRoleIds, adminRoleIds);
 }
 
 export async function upsertRole(serverId: any, roleData: any) {
@@ -8221,6 +8245,7 @@ export default {
 	getFeedback,
 	getFeedbackByServer,
 	getFeedbackCount,
+	getMemberTier,
 	recordMemberJoinInvite,
 	markMemberInviteLeft,
 	releaseInviteReward,

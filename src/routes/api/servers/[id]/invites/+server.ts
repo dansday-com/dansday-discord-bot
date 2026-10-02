@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { guardMemberAction } from '$lib/frontend/panelGuards.server.js';
 
 const MAX_ADJUST = 10_000;
 
@@ -41,6 +42,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const member = discordId ? await db.getMemberByDiscordId(g.serverId, discordId, { includeDeleted: true }) : null;
 	if (!member) return json({ ok: false, error: 'Member not found' }, { status: 404 });
 
+	const memberDenied = await guardMemberAction(locals, g.serverId, discordId);
+	if (memberDenied) return memberDenied;
+
 	if (action === 'adjust') {
 		const amount = Math.trunc(Number(body?.amount));
 		const reason = String(body?.reason ?? '')
@@ -65,6 +69,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (!inviterDiscordId || inviterDiscordId === discordId) return json({ ok: false, error: 'Pick a different member as the inviter' }, { status: 400 });
 		const inviter = await db.getMemberByDiscordId(g.serverId, inviterDiscordId);
 		if (!inviter || inviter.is_bot) return json({ ok: false, error: 'Inviter not found' }, { status: 404 });
+		const inviterDenied = await guardMemberAction(locals, g.serverId, inviterDiscordId);
+		if (inviterDenied) return inviterDenied;
 		const assigned = await db.assignMemberInviter(Number(member.id), Number(inviter.id));
 		if (!assigned) return json({ ok: false, error: 'This join already has an inviter or was not tracked' }, { status: 409 });
 		return json({ ok: true, inviter: await db.getMemberInviter(Number(member.id)) });

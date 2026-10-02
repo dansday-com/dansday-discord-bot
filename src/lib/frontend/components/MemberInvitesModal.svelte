@@ -10,9 +10,11 @@
 		member: { id: string; name: string } | null;
 		onclose: () => void;
 		onchange?: (discordId: string, total: number) => void;
+		canEdit?: boolean;
+		deniedReason?: string;
 	}
 
-	let { serverId, member, onclose, onchange }: Props = $props();
+	let { serverId, member, onclose, onchange, canEdit = false, deniedReason = 'Access denied' }: Props = $props();
 
 	type Stats = {
 		joins: number;
@@ -183,12 +185,18 @@
 						{#if canAssign}
 							<div class="mt-2 flex flex-col gap-2 sm:flex-row">
 								<div class="min-w-0 flex-1">
-									<MemberPicker serverId={Number(serverId)} value={assignTo} placeholder="Pick who invited them..." onchange={(v) => (assignTo = String(v))} />
+									<MemberPicker
+										serverId={Number(serverId)}
+										value={assignTo}
+										disabled={!canEdit}
+										placeholder="Pick who invited them..."
+										onchange={(v) => (assignTo = String(v))}
+									/>
 								</div>
 								<button
 									type="button"
 									onclick={assign}
-									disabled={busy || !assignTo}
+									disabled={busy || !assignTo || !canEdit}
 									class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
 								>
 									Set inviter
@@ -234,6 +242,7 @@
 							min="1"
 							max="10000"
 							bind:value={amount}
+							disabled={!canEdit}
 							aria-label="Amount"
 							class="bg-ash-700 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm sm:w-28"
 						/>
@@ -241,6 +250,7 @@
 							type="text"
 							maxlength="500"
 							bind:value={reason}
+							disabled={!canEdit}
 							placeholder="Reason"
 							aria-label="Reason"
 							class="bg-ash-700 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
@@ -249,7 +259,7 @@
 							<button
 								type="button"
 								onclick={() => adjust(1)}
-								disabled={busy}
+								disabled={busy || !canEdit}
 								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
 							>
 								<i class="fas fa-plus"></i>Add
@@ -257,7 +267,7 @@
 							<button
 								type="button"
 								onclick={() => adjust(-1)}
-								disabled={busy}
+								disabled={busy || !canEdit}
 								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
 							>
 								<i class="fas fa-minus"></i>Remove
@@ -265,6 +275,9 @@
 						</div>
 					</div>
 					<p class="text-ash-500 mt-2 text-xs">Bonus changes the invite count only. It pays no XP.</p>
+					{#if !canEdit}
+						<p class="mt-2 flex items-center gap-1.5 text-xs text-amber-300"><i class="fas fa-lock"></i>{deniedReason}</p>
+					{/if}
 
 					{#if logs.length > 0}
 						<ul class="mt-3 max-h-40 space-y-1.5 overflow-y-auto pr-1">

@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
+import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
@@ -14,29 +15,12 @@ async function canManageAccounts(locals: App.Locals, serverId: number): Promise<
 	return false;
 }
 
-function isSuperadmin(locals: App.Locals) {
-	return locals.user.authenticated && locals.user.account_source === 'accounts';
-}
-
 function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: number): boolean {
 	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetServerAccountId;
 }
 
-function canActorModifyTargetServerAccount(locals: App.Locals, target: { account_type: 'owner' | 'staff' | string }): boolean {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') return false;
-	if (isSuperadmin(locals)) return true;
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
-		return target.account_type === 'staff';
-	}
-	return false;
-}
-
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
 	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -51,9 +35,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Cannot modify your own account' }, { status: 400 });
 	}
 
-	if (!canActorModifyTargetServerAccount(locals, account)) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
+	const denied = guardAccountAction(locals, account.account_type);
+	if (denied) return denied;
 
 	const { is_frozen } = await request.json();
 	if (typeof is_frozen !== 'boolean') {
@@ -79,9 +62,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
 	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -96,9 +76,8 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Cannot delete your own account' }, { status: 400 });
 	}
 
-	if (!canActorModifyTargetServerAccount(locals, account)) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
+	const denied = guardAccountAction(locals, account.account_type);
+	if (denied) return denied;
 
 	await db.deleteServerAccount(accountId);
 	logger.log(`${locals.user.username} deleted server account ${account.username} (server ${serverId})`);

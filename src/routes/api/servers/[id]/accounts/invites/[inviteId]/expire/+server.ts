@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { DateTime } from 'luxon';
 import { logger, isUtcSqlExpired } from '$lib/utils/index.js';
+import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
 
 async function canManageInvites(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
@@ -23,9 +24,6 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
 	if (!(await canManageInvites(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -37,6 +35,8 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!invite) {
 		return json({ success: false, error: 'Invite not found' }, { status: 404 });
 	}
+	const denied = guardAccountAction(locals, invite.account_type);
+	if (denied) return denied;
 	if (invite.used_by != null || invite.used_at) {
 		return json({ success: false, error: 'This invite was already used' }, { status: 400 });
 	}

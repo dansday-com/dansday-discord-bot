@@ -3,6 +3,8 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { randomBytes } from 'crypto';
+import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
+import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
 function maskEmail(email: string) {
 	const at = email.indexOf('@');
@@ -43,9 +45,6 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const serverId = Number(params.id);
-	if (locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
 	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -55,7 +54,9 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	const body = await request.json();
 	const { account_type } = body;
 
-	const validTypes = locals.user.account_source === 'accounts' ? ['owner', 'staff'] : ['staff'];
+	const denied = guardAccountAction(locals, account_type === 'owner' ? 'owner' : 'staff');
+	if (denied) return denied;
+	const validTypes: string[] = invitableAccountTypes(panelActorOf(locals.user));
 	if (!account_type || !validTypes.includes(account_type)) {
 		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
 	}

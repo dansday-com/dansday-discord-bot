@@ -5,6 +5,8 @@ import { randomBytes } from 'crypto';
 import { logger } from '$lib/utils/index.js';
 import { request as httpRequest } from 'http';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
+import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
+import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
@@ -23,9 +25,6 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
-	}
 	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -44,7 +43,9 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	discord_member_ids = [...new Set(discord_member_ids)];
 
-	const validTypes = locals.user.account_source === 'accounts' ? ['owner', 'staff'] : ['staff'];
+	const denied = guardAccountAction(locals, account_type ?? 'staff');
+	if (denied) return denied;
+	const validTypes: string[] = invitableAccountTypes(panelActorOf(locals.user));
 	if (!account_type || !validTypes.includes(account_type)) {
 		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
 	}

@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
 import { postBotWebhook, resolveActiveBotForServer } from '$lib/frontend/public/items/index.js';
+import { guardMemberAction } from '$lib/frontend/panelGuards.server.js';
 
 const ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'];
 
@@ -19,6 +20,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 	const server = await db.getServer(serverId);
 	if (!server) return json({ ok: false, error: 'Server not found' }, { status: 404 });
+
+	const caseRow = !body?.target_id && body?.case_number ? await db.getModerationCase(serverId, Number(body.case_number)).catch(() => null) : null;
+	const targetDiscordId = body?.target_id ? String(body.target_id) : caseRow?.discord_member_id ? String(caseRow.discord_member_id) : null;
+	if (targetDiscordId) {
+		const denied = await guardMemberAction(locals, serverId, targetDiscordId);
+		if (denied) return denied;
+	}
 
 	const bot = await resolveActiveBotForServer(server);
 	if (!bot) return json({ ok: false, error: 'Bot not found' }, { status: 404 });

@@ -5,6 +5,8 @@
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import ModerateMemberModal from '$lib/frontend/components/ModerateMemberModal.svelte';
 	import MemberInvitesModal from '$lib/frontend/components/MemberInvitesModal.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import { TIER_DENIED, canActOn, memberTier, type PanelActor } from '$lib/panelHierarchy.js';
 
 	export type Member = {
 		discord_member_id: string;
@@ -38,12 +40,37 @@
 		configureLabel?: string;
 		boostersOnly?: boolean;
 		serverId?: number | string;
+		staffRoleIds?: string[];
+		adminRoleIds?: string[];
+		actor?: PanelActor | null;
 	}
 
-	let { members, filterRoleIds, configureHref, configureLabel = 'Open configuration', boostersOnly = false, serverId }: Props = $props();
+	let {
+		members,
+		filterRoleIds,
+		configureHref,
+		configureLabel = 'Open configuration',
+		boostersOnly = false,
+		serverId,
+		staffRoleIds = [],
+		adminRoleIds = [],
+		actor = null
+	}: Props = $props();
 
 	let moderating = $state<{ id: string; name: string } | null>(null);
-	let invitesFor = $state<{ id: string; name: string } | null>(null);
+	let invitesFor = $state<{ id: string; name: string; canEdit: boolean } | null>(null);
+
+	function canManage(m: Member): boolean {
+		return canActOn(actor, memberTier({ is_owner: m.is_owner, roleIds: (m.roles ?? []).map((r) => r.id) }, staffRoleIds, adminRoleIds));
+	}
+
+	function openModerate(m: Member) {
+		if (!canManage(m)) {
+			showToast(actor ? TIER_DENIED[actor] : 'Access denied', 'error');
+			return;
+		}
+		moderating = { id: m.discord_member_id, name: listDisplayName(m) };
+	}
 	let inviteOverrides = $state<Record<string, number>>({});
 
 	function invitesOf(m: Member): number {
@@ -254,7 +281,7 @@
 								<div class="flex items-center gap-2 self-center sm:ml-auto">
 									<button
 										type="button"
-										onclick={() => (invitesFor = { id: member.discord_member_id, name: listDisplayName(member) })}
+										onclick={() => (invitesFor = { id: member.discord_member_id, name: listDisplayName(member), canEdit: canManage(member) })}
 										class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
 									>
 										<i class="fas fa-user-plus text-cyan-400"></i>Invites
@@ -262,8 +289,14 @@
 									{#if !member.is_owner}
 										<button
 											type="button"
-											onclick={() => (moderating = { id: member.discord_member_id, name: listDisplayName(member) })}
-											class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
+											onclick={() => openModerate(member)}
+											aria-disabled={!canManage(member)}
+											title={canManage(member) ? undefined : actor ? TIER_DENIED[actor] : undefined}
+											class="border-ash-600 text-ash-200 hover:bg-ash-600 flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors {canManage(
+												member
+											)
+												? ''
+												: 'opacity-50'}"
 										>
 											<i class="fas fa-gavel text-red-400"></i>Moderate
 										</button>
@@ -412,6 +445,8 @@
 	<MemberInvitesModal
 		{serverId}
 		member={invitesFor}
+		canEdit={invitesFor?.canEdit ?? false}
+		deniedReason={actor ? TIER_DENIED[actor] : 'Access denied'}
 		onclose={() => (invitesFor = null)}
 		onchange={(id, total) => (inviteOverrides = { ...inviteOverrides, [id]: total })}
 	/>

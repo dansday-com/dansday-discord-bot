@@ -3,6 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { accountOwnsServer, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { panelActorOf } from '$lib/panelHierarchy.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -34,6 +35,7 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 		members: members ?? [],
 		staffRoleIds: (mainSettings?.settings?.staff_roles ?? []) as string[],
 		contentCreatorRoleIds: (creatorSettings?.settings?.content_creator_roles ?? []) as string[],
-		adminRoleIds: adminRoleIds ?? []
+		adminRoleIds: adminRoleIds ?? [],
+		panelActor: panelActorOf(locals.user)
 	};
 };

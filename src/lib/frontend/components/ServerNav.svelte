@@ -59,7 +59,7 @@
 			class="btn btn-primary btn-sm ml-auto shrink-0 rounded-sm"
 			title="{APP_DOMAIN}{inviteJoinPath(server.slug)}"
 		>
-			<i class="fa-brands fa-discord"></i>Join<span class="hidden font-normal opacity-80 md:inline">· {APP_DOMAIN}{inviteJoinPath(server.slug)}</span>
+			<i class="fa-brands fa-discord"></i>Join
 		</a>
 	{/if}
 </header>

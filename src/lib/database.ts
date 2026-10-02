@@ -7885,10 +7885,53 @@ export async function serverTracksInvites(serverId: number | string) {
 	return ((rows as any[]) ?? []).length > 0;
 }
 
-export async function getMemberInviteLink(memberId: number) {
+export async function getMemberInviteLink(memberId: number): Promise<{ code: string; slug: string | null } | null> {
 	await initializeDatabase();
-	const [rows] = (await db.execute(sql`SELECT code FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`)) as any;
-	return ((rows as any[])?.[0]?.code as string | undefined) ?? null;
+	const [rows] = (await db.execute(sql`SELECT code, slug FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`)) as any;
+	const row = (rows as any[])?.[0];
+	return row ? { code: String(row.code), slug: row.slug ?? null } : null;
+}
+
+export async function setMemberInviteSlug(memberId: number, slug: string): Promise<boolean> {
+	await initializeDatabase();
+	try {
+		const [result] = (await db.execute(sql`UPDATE server_member_invite_links SET slug = ${slug} WHERE member_id = ${Number(memberId)}`)) as any;
+		return Number(result?.affectedRows ?? 0) > 0;
+	} catch (error: any) {
+		if (error?.code === 'ER_DUP_ENTRY' || error?.cause?.code === 'ER_DUP_ENTRY') return false;
+		throw error;
+	}
+}
+
+export async function getInviteLinkBySlug(slug: string) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT l.slug, l.code, l.created_at, m.id AS member_id, m.discord_member_id, m.avatar, ${INVITE_NAME} AS member_name,
+			s.id AS server_id, s.name AS server_name, s.server_icon, s.total_members
+		FROM server_member_invite_links l
+		JOIN server_members m ON m.id = l.member_id
+		JOIN servers s ON s.id = m.server_id
+		WHERE l.slug = ${slug} AND m.deleted_at IS NULL AND m.is_bot = 0
+		LIMIT 1
+	`)) as any;
+	return (rows as any[])?.[0] ?? null;
+}
+
+export async function listInviteSlugsForServers(serverIds: number[]) {
+	await initializeDatabase();
+	if (serverIds.length === 0) return [] as { slug: string; created_at: any }[];
+	const [rows] = (await db.execute(sql`
+		SELECT l.slug, l.created_at, m.id AS member_id, m.server_id
+		FROM server_member_invite_links l
+		JOIN server_members m ON m.id = l.member_id
+		WHERE l.slug IS NOT NULL AND m.deleted_at IS NULL AND m.is_bot = 0 AND m.server_id IN (${sql.join(
+			serverIds.map((id) => sql`${id}`),
+			sql`, `
+		)})
+	`)) as any;
+	const hidden = new Set<number>();
+	for (const id of serverIds) for (const memberId of await getDisguisedMemberIds(id).catch(() => [] as number[])) hidden.add(Number(memberId));
+	return ((rows as any[]) ?? []).filter((r) => !hidden.has(Number(r.member_id))).map((r) => ({ slug: String(r.slug), created_at: r.created_at }));
 }
 
 export async function setMemberInviteLink(memberId: number, code: string) {
@@ -8266,5 +8309,8 @@ export default {
 	serverTracksInvites,
 	getMemberInviteLink,
 	setMemberInviteLink,
+	setMemberInviteSlug,
+	getInviteLinkBySlug,
+	listInviteSlugsForServers,
 	getInviteLinkOwners
 };

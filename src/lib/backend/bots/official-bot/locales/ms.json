@@ -137,6 +137,12 @@
 		"link": "🔗 Pautan jemputan peribadi anda: {url}",
 		"noLink": "⚠️ Saya tidak dapat membuat pautan jemputan di sini. Minta staf beri saya kebenaran Create Invite.",
 		"copyButton": "Buka pautan jemputan",
+		"customizeButton": "✏️ Ubah pautan",
+		"slugTitle": "Ubah pautan jemputan anda",
+		"slugLabel": "Nama pautan ({min}–{max} huruf, nombor, -)",
+		"slugInvalid": "❌ Gunakan {min}–{max} huruf, nombor atau sengkang.",
+		"slugTaken": "❌ **{slug}** sudah digunakan. Cuba nama lain.",
+		"slugSaved": "✅ Pautan jemputan anda kini {url}",
 		"fields": {
 			"total": "📨 Jumlah",
 			"active": "✅ Masih di sini",

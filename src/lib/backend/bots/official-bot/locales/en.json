@@ -137,6 +137,12 @@
 		"link": "🔗 Your personal invite link: {url}",
 		"noLink": "⚠️ I couldn't create an invite link here. Ask staff to give me the Create Invite permission.",
 		"copyButton": "Open invite link",
+		"customizeButton": "✏️ Customize link",
+		"slugTitle": "Customize your invite link",
+		"slugLabel": "Link name ({min}–{max} letters, numbers, dashes)",
+		"slugInvalid": "❌ Use {min}–{max} letters, numbers or dashes.",
+		"slugTaken": "❌ **{slug}** is already taken. Try another name.",
+		"slugSaved": "✅ Your invite link is now {url}",
 		"fields": {
 			"total": "📨 Total",
 			"active": "✅ Still here",

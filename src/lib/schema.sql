@@ -775,9 +775,11 @@ CREATE TABLE IF NOT EXISTS server_member_invite_links (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     code VARCHAR(32) NOT NULL,
+    slug VARCHAR(32) NULL,
     created_at DATETIME NOT NULL,
     UNIQUE KEY unique_member_invite_link (member_id),
     UNIQUE KEY unique_member_invite_link_code (code),
+    UNIQUE KEY unique_member_invite_link_slug (slug),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 

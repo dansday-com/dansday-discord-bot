@@ -3,6 +3,8 @@ import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 import { TERMS_URL, PRIVACY_URL, LEGAL_LAST_UPDATED } from '$lib/legal.js';
 import { APP_URL } from '$lib/frontend/panelServer.js';
+import db from '$lib/database.js';
+import { inviteJoinPath } from '$lib/invites.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -45,6 +47,14 @@ export const GET: RequestHandler = async () => {
 		];
 	});
 
+	const inviteSlugs = await db.listInviteSlugsForServers(servers.map((s) => Number(s.id))).catch(() => []);
+	const joinRows = inviteSlugs.map((i) => ({
+		loc: `${baseUrl}${inviteJoinPath(i.slug)}`,
+		lastmod: toLastmod(i.created_at),
+		changefreq: 'weekly' as const,
+		priority: 0.6
+	}));
+
 	const newestServer = publicPageRows.reduce<string | undefined>((max, r) => (r.lastmod && (!max || r.lastmod > max) ? r.lastmod : max), undefined);
 	const legalLastmod = toLastmod(new Date(`${LEGAL_LAST_UPDATED} UTC`));
 
@@ -62,7 +72,7 @@ export const GET: RequestHandler = async () => {
 		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: legalLastmod }
 	];
 
-	const allUrlData: { loc: string; changefreq: string; priority: number; lastmod?: string }[] = [...staticPages, ...publicPageRows];
+	const allUrlData: { loc: string; changefreq: string; priority: number; lastmod?: string }[] = [...staticPages, ...publicPageRows, ...joinRows];
 
 	const urlElements = allUrlData
 		.map(({ loc, lastmod, changefreq, priority }) => {

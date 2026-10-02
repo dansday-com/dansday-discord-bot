@@ -23,3 +23,26 @@ export const INVITE_SOURCE_LABEL: Record<string, string> = {
 	manual: 'Set by staff',
 	unknown: 'Unknown'
 };
+
+export const INVITE_SLUG_MIN = 3;
+
+export const INVITE_SLUG_MAX = 32;
+
+export function normalizeInviteSlug(raw: string | null | undefined): string {
+	return String(raw ?? '')
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, INVITE_SLUG_MAX)
+		.replace(/-+$/g, '');
+}
+
+export function isValidInviteSlug(slug: string): boolean {
+	return slug.length >= INVITE_SLUG_MIN && slug.length <= INVITE_SLUG_MAX && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
+export function inviteJoinPath(slug: string): string {
+	return `/join/${encodeURIComponent(slug)}`;
+}

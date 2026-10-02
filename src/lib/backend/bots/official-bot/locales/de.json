@@ -137,6 +137,12 @@
 		"link": "🔗 Dein persönlicher Einladungslink: {url}",
 		"noLink": "⚠️ Ich konnte hier keinen Einladungslink erstellen. Bitte das Team, mir die Berechtigung „Einladung erstellen“ zu geben.",
 		"copyButton": "Einladungslink öffnen",
+		"customizeButton": "✏️ Link anpassen",
+		"slugTitle": "Einladungslink anpassen",
+		"slugLabel": "Linkname ({min}–{max} Buchstaben, Zahlen, -)",
+		"slugInvalid": "❌ Nutze {min}–{max} Buchstaben, Zahlen oder Bindestriche.",
+		"slugTaken": "❌ **{slug}** ist schon vergeben. Versuch einen anderen Namen.",
+		"slugSaved": "✅ Dein Einladungslink ist jetzt {url}",
 		"fields": {
 			"total": "📨 Gesamt",
 			"active": "✅ Noch da",

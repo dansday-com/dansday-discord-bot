@@ -137,6 +137,12 @@
 		"link": "🔗 Link undangan pribadimu: {url}",
 		"noLink": "⚠️ Aku tidak bisa membuat link undangan di sini. Minta staff memberiku izin Create Invite.",
 		"copyButton": "Buka link undangan",
+		"customizeButton": "✏️ Ubah link",
+		"slugTitle": "Ubah link undanganmu",
+		"slugLabel": "Nama link ({min}–{max} huruf, angka, tanda -)",
+		"slugInvalid": "❌ Gunakan {min}–{max} huruf, angka atau tanda hubung.",
+		"slugTaken": "❌ **{slug}** sudah dipakai. Coba nama lain.",
+		"slugSaved": "✅ Link undanganmu sekarang {url}",
 		"fields": {
 			"total": "📨 Total",
 			"active": "✅ Masih di sini",

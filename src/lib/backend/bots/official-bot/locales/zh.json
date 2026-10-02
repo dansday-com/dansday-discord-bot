@@ -137,6 +137,12 @@
 		"link": "🔗 你的专属邀请链接：{url}",
 		"noLink": "⚠️ 我无法在这里创建邀请链接。请让工作人员给我“创建邀请”权限。",
 		"copyButton": "打开邀请链接",
+		"customizeButton": "✏️ 自定义链接",
+		"slugTitle": "自定义你的邀请链接",
+		"slugLabel": "链接名称（{min}–{max} 个字母、数字或短横线）",
+		"slugInvalid": "❌ 请使用 {min}–{max} 个字母、数字或短横线。",
+		"slugTaken": "❌ **{slug}** 已被占用，请换一个名称。",
+		"slugSaved": "✅ 你的邀请链接现在是 {url}",
 		"fields": {
 			"total": "📨 总数",
 			"active": "✅ 仍在服务器",

@@ -29,7 +29,7 @@ import {
 	handleGiveawayFinish
 } from './interface/giveaway.js';
 import { handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
-import { handleInvitesButton } from './interface/invites.js';
+import { handleInvitesButton, handleInviteSlugButton, handleInviteSlugModal, INVITE_SLUG_BUTTON_ID, INVITE_SLUG_MODAL_ID } from './interface/invites.js';
 import {
 	handleStaffRatingButton,
 	handleStaffRatingUserSelect,
@@ -559,6 +559,10 @@ export async function handleButtonInteraction(interaction) {
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
 			await handleInvitesButton(interaction);
 			break;
+		case INVITE_SLUG_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
+			await handleInviteSlugButton(interaction);
+			break;
 		case 'settings_language':
 			await handleLanguageButton(interaction);
 			break;
@@ -743,6 +747,9 @@ function init(client) {
 				} else if (interaction.customId === 'custom_supporter_role_edit') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
 					await handleCustomSupporterRoleEditModal(interaction);
+				} else if (interaction.customId === INVITE_SLUG_MODAL_ID) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) return;
+					await handleInviteSlugModal(interaction);
 				} else if (interaction.customId === 'feedback_submit') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) return;
 					await handleFeedbackModal(interaction);

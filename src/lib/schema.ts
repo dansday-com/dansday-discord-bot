@@ -1317,7 +1317,12 @@ export const serverMemberInviteLinks = mysqlTable(
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		code: varchar('code', { length: 32 }).notNull(),
+		slug: varchar('slug', { length: 32 }),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [uniqueIndex('unique_member_invite_link').on(t.member_id), uniqueIndex('unique_member_invite_link_code').on(t.code)]
+	(t) => [
+		uniqueIndex('unique_member_invite_link').on(t.member_id),
+		uniqueIndex('unique_member_invite_link_code').on(t.code),
+		uniqueIndex('unique_member_invite_link_slug').on(t.slug)
+	]
 );

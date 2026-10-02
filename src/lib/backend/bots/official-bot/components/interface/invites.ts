@@ -1,10 +1,26 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
-import { getEmbedConfig, getLevelingSettings, getServerForCurrentBot, DEFAULT_LEVELING_SETTINGS } from '../../../../config.js';
+import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	ChannelType,
+	EmbedBuilder,
+	ModalBuilder,
+	PermissionFlagsBits,
+	TextInputBuilder,
+	TextInputStyle
+} from 'discord.js';
+import { getEmbedConfig, getLevelingSettings, getServerForCurrentBot, DEFAULT_LEVELING_SETTINGS, publicSiteOrigin } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { inviteRewardFor, rememberCreatedInvite } from '../invites.js';
+import { INVITE_SLUG_MAX, INVITE_SLUG_MIN, inviteJoinPath, isValidInviteSlug, normalizeInviteSlug } from '../../../../../invites.js';
+
+export const INVITE_SLUG_BUTTON_ID = 'invites_slug';
+export const INVITE_SLUG_MODAL_ID = 'invites_slug_modal';
+const SLUG_INPUT_ID = 'invites_slug_value';
+const SLUG_ATTEMPTS = 50;
 
 function pickInviteChannel(guild: any) {
 	const me = guild.members.me;
@@ -19,19 +35,42 @@ function pickInviteChannel(guild: any) {
 	return [...guild.channels.cache.values()].filter(usable).sort((a: any, b: any) => a.rawPosition - b.rawPosition)[0] ?? null;
 }
 
-async function ensurePersonalInvite(guild: any, memberId: number, userTag: string): Promise<string | null> {
-	const stored = await db.getMemberInviteLink(memberId).catch(() => null);
-	if (stored) {
-		const live = await guild.client.fetchInvite(stored).catch(() => null);
-		if (live?.guild?.id === guild.id) return stored;
+async function claimDefaultSlug(memberId: number, name: string): Promise<string | null> {
+	let base = normalizeInviteSlug(name)
+		.slice(0, INVITE_SLUG_MAX - 6)
+		.replace(/-+$/, '');
+	if (base.length < INVITE_SLUG_MIN) base = base ? `${base}-member` : 'member';
+	for (let i = 1; i <= SLUG_ATTEMPTS; i++) {
+		const candidate = i === 1 ? base : `${base}-${i}`;
+		if (await db.setMemberInviteSlug(memberId, candidate)) return candidate;
 	}
-	const channel = pickInviteChannel(guild);
-	if (!channel) return null;
-	const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: `Personal invite link for ${userTag}` }).catch(() => null);
-	if (!invite?.code) return null;
-	await db.setMemberInviteLink(memberId, invite.code);
-	rememberCreatedInvite(guild.id, invite);
-	return invite.code;
+	const fallback = `${base}-${Math.random().toString(36).slice(2, 7)}`;
+	return (await db.setMemberInviteSlug(memberId, fallback)) ? fallback : null;
+}
+
+async function ensurePersonalInvite(guild: any, member: any, userTag: string): Promise<{ code: string; slug: string | null } | null> {
+	const memberId = Number(member.id);
+	const stored = await db.getMemberInviteLink(memberId).catch(() => null);
+	let code: string | null = null;
+	if (stored) {
+		const live = await guild.client.fetchInvite(stored.code).catch(() => null);
+		if (live?.guild?.id === guild.id) code = stored.code;
+	}
+	if (!code) {
+		const channel = pickInviteChannel(guild);
+		if (!channel) return null;
+		const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: `Personal invite link for ${userTag}` }).catch(() => null);
+		if (!invite?.code) return null;
+		await db.setMemberInviteLink(memberId, invite.code);
+		rememberCreatedInvite(guild.id, invite);
+		code = invite.code;
+	}
+	const slug = stored?.slug ?? (await claimDefaultSlug(memberId, member.username || member.display_name || userTag));
+	return { code, slug };
+}
+
+function joinUrl(link: { code: string; slug: string | null }) {
+	return link.slug ? `${publicSiteOrigin()}${inviteJoinPath(link.slug)}` : `https://discord.gg/${link.code}`;
 }
 
 export async function handleInvitesButton(interaction: any) {
@@ -55,11 +94,11 @@ export async function handleInvitesButton(interaction: any) {
 			settings = (await getLevelingSettings(g)).INVITE;
 		} catch (_) {}
 
-		const [stats, inviter, reward, code] = await Promise.all([
+		const [stats, inviter, reward, link] = await Promise.all([
 			db.getMemberInviteStats(Number(dbMember.id)),
 			db.getMemberInviter(Number(dbMember.id)).catch(() => null),
 			inviteRewardFor(guildMember),
-			ensurePersonalInvite(guild, Number(dbMember.id), interaction.user.tag)
+			ensurePersonalInvite(guild, dbMember, interaction.user.tag)
 		]);
 
 		const embedConfig = await getEmbedConfig(g);
@@ -68,7 +107,7 @@ export async function handleInvitesButton(interaction: any) {
 		const sharePercent = settings.SHARE_PERCENT * reward.multiplier;
 		const shareLine = sharePercent > 0 ? `\n${await translate('invites.share', g, u, { percent: sharePercent })}` : '';
 		const rewardLine = `${await translate('invites.reward', g, u, { xp: reward.xp.toLocaleString(), hold })}${staffNote}${shareLine}`;
-		const linkLine = code ? await translate('invites.link', g, u, { url: `https://discord.gg/${code}` }) : await translate('invites.noLink', g, u);
+		const linkLine = link ? await translate('invites.link', g, u, { url: joinUrl(link) }) : await translate('invites.noLink', g, u);
 
 		const fields = [
 			{ name: await translate('invites.fields.total', g, u), value: stats.total.toLocaleString(), inline: true },
@@ -95,12 +134,16 @@ export async function handleInvitesButton(interaction: any) {
 			.setTimestamp();
 
 		const row = new ActionRowBuilder<ButtonBuilder>();
-		if (code) {
+		if (link) {
 			row.addComponents(
 				new ButtonBuilder()
 					.setLabel(await translate('invites.copyButton', g, u))
-					.setURL(`https://discord.gg/${code}`)
-					.setStyle(ButtonStyle.Link)
+					.setURL(joinUrl(link))
+					.setStyle(ButtonStyle.Link),
+				new ButtonBuilder()
+					.setCustomId(INVITE_SLUG_BUTTON_ID)
+					.setLabel(await translate('invites.customizeButton', g, u))
+					.setStyle(ButtonStyle.Secondary)
 			);
 		}
 		row.addComponents(await menuBackButton(g, u, 'me'));
@@ -110,4 +153,61 @@ export async function handleInvitesButton(interaction: any) {
 		await logger.log(`❌ Invites menu error: ${error.message}`);
 		await interaction.editReply({ content: await translate('invites.error', g, u) }).catch(() => null);
 	}
+}
+
+export async function handleInviteSlugButton(interaction: any) {
+	const g = interaction.guild.id;
+	const u = interaction.user.id;
+	const server = await getServerForCurrentBot(g);
+	const dbMember = await db.getMemberByDiscordId(server.id, u).catch(() => null);
+	const link = dbMember?.id ? await db.getMemberInviteLink(Number(dbMember.id)).catch(() => null) : null;
+
+	const input = new TextInputBuilder()
+		.setCustomId(SLUG_INPUT_ID)
+		.setLabel(await translate('invites.slugLabel', g, u, { min: INVITE_SLUG_MIN, max: INVITE_SLUG_MAX }))
+		.setStyle(TextInputStyle.Short)
+		.setMinLength(INVITE_SLUG_MIN)
+		.setMaxLength(INVITE_SLUG_MAX)
+		.setRequired(true);
+	if (link?.slug) input.setValue(link.slug);
+
+	const modal = new ModalBuilder()
+		.setCustomId(INVITE_SLUG_MODAL_ID)
+		.setTitle(await translate('invites.slugTitle', g, u))
+		.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+	await interaction.showModal(modal);
+}
+
+export async function handleInviteSlugModal(interaction: any) {
+	const g = interaction.guild.id;
+	const u = interaction.user.id;
+	await interaction.deferReply({ flags: 64 });
+
+	const slug = normalizeInviteSlug(interaction.fields.getTextInputValue(SLUG_INPUT_ID));
+	if (!isValidInviteSlug(slug)) {
+		await interaction.editReply({ content: await translate('invites.slugInvalid', g, u, { min: INVITE_SLUG_MIN, max: INVITE_SLUG_MAX }) });
+		return;
+	}
+
+	const server = await getServerForCurrentBot(g);
+	const dbMember = await db.getMemberByDiscordId(server.id, u).catch(() => null);
+	const link = dbMember?.id ? await db.getMemberInviteLink(Number(dbMember.id)).catch(() => null) : null;
+	if (!dbMember?.id || !link) {
+		await interaction.editReply({ content: await translate('invites.noLink', g, u) });
+		return;
+	}
+
+	if (link.slug !== slug && !(await db.setMemberInviteSlug(Number(dbMember.id), slug))) {
+		await interaction.editReply({ content: await translate('invites.slugTaken', g, u, { slug }) });
+		return;
+	}
+
+	const url = `${publicSiteOrigin()}${inviteJoinPath(slug)}`;
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder()
+			.setLabel(await translate('invites.copyButton', g, u))
+			.setURL(url)
+			.setStyle(ButtonStyle.Link)
+	);
+	await interaction.editReply({ content: await translate('invites.slugSaved', g, u, { url }), components: [row] });
 }

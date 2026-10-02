@@ -137,6 +137,12 @@
 		"link": "🔗 Tu enlace de invitación personal: {url}",
 		"noLink": "⚠️ No pude crear un enlace de invitación aquí. Pide al staff que me dé el permiso Crear invitación.",
 		"copyButton": "Abrir enlace de invitación",
+		"customizeButton": "✏️ Personalizar enlace",
+		"slugTitle": "Personaliza tu enlace",
+		"slugLabel": "Nombre ({min}–{max} letras, números, guiones)",
+		"slugInvalid": "❌ Usa de {min} a {max} letras, números o guiones.",
+		"slugTaken": "❌ **{slug}** ya está en uso. Prueba otro nombre.",
+		"slugSaved": "✅ Tu enlace de invitación ahora es {url}",
 		"fields": {
 			"total": "📨 Total",
 			"active": "✅ Siguen aquí",

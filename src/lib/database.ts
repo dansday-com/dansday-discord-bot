@@ -7752,6 +7752,7 @@ export async function getServerInviteStats(serverId: number | string) {
 			COALESCE(SUM(i.fake_reason IS NOT NULL), 0) AS fake,
 			COALESCE(SUM(i.source = 'unknown' AND i.inviter_member_id IS NULL), 0) AS unknown_count,
 			COALESCE(SUM(i.source = 'vanity'), 0) AS vanity,
+			COALESCE(SUM(i.source = 'server'), 0) AS server_link,
 			COALESCE(SUM(i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL), 0) AS pending,
 			COALESCE(SUM(i.xp), 0) AS xp_paid,
 			COALESCE(SUM(i.share_xp), 0) AS share_xp,
@@ -7767,7 +7768,7 @@ export async function getServerInviteStats(serverId: number | string) {
 		WHERE m.server_id = ${Number(serverId)}
 	`)) as any;
 	const [codeRows] = (await db.execute(sql`
-		SELECT i.code, ${INVITE_NAME} AS inviter_name, m.discord_member_id AS inviter_discord_id,
+		SELECT i.code, ${INVITE_NAME} AS inviter_name, m.discord_member_id AS inviter_discord_id, MAX(i.source) AS source,
 			COUNT(*) AS joins, COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active
 		FROM server_member_invites i
 		JOIN server_members im ON im.id = i.member_id
@@ -7785,6 +7786,7 @@ export async function getServerInviteStats(serverId: number | string) {
 		fake: Number(r.fake) || 0,
 		unknown: Number(r.unknown_count) || 0,
 		vanity: Number(r.vanity) || 0,
+		server_link: Number(r.server_link) || 0,
 		pending: Number(r.pending) || 0,
 		xp_paid: Number(r.xp_paid) || 0,
 		share_xp: Number(r.share_xp) || 0,
@@ -7794,6 +7796,7 @@ export async function getServerInviteStats(serverId: number | string) {
 			code: String(c.code),
 			inviter_name: c.inviter_name ?? null,
 			inviter_discord_id: c.inviter_discord_id ?? null,
+			source: c.source ? String(c.source) : null,
 			joins: Number(c.joins) || 0,
 			active: Number(c.active) || 0
 		}))

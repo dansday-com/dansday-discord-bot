@@ -20,6 +20,7 @@ export const INVITE_FAKE_REASON_LABEL: Record<string, string> = {
 export const INVITE_SOURCE_LABEL: Record<string, string> = {
 	invite: 'Invite link',
 	vanity: 'Vanity link',
+	server: 'Server link',
 	manual: 'Set by staff',
 	unknown: 'Unknown'
 };

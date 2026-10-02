@@ -14,6 +14,7 @@ async function waitForInvite(member): Promise<JoinInviteResult | null> {
 function inviterText(invite: JoinInviteResult | null): string {
 	if (invite?.inviterDiscordId) return `<@${invite.inviterDiscordId}>`;
 	if (invite?.source === 'vanity') return 'the vanity link';
+	if (invite?.source === 'server') return 'the server invite link';
 	return 'someone';
 }
 
@@ -122,7 +123,7 @@ async function welcomeUser(member, client) {
 					value: `Member #${guildMemberCount || 0}`,
 					inline: true
 				},
-				...(invite?.inviterDiscordId || invite?.source === 'vanity'
+				...(invite?.inviterDiscordId || invite?.source === 'vanity' || invite?.source === 'server'
 					? [
 							{
 								name: '📨 Invited By',

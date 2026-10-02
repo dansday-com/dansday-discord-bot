@@ -153,10 +153,12 @@ async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | nul
 	if (after) holdBackUses(after, attribution, extra);
 
 	let inviterDiscordId = attribution.inviterDiscordId;
+	let source: string = attribution.source;
 	if (attribution.code && attribution.source === 'invite') {
 		const owners = await db.getInviteLinkOwners(server.id).catch(() => []);
 		const owner = owners.find((o: any) => o.code === attribution.code);
 		if (owner) inviterDiscordId = String(owner.discord_member_id);
+		else if ((await db.getServer(server.id).catch(() => null))?.invite_code === attribution.code) source = 'server';
 	}
 	if (inviterDiscordId && inviterDiscordId === guild.client?.user?.id) inviterDiscordId = null;
 
@@ -176,7 +178,7 @@ async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | nul
 		member_id: Number(invitee.id),
 		inviter_member_id: inviter?.id ? Number(inviter.id) : null,
 		code: attribution.code,
-		source: attribution.source,
+		source,
 		fake_reason: fakeReason,
 		joined_at: new Date(member.joinedTimestamp ?? Date.now())
 	});

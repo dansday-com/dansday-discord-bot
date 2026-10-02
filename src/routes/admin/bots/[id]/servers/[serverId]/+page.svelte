@@ -2,6 +2,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { DashGrid, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
+	import { INVITE_SOURCE_LABEL } from '$lib/invites.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -181,6 +182,7 @@
 				{ icon: 'fa-user-check', label: 'Still here', value: fmt(inv?.active) },
 				{ icon: 'fa-user-minus', label: 'Left', value: fmt(inv?.left) },
 				{ icon: 'fa-user-secret', label: 'Fake', value: fmt(inv?.fake) },
+				{ icon: 'fa-globe', label: 'Server link', value: fmt(inv?.server_link) },
 				{ icon: 'fa-link', label: 'Vanity link', value: fmt(inv?.vanity) },
 				{ icon: 'fa-circle-question', label: 'Unknown', value: fmt(inv?.unknown) },
 				{ icon: 'fa-hourglass-half', label: 'Waiting payout', value: fmt(inv?.pending) },
@@ -233,7 +235,11 @@
 			<StatCard icon="fa-link" title="Top invite links" tone="cyan">
 				<div class="flex flex-col gap-2">
 					{#each inv.codes as c}
-						<RowStat icon="fa-link" label="{c.code} · {c.inviter_name ?? 'Vanity / unknown'}" value="{fmt(c.active)} / {fmt(c.joins)}" />
+						<RowStat
+							icon="fa-link"
+							label="{c.code} · {c.inviter_name ?? INVITE_SOURCE_LABEL[c.source ?? 'unknown'] ?? 'Unknown'}"
+							value="{fmt(c.active)} / {fmt(c.joins)}"
+						/>
 					{/each}
 				</div>
 				<p class="text-base-content/45 mt-2 text-xs">Still here / total joins per link.</p>

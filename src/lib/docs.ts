@@ -660,7 +660,6 @@ export const modules = [
 		fields: [
 			{ label: 'Members list', desc: 'Tick any members, then warn, time out, kick, ban or change roles in one go.' },
 			{ label: 'Warned, timed out, banned', desc: 'Tabs for who is under an active action; click anyone for their full record.' },
-			{ label: 'Mass moderation', desc: 'Unban everyone, clear all warnings, or give or take a role in bulk.' },
 			{ label: 'Auto-escalation', desc: 'Steps like 3 warnings = 1 hour timeout; the bot applies them itself.' },
 			{ label: 'Warning expiry', desc: 'Warnings older than this stop counting; the record stays.' },
 			{ label: 'Reason presets', desc: 'Saved reasons staff pick from; any case reason can be edited later.' },

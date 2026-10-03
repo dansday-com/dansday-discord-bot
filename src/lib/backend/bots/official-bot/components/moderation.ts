@@ -5,7 +5,7 @@ import { logger } from '../../../../utils/index.js';
 import { escalationStepFor } from '../../../../moderation-rules.js';
 
 export const MODERATION_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'] as const;
-export const BULK_MODERATION_ACTIONS = ['unban_all', 'clear_warns', 'role_add', 'role_remove'] as const;
+export const BULK_MODERATION_ACTIONS = ['role_add', 'role_remove'] as const;
 
 const ACTION_TITLES: Record<string, string> = {
 	warn: '⚠️ Member Warned',
@@ -21,14 +21,10 @@ const ACTION_TITLES: Record<string, string> = {
 };
 
 const BULK_TITLES: Record<string, string> = {
-	unban_all: '🕊️ Mass Unban',
-	clear_warns: '🧹 Mass Warning Clear',
 	role_add: '➕ Bulk Role Add',
 	role_remove: '➖ Bulk Role Remove'
 };
 
-const BULK_FILTER_LABELS: Record<string, string> = { all: 'Everyone', with: 'Members with', without: 'Members without', selected: 'Selected members' };
-const BAN_PAGE_SIZE = 1000;
 const WARN_EXPIRY_SWEEP_MS = 15 * 60 * 1000;
 const bulkRunning = new Set<string>();
 let lastWarnExpirySweep = 0;
@@ -107,7 +103,6 @@ async function recordCase(
 		source: string;
 		active?: boolean;
 		logAction?: string;
-		quiet?: boolean;
 		extraFields?: { name: string; value: string; inline?: boolean }[];
 	}
 ) {
@@ -126,7 +121,6 @@ async function recordCase(
 		active: opts.active ?? ['warn', 'timeout', 'ban', 'tempban'].includes(opts.action),
 		source: opts.source
 	});
-	if (opts.quiet) return { caseNumber, memberRow };
 
 	const memberName = memberRow.server_display_name || memberRow.display_name || memberRow.username || opts.targetId;
 	const staffName = (staffRow && (staffRow.server_display_name || staffRow.display_name || staffRow.username)) || opts.staffName || 'Unknown';
@@ -358,30 +352,14 @@ async function expireOldWarnings(client: any, botId: number) {
 	}
 }
 
-async function fetchAllBanIds(guild: any): Promise<string[] | null> {
-	const ids: string[] = [];
-	let after: string | undefined;
-	for (;;) {
-		const page = await guild.bans.fetch({ limit: BAN_PAGE_SIZE, ...(after ? { after } : {}), cache: false }).catch(() => null);
-		if (!page) return ids.length > 0 ? ids : null;
-		const keys = [...page.keys()] as string[];
-		ids.push(...keys);
-		if (keys.length < BAN_PAGE_SIZE) return ids;
-		after = keys.reduce((max, id) => (BigInt(id) > BigInt(max) ? id : max), keys[0]);
-	}
-}
-
 export async function startBulkModeration(
 	client: any,
 	payload: {
 		guild_id: string;
 		action: string;
 		role_id?: string | null;
-		filter?: string | null;
-		filter_role_id?: string | null;
 		target_ids?: string[];
 		skip_ids?: string[];
-		reason?: string | null;
 		staff_name?: string | null;
 		source?: string;
 	}
@@ -393,115 +371,49 @@ export async function startBulkModeration(
 	if (!guild) return { ok: false, error: 'Bot is not in this server' };
 	if (bulkRunning.has(guild.id)) return { ok: false, error: 'Another bulk action is still running in this server' };
 
-	const botConfig = getBotConfig();
-	const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
-	if (!server) return { ok: false, error: 'Server not found' };
-	const serverId = Number(server.id);
+	const role = guild.roles.cache.get(String(payload.role_id || ''));
+	if (!role || role.id === guild.id) return { ok: false, error: 'Pick a role' };
+	if (role.managed) return { ok: false, error: `${role.name} is managed by an integration and can't be given or removed` };
+	if (!role.editable) return { ok: false, error: `The bot's role must be above ${role.name}` };
+
+	const picked = new Set((payload.target_ids ?? []).map(String));
+	const skip = new Set((payload.skip_ids ?? []).map(String));
+	if (picked.size === 0) return { ok: false, error: 'Select at least one member' };
+	const members = await guild.members.fetch().catch(() => null);
+	if (!members) return { ok: false, error: 'Could not load the member list' };
+
+	const adding = action === 'role_add';
 	const source = payload.source || 'panel';
 	const staffName = payload.staff_name || 'staff';
-	const reason = payload.reason ? String(payload.reason).trim().slice(0, 1000) : null;
-	const skip = new Set((payload.skip_ids ?? []).map(String));
-	const auditReason = clip(`${reason || BULK_TITLES[action]} · by ${staffName} via ${source} (bulk)`, 512);
-	const fields: { name: string; value: string; inline?: boolean }[] = [];
-
-	let targets: string[] = [];
-	let run: (id: string) => Promise<boolean>;
-
-	if (action === 'unban_all') {
-		const bans = await fetchAllBanIds(guild);
-		if (!bans) return { ok: false, error: 'The bot needs the Ban Members permission' };
-		targets = bans.filter((id) => !skip.has(id));
-		run = async (id) => {
-			await guild.members.unban(id, auditReason);
-			const memberRow = await resolveMemberRow(serverId, guild, id);
-			if (memberRow) await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban'], true);
-			await recordCase(client, guild, serverId, {
-				action: 'unban',
-				targetId: id,
-				staffName,
-				reason: reason || 'Mass unban',
-				source,
-				active: false,
-				quiet: true
-			});
-			return true;
-		};
-	} else if (action === 'clear_warns') {
-		const rows = (await db.getMembersWithActiveWarnings(serverId)).filter((r) => !skip.has(r.discord_member_id));
-		const memberIds = new Map(rows.map((r) => [r.discord_member_id, r.member_id]));
-		targets = rows.map((r) => r.discord_member_id);
-		run = async (id) => {
-			const cleared = await db.endActiveModeration(Number(memberIds.get(id)), ['warn'], true);
-			if (!cleared) return false;
-			await recordCase(client, guild, serverId, {
-				action: 'clearwarns',
-				targetId: id,
-				staffName,
-				reason: reason || `Mass clear: ${cleared} warning(s)`,
-				source,
-				active: false,
-				quiet: true
-			});
-			return true;
-		};
-	} else {
-		const role = guild.roles.cache.get(String(payload.role_id || ''));
-		if (!role || role.id === guild.id) return { ok: false, error: 'Pick a role' };
-		if (role.managed) return { ok: false, error: `${role.name} is managed by an integration and can't be given or removed` };
-		if (!role.editable) return { ok: false, error: `The bot's role must be above ${role.name}` };
-		const filter = ['with', 'without', 'selected'].includes(String(payload.filter)) ? String(payload.filter) : 'all';
-		const filterRole = filter === 'with' || filter === 'without' ? guild.roles.cache.get(String(payload.filter_role_id || '')) : null;
-		if ((filter === 'with' || filter === 'without') && !filterRole) return { ok: false, error: 'Pick the role to filter by' };
-		const picked = filter === 'selected' ? new Set((payload.target_ids ?? []).map(String)) : null;
-		if (picked && picked.size === 0) return { ok: false, error: 'Select at least one member' };
-		const members = await guild.members.fetch().catch(() => null);
-		if (!members) return { ok: false, error: 'Could not load the member list' };
-		const adding = action === 'role_add';
-		targets = [...members.values()]
-			.filter((m: any) => !m.user?.bot && !skip.has(m.id))
-			.filter((m: any) => !picked || picked.has(m.id))
-			.filter((m: any) => !filterRole || m.roles.cache.has(filterRole.id) === (filter === 'with'))
-			.filter((m: any) => m.roles.cache.has(role.id) !== adding)
-			.map((m: any) => m.id);
-		run = async (id) => {
-			const member = members.get(id);
-			if (!member) return false;
-			if (adding) await member.roles.add(role, auditReason);
-			else await member.roles.remove(role, auditReason);
-			return true;
-		};
-		fields.push({ name: '🎭 Role', value: `<@&${role.id}>`, inline: true });
-		fields.push({ name: '👥 Who', value: filterRole ? `${BULK_FILTER_LABELS[filter]} <@&${filterRole.id}>` : BULK_FILTER_LABELS[filter], inline: true });
-	}
-
-	if (targets.length === 0) return { ok: false, error: 'Nothing to do: no one matches' };
+	const auditReason = clip(`${BULK_TITLES[action]} · by ${staffName} via ${source} (bulk)`, 512);
+	const targets = [...members.values()].filter((m: any) => picked.has(m.id) && !m.user?.bot && !skip.has(m.id) && m.roles.cache.has(role.id) !== adding);
+	if (targets.length === 0) return { ok: false, error: adding ? `Everyone selected already has ${role.name}` : `Nobody selected has ${role.name}` };
 
 	bulkRunning.add(guild.id);
 	void (async () => {
 		let done = 0;
-		let skipped = 0;
 		let failed = 0;
-		for (const id of targets) {
+		for (const member of targets) {
 			try {
-				if (await run(id)) done++;
-				else skipped++;
+				if (adding) await member.roles.add(role, auditReason);
+				else await member.roles.remove(role, auditReason);
+				done++;
 			} catch (err: any) {
 				failed++;
-				await logger.log(`⚠️ Bulk ${action} failed for ${id} in ${guild.id}: ${err.message}`);
+				await logger.log(`⚠️ Bulk ${action} failed for ${member.id} in ${guild.id}: ${err.message}`);
 			}
 		}
-		await logger.log(`🛡️ Bulk ${action} in ${guild.id} via ${source}: ${done} done, ${skipped} skipped, ${failed} failed`);
+		await logger.log(`🛡️ Bulk ${action} ${role.id} in ${guild.id} via ${source}: ${done} done, ${failed} failed`);
 		await sendModerationLog(
 			client,
 			{
 				title: BULK_TITLES[action],
-				description: `**${done.toLocaleString()}** done · ${skipped.toLocaleString()} skipped · ${failed.toLocaleString()} failed`,
+				description: `**${done.toLocaleString()}** done · ${failed.toLocaleString()} failed`,
 				userTag: staffName,
 				fields: [
-					...fields,
+					{ name: '🎭 Role', value: `<@&${role.id}>`, inline: true },
 					{ name: '🛡️ Staff', value: staffName, inline: true },
-					{ name: '📍 Source', value: source, inline: true },
-					...(reason ? [{ name: '📝 Reason', value: clip(reason), inline: false }] : [])
+					{ name: '📍 Source', value: source, inline: true }
 				]
 			},
 			guild.id

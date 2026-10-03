@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
+import { isUtcSqlExpired } from '$lib/utils/index.js';
 
 function maskEmail(email: string) {
 	const at = email.indexOf('@');
@@ -35,5 +36,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		return { ...base, email: typeof a.email === 'string' ? maskEmail(a.email) : a.email, ip_address: null };
 	});
 
-	return { accounts, invites, serverId, botId: params.id, user: locals.user };
+	const openInvites = (invites as any[]).filter((i) => i.used_by == null && !i.used_at && !(i.expires_at && isUtcSqlExpired(i.expires_at)));
+
+	return { accounts, invites: openInvites, serverId, botId: params.id, user: locals.user };
 };

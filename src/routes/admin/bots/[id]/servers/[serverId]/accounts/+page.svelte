@@ -7,7 +7,6 @@
 	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
-	import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { canActOnAccount, invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
@@ -170,30 +169,6 @@
 		if (type === 'owner') return 'bg-blue-900 text-blue-300';
 		return 'bg-ash-700 text-ash-300';
 	}
-
-	function inviteExpiresAtMs(invite: any): number | null {
-		const d = invite.expires_at ? parseMySQLDateTimeUtc(invite.expires_at) : null;
-		return d && !Number.isNaN(d.getTime()) ? d.getTime() : null;
-	}
-
-	function inviteStatusClass(invite: any) {
-		const endMs = inviteExpiresAtMs(invite);
-		if (invite.used_by) return 'bg-green-900 text-green-300';
-		if (endMs != null && endMs < Date.now()) return 'bg-red-900 text-red-300';
-		return 'bg-yellow-900 text-yellow-300';
-	}
-
-	function inviteStatusLabel(invite: any) {
-		const endMs = inviteExpiresAtMs(invite);
-		if (invite.used_by) return 'Used';
-		if (endMs != null && endMs < Date.now()) return 'Expired';
-		return 'Pending';
-	}
-
-	function isInviteExpired(invite: any): boolean {
-		const endMs = inviteExpiresAtMs(invite);
-		return endMs != null && endMs < Date.now();
-	}
 </script>
 
 <svelte:head>
@@ -313,9 +288,10 @@
 		</div>
 
 		<div>
-			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Invite Links</h3>
+			<h3 class="text-ash-100 mb-1 text-lg font-semibold">Open invite links</h3>
+			<p class="text-ash-400 mb-3 text-xs">Links nobody has used yet. Created, used and expired links are in the Change Log.</p>
 			{#if data.invites.length === 0}
-				<p class="text-ash-400 text-sm">No invite links generated yet.</p>
+				<p class="text-ash-400 text-sm">No open invite links.</p>
 			{:else}
 				<div class="space-y-2">
 					{#each data.invites as invite (invite.id)}
@@ -324,30 +300,19 @@
 								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
 								<p class="text-ash-300 mt-1 text-xs">
 									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
-									{#if invite.used_by}
-										Used — expiry was {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry{/if}
-									{:else if isInviteExpired(invite)}
-										Expired at {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}—{/if}
-									{:else}
-										Expires {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry set{/if}
-									{/if}
+									Expires {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry set{/if}
 								</p>
 							</div>
-							<div class="flex shrink-0 items-center gap-2">
-								<span class="rounded-full px-2 py-0.5 text-xs {inviteStatusClass(invite)}">
-									{inviteStatusLabel(invite)}
-								</span>
-								{#if canActOnAccount(actor, invite.account_type) && !invite.used_by && !isInviteExpired(invite)}
-									<button
-										type="button"
-										title="Expire this link (it cannot be used to register)"
-										onclick={() => confirmExpireInvite(invite.id, `${invite.account_type} invite`)}
-										class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-2 py-1 text-xs transition-colors"
-									>
-										<i class="fas fa-ban mr-1 text-amber-300"></i>Expire
-									</button>
-								{/if}
-							</div>
+							{#if canActOnAccount(actor, invite.account_type)}
+								<button
+									type="button"
+									title="Expire this link (it cannot be used to register)"
+									onclick={() => confirmExpireInvite(invite.id, `${invite.account_type} invite`)}
+									class="bg-ash-600 hover:bg-ash-500 text-ash-100 shrink-0 self-start rounded px-2 py-1 text-xs transition-colors sm:self-center"
+								>
+									<i class="fas fa-ban mr-1 text-amber-300"></i>Expire
+								</button>
+							{/if}
 						</div>
 					{/each}
 				</div>

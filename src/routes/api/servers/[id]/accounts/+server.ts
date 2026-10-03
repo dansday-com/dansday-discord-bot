@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { randomBytes } from 'crypto';
-import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
+import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
 function maskEmail(email: string) {
@@ -70,6 +70,9 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	});
 
 	logger.log(`${locals.user.username} generated server invite for ${account_type} (server ${serverId})`);
+	await db
+		.createServerPanelLog(serverId, panelActorIds(locals), 'account_invite', [{ key: 'invite link', before: null, after: `${account_type}, copied link` }])
+		.catch(() => null);
 
 	const fullUrl = `${url.origin}/register?token=${token}`;
 	return json({ success: true, invite_link: fullUrl, token });

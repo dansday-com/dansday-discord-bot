@@ -5,7 +5,7 @@ import { randomBytes } from 'crypto';
 import { logger } from '$lib/utils/index.js';
 import { request as httpRequest } from 'http';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
-import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
+import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
@@ -151,6 +151,14 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		const first = failed[0];
 		return json({ success: false, error: first?.error ?? 'All invites failed', failed }, { status: 400 });
 	}
+
+	const failedIds = new Set(failed.map((f) => f.discord_member_id));
+	await db
+		.createServerPanelLog(serverId, panelActorIds(locals), 'account_invite', [
+			{ key: 'invite link', before: null, after: `${account_type}, sent by DM` },
+			{ key: 'sent to', before: null, after: discord_member_ids.filter((id) => !failedIds.has(id)).join(', ') }
+		])
+		.catch(() => null);
 
 	return json({
 		success: true,

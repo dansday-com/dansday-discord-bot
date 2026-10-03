@@ -16,15 +16,9 @@
 	const MEMBER_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'clearwarns', 'role_add', 'role_remove'];
 	const BAN_ACTIONS = ['unban'];
 	const ROLE_ACTIONS = ['role_add', 'role_remove'];
-	const WHO_OPTIONS = [
-		{ value: 'all', label: 'Everyone' },
-		{ value: 'with', label: 'Members with role' },
-		{ value: 'without', label: 'Members without role' }
-	];
 
 	const VIEWS = [
 		{ id: 'members', label: 'Members', icon: 'fa-gavel text-red-400' },
-		{ id: 'mass', label: 'Mass moderation', icon: 'fa-users-gear text-orange-400' },
 		{ id: 'rules', label: 'Rules', icon: 'fa-scale-balanced text-emerald-400' }
 	] as const;
 
@@ -45,13 +39,6 @@
 	let busy = $state(false);
 	let progress = $state<{ done: number; total: number } | null>(null);
 	let confirm = $state<{ title: string; message: string; run: () => Promise<void> } | null>(null);
-
-	let unbanReason = $state('');
-	let warnsReason = $state('');
-	let roleAction = $state('role_add');
-	let roleId = $state('');
-	let roleWho = $state('all');
-	let whoRoleId = $state('');
 
 	const locked = $derived(new Set(data.lockedIds));
 	const q = $derived(search.trim().toLowerCase());
@@ -90,7 +77,6 @@
 		{ value: '', label: 'Pick a role' },
 		...data.roles.filter((r) => r.manageable).map((r) => ({ value: r.id, label: r.name }))
 	]);
-	const whoRoleOptions = $derived([{ value: '', label: 'Pick a role to filter by' }, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
 	const presetOptions = $derived([{ value: '', label: 'Use a preset…' }, ...data.rules.reason_presets.map((p) => ({ value: p, label: p }))]);
 	const roleName = (id: string) => data.roles.find((r) => r.id === id)?.name ?? 'that role';
 
@@ -173,7 +159,7 @@
 	}
 
 	async function runRoles(ids: string[]) {
-		const ok = await postBulk({ action, role_id: actionRoleId, filter: 'selected', target_ids: ids });
+		const ok = await postBulk({ action, role_id: actionRoleId, target_ids: ids });
 		if (ok) selected = new Set();
 	}
 
@@ -199,33 +185,6 @@
 		} finally {
 			busy = false;
 		}
-	}
-
-	function unbanAll() {
-		confirm = {
-			title: 'Unban everyone',
-			message: 'Unban every banned user in this server?',
-			run: async () => void (await postBulk({ action: 'unban_all', reason: unbanReason.trim() || null }))
-		};
-	}
-
-	function clearAllWarns() {
-		confirm = {
-			title: 'Clear all warnings',
-			message: `Clear all ${data.activeWarnings.toLocaleString()} active warnings?`,
-			run: async () => void (await postBulk({ action: 'clear_warns', reason: warnsReason.trim() || null }))
-		};
-	}
-
-	function bulkRoles() {
-		if (!roleId) return showToast('Pick a role', 'error');
-		if (roleWho !== 'all' && !whoRoleId) return showToast('Pick the role to filter by', 'error');
-		const who = roleWho === 'all' ? 'everyone' : `everyone ${roleWho === 'with' ? 'with' : 'without'} ${roleName(whoRoleId)}`;
-		confirm = {
-			title: roleAction === 'role_add' ? 'Give role' : 'Take role',
-			message: `${roleAction === 'role_add' ? 'Give' : 'Take'} ${roleName(roleId)} ${roleAction === 'role_add' ? 'to' : 'from'} ${who}?`,
-			run: async () => void (await postBulk({ action: roleAction, role_id: roleId, filter: roleWho, filter_role_id: roleWho === 'all' ? null : whoRoleId }))
-		};
 	}
 
 	async function runConfirm() {
@@ -273,16 +232,7 @@
 {/snippet}
 
 <div class="space-y-4 sm:space-y-6">
-	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-		{#each [{ label: 'Active warnings', value: data.activeWarnings, icon: 'fa-triangle-exclamation', color: 'text-amber-400' }, { label: 'Warned members', value: warnedCount, icon: 'fa-user-shield', color: 'text-amber-300' }, { label: 'Timed out', value: timedOutCount, icon: 'fa-volume-xmark', color: 'text-orange-400' }, { label: 'Banned', value: data.bans.length, icon: 'fa-gavel', color: 'text-red-400' }] as tile (tile.label)}
-			<div class="bg-ash-800 border-ash-700 rounded-xl border p-3 sm:p-4">
-				<div class="text-ash-400 flex items-center gap-2 text-xs"><i class="fas {tile.icon} {tile.color}"></i>{tile.label}</div>
-				<div class="text-ash-100 mt-1 text-xl font-bold tabular-nums sm:text-2xl">{tile.value.toLocaleString()}</div>
-			</div>
-		{/each}
-	</div>
-
-	<div class="bg-ash-800 border-ash-700 grid grid-cols-3 gap-1 rounded-xl border p-1">
+	<div class="bg-ash-800 border-ash-700 grid grid-cols-2 gap-1 rounded-xl border p-1">
 		{#each VIEWS as v (v.id)}
 			<button
 				type="button"
@@ -333,14 +283,10 @@
 					<input type="checkbox" class="checkbox checkbox-sm" checked={pageAllSelected} disabled={pageIds.length === 0} onchange={togglePage} />
 					Select page
 				</label>
-				{#if selected.size > 0}
-					<span class="text-ash-100 font-semibold">{selected.size.toLocaleString()} selected</span>
-					{#if selected.size < matchingIds.length}
-						<button type="button" class="text-sky-400 hover:text-sky-300" onclick={() => (selected = new Set(matchingIds))}>
-							Select all {matchingIds.length.toLocaleString()}
-						</button>
-					{/if}
-					<button type="button" class="text-ash-400 hover:text-ash-200" onclick={() => (selected = new Set())}>Clear</button>
+				{#if matchingIds.length > pageIds.length && selected.size < matchingIds.length}
+					<button type="button" class="text-sky-400 hover:text-sky-300" onclick={() => (selected = new Set(matchingIds))}>
+						Select all {matchingIds.length.toLocaleString()}
+					</button>
 				{/if}
 			</div>
 
@@ -456,6 +402,9 @@
 							<LabeledSelect appearance="field" options={presetOptions} bind:value={preset} ariaLabel="Reason preset" />
 						{/if}
 					</div>
+					{#if ROLE_ACTIONS.includes(action) && data.roles.some((r) => !r.manageable)}
+						<p class="text-ash-500 text-xs">Staff and admin roles are hidden. {data.deniedReason}</p>
+					{/if}
 					{#if !ROLE_ACTIONS.includes(action)}
 						<input
 							type="text"
@@ -480,85 +429,6 @@
 					</button>
 				</div>
 			{/if}
-		</section>
-	{:else if view === 'mass'}
-		<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-			<p class="text-ash-400 mb-4 text-xs">Runs in the background. Members you can't act on are skipped. The result goes to the moderation log channel.</p>
-
-			<div class="grid gap-3 lg:grid-cols-3">
-				<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-					<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-dove text-emerald-400"></i>Unban everyone</p>
-					<input
-						type="text"
-						maxlength="1000"
-						bind:value={unbanReason}
-						placeholder="Reason (optional)"
-						aria-label="Unban reason"
-						class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-					/>
-					<button
-						type="button"
-						onclick={unbanAll}
-						disabled={busy}
-						class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-					>
-						<i class="fas fa-dove"></i>Unban all
-					</button>
-				</div>
-
-				<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-					<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
-						<i class="fas fa-broom text-violet-400"></i>Clear all warnings<span class="text-ash-400 ml-auto text-xs font-normal"
-							>{data.activeWarnings.toLocaleString()} active</span
-						>
-					</p>
-					<input
-						type="text"
-						maxlength="1000"
-						bind:value={warnsReason}
-						placeholder="Reason (optional)"
-						aria-label="Clear warnings reason"
-						class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-					/>
-					<button
-						type="button"
-						onclick={clearAllWarns}
-						disabled={busy || data.activeWarnings === 0}
-						class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
-					>
-						<i class="fas fa-broom"></i>Clear all
-					</button>
-				</div>
-
-				<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-					<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-user-tag text-sky-400"></i>Bulk roles</p>
-					<LabeledSelect
-						appearance="field"
-						options={[
-							{ value: 'role_add', label: 'Give role' },
-							{ value: 'role_remove', label: 'Take role' }
-						]}
-						bind:value={roleAction}
-						ariaLabel="Give or take"
-					/>
-					<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={roleId} ariaLabel="Role" />
-					<LabeledSelect appearance="field" options={WHO_OPTIONS} bind:value={roleWho} ariaLabel="Who" />
-					{#if roleWho !== 'all'}
-						<LabeledSelect appearance="field" options={whoRoleOptions} bind:value={whoRoleId} ariaLabel="Filter role" />
-					{/if}
-					<button
-						type="button"
-						onclick={bulkRoles}
-						disabled={busy || !roleId}
-						class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500 disabled:opacity-50"
-					>
-						<i class="fas fa-user-tag"></i>{roleAction === 'role_add' ? 'Give role' : 'Take role'}
-					</button>
-					{#if data.roles.some((r) => !r.manageable)}
-						<p class="text-ash-500 text-xs">Staff and admin roles are hidden. {data.deniedReason}</p>
-					{/if}
-				</div>
-			</div>
 		</section>
 	{:else}
 		<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">

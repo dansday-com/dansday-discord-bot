@@ -109,6 +109,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		await db.updateServerAccountInvite(inviteLink.id, { used_by: account.id, used_at: toMySQLDateTime(getCurrentDateTime()) ?? undefined });
+		await db
+			.createServerPanelLog(Number(inviteLink.server_id), { server_account_id: Number(account.id) }, 'account_invite', [
+				{ key: 'invite link', before: `${inviteLink.account_type}, open`, after: `${inviteLink.account_type}, used by ${account.username}` }
+			])
+			.catch(() => null);
 
 		const sessionId = newSessionId();
 		await setSession(sessionId, {

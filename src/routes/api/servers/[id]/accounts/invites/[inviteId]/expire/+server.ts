@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { DateTime } from 'luxon';
 import { logger, isUtcSqlExpired } from '$lib/utils/index.js';
-import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
+import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
 async function canManageInvites(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
@@ -49,6 +49,11 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	await db.updateServerAccountInvite(inviteId, { expires_at: expiredAt });
 
 	logger.log(`${locals.user.username} expired server account invite ${inviteId} (server ${serverId})`);
+	await db
+		.createServerPanelLog(serverId, panelActorIds(locals), 'account_invite', [
+			{ key: 'invite link', before: `${invite.account_type}, open`, after: `${invite.account_type}, expired` }
+		])
+		.catch(() => null);
 
 	return json({ success: true });
 };

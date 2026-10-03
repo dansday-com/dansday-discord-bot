@@ -94,7 +94,6 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			};
 		}),
 		bans,
-		activeWarnings: (cases as any[]).filter((c) => c.action === 'warn').length,
 		roles: (roles as any[])
 			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))
 			.map((r) => ({

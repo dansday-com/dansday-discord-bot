@@ -6,6 +6,7 @@ import { accountOwnsServer, SERVER_SETTINGS } from '$lib/frontend/panelServer.js
 
 const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
 	embed_sent: { component: 'embed_builder', label: 'Embed builder' },
+	account_invite: { component: 'accounts', label: 'Accounts' },
 	invite_bonus: { component: 'invites', label: 'Invites' },
 	invite_assign: { component: 'invites', label: 'Invites' },
 	moderation: { component: 'moderation', label: 'Moderation' },

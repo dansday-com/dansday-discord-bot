@@ -7526,21 +7526,6 @@ export async function countActiveWarnings(memberId: number) {
 	return Number(rows?.[0]?.c ?? 0);
 }
 
-export async function getMembersWithActiveWarnings(serverId: number | string) {
-	const [rows] = (await db.execute(sql`
-		SELECT m.id AS member_id, m.discord_member_id, COUNT(*) AS warnings
-		FROM server_member_moderation_logs l
-		JOIN server_members m ON m.id = l.member_id
-		WHERE m.server_id = ${Number(serverId)} AND l.action = 'warn' AND l.active = 1
-		GROUP BY m.id, m.discord_member_id
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => ({
-		member_id: Number(r.member_id),
-		discord_member_id: String(r.discord_member_id),
-		warnings: Number(r.warnings) || 0
-	}));
-}
-
 export async function getDueTempbans(botId: number) {
 	const [rows] = (await db.execute(sql`
 		SELECT l.id, l.member_id, l.case_number, m.discord_member_id, m.server_id, s.discord_server_id
@@ -8158,7 +8143,6 @@ export default {
 	revokeModerationCase,
 	endActiveModeration,
 	countActiveWarnings,
-	getMembersWithActiveWarnings,
 	getDueTempbans,
 	expireModerationTimeouts,
 	getAllBots,

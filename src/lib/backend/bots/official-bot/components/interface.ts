@@ -449,7 +449,7 @@ async function handleMyAccountLinkButton(interaction) {
 			const filled = Math.round(ratio * 10);
 			fields.push({
 				name: `⚡ Progress to Level ${level + 1}`,
-				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, nextXp - xp).toLocaleString()}** XP to go`,
+				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, Math.ceil(nextXp - xp)).toLocaleString()}** XP to go`,
 				inline: false
 			});
 		} catch (_) {}

@@ -1,7 +1,8 @@
 export class SceneClock {
 	t = $state(0);
 	still = $state(false);
-	readonly duration: number;
+	duration: number;
+	onend: (() => void) | null = null;
 	#raf = 0;
 	#last = 0;
 	#playing = false;
@@ -25,8 +26,14 @@ export class SceneClock {
 
 	#tick = (now: number) => {
 		if (!this.#playing) return;
-		this.t = (this.t + Math.min(100, now - this.#last)) % this.duration;
+		const next = this.t + Math.min(100, now - this.#last);
 		this.#last = now;
+		if (next >= this.duration) {
+			this.t = 0;
+			this.onend?.();
+		} else {
+			this.t = next;
+		}
 		this.#raf = requestAnimationFrame(this.#tick);
 	};
 }

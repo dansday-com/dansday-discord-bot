@@ -5,7 +5,8 @@
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
-	import LevelUpScene from '$lib/frontend/components/landing/scenes/LevelUpScene.svelte';
+	import ScenePlayer from '$lib/frontend/components/landing/scenes/ScenePlayer.svelte';
+	import { BEYOND_SCENES, ESSENTIAL_SCENES } from '$lib/frontend/components/landing/scenes/scripts/index.js';
 	import { effectIcon, effectLabel, effectAccentHex } from '$lib/items.js';
 	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 
@@ -716,7 +717,7 @@
 				<p class={LEAD}>The features servers usually add MEE6 for, with no paid tier on any of them. The code is open source, so it stays that way.</p>
 			</div>
 			<div class="mb-8 sm:mb-10">
-				<LevelUpScene />
+				<ScenePlayer scenes={ESSENTIAL_SCENES} label="See the essentials work" />
 			</div>
 			<dl class="border-base-300 border-t">
 				{#each essentials as item, i}
@@ -740,6 +741,9 @@
 					On most leveling bots, XP only ever goes up. Here members take it from each other and fight to keep it, and that gives them a reason to come back
 					tomorrow.
 				</p>
+			</div>
+			<div class="mb-8 sm:mb-10">
+				<ScenePlayer scenes={BEYOND_SCENES} label="See what MEE6 doesn't do" />
 			</div>
 			<dl class="border-base-300 border-t">
 				{#each different as item, i}

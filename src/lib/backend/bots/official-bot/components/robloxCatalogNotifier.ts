@@ -210,8 +210,8 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 
 function changeFieldLabel(field: RobloxItemChange['field']): string {
 	if (field === 'total_quantity') return 'Total supply';
-	if (field === 'units_available') return 'Available';
-	if (field === 'lowest_resale_price') return 'Lowest Resale';
+	if (field === 'units_available') return 'Stock left';
+	if (field === 'lowest_resale_price') return 'Resale price';
 	return 'Price';
 }
 
@@ -246,7 +246,7 @@ async function sendItemEmbed(
 	const resaleOrSaleFields: { name: string; value: string; inline: boolean }[] = [];
 	if (item.hasResellers && typeof item.lowestResalePrice === 'number') {
 		resaleOrSaleFields.push({
-			name: 'Lowest Resale',
+			name: 'Resale price',
 			value: formatRobux(item.lowestResalePrice),
 			inline: true
 		});

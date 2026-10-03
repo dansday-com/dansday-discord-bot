@@ -79,7 +79,7 @@ const PLATFORM_LABEL: Record<CreatorPlatform, string> = {
 
 const TYPE_LABEL: Record<CreatorContent['type'], string> = {
 	video: '🎬 New video',
-	live: '🔴 Live now',
+	live: '🔴 Live stream',
 	post: '📝 New post'
 };
 

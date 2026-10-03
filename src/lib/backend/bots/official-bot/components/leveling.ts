@@ -379,7 +379,7 @@ export async function sendLevelProgressNotification({
 			const filled = Math.round(ratio * 10);
 			progressField = {
 				name: `⚡ Progress to Level ${shownLevel + 1}`,
-				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, nextXp - totalXp).toLocaleString()}** XP to go`,
+				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, Math.ceil(nextXp - totalXp)).toLocaleString()}** XP to go`,
 				inline: false
 			};
 		} catch (_) {}

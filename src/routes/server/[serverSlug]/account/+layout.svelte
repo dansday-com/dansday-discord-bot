@@ -10,6 +10,7 @@
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { effectVariant } from '$lib/effects.js';
+	import { xpForLevel as levelThreshold } from '$lib/level-rewards.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -131,10 +132,8 @@
 	});
 
 	function xpForLevel(lvl: number): number {
-		if (lvl <= 1) return 0;
 		const { baseXp, multiplier } = pd.levelReq ?? { baseXp: 100, multiplier: 1.2 };
-		if (multiplier === 1) return baseXp * (lvl - 1);
-		return Math.floor((baseXp * (Math.pow(multiplier, lvl - 1) - 1)) / (multiplier - 1));
+		return levelThreshold(lvl, baseXp, multiplier);
 	}
 
 	const levelInfo = $derived.by(() => {

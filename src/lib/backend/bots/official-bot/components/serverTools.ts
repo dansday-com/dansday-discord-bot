@@ -165,8 +165,8 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 
 	const levelTable = [];
 	for (let lv = 2; lv <= 11; lv++) {
-		const total = Math.round(levelRequirementXp(lv, baseXp, multiplier));
-		levelTable.push({ level: lv, total_xp_needed: total, from_previous_level: total - Math.round(levelRequirementXp(lv - 1, baseXp, multiplier)) });
+		const total = Math.ceil(levelRequirementXp(lv, baseXp, multiplier));
+		levelTable.push({ level: lv, total_xp_needed: total, from_previous_level: total - Math.ceil(levelRequirementXp(lv - 1, baseXp, multiplier)) });
 	}
 
 	return {

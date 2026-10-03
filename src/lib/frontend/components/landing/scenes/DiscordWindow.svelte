@@ -15,7 +15,7 @@
 	<div class="bg-ash-950 hidden w-[60px] shrink-0 flex-col items-center gap-2 py-3 sm:flex">
 		<span class="relative">
 			<span class="absolute top-1/2 -left-2.5 h-8 w-1 -translate-y-1/2 rounded-r-full bg-white"></span>
-			<img src="/favicon-96x96.png" alt="" class="size-10 rounded-2xl" />
+			<span class="bg-primary text-primary-content grid size-10 place-items-center rounded-2xl text-[14px] font-bold">{server.slice(0, 1)}</span>
 		</span>
 		<span class="bg-ash-700 my-0.5 h-0.5 w-8 rounded-full"></span>
 		{#each ['G', 'A', 'M'] as letter (letter)}

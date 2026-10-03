@@ -19,7 +19,7 @@ const MIRA = avatar(2);
 
 export const leveling = defineScene({
 	id: 'leveling',
-	label: 'Leveling & rewards',
+	label: 'Levels & rewards',
 	icon: 'fa-trophy',
 	channel: 'general',
 	duration: 15000,

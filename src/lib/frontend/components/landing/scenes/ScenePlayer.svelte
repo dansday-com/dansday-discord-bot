@@ -168,21 +168,21 @@
 
 {#if variant === 'desktop'}
 	<div use:playWhenVisible={clock} class="flex flex-col gap-4">
-		<div role="tablist" aria-label={label} class="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+		<div role="tablist" aria-label={label} class="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-1">
 			{#each scenes as s, i (s.id)}
+				{@const on = i === index}
 				<button
 					type="button"
 					role="tab"
-					aria-selected={i === index}
+					aria-selected={on}
 					onclick={() => select(i)}
-					class="relative flex shrink-0 items-center gap-2 rounded-sm px-3 pt-2 pb-2.5 text-[11.5px] font-extrabold tracking-[0.08em] uppercase transition-colors duration-200 {i ===
-					index
-						? 'text-base-content'
-						: 'text-base-content/45 hover:text-base-content/75'}"
+					class="relative flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border px-2.5 py-2 text-[10px] font-extrabold tracking-[0.02em] uppercase transition-colors duration-200 sm:gap-2 sm:rounded-sm sm:border-0 sm:px-3 sm:pt-2 sm:pb-2.5 sm:text-[11.5px] sm:tracking-[0.08em] {on
+						? 'border-primary/40 bg-base-100 text-base-content sm:bg-transparent'
+						: 'border-base-300 text-base-content/55 hover:text-base-content/75'}"
 				>
-					<i class="fas {s.icon} {i === index ? 'text-primary' : ''}"></i>{s.label}
-					<span class="bg-base-300 absolute right-3 bottom-0 left-3 h-0.5 overflow-hidden rounded-full">
-						{#if i === index}
+					<i class="fas {s.icon} shrink-0 {on ? 'text-primary' : ''}"></i><span class="truncate">{s.label}</span>
+					<span class="bg-base-300 absolute right-2.5 bottom-0 left-2.5 h-0.5 overflow-hidden rounded-full sm:right-3 sm:left-3">
+						{#if on}
 							<span class="bg-primary block h-full w-full origin-left" style="transform: scaleX({clock.still ? 1 : t / s.duration})"></span>
 						{/if}
 					</span>

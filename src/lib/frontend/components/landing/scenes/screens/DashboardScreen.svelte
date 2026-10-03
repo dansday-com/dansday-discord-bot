@@ -32,7 +32,7 @@
 		{ id: 'ash', name: 'Ash', avatar: avatar(5), level: 6 }
 	];
 
-	const levelTyped = $derived(TYPE.filter((s) => t >= s.at).at(-1)?.value ?? '');
+	const levelTyped = $derived(TYPE.reduce((value, s) => (t >= s.at ? s.value : value), ''));
 	const roleTyped = $derived(t >= MENU.to);
 	const saving = $derived(t >= SAVE_PRESS && t < SAVED);
 	const synced = $derived(t >= SYNCED);

@@ -52,8 +52,8 @@
 		{/if}
 		<div class="text-ash-100 text-[14.5px] leading-[1.375] break-words">{@render children()}</div>
 		{#if ephemeral}
-			<p class="text-ash-300 mt-1 flex items-center gap-1.5 text-[12px]">
-				<i class="fas fa-eye text-[11px]"></i>Only you can see this ·<span class="text-[#00a8fc]">Dismiss message</span>
+			<p class="text-ash-300 mt-1 text-[12px]">
+				<i class="fas fa-eye mr-1 text-[11px]"></i>Only you can see this · <span class="text-[#00a8fc]">Dismiss message</span>
 			</p>
 		{/if}
 	</div>

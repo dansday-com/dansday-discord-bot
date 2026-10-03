@@ -8,22 +8,27 @@ export const dashboard = defineScene({
 	label: 'Dashboard',
 	icon: 'fa-sliders',
 	screen: DashboardScreen,
-	url: 'dansday.dev/admin/bots/1/servers/12/rewards',
-	duration: 15000,
-	rest: 13500,
+	url: 'dansday.dev/admin/bots/1/servers/12/config',
+	duration: 16000,
+	rest: 14500,
 	steps: [
-		{ from: 0, to: 3000, title: 'Set it in the browser', desc: 'Every module is a tab in the dashboard, not a slash command. Here: level 10 gives @Veteran.' },
 		{
-			from: 3000,
-			to: 4300,
-			title: 'Save once',
-			desc: 'It applies right away. No commands, no restarts, and every change lands in the change log.'
+			from: 0,
+			to: 4900,
+			title: 'Every feature is a switch',
+			desc: 'Each module in the sidebar has its own on/off switch for this server. Grey means off.'
 		},
 		{
-			from: 4300,
-			to: 15000,
-			title: 'Discord catches up',
-			desc: 'Members who already qualify get the role straight away. Everyone else gets it the moment they level up.'
+			from: 4900,
+			to: 9700,
+			title: 'Flip it, save once',
+			desc: 'No commands and no restart. It applies straight away, and the change is logged.'
+		},
+		{
+			from: 9700,
+			to: 16000,
+			title: 'Off means off',
+			desc: 'Members who press a switched-off feature in Discord get a clear notice, and the AI stops using it.'
 		}
 	]
 });

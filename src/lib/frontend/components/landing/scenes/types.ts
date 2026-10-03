@@ -1,3 +1,5 @@
+import type { Component } from 'svelte';
+
 export type Person = { name: string; avatar: string; app?: boolean };
 
 export type SceneButton = { label: string; link?: boolean; tone?: 'grey' | 'blurple' | 'green' | 'red'; pressAt?: number };
@@ -37,18 +39,23 @@ export type ScenePatch = { at: number; id: string; text?: string; embed?: Partia
 
 export type SceneStep = { from: number; to: number; title: string; desc: string };
 
+export type SceneScreenProps = { t: number; still: boolean };
+
 export type Scene = {
 	id: string;
 	label: string;
 	icon: string;
+	tagline?: string;
+	screen?: Component<SceneScreenProps>;
+	url?: string;
 	server?: string;
-	channel: string;
+	channel?: string;
 	duration: number;
 	rest: number;
-	people: Record<string, Person>;
+	people?: Record<string, Person>;
 	roles?: Record<string, string>;
-	context: SceneEvent[];
-	events: SceneEvent[];
+	context?: SceneEvent[];
+	events?: SceneEvent[];
 	patches?: ScenePatch[];
 	typing?: { from: number; to: number; who: string }[];
 	nameColors?: { at: number; who: string; color: string }[];

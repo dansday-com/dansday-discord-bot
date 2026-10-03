@@ -1,10 +1,10 @@
-import { xpForLevel } from '$lib/level-rewards.js';
 import { BOT, FOOTER, at, avatar, defineScene } from './common.js';
 
 export const steal = defineScene({
 	id: 'steal',
 	label: 'Steal & defend',
 	icon: 'fa-sack-dollar',
+	tagline: 'XP only goes up on other bots. Here it gets stolen.',
 	channel: 'items',
 	duration: 15500,
 	rest: 14000,
@@ -102,72 +102,6 @@ export const steal = defineScene({
 	]
 });
 
-const VOICE_PER_MIN = 50;
-const RIN_XP = 1180;
-let rinLevel = 1;
-while (RIN_XP >= xpForLevel(rinLevel + 1, 100, 1.2)) rinLevel++;
-const LEVEL_10 = xpForLevel(10, 100, 1.2);
-const TO_10 = LEVEL_10 - RIN_XP;
-
-export const ai = defineScene({
-	id: 'ai',
-	label: 'Server-aware AI',
-	icon: 'fa-robot',
-	channel: 'general',
-	duration: 17000,
-	rest: 15500,
-	people: {
-		bot: BOT,
-		jun: { name: 'Jun', avatar: avatar(4) },
-		mira: { name: 'Mira', avatar: avatar(2) },
-		rin: { name: 'Rin', avatar: avatar(3) }
-	},
-	context: [
-		{ id: 'c1', at: -1, who: 'jun', time: at('21:30'), text: 'voice or chat, which is faster for xp' },
-		{ id: 'c2', at: -1, who: 'rin', time: at('21:30'), text: 'idk just ask the bot' }
-	],
-	events: [
-		{ id: 'q1', at: 1800, typeFrom: 400, who: 'mira', time: at('21:31'), text: '<@bot> how much XP is an hour in voice?' },
-		{
-			id: 'a1',
-			at: 3800,
-			who: 'bot',
-			time: at('21:31'),
-			replyTo: 'q1',
-			text: `An hour in voice here is **${(VOICE_PER_MIN * 60).toLocaleString('en-US')} XP**, ${VOICE_PER_MIN} a minute. Camera or Go Live adds another ${VOICE_PER_MIN} a minute each, and every friend in the call adds 10%. Muted or deafened counts as AFK. <@Mira>`
-		},
-		{ id: 'q2', at: 8800, who: 'rin', time: at('21:33'), text: '<@bot> how far am i from level 10' },
-		{
-			id: 'a2',
-			at: 10800,
-			who: 'bot',
-			time: at('21:33'),
-			replyTo: 'q2',
-			text: `You're Level ${rinLevel} with ${RIN_XP.toLocaleString('en-US')} XP. Level 10 needs ${LEVEL_10.toLocaleString('en-US')}, so **${TO_10.toLocaleString('en-US')} XP** to go, about ${Math.ceil(TO_10 / VOICE_PER_MIN)} minutes in voice. <@Rin>`
-		}
-	],
-	typing: [
-		{ from: 2100, to: 3800, who: 'bot' },
-		{ from: 7600, to: 8800, who: 'rin' },
-		{ from: 9100, to: 10800, who: 'bot' }
-	],
-	steps: [
-		{ from: 0, to: 3400, title: 'Ask it anything', desc: 'Mention the bot or reply to it in chat. In voice, just say "hey stupid".' },
-		{
-			from: 3400,
-			to: 8400,
-			title: 'It reads your settings',
-			desc: 'XP rates, shop prices, leaderboards and stats come from this server, plus any wiki you add. Not a generic guess.'
-		},
-		{
-			from: 8400,
-			to: 17000,
-			title: 'And their own account',
-			desc: "Members can ask about their own level, bag, tasks and streak. Never anyone else's."
-		}
-	]
-});
-
 const ITEM = 'Midnight Wing Crown';
 const itemFields = (price: string, quantity: string, watching: string) => [
 	{ name: 'Category', value: 'Hats', inline: true },
@@ -183,6 +117,7 @@ export const roblox = defineScene({
 	id: 'roblox',
 	label: 'Roblox alerts',
 	icon: 'fa-cube',
+	tagline: 'Price drops tagged to the members who care.',
 	channel: 'roblox-catalog',
 	duration: 16000,
 	rest: 14500,

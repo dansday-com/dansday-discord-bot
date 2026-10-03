@@ -27,7 +27,7 @@
 				<p class="text-ash-100 mt-1 text-[13.5px] leading-[1.375] whitespace-pre-line"><Rich text={embed.description} {roles} /></p>
 			{/if}
 			{#if embed.fields?.length}
-				<div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+				<div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 @md:grid-cols-3">
 					{#each embed.fields as field (field.name)}
 						<div class={field.inline ? 'min-w-0' : 'col-span-full'}>
 							<p class="text-ash-50 text-[13px] leading-[1.375] font-semibold">{field.name}</p>
@@ -49,9 +49,9 @@
 			{/if}
 		</div>
 		{#if embed.thumbnail}
-			<img src={embed.thumbnail} alt="" class="size-12 shrink-0 rounded object-cover sm:size-14" loading="lazy" />
+			<img src={embed.thumbnail} alt="" class="size-12 shrink-0 rounded object-cover @md:size-14" loading="lazy" />
 		{:else if embed.thumbnailArt}
-			<span class="grid size-12 shrink-0 place-items-center rounded sm:size-14" style="background: {embed.thumbnailArt.background}">
+			<span class="grid size-12 shrink-0 place-items-center rounded @md:size-14" style="background: {embed.thumbnailArt.background}">
 				{#if embed.thumbnailArt.icon}<i class="fas {embed.thumbnailArt.icon} text-[22px] text-white/90"></i>{/if}
 			</span>
 		{/if}

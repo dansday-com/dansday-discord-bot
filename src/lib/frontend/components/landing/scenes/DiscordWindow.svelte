@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import Draft from './Draft.svelte';
+	import TypingIndicator from './TypingIndicator.svelte';
 
 	let {
 		server,
@@ -30,25 +32,18 @@
 			<span class="text-ash-300 ml-auto hidden truncate text-[12px] sm:block">{server}</span>
 		</div>
 
-		<div class="scene-feed flex h-[360px] flex-col justify-end overflow-hidden pb-1 sm:h-[400px]" style="opacity: {fade}">
+		<div class="scene-feed @container flex h-[360px] flex-col justify-end overflow-hidden pb-1 sm:h-[400px]" style="opacity: {fade}">
 			{@render children()}
 		</div>
 
 		<div class="text-ash-200 flex h-6 shrink-0 items-center gap-1.5 px-4 text-[11.5px]">
-			{#if typing}
-				<span class="scene-dots flex gap-[3px]"><i></i><i></i><i></i></span>
-				<span><b class="text-ash-50 font-semibold">{typing}</b> is typing…</span>
-			{/if}
+			<TypingIndicator who={typing} />
 		</div>
 
 		<div class="shrink-0 px-4 pb-4">
 			<div class="bg-ash-700 flex h-11 items-center gap-3 rounded-lg px-4 text-[14px]">
 				<i class="fas fa-circle-plus text-ash-300 text-[17px]"></i>
-				{#if draft}
-					<span class="text-ash-50 min-w-0 truncate">{draft}<span class="scene-caret"></span></span>
-				{:else}
-					<span class="text-ash-300 truncate">Message #{channel}</span>
-				{/if}
+				<Draft {draft} {channel} />
 			</div>
 		</div>
 	</div>
@@ -58,58 +53,5 @@
 	.scene-feed {
 		-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px);
 		mask-image: linear-gradient(to bottom, transparent, #000 40px);
-	}
-
-	.scene-dots i {
-		display: block;
-		width: 5px;
-		height: 5px;
-		border-radius: 9999px;
-		background: #dbdee1;
-		animation: scene-dot 1.2s ease-in-out infinite;
-	}
-
-	.scene-dots i:nth-child(2) {
-		animation-delay: 0.15s;
-	}
-
-	.scene-dots i:nth-child(3) {
-		animation-delay: 0.3s;
-	}
-
-	@keyframes scene-dot {
-		0%,
-		60%,
-		100% {
-			opacity: 0.35;
-			transform: translateY(0);
-		}
-		30% {
-			opacity: 1;
-			transform: translateY(-2px);
-		}
-	}
-
-	.scene-caret {
-		display: inline-block;
-		width: 1px;
-		height: 1.05em;
-		margin-left: 1px;
-		vertical-align: -0.15em;
-		background: #f2f3f5;
-		animation: scene-caret 1s steps(1) infinite;
-	}
-
-	@keyframes scene-caret {
-		50% {
-			opacity: 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.scene-dots i,
-		.scene-caret {
-			animation: none;
-		}
 	}
 </style>

@@ -743,7 +743,7 @@
 				</p>
 			</div>
 			<div class="mb-8 sm:mb-10">
-				<ScenePlayer scenes={BEYOND_SCENES} label="See what MEE6 doesn't do" />
+				<ScenePlayer scenes={BEYOND_SCENES} label="See what MEE6 doesn't do" variant="phone" />
 			</div>
 			<dl class="border-base-300 border-t">
 				{#each different as item, i}

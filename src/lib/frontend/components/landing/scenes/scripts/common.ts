@@ -10,5 +10,5 @@ export const FOOTER = `Powered by ${APP_DOMAIN} ${new Date().getFullYear()}`;
 export const at = (time: string) => `Today at ${time}`;
 
 export function defineScene(scene: Scene): Scene {
-	return { ...scene, events: [...scene.events].sort((a, b) => a.at - b.at) };
+	return { ...scene, events: [...(scene.events ?? [])].sort((a, b) => a.at - b.at) };
 }

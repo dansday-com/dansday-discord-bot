@@ -328,7 +328,7 @@
 			icon: 'fa-gavel',
 			title: 'Moderation',
 			desc: 'Warnings, timeouts, kicks and bans from the panel or the staff menu.',
-			more: 'Every action is a numbered case that pings the member. Mass tools unban, clear warnings and change roles in bulk.'
+			more: 'Every action is a numbered case that pings the member. Tick any members to act on them together, and warnings can escalate on their own.'
 		},
 		{
 			icon: 'fa-clipboard-check',

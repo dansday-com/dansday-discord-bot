@@ -272,6 +272,8 @@ Each member signs in to their own account on those same pages.
 
 - **Moderation** - Warn, time out, kick, ban and tempban from the panel or the staff menu, each logged as a numbered case that pings the member.
   - Remove one warning or clear them all; tempbans lift themselves.
+  - The panel lists every member with checkboxes: tick any of them and warn, time out, kick, ban or change roles in one go. Tabs show who is warned, timed out or banned, and each member opens to their full record.
+  - Auto-escalation turns a warning count into a timeout, kick or ban; warnings can expire after a set number of days, and reasons come from saved presets and stay editable.
   - Mass moderation from the panel: unban everyone, clear every warning, or give or take a role in bulk.
   - Bans, kicks and timeouts done directly in Discord are recorded too.
 - **Channel notifications** - Alerts for important channel activity.

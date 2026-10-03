@@ -658,9 +658,12 @@ export const modules = [
 		title: 'Moderation',
 		what: 'Always on. Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
 		fields: [
-			{ label: 'Moderate a member', desc: 'On the Moderation tab: pick a member and an action.' },
+			{ label: 'Members list', desc: 'Tick any members, then warn, time out, kick, ban or change roles in one go.' },
+			{ label: 'Warned, timed out, banned', desc: 'Tabs for who is under an active action; click anyone for their full record.' },
 			{ label: 'Mass moderation', desc: 'Unban everyone, clear all warnings, or give or take a role in bulk.' },
-			{ label: 'Moderation tab', desc: 'Every case, with remove, clear and unban.' },
+			{ label: 'Auto-escalation', desc: 'Steps like 3 warnings = 1 hour timeout; the bot applies them itself.' },
+			{ label: 'Warning expiry', desc: 'Warnings older than this stop counting; the record stays.' },
+			{ label: 'Reason presets', desc: 'Saved reasons staff pick from; any case reason can be edited later.' },
 			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Each case pings the member; cases are always kept in the panel.' }
 		]
 	},

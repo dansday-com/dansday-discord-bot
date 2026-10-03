@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { getEmbedConfig, getBotConfig, MODERATION_CONFIG, NOTIFICATIONS } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
+import { escalationStepFor } from '../../../../moderation-rules.js';
 
 export const MODERATION_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'] as const;
 export const BULK_MODERATION_ACTIONS = ['unban_all', 'clear_warns', 'role_add', 'role_remove'] as const;
@@ -26,9 +27,11 @@ const BULK_TITLES: Record<string, string> = {
 	role_remove: '➖ Bulk Role Remove'
 };
 
-const BULK_FILTER_LABELS: Record<string, string> = { all: 'Everyone', with: 'Members with', without: 'Members without' };
+const BULK_FILTER_LABELS: Record<string, string> = { all: 'Everyone', with: 'Members with', without: 'Members without', selected: 'Selected members' };
 const BAN_PAGE_SIZE = 1000;
+const WARN_EXPIRY_SWEEP_MS = 15 * 60 * 1000;
 const bulkRunning = new Set<string>();
+let lastWarnExpirySweep = 0;
 
 const MAX_TIMEOUT_SECONDS = 28 * 24 * 60 * 60;
 const SWEEP_MS = 60 * 1000;
@@ -316,7 +319,43 @@ export async function performModerationAction(
 		source
 	});
 	await logger.log(`🛡️ Moderation ${action} on ${targetId} in ${guild.id} via ${source} (case #${logged?.caseNumber ?? '?'})`);
-	return { ok: true, case_number: logged?.caseNumber ?? null };
+	const escalated = action === 'warn' && logged?.memberRow ? await escalate(client, guild, serverId, targetId, Number(logged.memberRow.id)) : null;
+	return { ok: true, case_number: logged?.caseNumber ?? null, ...(escalated ? { escalated } : {}) };
+}
+
+async function escalate(client: any, guild: any, serverId: number, targetId: string, memberId: number) {
+	const rules = await MODERATION_CONFIG.getRulesForServer(serverId).catch(() => null);
+	if (!rules || rules.escalation.length === 0) return null;
+	const active = await db.countActiveWarnings(memberId).catch(() => 0);
+	const step = escalationStepFor(rules, active);
+	if (!step) return null;
+	const result: any = await performModerationAction(client, {
+		guild_id: guild.id,
+		action: step.action,
+		target_id: targetId,
+		staff_name: 'Automatic',
+		reason: `Reached ${active} active warnings`,
+		duration_seconds: step.duration_seconds,
+		source: 'auto'
+	});
+	if (!result.ok) {
+		await logger.log(`⚠️ Auto-escalation ${step.action} failed for ${targetId} in ${guild.id}: ${result.error}`);
+		return null;
+	}
+	return { action: step.action, case_number: result.case_number ?? null };
+}
+
+async function expireOldWarnings(client: any, botId: number) {
+	if (Date.now() - lastWarnExpirySweep < WARN_EXPIRY_SWEEP_MS) return;
+	lastWarnExpirySweep = Date.now();
+	const servers = await db.getServersForBot(botId).catch(() => []);
+	for (const server of servers as any[]) {
+		if (!client.guilds.cache.has(String(server.discord_server_id))) continue;
+		const rules = await MODERATION_CONFIG.getRulesForServer(Number(server.id)).catch(() => null);
+		if (!rules?.warn_expiry_days) continue;
+		const expired = await db.expireModerationWarnings(Number(server.id), rules.warn_expiry_days).catch(() => 0);
+		if (expired > 0) await logger.log(`⌛ Expired ${expired} warning(s) older than ${rules.warn_expiry_days} days in ${server.discord_server_id}`);
+	}
 }
 
 async function fetchAllBanIds(guild: any): Promise<string[] | null> {
@@ -340,6 +379,7 @@ export async function startBulkModeration(
 		role_id?: string | null;
 		filter?: string | null;
 		filter_role_id?: string | null;
+		target_ids?: string[];
 		skip_ids?: string[];
 		reason?: string | null;
 		staff_name?: string | null;
@@ -409,14 +449,17 @@ export async function startBulkModeration(
 		if (!role || role.id === guild.id) return { ok: false, error: 'Pick a role' };
 		if (role.managed) return { ok: false, error: `${role.name} is managed by an integration and can't be given or removed` };
 		if (!role.editable) return { ok: false, error: `The bot's role must be above ${role.name}` };
-		const filter = ['with', 'without'].includes(String(payload.filter)) ? String(payload.filter) : 'all';
-		const filterRole = filter === 'all' ? null : guild.roles.cache.get(String(payload.filter_role_id || ''));
-		if (filter !== 'all' && !filterRole) return { ok: false, error: 'Pick the role to filter by' };
+		const filter = ['with', 'without', 'selected'].includes(String(payload.filter)) ? String(payload.filter) : 'all';
+		const filterRole = filter === 'with' || filter === 'without' ? guild.roles.cache.get(String(payload.filter_role_id || '')) : null;
+		if ((filter === 'with' || filter === 'without') && !filterRole) return { ok: false, error: 'Pick the role to filter by' };
+		const picked = filter === 'selected' ? new Set((payload.target_ids ?? []).map(String)) : null;
+		if (picked && picked.size === 0) return { ok: false, error: 'Select at least one member' };
 		const members = await guild.members.fetch().catch(() => null);
 		if (!members) return { ok: false, error: 'Could not load the member list' };
 		const adding = action === 'role_add';
 		targets = [...members.values()]
 			.filter((m: any) => !m.user?.bot && !skip.has(m.id))
+			.filter((m: any) => !picked || picked.has(m.id))
 			.filter((m: any) => !filterRole || m.roles.cache.has(filterRole.id) === (filter === 'with'))
 			.filter((m: any) => m.roles.cache.has(role.id) !== adding)
 			.map((m: any) => m.id);
@@ -428,7 +471,7 @@ export async function startBulkModeration(
 			return true;
 		};
 		fields.push({ name: '🎭 Role', value: `<@&${role.id}>`, inline: true });
-		fields.push({ name: '👥 Who', value: filterRole ? `${BULK_FILTER_LABELS[filter]} <@&${filterRole.id}>` : BULK_FILTER_LABELS.all, inline: true });
+		fields.push({ name: '👥 Who', value: filterRole ? `${BULK_FILTER_LABELS[filter]} <@&${filterRole.id}>` : BULK_FILTER_LABELS[filter], inline: true });
 	}
 
 	if (targets.length === 0) return { ok: false, error: 'Nothing to do: no one matches' };
@@ -472,6 +515,7 @@ async function sweepModeration(client: any) {
 	const botConfig = getBotConfig();
 	if (!botConfig?.id) return;
 	await db.expireModerationTimeouts().catch(() => null);
+	await expireOldWarnings(client, Number(botConfig.id)).catch(() => null);
 	const due = await db.getDueTempbans(Number(botConfig.id)).catch(() => []);
 	for (const row of due) {
 		const guild = client.guilds.cache.get(String(row.discord_server_id));

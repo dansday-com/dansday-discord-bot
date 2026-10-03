@@ -1,50 +1,44 @@
 <script lang="ts">
-	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/frontend/toast.svelte';
-	import type { PageProps } from './$types';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
-	import ModerateMemberForm from '$lib/frontend/components/ModerateMemberForm.svelte';
+	import ModerationMemberRecord from '$lib/frontend/components/ModerationMemberRecord.svelte';
+	import ModerationRules from '$lib/frontend/components/ModerationRules.svelte';
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import { DURATION_UNITS, MODERATION_ACTION_META, MODERATION_REASON_OPTIONAL, MODERATION_TIMED_ACTIONS, moderateEach } from '$lib/frontend/moderation.js';
+	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	const ACTIONS = [
-		{ value: 'warn', label: 'Warn', icon: 'fa-triangle-exclamation', color: 'text-amber-400' },
-		{ value: 'timeout', label: 'Timeout', icon: 'fa-volume-xmark', color: 'text-orange-400' },
-		{ value: 'untimeout', label: 'Remove timeout', icon: 'fa-volume-high', color: 'text-emerald-400' },
-		{ value: 'kick', label: 'Kick', icon: 'fa-door-open', color: 'text-sky-400' },
-		{ value: 'ban', label: 'Ban', icon: 'fa-gavel', color: 'text-red-400' },
-		{ value: 'tempban', label: 'Temporary ban', icon: 'fa-hourglass-half', color: 'text-rose-400' },
-		{ value: 'unban', label: 'Unban', icon: 'fa-dove', color: 'text-emerald-400' },
-		{ value: 'clearwarns', label: 'Clear warnings', icon: 'fa-broom', color: 'text-violet-400' }
-	];
-	const LOG_META: Record<string, { label: string; icon: string; color: string }> = {
-		...Object.fromEntries(ACTIONS.map((a) => [a.value, a])),
-		unwarn: { label: 'Remove warning', icon: 'fa-eraser', color: 'text-violet-400' }
-	};
-	const ACTION_FILTER_OPTIONS = [{ value: 'all', label: 'All actions' }, ...Object.entries(LOG_META).map(([value, meta]) => ({ value, label: meta.label }))];
-	const ROLE_ACTION_OPTIONS = [
-		{ value: 'role_add', label: 'Give role' },
-		{ value: 'role_remove', label: 'Take role' }
-	];
+	const PAGE_SIZE = 50;
+	const MEMBER_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'clearwarns', 'role_add', 'role_remove'];
+	const BAN_ACTIONS = ['unban'];
+	const ROLE_ACTIONS = ['role_add', 'role_remove'];
 	const WHO_OPTIONS = [
 		{ value: 'all', label: 'Everyone' },
 		{ value: 'with', label: 'Members with role' },
 		{ value: 'without', label: 'Members without role' }
 	];
-	const STATUS_FILTER_OPTIONS = [
-		{ value: 'all', label: 'Any status' },
-		{ value: 'active', label: 'Active' },
-		{ value: 'revoked', label: 'Revoked' }
-	];
 
-	let busy = $state(false);
-	let filterAction = $state('all');
-	let filterStatus = $state('all');
+	let tab = $state<'all' | 'warned' | 'timedout' | 'banned'>('all');
 	let search = $state('');
-	let confirm = $state<{ title: string; message: string; body: Record<string, unknown>; endpoint?: string } | null>(null);
+	let roleFilter = $state('');
+	let page = $state(1);
+	let selected = $state<Set<string>>(new Set());
+	let expanded = $state<string | null>(null);
+
+	let action = $state('warn');
+	let reason = $state('');
+	let preset = $state('');
+	let amount = $state(10);
+	let unit = $state('60');
+	let actionRoleId = $state('');
+	let busy = $state(false);
+	let progress = $state<{ done: number; total: number } | null>(null);
+	let confirm = $state<{ title: string; message: string; run: () => Promise<void> } | null>(null);
+
 	let unbanReason = $state('');
 	let warnsReason = $state('');
 	let roleAction = $state('role_add');
@@ -52,94 +46,167 @@
 	let roleWho = $state('all');
 	let whoRoleId = $state('');
 
-	const roleOptions = $derived([{ value: '', label: 'Pick a role' }, ...data.roles.filter((r) => r.manageable).map((r) => ({ value: r.id, label: r.name }))]);
-	const whoRoleOptions = $derived([{ value: '', label: 'Pick a role to filter by' }, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
-	const roleName = (id: string) => data.roles.find((r) => r.id === id)?.name ?? 'that role';
+	const locked = $derived(new Set(data.lockedIds));
+	const q = $derived(search.trim().toLowerCase());
+	const warnedCount = $derived(data.members.filter((m) => m.warnings > 0).length);
+	const timedOutCount = $derived(data.members.filter((m) => m.timeout_until).length);
 
-	const stats = $derived({
-		total: data.logs.length,
-		warnings: data.logs.filter((l) => l.action === 'warn' && l.active).length,
-		timeouts: data.logs.filter((l) => l.action === 'timeout').length,
-		bans: data.logs.filter((l) => (l.action === 'ban' || l.action === 'tempban') && l.active).length
-	});
+	const tabs = $derived([
+		{ id: 'all' as const, label: 'All members', count: data.members.length },
+		{ id: 'warned' as const, label: 'Warned', count: warnedCount },
+		{ id: 'timedout' as const, label: 'Timed out', count: timedOutCount },
+		{ id: 'banned' as const, label: 'Banned', count: data.bans.length }
+	]);
 
-	const filtered = $derived(
-		data.logs.filter((l) => {
-			if (filterAction !== 'all' && l.action !== filterAction) return false;
-			if (filterStatus === 'active' && !l.active) return false;
-			if (filterStatus === 'revoked' && !l.revoked_at) return false;
-			const q = search.trim().toLowerCase();
+	const memberRows = $derived(
+		data.members.filter((m) => {
+			if (tab === 'warned' && m.warnings === 0) return false;
+			if (tab === 'timedout' && !m.timeout_until) return false;
+			if (roleFilter && !m.role_ids.includes(roleFilter)) return false;
 			if (!q) return true;
-			return (
-				String(l.case_number) === q.replace('#', '') ||
-				(l.member_name ?? '').toLowerCase().includes(q) ||
-				l.discord_member_id.includes(q) ||
-				(l.staff_name ?? '').toLowerCase().includes(q) ||
-				(l.reason ?? '').toLowerCase().includes(q)
-			);
+			return m.name.toLowerCase().includes(q) || (m.username ?? '').toLowerCase().includes(q) || m.id.includes(q);
 		})
 	);
+	const banRows = $derived(data.bans.filter((b) => !q || (b.name ?? '').toLowerCase().includes(q) || b.discord_member_id.includes(q)));
+	const rowIds = $derived(tab === 'banned' ? banRows.map((b) => b.discord_member_id) : memberRows.map((m) => m.id));
+	const totalPages = $derived(Math.max(1, Math.ceil(rowIds.length / PAGE_SIZE)));
+	const pageStart = $derived((Math.min(page, totalPages) - 1) * PAGE_SIZE);
+	const pageMembers = $derived(memberRows.slice(pageStart, pageStart + PAGE_SIZE));
+	const pageBans = $derived(banRows.slice(pageStart, pageStart + PAGE_SIZE));
+	const pageIds = $derived(rowIds.slice(pageStart, pageStart + PAGE_SIZE).filter((id) => !locked.has(id)));
+	const matchingIds = $derived(rowIds.filter((id) => !locked.has(id)));
+	const pageAllSelected = $derived(pageIds.length > 0 && pageIds.every((id) => selected.has(id)));
 
-	function duration(seconds: number | null) {
-		if (!seconds) return null;
-		const d = Math.floor(seconds / 86400);
-		const h = Math.floor((seconds % 86400) / 3600);
-		const m = Math.floor((seconds % 3600) / 60);
-		return [d && `${d}d`, h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ') || `${seconds}s`;
+	const actionOptions = $derived((tab === 'banned' ? BAN_ACTIONS : MEMBER_ACTIONS).map((value) => ({ value, label: MODERATION_ACTION_META[value].label })));
+	const roleFilterOptions = $derived([{ value: '', label: 'Any role' }, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
+	const manageableRoleOptions = $derived([
+		{ value: '', label: 'Pick a role' },
+		...data.roles.filter((r) => r.manageable).map((r) => ({ value: r.id, label: r.name }))
+	]);
+	const whoRoleOptions = $derived([{ value: '', label: 'Pick a role to filter by' }, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
+	const presetOptions = $derived([{ value: '', label: 'Use a preset…' }, ...data.rules.reason_presets.map((p) => ({ value: p, label: p }))]);
+	const roleName = (id: string) => data.roles.find((r) => r.id === id)?.name ?? 'that role';
+
+	$effect(() => {
+		if (preset) {
+			reason = preset;
+			preset = '';
+		}
+	});
+
+	function switchTab(next: typeof tab) {
+		tab = next;
+		page = 1;
+		selected = new Set();
+		expanded = null;
+		action = next === 'banned' ? 'unban' : next === 'timedout' ? 'untimeout' : next === 'warned' ? 'clearwarns' : 'warn';
 	}
 
-	async function send(body: Record<string, unknown>, endpoint = 'moderation') {
+	function toggle(id: string) {
+		const next = new Set(selected);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		selected = next;
+	}
+
+	function togglePage() {
+		const next = new Set(selected);
+		if (pageAllSelected) for (const id of pageIds) next.delete(id);
+		else for (const id of pageIds) next.add(id);
+		selected = next;
+	}
+
+	function roleColor(color: string | null) {
+		return color && color !== '#000000' ? `color: ${color}` : undefined;
+	}
+
+	function apply() {
+		const ids = [...selected];
+		if (ids.length === 0) return;
+		const meta = MODERATION_ACTION_META[action];
+		const isRole = ROLE_ACTIONS.includes(action);
+		if (isRole && !actionRoleId) return showToast('Pick a role', 'error');
+		if (!MODERATION_REASON_OPTIONAL.includes(action) && !reason.trim()) return showToast('Enter a reason', 'error');
+		if (MODERATION_TIMED_ACTIONS.includes(action) && (!amount || amount < 1)) return showToast('Enter a duration', 'error');
+		const who = `${ids.length.toLocaleString()} ${ids.length === 1 ? 'member' : 'members'}`;
+		confirm = {
+			title: meta.label,
+			message: isRole ? `${meta.label} ${roleName(actionRoleId)} ${action === 'role_add' ? 'to' : 'from'} ${who}?` : `${meta.label}: ${who}?`,
+			run: () => (isRole ? runRoles(ids) : runEach(ids))
+		};
+	}
+
+	async function runEach(ids: string[]) {
+		busy = true;
+		progress = { done: 0, total: ids.length };
+		try {
+			const out = await moderateEach(
+				data.serverId,
+				ids,
+				{
+					action,
+					reason: reason.trim() || null,
+					duration_seconds: MODERATION_TIMED_ACTIONS.includes(action) ? Math.round(amount * Number(unit)) : null
+				},
+				(done) => (progress = { done, total: ids.length })
+			);
+			const parts = [`Done for ${out.done.toLocaleString()}`];
+			if (out.escalated > 0) parts.push(`${out.escalated} auto-escalated`);
+			if (out.failed > 0) parts.push(`${out.failed} failed: ${out.error}`);
+			showToast(parts.join(' · '), out.failed > 0 && out.done === 0 ? 'error' : 'success');
+			if (out.done > 0) {
+				selected = new Set();
+				reason = '';
+			}
+			await invalidateAll();
+		} finally {
+			busy = false;
+			progress = null;
+		}
+	}
+
+	async function runRoles(ids: string[]) {
+		const ok = await postBulk({ action, role_id: actionRoleId, filter: 'selected', target_ids: ids });
+		if (ok) selected = new Set();
+	}
+
+	async function postBulk(body: Record<string, unknown>) {
 		busy = true;
 		try {
-			const res = await fetch(`/api/servers/${data.serverId}/${endpoint}`, {
+			const res = await fetch(`/api/servers/${data.serverId}/moderation/bulk`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body)
 			});
 			const out = await res.json().catch(() => ({}));
 			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Moderation action failed', 'error');
+				showToast(out.error || 'Bulk action failed', 'error');
 				return false;
 			}
-			if (out.queued != null) showToast(`Started for ${Number(out.queued).toLocaleString()}. The result goes to the moderation log channel.`, 'success');
-			else showToast(out.case_number ? `Case #${out.case_number} recorded` : 'Done', 'success');
+			showToast(`Started for ${Number(out.queued ?? 0).toLocaleString()}. The result goes to the moderation log channel.`, 'success');
 			await invalidateAll();
 			return true;
 		} catch {
-			showToast('Moderation action failed', 'error');
+			showToast('Bulk action failed', 'error');
 			return false;
 		} finally {
 			busy = false;
 		}
 	}
 
-	function unban(memberId: string, name: string) {
-		confirm = { title: 'Unban', message: `Unban ${name}?`, body: { action: 'unban', target_id: memberId } };
-	}
-
-	function revoke(caseNumber: number) {
-		confirm = { title: 'Remove warning', message: `Remove warning case #${caseNumber}?`, body: { action: 'unwarn', case_number: caseNumber } };
-	}
-
-	function clearFor(memberId: string, name: string) {
-		confirm = { title: 'Clear warnings', message: `Clear every active warning for ${name}?`, body: { action: 'clearwarns', target_id: memberId } };
-	}
-
 	function unbanAll() {
 		confirm = {
 			title: 'Unban everyone',
 			message: 'Unban every banned user in this server?',
-			body: { action: 'unban_all', reason: unbanReason.trim() || null },
-			endpoint: 'moderation/bulk'
+			run: async () => void (await postBulk({ action: 'unban_all', reason: unbanReason.trim() || null }))
 		};
 	}
 
 	function clearAllWarns() {
 		confirm = {
 			title: 'Clear all warnings',
-			message: `Clear all ${stats.warnings.toLocaleString()} active warnings?`,
-			body: { action: 'clear_warns', reason: warnsReason.trim() || null },
-			endpoint: 'moderation/bulk'
+			message: `Clear all ${data.activeWarnings.toLocaleString()} active warnings?`,
+			run: async () => void (await postBulk({ action: 'clear_warns', reason: warnsReason.trim() || null }))
 		};
 	}
 
@@ -150,16 +217,14 @@
 		confirm = {
 			title: roleAction === 'role_add' ? 'Give role' : 'Take role',
 			message: `${roleAction === 'role_add' ? 'Give' : 'Take'} ${roleName(roleId)} ${roleAction === 'role_add' ? 'to' : 'from'} ${who}?`,
-			body: { action: roleAction, role_id: roleId, filter: roleWho, filter_role_id: roleWho === 'all' ? null : whoRoleId },
-			endpoint: 'moderation/bulk'
+			run: async () => void (await postBulk({ action: roleAction, role_id: roleId, filter: roleWho, filter_role_id: roleWho === 'all' ? null : whoRoleId }))
 		};
 	}
 
 	async function runConfirm() {
 		const pending = confirm;
 		confirm = null;
-		if (!pending) return;
-		await send(pending.body, pending.endpoint);
+		if (pending) await pending.run();
 	}
 </script>
 
@@ -167,19 +232,231 @@
 	<title>Moderation - {APP_NAME}</title>
 </svelte:head>
 
+{#snippet avatar(src: string | null)}
+	<div class="bg-ash-600 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
+		{#if src}
+			<img {src} alt="" class="h-full w-full object-cover" />
+		{:else}
+			<i class="fas fa-user text-ash-400 text-sm"></i>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet pick(id: string, name: string)}
+	{#if locked.has(id)}
+		<span class="flex h-5 w-5 shrink-0 items-center justify-center text-amber-300" title={data.deniedReason}><i class="fas fa-lock text-xs"></i></span>
+	{:else}
+		<input type="checkbox" class="checkbox checkbox-sm shrink-0" checked={selected.has(id)} onchange={() => toggle(id)} aria-label="Select {name}" />
+	{/if}
+{/snippet}
+
+{#snippet record(id: string)}
+	{#if expanded === id}
+		<div class="border-ash-600 border-t p-2 sm:p-3">
+			<ModerationMemberRecord
+				serverId={data.serverId}
+				memberId={id}
+				canEdit={!locked.has(id)}
+				deniedReason={data.deniedReason}
+				presets={data.rules.reason_presets}
+				onchange={() => invalidateAll()}
+			/>
+		</div>
+	{/if}
+{/snippet}
+
 <div class="space-y-4 sm:space-y-6">
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-		{#each [{ label: 'Cases', value: stats.total, icon: 'fa-folder-open', color: 'text-sky-400' }, { label: 'Active warnings', value: stats.warnings, icon: 'fa-triangle-exclamation', color: 'text-amber-400' }, { label: 'Timeouts', value: stats.timeouts, icon: 'fa-volume-xmark', color: 'text-orange-400' }, { label: 'Active bans', value: stats.bans, icon: 'fa-gavel', color: 'text-red-400' }] as tile (tile.label)}
+		{#each [{ label: 'Active warnings', value: data.activeWarnings, icon: 'fa-triangle-exclamation', color: 'text-amber-400' }, { label: 'Warned members', value: warnedCount, icon: 'fa-user-shield', color: 'text-amber-300' }, { label: 'Timed out', value: timedOutCount, icon: 'fa-volume-xmark', color: 'text-orange-400' }, { label: 'Banned', value: data.bans.length, icon: 'fa-gavel', color: 'text-red-400' }] as tile (tile.label)}
 			<div class="bg-ash-800 border-ash-700 rounded-xl border p-3 sm:p-4">
 				<div class="text-ash-400 flex items-center gap-2 text-xs"><i class="fas {tile.icon} {tile.color}"></i>{tile.label}</div>
-				<div class="text-ash-100 mt-1 text-xl font-bold sm:text-2xl">{tile.value}</div>
+				<div class="text-ash-100 mt-1 text-xl font-bold tabular-nums sm:text-2xl">{tile.value.toLocaleString()}</div>
 			</div>
 		{/each}
 	</div>
 
 	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<h3 class="text-ash-100 mb-4 flex items-center gap-2 text-xl font-bold"><i class="fas fa-gavel text-red-400"></i>Moderate a member</h3>
-		<ModerateMemberForm serverId={data.serverId} ondone={() => invalidateAll()} />
+		<h3 class="text-ash-100 mb-4 flex items-center gap-2 text-xl font-bold"><i class="fas fa-gavel text-red-400"></i>Members</h3>
+
+		<div class="bg-ash-900/40 border-ash-700 mb-4 grid grid-cols-2 gap-1 rounded-lg border p-1 sm:grid-cols-4">
+			{#each tabs as t (t.id)}
+				<button
+					type="button"
+					onclick={() => switchTab(t.id)}
+					class="flex items-center justify-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors {tab === t.id
+						? 'bg-ash-600 text-ash-100'
+						: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+				>
+					{t.label}<span class="text-ash-400 text-xs tabular-nums">{t.count.toLocaleString()}</span>
+				</button>
+			{/each}
+		</div>
+
+		<div class="mb-3 flex flex-col gap-3 sm:flex-row">
+			<div class="relative flex-1">
+				<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
+				<input
+					type="text"
+					bind:value={search}
+					oninput={() => (page = 1)}
+					placeholder="Search name, username or ID"
+					class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
+				/>
+			</div>
+			{#if tab !== 'banned'}
+				<LabeledSelect appearance="members-toolbar" options={roleFilterOptions} bind:value={roleFilter} ariaLabel="Role filter" />
+			{/if}
+		</div>
+
+		<div class="text-ash-300 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+			<label class="flex items-center gap-2">
+				<input type="checkbox" class="checkbox checkbox-sm" checked={pageAllSelected} disabled={pageIds.length === 0} onchange={togglePage} />
+				Select page
+			</label>
+			{#if selected.size > 0}
+				<span class="text-ash-100 font-semibold">{selected.size.toLocaleString()} selected</span>
+				{#if selected.size < matchingIds.length}
+					<button type="button" class="text-sky-400 hover:text-sky-300" onclick={() => (selected = new Set(matchingIds))}>
+						Select all {matchingIds.length.toLocaleString()}
+					</button>
+				{/if}
+				<button type="button" class="text-ash-400 hover:text-ash-200" onclick={() => (selected = new Set())}>Clear</button>
+			{/if}
+		</div>
+
+		{#if selected.size > 0}
+			<div class="bg-ash-700 border-ash-600 mb-4 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+					<LabeledSelect appearance="field" options={actionOptions} bind:value={action} ariaLabel="Action" />
+					{#if ROLE_ACTIONS.includes(action)}
+						<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={actionRoleId} ariaLabel="Role" />
+					{/if}
+					{#if MODERATION_TIMED_ACTIONS.includes(action)}
+						<div class="flex gap-2">
+							<input
+								type="number"
+								min="1"
+								bind:value={amount}
+								aria-label="Duration amount"
+								class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-20 rounded-lg border px-3 text-sm"
+							/>
+							<div class="min-w-0 flex-1">
+								<LabeledSelect appearance="field" options={DURATION_UNITS} bind:value={unit} ariaLabel="Duration unit" />
+							</div>
+						</div>
+					{/if}
+					{#if !ROLE_ACTIONS.includes(action) && data.rules.reason_presets.length > 0}
+						<LabeledSelect appearance="field" options={presetOptions} bind:value={preset} ariaLabel="Reason preset" />
+					{/if}
+				</div>
+				{#if !ROLE_ACTIONS.includes(action)}
+					<input
+						type="text"
+						maxlength="1000"
+						bind:value={reason}
+						placeholder={MODERATION_REASON_OPTIONAL.includes(action) ? 'Reason (optional)' : 'Reason'}
+						aria-label="Reason"
+						class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+					/>
+				{/if}
+				<button
+					type="button"
+					onclick={apply}
+					disabled={busy}
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:self-start"
+				>
+					{#if progress}
+						<i class="fas fa-spinner fa-spin"></i>Working {progress.done.toLocaleString()} / {progress.total.toLocaleString()}
+					{:else}
+						<i class="fas {MODERATION_ACTION_META[action]?.icon ?? 'fa-gavel'}"></i>{MODERATION_ACTION_META[action]?.label ?? 'Apply'} · {selected.size.toLocaleString()}
+					{/if}
+				</button>
+			</div>
+		{/if}
+
+		{#if rowIds.length === 0}
+			<p class="text-ash-400 py-8 text-center text-sm">{tab === 'all' ? 'No members match.' : 'Nobody here.'}</p>
+		{:else if tab === 'banned'}
+			<ul class="space-y-2">
+				{#each pageBans as b (b.discord_member_id)}
+					{@const meta = MODERATION_ACTION_META[b.action] ?? MODERATION_ACTION_META.ban}
+					<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border {selected.has(b.discord_member_id) ? 'ring-1 ring-sky-500/60' : ''}">
+						<div class="flex items-center gap-3 p-3">
+							{@render pick(b.discord_member_id, b.name ?? b.discord_member_id)}
+							<button
+								type="button"
+								onclick={() => (expanded = expanded === b.discord_member_id ? null : b.discord_member_id)}
+								class="flex min-w-0 flex-1 items-center gap-3 text-left"
+							>
+								{@render avatar(b.avatar)}
+								<div class="min-w-0 flex-1">
+									<p class="text-ash-100 truncate text-sm font-semibold">{b.name ?? b.discord_member_id}</p>
+									<p class="text-ash-300 truncate text-xs">{b.reason || 'No reason provided'}</p>
+								</div>
+								<div class="shrink-0 text-right text-xs">
+									<p class={meta.color}><i class="fas {meta.icon} mr-1"></i>{meta.label}</p>
+									<p class="text-ash-500 mt-0.5 text-[0.65rem]">
+										{#if b.expires_at}Ends <LocalTime value={b.expires_at} fallback="" class="inline" />{:else}<LocalTime
+												value={b.created_at}
+												fallback=""
+												class="inline"
+											/>{/if}
+									</p>
+								</div>
+								<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === b.discord_member_id ? 'rotate-180' : ''}"></i>
+							</button>
+						</div>
+						{@render record(b.discord_member_id)}
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<ul class="space-y-2">
+				{#each pageMembers as m (m.id)}
+					<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border {selected.has(m.id) ? 'ring-1 ring-sky-500/60' : ''}">
+						<div class="flex items-center gap-3 p-3">
+							{@render pick(m.id, m.name)}
+							<button type="button" onclick={() => (expanded = expanded === m.id ? null : m.id)} class="flex min-w-0 flex-1 items-center gap-3 text-left">
+								{@render avatar(m.avatar)}
+								<div class="min-w-0 flex-1">
+									<p class="text-ash-100 truncate text-sm font-semibold">{m.name}</p>
+									<p class="text-ash-400 truncate text-xs">
+										{#if m.username}@{m.username}{/if}{#if m.top_role}
+											· <span style={roleColor(m.top_role.color)}>{m.top_role.name}</span>{/if}
+									</p>
+								</div>
+								<div class="flex shrink-0 flex-col items-end gap-0.5 text-xs">
+									{#if m.warnings > 0}<span class="text-amber-400"><i class="fas fa-triangle-exclamation mr-1"></i>{m.warnings}</span>{/if}
+									{#if m.timeout_until}<span class="text-orange-400"><i class="fas fa-volume-xmark mr-1"></i>Timed out</span>{/if}
+								</div>
+								<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === m.id ? 'rotate-180' : ''}"></i>
+							</button>
+						</div>
+						{@render record(m.id)}
+					</li>
+				{/each}
+			</ul>
+		{/if}
+
+		{#if totalPages > 1}
+			<div class="mt-4 flex items-center justify-center gap-3">
+				<button
+					onclick={() => (page = Math.max(1, page - 1))}
+					disabled={page <= 1}
+					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
+				</button>
+				<span class="text-ash-400 text-sm">Page {Math.min(page, totalPages)} of {totalPages}</span>
+				<button
+					onclick={() => (page = Math.min(totalPages, page + 1))}
+					disabled={page >= totalPages}
+					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
+				</button>
+			</div>
+		{/if}
 	</section>
 
 	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
@@ -210,7 +487,7 @@
 			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
 				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
 					<i class="fas fa-broom text-violet-400"></i>Clear all warnings<span class="text-ash-400 ml-auto text-xs font-normal"
-						>{stats.warnings.toLocaleString()} active</span
+						>{data.activeWarnings.toLocaleString()} active</span
 					>
 				</p>
 				<input
@@ -224,7 +501,7 @@
 				<button
 					type="button"
 					onclick={clearAllWarns}
-					disabled={busy || stats.warnings === 0}
+					disabled={busy || data.activeWarnings === 0}
 					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
 				>
 					<i class="fas fa-broom"></i>Clear all
@@ -233,8 +510,16 @@
 
 			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
 				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-user-tag text-sky-400"></i>Bulk roles</p>
-				<LabeledSelect appearance="field" options={ROLE_ACTION_OPTIONS} bind:value={roleAction} ariaLabel="Give or take" />
-				<LabeledSelect appearance="field" options={roleOptions} bind:value={roleId} ariaLabel="Role" />
+				<LabeledSelect
+					appearance="field"
+					options={[
+						{ value: 'role_add', label: 'Give role' },
+						{ value: 'role_remove', label: 'Take role' }
+					]}
+					bind:value={roleAction}
+					ariaLabel="Give or take"
+				/>
+				<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={roleId} ariaLabel="Role" />
 				<LabeledSelect appearance="field" options={WHO_OPTIONS} bind:value={roleWho} ariaLabel="Who" />
 				{#if roleWho !== 'all'}
 					<LabeledSelect appearance="field" options={whoRoleOptions} bind:value={whoRoleId} ariaLabel="Filter role" />
@@ -255,94 +540,8 @@
 	</section>
 
 	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<h3 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold"><i class="fas fa-scroll text-sky-400"></i>Moderation logs</h3>
-
-		<div class="mb-4 flex flex-col gap-3 sm:flex-row">
-			<div class="relative flex-1">
-				<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
-				<input
-					type="text"
-					bind:value={search}
-					placeholder="Search member, staff, reason or #case"
-					class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
-				/>
-			</div>
-			<LabeledSelect appearance="members-toolbar" options={ACTION_FILTER_OPTIONS} bind:value={filterAction} ariaLabel="Action filter" />
-			<LabeledSelect appearance="members-toolbar" options={STATUS_FILTER_OPTIONS} bind:value={filterStatus} ariaLabel="Status filter" />
-		</div>
-
-		{#if filtered.length === 0}
-			<p class="text-ash-400 py-8 text-center text-sm">No moderation cases yet.</p>
-		{:else}
-			<ul class="divide-ash-700 divide-y">
-				{#each filtered as log (log.id)}
-					{@const meta = LOG_META[log.action] ?? { label: log.action, icon: 'fa-circle', color: 'text-ash-400' }}
-					<li class="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-4">
-						<div class="flex min-w-0 flex-1 items-start gap-3">
-							<div class="bg-ash-700 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
-								{#if log.member_avatar}
-									<img src={log.member_avatar} alt="" class="h-full w-full object-cover" />
-								{:else}
-									<i class="fas fa-user text-ash-400 text-sm"></i>
-								{/if}
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-									<span class="text-ash-400 font-mono text-xs">#{log.case_number}</span>
-									<span class="inline-flex items-center gap-1 font-semibold {meta.color}"><i class="fas {meta.icon}"></i>{meta.label}</span>
-									<span class="text-ash-100 truncate font-medium">{log.member_name || log.discord_member_id}</span>
-									{#if log.duration_seconds}
-										<span class="bg-ash-700 text-ash-300 rounded px-1.5 py-0.5 text-xs">{duration(log.duration_seconds)}</span>
-									{/if}
-									{#if log.revoked_at}
-										<span class="bg-ash-700 text-ash-400 rounded px-1.5 py-0.5 text-xs">Revoked</span>
-									{:else if log.active && ['warn', 'timeout', 'ban', 'tempban'].includes(log.action)}
-										<span class="rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs text-emerald-300">Active</span>
-									{/if}
-								</div>
-								<p class="text-ash-300 mt-1 text-sm break-words">{log.reason || 'No reason provided'}</p>
-								<p class="text-ash-500 mt-1 text-xs">
-									{log.staff_name || (log.source === 'panel' ? 'Panel' : log.source === 'auto' ? 'Automatic' : 'Unknown')} · {log.source} ·
-									<LocalTime value={log.created_at} class="inline" />
-								</p>
-							</div>
-						</div>
-						{#if (log.action === 'ban' || log.action === 'tempban') && log.active}
-							<div class="flex shrink-0 gap-2 sm:flex-col">
-								<button
-									type="button"
-									disabled={busy}
-									onclick={() => unban(log.discord_member_id, log.member_name || log.discord_member_id)}
-									class="border-ash-600 text-ash-200 hover:bg-ash-700 flex-1 rounded-lg border px-3 py-1.5 text-xs disabled:opacity-50"
-								>
-									<i class="fas fa-dove mr-1 text-emerald-400"></i>Unban
-								</button>
-							</div>
-						{/if}
-						{#if log.action === 'warn' && log.active}
-							<div class="flex shrink-0 gap-2 sm:flex-col">
-								<button
-									type="button"
-									disabled={busy}
-									onclick={() => revoke(log.case_number)}
-									class="border-ash-600 text-ash-200 hover:bg-ash-700 flex-1 rounded-lg border px-3 py-1.5 text-xs disabled:opacity-50"
-								>
-									<i class="fas fa-eraser mr-1 text-violet-400"></i>Remove
-								</button>
-								<button
-									type="button"
-									disabled={busy}
-									onclick={() => clearFor(log.discord_member_id, log.member_name || log.discord_member_id)}
-									class="border-ash-600 text-ash-200 hover:bg-ash-700 flex-1 rounded-lg border px-3 py-1.5 text-xs disabled:opacity-50"
-								>
-									<i class="fas fa-broom mr-1 text-violet-400"></i>Clear all
-								</button>
-							</div>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
+		<h3 class="text-ash-100 mb-4 flex items-center gap-2 text-xl font-bold"><i class="fas fa-scale-balanced text-emerald-400"></i>Rules</h3>
+		<ModerationRules serverId={data.serverId} rules={data.rules} onsaved={() => invalidateAll()} />
 	</section>
 </div>
 

@@ -5,7 +5,34 @@ import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
 import { postBotWebhook, resolveActiveBotForServer } from '$lib/frontend/public/items/index.js';
 import { guardMemberAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
-const ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'];
+const ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns', 'edit_reason'];
+
+export const GET: RequestHandler = async ({ locals, params, url }) => {
+	if (!locals.user.authenticated) return json({ ok: false, error: 'Authentication required' }, { status: 401 });
+	const serverId = parseInt(params.id ?? '');
+	if (isNaN(serverId)) return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
+	if (!(await canUseEmbedBuilder(locals, serverId))) return json({ ok: false, error: 'Access denied' }, { status: 403 });
+
+	const discordId = String(url.searchParams.get('member') ?? '').trim();
+	if (!discordId) return json({ ok: false, error: 'member is required' }, { status: 400 });
+	const cases = await db.getMemberModerationCases(serverId, discordId);
+	return json({
+		ok: true,
+		cases: (cases as any[]).map((c) => ({
+			id: String(c.id),
+			case_number: Number(c.case_number),
+			action: String(c.action),
+			reason: c.reason ?? null,
+			duration_seconds: c.duration_seconds == null ? null : Number(c.duration_seconds),
+			expires_at: c.expires_at ?? null,
+			active: Boolean(Number(c.active)),
+			revoked_at: c.revoked_at ?? null,
+			source: String(c.source),
+			created_at: c.created_at,
+			staff_name: c.staff_name ?? null
+		}))
+	});
+};
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) return json({ ok: false, error: 'Authentication required' }, { status: 401 });
@@ -26,6 +53,24 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (targetDiscordId) {
 		const denied = await guardMemberAction(locals, serverId, targetDiscordId);
 		if (denied) return denied;
+	}
+
+	if (action === 'edit_reason') {
+		if (!caseRow) return json({ ok: false, error: 'Case not found' }, { status: 404 });
+		const reason =
+			String(body?.reason ?? '')
+				.trim()
+				.slice(0, 1000) || null;
+		const updated = await db.updateModerationCaseReason(serverId, Number(caseRow.case_number), reason);
+		if (!updated) return json({ ok: false, error: 'Case not found' }, { status: 404 });
+		await db
+			.createServerPanelLog(serverId, panelActorIds(locals), 'moderation', [
+				{ key: 'member', before: null, after: updated.discord_member_id },
+				{ key: 'case', before: null, after: `#${caseRow.case_number}` },
+				{ key: 'reason', before: updated.before, after: reason }
+			])
+			.catch(() => null);
+		return json({ ok: true });
 	}
 
 	const bot = await resolveActiveBotForServer(server);

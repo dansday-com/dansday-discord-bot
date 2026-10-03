@@ -7,6 +7,7 @@ import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwa
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { logger } from '../utils/index.js';
 import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
+import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
 
 interface BotConfig {
 	id: number;
@@ -751,6 +752,11 @@ export const MODERATION_CONFIG = {
 		requireGuildId(guildId, 'getting moderation log channel');
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.main);
 		return settings?.settings?.moderation_log_channel_id || null;
+	},
+
+	async getRulesForServer(serverId: number): Promise<ModerationRules> {
+		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.main);
+		return moderationRulesFromSettings(settings?.settings);
 	}
 };
 

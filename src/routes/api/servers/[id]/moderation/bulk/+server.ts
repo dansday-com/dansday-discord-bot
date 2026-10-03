@@ -8,7 +8,8 @@ import { TIER_DENIED, canActOn, panelActorOf, type MemberTier } from '$lib/panel
 
 const ACTIONS = ['unban_all', 'clear_warns', 'role_add', 'role_remove'];
 const ROLE_ACTIONS = ['role_add', 'role_remove'];
-const FILTERS = ['all', 'with', 'without'];
+const FILTERS = ['all', 'with', 'without', 'selected'];
+const MAX_SELECTED = 5000;
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) return json({ ok: false, error: 'Authentication required' }, { status: 401 });
@@ -24,9 +25,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const isRoleAction = ROLE_ACTIONS.includes(action);
 	const roleId = isRoleAction ? String(body?.role_id ?? '').trim() : '';
 	const filter = isRoleAction && FILTERS.includes(String(body?.filter)) ? String(body.filter) : 'all';
-	const filterRoleId = filter === 'all' ? '' : String(body?.filter_role_id ?? '').trim();
+	const filterRoleId = filter === 'with' || filter === 'without' ? String(body?.filter_role_id ?? '').trim() : '';
+	const targetIds =
+		filter === 'selected' && Array.isArray(body?.target_ids)
+			? [...new Set((body.target_ids as unknown[]).map(String).filter((id) => /^\d{15,25}$/.test(id)))]
+			: [];
 	if (isRoleAction && !roleId) return json({ ok: false, error: 'Pick a role' }, { status: 400 });
-	if (filter !== 'all' && !filterRoleId) return json({ ok: false, error: 'Pick the role to filter by' }, { status: 400 });
+	if ((filter === 'with' || filter === 'without') && !filterRoleId) return json({ ok: false, error: 'Pick the role to filter by' }, { status: 400 });
+	if (filter === 'selected' && (targetIds.length === 0 || targetIds.length > MAX_SELECTED))
+		return json({ ok: false, error: `Select between 1 and ${MAX_SELECTED} members` }, { status: 400 });
 
 	const actor = panelActorOf(locals.user);
 	const { staffRoleIds, adminRoleIds, tiers } = await db.getMemberTierMap(serverId);
@@ -53,6 +60,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		role_id: roleId || null,
 		filter,
 		filter_role_id: filterRoleId || null,
+		target_ids: targetIds,
 		skip_ids: skipIds,
 		reason,
 		staff_name: (locals.user as any).username ?? 'Panel',
@@ -67,6 +75,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				{ key: 'action', before: null, after: action },
 				...(roleId ? [{ key: 'role', before: null, after: roleId }] : []),
 				...(isRoleAction ? [{ key: 'who', before: null, after: filterRoleId ? `${filter} ${filterRoleId}` : filter }] : []),
+				...(targetIds.length > 0 ? [{ key: 'selected', before: null, after: String(targetIds.length) }] : []),
 				...(reason ? [{ key: 'reason', before: null, after: reason.slice(0, 500) }] : []),
 				{ key: 'members', before: null, after: String(payload.queued ?? 0) }
 			])

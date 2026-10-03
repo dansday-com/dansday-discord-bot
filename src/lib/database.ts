@@ -9,6 +9,7 @@ import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './uti
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
 import { memberTier, type MemberTier } from './panelHierarchy.js';
+import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -1420,7 +1421,8 @@ async function seedNewServerSettings(serverId: number) {
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
 		color: DEFAULT_MAIN_EMBED_COLOR,
 		footer: DEFAULT_MAIN_EMBED_FOOTER,
-		bot_nickname: DEFAULT_BOT_NICKNAME
+		bot_nickname: DEFAULT_BOT_NICKNAME,
+		...DEFAULT_MODERATION_RULE_SETTINGS
 	});
 }
 
@@ -7437,19 +7439,53 @@ export async function createModerationLog(data: {
 	return caseNumber;
 }
 
-export async function getModerationLogs(serverId: number | string, limit = 500) {
+const MODERATION_CASE_COLUMNS = sql`l.id, l.case_number, l.action, l.reason, l.duration_seconds, l.expires_at, l.active, l.source, l.revoked_at, l.created_at,
+	m.discord_member_id, COALESCE(m.server_display_name, m.display_name, m.username) AS member_name, m.avatar AS member_avatar,
+	sm.discord_member_id AS staff_discord_id, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS staff_name`;
+
+export async function getActiveModerationCases(serverId: number | string) {
 	const [rows] = (await db.execute(sql`
-		SELECT l.id, l.case_number, l.action, l.reason, l.duration_seconds, l.expires_at, l.active, l.source, l.revoked_at, l.created_at,
-			m.discord_member_id, COALESCE(m.server_display_name, m.display_name, m.username) AS member_name, m.avatar AS member_avatar,
-			sm.discord_member_id AS staff_discord_id, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS staff_name
+		SELECT ${MODERATION_CASE_COLUMNS}, m.deleted_at AS member_left_at
 		FROM server_member_moderation_logs l
 		JOIN server_members m ON m.id = l.member_id
 		LEFT JOIN server_members sm ON sm.id = l.staff_member_id
-		WHERE m.server_id = ${Number(serverId)}
+		WHERE m.server_id = ${Number(serverId)} AND l.active = 1 AND l.action IN ('warn', 'timeout', 'ban', 'tempban')
+			AND (l.action <> 'timeout' OR l.expires_at IS NULL OR l.expires_at > UTC_TIMESTAMP())
+		ORDER BY l.case_number DESC
+	`)) as any;
+	return (rows as any[]) ?? [];
+}
+
+export async function getMemberModerationCases(serverId: number | string, discordMemberId: string, limit = 200) {
+	const [rows] = (await db.execute(sql`
+		SELECT ${MODERATION_CASE_COLUMNS}
+		FROM server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		LEFT JOIN server_members sm ON sm.id = l.staff_member_id
+		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${String(discordMemberId)}
 		ORDER BY l.case_number DESC
 		LIMIT ${Number(limit)}
 	`)) as any;
 	return (rows as any[]) ?? [];
+}
+
+export async function updateModerationCaseReason(serverId: number | string, caseNumber: number, reason: string | null) {
+	const row = await getModerationCase(serverId, caseNumber);
+	if (!row) return null;
+	await db.execute(sql`UPDATE server_member_moderation_logs SET reason = ${reason} WHERE id = ${String(row.id)}`);
+	return { before: (row.reason as string | null) ?? null, discord_member_id: String(row.discord_member_id) };
+}
+
+export async function expireModerationWarnings(serverId: number | string, days: number) {
+	if (!(days > 0)) return 0;
+	const [result] = (await db.execute(sql`
+		UPDATE server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		SET l.active = 0
+		WHERE m.server_id = ${Number(serverId)} AND l.action = 'warn' AND l.active = 1
+			AND l.created_at <= UTC_TIMESTAMP() - INTERVAL ${Math.trunc(days)} DAY
+	`)) as any;
+	return Number(result?.affectedRows ?? 0);
 }
 
 export async function getModerationCase(serverId: number | string, caseNumber: number) {
@@ -8114,7 +8150,10 @@ export async function getInviteLinkOwners(serverId: number | string) {
 export default {
 	getMemberNamesByDiscordIds,
 	createModerationLog,
-	getModerationLogs,
+	getActiveModerationCases,
+	getMemberModerationCases,
+	updateModerationCaseReason,
+	expireModerationWarnings,
 	getModerationCase,
 	revokeModerationCase,
 	endActiveModeration,

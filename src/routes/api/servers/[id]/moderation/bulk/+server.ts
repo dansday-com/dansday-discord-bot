@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (payload.ok) {
 		await db
 			.createServerPanelLog(serverId, panelActorIds(locals), 'moderation_bulk', [
-				{ key: 'action', before: null, after: action },
+				{ key: 'action', before: null, after: action === 'role_add' ? 'Give role' : 'Take role' },
 				{ key: 'role', before: null, after: roleId },
 				{ key: 'members', before: null, after: String(payload.queued ?? 0) }
 			])

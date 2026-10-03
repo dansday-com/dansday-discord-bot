@@ -40,7 +40,11 @@
 	let progress = $state<{ done: number; total: number } | null>(null);
 	let confirm = $state<{ title: string; message: string; run: () => Promise<void> } | null>(null);
 
-	const locked = $derived(new Set(data.lockedIds));
+	const owners = $derived(new Set(data.ownerIds));
+	const locked = $derived(new Set([...data.lockedIds, ...data.ownerIds]));
+	const roleById = $derived(new Map(data.roles.map((r) => [r.id, r])));
+	const memberById = $derived(new Map(data.members.map((m) => [m.id, m])));
+	const selectedMembers = $derived(data.members.filter((m) => selected.has(m.id)));
 	const q = $derived(search.trim().toLowerCase());
 	const warnedCount = $derived(data.members.filter((m) => m.warnings > 0).length);
 	const timedOutCount = $derived(data.members.filter((m) => m.timeout_until).length);
@@ -71,14 +75,36 @@
 	const matchingIds = $derived(rowIds.filter((id) => !locked.has(id)));
 	const pageAllSelected = $derived(pageIds.length > 0 && pageIds.every((id) => selected.has(id)));
 
-	const actionOptions = $derived((tab === 'banned' ? BAN_ACTIONS : MEMBER_ACTIONS).map((value) => ({ value, label: MODERATION_ACTION_META[value].label })));
+	const actionOptions = $derived(
+		(tab === 'banned' ? BAN_ACTIONS : MEMBER_ACTIONS)
+			.map((value) => ({ value, n: ROLE_ACTIONS.includes(value) ? selected.size : applicableIds(value).length }))
+			.filter((o) => o.n > 0 || selected.size === 0)
+			.map(({ value, n }) => ({ value, label: n < selected.size ? `${MODERATION_ACTION_META[value].label} · ${n}` : MODERATION_ACTION_META[value].label }))
+	);
 	const roleFilterOptions = $derived([{ value: '', label: 'Any role' }, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
-	const manageableRoleOptions = $derived([
-		{ value: '', label: 'Pick a role' },
-		...data.roles.filter((r) => r.manageable).map((r) => ({ value: r.id, label: r.name }))
-	]);
+	const roleOptions = $derived.by(() => {
+		const adding = action === 'role_add';
+		const options = data.roles
+			.filter((r) => r.manageable)
+			.map((r) => {
+				const has = selectedMembers.filter((m) => m.role_ids.includes(r.id)).length;
+				const n = adding ? selectedMembers.length - has : has;
+				return { value: r.id, label: `${r.name} · ${n} ${adding ? "don't have it" : 'have it'}`, n };
+			})
+			.filter((o) => o.n > 0)
+			.map(({ value, label }) => ({ value, label }));
+		return [{ value: '', label: adding ? 'Pick a role to give' : 'Pick a role to take' }, ...options];
+	});
 	const presetOptions = $derived([{ value: '', label: 'Use a preset…' }, ...data.rules.reason_presets.map((p) => ({ value: p, label: p }))]);
 	const roleName = (id: string) => data.roles.find((r) => r.id === id)?.name ?? 'that role';
+
+	$effect(() => {
+		if (actionOptions.length > 0 && !actionOptions.some((o) => o.value === action)) action = actionOptions[0].value;
+	});
+
+	$effect(() => {
+		if (actionRoleId && !roleOptions.some((o) => o.value === actionRoleId)) actionRoleId = '';
+	});
 
 	$effect(() => {
 		if (preset) {
@@ -109,19 +135,29 @@
 		selected = next;
 	}
 
-	function roleColor(color: string | null) {
-		return color && color !== '#000000' ? `color: ${color}` : undefined;
+	function roleDot(color: string | null) {
+		return `background-color: ${color && color !== '#000000' ? color : 'var(--color-ash-400)'}`;
+	}
+
+	function applicableIds(a: string): string[] {
+		const ids = [...selected];
+		if (tab === 'banned') return ids;
+		if (a === 'untimeout') return ids.filter((id) => memberById.get(id)?.timeout_until);
+		if (a === 'clearwarns') return ids.filter((id) => (memberById.get(id)?.warnings ?? 0) > 0);
+		if (ROLE_ACTIONS.includes(a) && actionRoleId)
+			return ids.filter((id) => (memberById.get(id)?.role_ids.includes(actionRoleId) ?? false) !== (a === 'role_add'));
+		return ids;
 	}
 
 	function apply() {
-		const ids = [...selected];
-		if (ids.length === 0) return;
 		const meta = MODERATION_ACTION_META[action];
 		const isRole = ROLE_ACTIONS.includes(action);
 		if (isRole && !actionRoleId) return showToast('Pick a role', 'error');
 		if (!MODERATION_REASON_OPTIONAL.includes(action) && !reason.trim()) return showToast('Enter a reason', 'error');
 		if (MODERATION_TIMED_ACTIONS.includes(action) && (!amount || amount < 1)) return showToast('Enter a duration', 'error');
-		const who = `${ids.length.toLocaleString()} ${ids.length === 1 ? 'member' : 'members'}`;
+		const ids = applicableIds(action);
+		if (ids.length === 0) return showToast('Nobody selected needs this', 'error');
+		const who = `${ids.length.toLocaleString()} ${ids.length === 1 ? 'member' : 'members'}${ids.length < selected.size ? ` of the ${selected.size.toLocaleString()} selected` : ''}`;
 		confirm = {
 			title: meta.label,
 			message: isRole ? `${meta.label} ${roleName(actionRoleId)} ${action === 'role_add' ? 'to' : 'from'} ${who}?` : `${meta.label}: ${who}?`,
@@ -145,12 +181,10 @@
 			);
 			const parts = [`Done for ${out.done.toLocaleString()}`];
 			if (out.escalated > 0) parts.push(`${out.escalated} auto-escalated`);
-			if (out.failed > 0) parts.push(`${out.failed} failed: ${out.error}`);
-			showToast(parts.join(' · '), out.failed > 0 && out.done === 0 ? 'error' : 'success');
-			if (out.done > 0) {
-				selected = new Set();
-				reason = '';
-			}
+			if (out.failed > 0) parts.push(`${out.failed} failed and are still selected: ${out.error}`);
+			showToast(parts.join(' · '), out.failed > 0 ? 'error' : 'success');
+			selected = new Set(out.failedIds);
+			if (out.failed === 0) reason = '';
 			await invalidateAll();
 		} finally {
 			busy = false;
@@ -210,23 +244,44 @@
 
 {#snippet pick(id: string, name: string)}
 	{#if locked.has(id)}
-		<span class="flex h-5 w-5 shrink-0 items-center justify-center text-amber-300" title={data.deniedReason}><i class="fas fa-lock text-xs"></i></span>
+		<span
+			class="flex h-5 w-5 shrink-0 items-center justify-center text-amber-300"
+			title={owners.has(id) ? "The server owner can't be moderated" : data.deniedReason}><i class="fas fa-lock text-xs"></i></span
+		>
 	{:else}
 		<input type="checkbox" class="checkbox checkbox-sm shrink-0" checked={selected.has(id)} onchange={() => toggle(id)} aria-label="Select {name}" />
 	{/if}
 {/snippet}
 
+{#snippet roleChips(ids: string[], limit: number)}
+	{#each ids.slice(0, limit) as rid (rid)}
+		{@const r = roleById.get(rid)}
+		{#if r}
+			<span class="border-ash-500 text-ash-200 inline-flex max-w-36 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6rem]">
+				<span class="h-1.5 w-1.5 shrink-0 rounded-full" style={roleDot(r.color)}></span><span class="truncate">{r.name}</span>
+			</span>
+		{/if}
+	{/each}
+	{#if ids.length > limit}<span class="text-ash-400 self-center text-[0.6rem]">+{ids.length - limit}</span>{/if}
+{/snippet}
+
 {#snippet record(id: string)}
 	{#if expanded === id}
+		{@const roles = memberById.get(id)?.role_ids ?? []}
 		<div class="border-ash-600 border-t p-2 sm:p-3">
-			<ModerationMemberRecord
-				serverId={data.serverId}
-				memberId={id}
-				canEdit={!locked.has(id)}
-				deniedReason={data.deniedReason}
-				presets={data.rules.reason_presets}
-				onchange={() => invalidateAll()}
-			/>
+			{#if roles.length > 0}
+				<div class="mb-2 flex flex-wrap gap-1">{@render roleChips(roles, roles.length)}</div>
+			{/if}
+			{#key data}
+				<ModerationMemberRecord
+					serverId={data.serverId}
+					memberId={id}
+					canEdit={!locked.has(id)}
+					deniedReason={data.deniedReason}
+					presets={data.rules.reason_presets}
+					onchange={() => invalidateAll()}
+				/>
+			{/key}
 		</div>
 	{/if}
 {/snippet}
@@ -336,14 +391,17 @@
 									{@render avatar(m.avatar)}
 									<div class="min-w-0 flex-1">
 										<p class="text-ash-100 truncate text-sm font-semibold">{m.name}</p>
-										<p class="text-ash-400 truncate text-xs">
-											{#if m.username}@{m.username}{/if}{#if m.top_role}
-												· <span style={roleColor(m.top_role.color)}>{m.top_role.name}</span>{/if}
-										</p>
+										{#if m.username}<p class="text-ash-400 truncate text-xs">@{m.username}</p>{/if}
+										{#if m.role_ids.length > 0}
+											<div class="mt-1 flex flex-wrap gap-1">{@render roleChips(m.role_ids, 3)}</div>
+										{/if}
 									</div>
 									<div class="flex shrink-0 flex-col items-end gap-0.5 text-xs">
 										{#if m.warnings > 0}<span class="text-amber-400"><i class="fas fa-triangle-exclamation mr-1"></i>{m.warnings}</span>{/if}
-										{#if m.timeout_until}<span class="text-orange-400"><i class="fas fa-volume-xmark mr-1"></i>Timed out</span>{/if}
+										{#if m.timeout_until}
+											<span class="text-orange-400"><i class="fas fa-volume-xmark mr-1"></i>Timed out</span>
+											<span class="text-ash-500 text-[0.65rem]">until <LocalTime value={m.timeout_until} fallback="" class="inline" /></span>
+										{/if}
 									</div>
 									<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === m.id ? 'rotate-180' : ''}"></i>
 								</button>
@@ -382,7 +440,7 @@
 					<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 						<LabeledSelect appearance="field" options={actionOptions} bind:value={action} ariaLabel="Action" />
 						{#if ROLE_ACTIONS.includes(action)}
-							<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={actionRoleId} ariaLabel="Role" />
+							<LabeledSelect appearance="field" options={roleOptions} bind:value={actionRoleId} ariaLabel="Role" />
 						{/if}
 						{#if MODERATION_TIMED_ACTIONS.includes(action)}
 							<div class="flex gap-2">

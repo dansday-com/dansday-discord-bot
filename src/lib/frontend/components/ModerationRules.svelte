@@ -90,14 +90,12 @@
 			/>
 			<span class="text-ash-300 text-sm">days</span>
 		</div>
-		<p class="text-ash-500 text-xs">0 = never. Expired warnings stay on the record but stop counting.</p>
+		<p class="text-ash-500 text-xs">Example: 30 = a warning stops counting after 30 days. 0 = never.</p>
 	</div>
 
 	<div class="bg-ash-700 border-ash-600 flex flex-col gap-2 rounded-lg border p-3 sm:p-4 lg:col-span-2">
 		<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-stairs text-orange-400"></i>Auto-escalation</p>
-		{#if steps.length === 0}
-			<p class="text-ash-500 text-xs">Off. Add a step to act automatically when a member reaches a number of active warnings.</p>
-		{/if}
+		<p class="text-ash-500 text-xs">Example: at 3 warnings, time out for 1 hour. The bot does it right after the warning.</p>
 		{#each steps as step, i (i)}
 			<div class="bg-ash-800 border-ash-600 flex flex-wrap items-center gap-2 rounded-lg border p-2">
 				<span class="text-ash-300 text-xs">At</span>
@@ -144,6 +142,7 @@
 
 	<div class="bg-ash-700 border-ash-600 flex flex-col gap-2 rounded-lg border p-3 sm:p-4 lg:col-span-3">
 		<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-list-check text-sky-400"></i>Reason presets</p>
+		<p class="text-ash-500 text-xs">Reasons you pick from when moderating, instead of typing. Example: Spamming in chat.</p>
 		<div class="flex gap-2">
 			<input
 				type="text"

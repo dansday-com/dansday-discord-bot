@@ -22,7 +22,7 @@
 		{ value: 'fake', label: 'Most fake' },
 		{ value: 'recent', label: 'Latest join' }
 	];
-	const SOURCE_FILTERS = [{ value: 'all', label: 'Any link' }, ...Object.entries(INVITE_SOURCE_LABEL).map(([value, label]) => ({ value, label }))];
+	const PAGE_SIZE = 50;
 	const STATUS_FILTERS = [{ value: 'all', label: 'Any status' }, ...Object.entries(INVITE_STATUS_META).map(([value, meta]) => ({ value, label: meta.label }))];
 	const SOURCE_TONE: Record<string, string> = {
 		personal: 'text-cyan-300',
@@ -39,6 +39,7 @@
 	let sourceFilter = $state('all');
 	let statusFilter = $state('all');
 	let open = $state<string | null>(null);
+	let page = $state(1);
 
 	const s = $derived(data.stats);
 	const locked = $derived(new Set(data.lockedIds));
@@ -50,15 +51,16 @@
 		{ icon: 'fa-user-minus', label: 'Left', value: s?.left, tone: 'text-amber-400' },
 		{ icon: 'fa-user-secret', label: 'Fake', value: s?.fake, tone: 'text-red-400' },
 		{ icon: 'fa-hourglass-half', label: 'Waiting payout', value: s?.pending, tone: 'text-sky-300' },
-		{ icon: 'fa-users', label: 'Inviters', value: s?.inviters, tone: 'text-blue-400' },
-		{ icon: 'fa-plus-minus', label: 'Staff bonus', value: s?.bonus, tone: 'text-violet-400' },
-		{ icon: 'fa-id-badge', label: 'Personal link', value: s?.personal, tone: SOURCE_TONE.personal },
-		{ icon: 'fa-link', label: 'Discord link', value: s?.discord, tone: SOURCE_TONE.invite },
-		{ icon: 'fa-globe', label: 'Server link', value: s?.server_link, tone: SOURCE_TONE.server },
-		{ icon: 'fa-at', label: 'Vanity link', value: s?.vanity, tone: SOURCE_TONE.vanity },
-		{ icon: 'fa-circle-question', label: 'Unknown', value: s?.unknown, tone: SOURCE_TONE.unknown },
-		{ icon: 'fa-star', label: 'Join XP paid', value: s?.xp_paid, tone: 'text-yellow-400' },
-		{ icon: 'fa-people-arrows', label: 'XP shared', value: s?.share_xp, tone: 'text-teal-400' }
+		{ icon: 'fa-star', label: 'XP paid', value: (s?.xp_paid ?? 0) + (s?.share_xp ?? 0), tone: 'text-yellow-400' }
+	]);
+
+	const tabCounts = $derived<Record<string, number>>({ inviters: data.inviters.length, joins: data.joins.length, links: s?.codes.length ?? 0 });
+	const sourceFilters = $derived([
+		{ value: 'all', label: 'Any link' },
+		...Object.entries(INVITE_SOURCE_LABEL)
+			.map(([value, label]) => ({ value, label, n: data.joins.filter((j) => j.source === value).length }))
+			.filter((o) => o.n > 0)
+			.map(({ value, label, n }) => ({ value, label: `${label} · ${n.toLocaleString()}` }))
 	]);
 
 	const inviters = $derived(
@@ -88,6 +90,20 @@
 	);
 
 	const links = $derived((s?.codes ?? []).filter((c) => !q || c.code.toLowerCase().includes(q) || (c.inviter_name ?? '').toLowerCase().includes(q)));
+
+	const listLength = $derived(tab === 'inviters' ? inviters.length : tab === 'joins' ? joins.length : links.length);
+	const totalPages = $derived(Math.max(1, Math.ceil(listLength / PAGE_SIZE)));
+	const current = $derived(Math.min(page, totalPages));
+	const start = $derived((current - 1) * PAGE_SIZE);
+
+	$effect(() => {
+		void tab;
+		void search;
+		void inviterSort;
+		void sourceFilter;
+		void statusFilter;
+		page = 1;
+	});
 
 	const openMember = $derived.by(() => {
 		if (!open) return null;
@@ -138,7 +154,7 @@
 {/snippet}
 
 <div class="space-y-4 sm:space-y-6">
-	<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
+	<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
 		{#each tiles as tile (tile.label)}
 			<div class="bg-ash-800 border-ash-700 rounded-xl border p-3">
 				<div class="text-ash-400 flex items-center gap-1.5 text-xs"><i class="fas {tile.icon} {tile.tone}"></i><span class="truncate">{tile.label}</span></div>
@@ -160,7 +176,7 @@
 						? 'bg-ash-600 text-ash-100'
 						: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
-					<i class="fas {t.icon} text-xs text-cyan-400"></i>{t.label}
+					<i class="fas {t.icon} text-xs text-cyan-400"></i>{t.label}<span class="text-ash-400 text-xs tabular-nums">{fmt(tabCounts[t.id])}</span>
 				</button>
 			{/each}
 		</div>
@@ -178,7 +194,7 @@
 			{#if tab === 'inviters'}
 				<LabeledSelect appearance="members-toolbar" options={INVITER_SORTS} bind:value={inviterSort} ariaLabel="Sort inviters" />
 			{:else if tab === 'joins'}
-				<LabeledSelect appearance="members-toolbar" options={SOURCE_FILTERS} bind:value={sourceFilter} ariaLabel="Link filter" />
+				<LabeledSelect appearance="members-toolbar" options={sourceFilters} bind:value={sourceFilter} ariaLabel="Link filter" />
 				<LabeledSelect appearance="members-toolbar" options={STATUS_FILTERS} bind:value={statusFilter} ariaLabel="Status filter" />
 			{/if}
 		</div>
@@ -188,7 +204,7 @@
 				<p class="text-ash-400 py-8 text-center text-sm">No inviters yet.</p>
 			{:else}
 				<ul class="space-y-2">
-					{#each inviters as i (i.discord_member_id)}
+					{#each inviters.slice(start, start + PAGE_SIZE) as i (i.discord_member_id)}
 						{@const key = `i:${i.discord_member_id}`}
 						<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border">
 							<button
@@ -234,7 +250,7 @@
 				<p class="text-ash-400 py-8 text-center text-sm">No joins match.</p>
 			{:else}
 				<ul class="space-y-2">
-					{#each joins as j (j.id)}
+					{#each joins.slice(start, start + PAGE_SIZE) as j (j.id)}
 						{@const key = `j:${j.discord_member_id}`}
 						{@const meta = statusMeta(j.status)}
 						<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border">
@@ -272,7 +288,7 @@
 			<p class="text-ash-400 py-8 text-center text-sm">No invite links used yet.</p>
 		{:else}
 			<ul class="space-y-2">
-				{#each links as c (c.code)}
+				{#each links.slice(start, start + PAGE_SIZE) as c (c.code)}
 					<li class="bg-ash-700 border-ash-600 flex items-center gap-3 rounded-lg border p-3">
 						<i class="fas fa-link shrink-0 {SOURCE_TONE[c.source ?? 'unknown'] ?? SOURCE_TONE.unknown}"></i>
 						<div class="min-w-0 flex-1">
@@ -289,6 +305,25 @@
 					</li>
 				{/each}
 			</ul>
+		{/if}
+		{#if totalPages > 1}
+			<div class="mt-4 flex items-center justify-center gap-3">
+				<button
+					onclick={() => (page = Math.max(1, current - 1))}
+					disabled={current <= 1}
+					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
+				</button>
+				<span class="text-ash-400 text-sm">Page {current} of {totalPages}</span>
+				<button
+					onclick={() => (page = Math.min(totalPages, current + 1))}
+					disabled={current >= totalPages}
+					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
+				</button>
+			</div>
 		{/if}
 	</section>
 </div>

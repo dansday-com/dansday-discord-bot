@@ -36,7 +36,7 @@ export function splitDuration(seconds: number | null | undefined): { amount: num
 	return { amount: Math.max(1, Math.round(s / 60)), unit: '60' };
 }
 
-export type ModerateEachResult = { done: number; failed: number; escalated: number; error: string | null };
+export type ModerateEachResult = { done: number; failed: number; failedIds: string[]; escalated: number; error: string | null };
 
 export async function moderateEach(
 	serverId: number | string,
@@ -44,7 +44,7 @@ export async function moderateEach(
 	body: Record<string, unknown>,
 	onprogress?: (done: number) => void
 ): Promise<ModerateEachResult> {
-	const result: ModerateEachResult = { done: 0, failed: 0, escalated: 0, error: null };
+	const result: ModerateEachResult = { done: 0, failed: 0, failedIds: [], escalated: 0, error: null };
 	for (const [index, targetId] of targetIds.entries()) {
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation`, {
@@ -58,10 +58,12 @@ export async function moderateEach(
 				if (out.escalated) result.escalated++;
 			} else {
 				result.failed++;
+				result.failedIds.push(targetId);
 				result.error ??= out.error || 'Moderation action failed';
 			}
 		} catch {
 			result.failed++;
+			result.failedIds.push(targetId);
 			result.error ??= 'Moderation action failed';
 		}
 		onprogress?.(index + 1);

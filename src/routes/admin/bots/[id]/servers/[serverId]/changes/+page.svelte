@@ -6,9 +6,12 @@
 
 	let { data }: PageProps = $props();
 
+	const PAGE_SIZE = 50;
+
 	let search = $state('');
 	let filterComponent = $state('all');
 	let filterRole = $state('all');
+	let page = $state(1);
 
 	const components = $derived([...new Map(data.logs.map((l) => [l.component, l.component_label])).entries()].sort((a, b) => a[1].localeCompare(b[1])));
 
@@ -40,6 +43,17 @@
 		})
 	);
 
+	const totalPages = $derived(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
+	const current = $derived(Math.min(page, totalPages));
+	const pageLogs = $derived(filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE));
+
+	$effect(() => {
+		void search;
+		void filterComponent;
+		void filterRole;
+		page = 1;
+	});
+
 	function label(key: string) {
 		return key.replace(/_/g, ' ');
 	}
@@ -70,7 +84,7 @@
 		<p class="text-ash-400 py-8 text-center text-sm">No changes yet.</p>
 	{:else}
 		<ul class="divide-ash-700 divide-y">
-			{#each filtered as log (log.id)}
+			{#each pageLogs as log (log.id)}
 				<li class="py-3">
 					<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
 						<span class="text-ash-100 font-semibold">{log.component_label}</span>
@@ -86,8 +100,10 @@
 							<li class="bg-ash-700/50 rounded-lg px-3 py-2 text-xs">
 								<div class="text-ash-300 mb-1 font-medium capitalize">{label(change.key)}</div>
 								<div class="flex flex-col gap-1 font-mono sm:flex-row sm:items-start sm:gap-2">
-									<span class="min-w-0 break-all text-red-300/90 line-through decoration-red-400/40">{change.before ?? '—'}</span>
-									<i class="fas fa-arrow-right text-ash-500 hidden pt-0.5 sm:inline"></i>
+									{#if change.before != null}
+										<span class="min-w-0 break-all text-red-300/90 line-through decoration-red-400/40">{change.before}</span>
+										<i class="fas fa-arrow-right text-ash-500 hidden pt-0.5 sm:inline"></i>
+									{/if}
 									<span class="min-w-0 break-all text-emerald-300">{change.after ?? '—'}</span>
 								</div>
 							</li>
@@ -96,5 +112,24 @@
 				</li>
 			{/each}
 		</ul>
+		{#if totalPages > 1}
+			<div class="mt-4 flex items-center justify-center gap-3">
+				<button
+					onclick={() => (page = Math.max(1, current - 1))}
+					disabled={current <= 1}
+					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
+				</button>
+				<span class="text-ash-400 text-sm">Page {current} of {totalPages}</span>
+				<button
+					onclick={() => (page = Math.min(totalPages, current + 1))}
+					disabled={current >= totalPages}
+					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
+				</button>
+			</div>
+		{/if}
 	{/if}
 </section>

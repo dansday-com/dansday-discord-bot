@@ -77,16 +77,15 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		lockedIds: Object.entries(tierMap.tiers)
 			.filter(([, tier]) => !canActOn(actor, tier))
 			.map(([id]) => id),
+		ownerIds: (members as any[]).filter((m) => Number(m.is_owner) === 1).map((m) => String(m.discord_member_id)),
 		members: (members as any[]).map((m) => {
 			const id = String(m.discord_member_id);
-			const top = (m.roles ?? [])[0] ?? null;
 			return {
 				id,
 				name: m.server_display_name || m.display_name || m.username || id,
 				username: m.username ?? null,
 				avatar: m.avatar ?? null,
 				role_ids: (m.roles ?? []).map((r: any) => String(r.id)),
-				top_role: top ? { name: String(top.name), color: top.color ?? null } : null,
 				member_since: m.member_since ?? null,
 				warnings: standing.get(id)?.warnings ?? 0,
 				last_warned_at: standing.get(id)?.last_warned_at ?? null,

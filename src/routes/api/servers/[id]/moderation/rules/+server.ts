@@ -3,7 +3,28 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS, canEditServerSettings } from '$lib/frontend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { MODERATION_RULE_KEYS, moderationRulesFromSettings } from '$lib/moderation-rules.js';
+import { MODERATION_RULE_KEYS, moderationRulesFromSettings, type ModerationRules } from '$lib/moderation-rules.js';
+import { MODERATION_ACTION_META, formatDuration } from '$lib/frontend/moderation.js';
+
+const RULE_LABELS: Record<keyof ModerationRules, string> = {
+	warn_expiry_days: 'warning expiry',
+	escalation: 'auto-escalation',
+	reason_presets: 'reason presets'
+};
+
+function describe(rules: ModerationRules, key: keyof ModerationRules): string {
+	if (key === 'warn_expiry_days') return rules.warn_expiry_days > 0 ? `${rules.warn_expiry_days} days` : 'Never';
+	if (key === 'escalation')
+		return (
+			rules.escalation
+				.map(
+					(step) =>
+						`${step.warns} warnings → ${MODERATION_ACTION_META[step.action].label}${step.duration_seconds ? ` ${formatDuration(step.duration_seconds)}` : ''}`
+				)
+				.join('; ') || 'Off'
+		);
+	return rules.reason_presets.join(' · ') || 'None';
+}
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) return json({ ok: false, error: 'Authentication required' }, { status: 401 });
@@ -30,7 +51,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 	const changes = (Object.keys(MODERATION_RULE_KEYS) as (keyof typeof MODERATION_RULE_KEYS)[])
 		.filter((key) => JSON.stringify(previous[key]) !== JSON.stringify(rules[key]))
-		.map((key) => ({ key: MODERATION_RULE_KEYS[key], before: JSON.stringify(previous[key]), after: JSON.stringify(rules[key]) }));
+		.map((key) => ({ key: RULE_LABELS[key], before: describe(previous, key), after: describe(rules, key) }));
 	if (changes.length > 0) await db.createServerPanelLog(serverId, panelActorIds(locals), 'moderation_rules', changes).catch(() => null);
 
 	return json({ ok: true, rules });

@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const officialServerId = await db.getOfficialBotServerIdForServer(serverId).catch(() => null);
 	const serverIds = [...new Set([serverId, ...(officialServerId != null ? [Number(officialServerId)] : [])])];
-	const rows = await db.getServerPanelLogs(serverIds).catch(() => []);
+	const rows = await db.getServerPanelLogs(serverIds, 1000).catch(() => []);
 
 	const parsed = (rows as any[]).map((r) => {
 		let changes: { key: string; before: string | null; after: string | null }[] = [];

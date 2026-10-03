@@ -150,6 +150,7 @@ async function recordCase(
 			description: `Case **#${caseNumber}** recorded for <@${opts.targetId}>.`,
 			thumbnail: memberRow.avatar || null,
 			userTag: memberName,
+			mentionId: opts.targetId,
 			fields
 		},
 		guild.id
@@ -561,8 +562,10 @@ async function sendModerationLog(client, embedData, guildId = null) {
 		}
 
 		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guildId, logChannelId).catch(() => null);
+		const firstMentions = notificationMentions?.[0] ?? null;
+		const memberMention = embedData.mentionId ? `<@${embedData.mentionId}>` : null;
 		await channel.send({
-			content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
+			content: [memberMention && !firstMentions?.includes(memberMention) ? memberMention : null, firstMentions].filter(Boolean).join(' ') || undefined,
 			embeds: [embed]
 		});
 

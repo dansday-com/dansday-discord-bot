@@ -11,12 +11,12 @@
 	const themeBackdrop = $derived(memberTheme?.image ?? null);
 
 	let {
-		trailing = 'login',
+		trailing = 'invite',
 		width = 'default',
 		center = false,
 		children
 	}: {
-		trailing?: 'login' | 'live' | 'home';
+		trailing?: 'invite' | 'live' | 'home';
 		width?: 'default' | 'flush';
 		center?: boolean;
 		children: Snippet;

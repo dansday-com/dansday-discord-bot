@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { apexLink } from '$lib/url.js';
+	import { apexLink, OFFICIAL_BOT_INVITE_URL } from '$lib/url.js';
+	import DiscordIcon from './shell/DiscordIcon.svelte';
 	type Palette = 'light' | 'dark';
-	type Trailing = 'login' | 'live' | 'home';
+	type Trailing = 'invite' | 'live' | 'home';
 
-	let { palette = 'light' as Palette, trailing = 'login' as Trailing }: { palette?: Palette; trailing?: Trailing } = $props();
+	let { palette = 'light' as Palette, trailing = 'invite' as Trailing }: { palette?: Palette; trailing?: Trailing } = $props();
 
 	const homeHref = $derived(apexLink('/', page.url.hostname));
-	const loginHref = $derived(apexLink('/login', page.url.hostname));
 
 	const shell = $derived(
 		palette === 'light' ? 'border-base-300 bg-canvas/92 backdrop-blur-[18px] [-webkit-backdrop-filter:blur(18px)]' : 'border-ash-700 bg-ash-800'
@@ -27,10 +27,10 @@
 			<span class="truncate text-base font-bold sm:text-xl">{APP_NAME} Discord Bot</span>
 		</a>
 		<div class="flex shrink-0 items-center gap-2 sm:gap-2.5">
-			{#if trailing === 'login'}
-				<a href={loginHref} class="btn btn-sm btn-primary">
-					<i class="fas fa-sign-in-alt"></i>
-					Log in
+			{#if trailing === 'invite'}
+				<a href={OFFICIAL_BOT_INVITE_URL} class="btn btn-sm btn-primary" target="_blank" rel="noopener noreferrer">
+					<DiscordIcon />
+					Add the bot
 				</a>
 			{:else if trailing === 'live'}
 				<span class="badge badge-sm border-primary/35 bg-primary/20 text-primary gap-1.5 font-semibold">

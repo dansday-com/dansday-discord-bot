@@ -3,6 +3,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { apexLink, OFFICIAL_BOT_INVITE_URL } from '$lib/url.js';
 	import DiscordIcon from './shell/DiscordIcon.svelte';
+	import BoltIcon from './shell/BoltIcon.svelte';
 	type Palette = 'light' | 'dark';
 	type Trailing = 'invite' | 'live' | 'home';
 
@@ -22,7 +23,7 @@
 	<div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:px-8">
 		<a href={homeHref} class="flex min-w-0 flex-1 items-center gap-2 no-underline sm:gap-3 {brandText}">
 			<div class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm sm:size-10 sm:text-base {iconWrap}">
-				<i class="fas fa-bolt"></i>
+				<BoltIcon />
 			</div>
 			<span class="truncate text-base font-bold sm:text-xl">{APP_NAME} Discord Bot</span>
 		</a>

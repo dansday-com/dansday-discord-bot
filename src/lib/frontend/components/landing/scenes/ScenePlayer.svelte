@@ -23,9 +23,14 @@
 	const scene = $derived(scenes[index]);
 
 	const clock = untrack(() => new SceneClock(scenes[0].duration, scenes[0].rest));
-	clock.onend = () => select((index + 1) % scenes.length);
+	let startedFromRest = true;
+	clock.onend = () => {
+		if (startedFromRest) startedFromRest = false;
+		else select((index + 1) % scenes.length);
+	};
 
 	function select(i: number) {
+		startedFromRest = false;
 		index = i;
 		clock.duration = scenes[i].duration;
 		clock.t = clock.still ? scenes[i].rest : 0;

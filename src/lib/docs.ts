@@ -518,7 +518,7 @@ export const modules = [
 			{ label: 'Bot Banner', desc: 'Profile banner in this server only. PNG, JPG or GIF up to 4MB.' },
 			{ label: 'Bot Bio', desc: 'About Me in this server, up to 190 characters.' },
 			{ label: 'Default Color & Footer', desc: 'Accent color and footer used on bot embeds.' },
-			{ label: 'Moderation Logs Channel', desc: 'Optional channel for moderation case embeds.' },
+			{ label: 'Moderation Logs Channel', desc: 'Optional channel for moderation cases; each one pings the member.' },
 			{ label: 'Staff Roles', desc: 'Roles treated as staff across the bot.' }
 		]
 	},
@@ -549,7 +549,7 @@ export const modules = [
 			},
 			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
 			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
-			{ label: 'Invites tab', desc: 'Every inviter, join and link, with the link each member used.' },
+			{ label: 'Invites tab', desc: 'Every inviter, join and link, and whether each member used a personal or Discord link.' },
 			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications.' }
 		]
 	},
@@ -661,7 +661,7 @@ export const modules = [
 			{ label: 'Moderate a member', desc: 'On the Moderation tab: pick a member and an action.' },
 			{ label: 'Mass moderation', desc: 'Unban everyone, clear all warnings, or give or take a role in bulk.' },
 			{ label: 'Moderation tab', desc: 'Every case, with remove, clear and unban.' },
-			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Optional; cases are always kept in the panel.' }
+			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Each case pings the member; cases are always kept in the panel.' }
 		]
 	},
 	{

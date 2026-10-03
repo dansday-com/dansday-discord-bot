@@ -190,7 +190,7 @@
 		{
 			icon: 'fa-user-plus',
 			title: 'Invite tracking',
-			desc: 'See who invited every member, and pay the inviter XP once the new member stays.',
+			desc: 'See who invited every member and through which link, and pay the inviter XP once the new member stays.',
 			more: "Inviters keep a share of that member's XP while they stay, staff earn double, and the server's own /join link counts its joins too."
 		},
 		{
@@ -328,7 +328,7 @@
 			icon: 'fa-gavel',
 			title: 'Moderation',
 			desc: 'Warnings, timeouts, kicks and bans from the panel or the staff menu.',
-			more: 'Every action becomes a numbered case against the member.'
+			more: 'Every action is a numbered case that pings the member. Mass tools unban, clear warnings and change roles in bulk.'
 		},
 		{
 			icon: 'fa-clipboard-check',

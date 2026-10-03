@@ -22,6 +22,13 @@
 		{ value: 'without', label: 'Members without role' }
 	];
 
+	const VIEWS = [
+		{ id: 'members', label: 'Members', icon: 'fa-gavel text-red-400' },
+		{ id: 'mass', label: 'Mass moderation', icon: 'fa-users-gear text-orange-400' },
+		{ id: 'rules', label: 'Rules', icon: 'fa-scale-balanced text-emerald-400' }
+	] as const;
+
+	let view = $state<(typeof VIEWS)[number]['id']>('members');
 	let tab = $state<'all' | 'warned' | 'timedout' | 'banned'>('all');
 	let search = $state('');
 	let roleFilter = $state('');
@@ -275,274 +282,289 @@
 		{/each}
 	</div>
 
-	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<h3 class="text-ash-100 mb-4 flex items-center gap-2 text-xl font-bold"><i class="fas fa-gavel text-red-400"></i>Members</h3>
+	<div class="bg-ash-800 border-ash-700 grid grid-cols-3 gap-1 rounded-xl border p-1">
+		{#each VIEWS as v (v.id)}
+			<button
+				type="button"
+				onclick={() => (view = v.id)}
+				class="flex items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-sm font-medium transition-colors {view === v.id
+					? 'bg-ash-600 text-ash-100'
+					: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+			>
+				<i class="fas {v.icon} text-xs"></i><span class="truncate">{v.label}</span>
+			</button>
+		{/each}
+	</div>
 
-		<div class="bg-ash-900/40 border-ash-700 mb-4 grid grid-cols-2 gap-1 rounded-lg border p-1 sm:grid-cols-4">
-			{#each tabs as t (t.id)}
-				<button
-					type="button"
-					onclick={() => switchTab(t.id)}
-					class="flex items-center justify-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors {tab === t.id
-						? 'bg-ash-600 text-ash-100'
-						: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
-				>
-					{t.label}<span class="text-ash-400 text-xs tabular-nums">{t.count.toLocaleString()}</span>
-				</button>
-			{/each}
-		</div>
-
-		<div class="mb-3 flex flex-col gap-3 sm:flex-row">
-			<div class="relative flex-1">
-				<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
-				<input
-					type="text"
-					bind:value={search}
-					oninput={() => (page = 1)}
-					placeholder="Search name, username or ID"
-					class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
-				/>
-			</div>
-			{#if tab !== 'banned'}
-				<LabeledSelect appearance="members-toolbar" options={roleFilterOptions} bind:value={roleFilter} ariaLabel="Role filter" />
-			{/if}
-		</div>
-
-		<div class="text-ash-300 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-			<label class="flex items-center gap-2">
-				<input type="checkbox" class="checkbox checkbox-sm" checked={pageAllSelected} disabled={pageIds.length === 0} onchange={togglePage} />
-				Select page
-			</label>
-			{#if selected.size > 0}
-				<span class="text-ash-100 font-semibold">{selected.size.toLocaleString()} selected</span>
-				{#if selected.size < matchingIds.length}
-					<button type="button" class="text-sky-400 hover:text-sky-300" onclick={() => (selected = new Set(matchingIds))}>
-						Select all {matchingIds.length.toLocaleString()}
+	{#if view === 'members'}
+		<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+			<div class="bg-ash-900/40 border-ash-700 mb-4 grid grid-cols-2 gap-1 rounded-lg border p-1 sm:grid-cols-4">
+				{#each tabs as t (t.id)}
+					<button
+						type="button"
+						onclick={() => switchTab(t.id)}
+						class="flex items-center justify-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors {tab === t.id
+							? 'bg-ash-600 text-ash-100'
+							: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+					>
+						{t.label}<span class="text-ash-400 text-xs tabular-nums">{t.count.toLocaleString()}</span>
 					</button>
-				{/if}
-				<button type="button" class="text-ash-400 hover:text-ash-200" onclick={() => (selected = new Set())}>Clear</button>
-			{/if}
-		</div>
+				{/each}
+			</div>
 
-		{#if selected.size > 0}
-			<div class="bg-ash-700 border-ash-600 mb-4 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-					<LabeledSelect appearance="field" options={actionOptions} bind:value={action} ariaLabel="Action" />
-					{#if ROLE_ACTIONS.includes(action)}
-						<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={actionRoleId} ariaLabel="Role" />
-					{/if}
-					{#if MODERATION_TIMED_ACTIONS.includes(action)}
-						<div class="flex gap-2">
-							<input
-								type="number"
-								min="1"
-								bind:value={amount}
-								aria-label="Duration amount"
-								class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-20 rounded-lg border px-3 text-sm"
-							/>
-							<div class="min-w-0 flex-1">
-								<LabeledSelect appearance="field" options={DURATION_UNITS} bind:value={unit} ariaLabel="Duration unit" />
-							</div>
-						</div>
-					{/if}
-					{#if !ROLE_ACTIONS.includes(action) && data.rules.reason_presets.length > 0}
-						<LabeledSelect appearance="field" options={presetOptions} bind:value={preset} ariaLabel="Reason preset" />
-					{/if}
+			<div class="mb-3 flex flex-col gap-3 sm:flex-row">
+				<div class="relative flex-1">
+					<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
+					<input
+						type="text"
+						bind:value={search}
+						oninput={() => (page = 1)}
+						placeholder="Search name, username or ID"
+						class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
+					/>
 				</div>
-				{#if !ROLE_ACTIONS.includes(action)}
+				{#if tab !== 'banned'}
+					<LabeledSelect appearance="members-toolbar" options={roleFilterOptions} bind:value={roleFilter} ariaLabel="Role filter" />
+				{/if}
+			</div>
+
+			<div class="text-ash-300 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+				<label class="flex items-center gap-2">
+					<input type="checkbox" class="checkbox checkbox-sm" checked={pageAllSelected} disabled={pageIds.length === 0} onchange={togglePage} />
+					Select page
+				</label>
+				{#if selected.size > 0}
+					<span class="text-ash-100 font-semibold">{selected.size.toLocaleString()} selected</span>
+					{#if selected.size < matchingIds.length}
+						<button type="button" class="text-sky-400 hover:text-sky-300" onclick={() => (selected = new Set(matchingIds))}>
+							Select all {matchingIds.length.toLocaleString()}
+						</button>
+					{/if}
+					<button type="button" class="text-ash-400 hover:text-ash-200" onclick={() => (selected = new Set())}>Clear</button>
+				{/if}
+			</div>
+
+			{#if rowIds.length === 0}
+				<p class="text-ash-400 py-8 text-center text-sm">{tab === 'all' ? 'No members match.' : 'Nobody here.'}</p>
+			{:else if tab === 'banned'}
+				<ul class="space-y-2">
+					{#each pageBans as b (b.discord_member_id)}
+						{@const meta = MODERATION_ACTION_META[b.action] ?? MODERATION_ACTION_META.ban}
+						<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border {selected.has(b.discord_member_id) ? 'ring-1 ring-sky-500/60' : ''}">
+							<div class="flex items-center gap-3 p-3">
+								{@render pick(b.discord_member_id, b.name ?? b.discord_member_id)}
+								<button
+									type="button"
+									onclick={() => (expanded = expanded === b.discord_member_id ? null : b.discord_member_id)}
+									class="flex min-w-0 flex-1 items-center gap-3 text-left"
+								>
+									{@render avatar(b.avatar)}
+									<div class="min-w-0 flex-1">
+										<p class="text-ash-100 truncate text-sm font-semibold">{b.name ?? b.discord_member_id}</p>
+										<p class="text-ash-300 truncate text-xs">{b.reason || 'No reason provided'}</p>
+									</div>
+									<div class="shrink-0 text-right text-xs">
+										<p class={meta.color}><i class="fas {meta.icon} mr-1"></i>{meta.label}</p>
+										<p class="text-ash-500 mt-0.5 text-[0.65rem]">
+											{#if b.expires_at}Ends <LocalTime value={b.expires_at} fallback="" class="inline" />{:else}<LocalTime
+													value={b.created_at}
+													fallback=""
+													class="inline"
+												/>{/if}
+										</p>
+									</div>
+									<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === b.discord_member_id ? 'rotate-180' : ''}"></i>
+								</button>
+							</div>
+							{@render record(b.discord_member_id)}
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<ul class="space-y-2">
+					{#each pageMembers as m (m.id)}
+						<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border {selected.has(m.id) ? 'ring-1 ring-sky-500/60' : ''}">
+							<div class="flex items-center gap-3 p-3">
+								{@render pick(m.id, m.name)}
+								<button type="button" onclick={() => (expanded = expanded === m.id ? null : m.id)} class="flex min-w-0 flex-1 items-center gap-3 text-left">
+									{@render avatar(m.avatar)}
+									<div class="min-w-0 flex-1">
+										<p class="text-ash-100 truncate text-sm font-semibold">{m.name}</p>
+										<p class="text-ash-400 truncate text-xs">
+											{#if m.username}@{m.username}{/if}{#if m.top_role}
+												· <span style={roleColor(m.top_role.color)}>{m.top_role.name}</span>{/if}
+										</p>
+									</div>
+									<div class="flex shrink-0 flex-col items-end gap-0.5 text-xs">
+										{#if m.warnings > 0}<span class="text-amber-400"><i class="fas fa-triangle-exclamation mr-1"></i>{m.warnings}</span>{/if}
+										{#if m.timeout_until}<span class="text-orange-400"><i class="fas fa-volume-xmark mr-1"></i>Timed out</span>{/if}
+									</div>
+									<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === m.id ? 'rotate-180' : ''}"></i>
+								</button>
+							</div>
+							{@render record(m.id)}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			{#if totalPages > 1}
+				<div class="mt-4 flex items-center justify-center gap-3">
+					<button
+						onclick={() => (page = Math.max(1, page - 1))}
+						disabled={page <= 1}
+						class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+					>
+						<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
+					</button>
+					<span class="text-ash-400 text-sm">Page {Math.min(page, totalPages)} of {totalPages}</span>
+					<button
+						onclick={() => (page = Math.min(totalPages, page + 1))}
+						disabled={page >= totalPages}
+						class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+					>
+						Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
+					</button>
+				</div>
+			{/if}
+			{#if selected.size > 0}
+				<div class="bg-ash-700 border-ash-500 sticky bottom-3 z-20 mt-4 flex flex-col gap-3 rounded-lg border p-3 shadow-lg shadow-black/40 sm:p-4">
+					<p class="text-ash-100 flex items-center gap-3 text-sm font-semibold">
+						{selected.size.toLocaleString()} selected
+						<button type="button" class="text-ash-400 hover:text-ash-200 text-xs font-normal" onclick={() => (selected = new Set())}>Clear</button>
+					</p>
+					<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+						<LabeledSelect appearance="field" options={actionOptions} bind:value={action} ariaLabel="Action" />
+						{#if ROLE_ACTIONS.includes(action)}
+							<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={actionRoleId} ariaLabel="Role" />
+						{/if}
+						{#if MODERATION_TIMED_ACTIONS.includes(action)}
+							<div class="flex gap-2">
+								<input
+									type="number"
+									min="1"
+									bind:value={amount}
+									aria-label="Duration amount"
+									class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-20 rounded-lg border px-3 text-sm"
+								/>
+								<div class="min-w-0 flex-1">
+									<LabeledSelect appearance="field" options={DURATION_UNITS} bind:value={unit} ariaLabel="Duration unit" />
+								</div>
+							</div>
+						{/if}
+						{#if !ROLE_ACTIONS.includes(action) && data.rules.reason_presets.length > 0}
+							<LabeledSelect appearance="field" options={presetOptions} bind:value={preset} ariaLabel="Reason preset" />
+						{/if}
+					</div>
+					{#if !ROLE_ACTIONS.includes(action)}
+						<input
+							type="text"
+							maxlength="1000"
+							bind:value={reason}
+							placeholder={MODERATION_REASON_OPTIONAL.includes(action) ? 'Reason (optional)' : 'Reason'}
+							aria-label="Reason"
+							class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+						/>
+					{/if}
+					<button
+						type="button"
+						onclick={apply}
+						disabled={busy}
+						class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:self-start"
+					>
+						{#if progress}
+							<i class="fas fa-spinner fa-spin"></i>Working {progress.done.toLocaleString()} / {progress.total.toLocaleString()}
+						{:else}
+							<i class="fas {MODERATION_ACTION_META[action]?.icon ?? 'fa-gavel'}"></i>{MODERATION_ACTION_META[action]?.label ?? 'Apply'} · {selected.size.toLocaleString()}
+						{/if}
+					</button>
+				</div>
+			{/if}
+		</section>
+	{:else if view === 'mass'}
+		<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+			<p class="text-ash-400 mb-4 text-xs">Runs in the background. Members you can't act on are skipped. The result goes to the moderation log channel.</p>
+
+			<div class="grid gap-3 lg:grid-cols-3">
+				<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+					<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-dove text-emerald-400"></i>Unban everyone</p>
 					<input
 						type="text"
 						maxlength="1000"
-						bind:value={reason}
-						placeholder={MODERATION_REASON_OPTIONAL.includes(action) ? 'Reason (optional)' : 'Reason'}
-						aria-label="Reason"
+						bind:value={unbanReason}
+						placeholder="Reason (optional)"
+						aria-label="Unban reason"
 						class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
 					/>
-				{/if}
-				<button
-					type="button"
-					onclick={apply}
-					disabled={busy}
-					class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:self-start"
-				>
-					{#if progress}
-						<i class="fas fa-spinner fa-spin"></i>Working {progress.done.toLocaleString()} / {progress.total.toLocaleString()}
-					{:else}
-						<i class="fas {MODERATION_ACTION_META[action]?.icon ?? 'fa-gavel'}"></i>{MODERATION_ACTION_META[action]?.label ?? 'Apply'} · {selected.size.toLocaleString()}
-					{/if}
-				</button>
-			</div>
-		{/if}
-
-		{#if rowIds.length === 0}
-			<p class="text-ash-400 py-8 text-center text-sm">{tab === 'all' ? 'No members match.' : 'Nobody here.'}</p>
-		{:else if tab === 'banned'}
-			<ul class="space-y-2">
-				{#each pageBans as b (b.discord_member_id)}
-					{@const meta = MODERATION_ACTION_META[b.action] ?? MODERATION_ACTION_META.ban}
-					<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border {selected.has(b.discord_member_id) ? 'ring-1 ring-sky-500/60' : ''}">
-						<div class="flex items-center gap-3 p-3">
-							{@render pick(b.discord_member_id, b.name ?? b.discord_member_id)}
-							<button
-								type="button"
-								onclick={() => (expanded = expanded === b.discord_member_id ? null : b.discord_member_id)}
-								class="flex min-w-0 flex-1 items-center gap-3 text-left"
-							>
-								{@render avatar(b.avatar)}
-								<div class="min-w-0 flex-1">
-									<p class="text-ash-100 truncate text-sm font-semibold">{b.name ?? b.discord_member_id}</p>
-									<p class="text-ash-300 truncate text-xs">{b.reason || 'No reason provided'}</p>
-								</div>
-								<div class="shrink-0 text-right text-xs">
-									<p class={meta.color}><i class="fas {meta.icon} mr-1"></i>{meta.label}</p>
-									<p class="text-ash-500 mt-0.5 text-[0.65rem]">
-										{#if b.expires_at}Ends <LocalTime value={b.expires_at} fallback="" class="inline" />{:else}<LocalTime
-												value={b.created_at}
-												fallback=""
-												class="inline"
-											/>{/if}
-									</p>
-								</div>
-								<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === b.discord_member_id ? 'rotate-180' : ''}"></i>
-							</button>
-						</div>
-						{@render record(b.discord_member_id)}
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<ul class="space-y-2">
-				{#each pageMembers as m (m.id)}
-					<li class="bg-ash-700 border-ash-600 overflow-hidden rounded-lg border {selected.has(m.id) ? 'ring-1 ring-sky-500/60' : ''}">
-						<div class="flex items-center gap-3 p-3">
-							{@render pick(m.id, m.name)}
-							<button type="button" onclick={() => (expanded = expanded === m.id ? null : m.id)} class="flex min-w-0 flex-1 items-center gap-3 text-left">
-								{@render avatar(m.avatar)}
-								<div class="min-w-0 flex-1">
-									<p class="text-ash-100 truncate text-sm font-semibold">{m.name}</p>
-									<p class="text-ash-400 truncate text-xs">
-										{#if m.username}@{m.username}{/if}{#if m.top_role}
-											· <span style={roleColor(m.top_role.color)}>{m.top_role.name}</span>{/if}
-									</p>
-								</div>
-								<div class="flex shrink-0 flex-col items-end gap-0.5 text-xs">
-									{#if m.warnings > 0}<span class="text-amber-400"><i class="fas fa-triangle-exclamation mr-1"></i>{m.warnings}</span>{/if}
-									{#if m.timeout_until}<span class="text-orange-400"><i class="fas fa-volume-xmark mr-1"></i>Timed out</span>{/if}
-								</div>
-								<i class="fas fa-chevron-down text-ash-400 shrink-0 text-xs transition-transform {expanded === m.id ? 'rotate-180' : ''}"></i>
-							</button>
-						</div>
-						{@render record(m.id)}
-					</li>
-				{/each}
-			</ul>
-		{/if}
-
-		{#if totalPages > 1}
-			<div class="mt-4 flex items-center justify-center gap-3">
-				<button
-					onclick={() => (page = Math.max(1, page - 1))}
-					disabled={page <= 1}
-					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-				>
-					<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
-				</button>
-				<span class="text-ash-400 text-sm">Page {Math.min(page, totalPages)} of {totalPages}</span>
-				<button
-					onclick={() => (page = Math.min(totalPages, page + 1))}
-					disabled={page >= totalPages}
-					class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-				>
-					Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
-				</button>
-			</div>
-		{/if}
-	</section>
-
-	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<h3 class="text-ash-100 mb-1 flex items-center gap-2 text-xl font-bold"><i class="fas fa-users-gear text-orange-400"></i>Mass moderation</h3>
-		<p class="text-ash-400 mb-4 text-xs">Runs in the background. Members you can't act on are skipped. The result goes to the moderation log channel.</p>
-
-		<div class="grid gap-3 lg:grid-cols-3">
-			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-dove text-emerald-400"></i>Unban everyone</p>
-				<input
-					type="text"
-					maxlength="1000"
-					bind:value={unbanReason}
-					placeholder="Reason (optional)"
-					aria-label="Unban reason"
-					class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-				/>
-				<button
-					type="button"
-					onclick={unbanAll}
-					disabled={busy}
-					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-				>
-					<i class="fas fa-dove"></i>Unban all
-				</button>
-			</div>
-
-			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
-					<i class="fas fa-broom text-violet-400"></i>Clear all warnings<span class="text-ash-400 ml-auto text-xs font-normal"
-						>{data.activeWarnings.toLocaleString()} active</span
+					<button
+						type="button"
+						onclick={unbanAll}
+						disabled={busy}
+						class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
 					>
-				</p>
-				<input
-					type="text"
-					maxlength="1000"
-					bind:value={warnsReason}
-					placeholder="Reason (optional)"
-					aria-label="Clear warnings reason"
-					class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-				/>
-				<button
-					type="button"
-					onclick={clearAllWarns}
-					disabled={busy || data.activeWarnings === 0}
-					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
-				>
-					<i class="fas fa-broom"></i>Clear all
-				</button>
-			</div>
+						<i class="fas fa-dove"></i>Unban all
+					</button>
+				</div>
 
-			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
-				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-user-tag text-sky-400"></i>Bulk roles</p>
-				<LabeledSelect
-					appearance="field"
-					options={[
-						{ value: 'role_add', label: 'Give role' },
-						{ value: 'role_remove', label: 'Take role' }
-					]}
-					bind:value={roleAction}
-					ariaLabel="Give or take"
-				/>
-				<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={roleId} ariaLabel="Role" />
-				<LabeledSelect appearance="field" options={WHO_OPTIONS} bind:value={roleWho} ariaLabel="Who" />
-				{#if roleWho !== 'all'}
-					<LabeledSelect appearance="field" options={whoRoleOptions} bind:value={whoRoleId} ariaLabel="Filter role" />
-				{/if}
-				<button
-					type="button"
-					onclick={bulkRoles}
-					disabled={busy || !roleId}
-					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500 disabled:opacity-50"
-				>
-					<i class="fas fa-user-tag"></i>{roleAction === 'role_add' ? 'Give role' : 'Take role'}
-				</button>
-				{#if data.roles.some((r) => !r.manageable)}
-					<p class="text-ash-500 text-xs">Staff and admin roles are hidden. {data.deniedReason}</p>
-				{/if}
-			</div>
-		</div>
-	</section>
+				<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+					<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
+						<i class="fas fa-broom text-violet-400"></i>Clear all warnings<span class="text-ash-400 ml-auto text-xs font-normal"
+							>{data.activeWarnings.toLocaleString()} active</span
+						>
+					</p>
+					<input
+						type="text"
+						maxlength="1000"
+						bind:value={warnsReason}
+						placeholder="Reason (optional)"
+						aria-label="Clear warnings reason"
+						class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+					/>
+					<button
+						type="button"
+						onclick={clearAllWarns}
+						disabled={busy || data.activeWarnings === 0}
+						class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
+					>
+						<i class="fas fa-broom"></i>Clear all
+					</button>
+				</div>
 
-	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<h3 class="text-ash-100 mb-4 flex items-center gap-2 text-xl font-bold"><i class="fas fa-scale-balanced text-emerald-400"></i>Rules</h3>
-		<ModerationRules serverId={data.serverId} rules={data.rules} onsaved={() => invalidateAll()} />
-	</section>
+				<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+					<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-user-tag text-sky-400"></i>Bulk roles</p>
+					<LabeledSelect
+						appearance="field"
+						options={[
+							{ value: 'role_add', label: 'Give role' },
+							{ value: 'role_remove', label: 'Take role' }
+						]}
+						bind:value={roleAction}
+						ariaLabel="Give or take"
+					/>
+					<LabeledSelect appearance="field" options={manageableRoleOptions} bind:value={roleId} ariaLabel="Role" />
+					<LabeledSelect appearance="field" options={WHO_OPTIONS} bind:value={roleWho} ariaLabel="Who" />
+					{#if roleWho !== 'all'}
+						<LabeledSelect appearance="field" options={whoRoleOptions} bind:value={whoRoleId} ariaLabel="Filter role" />
+					{/if}
+					<button
+						type="button"
+						onclick={bulkRoles}
+						disabled={busy || !roleId}
+						class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500 disabled:opacity-50"
+					>
+						<i class="fas fa-user-tag"></i>{roleAction === 'role_add' ? 'Give role' : 'Take role'}
+					</button>
+					{#if data.roles.some((r) => !r.manageable)}
+						<p class="text-ash-500 text-xs">Staff and admin roles are hidden. {data.deniedReason}</p>
+					{/if}
+				</div>
+			</div>
+		</section>
+	{:else}
+		<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+			<ModerationRules serverId={data.serverId} rules={data.rules} onsaved={() => invalidateAll()} />
+		</section>
+	{/if}
 </div>
 
 <ConfirmModal

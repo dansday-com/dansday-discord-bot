@@ -5,6 +5,7 @@
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
+	import LevelUpScene from '$lib/frontend/components/landing/scenes/LevelUpScene.svelte';
 	import { effectIcon, effectLabel, effectAccentHex } from '$lib/items.js';
 	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 
@@ -713,6 +714,9 @@
 				<p class={EYEBROW}>01 — The essentials</p>
 				<h2 class={H2}>Free, no premium</h2>
 				<p class={LEAD}>The features servers usually add MEE6 for, with no paid tier on any of them. The code is open source, so it stays that way.</p>
+			</div>
+			<div class="mb-8 sm:mb-10">
+				<LevelUpScene />
 			</div>
 			<dl class="border-base-300 border-t">
 				{#each essentials as item, i}

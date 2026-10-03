@@ -9,7 +9,6 @@
 		{ label: 'Overview', icon: 'fa-chart-pie', iconClass: 'text-sky-400', href: ADMIN_TAB_PATHS.overview },
 		{ label: 'Bots', icon: 'fa-robot', iconClass: 'text-violet-400', href: ADMIN_TAB_PATHS.bots },
 		{ label: 'Selfbots', icon: 'fa-user-secret', iconClass: 'text-fuchsia-400', href: ADMIN_TAB_PATHS.selfbots },
-		{ label: 'Greetings', icon: 'fa-hands-clapping', iconClass: 'text-amber-400', href: ADMIN_TAB_PATHS.greetings },
 		{ label: 'Global Embed', icon: 'fa-bullhorn', iconClass: 'text-rose-400', href: ADMIN_TAB_PATHS.globalEmbed },
 		{ label: 'Items', icon: 'fa-store', iconClass: 'text-teal-400', href: ADMIN_TAB_PATHS.items },
 		{ label: 'Settings', icon: 'fa-sliders', iconClass: 'text-sky-400', href: ADMIN_TAB_PATHS.settings }

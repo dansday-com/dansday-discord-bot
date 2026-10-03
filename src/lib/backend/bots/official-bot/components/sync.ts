@@ -520,14 +520,4 @@ export function getBotId() {
 	return botId;
 }
 
-export async function resendJoinGreeting(discordServerId) {
-	const guild = client?.guilds?.cache?.get(String(discordServerId));
-	if (!guild) return { success: false, error: 'guild_not_found' };
-	await db.resetGuildGreeting(guild.id);
-	await sendJoinGreeting(guild);
-	const server = await db.getServerByDiscordId(botId, guild.id).catch(() => null);
-	if (!server?.greeted_at) return { success: false, error: 'greeting_failed' };
-	return { success: true, guild_name: guild.name };
-}
-
-export default { init, syncGuildData, syncAllGuilds, getBotId, resendJoinGreeting };
+export default { init, syncGuildData, syncAllGuilds, getBotId };

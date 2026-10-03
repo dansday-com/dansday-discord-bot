@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { BRAND_PRIMARY } from '$lib/brand.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
 	import DiscordEmbed from '../DiscordEmbed.svelte';
 	import DiscordMessage from '../DiscordMessage.svelte';
 	import { BOT } from '../scripts/common.js';
@@ -166,7 +167,7 @@
 		class:dash-discord-on={discordOpen}
 	>
 		<div class="border-ash-950 flex h-9 items-center gap-2 border-b px-3">
-			<i class="fa-brands fa-discord text-[13px] text-[#5865f2]"></i>
+			<DiscordIcon class="text-[13px] text-[#5865f2]" />
 			<i class="fas fa-hashtag text-ash-300 text-[11px]"></i><span class="text-ash-50 text-[12.5px] font-semibold">general</span>
 		</div>
 		<div class="@container flex min-h-0 flex-col justify-end overflow-hidden pb-3">

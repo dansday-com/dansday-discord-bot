@@ -3,7 +3,7 @@
 	import type { PageProps } from './$types';
 	import { publicServerPath, publicSiteOrigin, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { DiscordIcon, PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
 	import ScenePlayer from '$lib/frontend/components/landing/scenes/ScenePlayer.svelte';
 	import { BEYOND_SCENES, ESSENTIAL_SCENES } from '$lib/frontend/components/landing/scenes/scripts/index.js';
@@ -694,7 +694,7 @@
 
 					<div class="flex flex-col gap-2 sm:items-end">
 						<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
-							<i class="fa-brands fa-discord"></i>
+							<DiscordIcon />
 							Add the bot — free
 						</a>
 						<p class="text-primary flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] sm:justify-end 2xl:text-[14px]">
@@ -1218,7 +1218,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 				>
-					<i class="fa-brands fa-discord"></i>
+					<DiscordIcon />
 					Add {APP_NAME} Bot
 				</a>
 				<div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:contents">

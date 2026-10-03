@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { xpForLevel } from '$lib/level-rewards.js';
+	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
 	import { avatar } from '../scripts/common.js';
 	import type { SceneScreenProps } from '../types.js';
 
@@ -184,7 +185,7 @@
 		class="account-push border-base-300 bg-base-100/95 absolute inset-x-2.5 top-1 flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 shadow-xl"
 		class:account-push-on={t >= PUSH}
 	>
-		<span class="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#5865f2] text-[17px] text-white"><i class="fa-brands fa-discord"></i></span>
+		<span class="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#5865f2] text-[17px] text-white"><DiscordIcon /></span>
 		<span class="min-w-0 flex-1">
 			<span class="text-base-content flex items-center justify-between gap-2 text-[11.5px] font-bold">
 				<span class="truncate">#items · Night Owls</span><span class="text-base-content/45 shrink-0 text-[10px] font-semibold">now</span>

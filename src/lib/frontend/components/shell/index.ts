@@ -8,6 +8,7 @@ export { default as ModuleCard } from './ModuleCard.svelte';
 export { default as AccentCard } from './AccentCard.svelte';
 export { default as Callout } from './Callout.svelte';
 export { default as PageMeta } from './PageMeta.svelte';
+export { default as DiscordIcon } from './DiscordIcon.svelte';
 
 export { reveal, REVEAL_CLASS } from './reveal';
 export type { NavTab } from './types';

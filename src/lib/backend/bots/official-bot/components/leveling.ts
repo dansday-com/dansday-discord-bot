@@ -17,6 +17,7 @@ import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
 import { translate } from '../i18n.js';
+import { syncGuildLevelRewards, syncMemberLevelRewards } from './levelRewards.js';
 
 const recentMessages = new Map();
 
@@ -299,7 +300,8 @@ export async function sendLevelProgressNotification({
 	eventType = 'level',
 	memberLevelSnapshot = null,
 	contextLabel = 'level-change',
-	fallbackChannelId = null
+	fallbackChannelId = null,
+	rewardRoleIds = [] as string[]
 } = {}) {
 	if (!clientInstance || !guildId || !discordMemberId) {
 		return false;
@@ -409,6 +411,9 @@ export async function sendLevelProgressNotification({
 				.setTitle('🎉 Level Up!')
 				.setDescription(`${member} has reached **Level ${shownLevel}**!`)
 				.addFields({ name: '📊 Total XP', value: totalXp.toLocaleString(), inline: true }, { name: '🏆 Rank', value: rankValue, inline: true });
+			if (rewardRoleIds.length > 0) {
+				embed.addFields({ name: '🎁 Reward unlocked', value: rewardRoleIds.map((id) => `<@&${id}>`).join(' '), inline: false });
+			}
 			if (progressField) embed.addFields(progressField);
 		}
 
@@ -488,6 +493,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 	const normalizedPreviousRank = normalizeRankValue(contextPreviousRank);
 
 	let finalStats = currentStats;
+	let rewardRoleIds: string[] = [];
 	if (storedLevel !== expectedLevel) {
 		const updatedStats = await db.updateMemberLevelStats(dbMember.id, { level: expectedLevel });
 		if (updatedStats) {
@@ -498,6 +504,10 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		}
 		const memberName = dbMember.display_name || dbMember.username || dbMember.discord_member_id || 'Unknown member';
 		await logger.log(`⭐ Level stored update (${reason}): ${memberName} -> level ${expectedLevel} in ${server.name}`);
+		const guild = clientInstance?.guilds.cache.get(guildId);
+		if (guild && dbMember.discord_member_id) {
+			rewardRoleIds = await syncMemberLevelRewards(guild, String(dbMember.discord_member_id), expectedLevel);
+		}
 	}
 
 	let memberLevelSnapshot = null;
@@ -519,7 +529,8 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 				previousRank: normalizedPreviousRank,
 				memberLevelSnapshot,
 				contextLabel: `level-eval:${reason}`,
-				fallbackChannelId: sourceChannelId
+				fallbackChannelId: sourceChannelId,
+				rewardRoleIds
 			});
 		}
 	} else if (dbMember.discord_member_id && rankImproved) {
@@ -1274,6 +1285,10 @@ async function recalculateAllMemberLevels(client) {
 		}
 
 		await logger.log(`✅ Level recalculation complete: ${totalRecalculated} member(s) checked, ${totalFixed} level(s) corrected`);
+
+		for (const server of servers) {
+			if (client.guilds.cache.has(server.discord_server_id)) await syncGuildLevelRewards(client, server.discord_server_id);
+		}
 	} catch (error) {
 		await logger.log(`❌ Error during level recalculation: ${error.message}`);
 	}
@@ -1367,11 +1382,22 @@ async function resumeVoiceSessions(client) {
 	}
 }
 
+async function handleRewardRejoin(member: any) {
+	if (member.user?.bot) return;
+	try {
+		const server = await getServerForCurrentBot(member.guild.id);
+		const stats = await db.getMemberLevelByDiscordId(server.id, member.id);
+		const level = Number(stats?.level) || 1;
+		if (level > 1) await syncMemberLevelRewards(member.guild, member.id, level);
+	} catch (_) {}
+}
+
 function init(client) {
 	clientInstance = client;
 	client.on('messageCreate', handleMessageCreate);
 	client.on('messageReactionAdd', (reaction, user) => handleReactionChange(reaction, user, 1));
 	client.on('messageReactionRemove', (reaction, user) => handleReactionChange(reaction, user, -1));
+	client.on('guildMemberAdd', handleRewardRejoin);
 
 	if (client.isReady()) {
 		resumeVoiceSessions(client);

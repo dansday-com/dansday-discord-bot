@@ -7,5 +7,6 @@ export { default as WagerPicker } from './WagerPicker.svelte';
 export { default as ReelStrip } from './ReelStrip.svelte';
 export { default as MetricTabs } from './MetricTabs.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
+export { default as LevelRewards } from './LevelRewards.svelte';
 
 export { RANK_STYLES, PODIUM_HEIGHT, rankStyle, initial, type RankStyle } from './ranks';

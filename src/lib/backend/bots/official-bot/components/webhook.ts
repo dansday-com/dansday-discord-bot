@@ -704,6 +704,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'moderation_bulk failed', details: bulkErr.message }));
 					}
+				} else if (payload.type === 'sync_level_rewards') {
+					try {
+						const { syncGuildLevelRewards } = await import('./levelRewards.js');
+						const result = await syncGuildLevelRewards(client, payload.guild_id);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (rewardErr: any) {
+						await logger.log(`❌ sync_level_rewards failed: ${rewardErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'sync_level_rewards failed', details: rewardErr.message }));
+					}
 				} else if (payload.type === 'use_item') {
 					try {
 						const { handleItemUse } = await import('./items.js');

@@ -4,9 +4,9 @@
 
 # &lt;/DANSDAY&gt;
 
-**The free Discord leveling bot where members steal each other's XP — and fight to keep it.**
+**The free, open-source MEE6 alternative for Discord — where members can also steal each other's XP.**
 
-Steal, bomb and leech on one side, shield, reflect and insurance on the other. Per-member Roblox price alerts, AI chat and voice that answer from your server's own numbers, personal daily tasks and 70 animated card themes. Configured in a browser. Self-host it or add the hosted bot.
+Leveling, role rewards, welcome messages, moderation, giveaways and YouTube, Twitch and TikTok alerts, with no premium tier. On top of that: XP that members steal and defend, per-member Roblox price alerts, AI chat and voice that answer from your server's own numbers, personal daily tasks and 70 animated card themes. Configured in a browser. Self-host it or add the hosted bot.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-1a7f37?style=flat-square)](LICENSE)
 [![Self-hostable](https://img.shields.io/badge/self--host-Docker%20%7C%20Node%2025-2b7489?style=flat-square)](#quick-start)
@@ -24,7 +24,9 @@ Steal, bomb and leech on one side, shield, reflect and insurance on the other. P
 
 ## What makes it different
 
-On most leveling bots, XP only ever goes up. Here **members take it from each other** and fight to keep it, and that gives them a reason to come back tomorrow.
+**Everything is free, and the code is open.** Leveling, role rewards, level-up messages, welcome messages, moderation, giveaways, and YouTube, Twitch and TikTok alerts — the features servers usually add MEE6 for — have no paid tier here, and AGPL-3.0 keeps it that way.
+
+Then there's what MEE6 doesn't do. On most leveling bots, XP only ever goes up. Here **members take it from each other** and fight to keep it, and that gives them a reason to come back tomorrow.
 
 - **Members steal XP.** A steal takes it, a bomb burns it and credits no one, a leech skims what the victim earns next. Shield, reflect and insure against it. Put a bounty on the leader, spy before you strike, disguise yourself off every public board. Luck tilts the rolls.
 - **Roblox alerts per member.** A member taps 🔔 Notify me under any catalog post and gets tagged when that item's price, resale price, stock or total supply changes. Their own watchlist, not a channel-wide feed.
@@ -34,8 +36,6 @@ On most leveling bots, XP only ever goes up. Here **members take it from each ot
 - **Every member gets an account.** One tap on the Account button in the Discord menu opens their own page: where their XP came from, a 14-day flow, who they talk to in voice, their bag, tasks, portfolio, minigames and history. No signup, no password.
 - **70 card themes to win.** Spin 1,000 XP for an animated effect, from fire and aurora to a black hole. It repaints their account, their leaderboard row and their members-list card.
 - **One panel, every server, yours to run.** Every module is a tab in the browser, not a slash command. Multi-bot and multi-server from one login, AGPL-3.0, nothing held back behind a tier.
-
-The basics are here too: leveling, role rewards, a welcomer, giveaways, moderation, and YouTube, Twitch and TikTok alerts. Free, in the same panel.
 
 ---
 

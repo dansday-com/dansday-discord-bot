@@ -549,6 +549,7 @@ export const modules = [
 			},
 			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
 			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
+			{ label: 'Invites tab', desc: 'Every inviter, join and link, with the link each member used.' },
 			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications.' }
 		]
 	},
@@ -657,7 +658,8 @@ export const modules = [
 		title: 'Moderation',
 		what: 'Always on. Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
 		fields: [
-			{ label: 'Moderate button', desc: 'On every member card in the Members tab.' },
+			{ label: 'Moderate a member', desc: 'On the Moderation tab: pick a member and an action.' },
+			{ label: 'Mass moderation', desc: 'Unban everyone, clear all warnings, or give or take a role in bulk.' },
 			{ label: 'Moderation tab', desc: 'Every case, with remove, clear and unban.' },
 			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Optional; cases are always kept in the panel.' }
 		]

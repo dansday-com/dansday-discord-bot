@@ -6,6 +6,7 @@
 	import type { PageProps } from './$types';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
+	import ModerateMemberForm from '$lib/frontend/components/ModerateMemberForm.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -24,6 +25,15 @@
 		unwarn: { label: 'Remove warning', icon: 'fa-eraser', color: 'text-violet-400' }
 	};
 	const ACTION_FILTER_OPTIONS = [{ value: 'all', label: 'All actions' }, ...Object.entries(LOG_META).map(([value, meta]) => ({ value, label: meta.label }))];
+	const ROLE_ACTION_OPTIONS = [
+		{ value: 'role_add', label: 'Give role' },
+		{ value: 'role_remove', label: 'Take role' }
+	];
+	const WHO_OPTIONS = [
+		{ value: 'all', label: 'Everyone' },
+		{ value: 'with', label: 'Members with role' },
+		{ value: 'without', label: 'Members without role' }
+	];
 	const STATUS_FILTER_OPTIONS = [
 		{ value: 'all', label: 'Any status' },
 		{ value: 'active', label: 'Active' },
@@ -34,7 +44,17 @@
 	let filterAction = $state('all');
 	let filterStatus = $state('all');
 	let search = $state('');
-	let confirm = $state<{ title: string; message: string; body: Record<string, unknown> } | null>(null);
+	let confirm = $state<{ title: string; message: string; body: Record<string, unknown>; endpoint?: string } | null>(null);
+	let unbanReason = $state('');
+	let warnsReason = $state('');
+	let roleAction = $state('role_add');
+	let roleId = $state('');
+	let roleWho = $state('all');
+	let whoRoleId = $state('');
+
+	const roleOptions = $derived([{ value: '', label: 'Pick a role' }, ...data.roles.filter((r) => r.manageable).map((r) => ({ value: r.id, label: r.name }))]);
+	const whoRoleOptions = $derived([{ value: '', label: 'Pick a role to filter by' }, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
+	const roleName = (id: string) => data.roles.find((r) => r.id === id)?.name ?? 'that role';
 
 	const stats = $derived({
 		total: data.logs.length,
@@ -68,10 +88,10 @@
 		return [d && `${d}d`, h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ') || `${seconds}s`;
 	}
 
-	async function send(body: Record<string, unknown>) {
+	async function send(body: Record<string, unknown>, endpoint = 'moderation') {
 		busy = true;
 		try {
-			const res = await fetch(`/api/servers/${data.serverId}/moderation`, {
+			const res = await fetch(`/api/servers/${data.serverId}/${endpoint}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body)
@@ -81,7 +101,8 @@
 				showToast(out.error || 'Moderation action failed', 'error');
 				return false;
 			}
-			showToast(out.case_number ? `Case #${out.case_number} recorded` : 'Done', 'success');
+			if (out.queued != null) showToast(`Started for ${Number(out.queued).toLocaleString()}. The result goes to the moderation log channel.`, 'success');
+			else showToast(out.case_number ? `Case #${out.case_number} recorded` : 'Done', 'success');
 			await invalidateAll();
 			return true;
 		} catch {
@@ -104,11 +125,41 @@
 		confirm = { title: 'Clear warnings', message: `Clear every active warning for ${name}?`, body: { action: 'clearwarns', target_id: memberId } };
 	}
 
+	function unbanAll() {
+		confirm = {
+			title: 'Unban everyone',
+			message: 'Unban every banned user in this server?',
+			body: { action: 'unban_all', reason: unbanReason.trim() || null },
+			endpoint: 'moderation/bulk'
+		};
+	}
+
+	function clearAllWarns() {
+		confirm = {
+			title: 'Clear all warnings',
+			message: `Clear all ${stats.warnings.toLocaleString()} active warnings?`,
+			body: { action: 'clear_warns', reason: warnsReason.trim() || null },
+			endpoint: 'moderation/bulk'
+		};
+	}
+
+	function bulkRoles() {
+		if (!roleId) return showToast('Pick a role', 'error');
+		if (roleWho !== 'all' && !whoRoleId) return showToast('Pick the role to filter by', 'error');
+		const who = roleWho === 'all' ? 'everyone' : `everyone ${roleWho === 'with' ? 'with' : 'without'} ${roleName(whoRoleId)}`;
+		confirm = {
+			title: roleAction === 'role_add' ? 'Give role' : 'Take role',
+			message: `${roleAction === 'role_add' ? 'Give' : 'Take'} ${roleName(roleId)} ${roleAction === 'role_add' ? 'to' : 'from'} ${who}?`,
+			body: { action: roleAction, role_id: roleId, filter: roleWho, filter_role_id: roleWho === 'all' ? null : whoRoleId },
+			endpoint: 'moderation/bulk'
+		};
+	}
+
 	async function runConfirm() {
 		const pending = confirm;
 		confirm = null;
 		if (!pending) return;
-		await send(pending.body);
+		await send(pending.body, pending.endpoint);
 	}
 </script>
 
@@ -125,6 +176,83 @@
 			</div>
 		{/each}
 	</div>
+
+	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+		<h3 class="text-ash-100 mb-4 flex items-center gap-2 text-xl font-bold"><i class="fas fa-gavel text-red-400"></i>Moderate a member</h3>
+		<ModerateMemberForm serverId={data.serverId} ondone={() => invalidateAll()} />
+	</section>
+
+	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+		<h3 class="text-ash-100 mb-1 flex items-center gap-2 text-xl font-bold"><i class="fas fa-users-gear text-orange-400"></i>Mass moderation</h3>
+		<p class="text-ash-400 mb-4 text-xs">Runs in the background. Members you can't act on are skipped. The result goes to the moderation log channel.</p>
+
+		<div class="grid gap-3 lg:grid-cols-3">
+			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-dove text-emerald-400"></i>Unban everyone</p>
+				<input
+					type="text"
+					maxlength="1000"
+					bind:value={unbanReason}
+					placeholder="Reason (optional)"
+					aria-label="Unban reason"
+					class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+				/>
+				<button
+					type="button"
+					onclick={unbanAll}
+					disabled={busy}
+					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+				>
+					<i class="fas fa-dove"></i>Unban all
+				</button>
+			</div>
+
+			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
+					<i class="fas fa-broom text-violet-400"></i>Clear all warnings<span class="text-ash-400 ml-auto text-xs font-normal"
+						>{stats.warnings.toLocaleString()} active</span
+					>
+				</p>
+				<input
+					type="text"
+					maxlength="1000"
+					bind:value={warnsReason}
+					placeholder="Reason (optional)"
+					aria-label="Clear warnings reason"
+					class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+				/>
+				<button
+					type="button"
+					onclick={clearAllWarns}
+					disabled={busy || stats.warnings === 0}
+					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
+				>
+					<i class="fas fa-broom"></i>Clear all
+				</button>
+			</div>
+
+			<div class="bg-ash-700 border-ash-600 flex flex-col gap-3 rounded-lg border p-3 sm:p-4">
+				<p class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-user-tag text-sky-400"></i>Bulk roles</p>
+				<LabeledSelect appearance="field" options={ROLE_ACTION_OPTIONS} bind:value={roleAction} ariaLabel="Give or take" />
+				<LabeledSelect appearance="field" options={roleOptions} bind:value={roleId} ariaLabel="Role" />
+				<LabeledSelect appearance="field" options={WHO_OPTIONS} bind:value={roleWho} ariaLabel="Who" />
+				{#if roleWho !== 'all'}
+					<LabeledSelect appearance="field" options={whoRoleOptions} bind:value={whoRoleId} ariaLabel="Filter role" />
+				{/if}
+				<button
+					type="button"
+					onclick={bulkRoles}
+					disabled={busy || !roleId}
+					class="mt-auto flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-500 disabled:opacity-50"
+				>
+					<i class="fas fa-user-tag"></i>{roleAction === 'role_add' ? 'Give role' : 'Take role'}
+				</button>
+				{#if data.roles.some((r) => !r.manageable)}
+					<p class="text-ash-500 text-xs">Staff and admin roles are hidden. {data.deniedReason}</p>
+				{/if}
+			</div>
+		</div>
+	</section>
 
 	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<h3 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold"><i class="fas fa-scroll text-sky-400"></i>Moderation logs</h3>

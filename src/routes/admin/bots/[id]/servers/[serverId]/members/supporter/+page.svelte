@@ -4,11 +4,4 @@
 	let { data }: PageProps = $props();
 </script>
 
-<MemberList
-	members={data.members}
-	serverId={data.serverId}
-	boostersOnly
-	staffRoleIds={data.staffRoleIds}
-	adminRoleIds={data.adminRoleIds}
-	actor={data.panelActor}
-/>
+<MemberList members={data.members} boostersOnly />

@@ -1684,6 +1684,14 @@ export async function getAdministratorRoleIds(serverId: any): Promise<string[]> 
 	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
 }
 
+async function getTierRoleIds(serverId: any): Promise<{ staffRoleIds: string[]; adminRoleIds: string[] }> {
+	const [main, adminRoleIds] = await Promise.all([
+		getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
+		getAdministratorRoleIds(serverId).catch(() => [] as string[])
+	]);
+	return { staffRoleIds: ((main as any)?.settings?.staff_roles ?? []).map(String), adminRoleIds };
+}
+
 export async function getMemberTier(serverId: any, discordMemberId: string): Promise<MemberTier> {
 	await initializeDatabase();
 	const [rows] = (await db.execute(sql`
@@ -1695,16 +1703,45 @@ export async function getMemberTier(serverId: any, discordMemberId: string): Pro
 	`)) as any;
 	const list = (rows as any[]) ?? [];
 	if (list.length === 0) return 'member';
-	const [main, adminRoleIds] = await Promise.all([
-		getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
-		getAdministratorRoleIds(serverId).catch(() => [] as string[])
-	]);
-	const staffRoleIds = ((main as any)?.settings?.staff_roles ?? []).map(String);
+	const { staffRoleIds, adminRoleIds } = await getTierRoleIds(serverId);
 	const roleIds = list
 		.map((r) => r.discord_role_id)
 		.filter((id) => id != null)
 		.map(String);
 	return memberTier({ is_owner: list[0].is_owner, roleIds }, staffRoleIds, adminRoleIds);
+}
+
+export async function getMemberTierMap(serverId: any): Promise<{ staffRoleIds: string[]; adminRoleIds: string[]; tiers: Record<string, MemberTier> }> {
+	await initializeDatabase();
+	const { staffRoleIds, adminRoleIds } = await getTierRoleIds(serverId);
+	const elevated = [...new Set([...staffRoleIds, ...adminRoleIds])];
+	const roleMatch =
+		elevated.length > 0
+			? sql`sr.discord_role_id IN (${sql.join(
+					elevated.map((id) => sql`${id}`),
+					sql`, `
+				)})`
+			: sql`FALSE`;
+	const [rows] = (await db.execute(sql`
+		SELECT sm.discord_member_id, sm.is_owner, sr.discord_role_id
+		FROM server_members sm
+		LEFT JOIN server_member_roles smr ON smr.member_id = sm.id
+		LEFT JOIN server_roles sr ON sr.id = smr.role_id AND ${roleMatch}
+		WHERE sm.server_id = ${Number(serverId)} AND (sm.is_owner = 1 OR sr.id IS NOT NULL)
+	`)) as any;
+	const grouped = new Map<string, { is_owner: number; roleIds: string[] }>();
+	for (const r of (rows as any[]) ?? []) {
+		const id = String(r.discord_member_id);
+		const entry = grouped.get(id) ?? { is_owner: Number(r.is_owner) || 0, roleIds: [] };
+		if (r.discord_role_id != null) entry.roleIds.push(String(r.discord_role_id));
+		grouped.set(id, entry);
+	}
+	const tiers: Record<string, MemberTier> = {};
+	for (const [id, entry] of grouped) {
+		const tier = memberTier(entry, staffRoleIds, adminRoleIds);
+		if (tier !== 'member') tiers[id] = tier;
+	}
+	return { staffRoleIds, adminRoleIds, tiers };
 }
 
 export async function upsertRole(serverId: any, roleData: any) {
@@ -7453,6 +7490,21 @@ export async function countActiveWarnings(memberId: number) {
 	return Number(rows?.[0]?.c ?? 0);
 }
 
+export async function getMembersWithActiveWarnings(serverId: number | string) {
+	const [rows] = (await db.execute(sql`
+		SELECT m.id AS member_id, m.discord_member_id, COUNT(*) AS warnings
+		FROM server_member_moderation_logs l
+		JOIN server_members m ON m.id = l.member_id
+		WHERE m.server_id = ${Number(serverId)} AND l.action = 'warn' AND l.active = 1
+		GROUP BY m.id, m.discord_member_id
+	`)) as any;
+	return ((rows as any[]) ?? []).map((r) => ({
+		member_id: Number(r.member_id),
+		discord_member_id: String(r.discord_member_id),
+		warnings: Number(r.warnings) || 0
+	}));
+}
+
 export async function getDueTempbans(botId: number) {
 	const [rows] = (await db.execute(sql`
 		SELECT l.id, l.member_id, l.case_number, m.discord_member_id, m.server_id, s.discord_server_id
@@ -7707,6 +7759,82 @@ export async function getMemberInvitees(memberId: number, limit = 100) {
 	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
 }
 
+export async function getServerInviters(serverId: number | string) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT m.discord_member_id, ${INVITE_NAME} AS name, m.avatar, m.deleted_at,
+			COALESCE(a.joins, 0) AS joins, COALESCE(a.active, 0) AS active, COALESCE(a.left_count, 0) AS left_count,
+			COALESCE(a.fake, 0) AS fake, COALESCE(a.pending, 0) AS pending, COALESCE(a.xp, 0) AS xp, COALESCE(a.share_xp, 0) AS share_xp,
+			COALESCE(a.personal, 0) AS personal, COALESCE(a.discord, 0) AS discord, COALESCE(b.bonus, 0) AS bonus, a.last_join_at
+		FROM server_members m
+		LEFT JOIN (
+			SELECT i.inviter_member_id,
+				COUNT(*) AS joins,
+				SUM(i.fake_reason IS NULL AND i.left_at IS NULL) AS active,
+				SUM(i.fake_reason IS NULL AND i.left_at IS NOT NULL) AS left_count,
+				SUM(i.fake_reason IS NOT NULL) AS fake,
+				SUM(i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL) AS pending,
+				SUM(i.xp) AS xp,
+				SUM(i.share_xp) AS share_xp,
+				SUM(i.source = 'personal') AS personal,
+				SUM(i.source = 'invite') AS discord,
+				MAX(i.joined_at) AS last_join_at
+			FROM server_member_invites i
+			JOIN server_members im ON im.id = i.member_id
+			WHERE im.server_id = ${Number(serverId)} AND i.inviter_member_id IS NOT NULL
+			GROUP BY i.inviter_member_id
+		) a ON a.inviter_member_id = m.id
+		LEFT JOIN (
+			SELECT l.member_id, SUM(l.amount) AS bonus
+			FROM server_member_invite_logs l
+			JOIN server_members lm ON lm.id = l.member_id
+			WHERE lm.server_id = ${Number(serverId)}
+			GROUP BY l.member_id
+		) b ON b.member_id = m.id
+		WHERE m.server_id = ${Number(serverId)} AND m.is_bot = 0 AND (a.inviter_member_id IS NOT NULL OR b.member_id IS NOT NULL)
+	`)) as any;
+	return ((rows as any[]) ?? [])
+		.map((r) => {
+			const active = Number(r.active) || 0;
+			const bonus = Number(r.bonus) || 0;
+			return {
+				discord_member_id: String(r.discord_member_id),
+				name: r.name ?? null,
+				avatar: r.avatar ?? null,
+				left_server: r.deleted_at != null,
+				joins: Number(r.joins) || 0,
+				active,
+				left: Number(r.left_count) || 0,
+				fake: Number(r.fake) || 0,
+				pending: Number(r.pending) || 0,
+				bonus,
+				total: active + bonus,
+				xp: Number(r.xp) || 0,
+				share_xp: Number(r.share_xp) || 0,
+				personal: Number(r.personal) || 0,
+				discord: Number(r.discord) || 0,
+				last_join_at: r.last_join_at ?? null
+			};
+		})
+		.sort((a, b) => b.total - a.total || b.joins - a.joins);
+}
+
+export async function getServerInviteJoins(serverId: number | string, limit = 300) {
+	await initializeDatabase();
+	const [rows] = (await db.execute(sql`
+		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.share_xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
+			jm.discord_member_id, COALESCE(NULLIF(jm.server_display_name, ''), NULLIF(jm.display_name, ''), jm.username) AS name, jm.avatar,
+			m.discord_member_id AS inviter_discord_id, ${INVITE_NAME} AS inviter_name
+		FROM server_member_invites i
+		JOIN server_members jm ON jm.id = i.member_id
+		LEFT JOIN server_members m ON m.id = i.inviter_member_id
+		WHERE jm.server_id = ${Number(serverId)}
+		ORDER BY i.joined_at DESC, i.id DESC
+		LIMIT ${Number(limit)}
+	`)) as any;
+	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
+}
+
 export async function getMemberInviteLogs(memberId: number, limit = 50) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
@@ -7744,7 +7872,7 @@ export async function assignMemberInviter(inviteeMemberId: number, inviterMember
 	return Number(result?.affectedRows ?? 0) > 0;
 }
 
-export async function getServerInviteStats(serverId: number | string) {
+export async function getServerInviteStats(serverId: number | string, codeLimit = 10) {
 	await initializeDatabase();
 	const [rows] = (await db.execute(sql`
 		SELECT
@@ -7755,6 +7883,8 @@ export async function getServerInviteStats(serverId: number | string) {
 			COALESCE(SUM(i.source = 'unknown' AND i.inviter_member_id IS NULL), 0) AS unknown_count,
 			COALESCE(SUM(i.source = 'vanity'), 0) AS vanity,
 			COALESCE(SUM(i.source = 'server'), 0) AS server_link,
+			COALESCE(SUM(i.source = 'personal'), 0) AS personal,
+			COALESCE(SUM(i.source = 'invite'), 0) AS discord,
 			COALESCE(SUM(i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.rewarded_at IS NULL), 0) AS pending,
 			COALESCE(SUM(i.xp), 0) AS xp_paid,
 			COALESCE(SUM(i.share_xp), 0) AS share_xp,
@@ -7778,7 +7908,7 @@ export async function getServerInviteStats(serverId: number | string) {
 		WHERE im.server_id = ${Number(serverId)} AND i.code IS NOT NULL
 		GROUP BY i.code, m.id, m.discord_member_id, m.server_display_name, m.display_name, m.username
 		ORDER BY active DESC, joins DESC
-		LIMIT 10
+		LIMIT ${Number(codeLimit)}
 	`)) as any;
 	const r = (rows as any[])?.[0] ?? {};
 	return {
@@ -7789,6 +7919,8 @@ export async function getServerInviteStats(serverId: number | string) {
 		unknown: Number(r.unknown_count) || 0,
 		vanity: Number(r.vanity) || 0,
 		server_link: Number(r.server_link) || 0,
+		personal: Number(r.personal) || 0,
+		discord: Number(r.discord) || 0,
 		pending: Number(r.pending) || 0,
 		xp_paid: Number(r.xp_paid) || 0,
 		share_xp: Number(r.share_xp) || 0,
@@ -7987,6 +8119,7 @@ export default {
 	revokeModerationCase,
 	endActiveModeration,
 	countActiveWarnings,
+	getMembersWithActiveWarnings,
 	getDueTempbans,
 	expireModerationTimeouts,
 	getAllBots,
@@ -8312,6 +8445,7 @@ export default {
 	getFeedbackByServer,
 	getFeedbackCount,
 	getMemberTier,
+	getMemberTierMap,
 	createServerPanelLog,
 	getServerPanelLogs,
 	recordMemberJoinInvite,
@@ -8325,6 +8459,8 @@ export default {
 	getMemberInviteStats,
 	getMemberInviter,
 	getMemberInvitees,
+	getServerInviters,
+	getServerInviteJoins,
 	getMemberInviteLogs,
 	addMemberInviteAdjustment,
 	assignMemberInviter,

@@ -3,8 +3,9 @@ import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { accountOwnsServer } from '$lib/frontend/panelServer.js';
+import { TIER_DENIED, canActOn, panelActorOf } from '$lib/panelHierarchy.js';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const serverId = Number(params.serverId);
@@ -23,10 +24,26 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		redirect(302, DASHBOARD_PATH);
 	}
 
-	const logs = await db.getModerationLogs(serverId).catch(() => []);
+	const { overview } = await parent();
+	const [logs, roles, tierRoles] = await Promise.all([
+		db.getModerationLogs(serverId).catch(() => []),
+		db.getRoles(serverId).catch(() => []),
+		db.getMemberTierMap(serverId).catch(() => ({ staffRoleIds: [] as string[], adminRoleIds: [] as string[], tiers: {} }))
+	]);
+	const actor = panelActorOf(locals.user);
+	const roleTier = (id: string) => (tierRoles.adminRoleIds.includes(id) ? 'owner' : tierRoles.staffRoleIds.includes(id) ? 'staff' : 'member');
 
 	return {
 		serverId,
+		deniedReason: actor ? TIER_DENIED[actor] : 'Access denied',
+		roles: (roles as any[])
+			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))
+			.map((r) => ({
+				id: String(r.discord_role_id),
+				name: String(r.name),
+				color: r.color ?? null,
+				manageable: canActOn(actor, roleTier(String(r.discord_role_id)))
+			})),
 		logs: (logs as any[]).map((l) => ({
 			id: String(l.id),
 			case_number: Number(l.case_number),

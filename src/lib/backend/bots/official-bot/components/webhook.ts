@@ -693,6 +693,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'moderation_action failed', details: modErr.message }));
 					}
+				} else if (payload.type === 'moderation_bulk') {
+					try {
+						const { startBulkModeration } = await import('./moderation.js');
+						const result = await startBulkModeration(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (bulkErr: any) {
+						await logger.log(`❌ moderation_bulk failed: ${bulkErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'moderation_bulk failed', details: bulkErr.message }));
+					}
 				} else if (payload.type === 'use_item') {
 					try {
 						const { handleItemUse } = await import('./items.js');

@@ -5,11 +5,4 @@
 	const roleIds = $derived(data.adminRoleIds ?? []);
 </script>
 
-<MemberList
-	members={data.members}
-	serverId={data.serverId}
-	filterRoleIds={roleIds}
-	staffRoleIds={data.staffRoleIds}
-	adminRoleIds={data.adminRoleIds}
-	actor={data.panelActor}
-/>
+<MemberList members={data.members} filterRoleIds={roleIds} />

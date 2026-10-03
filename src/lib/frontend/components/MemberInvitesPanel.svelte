@@ -1,20 +1,18 @@
 <script lang="ts">
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
-	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { INVITE_FAKE_REASON_LABEL, INVITE_SOURCE_LABEL, INVITE_STATUS_META, type InviteStatus } from '$lib/invites.js';
 
 	interface Props {
 		serverId: number | string;
 		member: { id: string; name: string } | null;
-		onclose: () => void;
-		onchange?: (discordId: string, total: number) => void;
+		onchange?: () => void | Promise<void>;
 		canEdit?: boolean;
 		deniedReason?: string;
 	}
 
-	let { serverId, member, onclose, onchange, canEdit = false, deniedReason = 'Access denied' }: Props = $props();
+	let { serverId, member, onchange, canEdit = false, deniedReason = 'Access denied' }: Props = $props();
 
 	type Stats = {
 		joins: number;
@@ -118,8 +116,8 @@
 		if (!out) return;
 		showToast(`${sign > 0 ? 'Added' : 'Removed'} ${Math.abs(value)} invite${Math.abs(value) === 1 ? '' : 's'}`, 'success');
 		reason = '';
-		onchange?.(member.id, out.stats.total);
 		await load(member.id);
+		await onchange?.();
 	}
 
 	async function assign() {
@@ -128,37 +126,17 @@
 		if (!out) return;
 		showToast('Inviter saved', 'success');
 		await load(member.id);
+		await onchange?.();
 	}
 
 	function statusMeta(status: string) {
 		return INVITE_STATUS_META[(status as InviteStatus) ?? 'active'] ?? INVITE_STATUS_META.active;
 	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape' && !busy) onclose();
-	}
 </script>
 
 {#if member}
-	<div
-		use:scrollLocked
-		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Member invites"
-		onkeydown={handleKeydown}
-		tabindex="-1"
-	>
-		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 sm:p-6">
-			<div class="mb-4 flex items-center justify-between gap-2">
-				<h3 class="text-ash-100 flex min-w-0 items-center gap-2 text-base font-bold sm:text-lg">
-					<i class="fas fa-user-plus shrink-0 text-cyan-400"></i><span class="truncate">Invites · {member.name}</span>
-				</h3>
-				<button onclick={onclose} disabled={busy} aria-label="Close modal" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
-					<i class="fas fa-times text-lg"></i>
-				</button>
-			</div>
-
+	<div class="bg-ash-800 border-ash-700 rounded-lg border p-3 sm:p-4">
+		<div>
 			{#if loading && !stats}
 				<div class="text-ash-400 py-8 text-center text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Loading…</div>
 			{:else if stats}
@@ -173,9 +151,9 @@
 				</div>
 
 				<div class="border-ash-700 mt-4 border-t pt-4">
-					<p class="text-ash-300 mb-2 text-sm font-medium"><i class="fas fa-right-to-bracket mr-1.5 text-cyan-400"></i>How they joined</p>
+					<p class="text-ash-300 mb-2 text-sm font-medium"><i class="fas fa-right-to-bracket mr-1.5 text-cyan-400"></i>Who invited them</p>
 					{#if !inviter}
-						<p class="text-ash-500 text-xs">Joined before invite tracking started.</p>
+						<p class="text-ash-500 text-xs">Not tracked. They joined before invite tracking started.</p>
 					{:else}
 						<div class="bg-ash-700 border-ash-600 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-xs">
 							<span class="text-ash-100 font-semibold">{inviter.inviter_name ?? 'No inviter'}</span>

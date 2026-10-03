@@ -824,7 +824,7 @@
 		</section>
 
 		{#if data.topServers.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>04 — Communities</p>
@@ -872,7 +872,7 @@
 		{/if}
 
 		{#if data.topForwarderSources.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>05 — Forwarder sources</p>
@@ -921,7 +921,7 @@
 		{/if}
 
 		{#if data.topQuests.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>06 — Discord Quests</p>
@@ -984,7 +984,7 @@
 		{/if}
 
 		{#if data.topRoblox.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>07 — Roblox catalog</p>
@@ -1054,7 +1054,7 @@
 		{/if}
 
 		{#if data.topWikis.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>08 — Wiki knowledge</p>
@@ -1101,7 +1101,7 @@
 		{/if}
 
 		{#if data.topTasks.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>09 — Tasks</p>
@@ -1133,7 +1133,7 @@
 		{/if}
 
 		{#if data.topItems.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>10 — Items</p>
@@ -1167,7 +1167,7 @@
 			</section>
 		{/if}
 
-		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+		<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 			<div class="mb-6">
 				<p class={EYEBROW}>11 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
@@ -1183,7 +1183,7 @@
 			</div>
 		</section>
 
-		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+		<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 			<div class="mb-6">
 				<p class={EYEBROW}>12 — Questions</p>
 				<h2 class={H2}>Before you add it</h2>

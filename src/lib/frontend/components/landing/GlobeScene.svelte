@@ -65,24 +65,26 @@
 		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const narrow = window.matchMedia('(max-width: 640px)');
 
+		const reduced = motion.matches;
 		const WAKE_EVENTS = ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'scroll', 'keydown'] as const;
-		let woken = false;
-		let wake: (() => void) | null = null;
-		const onWake = () => {
-			woken = true;
-			for (const type of WAKE_EVENTS) window.removeEventListener(type, onWake);
-			wake?.();
-		};
-		if (!motion.matches) for (const type of WAKE_EVENTS) window.addEventListener(type, onWake, { passive: true });
-		const unwake = () => {
-			for (const type of WAKE_EVENTS) window.removeEventListener(type, onWake);
-			wake = null;
-		};
 
 		await new Promise<void>((resolve) => {
-			if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: 2500 });
-			else setTimeout(resolve, 300);
+			if (reduced) {
+				if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: 2500 });
+				else setTimeout(resolve, 300);
+				return;
+			}
+			const onWake = () => {
+				unwake();
+				resolve();
+			};
+			const unwake = () => {
+				for (const type of WAKE_EVENTS) window.removeEventListener(type, onWake);
+			};
+			for (const type of WAKE_EVENTS) window.addEventListener(type, onWake, { passive: true });
+			dispose = unwake;
 		});
+		dispose = null;
 
 		const startFallback = () => {
 			webgl = false;
@@ -92,30 +94,25 @@
 		try {
 			THREE = await import('three');
 		} catch (_) {
-			unwake();
 			startFallback();
 			return;
 		}
-		if (!canvasHost) {
-			unwake();
-			return;
-		}
+		if (!canvasHost) return;
 
 		let renderer: import('three').WebGLRenderer;
 		try {
 			renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
 		} catch (_) {
-			unwake();
 			startFallback();
 			return;
 		}
 
-		let still = true;
-		let spinFrom = 0;
 		renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrow.matches ? 1.25 : 1.5));
 		renderer.setClearAlpha(0);
 		canvasHost.appendChild(renderer.domElement);
-		renderer.domElement.style.cssText = 'width:100%;height:100%;display:block';
+		renderer.domElement.style.cssText = reduced
+			? 'width:100%;height:100%;display:block'
+			: 'width:100%;height:100%;display:block;opacity:0;transition:opacity 0.9s ease-out';
 
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
@@ -332,10 +329,10 @@
 
 			const expired: number[] = [];
 
-			if (!still) {
+			if (!reduced) {
 				smooth.x += (target.x - smooth.x) * 0.05;
 				smooth.y += (target.y - smooth.y) * 0.05;
-				globe.rotation.y = (now - spinFrom) * 0.000055 + smooth.x * 0.18;
+				globe.rotation.y = now * 0.000055 + smooth.x * 0.18;
 				globe.rotation.x = smooth.y * 0.12;
 			}
 
@@ -343,7 +340,7 @@
 				if (!rig.pulseId) continue;
 				const pulse = active.find((item) => item.id === rig.pulseId);
 				if (!pulse) continue;
-				const life = still ? 0.32 : (now - pulse.born) / PULSE_MS;
+				const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
 				if (life >= 1) {
 					expired.push(pulse.id);
 					continue;
@@ -391,7 +388,7 @@
 					normal.copy(world).normalize();
 					toCamera.copy(camera.position).sub(world).normalize();
 					const facing = normal.dot(toCamera);
-					const life = still ? 0.32 : (now - pulse.born) / PULSE_MS;
+					const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
 
 					if (!size || facing <= 0.14 || life < 0 || life >= 1) {
 						hidden.push(el);
@@ -446,49 +443,47 @@
 
 		let raf = 0;
 		let pending = false;
-		let last = -Infinity;
 
-		requestFrame = () => {
-			if (pending) return;
-			pending = true;
-			requestAnimationFrame((now) => {
-				pending = false;
+		if (reduced) {
+			requestFrame = () => {
+				if (pending) return;
+				pending = true;
+				requestAnimationFrame((now) => {
+					pending = false;
+					frame(now);
+				});
+			};
+			const slow = setInterval(() => {
+				const now = performance.now();
+				if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
+					pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
+					requestFrame?.();
+				}
+			}, 1400);
+			requestFrame();
+			dispose = () => {
+				clearInterval(slow);
+				teardown();
+			};
+		} else {
+			let last = -Infinity;
+			const minGap = narrow.matches ? 32 : 0;
+			const tick = (now: number) => {
+				raf = requestAnimationFrame(tick);
+				if (!onScreen || document.hidden || now - last < minGap) return;
+				last = now;
 				frame(now);
-			});
-		};
-		const slow = setInterval(() => {
-			const now = performance.now();
-			if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
-				pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
-			}
-			requestFrame?.();
-		}, 1400);
-		requestFrame();
-
-		const minGap = narrow.matches ? 32 : 0;
-		const tick = (now: number) => {
-			raf = requestAnimationFrame(tick);
-			if (!onScreen || document.hidden || now - last < minGap) return;
-			last = now;
-			frame(now);
-		};
-
-		wake = () => {
-			wake = null;
-			clearInterval(slow);
-			still = false;
-			spinFrom = performance.now();
+			};
 			requestFrame = () => {};
-			raf = requestAnimationFrame(tick);
-		};
-		if (woken) wake();
-
-		dispose = () => {
-			unwake();
-			clearInterval(slow);
-			cancelAnimationFrame(raf);
-			teardown();
-		};
+			raf = requestAnimationFrame((now) => {
+				tick(now);
+				renderer.domElement.style.opacity = '1';
+			});
+			dispose = () => {
+				cancelAnimationFrame(raf);
+				teardown();
+			};
+		}
 
 		function teardown() {
 			window.removeEventListener('pointermove', onPointer);

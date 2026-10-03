@@ -65,6 +65,25 @@
 		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const narrow = window.matchMedia('(max-width: 640px)');
 
+		const WAKE_EVENTS = ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'scroll', 'keydown'] as const;
+		let woken = false;
+		let wake: (() => void) | null = null;
+		const onWake = () => {
+			woken = true;
+			for (const type of WAKE_EVENTS) window.removeEventListener(type, onWake);
+			wake?.();
+		};
+		if (!motion.matches) for (const type of WAKE_EVENTS) window.addEventListener(type, onWake, { passive: true });
+		const unwake = () => {
+			for (const type of WAKE_EVENTS) window.removeEventListener(type, onWake);
+			wake = null;
+		};
+
+		await new Promise<void>((resolve) => {
+			if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: 2500 });
+			else setTimeout(resolve, 300);
+		});
+
 		const startFallback = () => {
 			webgl = false;
 		};
@@ -73,20 +92,26 @@
 		try {
 			THREE = await import('three');
 		} catch (_) {
+			unwake();
 			startFallback();
 			return;
 		}
-		if (!canvasHost) return;
+		if (!canvasHost) {
+			unwake();
+			return;
+		}
 
 		let renderer: import('three').WebGLRenderer;
 		try {
 			renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
 		} catch (_) {
+			unwake();
 			startFallback();
 			return;
 		}
 
-		const reduced = motion.matches;
+		let still = true;
+		let spinFrom = 0;
 		renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrow.matches ? 1.25 : 1.5));
 		renderer.setClearAlpha(0);
 		canvasHost.appendChild(renderer.domElement);
@@ -207,6 +232,7 @@
 			})
 			.catch(() => {});
 
+		let boxesAt = -Infinity;
 		const target = { x: 0, y: 0 };
 		const smooth = { x: 0, y: 0 };
 		const onPointer = (event: PointerEvent) => {
@@ -225,6 +251,7 @@
 			const fit = 1.04;
 			camera.position.z = Math.max(fit / half, fit / (half * camera.aspect));
 			camera.updateProjectionMatrix();
+			boxesAt = -Infinity;
 			requestFrame?.();
 		};
 		const ro = new ResizeObserver(resize);
@@ -267,6 +294,20 @@
 		const axisZ = new THREE.Vector3(0, 0, 1);
 
 		type Placement = { el: HTMLElement; x: number; y: number; opacity: number };
+		type Box = { left: number; top: number; right: number; bottom: number };
+
+		let boxes: Box[] = [];
+		const measure = (now: number) => {
+			if (!stage || now - boxesAt < 1000) return;
+			boxesAt = now;
+			const origin = stage.getBoundingClientRect();
+			boxes = avoid
+				.filter((el): el is HTMLElement => !!el)
+				.map((el) => {
+					const rect = el.getBoundingClientRect();
+					return { left: rect.left - origin.left, top: rect.top - origin.top, right: rect.right - origin.left, bottom: rect.bottom - origin.top };
+				});
+		};
 
 		const frame = (now: number) => {
 			const active = pulses;
@@ -291,10 +332,10 @@
 
 			const expired: number[] = [];
 
-			if (!reduced) {
+			if (!still) {
 				smooth.x += (target.x - smooth.x) * 0.05;
 				smooth.y += (target.y - smooth.y) * 0.05;
-				globe.rotation.y = now * 0.000055 + smooth.x * 0.18;
+				globe.rotation.y = (now - spinFrom) * 0.000055 + smooth.x * 0.18;
 				globe.rotation.x = smooth.y * 0.12;
 			}
 
@@ -302,7 +343,7 @@
 				if (!rig.pulseId) continue;
 				const pulse = active.find((item) => item.id === rig.pulseId);
 				if (!pulse) continue;
-				const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
+				const life = still ? 0.32 : (now - pulse.born) / PULSE_MS;
 				if (life >= 1) {
 					expired.push(pulse.id);
 					continue;
@@ -326,10 +367,8 @@
 			if (stage) {
 				const width = renderer.domElement.clientWidth;
 				const height = renderer.domElement.clientHeight;
-				const stageRect = stage.getBoundingClientRect();
-				const blocked: { left: number; top: number; right: number; bottom: number }[] = avoid
-					.filter(Boolean)
-					.map((el) => (el as HTMLElement).getBoundingClientRect());
+				measure(now);
+				const blocked = boxes.slice();
 				const clashes = (left: number, top: number, w: number, h: number) =>
 					blocked.some((rect) => left < rect.right + 8 && left + w > rect.left - 8 && top < rect.bottom + 8 && top + h > rect.top - 8);
 
@@ -352,7 +391,7 @@
 					normal.copy(world).normalize();
 					toCamera.copy(camera.position).sub(world).normalize();
 					const facing = normal.dot(toCamera);
-					const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
+					const life = still ? 0.32 : (now - pulse.born) / PULSE_MS;
 
 					if (!size || facing <= 0.14 || life < 0 || life >= 1) {
 						hidden.push(el);
@@ -363,7 +402,6 @@
 					const x = Math.min(Math.max((world.x * 0.5 + 0.5) * width + 12, 4), Math.max(4, width - size.w - 4));
 					const y = Math.min(Math.max((-world.y * 0.5 + 0.5) * height - 10, size.h + 4), Math.max(size.h + 4, height - 4));
 
-					const left = stageRect.left + x;
 					const step = size.h + 6;
 					const floor = size.h + 4;
 					const ceiling = Math.max(floor, height - 4);
@@ -371,7 +409,7 @@
 					for (const offset of [0, -step, step]) {
 						const candidate = Math.min(Math.max(y + offset, floor), ceiling);
 						if (Math.abs(candidate - y) > step) continue;
-						if (!clashes(left, stageRect.top + candidate - size.h, size.w, size.h)) {
+						if (!clashes(x, candidate - size.h, size.w, size.h)) {
 							slot = candidate;
 							break;
 						}
@@ -381,8 +419,8 @@
 						continue;
 					}
 
-					const top = stageRect.top + slot - size.h;
-					blocked.push({ left, top, right: left + size.w, bottom: top + size.h });
+					const top = slot - size.h;
+					blocked.push({ left: x, top, right: x + size.w, bottom: top + size.h });
 					const enter = Math.min(1, life / 0.12);
 					const exit = Math.min(1, (1 - life) / 0.25);
 					placements.push({ el, x, y: slot, opacity: Math.min(enter, exit) * Math.min(1, (facing - 0.14) / 0.22) });
@@ -408,41 +446,49 @@
 
 		let raf = 0;
 		let pending = false;
+		let last = -Infinity;
 
-		if (reduced) {
-			requestFrame = () => {
-				if (pending) return;
-				pending = true;
-				requestAnimationFrame((now) => {
-					pending = false;
-					frame(now);
-				});
-			};
-			const slow = setInterval(() => {
-				const now = performance.now();
-				if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
-					pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
-				}
-				requestFrame?.();
-			}, 1400);
-			requestFrame();
-			dispose = () => {
-				clearInterval(slow);
-				teardown();
-			};
-		} else {
-			const tick = (now: number) => {
-				raf = requestAnimationFrame(tick);
-				if (!onScreen || document.hidden) return;
+		requestFrame = () => {
+			if (pending) return;
+			pending = true;
+			requestAnimationFrame((now) => {
+				pending = false;
 				frame(now);
-			};
+			});
+		};
+		const slow = setInterval(() => {
+			const now = performance.now();
+			if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
+				pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
+			}
+			requestFrame?.();
+		}, 1400);
+		requestFrame();
+
+		const minGap = narrow.matches ? 32 : 0;
+		const tick = (now: number) => {
+			raf = requestAnimationFrame(tick);
+			if (!onScreen || document.hidden || now - last < minGap) return;
+			last = now;
+			frame(now);
+		};
+
+		wake = () => {
+			wake = null;
+			clearInterval(slow);
+			still = false;
+			spinFrom = performance.now();
 			requestFrame = () => {};
 			raf = requestAnimationFrame(tick);
-			dispose = () => {
-				cancelAnimationFrame(raf);
-				teardown();
-			};
-		}
+		};
+		if (woken) wake();
+
+		dispose = () => {
+			unwake();
+			clearInterval(slow);
+			cancelAnimationFrame(raf);
+			teardown();
+		};
 
 		function teardown() {
 			window.removeEventListener('pointermove', onPointer);

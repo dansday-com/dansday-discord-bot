@@ -29,7 +29,7 @@ Every member card effect renders through one `<canvas>` per card. Families are l
 
 **Nothing is a bare pixel.** A single dot is not a heart, a leaf, a rock or a firefly. Give it real form — a pixel sprite, a glow with falloff, a streak with a tail, an irregular seeded mask — and make sure it still reads at a small card size, where one canvas pixel is about 2 CSS pixels.
 
-**The card itself reacts.** `[data-fx-host='<family>']` in `app.css` is part of the effect, not decoration: earthquake shakes the card, a black hole scales it inward, meteor kicks it on impact, eclipse darkens it. Every family should do something at the card level, and it must read at rest as well as mid-animation — a paused keyframe is what off-screen cards freeze at, so a `0%` frame that looks like no effect means the effect vanishes.
+**The card itself reacts.** `[data-fx-host='<family>']` in `src/lib/frontend/fx/fx.css` is part of the effect, not decoration: earthquake shakes the card, a black hole scales it inward, meteor kicks it on impact, eclipse darkens it. Every family should do something at the card level, and it must read at rest as well as mid-animation — a paused keyframe is what off-screen cards freeze at, so a `0%` frame that looks like no effect means the effect vanishes.
 
 **Every effect must vary by seed** on at least three of `hue`, `dir`, `speed`, `drift`, `tilt`, plus seeded _structure_ — tree count and positions, crack sites, hole count, tube bends, moon phase, constellation. Every seed in `SEED_RANGE` must give a distinct card.
 

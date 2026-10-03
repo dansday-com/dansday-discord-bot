@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { effectVariant, normalizeEffect } from '$lib/effects.js';
 	import { observeVisibility } from '$lib/frontend/fx/visible.js';
+	import '$lib/frontend/fx/fx.css';
 
 	type Props = {
 		name: string;

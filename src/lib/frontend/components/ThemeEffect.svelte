@@ -3,6 +3,7 @@
 	import { createScene, fxVariant, runScene, type FxScene } from '$lib/frontend/fx/engine.js';
 	import { BLEND, PROGRAMS } from '$lib/frontend/fx/programs.js';
 	import { observeVisibility } from '$lib/frontend/fx/visible.js';
+	import '$lib/frontend/fx/fx.css';
 
 	type Props = {
 		effect?: string | null;

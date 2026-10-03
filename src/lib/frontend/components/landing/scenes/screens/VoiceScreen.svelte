@@ -37,8 +37,8 @@
 	<div class="flex h-12 shrink-0 items-center gap-3 px-4">
 		<i class="fas fa-chevron-down text-ash-200 text-[14px]"></i>
 		<div class="min-w-0 leading-tight">
-			<p class="text-ash-50 flex items-center gap-1.5 text-[15px] font-bold"><i class="fas fa-volume-high text-ash-300 text-[12px]"></i>Squad</p>
-			<p class="text-ash-300 text-[11px]">Night Owls</p>
+			<p class="text-ash-50 flex items-center gap-1.5 text-[15px] font-bold"><i class="fas fa-volume-high text-ash-200 text-[12px]"></i>Squad</p>
+			<p class="text-ash-200 text-[11px]">Night Owls</p>
 		</div>
 		<i class="fas fa-user-plus text-ash-200 ml-auto text-[14px]"></i>
 	</div>
@@ -64,7 +64,7 @@
 	</div>
 
 	<div class="border-ash-700/60 bg-ash-900 mx-3 mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border p-3">
-		<p class="text-ash-300 flex shrink-0 items-center gap-1.5 text-[10.5px] font-bold tracking-[0.08em] uppercase">
+		<p class="text-ash-200 flex shrink-0 items-center gap-1.5 text-[10.5px] font-bold tracking-[0.08em] uppercase">
 			<i class="fas fa-wave-square"></i>Said in the call
 		</p>
 		<div class="flex min-h-0 flex-1 flex-col justify-end gap-2 overflow-hidden">
@@ -79,7 +79,7 @@
 				</p>
 			{/each}
 			{#if asleep}
-				<p in:fly={{ y: 8, duration: animMs, easing: quintOut }} class="text-ash-300 text-[12px] italic">
+				<p in:fly={{ y: 8, duration: animMs, easing: quintOut }} class="text-ash-200 text-[12px] italic">
 					<i class="fas fa-microphone-slash mr-1 text-[10px] text-[#f23f43]"></i>{APP_NAME} muted itself. Say "hey stupid" to wake it.
 				</p>
 			{/if}

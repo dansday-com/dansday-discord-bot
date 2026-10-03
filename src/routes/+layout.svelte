@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { effectAccentCssVars } from '$lib/items.js';
 	import '../app.css';
@@ -7,12 +9,30 @@
 	let { children } = $props();
 
 	const effectAccentStyle = effectAccentCssVars();
+
+	const ICONS_HREF = '/fa/css/all.min.css';
+	const deferIcons = page.route.id === '/';
+
+	onMount(() => {
+		if (!deferIcons) return;
+		const attach = () => {
+			if (document.querySelector(`link[href="${ICONS_HREF}"]`)) return;
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = ICONS_HREF;
+			document.head.appendChild(link);
+		};
+		if (document.readyState === 'complete') attach();
+		else window.addEventListener('load', attach, { once: true });
+	});
 </script>
 
 <svelte:head>
 	<title>{APP_NAME} Discord Bot</title>
-	{@html `<link rel="stylesheet" href="/fa/css/all.min.css" media="print" onload="this.media='all';this.onload=null" />`}
-	<noscript><link rel="stylesheet" href="/fa/css/all.min.css" /></noscript>
+	{#if !deferIcons}
+		{@html `<link rel="stylesheet" href="${ICONS_HREF}" media="print" onload="this.media='all';this.onload=null" />`}
+	{/if}
+	<noscript><link rel="stylesheet" href={ICONS_HREF} /></noscript>
 	{@html `<style>${effectAccentStyle}</style>`}
 </svelte:head>
 

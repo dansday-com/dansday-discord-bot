@@ -9,6 +9,7 @@
 	import { BEYOND_SCENES, ESSENTIAL_SCENES } from '$lib/frontend/components/landing/scenes/scripts/index.js';
 	import { effectIcon, effectLabel, effectAccentHex } from '$lib/items.js';
 	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
+	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 
 	type Totals = AggregatedPanelStats;
 	type Live = { label: string; value: string; live?: boolean };
@@ -20,7 +21,14 @@
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
 	const feed = createLiveGlobalStatistics(data.totals);
-	$effect(() => feed.connect());
+	$effect(() => {
+		let disconnect: (() => void) | null = null;
+		const stop = onFirstInteraction(() => (disconnect = feed.connect()));
+		return () => {
+			stop();
+			disconnect?.();
+		};
+	});
 
 	const hasLive = $derived((feed.totals?.servers_counted ?? 0) > 0);
 
@@ -778,7 +786,7 @@
 				<article class="{CARD} hover:border-primary/40 flex flex-col transition-colors">
 					<div class="mb-3 flex items-start justify-between gap-3">
 						<i class="fas {card.icon} text-[18px] {card.tone}"></i>
-						<span class="text-base-content/20 text-[22px] leading-none font-black tabular-nums">{card.n}</span>
+						<span class="text-base-content/55 text-[22px] leading-none font-black tabular-nums">{card.n}</span>
 					</div>
 					<p class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{card.title}</p>
 					<p class="text-base-content/70 text-[12.5px] leading-[1.5]">{card.desc}</p>

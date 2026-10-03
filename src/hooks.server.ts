@@ -135,7 +135,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (guardResponse) return guardResponse;
 
 	const response = await resolve(event, {
-		preload: ({ type }) => type === 'js' || type === 'css' || type === 'font'
+		preload: ({ type }) => type === 'css' || type === 'font'
 	});
 
 	if (event.url.pathname !== '/' && !event.url.pathname.startsWith('/api/') && !isFileLikePath(event.url.pathname)) {

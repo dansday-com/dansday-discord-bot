@@ -8,7 +8,7 @@
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
 </script>
 
-<footer class="relative z-1 shrink-0 border-t {palette === 'dark' ? 'border-ash-700 bg-ash-900/50' : 'border-base-300 bg-base-200/50'}">
+<footer class="relative z-1 shrink-0 border-t {palette === 'dark' ? 'border-ash-700 bg-ash-900/50' : 'border-base-300 bg-base-200/20'}">
 	<div class="mx-auto flex w-full max-w-7xl flex-col items-center gap-2.5 px-3 py-5 text-center sm:px-4 lg:px-8">
 		<p class="text-base-content/70 text-xs">
 			Copyright © {new Date().getFullYear()}

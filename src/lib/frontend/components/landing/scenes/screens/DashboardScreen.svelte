@@ -84,7 +84,7 @@
 	<div class="mb-2 flex items-center gap-2">
 		<span class="bg-ash-600 grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-violet-300">N</span>
 		<span class="text-ash-100 truncate text-[13px] font-semibold">Night Owls</span>
-		<span class="bg-ash-800 border-ash-700 text-ash-300 ml-auto flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10.5px]">
+		<span class="bg-ash-800 border-ash-700 text-ash-200 ml-auto flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10.5px]">
 			<i class="fas fa-sliders text-[9px] text-emerald-400"></i>Configuration
 		</span>
 	</div>
@@ -114,7 +114,7 @@
 						<div class="flex min-w-0 items-start gap-2">
 							<i class="fas {page.icon} {page.tone} mt-0.5 shrink-0 text-[11px]"></i>
 							<div class="min-w-0">
-								<p class="text-ash-300 text-[11px] font-medium">{page.module}</p>
+								<p class="text-ash-200 text-[11px] font-medium">{page.module}</p>
 								<p class="text-ash-500 text-[10px] leading-snug">{page.moduleAbout}</p>
 							</div>
 						</div>
@@ -137,7 +137,7 @@
 						<div class="dash-options space-y-1.5" class:dash-options-off={!switchOn}>
 							{#each page.fields as field (field.label)}
 								<div>
-									<p class="text-ash-300 mb-0.5 text-[10.5px] font-medium">{field.label}</p>
+									<p class="text-ash-200 mb-0.5 text-[10.5px] font-medium">{field.label}</p>
 									<p class="bg-ash-700 border-ash-600 text-ash-200 rounded-lg border px-2 py-1.5 text-[10.5px]">{field.value}</p>
 								</div>
 							{/each}
@@ -168,7 +168,7 @@
 	>
 		<div class="border-ash-950 flex h-9 items-center gap-2 border-b px-3">
 			<DiscordIcon class="text-[13px] text-[#5865f2]" />
-			<i class="fas fa-hashtag text-ash-300 text-[11px]"></i><span class="text-ash-50 text-[12.5px] font-semibold">general</span>
+			<i class="fas fa-hashtag text-ash-200 text-[11px]"></i><span class="text-ash-50 text-[12.5px] font-semibold">general</span>
 		</div>
 		<div class="@container flex min-h-0 flex-col justify-end overflow-hidden pb-3">
 			<DiscordMessage name={APP_NAME} avatar={BOT.avatar} app ephemeral time="Today at 21:20">

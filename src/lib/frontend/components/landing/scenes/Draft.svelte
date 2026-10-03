@@ -5,7 +5,7 @@
 {#if draft}
 	<span class="text-ash-50 min-w-0 truncate">{draft}<span class="scene-caret"></span></span>
 {:else}
-	<span class="text-ash-300 min-w-0 truncate">Message #{channel}</span>
+	<span class="text-ash-200 min-w-0 truncate">Message #{channel}</span>
 {/if}
 
 <style>

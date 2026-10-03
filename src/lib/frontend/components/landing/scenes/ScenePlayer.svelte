@@ -116,7 +116,7 @@
 				<div class="mt-3 flex items-center gap-4 px-4 py-0.5">
 					<span class="flex w-10 shrink-0 justify-center"><i class="fas fa-arrow-right text-[15px] text-[#23a55a]"></i></span>
 					<p class="text-ash-200 min-w-0 text-[14.5px] leading-[1.375]">
-						<Rich text={v.text ?? ''} roles={scene.roles} /><span class="text-ash-300 ml-1.5 text-[12px]">{line.event.time}</span>
+						<Rich text={v.text ?? ''} roles={scene.roles} /><span class="text-ash-200 ml-1.5 text-[12px]">{line.event.time}</span>
 					</p>
 				</div>
 			{:else}
@@ -178,7 +178,7 @@
 					onclick={() => select(i)}
 					class="relative flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border px-2.5 py-2 text-[10px] font-extrabold tracking-[0.02em] uppercase transition-colors duration-200 sm:gap-2 sm:rounded-sm sm:border-0 sm:px-3 sm:pt-2 sm:pb-2.5 sm:text-[11.5px] sm:tracking-[0.08em] {on
 						? 'border-primary/40 bg-base-100 text-base-content sm:bg-transparent'
-						: 'border-base-300 text-base-content/55 hover:text-base-content/75'}"
+						: 'border-base-300 text-base-content/70 hover:text-base-content'}"
 				>
 					<i class="fas {s.icon} shrink-0 {on ? 'text-primary' : ''}"></i><span class="truncate">{s.label}</span>
 					<span class="bg-base-300 absolute right-2.5 bottom-0 left-2.5 h-0.5 overflow-hidden rounded-full sm:right-3 sm:left-3">
@@ -238,9 +238,9 @@
 						</span>
 						<span class="min-w-0 flex-1">
 							<span class="block text-[13px] font-extrabold tracking-[0.04em] uppercase {on ? 'text-base-content' : 'text-base-content/70'}">{s.label}</span>
-							{#if s.tagline}<span class="text-base-content/60 mt-0.5 block text-[12.5px] leading-[1.45]">{s.tagline}</span>{/if}
+							{#if s.tagline}<span class="text-base-content/70 mt-0.5 block text-[12.5px] leading-[1.45]">{s.tagline}</span>{/if}
 						</span>
-						<span class="text-base-content/20 shrink-0 text-[20px] leading-none font-black tabular-nums">0{i + 1}</span>
+						<span class="text-base-content/55 shrink-0 text-[20px] leading-none font-black tabular-nums">0{i + 1}</span>
 					</button>
 					<div class="scene-panel grid {on ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}">
 						<div class="min-h-0 overflow-hidden">

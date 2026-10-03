@@ -3,6 +3,7 @@
 	import { GLOBE_PLACES, type GlobePlace } from './countries.js';
 	import type { LiveGainBatch } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 	import { BRAND_PRIMARY } from '$lib/brand.js';
+	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 
 	type Props = { gains: LiveGainBatch | null; avoid?: (HTMLElement | null)[] };
 	type Pulse = { id: number; place: GlobePlace; xp: number; born: number };
@@ -66,7 +67,6 @@
 		const narrow = window.matchMedia('(max-width: 640px)');
 
 		const reduced = motion.matches;
-		const WAKE_EVENTS = ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'scroll', 'keydown'] as const;
 
 		await new Promise<void>((resolve) => {
 			if (reduced) {
@@ -74,15 +74,7 @@
 				else setTimeout(resolve, 300);
 				return;
 			}
-			const onWake = () => {
-				unwake();
-				resolve();
-			};
-			const unwake = () => {
-				for (const type of WAKE_EVENTS) window.removeEventListener(type, onWake);
-			};
-			for (const type of WAKE_EVENTS) window.addEventListener(type, onWake, { passive: true });
-			dispose = unwake;
+			dispose = onFirstInteraction(resolve);
 		});
 		dispose = null;
 

@@ -27,9 +27,9 @@
 
 	<div class="flex min-w-0 flex-1 flex-col">
 		<div class="border-ash-950 flex h-11 shrink-0 items-center gap-2 border-b px-4">
-			<i class="fas fa-hashtag text-ash-300 text-[15px]"></i>
+			<i class="fas fa-hashtag text-ash-200 text-[15px]"></i>
 			<span class="text-ash-50 text-[14.5px] font-semibold">{channel}</span>
-			<span class="text-ash-300 ml-auto hidden truncate text-[12px] sm:block">{server}</span>
+			<span class="text-ash-200 ml-auto hidden truncate text-[12px] sm:block">{server}</span>
 		</div>
 
 		<div class="scene-feed @container flex h-[360px] flex-col justify-end overflow-hidden pb-1 sm:h-[400px]" style="opacity: {fade}">
@@ -42,7 +42,7 @@
 
 		<div class="shrink-0 px-4 pb-4">
 			<div class="bg-ash-700 flex h-11 items-center gap-3 rounded-lg px-4 text-[14px]">
-				<i class="fas fa-circle-plus text-ash-300 text-[17px]"></i>
+				<i class="fas fa-circle-plus text-ash-200 text-[17px]"></i>
 				<Draft {draft} {channel} />
 			</div>
 		</div>

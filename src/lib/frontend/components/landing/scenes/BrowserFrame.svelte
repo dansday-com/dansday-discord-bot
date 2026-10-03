@@ -13,7 +13,7 @@
 			><i class="size-3 rounded-full bg-[#ff5f57]"></i><i class="size-3 rounded-full bg-[#febc2e]"></i><i class="size-3 rounded-full bg-[#28c840]"></i></span
 		>
 		<span class="bg-ash-800 text-ash-200 mx-auto flex h-7 w-full max-w-md min-w-0 items-center justify-center gap-2 rounded-md px-3 text-[12px]">
-			<i class="fas fa-lock text-ash-300 text-[10px]"></i><span class="truncate">{url}</span>
+			<i class="fas fa-lock text-ash-200 text-[10px]"></i><span class="truncate">{url}</span>
 		</span>
 		<span class="w-[52px] shrink-0"></span>
 	</div>

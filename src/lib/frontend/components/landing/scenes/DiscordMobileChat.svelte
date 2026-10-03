@@ -15,7 +15,7 @@
 <div class="border-ash-950 flex h-12 shrink-0 items-center gap-3 border-b px-4">
 	<i class="fas fa-chevron-left text-ash-200 text-[15px]"></i>
 	<span class="text-ash-50 flex min-w-0 items-center gap-1.5 text-[16px] font-bold">
-		<i class="fas fa-hashtag text-ash-300 text-[14px]"></i><span class="truncate">{channel}</span>
+		<i class="fas fa-hashtag text-ash-200 text-[14px]"></i><span class="truncate">{channel}</span>
 	</span>
 	<span class="text-ash-200 ml-auto flex items-center gap-4 text-[15px]"><i class="fas fa-magnifying-glass"></i><i class="fas fa-user-group"></i></span>
 </div>
@@ -33,7 +33,7 @@
 	<span class="bg-ash-700 text-ash-200 grid size-9 shrink-0 place-items-center rounded-full"><i class="fas fa-gift"></i></span>
 	<div class="bg-ash-700 flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full px-4 text-[14px]">
 		<Draft {draft} {channel} />
-		<i class="fas fa-face-smile text-ash-300 ml-auto shrink-0"></i>
+		<i class="fas fa-face-smile text-ash-200 ml-auto shrink-0"></i>
 	</div>
 	<span class="bg-ash-700 text-ash-200 grid size-9 shrink-0 place-items-center rounded-full"><i class="fas fa-microphone"></i></span>
 </div>

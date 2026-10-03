@@ -15,6 +15,12 @@ Rules:
 
 - Run `npm run build:format` after every edit. Prettier rewrites files on disk, so skipping it makes the next exact-string edit fail against reformatted source.
 
+## Stylesheets
+
+- `src/theme.css` holds the Tailwind/DaisyUI theme and is imported by both entry stylesheets.
+- `src/app.css` is the full app stylesheet, loaded by `src/routes/(app)/+layout.svelte` and `src/routes/+error.svelte`. Every route except the homepage lives under the `(app)` group.
+- `src/home.css` is the homepage-only stylesheet. It scans only the files listed in its `@source` lines, so a component newly rendered on the homepage must be added there or its classes will be missing.
+
 ## Theme effects
 
 Every member card effect renders through one `<canvas>` per card. Families are listed in `EFFECT_FAMILIES` (`src/lib/effects.ts`) and each maps to a program in `PROGRAMS` (`src/lib/frontend/fx/programs.ts`); the engine lives alongside it in `src/lib/frontend/fx/`, and `ThemeEffect.svelte` is just the host. There are no hand-drawn SVG paths and none should be added — if something needs a shape, generate it (recursive branches, seeded masks, noise), don't author path data.

@@ -1,12 +1,13 @@
 <script lang="ts">
+	import '../home.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, publicSiteOrigin, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { DiscordIcon, PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
-	import ScenePlayer from '$lib/frontend/components/landing/scenes/ScenePlayer.svelte';
-	import { BEYOND_SCENES, ESSENTIAL_SCENES } from '$lib/frontend/components/landing/scenes/scripts/index.js';
+	import LazyScenePlayer from '$lib/frontend/components/landing/scenes/LazyScenePlayer.svelte';
+	import { nearView } from '$lib/frontend/nearView.js';
 	import { effectIcon, effectLabel, effectAccentHex } from '$lib/items.js';
 	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
@@ -21,6 +22,7 @@
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
 	const feed = createLiveGlobalStatistics(data.totals);
+	let marqueeOn = $state(false);
 	$effect(() => {
 		let disconnect: (() => void) | null = null;
 		const stop = onFirstInteraction(() => (disconnect = feed.connect()));
@@ -725,7 +727,7 @@
 				<p class={LEAD}>The features servers usually add MEE6 for, with no paid tier on any of them. The code is open source, so it stays that way.</p>
 			</div>
 			<div class="mb-8 sm:mb-10">
-				<ScenePlayer scenes={ESSENTIAL_SCENES} label="See the essentials work" />
+				<LazyScenePlayer set="essentials" label="See the essentials work" />
 			</div>
 			<dl class="border-base-300 border-t">
 				{#each essentials as item, i}
@@ -751,7 +753,7 @@
 				</p>
 			</div>
 			<div class="mb-8 sm:mb-10">
-				<ScenePlayer scenes={BEYOND_SCENES} label="See what MEE6 doesn't do" variant="phone" />
+				<LazyScenePlayer set="beyond" label="See what MEE6 doesn't do" variant="phone" />
 			</div>
 			<dl class="border-base-300 border-t">
 				{#each different as item, i}
@@ -809,20 +811,24 @@
 				</article>
 			{/snippet}
 
-			<div class="{FULLBLEED} marquee" style="--marquee-duration: 120s" aria-hidden="true">
-				<div class="marquee-row gap-3 px-1.5">
-					{#each [...rowA, ...rowA] as card}
-						{@render moduleCard(card)}
-					{/each}
+			{#if marqueeOn}
+				<div class="{FULLBLEED} marquee" style="--marquee-duration: 120s" aria-hidden="true">
+					<div class="marquee-row gap-3 px-1.5">
+						{#each [...rowA, ...rowA] as card}
+							{@render moduleCard(card)}
+						{/each}
+					</div>
 				</div>
-			</div>
-			<div class="{FULLBLEED} marquee mt-3" style="--marquee-duration: 140s" aria-hidden="true">
-				<div class="marquee-row marquee-row--reverse gap-3 px-1.5">
-					{#each [...rowB, ...rowB] as card}
-						{@render moduleCard(card)}
-					{/each}
+				<div class="{FULLBLEED} marquee mt-3" style="--marquee-duration: 140s" aria-hidden="true">
+					<div class="marquee-row marquee-row--reverse gap-3 px-1.5">
+						{#each [...rowB, ...rowB] as card}
+							{@render moduleCard(card)}
+						{/each}
+					</div>
 				</div>
-			</div>
+			{:else}
+				<div use:nearView={() => (marqueeOn = true)} class="min-h-[520px]" aria-hidden="true"></div>
+			{/if}
 
 			<ul class="sr-only">
 				{#each cards as card}

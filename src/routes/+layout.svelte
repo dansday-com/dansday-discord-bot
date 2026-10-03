@@ -4,7 +4,6 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 	import { effectAccentCssVars } from '$lib/items.js';
-	import '../app.css';
 	import Toast from '$lib/frontend/ToastHost.svelte';
 
 	let { children } = $props();

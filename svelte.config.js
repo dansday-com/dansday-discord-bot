@@ -4,7 +4,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
 	extensions: ['.svelte'],
 	preprocess: [vitePreprocess()],
-	kit: { adapter: adapter(), inlineStyleThreshold: 8192, experimental: { remoteFunctions: true } },
+	kit: { adapter: adapter(), inlineStyleThreshold: 163840, experimental: { remoteFunctions: true } },
 	compilerOptions: { experimental: { async: true } },
 	vitePlugin: {
 		inspector: {

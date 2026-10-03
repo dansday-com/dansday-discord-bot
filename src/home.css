@@ -1,0 +1,17 @@
+@import 'tailwindcss' source(none);
+@import './theme.css';
+
+@source './app.html';
+@source './routes/+layout.svelte';
+@source './routes/+page.svelte';
+@source './lib/frontend/ToastHost.svelte';
+@source './lib/frontend/components/MainHeader.svelte';
+@source './lib/frontend/components/MainFooter.svelte';
+@source './lib/frontend/components/shell/PageShell.svelte';
+@source './lib/frontend/components/shell/PageMeta.svelte';
+@source './lib/frontend/components/shell/DiscordIcon.svelte';
+@source './lib/frontend/components/shell/BoltIcon.svelte';
+@source './lib/frontend/components/shell/reveal.ts';
+@source './lib/frontend/components/landing';
+@source './lib/items.ts';
+@source './lib/themes.ts';

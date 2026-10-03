@@ -8,6 +8,7 @@ import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { logger } from '../utils/index.js';
 import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
+import { levelRewardsFromSettings, type LevelRewardRules } from '../level-rewards.js';
 
 interface BotConfig {
 	id: number;
@@ -757,6 +758,15 @@ export const MODERATION_CONFIG = {
 	async getRulesForServer(serverId: number): Promise<ModerationRules> {
 		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.main);
 		return moderationRulesFromSettings(settings?.settings);
+	}
+};
+
+export const LEVEL_REWARDS_CONFIG = {
+	async getRules(guildId: string): Promise<LevelRewardRules> {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting level rewards');
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.main);
+		return levelRewardsFromSettings(settings?.settings);
 	}
 };
 

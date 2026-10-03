@@ -550,7 +550,11 @@ export const modules = [
 			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
 			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
 			{ label: 'Invites tab', desc: 'Every inviter, join and link, and whether each member used a personal or Discord link.' },
-			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications.' }
+			{
+				label: 'Rewards tab',
+				desc: 'Roles the bot gives at the levels you set, also to members who already qualify. Choose whether a level lost to a steal takes the role back, and whether a new reward replaces the last. Members see the list on their Rewards tab.'
+			},
+			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications. A level-up that unlocks a reward names the role.' }
 		]
 	},
 	{

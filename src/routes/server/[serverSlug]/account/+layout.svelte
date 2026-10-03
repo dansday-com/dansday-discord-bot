@@ -27,8 +27,9 @@
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
 	const isTask = $derived(/\/account\/task\//.test(pathNorm));
+	const isRewards = $derived(/\/account\/rewards\//.test(pathNorm));
 	const isThemes = $derived(/\/account\/themes\//.test(pathNorm));
-	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask && !isThemes);
+	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask && !isRewards && !isThemes);
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
@@ -83,6 +84,7 @@
 		taskSummaryLive = s;
 	}
 	const taskSummary = $derived(taskSummaryLive ?? pd.tasks?.streak ?? null);
+	const rewardItems = $derived((pd.levelRewards?.items ?? []) as { reached: boolean }[]);
 	const streakPct = $derived.by(() => {
 		const cur = Number(taskSummary?.current) || 0;
 		const next = Number(taskSummary?.nextMilestone?.at) || 7;
@@ -212,6 +214,7 @@
 		{ label: 'Overview', icon: 'fa-gauge-high', href: `${accountBase}/overview/${navHash}`, active: isOverview },
 		{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/themes/${navHash}`, active: isThemes },
 		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
+		{ label: 'Rewards', icon: 'fa-trophy', href: `${accountBase}/rewards/${navHash}`, active: isRewards },
 		{
 			id: 'items',
 			label: 'Items',
@@ -411,13 +414,15 @@
 
 			<div class="relative min-w-0 flex-1">
 				<span class="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-white/60 uppercase">
-					<i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : 'fa-wallet'}"></i>{isOverview
+					<i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : isRewards ? 'fa-trophy' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
 							? 'Assets Value'
 							: isTask
 								? 'Daily streak'
-								: 'Wallet'}
+								: isRewards
+									? 'Level rewards'
+									: 'Wallet'}
 				</span>
 
 				{#if pd.memberName}
@@ -502,6 +507,17 @@
 							<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Rank</span>
 						</div>
 					{/if}
+				{:else if isRewards && rewardItems.length > 0}
+					<div class="flex flex-col items-center leading-tight">
+						<span class="text-lg font-extrabold text-white tabular-nums">{rewardItems.filter((r) => r.reached).length}/{rewardItems.length}</span>
+						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Unlocked</span>
+					</div>
+					{#if rank}
+						<div class="flex flex-col items-center leading-tight">
+							<span class="text-lg font-extrabold text-white tabular-nums">#{rank}</span>
+							<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Rank</span>
+						</div>
+					{/if}
 				{:else}
 					<div class="flex flex-col items-center leading-tight">
 						<span class="text-lg font-extrabold text-white tabular-nums">{levelInfo.pct}%</span>
@@ -537,7 +553,7 @@
 		<NavTabs variant="segment" tabs={sectionTabs} />
 	</div>
 
-	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask || isThemes}
+	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask || isRewards || isThemes}
 		{@render walletHero()}
 	{/if}
 

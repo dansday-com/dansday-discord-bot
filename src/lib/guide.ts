@@ -56,6 +56,12 @@ export const BASICS: GuideCard[] = [
 	},
 	{ icon: 'fa-crosshairs', accent: '#a8327d', title: 'Bounty', desc: 'A bounty puts XP on a member’s head for whoever robs or bombs them next.' },
 	{
+		icon: 'fa-trophy',
+		accent: '#c8911a',
+		title: 'Level rewards',
+		desc: 'Some servers give a role at set levels. Your Rewards tab lists each one and the XP it still needs.'
+	},
+	{
 		icon: 'fa-clock-rotate-left',
 		accent: '#4b6584',
 		title: 'History',

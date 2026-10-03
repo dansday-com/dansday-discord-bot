@@ -10,6 +10,7 @@ import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNA
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
+import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -1422,7 +1423,8 @@ async function seedNewServerSettings(serverId: number) {
 		color: DEFAULT_MAIN_EMBED_COLOR,
 		footer: DEFAULT_MAIN_EMBED_FOOTER,
 		bot_nickname: DEFAULT_BOT_NICKNAME,
-		...DEFAULT_MODERATION_RULE_SETTINGS
+		...DEFAULT_MODERATION_RULE_SETTINGS,
+		...DEFAULT_LEVEL_REWARD_SETTINGS
 	});
 }
 
@@ -2817,6 +2819,28 @@ export async function recalculateServerMemberRanks(serverId: any) {
 		SET sml.rank = ranks.computed_rank
 	`);
 	return true;
+}
+
+export async function getMemberLevelsForServer(serverId: any): Promise<{ discord_member_id: string; level: number }[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT sm.discord_member_id, sml.level
+		FROM server_member_levels sml
+		INNER JOIN server_members sm ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ discord_member_id: String(r.discord_member_id), level: Number(r.level) || 1 }));
+}
+
+export async function getMemberDiscordRoleIds(memberId: any): Promise<string[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT sr.discord_role_id
+		FROM server_member_roles smr
+		INNER JOIN server_roles sr ON smr.role_id = sr.id
+		WHERE smr.member_id = ${Number(memberId)}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
 }
 
 export async function getMemberLevelByDiscordId(serverId: any, discordMemberId: string) {
@@ -8498,5 +8522,7 @@ export default {
 	setServerInviteCode,
 	getInviteLinkBySlug,
 	listInviteSlugsForServers,
-	getInviteLinkOwners
+	getInviteLinkOwners,
+	getMemberLevelsForServer,
+	getMemberDiscordRoleIds
 };

@@ -8015,7 +8015,6 @@ export async function getInvitesLeaderboard(serverId: any, since: Date | null) {
 		) inv ON inv.inviter_member_id = sm.id
 		${bonusJoin}
 		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0 ${hideDisguised}
-			AND (inv.inviter_member_id IS NOT NULL ${since ? sql`` : sql`OR b.member_id IS NOT NULL`})
 	`)) as any;
 	return ((rows as any[]) ?? []).map((r) => {
 		const active = Number(r.invites_active) || 0;

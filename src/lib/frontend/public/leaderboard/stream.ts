@@ -303,13 +303,11 @@ function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number)
 
 function buildInviteRows(entries: any[], limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
-	const sorted = entries
-		.filter((e) => Number(e.invites_total ?? 0) > 0)
-		.sort((a, b) => {
-			const diff = Number(b.invites_total ?? 0) - Number(a.invites_total ?? 0);
-			if (diff !== 0) return diff;
-			return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
-		});
+	const sorted = [...entries].sort((a, b) => {
+		const diff = Number(b.invites_total ?? 0) - Number(a.invites_total ?? 0);
+		if (diff !== 0) return diff;
+		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
+	});
 
 	return sorted.slice(0, safe).map((e) => ({
 		discord_member_id: e.discord_member_id,

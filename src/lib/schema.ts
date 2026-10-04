@@ -1215,7 +1215,7 @@ export const serverMemberAssets = mysqlTable(
 		asset_name: varchar('asset_name', { length: 128 }).notNull(),
 		asset_image: varchar('asset_image', { length: 255 }),
 		xp_invested: int('xp_invested').notNull().default(0),
-		buy_price: decimal('buy_price', { precision: 30, scale: 12 }).notNull(),
+		buy_price: decimal('buy_price', { precision: 36, scale: 18 }).notNull(),
 		opened_at: datetime('opened_at').notNull(),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
@@ -1237,7 +1237,7 @@ export const serverMemberAssetLogs = mysqlTable(
 		asset_name: varchar('asset_name', { length: 128 }).notNull(),
 		asset_image: varchar('asset_image', { length: 255 }),
 		xp: int('xp').notNull().default(0),
-		price: decimal('price', { precision: 30, scale: 12 }).notNull().default('0'),
+		price: decimal('price', { precision: 36, scale: 18 }).notNull().default('0'),
 		net: int('net').notNull().default(0),
 		created_at: datetime('created_at').notNull()
 	},

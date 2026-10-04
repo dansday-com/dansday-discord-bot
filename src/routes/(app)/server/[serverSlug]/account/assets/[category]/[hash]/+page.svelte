@@ -81,9 +81,8 @@
 
 	function fmtPrice(n: number): string {
 		const v = Number(n) || 0;
-		if (v >= 100) return `Rp${Math.round(v).toLocaleString('id-ID')}`;
-		if (v >= 1) return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
-		return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 6 })}`;
+		if (v >= 1) return v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+		return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumSignificantDigits: 4 });
 	}
 	function pctText(n: number): string {
 		const v = Number(n) || 0;

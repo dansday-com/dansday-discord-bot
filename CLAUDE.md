@@ -21,7 +21,7 @@ Rules:
 - `src/app.css` is the full app stylesheet, loaded by `src/routes/(app)/+layout.svelte`, `src/routes/server/[serverSlug]/account/+layout.svelte` and `src/routes/+error.svelte`.
 - `src/home.css` is the homepage-only stylesheet, and `src/server.css` covers the public server pages (statistics, leaderboard, members). Each scans only the files in its `@source` lines, so a component newly rendered on one of those pages must be added there or its classes will be missing. `server.css`'s list is the import closure of those three pages.
 - Both are under `inlineStyleThreshold` and ship inside the HTML.
-- SvelteKit never unloads a stylesheet on client navigation, so a smaller sheet loaded after `app.css` would override it. `STYLESHEET_OF_ROUTE` in `src/routes/+layout.svelte` turns any navigation between stylesheet families into a full page load. A route that adopts a new stylesheet must be added to that map.
+- SvelteKit never unloads a stylesheet, and hover-preloading a link injects the destination's CSS into the current page, so a smaller sheet loaded after `app.css` overrides it (the homepage dropped to its mobile layout when a server link was hovered). `stylesheetOf()` in `src/routes/+layout.svelte` maps a URL to its stylesheet family. Links to another family get `data-sveltekit-reload` on pointer or focus, which disables preloading and forces a full load. `beforeNavigate` catches programmatic and back/forward navigation. A route that adopts a new stylesheet must be added to `stylesheetOf()`.
 
 ## Theme effects
 

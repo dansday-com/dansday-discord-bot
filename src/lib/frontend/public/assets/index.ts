@@ -2,9 +2,9 @@ import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
 import { loadItemsShared } from '../items/index.js';
 
-const MARKETS_KEY = 'assets:markets';
-const MOVERS_KEY = 'assets:movers';
-const PRICES_KEY = 'assets:prices';
+const MARKETS_KEY = 'assets:usd:markets';
+const MOVERS_KEY = 'assets:usd:movers';
+const PRICES_KEY = 'assets:usd:prices';
 
 async function cacheGet(key: string): Promise<any | null> {
 	const redis = await getRedisClient().catch(() => null);

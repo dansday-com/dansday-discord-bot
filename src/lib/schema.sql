@@ -700,7 +700,7 @@ CREATE TABLE IF NOT EXISTS server_member_assets (
     asset_name VARCHAR(128) NOT NULL,
     asset_image VARCHAR(255) NULL,
     xp_invested INT NOT NULL DEFAULT 0,
-    buy_price DECIMAL(30, 12) NOT NULL,
+    buy_price DECIMAL(36, 18) NOT NULL,
     opened_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
@@ -717,7 +717,7 @@ CREATE TABLE IF NOT EXISTS server_member_asset_logs (
     asset_name VARCHAR(128) NOT NULL,
     asset_image VARCHAR(255) NULL,
     xp INT NOT NULL DEFAULT 0,
-    price DECIMAL(30, 12) NOT NULL DEFAULT 0,
+    price DECIMAL(36, 18) NOT NULL DEFAULT 0,
     net INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE

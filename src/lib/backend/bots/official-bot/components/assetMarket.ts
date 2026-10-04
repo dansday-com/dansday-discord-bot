@@ -15,10 +15,10 @@ const UNIVERSE_PAGES = 4;
 const MOVERS_COUNT = 50;
 export const MIN_BUY_XP = 10_000;
 
-const MARKETS_KEY = 'assets:markets';
-const MOVERS_KEY = 'assets:movers';
-const PRICES_KEY = 'assets:prices';
-const searchKey = (q: string) => `assets:search:${q.toLowerCase()}`;
+const MARKETS_KEY = 'assets:usd:markets';
+const MOVERS_KEY = 'assets:usd:movers';
+const PRICES_KEY = 'assets:usd:prices';
+const searchKey = (q: string) => `assets:usd:search:${q.toLowerCase()}`;
 
 function apiKey(): string | null {
 	return process.env.COINGECKO_API_KEY || null;
@@ -78,7 +78,7 @@ function shapeMarketRow(row: any) {
 }
 
 async function fetchTopMarkets() {
-	const path = `/coins/markets?vs_currency=idr&order=market_cap_desc&per_page=${MARKETS_PER_PAGE}` + `&page=1&sparkline=true&price_change_percentage=24h`;
+	const path = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${MARKETS_PER_PAGE}` + `&page=1&sparkline=true&price_change_percentage=24h`;
 	const rows = await cgFetch(path);
 	return Array.isArray(rows) ? rows.map(shapeMarketRow) : [];
 }
@@ -88,7 +88,7 @@ async function fetchUniverse() {
 	for (let page = 1; page <= UNIVERSE_PAGES; page++) {
 		const sparkline = page === 1 ? 'true' : 'false';
 		const path =
-			`/coins/markets?vs_currency=idr&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}` + `&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
+			`/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}` + `&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
 		const rows = await cgFetch(path).catch(() => null);
 		if (!Array.isArray(rows) || rows.length === 0) break;
 		for (const r of rows) all.push(shapeMarketRow(r));
@@ -99,10 +99,10 @@ async function fetchUniverse() {
 async function fetchPricesFor(assetIds: string[]): Promise<Record<string, { price: number; change24h: number }>> {
 	if (assetIds.length === 0) return {};
 	const ids = encodeURIComponent(assetIds.join(','));
-	const data = await cgFetch(`/simple/price?ids=${ids}&vs_currencies=idr&include_24hr_change=true`);
+	const data = await cgFetch(`/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
 	const out: Record<string, { price: number; change24h: number }> = {};
 	for (const [id, val] of Object.entries<any>(data || {})) {
-		out[id] = { price: Number(val?.idr) || 0, change24h: Number(val?.idr_24h_change) || 0 };
+		out[id] = { price: Number(val?.usd) || 0, change24h: Number(val?.usd_24h_change) || 0 };
 	}
 	return out;
 }

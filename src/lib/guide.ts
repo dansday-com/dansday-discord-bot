@@ -175,7 +175,7 @@ export const FEATURES: GuideFeature[] = [
 		cards: [
 			{ icon: 'fa-coins', accent: '#e43d12', title: 'XP becomes the investment', desc: 'Invested XP leaves your Wallet and your level until you sell.' },
 			{ icon: 'fa-shield-halved', accent: '#1f9e8f', title: 'Safe from attacks', desc: 'XP inside an asset cannot be stolen, bombed or leeched.' },
-			{ icon: 'fa-arrow-trend-up', accent: '#1a7f57', title: 'Real market prices', desc: 'Live crypto prices in IDR, with no cooldown on selling.' },
+			{ icon: 'fa-arrow-trend-up', accent: '#1a7f57', title: 'Real market prices', desc: 'Live crypto prices in USD, with no cooldown on selling.' },
 			{ icon: 'fa-clock-rotate-left', accent: '#4b6584', title: 'Tracked in History', desc: 'Every buy and sell is logged with what it earned or cost you.' }
 		],
 		note: {

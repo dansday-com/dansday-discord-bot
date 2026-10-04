@@ -61,12 +61,6 @@
 		};
 	}
 
-	function fmtIdr(n: number): string {
-		const v = Number(n) || 0;
-		if (v >= 100) return `Rp${Math.round(v).toLocaleString('id-ID')}`;
-		if (v >= 1) return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
-		return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 6 })}`;
-	}
 	function fmtUnits(qty: number): string {
 		const v = Number(qty) || 0;
 		if (v <= 0) return '0';

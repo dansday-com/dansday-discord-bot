@@ -6,6 +6,7 @@
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 	import { registerScroller } from '../../scrollLock.js';
+	import { onFirstInteraction } from '../../firstInteraction.js';
 
 	const memberTheme = $derived(((page.data as any)?.memberTheme ?? null) as MemberTheme | null);
 	const themeBackdrop = $derived(memberTheme?.image ?? null);
@@ -60,16 +61,19 @@
 			run();
 		};
 
-		import('lenis').then(({ default: Lenis }) => {
-			if (stopped) return;
-			lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false }) as unknown as NonNullable<typeof lenis>;
-			unregister = registerScroller(lenis as unknown as { stop: () => void; start: () => void });
-			lenis.on('virtual-scroll', run);
-			document.addEventListener('click', onAnchor);
-		});
+		const stopWaiting = onFirstInteraction(() =>
+			import('lenis').then(({ default: Lenis }) => {
+				if (stopped) return;
+				lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false }) as unknown as NonNullable<typeof lenis>;
+				unregister = registerScroller(lenis as unknown as { stop: () => void; start: () => void });
+				lenis.on('virtual-scroll', run);
+				document.addEventListener('click', onAnchor);
+			})
+		);
 
 		return () => {
 			stopped = true;
+			stopWaiting();
 			if (frame) cancelAnimationFrame(frame);
 			document.removeEventListener('click', onAnchor);
 			unregister?.();

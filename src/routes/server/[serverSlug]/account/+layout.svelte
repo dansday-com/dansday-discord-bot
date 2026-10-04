@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '../../../../app.css';
 	import { onDestroy, onMount, setContext } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';

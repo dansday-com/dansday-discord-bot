@@ -240,7 +240,7 @@
 	--color-neutral-content: #2e211b;
 	--color-info: #c0330f;
 	--color-info-content: #ffffff;
-	--color-success: #1a7f57;
+	--color-success: #187550;
 	--color-success-content: #ffffff;
 	--color-warning: #c8911a;
 	--color-warning-content: #241a02;
@@ -476,6 +476,23 @@ html.lenis body {
 
 @media (prefers-reduced-motion: reduce) {
 	.animate-rise {
+		animation: none;
+	}
+}
+
+@keyframes bar-grow {
+	from {
+		transform: scaleX(0);
+	}
+}
+
+.bar-grow {
+	transform-origin: left;
+	animation: bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bar-grow {
 		animation: none;
 	}
 }

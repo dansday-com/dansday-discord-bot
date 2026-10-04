@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 	import { effectAccentCssVars } from '$lib/items.js';
@@ -12,6 +13,26 @@
 
 	const ICONS_HREF = '/fa/css/all.min.css';
 	const deferIcons = page.route.id === '/';
+
+	const STYLESHEET_OF_ROUTE: Record<string, string> = {
+		'/': 'home',
+		'/server/[serverSlug]': 'server',
+		'/server/[serverSlug]/leaderboard': 'server',
+		'/server/[serverSlug]/members': 'server'
+	};
+	const stylesheetOf = (routeId: string | null | undefined) => (routeId && STYLESHEET_OF_ROUTE[routeId]) || 'app';
+	const documentStylesheet = stylesheetOf(page.route.id);
+
+	beforeNavigate(({ to, type, cancel }) => {
+		if (type === 'leave' || type === 'popstate' || !to?.route.id) return;
+		if (stylesheetOf(to.route.id) === documentStylesheet) return;
+		cancel();
+		location.href = to.url.href;
+	});
+
+	afterNavigate(({ to, type }) => {
+		if (type === 'popstate' && stylesheetOf(to?.route.id) !== documentStylesheet) location.reload();
+	});
 
 	onMount(() => {
 		if (!deferIcons) return;

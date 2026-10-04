@@ -256,7 +256,7 @@
 	<StatCard icon="fa-star" title="Total XP" tone="amber">
 		<StatHero label="lifetime XP" value={fmt(p.totalXp)} countTo={p.totalXp} />
 		{#if xpSourceBars.length > 0}
-			<SegBar head="Where your XP came from" meta="{fmt(xpSourceTotal)} tracked" title="XP by source" segments={xpSourceSegments} {grow} />
+			<SegBar head="Where your XP came from" meta="{fmt(xpSourceTotal)} tracked" title="XP by source" segments={xpSourceSegments} />
 			<BarList rows={xpSourceBars} {grow} />
 		{/if}
 	</StatCard>
@@ -273,7 +273,7 @@
 
 	<StatCard icon="fa-microphone-alt" title="Activity" tone="lime">
 		{#if voiceSegments}
-			<SegBar head="Voice time split" meta="{fmt(voiceSegments.total)} min" title="Active · AFK · Video · Stream" segments={voiceSegments.segments} {grow} />
+			<SegBar head="Voice time split" meta="{fmt(voiceSegments.total)} min" title="Active · AFK · Video · Stream" segments={voiceSegments.segments} />
 		{/if}
 		<BarList rows={activityBars} {grow} />
 	</StatCard>
@@ -443,7 +443,7 @@
 					</span>
 					<span>{fmt(d.items_stolen_from)} lost</span>
 				</div>
-				<SegBar segments={duelSegments} {grow} spaced />
+				<SegBar segments={duelSegments} spaced />
 			</div>
 			<MiniGrid cols={3}>
 				<MiniStat icon="fa-hand" value={fmt(d.items_stolen)} label="XP stolen" />

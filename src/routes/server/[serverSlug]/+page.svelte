@@ -1,20 +1,9 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
-	import {
-		DashGrid,
-		FILL,
-		MeterBar,
-		MiniGrid,
-		MiniStat,
-		SegBar,
-		StatCard,
-		StatHero,
-		StatStrip,
-		TrendChip,
-		growOnMount,
-		prefersReducedMotion
-	} from '$lib/frontend/components/dash';
+	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
+	import '../../../server.css';
+	import { DashGrid, FILL, MeterBar, MiniGrid, MiniStat, SegBar, StatCard, StatHero, StatStrip, TrendChip } from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
 	import type { PublicPageStats } from '$lib/frontend/public/statistics/index.js';
 
@@ -23,9 +12,6 @@
 	let liveStats = $state<PublicPageStats>({ ...data.stats });
 	let liveBoost = $state(data.boost_level);
 	let es: EventSource | null = null;
-
-	const growth = growOnMount();
-	const grow = $derived(growth.value);
 
 	const boostLevel = $derived(liveBoost);
 
@@ -107,7 +93,7 @@
 		split([liveStats.streams_likes ?? 0, liveStats.streams_chat_messages ?? 0, liveStats.streams_gifts ?? 0, liveStats.streams_shares ?? 0])
 	);
 
-	let heroXpDisplay = $state(0);
+	let heroXpDisplay = $state(Number(data.stats.leveling_total_xp) || 0);
 	let rafXp: number | null = null;
 	let lastXpForHero: number | null = null;
 
@@ -130,8 +116,6 @@
 		const t = Number(liveStats.leveling_total_xp) || 0;
 		if (lastXpForHero === null) {
 			lastXpForHero = t;
-			if (prefersReducedMotion()) heroXpDisplay = t;
-			else animateHeroXp(t);
 			return;
 		}
 		if (t !== lastXpForHero) {
@@ -153,18 +137,20 @@
 		liveBoost = payload.boost_level;
 	}
 
-	onMount(() => {
-		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/overview-stream`;
-		const source = new EventSource(url);
-		es = source;
-		source.onmessage = (e) => {
-			try {
-				const payload = JSON.parse(e.data) as { stats: PublicPageStats; boost_level: number };
-				if (payload?.stats) applyPayload(payload);
-			} catch (_) {}
-		};
-		source.onerror = () => {};
-	});
+	onMount(() =>
+		onFirstInteraction(() => {
+			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/overview-stream`;
+			const source = new EventSource(url);
+			es = source;
+			source.onmessage = (e) => {
+				try {
+					const payload = JSON.parse(e.data) as { stats: PublicPageStats; boost_level: number };
+					if (payload?.stats) applyPayload(payload);
+				} catch (_) {}
+			};
+			source.onerror = () => {};
+		})
+	);
 
 	onDestroy(() => {
 		es?.close();
@@ -180,7 +166,7 @@
 	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 
-<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+<div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
 	<p class="m-0 flex flex-wrap items-center gap-1.5">Statistics</p>
 </div>
 
@@ -195,7 +181,6 @@
 			head="Leveling coverage"
 			meta="{fmt(liveStats.members_with_levels)} with levels"
 			title="Share of members with leveling data"
-			{grow}
 			segments={[
 				{ label: 'With levels', pct: memberSplit[0], color: FILL.primary },
 				{ label: 'Without', pct: memberSplit[1], color: FILL.muted }
@@ -215,7 +200,6 @@
 			head="Mix"
 			meta="Text · Voice · Other"
 			title="Channel types"
-			{grow}
 			segments={[
 				{ label: `Text ${fmt(liveStats.channels_text)}`, pct: channelSplit[0], color: FILL.primary },
 				{ label: `Voice ${fmt(liveStats.channels_voice)}`, pct: channelSplit[1], color: FILL.accent },
@@ -230,7 +214,7 @@
 			value={heroXpDisplay.toLocaleString()}
 			hint="Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_xp)} wallet + {fmt(liveStats.leveling_assets_value)} in market"
 		/>
-		<MeterBar head="Average vs peak level" meta="{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}" pct={avgLevelBarPct} {grow} />
+		<MeterBar head="Average vs peak level" meta="{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}" pct={avgLevelBarPct} />
 		<MiniGrid cols={3}>
 			<MiniStat icon="fa-comments" value={fmt(liveStats.leveling_total_chat)} label="Messages" />
 			<MiniStat icon="fa-chart-line" value={avgXP} label="Avg XP / member" />
@@ -254,7 +238,6 @@
 			head="Active vs AFK"
 			meta="{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}"
 			title="Share of voice minutes"
-			{grow}
 			segments={[
 				{ label: 'Active', pct: voiceSplit[0], color: FILL.accent },
 				{ label: 'AFK', pct: voiceSplit[1], color: FILL.neutral }
@@ -280,7 +263,6 @@
 			head="Capital flow"
 			meta="In · Out"
 			title="XP bought in vs cashed out"
-			{grow}
 			segments={[
 				{ label: `Bought in ${fmt(liveStats.assets_buy_volume)}`, pct: marketSplit[0], color: FILL.primary },
 				{ label: `Cashed out ${fmt(liveStats.assets_sell_volume)}`, pct: marketSplit[1], color: FILL.muted }
@@ -311,7 +293,6 @@
 			head="Heist outcomes"
 			meta="{stealHitRate}% success"
 			title="Successful steals vs caught"
-			{grow}
 			segments={[
 				{ label: `Landed ${fmt(liveStats.items_steals_landed)}`, pct: heistSplit[0], color: FILL.primary },
 				{ label: `Caught ${fmt(liveStats.items_steals_caught)}`, pct: heistSplit[1], color: FILL.muted }
@@ -333,7 +314,7 @@
 			value={fmt(liveStats.minigames_wagered)}
 			hint="{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out"
 		/>
-		<MeterBar head="Player win rate" meta="{minigamesWinRate}%" pct={Math.max(4, minigamesWinRate)} {grow} />
+		<MeterBar head="Player win rate" meta="{minigamesWinRate}%" pct={Math.max(4, minigamesWinRate)} />
 		<MiniGrid cols={2}>
 			<MiniStat icon="fa-trophy" value={fmt(liveStats.minigames_biggest_win)} label="Biggest win" />
 			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net <= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="House edge" />
@@ -346,7 +327,7 @@
 			value={fmt(liveStats.giveaways_total)}
 			hint="{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members"
 		/>
-		<MeterBar head="Odds of winning" meta="{giveawayClaimPct.toFixed(1)}%" pct={Math.max(4, giveawayClaimPct)} {grow} />
+		<MeterBar head="Odds of winning" meta="{giveawayClaimPct.toFixed(1)}%" pct={Math.max(4, giveawayClaimPct)} />
 		<MiniGrid cols={2}>
 			<MiniStat icon="fa-medal" value={fmt(liveStats.giveaways_winners)} label="Winners drawn" />
 			<MiniStat icon="fa-hourglass-half" value={fmt(liveStats.giveaways_active)} label="Running now" />
@@ -363,7 +344,6 @@
 			head="Engagement mix"
 			meta="Likes · Chat · Gifts · Shares"
 			title="Stream engagement breakdown"
-			{grow}
 			segments={[
 				{ label: `Likes ${fmt(liveStats.streams_likes)}`, pct: streamSplit[0], color: FILL.primary },
 				{ label: `Chat ${fmt(liveStats.streams_chat_messages)}`, pct: streamSplit[1], color: FILL.accent },
@@ -387,7 +367,7 @@
 
 	<StatCard icon="fa-shield-halved" title="Staff & feedback" tone="violet">
 		<StatHero label="Staff reviews" value={fmt(liveStats.staff_reviews)} />
-		<MeterBar head="Average staff rating" meta="{liveStats.staff_avg_rating || '—'} / 5" pct={Math.max(4, staffRatingPct)} {grow} />
+		<MeterBar head="Average staff rating" meta="{liveStats.staff_avg_rating || '—'} / 5" pct={Math.max(4, staffRatingPct)} />
 		<MiniGrid cols={2}>
 			<MiniStat icon="fa-comment-dots" value={fmt(liveStats.feedback_submissions)} label="Feedback" />
 			<MiniStat icon="fa-moon" value={fmt(liveStats.afk_active)} label="AFK now" />

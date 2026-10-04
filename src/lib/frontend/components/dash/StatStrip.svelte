@@ -12,7 +12,7 @@
 			</span>
 			<span class="flex min-w-0 flex-col">
 				<span class="text-base-content text-sm leading-tight font-extrabold tracking-tight tabular-nums sm:text-base">{item.value}</span>
-				<span class="text-base-content/50 text-[9px] font-semibold tracking-[0.08em] uppercase sm:text-[10px]">{item.label}</span>
+				<span class="text-base-content/70 text-[9px] font-semibold tracking-[0.08em] uppercase sm:text-[10px]">{item.label}</span>
 			</span>
 		</div>
 	{/each}

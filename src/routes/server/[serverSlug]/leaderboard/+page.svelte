@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
+	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
+	import '../../../../server.css';
 	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
 	import { normalizeAccent } from '$lib/themes.js';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
@@ -186,7 +188,7 @@
 		return Math.max(1, Math.round((v / maxValue) * 100));
 	}
 
-	function animateToCurrentValues(fromZero = false) {
+	function animateToCurrentValues() {
 		if (raf) cancelAnimationFrame(raf);
 		const duration = 1100;
 		const key = tabKey;
@@ -195,7 +197,7 @@
 		const targets: Record<string, number> = {};
 		for (const r of rows as any[]) targets[r.discord_member_id] = metricValueNumber(r, metric);
 		const initial: Record<string, number> = {};
-		for (const id of Object.keys(targets)) initial[id] = fromZero || !sameTab ? 0 : (anim[id] ?? 0);
+		for (const id of Object.keys(targets)) initial[id] = sameTab ? (anim[id] ?? 0) : 0;
 		anim = { ...initial };
 		animKey = key;
 
@@ -228,7 +230,7 @@
 				if (snap?.rows) {
 					rows = snap.rows;
 					tabPrefetch.set(prefetchKey(metric, period), snap.rows);
-					animateToCurrentValues(false);
+					animateToCurrentValues();
 				}
 			} catch (_) {}
 		};
@@ -240,19 +242,22 @@
 
 	onMount(() => {
 		tabPrefetch.set(prefetchKey(data.metric, data.period), data.rows);
-		const prefetchPeriod = period;
-		for (const m of METRICS) {
-			if (m === data.metric) continue;
-			fetch(snapshotUrl(m, prefetchPeriod))
-				.then((r) => (r.ok ? r.json() : null))
-				.then((snap) => {
-					if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(prefetchKey(m, prefetchPeriod), snap.rows);
-				})
-				.catch(() => {});
-		}
-		connect();
-		animateToCurrentValues(true);
+		anim = Object.fromEntries((rows as any[]).map((r) => [r.discord_member_id, metricValueNumber(r, metric)]));
+		animKey = tabKey;
 		mounted = true;
+		return onFirstInteraction(() => {
+			const prefetchPeriod = period;
+			for (const m of METRICS) {
+				if (m === data.metric) continue;
+				fetch(snapshotUrl(m, prefetchPeriod))
+					.then((r) => (r.ok ? r.json() : null))
+					.then((snap) => {
+						if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(prefetchKey(m, prefetchPeriod), snap.rows);
+					})
+					.catch(() => {});
+			}
+			connect();
+		});
 	});
 
 	onDestroy(() => {
@@ -267,7 +272,7 @@
 		const hit = tabPrefetch.get(requested);
 		if (hit && hit.length > 0) {
 			rows = hit;
-			animateToCurrentValues(false);
+			animateToCurrentValues();
 		} else {
 			rows = [];
 		}
@@ -280,7 +285,7 @@
 					tabPrefetch.set(requested, snap.rows);
 					if (prefetchKey(metric, period) !== requested) return;
 					rows = snap.rows;
-					animateToCurrentValues(false);
+					animateToCurrentValues();
 				}
 			}
 		} catch (_) {}
@@ -374,7 +379,7 @@
 	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 
-<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+<div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
 	<p class="m-0 flex flex-wrap items-center gap-1.5">
 		Leaderboard
 		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">{metricLabel(metric)}</span>

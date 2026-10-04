@@ -19,5 +19,5 @@
 >
 	<i class="fas {icon} text-xs text-(--tone) sm:text-sm"></i>
 	<span class="w-full text-sm font-extrabold break-all tabular-nums sm:text-[0.95rem] {valueTone}">{value}</span>
-	<span class="text-base-content/45 w-full text-[9px] leading-tight font-semibold tracking-[0.04em] uppercase">{label}</span>
+	<span class="text-base-content/70 w-full text-[9px] leading-tight font-semibold tracking-[0.04em] uppercase">{label}</span>
 </div>

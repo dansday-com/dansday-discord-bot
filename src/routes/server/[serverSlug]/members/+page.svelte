@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
+	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
+	import '../../../../server.css';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { EmptyState, RankAvatar, rankStyle } from '$lib/frontend/components/public';
@@ -92,18 +94,20 @@
 	}
 
 	onMount(() => {
-		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
-		const source = new EventSource(url);
-		es = source;
-		source.onmessage = (e) => {
-			try {
-				const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
-				if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members;
-			} catch (_) {}
-		};
-		source.onerror = () => {};
 		requestAnimationFrame(() => {
 			mounted = true;
+		});
+		return onFirstInteraction(() => {
+			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
+			const source = new EventSource(url);
+			es = source;
+			source.onmessage = (e) => {
+				try {
+					const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
+					if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members;
+				} catch (_) {}
+			};
+			source.onerror = () => {};
 		});
 	});
 
@@ -175,7 +179,7 @@
 	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 
-<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+<div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
 	<p class="m-0 flex flex-wrap items-center gap-1.5">Members</p>
 </div>
 

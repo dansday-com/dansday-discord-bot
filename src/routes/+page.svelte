@@ -508,72 +508,6 @@
 	const DESCRIPTION =
 		'Free, open-source MEE6 alternative. Leveling, role rewards, welcome messages, moderation, giveaways and Twitch/YouTube alerts, with no premium tier.';
 
-	const essentials = [
-		{
-			title: 'Leveling',
-			desc: 'Chat, voice, video and streaming earn XP at rates you set. Level-up messages, and leaderboards for all time, this month and this week.'
-		},
-		{
-			title: 'Role rewards',
-			desc: 'A role at any level you pick, given and taken back by the bot. You decide whether a dropped level costs the role.'
-		},
-		{
-			title: 'Welcome messages',
-			desc: 'Your own welcome messages and embeds for new members, plus thank-you posts for boosters.'
-		},
-		{
-			title: 'Moderation',
-			desc: 'Warn, time out, kick and ban from the dashboard or the staff menu. Auto-escalation, reason presets and a numbered case for every action.'
-		},
-		{
-			title: 'Giveaways',
-			desc: 'Entries, winner picks, and role or invite requirements for who can join.'
-		},
-		{
-			title: 'Twitch, YouTube & TikTok alerts',
-			desc: 'Members follow their own creators and get tagged on new videos, live streams and posts.'
-		},
-		{
-			title: 'Web dashboard',
-			desc: 'Every module is a tab in the browser, with owner and staff access per server. No slash commands to learn.'
-		},
-		{
-			title: 'Open source',
-			desc: 'AGPL-3.0 on GitHub. Add the hosted bot, or run it yourself with Docker. Nothing is held back behind a tier.'
-		}
-	];
-
-	const different = [
-		{
-			title: 'Members steal XP',
-			desc: 'A steal takes it, a bomb burns it and credits no one, a leech skims what they earn next. Shield, reflect and insure against it. Put a bounty on the leader, or disguise yourself off every leaderboard.'
-		},
-		{
-			title: 'AI that knows your server',
-			desc: 'Ask it in chat, or say "hey stupid" in voice. It answers from your live leaderboards, shop prices, XP rates and stats, and from any wiki you add.'
-		},
-		{
-			title: 'XP they can spend',
-			desc: 'A per-server shop, a market priced from live crypto data and a gamble table, all paid in XP. Wagers only touch XP above your level, so a bad bet never drops one.'
-		},
-		{
-			title: 'Tasks nobody had to write',
-			desc: 'Eighteen daily and eighteen weekly per member, sized from their own last seven days and priced against your shop. Streaks and a check-in on top. Admins set up nothing.'
-		},
-		{
-			title: 'Every member gets an account',
-			desc: 'One tap on the Discord menu opens their own page: where their XP came from, their bag, tasks, portfolio, minigames and history. No signup, no password.'
-		},
-		{
-			title: '70 card themes to win',
-			desc: 'Spin 1,000 XP for an animated effect, from fire and aurora to a black hole. It repaints their card, their leaderboard row and their spot in the members list.'
-		},
-		{
-			title: 'Roblox alerts per member',
-			desc: "A member taps Notify me under any catalog post and gets tagged when that item's price, resale price, stock or total supply changes."
-		}
-	];
-
 	const faq = [
 		{
 			q: 'Is it a free MEE6 alternative?',
@@ -730,21 +664,7 @@
 					tomorrow.
 				</p>
 			</div>
-			<div class="mb-8 sm:mb-10">
-				<LazyScenePlayer set="beyond" label="See what MEE6 doesn't do" variant="phone" />
-			</div>
-			<dl class="border-base-300 border-t">
-				{#each different as item, i}
-					<div
-						use:reveal
-						class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
-						style="transition-delay: {i * 60}ms"
-					>
-						<dt class="text-base-content min-w-0 text-[clamp(15px,2.4cqw,24px)] leading-[1.05] font-black tracking-[-0.02em] uppercase">{item.title}</dt>
-						<dd class="text-base-content/70 min-w-0 text-[12.5px] leading-[1.5]">{item.desc}</dd>
-					</div>
-				{/each}
-			</dl>
+			<LazyScenePlayer set="beyond" label="See what MEE6 doesn't do" variant="phone" />
 		</section>
 
 		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="essentials">
@@ -753,21 +673,7 @@
 				<h2 class={H2}>Free, no premium</h2>
 				<p class={LEAD}>The features servers usually add MEE6 for, with no paid tier on any of them. The code is open source, so it stays that way.</p>
 			</div>
-			<div class="mb-8 sm:mb-10">
-				<LazyScenePlayer set="essentials" label="See the essentials work" />
-			</div>
-			<dl class="border-base-300 border-t">
-				{#each essentials as item, i}
-					<div
-						use:reveal
-						class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
-						style="transition-delay: {i * 60}ms"
-					>
-						<dt class="text-base-content min-w-0 text-[clamp(15px,2.4cqw,24px)] leading-[1.05] font-black tracking-[-0.02em] uppercase">{item.title}</dt>
-						<dd class="text-base-content/70 min-w-0 text-[12.5px] leading-[1.5]">{item.desc}</dd>
-					</div>
-				{/each}
-			</dl>
+			<LazyScenePlayer set="essentials" label="See the essentials work" />
 		</section>
 
 		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="features">

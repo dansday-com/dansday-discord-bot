@@ -5,7 +5,6 @@
 	import { fly } from 'svelte/transition';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { SceneClock, playWhenVisible, typed } from './clock.svelte.js';
-	import BrowserFrame from './BrowserFrame.svelte';
 	import DiscordComponents from './DiscordComponents.svelte';
 	import DiscordEmbed from './DiscordEmbed.svelte';
 	import DiscordMessage from './DiscordMessage.svelte';
@@ -19,7 +18,7 @@
 
 	let { scenes, label, variant = 'desktop' }: { scenes: Scene[]; label: string; variant?: 'desktop' | 'phone' } = $props();
 
-	const POP_TONES = { gold: '#efb11d', red: '#f23f43', green: '#23a55a' } as const;
+	const POP_TONES = { gold: '#efb11d', red: '#f23f43' } as const;
 
 	let index = $state(0);
 	const scene = $derived(scenes[index]);
@@ -43,16 +42,9 @@
 	function plain(text: string) {
 		return text
 			.replace(/<@bot>/g, `@${APP_NAME}`)
-			.replace(/<@&?([^>]+)>/g, '@$1')
+			.replace(/<@([^>]+)>/g, '@$1')
 			.replace(/<#([^>]+)>/g, '#$1')
 			.replace(/\*\*/g, '');
-	}
-
-	function replyOf(sc: Scene, event: SceneEvent) {
-		if (!event.replyTo) return null;
-		const target = [...(sc.context ?? []), ...(sc.events ?? [])].find((e) => e.id === event.replyTo);
-		const person = target ? sc.people?.[target.who] : null;
-		return target && person ? { name: person.name, avatar: person.avatar, text: plain(target.text ?? '') } : null;
 	}
 
 	function usedOf(sc: Scene, event: SceneEvent) {
@@ -68,10 +60,8 @@
 				key: `${sc.id}:${event.id}`,
 				event,
 				person: sc.people?.[event.who] ?? { name: '', avatar: '' },
-				system: event.who === 'system',
-				reply: replyOf(sc, event),
 				used: usedOf(sc, event),
-				continued: !!prev && prev.who === event.who && !event.newGroup && !event.ephemeral && !prev.ephemeral && !event.replyTo && !event.used
+				continued: !!prev && prev.who === event.who && !event.newGroup && !event.ephemeral && !prev.ephemeral && !event.used
 			};
 		});
 	}
@@ -92,12 +82,6 @@
 			if (p.rows !== undefined) rows = p.rows;
 		}
 		return { text, embed, rows };
-	}
-
-	function nameColor(who: string, now: number) {
-		let color: string | null = null;
-		for (const c of scene.nameColors ?? []) if (c.who === who && now >= c.at) color = c.color;
-		return color;
 	}
 
 	const composing = $derived((scene.events ?? []).find((e) => e.typeFrom !== undefined && t >= e.typeFrom && t < e.at));
@@ -125,41 +109,30 @@
 	{#each lines as line (line.key)}
 		{@const v = view(line.event, t)}
 		<div animate:flip={{ duration: resetting ? 0 : animMs, easing: quintOut }} in:fly={{ y: 8, duration: animMs, easing: quintOut }}>
-			{#if line.system}
-				<div class="mt-3 flex items-center gap-4 px-4 py-0.5">
-					<span class="flex w-10 shrink-0 justify-center"><i class="fas fa-arrow-right text-[15px] text-[#23a55a]"></i></span>
-					<p class="text-ash-200 min-w-0 text-[14.5px] leading-[1.375]">
-						<Rich text={v.text ?? ''} roles={scene.roles} /><span class="text-ash-200 ml-1.5 text-[12px]">{line.event.time}</span>
-					</p>
-				</div>
-			{:else}
-				<DiscordMessage
-					name={line.person.name}
-					avatar={line.person.avatar}
-					time={line.event.time}
-					app={line.person.app}
-					continued={line.continued}
-					ephemeral={line.event.ephemeral}
-					reply={line.reply}
-					used={line.used}
-					nameColor={nameColor(line.event.who, t)}
-				>
-					{#if v.text}<Rich text={v.text} roles={scene.roles} />{/if}
-					{#if v.embed}<DiscordEmbed embed={v.embed} roles={scene.roles} />{/if}
-					{#if v.rows?.length}<DiscordComponents rows={v.rows} {t} still={clock.still} />{/if}
-					{#snippet aside()}
-						{@const pop = line.event.pop}
-						{#if pop && t >= line.event.at + 120 && t < line.event.at + 1220}
-							<span
-								class="scene-pop pointer-events-none absolute top-1 right-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold"
-								style="color: {POP_TONES[pop.tone]}; background: color-mix(in srgb, {POP_TONES[pop.tone]} 16%, transparent);"
-							>
-								{pop.text}
-							</span>
-						{/if}
-					{/snippet}
-				</DiscordMessage>
-			{/if}
+			<DiscordMessage
+				name={line.person.name}
+				avatar={line.person.avatar}
+				time={line.event.time}
+				app={line.person.app}
+				continued={line.continued}
+				ephemeral={line.event.ephemeral}
+				used={line.used}
+			>
+				{#if v.text}<Rich text={v.text} />{/if}
+				{#if v.embed}<DiscordEmbed embed={v.embed} />{/if}
+				{#if v.rows?.length}<DiscordComponents rows={v.rows} {t} still={clock.still} />{/if}
+				{#snippet aside()}
+					{@const pop = line.event.pop}
+					{#if pop && t >= line.event.at + 120 && t < line.event.at + 1220}
+						<span
+							class="scene-pop pointer-events-none absolute top-1 right-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold"
+							style="color: {POP_TONES[pop.tone]}; background: color-mix(in srgb, {POP_TONES[pop.tone]} 16%, transparent);"
+						>
+							{pop.text}
+						</span>
+					{/if}
+				{/snippet}
+			</DiscordMessage>
 		</div>
 	{/each}
 {/snippet}
@@ -216,16 +189,9 @@
 		</div>
 
 		<div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-10">
-			{#if scene.screen}
-				{@const Screen = scene.screen}
-				<BrowserFrame url={scene.url ?? ''}>
-					<div class="h-full" style="opacity: {fade}"><Screen {t} still={clock.still} /></div>
-				</BrowserFrame>
-			{:else}
-				<DiscordWindow server={scene.server ?? 'Night Owls'} channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade} {picker} {overlay}>
-					{@render feed()}
-				</DiscordWindow>
-			{/if}
+			<DiscordWindow server="Night Owls" channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade} {picker} {overlay}>
+				{@render feed()}
+			</DiscordWindow>
 			{@render stepList(scene, true, false)}
 		</div>
 	</div>

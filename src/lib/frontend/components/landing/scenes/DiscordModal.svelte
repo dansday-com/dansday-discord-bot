@@ -22,9 +22,9 @@
 			<div>
 				<p class="text-ash-100 mb-2 text-[13px] font-semibold">{field.label}</p>
 				<div
-					class="bg-ash-950 relative flex rounded-[4px] border px-3 text-[14px] transition-colors duration-150 {field.tall
-						? 'h-20 items-start pt-2.5'
-						: 'h-10 items-center'} {focused(field) ? 'border-[#5865f2]' : 'border-ash-950'}"
+					class="bg-ash-950 relative flex h-10 items-center rounded-[4px] border px-3 text-[14px] transition-colors duration-150 {focused(field)
+						? 'border-[#5865f2]'
+						: 'border-ash-950'}"
 				>
 					{#if value}
 						<span class="text-ash-50 min-w-0 truncate"

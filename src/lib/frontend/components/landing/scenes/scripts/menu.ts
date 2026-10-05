@@ -26,7 +26,7 @@ function panel(pressAt: number): SceneEvent {
 	};
 }
 
-function mainMenu(press: { me?: number; staff?: number }): { embed: SceneEmbed; rows: SceneRow[] } {
+function mainMenu(press: { me?: number }): { embed: SceneEmbed; rows: SceneRow[] } {
 	return {
 		embed: {
 			color: BRAND_PRIMARY,
@@ -44,7 +44,7 @@ function mainMenu(press: { me?: number; staff?: number }): { embed: SceneEmbed; 
 				{ label: '👤 Me', tone: 'blurple', pressAt: press.me },
 				{ label: '🎉 Community', tone: 'blurple' },
 				{ label: '💎 Perks', tone: 'blurple' },
-				{ label: '🔨 Staff', tone: 'red', pressAt: press.staff }
+				{ label: '🔨 Staff', tone: 'red' }
 			],
 			[{ label: 'Select Language' }, { label: '👤 Account', link: true }]
 		]
@@ -216,97 +216,6 @@ export const member = defineScene({
 			to: 16000,
 			title: 'Fill in a form',
 			desc: 'A form pops up instead of command options. Nothing to remember, nothing to mistype.'
-		}
-	]
-});
-
-export const staff = defineScene({
-	id: 'staff',
-	label: 'Moderation',
-	icon: 'fa-shield-halved',
-	tagline: 'Moderation lives in the same menu.',
-	channel: MENU_CHANNEL,
-	duration: 17500,
-	rest: 16300,
-	people: { bot: BOT },
-	context: [panel(1100)],
-	events: [
-		{ id: 'menu', at: 1500, who: 'bot', time: at('21:30'), ephemeral: true, ...mainMenu({ staff: 3300 }) },
-		{ id: 'done', at: 13100, who: 'bot', time: at('21:31'), ephemeral: true, newGroup: true, text: '✅ Timeout applied to <@Nova>. Case #12.' }
-	],
-	patches: [
-		{
-			at: 3550,
-			id: 'menu',
-			...category('🔨 Staff', 'Tools for staff and admins.', [
-				{ label: '🔨 Moderation', desc: 'Warn, time out, kick or ban members.', tone: 'red', pressAt: 5000 }
-			])
-		},
-		{
-			at: 5250,
-			id: 'menu',
-			text: 'Choose the member to moderate.',
-			embed: null,
-			rows: [
-				{
-					placeholder: 'Select a member',
-					options: [
-						{ label: 'Jun', avatar: avatar(4) },
-						{ label: 'Nova', avatar: avatar(1) },
-						{ label: 'Rin', avatar: avatar(3) }
-					],
-					openAt: 6200,
-					pickAt: 7200,
-					pick: 1
-				},
-				[BACK]
-			]
-		},
-		{
-			at: 7450,
-			id: 'menu',
-			text: 'Choose an action for <@Nova>.',
-			rows: [
-				{
-					placeholder: 'Select an action',
-					options: ['Warn', 'Timeout', 'Remove timeout', 'Kick', 'Ban', 'Temporary ban', 'Clear warnings'].map((label) => ({ label })),
-					openAt: 8400,
-					pickAt: 9400,
-					pick: 1
-				},
-				[BACK]
-			]
-		}
-	],
-	modals: [
-		{
-			at: 9650,
-			submitAt: 12500,
-			title: 'Timeout',
-			fields: [
-				{ label: 'Reason', value: 'Spamming in chat', typeFrom: 10500, tall: true },
-				{ label: 'Duration (e.g. 10m, 2h, 7d)', placeholder: '10m, 2h, 7d', value: '1h', typeFrom: 11600 }
-			]
-		}
-	],
-	steps: [
-		{
-			from: 0,
-			to: 3300,
-			title: 'Same button',
-			desc: 'Staff open the same Menu. Moderation sits in the Staff group.'
-		},
-		{
-			from: 3300,
-			to: 9400,
-			title: 'Pick who, then what',
-			desc: 'Choose the member from a list, then warn, time out, kick or ban. No user IDs to copy.'
-		},
-		{
-			from: 9400,
-			to: 17500,
-			title: 'Give a reason',
-			desc: 'It becomes a numbered case in the mod log, and the member is tagged and DMed.'
 		}
 	]
 });

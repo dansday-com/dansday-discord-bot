@@ -114,7 +114,10 @@
 			"current": "Idioma actual",
 			"select": "Seleccionar idioma",
 			"updated": "✅ ¡Idioma actualizado correctamente!",
-			"failed": "❌ No se pudo actualizar el idioma: {error}"
+			"failed": "❌ No se pudo actualizar el idioma: {error}",
+			"serverDefault": "Predeterminado del servidor ({language})",
+			"serverDefaultDescription": "Seguir el idioma del servidor",
+			"currentOption": "Idioma actual"
 		}
 	},
 	"leveling": {
@@ -126,6 +129,54 @@
 		"errors": {
 			"notRegistered": "⚠️ Este servidor no está registrado en el bot. Realiza primero una sincronización.",
 			"createRecordFailed": "❌ No se pudo crear el registro del miembro. Inténtalo de nuevo."
+		},
+		"fields": {
+			"level": "⭐ Nivel",
+			"totalXp": "📊 XP total",
+			"rank": "🏆 Puesto",
+			"previousRank": "Puesto anterior",
+			"newRank": "Nuevo puesto",
+			"progress": "⚡ Progreso al nivel {level}",
+			"reward": "🎁 Recompensa desbloqueada",
+			"activity": "💬 Actividad"
+		},
+		"xpToGo": "Faltan **{xp}** XP",
+		"unranked": "Sin clasificar",
+		"leaderboardButton": "Clasificación",
+		"levelUp": {
+			"title": "🎉 ¡Subida de nivel!",
+			"description": "¡{member} ha alcanzado el **nivel {level}**!"
+		},
+		"rankUp": {
+			"title": "¡Cambio de puesto!",
+			"topSpot": "¡{member} acaba de asegurarse un puesto de honor!",
+			"climbed": "¡{member} subió en la clasificación!"
+		},
+		"activity": {
+			"messages": "{count} mensajes",
+			"voice": "{hours} h de voz",
+			"streaming": "{hours} h en directo"
+		},
+		"log": {
+			"types": {
+				"chat": "chat",
+				"voice": "voz",
+				"afkVoice": "voz AFK",
+				"video": "vídeo",
+				"streaming": "directo",
+				"invite": "invitación"
+			},
+			"gain": "{emoji} XP de {type}: {name} ganó +{xp} XP",
+			"staff": "({multiplier}× Staff 🛡️)",
+			"boost": "({multiplier}× Boost ⚡)",
+			"friend": "(+{rate} Boost de amigos 🤝)",
+			"leech": "(−{rate} Leech 🩸)",
+			"share": "📨 +{amount} para {name} ({percent}% de participación por invitación{staff})",
+			"inviteNote": "por invitar a {name}",
+			"leechCredit": "🩸 Leech: {attacker} le drenó +{amount} XP a {victim}{pct}",
+			"unknownMember": "Desconocido",
+			"someMember": "un miembro",
+			"someLeecher": "Un leecher"
 		}
 	},
 	"invites": {
@@ -196,7 +247,10 @@
 		"messages": {
 			"welcomeBack": "✅ ¡Bienvenido de nuevo, {member}! Se ha quitado tu estado AFK.",
 			"dmEmbedTitle": "📬 Te han mencionado",
-			"dmMentioned": "{sender} te mencionó en **{server}** · #{channel}\\n\\n**Mensaje:** {message}"
+			"dmMentioned": "{sender} te mencionó en **{server}** · #{channel}\\n\\n**Mensaje:** {message}",
+			"away": "Ausente",
+			"isAfk": "⏸️ {member} está AFK (desde hace {duration})",
+			"isAfkWithMessage": "⏸️ {member} está AFK: **{message}** (desde hace {duration})"
 		}
 	},
 	"giveaway": {
@@ -260,7 +314,41 @@
 			"finishChannelNotConfigured": "❌ El canal de sorteos no está configurado.",
 			"finishChannelNotFound": "❌ No se encontró el canal de sorteos.",
 			"failed": "❌ No se pudo abrir el formulario de sorteo: {error}",
-			"notEnoughInvites": "❌ Necesitas **{needed}** invitaciones para entrar en este sorteo. Tienes **{have}**."
+			"notEnoughInvites": "❌ Necesitas **{needed}** invitaciones para entrar en este sorteo. Tienes **{have}**.",
+			"roleSelectFailed": "❌ No se pudo procesar la selección de roles: {error}",
+			"enterFailed": "❌ **No se pudo participar en el sorteo**\\n\\nError: {error}",
+			"finishFailed": "❌ No se pudo finalizar el sorteo: {error}"
+		},
+		"unknownRole": "Rol {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "Sin restricción de roles",
+			"multipleEntries": "Se permiten varias participaciones",
+			"singleEntry": "Una participación por miembro",
+			"prizeLine": "**Premio:** {prize}",
+			"winnerLine": "**Ganador:** {count}",
+			"winnersLine": "**Ganadores:** {count}",
+			"entriesLine": "**Participaciones:** {entries}",
+			"rolesLine": "**Restricción de roles:** {roles}",
+			"invitesLine": "**Invitaciones necesarias:** {count}",
+			"hostedBy": "👤 Organizado por",
+			"enterButton": "🎉 Participar en el sorteo"
+		},
+		"results": {
+			"endedTitle": "🎉 Sorteo finalizado",
+			"endedWinnersTitle": "🎉 ¡Sorteo finalizado!",
+			"noEntries": "**{title}**\\n\\n❌ ¡Sin participaciones! El sorteo ha terminado sin participantes.",
+			"noWinners": "**{title}**\\n\\n❌ No se pudieron seleccionar ganadores.",
+			"winnerLine": "🎊 **Ganador:** {winners}",
+			"winnersLine": "🎊 **Ganadores:** {winners}",
+			"limitedEntriesOne": "⚠️ *Solo se seleccionó {count} ganador ({requested} solicitados) por falta de participaciones.*",
+			"limitedEntriesMany": "⚠️ *Solo se seleccionaron {count} ganadores ({requested} solicitados) por falta de participaciones.*",
+			"congrats": "¡Enhorabuena! 🎉"
+		},
+		"finished": {
+			"title": "✅ Sorteo finalizado",
+			"noEntries": "Tu sorteo **\"{title}\"** ha finalizado antes de tiempo.\\n\\nNadie participó.",
+			"noWinners": "Tu sorteo **\"{title}\"** ha finalizado antes de tiempo.\\n\\nNo se pudieron seleccionar ganadores.",
+			"winners": "Tu sorteo **\"{title}\"** ha finalizado antes de tiempo.\\n\\n**Ganadores:** {winners}"
 		}
 	},
 	"feedback": {
@@ -284,6 +372,13 @@
 			"channelNotFound": "❌ No se pudieron enviar los comentarios: no se encontró el canal de comentarios.",
 			"failed": "❌ No se pudo abrir el formulario de comentarios: {error}",
 			"submitFailed": "❌ **No se pudieron enviar los comentarios**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde."
+		},
+		"channelEmbed": {
+			"title": "💬 Nuevos comentarios",
+			"fieldFrom": "👤 De",
+			"fieldSubmitted": "🕐 Enviado",
+			"anonymous": "Anónimo",
+			"footerSuffix": "• ID de comentario: #{feedbackId}"
 		}
 	},
 	"staffRating": {
@@ -356,6 +451,40 @@
 			"missingCategory": "❌ Selecciona una categoría antes de continuar.",
 			"permissionDenied": "❌ **Permiso denegado**\\n\\nNecesitas permisos de administrador para aprobar o rechazar reportes de staff.",
 			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
+		},
+		"embed": {
+			"staffDecision": "Decisión del staff",
+			"reviewedBy": "Revisado por",
+			"statusApproved": "Aprobado",
+			"statusRejected": "Rechazado"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Miembro del staff",
+			"fieldRating": "Valoración",
+			"fieldCategory": "Categoría",
+			"fieldReporter": "Reportado por",
+			"fieldStatus": "Estado",
+			"fieldDescription": "Descripción",
+			"anonymousReporter": "Anónimo",
+			"pendingTitle": "🕒 Reporte de staff pendiente",
+			"pendingStatus": "Pendiente de aprobación de un administrador",
+			"approveButton": "Aprobar reporte",
+			"rejectButton": "Rechazar reporte",
+			"titleApproved": "✅ Reporte de staff aprobado",
+			"titleRejected": "❌ Reporte de staff rechazado",
+			"footerReportSuffix": "• ID del reporte: #{reportId}"
+		},
+		"ratingUpdate": {
+			"title": "⭐ Actualización de valoración del staff",
+			"description": "{staff} ha recibido una nueva valoración.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} reportes)",
+			"fieldFeedback": "Comentarios",
+			"dm": "⭐ Tu valoración como staff en **{server}** ahora es **{rating}/5.0** ({totalReports} reportes)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ Este reporte ya ha sido procesado.",
+			"approvedReply": "✅ Reporte #{reportId} aprobado.",
+			"rejectedReply": "❌ Reporte #{reportId} rechazado."
 		}
 	},
 	"contentCreator": {
@@ -405,6 +534,47 @@
 			"submitFailed": "❌ No se pudo enviar la solicitud de creador de contenido: {error}",
 			"permissionDenied": "❌ Necesitas permisos de administrador para aprobar o rechazar solicitudes de creador de contenido.",
 			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
+		},
+		"embed": {
+			"staffDecision": "Decisión del staff",
+			"reviewedBy": "Revisado por",
+			"reviewedBySystem": "Automático (TikTok duplicado)",
+			"statusApproved": "Aprobada",
+			"statusRejected": "Rechazada"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Solicitud de creador de contenido pendiente",
+			"pendingDescription": "{user} ha solicitado acceso como creador de contenido.",
+			"pendingStatus": "Pendiente de aprobación de un administrador",
+			"fieldTiktok": "Usuario de TikTok",
+			"fieldStatus": "Estado",
+			"fieldApplicantReason": "Motivo",
+			"buttonApprove": "Aprobar",
+			"buttonReject": "Rechazar",
+			"titleApproved": "✅ Solicitud de creador de contenido aprobada",
+			"titleRejected": "❌ Solicitud de creador de contenido rechazada",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• ID de solicitud: #{appId}",
+			"liveTitle": "🔴 Creador de contenido en DIRECTO",
+			"liveDescription": "¡{mention} está en directo en TikTok!",
+			"liveWatchButton": "Ver en DIRECTO en TikTok",
+			"autoRejectReviewReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
+			"autoRejectConflictPending": "Esa cuenta tiene una solicitud **pendiente** para este usuario de TikTok.",
+			"autoRejectConflictApproved": "Esa cuenta es un creador de contenido **aprobado** que usa este usuario de TikTok."
+		},
+		"live": {
+			"digest": "📊 **En directo** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "Transmisión #{streamId}",
+			"endedTitle": "⚫ Directo finalizado",
+			"errorTitle": "⚠️ Error de conexión del directo",
+			"sessionLine": "Sesión de transmisión **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ ID de solicitud no válido.",
+			"applicationNotFound": "❌ No se encontró la solicitud.",
+			"alreadyProcessed": "⚠️ Esta solicitud ya ha sido procesada.",
+			"approvedReply": "✅ Solicitud #{appId} aprobada.",
+			"rejectedReply": "❌ Solicitud #{appId} rechazada."
 		}
 	},
 	"notifications": {
@@ -469,7 +639,9 @@
 			"iconStatusUpdated": "Actualizado",
 			"iconStatusRemoved": "Eliminado",
 			"iconStatusFailed": "Fallido (rol actualizado sin icono)",
-			"iconStatusInvalid": "Formato no válido (rol actualizado sin icono)"
+			"iconStatusInvalid": "Formato no válido (rol actualizado sin icono)",
+			"iconFailedFallback": "No se pudo establecer el icono. El rol se actualizó, pero sin el icono personalizado.",
+			"iconNote": "⚠️ **Nota sobre el icono:** {message}"
 		},
 		"deleted": {
 			"title": "✅ Rol de colaborador personalizado eliminado",
@@ -490,7 +662,18 @@
 			"updateFailed": "❌ **No se pudo actualizar el rol**\\n\\nError: {error}\\n\\nAsegúrate de que:\\n- el bot tiene permiso para gestionar roles\\n- las restricciones del rol son válidas",
 			"deleteFailed": "❌ No se pudo eliminar el rol: {error}",
 			"failed": "❌ No se pudo abrir el formulario de creación de rol: {error}",
-			"editFailed": "❌ No se pudo abrir el formulario de edición: {error}"
+			"editFailed": "❌ No se pudo abrir el formulario de edición: {error}",
+			"createFailedReason": "❌ **No se pudo crear el rol**\n\n{reason}"
+		},
+		"colorDefault": "Predeterminado",
+		"anchor": {
+			"noBoosterRole": "Este servidor aún no tiene el rol de Server Booster. Aparece cuando alguien mejora el servidor.",
+			"botTooLow": "El rol del bot debe estar por encima de {role} para crear roles de supporter.",
+			"unknown": "No se pudo determinar dónde colocar el rol de supporter."
+		},
+		"iconErrors": {
+			"boost": "Este servidor necesita el nivel 2 de mejora de servidor para usar iconos de rol personalizados. ¡Puedes usar un emoji en su lugar!",
+			"invalidFormat": "Formato de URL o tipo de archivo no válido"
 		}
 	},
 	"questEnroll": {
@@ -519,7 +702,24 @@
 		"autoQuestDisabled": "La inscripción automática de misiones está desactivada. Contacta con la administración del servidor.",
 		"alreadyRunning": "Ya tienes una misión automática en curso. Espera a que termine antes de iniciar otra.",
 		"announceInChannel": "Cada resultado se publica en {channel}.",
-		"announceDisabled": "No hay canal de misiones configurado, así que no se publica nada: las misiones reclamadas solo se marcan en la lista."
+		"announceDisabled": "No hay canal de misiones configurado, así que no se publica nada: las misiones reclamadas solo se marcan en la lista.",
+		"result": {
+			"reward": "Recompensa",
+			"openInDiscord": "Abrir en Discord",
+			"errorTitle": "Error al inscribirse en la misión",
+			"errorDescription": "{member} ({tag})\nMisión `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Token de usuario de Discord (no se guarda)",
+			"placeholder": "Riesgo ToS: pueden banear tu cuenta y quizá el bot/servidor. Pégalo una vez, nunca en público.",
+			"claimAllTitle": "Reclamar todo (token — alto riesgo)",
+			"enrollTitle": "Inscribirse (token — alto riesgo)"
+		},
+		"tokenTooShort": "Token demasiado corto.",
+		"invalidTokenTitle": "Token no válido",
+		"invalidTokenDescription": "El token que proporcionaste parece no ser válido o haber caducado.\n`{error}`",
+		"invalidQuestId": "ID de misión no válido.",
+		"missingQuestOrToken": "Falta el ID de la misión o el token es demasiado corto."
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -553,7 +753,7 @@
 			"menu": {
 				"title": "🛍️ Notificaciones de artículos de Roblox",
 				"description": "Estás siguiendo {count} artículo(s). Selecciona uno para cambiar sus tipos de notificación.",
-				"empty": "Todavía no sigues ningún artículo de Roblox. Pulsa 🔔 Notify me debajo de una publicación del catálogo para empezar.",
+				"empty": "Todavía no sigues ningún artículo de Roblox. Pulsa 🔔 {button} debajo de una publicación del catálogo para empezar.",
 				"placeholder": "Selecciona un artículo para editarlo...",
 				"disableAll": "🔕 Desactivar todo",
 				"disabledAll": "🔕 Notificaciones desactivadas para {count} artículo(s)."
@@ -561,6 +761,24 @@
 			"errors": {
 				"invalidItem": "❌ No se pudo leer el artículo del catálogo de este botón.",
 				"memberNotFound": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento."
+			}
+		},
+		"itemFallback": "Artículo #{id}",
+		"post": {
+			"free": "GRATIS",
+			"updatedTitle": "[Actualizado] {name}",
+			"openOnRoblox": "Abrir en Roblox",
+			"notifyMe": "Avísame",
+			"fields": {
+				"category": "Categoría",
+				"price": "Precio",
+				"creator": "Creador",
+				"quantity": "Cantidad",
+				"favorites": "Favoritos",
+				"created": "Creado",
+				"notifications": "Notificaciones",
+				"resalePrice": "Precio de reventa",
+				"saleEnds": "La venta termina"
 			}
 		}
 	},
@@ -619,6 +837,13 @@
 			"notFound": "❌ No se encontró ningún creador con ese enlace o usuario.",
 			"tiktokCooling": "⏳ TikTok está limitando las búsquedas ahora. Inténtalo en unos minutos.",
 			"lookupFailed": "❌ No se pudo buscar ese creador ahora. Inténtalo más tarde."
+		},
+		"post": {
+			"platform": "Plataforma",
+			"type": "Tipo",
+			"notifications": "Notificaciones",
+			"openOn": "Abrir en {platform}",
+			"notifyMe": "Avísame"
 		}
 	},
 	"moderation": {
@@ -643,6 +868,382 @@
 		"done": "✅ {action} aplicado a {member}. Caso #{case}.",
 		"failed": "❌ {error}",
 		"invalidDuration": "❌ Introduce una duración como 10m, 2h o 7d.",
-		"notAllowed": "❌ El dueño del servidor y los bots no se pueden moderar."
+		"notAllowed": "❌ El dueño del servidor y los bots no se pueden moderar.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ Miembro advertido",
+				"timeout": "🔇 Miembro aislado",
+				"untimeout": "🔊 Aislamiento retirado",
+				"kick": "👢 Miembro expulsado",
+				"ban": "🔨 Miembro baneado",
+				"tempban": "⏳ Miembro baneado temporalmente",
+				"unban": "🕊️ Miembro desbaneado",
+				"unwarn": "🧹 Advertencia retirada",
+				"clearwarns": "🧹 Advertencias borradas",
+				"tempban_expired": "⌛ Baneo temporal finalizado"
+			},
+			"bulkTitles": {
+				"role_add": "➕ Asignación masiva de rol",
+				"role_remove": "➖ Retirada masiva de rol"
+			},
+			"title": "{action} · Caso #{case}",
+			"description": "Caso **#{case}** registrado para {member}.",
+			"fields": {
+				"member": "👤 Miembro",
+				"staff": "🛡️ Staff",
+				"source": "📍 Origen",
+				"reason": "📝 Motivo",
+				"duration": "⏱️ Duración",
+				"activeWarnings": "📊 Advertencias activas",
+				"role": "🎭 Rol"
+			},
+			"durationValue": "{duration} (termina {ends})",
+			"noReason": "Sin motivo indicado",
+			"unknown": "Desconocido",
+			"automatic": "Automático",
+			"staffFallback": "staff",
+			"sources": {
+				"panel": "panel",
+				"menu": "menú",
+				"discord": "discord",
+				"auto": "automático"
+			},
+			"bulkSummary": "**{done}** completados · {failed} fallidos",
+			"reasons": {
+				"unwarn": "Advertencia #{case} retirada",
+				"clearwarns": "{count} advertencia(s) borrada(s)",
+				"escalation": "Alcanzó {count} advertencias activas",
+				"tempbanExpired": "Caso de baneo temporal #{case} finalizado"
+			}
+		},
+		"memberDm": {
+			"server": "**Servidor:** {server}",
+			"reason": "**Motivo:** {reason}",
+			"duration": "**Duración:** {duration}"
+		}
+	},
+	"setup": {
+		"categoryName": "Menú de {botName}",
+		"channels": {
+			"menu": "「💻」menú",
+			"bot_updates": "「⚙️」novedades-del-bot",
+			"welcomer": "「🚪」bienvenida",
+			"booster": "「🚀」mejoras",
+			"moderation": "「🔨」moderación",
+			"leveling": "「🆙」nivel",
+			"giveaway": "「🎁」sorteos",
+			"staff_rating": "「⭐」valoración-del-staff",
+			"discord_quest_notifier": "「📜」misiones-de-discord",
+			"content_creator": "「📽️」creadores-de-contenido",
+			"roblox_catalog_notifier": "「👗」catálogo-roblox",
+			"items": "「🛍️」objetos",
+			"minigames": "「🎲」minijuegos"
+		},
+		"language": {
+			"title": "🌐 Elige el idioma del servidor",
+			"description": "Elige el idioma de este servidor. Se usa para nombrar los canales que crea `/setup`, para el menú, las publicaciones de aprobación, todos los mensajes públicos del bot y el chat y la voz de la IA.\n\nLos miembros aún pueden elegir su propio idioma en el menú para sus respuestas privadas y MD. Puedes cambiarlo después en el panel web en **Configuration → Main**.",
+			"placeholder": "Selecciona el idioma del servidor",
+			"working": "⏳ Configurando en **{language}**…",
+			"applied": "🌐 Idioma del servidor: **{language}**"
+		}
+	},
+	"items": {
+		"common": {
+			"footer": "Objetos",
+			"aMemberActor": "Un miembro",
+			"aMemberTarget": "un miembro",
+			"disguisedMember": "Un miembro misterioso 🎭",
+			"someone": "Alguien",
+			"item": "objeto",
+			"anItem": "un objeto",
+			"them": "ese miembro",
+			"until": " (termina {time})",
+			"activeUntil": " (activo, termina {time})",
+			"luckBonus": " (+{percent}% de suerte 🍀)",
+			"luckTaxDiscount": " (−{percent}% de impuesto por suerte 🍀)",
+			"addressed": "{member}, {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "Robo bloqueado",
+				"blockedDescription": "¡El **Escudo** de {target} bloqueó el robo de {actor}!",
+				"immuneTitle": "Robo absorbido por la inmunidad",
+				"immuneDescription": "{target} sigue siendo inmune. El robo de {actor} no tuvo efecto y se perdió **{item}**."
+			},
+			"bomb": {
+				"blockedTitle": "Bomba bloqueada",
+				"blockedDescription": "¡El **Escudo** de {target} bloqueó la bomba de {actor}!",
+				"immuneTitle": "Bomba absorbida por la inmunidad",
+				"immuneDescription": "{target} sigue siendo inmune. La bomba de {actor} no tuvo efecto y se perdió **{item}**."
+			},
+			"leech": {
+				"blockedTitle": "Sanguijuela bloqueada",
+				"blockedDescription": "¡El **Escudo** de {target} bloqueó la sanguijuela de {actor}!",
+				"immuneTitle": "Sanguijuela absorbida por la inmunidad",
+				"immuneDescription": "{target} sigue siendo inmune. La sanguijuela de {actor} no tuvo efecto y se perdió **{item}**."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "Ataque reflejado",
+			"reflectedDescription": "¡{target} le devolvió el ataque a {actor}!",
+			"withItem": " con **{item}**",
+			"refundedValue": "{target} recibió un reembolso de {xp}",
+			"bountyValue": "{actor} también cobró {xp}",
+			"immuneValue": "La inmunidad de {target} termina {time}",
+			"steal": {
+				"title": "¡Miembro robado!",
+				"description": "¡{actor} robó a {target}{withItem}!"
+			},
+			"bomb": {
+				"title": "¡Miembro bombardeado!",
+				"description": "¡{actor} bombardeó a {target}{withItem}!"
+			}
+		},
+		"fields": {
+			"skimRate": "Tasa de drenaje",
+			"received": "Recibido",
+			"tax": "Impuesto",
+			"bounty": "Recompensa",
+			"xpLostByAttacker": "XP perdida por el atacante",
+			"attacker": "Atacante",
+			"victim": "Víctima",
+			"xpStolen": "XP robada",
+			"xpDestroyed": "XP destruida",
+			"insuranceRefund": "Reembolso del seguro",
+			"bountyCollected": "Recompensa cobrada",
+			"immunity": "Inmunidad"
+		},
+		"leech": {
+			"title": "Sanguijuela adherida",
+			"description": "{actor} le puso una sanguijuela a {target}, que le drena parte de su XP mientras esté activa."
+		},
+		"gift": {
+			"title": "Regalo enviado",
+			"description": "¡{actor} le envió un regalo a {target}!"
+		},
+		"bounty": {
+			"title": "Recompensa publicada",
+			"description": "{actor} puso una recompensa por {target}. Quien le robe o le lance una bomba a continuación se la lleva."
+		},
+		"disguise": {
+			"title": "Un miembro se perdió entre la multitud",
+			"description": "Alguien se puso un **Disfraz**{until}. Sus ataques ahora ocultan su nombre y desapareció de la clasificación."
+		},
+		"boost": {
+			"title": "Potenciador activado",
+			"description": "{actor} activó un potenciador{until}. Las ganancias se multiplican mientras dure."
+		},
+		"shield": {
+			"title": "Escudo activado",
+			"description": "{actor} ahora está protegido, así que los robos, bombas y sanguijuelas entrantes serán bloqueados{until}."
+		},
+		"reflect": {
+			"title": "Reflejo activado",
+			"description": "{actor} devolverá el próximo ataque al atacante{until}."
+		},
+		"insurance": {
+			"title": "Seguro activado",
+			"description": "A {actor} se le reembolsará el {percent}%{luck} de su pérdida la próxima vez que le roben o le lancen una bomba{until}."
+		},
+		"luck": {
+			"title": "Suerte activada",
+			"description": "{actor} ahora tiene +{percent}% de suerte en robo, bomba, minijuegos, espionaje, sanguijuela, impuesto de regalos, seguro, potenciador de amigos y precios de la tienda{until}."
+		},
+		"spyCaught": {
+			"title": "Espía atrapado",
+			"description": "{target} atrapó a {spy} intentando espiarle. No se obtuvo ninguna información."
+		},
+		"adminGift": {
+			"title": "¡Ha llegado un regalo!",
+			"description": "{member} recibió **{quantity}× {item}** del administrador. ¡Revisa tus objetos!"
+		},
+		"expired": {
+			"boost": {
+				"title": "Potenciador terminado",
+				"text": "Tu **Potenciador {value}×** se ha agotado."
+			},
+			"shield": {
+				"title": "Escudo terminado",
+				"text": "Tu **Escudo** se ha agotado. Ya pueden volver a atacarte."
+			},
+			"leech": {
+				"title": "Sanguijuela terminada",
+				"text": "Tu **Sanguijuela del {value}%** ha terminado.",
+				"textWithTarget": "Tu **Sanguijuela del {value}%** sobre {target} ha terminado."
+			},
+			"reflect": {
+				"title": "Reflejo terminado",
+				"text": "Tu **Reflejo** se ha agotado."
+			},
+			"insurance": {
+				"title": "Seguro terminado",
+				"text": "Tu **Seguro** ha expirado."
+			},
+			"disguise": {
+				"title": "Disfraz terminado",
+				"announcement": "Un miembro se quitó el disfraz. Vuelve a ser visible."
+			},
+			"luck": {
+				"title": "Suerte terminada",
+				"text": "Tu **Suerte +{value}%** se ha agotado."
+			}
+		},
+		"immunityEnded": {
+			"title": "Inmunidad terminada",
+			"description": "{member} ya no es inmune. ¡Vuelve a ser un blanco fácil!",
+			"anonymous": "Un miembro ya no es inmune."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "Robo listo de nuevo",
+				"text": "Tu tiempo de espera de robo terminó. ¡Ya puedes volver a robar!"
+			},
+			"bomb": {
+				"title": "Bomba lista de nuevo",
+				"text": "Tu tiempo de espera de bomba terminó. ¡Ya puedes volver a lanzar bombas!"
+			},
+			"insurance": {
+				"title": "Seguro listo de nuevo",
+				"text": "Tu tiempo de espera del seguro terminó. ¡Ya puedes volver a activar el seguro!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "Un miembro",
+		"footer": "Minijuegos",
+		"win": {
+			"title": "🎲 ¡Victoria en el minijuego!",
+			"description": "¡{member} apostó {wager} a {multiplier}× y **ganó**!"
+		},
+		"lose": {
+			"title": "🎲 Derrota en el minijuego",
+			"description": "{member} apostó {wager} a {multiplier}× y **lo perdió todo**."
+		},
+		"fields": {
+			"payout": "Pago",
+			"netGain": "Ganancia neta",
+			"winChance": "Probabilidad de ganar",
+			"xpLost": "XP perdida"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ Giro de efecto de tema",
+			"description": "¡{member} giró por {cost} y consiguió **{effect}**!"
+		},
+		"fields": {
+			"effect": "Efecto",
+			"xpSpent": "XP gastada",
+			"variant": "Variante"
+		}
+	},
+	"tasks": {
+		"footer": "Tareas",
+		"rarity": {
+			"common": "Común",
+			"uncommon": "Poco común",
+			"rare": "Raro",
+			"epic": "Épico",
+			"legendary": "Legendario",
+			"mythic": "Mítico"
+		},
+		"milestones": {
+			"7": "Una semana",
+			"30": "Un mes",
+			"100": "Cien días",
+			"365": "Un año"
+		},
+		"login": {
+			"jackpotTitle": "🎁 Premio gordo del día {day}: ¡{rarity}!",
+			"dropTitle": "✨ ¡Objeto {rarity}!",
+			"description": "¡{member} obtuvo un objeto **{rarity}** el día {day}!",
+			"fields": {
+				"item": "Objeto",
+				"rarity": "Rareza",
+				"worth": "Valor"
+			}
+		},
+		"streak": {
+			"day": "{count} día",
+			"days": "{count} días",
+			"reset": {
+				"title": "💔 Racha perdida",
+				"description": "{member} se perdió **{days}** y perdió una racha de **{previous} días**. Vuelta al día 1.",
+				"descriptionBurned": "{member} se perdió **{days}** y perdió una racha de **{previous} días**. {burned} Vuelta al día 1.",
+				"burnedOne": "Gastó 1 protector de racha intentando salvarla.",
+				"burnedMany": "Gastó {count} protectores de racha intentando salvarla."
+			},
+			"frozen": {
+				"title": "🧊 Racha congelada",
+				"description": "{member} se perdió **{days}**, pero gracias a {freezes} la racha de **{streak} días** sigue viva.",
+				"one": "un protector de racha",
+				"many": "{count} protectores de racha"
+			},
+			"fields": {
+				"longest": "Racha más larga",
+				"freezesUsed": "Protectores usados",
+				"freezesLeft": "Protectores restantes"
+			},
+			"milestone": {
+				"title": "{emoji} Racha: {label}",
+				"description": "¡{member} acaba de alcanzar una racha de **{streak} días**!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 ¡Bienvenido al servidor!",
+		"fields": {
+			"accountCreated": "📅 Cuenta creada",
+			"memberCount": "👥 Número de miembros",
+			"invitedBy": "📨 Invitado por"
+		},
+		"memberNumber": "Miembro #{count}",
+		"inviterCount": "{inviter} ({count} invitaciones)",
+		"inviter": {
+			"vanity": "el enlace personalizado",
+			"server": "el enlace de invitación del servidor",
+			"someone": "alguien"
+		},
+		"inviteSources": {
+			"invite": "Enlace de Discord",
+			"personal": "Enlace personal",
+			"vanity": "Enlace personalizado",
+			"server": "Enlace del servidor",
+			"manual": "Asignado por el staff",
+			"unknown": "Desconocido"
+		},
+		"accountAge": {
+			"today": "hoy",
+			"oneDay": "hace 1 día",
+			"days": "hace {days} días"
+		},
+		"unknownServer": "Servidor desconocido"
+	},
+	"booster": {
+		"title": "💎 ¡Gracias por mejorar el servidor!",
+		"fields": {
+			"boostLevel": "🚀 Nivel de mejora",
+			"totalBoosts": "✨ Mejoras totales",
+			"boostedSince": "📅 Mejorando desde"
+		},
+		"level": "Nivel {level}",
+		"justNow": "Justo ahora",
+		"unknownServer": "Servidor desconocido"
+	},
+	"questNotifier": {
+		"defaultReward": "• Recompensa de la misión",
+		"fields": {
+			"rewards": "Recompensas",
+			"tasks": "Tareas",
+			"game": "🎮 Juego",
+			"publisher": "🏢 Editor",
+			"expires": "⏳ Caduca"
+		},
+		"test": "_Notificación de prueba: el notificador funciona._",
+		"openInDiscord": "Abrir en Discord"
+	},
+	"forwarder": {
+		"title": "Mensaje de {channel}",
+		"additionalAttachments": "Archivos adjuntos adicionales"
 	}
 }

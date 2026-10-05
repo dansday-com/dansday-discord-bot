@@ -3,17 +3,64 @@ import { getEmbedConfig, getBotConfig } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
-import { translate, getAvailableLanguages, getUserLanguage } from '../../i18n.js';
+import { translate, getAvailableLanguages, getUserLanguage, getServerLanguage } from '../../i18n.js';
+import { isServerLanguage, serverLanguageName } from '../../../../../languages.js';
 
-const languageNames = {
-	en: 'English',
-	id: 'Bahasa Indonesia',
-	de: 'Deutsch',
-	es: 'Español',
-	ar: 'العربية',
-	ms: 'Bahasa Melayu',
-	zh: '简体中文'
-};
+const SERVER_DEFAULT_VALUE = 'server';
+
+async function buildLanguagePanel(interaction, server) {
+	const g = interaction.guild.id;
+	const u = interaction.user.id;
+	const member = await db.getMemberByDiscordId(server.id, u).catch(() => null);
+	const ownLang = isServerLanguage(member?.language) ? member.language : null;
+	const serverLang = await getServerLanguage(g);
+	const currentLang = await getUserLanguage(g, u);
+
+	const embedConfig = await getEmbedConfig(g);
+	const langTitle = await translate('settings.language.title', g, u);
+	const langDesc = await translate('settings.language.description', g, u);
+	const currentLangText = await translate('settings.language.current', g, u);
+	const serverDefaultLabel = await translate('settings.language.serverDefault', g, u, { language: serverLanguageName(serverLang) });
+	const currentOptionText = await translate('settings.language.currentOption', g, u);
+	const currentDisplay = ownLang ? serverLanguageName(currentLang) : serverDefaultLabel;
+
+	const languageEmbed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(langTitle)
+		.setDescription(`${langDesc}\n\n**${currentLangText}:** ${currentDisplay}`)
+		.setFooter({ text: embedConfig.FOOTER })
+		.setTimestamp();
+
+	const options = [
+		{
+			label: serverDefaultLabel.slice(0, 100),
+			value: SERVER_DEFAULT_VALUE,
+			description: (await translate('settings.language.serverDefaultDescription', g, u)).slice(0, 100),
+			default: !ownLang
+		},
+		...getAvailableLanguages().map((lang) => ({
+			label: serverLanguageName(lang),
+			value: lang,
+			description: lang === ownLang ? currentOptionText.slice(0, 100) : undefined,
+			default: lang === ownLang
+		}))
+	];
+
+	const selectMenu = new StringSelectMenuBuilder()
+		.setCustomId('settings_language_select')
+		.setPlaceholder(await translate('settings.language.select', g, u))
+		.addOptions(options);
+
+	const backButton = new ButtonBuilder()
+		.setCustomId('bot_menu')
+		.setLabel(await translate('menu.back', g, u))
+		.setStyle(ButtonStyle.Secondary);
+
+	return {
+		embeds: [languageEmbed],
+		components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(backButton)]
+	};
+}
 
 export async function handleLanguageButton(interaction) {
 	try {
@@ -55,45 +102,8 @@ export async function handleLanguageButton(interaction) {
 			return;
 		}
 
-		const currentLang = await getUserLanguage(interaction.guild.id, interaction.user.id);
-		const availableLangs = getAvailableLanguages();
-
-		const embedConfig = await getEmbedConfig(interaction.guild.id);
-		const langTitle = await translate('settings.language.title', interaction.guild.id, interaction.user.id);
-		const langDesc = await translate('settings.language.description', interaction.guild.id, interaction.user.id);
-		const currentLangText = await translate('settings.language.current', interaction.guild.id, interaction.user.id);
-
-		const languageEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(langTitle)
-			.setDescription(`${langDesc}\n\n**${currentLangText}:** ${languageNames[currentLang] || currentLang}`)
-			.setFooter({ text: embedConfig.FOOTER })
-			.setTimestamp();
-
-		const options = availableLangs.map((lang) => ({
-			label: languageNames[lang] || lang,
-			value: lang,
-			description: lang === currentLang ? 'Current language' : undefined,
-			default: lang === currentLang
-		}));
-
-		const selectMenu = new StringSelectMenuBuilder()
-			.setCustomId('settings_language_select')
-			.setPlaceholder(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
-			.addOptions(options);
-
-		const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-
-		const backButton = new ButtonBuilder()
-			.setCustomId('bot_menu')
-			.setLabel(await translate('menu.back', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Secondary);
-
-		const backRow = new ActionRowBuilder().addComponents(backButton);
-
 		await interaction.update({
-			embeds: [languageEmbed],
-			components: [selectRow, backRow],
+			...(await buildLanguagePanel(interaction, server)),
 			flags: 64
 		});
 	} catch (error) {
@@ -138,10 +148,10 @@ export async function handleLanguageSelect(interaction) {
 		}
 
 		const selectedLang = interaction.values[0];
-		if (!selectedLang) {
+		if (selectedLang !== SERVER_DEFAULT_VALUE && !isServerLanguage(selectedLang)) {
 			await interaction
 				.editReply({
-					content: '❌ No language selected.',
+					content: await translate('settings.language.failed', interaction.guild.id, interaction.user.id, { error: selectedLang ?? '' }),
 					components: [],
 					embeds: []
 				})
@@ -149,56 +159,17 @@ export async function handleLanguageSelect(interaction) {
 			return;
 		}
 
-		await db.setMemberLanguage(server.id, interaction.user.id, selectedLang);
+		const ownLang = selectedLang === SERVER_DEFAULT_VALUE ? null : selectedLang;
+		await db.setMemberLanguage(server.id, interaction.user.id, ownLang);
 
 		const successMsg = await translate('settings.language.updated', interaction.guild.id, interaction.user.id);
-		const langName = languageNames[selectedLang] || selectedLang;
+		const langName = ownLang
+			? serverLanguageName(ownLang)
+			: await translate('settings.language.serverDefault', interaction.guild.id, interaction.user.id, {
+					language: serverLanguageName(await getServerLanguage(interaction.guild.id))
+				});
 
-		const serverForUpdate = await getServerForInteraction(interaction);
-		if (serverForUpdate) {
-			const currentLang = await getUserLanguage(interaction.guild.id, interaction.user.id);
-			const availableLangs = getAvailableLanguages();
-
-			const embedConfig = await getEmbedConfig(interaction.guild.id);
-			const langTitle = await translate('settings.language.title', interaction.guild.id, interaction.user.id);
-			const langDesc = await translate('settings.language.description', interaction.guild.id, interaction.user.id);
-			const currentLangText = await translate('settings.language.current', interaction.guild.id, interaction.user.id);
-
-			const languageEmbed = new EmbedBuilder()
-				.setColor(embedConfig.COLOR)
-				.setTitle(langTitle)
-				.setDescription(`${langDesc}\n\n**${currentLangText}:** ${languageNames[currentLang] || currentLang}`)
-				.setFooter({ text: embedConfig.FOOTER })
-				.setTimestamp();
-
-			const options = availableLangs.map((lang) => ({
-				label: languageNames[lang] || lang,
-				value: lang,
-				description: lang === currentLang ? 'Current language' : undefined,
-				default: lang === currentLang
-			}));
-
-			const selectMenu = new StringSelectMenuBuilder()
-				.setCustomId('settings_language_select')
-				.setPlaceholder(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
-				.addOptions(options);
-
-			const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-
-			const backButton = new ButtonBuilder()
-				.setCustomId('bot_menu')
-				.setLabel(await translate('menu.back', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Secondary);
-
-			const backRow = new ActionRowBuilder().addComponents(backButton);
-
-			await interaction
-				.editReply({
-					embeds: [languageEmbed],
-					components: [selectRow, backRow]
-				})
-				.catch(() => null);
-		}
+		await interaction.editReply(await buildLanguagePanel(interaction, server)).catch(() => null);
 
 		await interaction
 			.followUp({

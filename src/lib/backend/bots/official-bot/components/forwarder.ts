@@ -1,6 +1,7 @@
 import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
 import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
+import { serverTranslator } from '../i18n.js';
 
 function extractCustomEmojis(text) {
 	const str = text != null ? String(text) : '';
@@ -206,6 +207,7 @@ async function deliverToForwarder(messageData, client, forwarderConfig, sourceCh
 
 	try {
 		const embedConfig = await getEmbedConfig(targetGuildId);
+		const tr = await serverTranslator(targetGuildId);
 
 		const allTexts = [messageData.content || ''];
 		if (messageData.embeds?.length) {
@@ -231,7 +233,7 @@ async function deliverToForwarder(messageData, client, forwarderConfig, sourceCh
 
 		const messageEmbed = {
 			color: embedConfig.COLOR,
-			title: `Message from ${messageData.channel.name}`,
+			title: tr('forwarder.title', { channel: messageData.channel.name }),
 			author: {
 				name: messageData.author.displayName || `${messageData.author.username}#${messageData.author.discriminator}`,
 				icon_url: messageData.author.avatar
@@ -263,7 +265,7 @@ async function deliverToForwarder(messageData, client, forwarderConfig, sourceCh
 			if (messageData.attachments.length > 1) {
 				messageEmbed.fields = messageEmbed.fields || [];
 				messageEmbed.fields.push({
-					name: 'Additional Attachments',
+					name: tr('forwarder.additionalAttachments'),
 					value: messageData.attachments
 						.slice(1)
 						.map((att) => `[${att.name}](${att.url})`)

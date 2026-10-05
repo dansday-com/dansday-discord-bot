@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client
 import { getEmbedConfig, runQuestUserAutomation, type QuestAutomationResult } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
+import { serverTranslator } from '../i18n.js';
 
 const activeEnrollUsers = new Set<string>();
 
@@ -49,15 +50,16 @@ async function postQuestResult(job: QuestEnrollJob | QuestClaimAllJob, result: Q
 	const channel = await textChannelForJob(job.client, job.channelId);
 	if (!channel) return;
 	const embedConfig = await getEmbedConfig(job.guildId);
+	const tr = await serverTranslator(job.guildId);
 	const embed = new EmbedBuilder()
 		.setColor(result.ok ? embedConfig.COLOR : 0xed4245)
 		.setTitle(result.title)
 		.setDescription(result.description)
-		.addFields({ name: 'Reward', value: (result.rewardLine || '—').slice(0, 1024), inline: false })
+		.addFields({ name: tr('questEnroll.result.reward'), value: (result.rewardLine || '—').slice(0, 1024), inline: false })
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(result.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(result.questUrl).setLabel(tr('questEnroll.result.openInDiscord').slice(0, 80)).setEmoji('🖥️')
 	);
 	await channel.send({ content: `<@${job.requesterId}>`, embeds: [embed], components: [row] });
 }
@@ -66,16 +68,28 @@ async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: s
 	const channel = await textChannelForJob(job.client, job.channelId);
 	if (!channel) return;
 	const embedConfig = await getEmbedConfig(job.guildId);
+	const tr = await serverTranslator(job.guildId);
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(`https://discord.com/quests/${questId}`).setLabel('Open in Discord').setEmoji('🖥️')
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Link)
+			.setURL(`https://discord.com/quests/${questId}`)
+			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, 80))
+			.setEmoji('🖥️')
 	);
 	await channel.send({
 		content: `<@${job.requesterId}>`,
 		embeds: [
 			new EmbedBuilder()
 				.setColor(0xed4245)
-				.setTitle('Quest enroll error')
-				.setDescription(`<@${job.requesterId}> (${job.requesterTag})\nQuest \`${questId}\`\n${message.slice(0, 3400)}`)
+				.setTitle(tr('questEnroll.result.errorTitle'))
+				.setDescription(
+					tr('questEnroll.result.errorDescription', {
+						member: `<@${job.requesterId}>`,
+						tag: job.requesterTag,
+						quest: questId,
+						error: message.slice(0, 3400)
+					})
+				)
 				.setFooter({ text: embedConfig.FOOTER })
 				.setTimestamp()
 		],

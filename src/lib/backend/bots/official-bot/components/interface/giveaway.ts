@@ -3,8 +3,31 @@ import { getEmbedConfig, GIVEAWAY, NOTIFICATIONS, getServerForCurrentBot } from 
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
-import { translate } from '../../i18n.js';
+import { translate, serverTranslator, memberTranslator, type Translator } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
+
+function giveawayRoleMention(guild, roleId, tr: Translator) {
+	const role = guild.roles.cache.get(roleId);
+	return role ? `<@&${roleId}>` : tr('giveaway.unknownRole', { roleId });
+}
+
+function buildGiveawayWinnersDescription(tr: Translator, giveaway, winners, winnerMentions: string) {
+	const parts = [
+		`**${giveaway.title}**`,
+		tr('giveaway.announcement.prizeLine', { prize: giveaway.prize }),
+		tr(winners.length > 1 ? 'giveaway.results.winnersLine' : 'giveaway.results.winnerLine', { winners: winnerMentions })
+	];
+	if (winners.length < giveaway.winner_count) {
+		parts.push(
+			tr(winners.length > 1 ? 'giveaway.results.limitedEntriesMany' : 'giveaway.results.limitedEntriesOne', {
+				count: winners.length,
+				requested: giveaway.winner_count
+			})
+		);
+	}
+	parts.push(tr('giveaway.results.congrats'));
+	return parts.join('\n\n');
+}
 
 export async function handleGiveawayButton(interaction) {
 	try {
@@ -211,12 +234,12 @@ export async function handleGiveawayRoleSelect(interaction) {
 		try {
 			if (interaction.deferred || interaction.replied) {
 				await interaction.followUp({
-					content: `❌ Failed to process role selection: ${error.message}`,
+					content: await translate('giveaway.errors.roleSelectFailed', interaction.guild.id, interaction.user.id, { error: error.message }),
 					flags: 64
 				});
 			} else {
 				await interaction.reply({
-					content: `❌ Failed to process role selection: ${error.message}`,
+					content: await translate('giveaway.errors.roleSelectFailed', interaction.guild.id, interaction.user.id, { error: error.message }),
 					flags: 64
 				});
 			}
@@ -294,7 +317,7 @@ export async function handleGiveawaySkipRolesContinue(interaction) {
 	} catch (error) {
 		await logger.log(`❌ Error showing giveaway modal: ${error.message}`);
 		await interaction.reply({
-			content: `❌ Failed to open giveaway form: ${error.message}`,
+			content: await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message }),
 			flags: 64
 		});
 	}
@@ -448,23 +471,23 @@ export async function handleGiveawayModal(interaction) {
 
 		const giveaway = await db.createGiveaway(giveawayData);
 
-		const roleRestrictionNone = 'No role restrictions';
+		const tr = await serverTranslator(guild.id);
+		const roleRestrictionNone = tr('giveaway.announcement.noRoleRestrictions');
 		const roleRestrictionText =
-			allowedRoles && allowedRoles.length > 0
-				? allowedRoles
-						.map((roleId) => {
-							const role = guild.roles.cache.get(roleId);
-							return role ? `<@&${roleId}>` : `Role ${roleId}`;
-						})
-						.join(', ')
-				: roleRestrictionNone;
+			allowedRoles && allowedRoles.length > 0 ? allowedRoles.map((roleId) => giveawayRoleMention(guild, roleId, tr)).join(', ') : roleRestrictionNone;
 
-		const entriesLabel = multipleEntriesAllowed ? 'Multiple entries allowed' : 'Single entry per member';
+		const entriesLabel = multipleEntriesAllowed ? tr('giveaway.announcement.multipleEntries') : tr('giveaway.announcement.singleEntry');
 		const embedTitle = `🎉 ${title}`;
-		const invitesLine = minInvites > 0 ? `\n**Invites Needed:** ${minInvites}` : '';
-		const embedDescription = `**Prize:** ${prize}\n**Winner${winnerCount > 1 ? 's' : ''}:** ${winnerCount}\n**Entries:** ${entriesLabel}\n**Role Restrictions:** ${roleRestrictionText}${invitesLine}`;
-		const hostedByLabel = '👤 Hosted By';
-		const endsLabel = '⏰ Ends';
+		const descriptionLines = [
+			tr('giveaway.announcement.prizeLine', { prize }),
+			tr(winnerCount > 1 ? 'giveaway.announcement.winnersLine' : 'giveaway.announcement.winnerLine', { count: winnerCount }),
+			tr('giveaway.announcement.entriesLine', { entries: entriesLabel }),
+			tr('giveaway.announcement.rolesLine', { roles: roleRestrictionText })
+		];
+		if (minInvites > 0) descriptionLines.push(tr('giveaway.announcement.invitesLine', { count: minInvites }));
+		const embedDescription = descriptionLines.join('\n');
+		const hostedByLabel = tr('giveaway.announcement.hostedBy');
+		const endsLabel = tr('giveaway.active.ends');
 		const giveawayEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(embedTitle)
@@ -484,7 +507,7 @@ export async function handleGiveawayModal(interaction) {
 			.setTimestamp()
 			.setFooter({ text: embedConfig.FOOTER });
 
-		const enterLabel = '🎉 Enter Giveaway';
+		const enterLabel = tr('giveaway.announcement.enterButton');
 		const enterButton = new ButtonBuilder().setCustomId(`giveaway_enter_${giveaway.id}`).setLabel(enterLabel).setStyle(ButtonStyle.Success);
 
 		const enterButtonRow = new ActionRowBuilder().addComponents(enterButton);
@@ -605,12 +628,8 @@ export async function handleGiveawayEnterButton(interaction) {
 			const hasAllRequiredRoles = giveaway.allowed_roles.every((roleId) => memberRoles.includes(roleId));
 
 			if (!hasAllRequiredRoles) {
-				const roleMentions = giveaway.allowed_roles
-					.map((roleId) => {
-						const role = guild.roles.cache.get(roleId);
-						return role ? `<@&${roleId}>` : `Role ${roleId}`;
-					})
-					.join(', ');
+				const mtr = await memberTranslator(interaction.guild.id, interaction.user.id);
+				const roleMentions = giveaway.allowed_roles.map((roleId) => giveawayRoleMention(guild, roleId, mtr)).join(', ');
 
 				const errorMsg = await translate('giveaway.errors.roleRestriction', interaction.guild.id, interaction.user.id, { roles: roleMentions });
 				await interaction.editReply({
@@ -685,7 +704,7 @@ export async function handleGiveawayEnterButton(interaction) {
 		await logger.log(`❌ Error processing giveaway entry: ${error.message}`);
 		await interaction
 			.editReply({
-				content: `❌ **Failed to Enter Giveaway**\n\nError: ${error.message}`
+				content: await translate('giveaway.errors.enterFailed', interaction.guild.id, interaction.user.id, { error: error.message })
 			})
 			.catch(() => null);
 	}
@@ -791,12 +810,14 @@ export async function handleGiveawayFinish(interaction) {
 
 		const entries = await db.getGiveawayEntries(giveaway.id);
 		const embedConfig = await getEmbedConfig(guild.id);
+		const tr = await serverTranslator(guild.id);
+		const mtr = await memberTranslator(guild.id, user.id);
 
 		if (entries.length === 0) {
 			const noEntriesEmbed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
-				.setTitle('🎉 Giveaway Ended')
-				.setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
+				.setTitle(tr('giveaway.results.endedTitle'))
+				.setDescription(tr('giveaway.results.noEntries', { title: giveaway.title }))
 				.setTimestamp()
 				.setFooter({ text: embedConfig.FOOTER });
 
@@ -816,8 +837,8 @@ export async function handleGiveawayFinish(interaction) {
 
 			const successEmbed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
-				.setTitle('✅ Giveaway Finished')
-				.setDescription(`Your giveaway **"${giveaway.title}"** has been finished early.\n\nNo participants entered.`)
+				.setTitle(mtr('giveaway.finished.title'))
+				.setDescription(mtr('giveaway.finished.noEntries', { title: giveaway.title }))
 				.setTimestamp()
 				.setFooter({ text: embedConfig.FOOTER });
 
@@ -836,8 +857,8 @@ export async function handleGiveawayFinish(interaction) {
 		if (winners.length === 0) {
 			const noWinnersEmbed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
-				.setTitle('🎉 Giveaway Ended')
-				.setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
+				.setTitle(tr('giveaway.results.endedTitle'))
+				.setDescription(tr('giveaway.results.noWinners', { title: giveaway.title }))
 				.setTimestamp()
 				.setFooter({ text: embedConfig.FOOTER });
 
@@ -857,8 +878,8 @@ export async function handleGiveawayFinish(interaction) {
 
 			const successEmbed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
-				.setTitle('✅ Giveaway Finished')
-				.setDescription(`Your giveaway **"${giveaway.title}"** has been finished early.\n\nCould not select winners.`)
+				.setTitle(mtr('giveaway.finished.title'))
+				.setDescription(mtr('giveaway.finished.noWinners', { title: giveaway.title }))
 				.setTimestamp()
 				.setFooter({ text: embedConfig.FOOTER });
 
@@ -877,17 +898,11 @@ export async function handleGiveawayFinish(interaction) {
 		const winnerMemberIds = winners.map((w) => w.member_id);
 		await db.markGiveawayWinners(giveaway.id, winnerMemberIds);
 
-		let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
-
-		if (winners.length < giveaway.winner_count) {
-			description += `⚠️ *Only ${winners.length} winner${winners.length > 1 ? 's' : ''} selected (${giveaway.winner_count} requested) due to limited entries.*\n\n`;
-		}
-
-		description += `Congratulations! 🎉`;
+		const description = buildGiveawayWinnersDescription(tr, giveaway, winners, winnerMentions);
 
 		const winnersEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle('🎉 Giveaway Ended!')
+			.setTitle(tr('giveaway.results.endedWinnersTitle'))
 			.setDescription(description)
 			.setTimestamp()
 			.setFooter({ text: embedConfig.FOOTER });
@@ -908,8 +923,8 @@ export async function handleGiveawayFinish(interaction) {
 
 		const successEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle('✅ Giveaway Finished')
-			.setDescription(`Your giveaway **"${giveaway.title}"** has been finished early.\n\n**Winners:** ${winnerMentions}`)
+			.setTitle(mtr('giveaway.finished.title'))
+			.setDescription(mtr('giveaway.finished.winners', { title: giveaway.title, winners: winnerMentions }))
 			.setTimestamp()
 			.setFooter({ text: embedConfig.FOOTER });
 
@@ -924,7 +939,7 @@ export async function handleGiveawayFinish(interaction) {
 		await logger.log(`❌ Error finishing giveaway: ${error.message}`);
 		await interaction
 			.editReply({
-				content: `❌ Failed to finish giveaway: ${error.message}`
+				content: await translate('giveaway.errors.finishFailed', interaction.guild.id, interaction.user.id, { error: error.message })
 			})
 			.catch(() => null);
 	}
@@ -941,6 +956,7 @@ async function processEndedGiveaways(client) {
 
 				const guild = client.guilds.cache.get(server.discord_server_id);
 				if (!guild) continue;
+				const tr = await serverTranslator(guild.id);
 
 				let giveawayChannelId: string | null = null;
 				try {
@@ -969,8 +985,8 @@ async function processEndedGiveaways(client) {
 						const embedConfig = await getEmbedConfig(guild.id);
 						const noEntriesEmbed = new EmbedBuilder()
 							.setColor(embedConfig.COLOR)
-							.setTitle('🎉 Giveaway Ended')
-							.setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
+							.setTitle(tr('giveaway.results.endedTitle'))
+							.setDescription(tr('giveaway.results.noEntries', { title: giveaway.title }))
 							.setTimestamp()
 							.setFooter({ text: embedConfig.FOOTER });
 
@@ -1006,8 +1022,8 @@ async function processEndedGiveaways(client) {
 						const embedConfig = await getEmbedConfig(guild.id);
 						const noWinnersEmbed = new EmbedBuilder()
 							.setColor(embedConfig.COLOR)
-							.setTitle('🎉 Giveaway Ended')
-							.setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
+							.setTitle(tr('giveaway.results.endedTitle'))
+							.setDescription(tr('giveaway.results.noWinners', { title: giveaway.title }))
 							.setTimestamp()
 							.setFooter({ text: embedConfig.FOOTER });
 
@@ -1039,17 +1055,11 @@ async function processEndedGiveaways(client) {
 				const winnerMemberIds = winners.map((w) => w.member_id);
 				await db.markGiveawayWinners(giveaway.id, winnerMemberIds);
 
-				let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
-
-				if (winners.length < giveaway.winner_count) {
-					description += `⚠️ *Only ${winners.length} winner${winners.length > 1 ? 's' : ''} selected (${giveaway.winner_count} requested) due to limited entries.*\n\n`;
-				}
-
-				description += `Congratulations! 🎉`;
+				const description = buildGiveawayWinnersDescription(tr, giveaway, winners, winnerMentions);
 
 				const winnersEmbed = new EmbedBuilder()
 					.setColor(embedConfig.COLOR)
-					.setTitle('🎉 Giveaway Ended!')
+					.setTitle(tr('giveaway.results.endedWinnersTitle'))
 					.setDescription(description)
 					.setTimestamp()
 					.setFooter({ text: embedConfig.FOOTER });

@@ -4,6 +4,7 @@ import { evaluateMemberLevelAndRank, determineLevel } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { getActiveLuckPercent } from './items.js';
 import { luckBoostLabel } from '../../../../items.js';
+import { serverTranslator } from '../i18n.js';
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
@@ -117,32 +118,36 @@ async function announceMinigame(client: any, ctx: any) {
 		if (!channel || !channel.isTextBased()) return;
 
 		const { EmbedBuilder } = await import('discord.js');
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: 'Minigames' }));
+		const tr = await serverTranslator(guildId);
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
-		const actorMention = actor ? `${actor}` : 'A member';
-		const multNote = ` at ${result.multiplier}×`;
+		const actorMention = actor ? `${actor}` : tr('minigames.someone');
 		const winChanceLabel = luckBoostLabel(result.chance - (result.luckPercent || 0), result.luckPercent);
+		const story = { member: actorMention, wager: fmtXp(result.wager), multiplier: result.multiplier };
 
 		const embed = new EmbedBuilder()
 			.setColor(0xc8911a)
-			.setFooter({ text: embedConfig.FOOTER || 'Minigames' })
+			.setFooter({ text: embedConfig.FOOTER || tr('minigames.footer') })
 			.setTimestamp();
 
 		if (result.won) {
 			embed
-				.setTitle('🎲 Minigame Win!')
-				.setDescription(`${actorMention} wagered ${fmtXp(result.wager)}${multNote} and **won**!`)
+				.setTitle(tr('minigames.win.title'))
+				.setDescription(tr('minigames.win.description', story))
 				.addFields(
-					{ name: 'Payout', value: fmtXp(result.payout), inline: true },
-					{ name: 'Net gain', value: `+${fmtXp(result.net)}`, inline: true },
-					{ name: 'Win chance', value: winChanceLabel, inline: true }
+					{ name: tr('minigames.fields.payout'), value: fmtXp(result.payout), inline: true },
+					{ name: tr('minigames.fields.netGain'), value: `+${fmtXp(result.net)}`, inline: true },
+					{ name: tr('minigames.fields.winChance'), value: winChanceLabel, inline: true }
 				);
 		} else {
 			embed
-				.setTitle('🎲 Minigame Lost')
-				.setDescription(`${actorMention} wagered ${fmtXp(result.wager)}${multNote} and **lost it all**.`)
-				.addFields({ name: 'XP lost', value: fmtXp(result.wager), inline: true }, { name: 'Win chance', value: winChanceLabel, inline: true });
+				.setTitle(tr('minigames.lose.title'))
+				.setDescription(tr('minigames.lose.description', story))
+				.addFields(
+					{ name: tr('minigames.fields.xpLost'), value: fmtXp(result.wager), inline: true },
+					{ name: tr('minigames.fields.winChance'), value: winChanceLabel, inline: true }
+				);
 		}
 
 		const content = actor ? `${actor}` : undefined;

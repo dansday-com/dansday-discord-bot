@@ -21,7 +21,7 @@ import {
 	type DiscordQuestSummary
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { translate } from '../i18n.js';
+import { memberTranslator, translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, queueQuestClaimAllJob, isUserEnrollRunning } from './questEnrollWorker.js';
 import { menuBackButton } from './interface/menuBack.js';
@@ -93,14 +93,15 @@ async function announceTargetLine(guildId: string, userId: string, channelId: st
 	return translate('questEnroll.announceInChannel', guildId, userId, { channel: `<#${channelId}>` });
 }
 
-function buildTokenModal(customId: string, title: string): ModalBuilder {
-	const modal = new ModalBuilder().setCustomId(customId.slice(0, 100)).setTitle(title);
+async function buildTokenModal(customId: string, titleKey: string, guildId: string, userId: string): Promise<ModalBuilder> {
+	const tr = await memberTranslator(guildId, userId);
+	const modal = new ModalBuilder().setCustomId(customId.slice(0, 100)).setTitle(tr(titleKey).slice(0, 45));
 
 	const tokenInput = new TextInputBuilder()
 		.setCustomId(TOKEN_FIELD_ID)
-		.setLabel('Discord user token (not saved)')
+		.setLabel(tr('questEnroll.tokenModal.label').slice(0, 45))
 		.setStyle(TextInputStyle.Paragraph)
-		.setPlaceholder('ToS risk: your account may be banned; bot/server possible. Paste once; never in public.')
+		.setPlaceholder(tr('questEnroll.tokenModal.placeholder').slice(0, 100))
 		.setRequired(true)
 		.setMinLength(20)
 		.setMaxLength(4000);
@@ -238,14 +239,16 @@ export async function handleQuestClaimAllButton(interaction: ButtonInteraction):
 		return;
 	}
 
-	await interaction.showModal(buildTokenModal(QUEST_CLAIM_ALL_MODAL_ID, 'Claim all (token — high risk)'));
+	await interaction.showModal(
+		await buildTokenModal(QUEST_CLAIM_ALL_MODAL_ID, 'questEnroll.tokenModal.claimAllTitle', interaction.guild!.id, interaction.user.id)
+	);
 }
 
 export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
 	const guildId = interaction.guild!.id;
 	const token = tokenFromModal(interaction);
 	if (token.length < 20) {
-		await interaction.reply({ content: 'Token too short.', flags: 64 }).catch(() => null);
+		await interaction.reply({ content: await translate('questEnroll.tokenTooShort', guildId, interaction.user.id), flags: 64 }).catch(() => null);
 		return;
 	}
 
@@ -272,8 +275,8 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 		const msg = e instanceof Error ? e.message : String(e);
 		const invalidEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle('Invalid token')
-			.setDescription(`The token you provided appears to be invalid or expired.\n\`${msg.slice(0, 500)}\``)
+			.setTitle(await translate('questEnroll.invalidTokenTitle', guildId, interaction.user.id))
+			.setDescription(await translate('questEnroll.invalidTokenDescription', guildId, interaction.user.id, { error: msg.slice(0, 500) }))
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
 		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
@@ -347,7 +350,9 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 export async function handleQuestEnrollButton(interaction: ButtonInteraction): Promise<void> {
 	const questId = questIdFromButtonCustomId(interaction.customId);
 	if (!questId) {
-		await interaction.reply({ content: 'Invalid quest id.', flags: 64 }).catch(() => null);
+		await interaction
+			.reply({ content: await translate('questEnroll.invalidQuestId', interaction.guild!.id, interaction.user.id), flags: 64 })
+			.catch(() => null);
 		return;
 	}
 
@@ -384,7 +389,9 @@ export async function handleQuestEnrollButton(interaction: ButtonInteraction): P
 		}
 	}
 
-	await interaction.showModal(buildTokenModal(`${QUEST_ENROLL_MODAL_PREFIX}${questId}`, 'Enroll (token — high risk)'));
+	await interaction.showModal(
+		await buildTokenModal(`${QUEST_ENROLL_MODAL_PREFIX}${questId}`, 'questEnroll.tokenModal.enrollTitle', interaction.guild!.id, interaction.user.id)
+	);
 }
 
 export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -392,7 +399,9 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 	const token = tokenFromModal(interaction);
 
 	if (!questId || token.length < 20) {
-		await interaction.reply({ content: 'Missing quest id or token too short.', flags: 64 }).catch(() => null);
+		await interaction
+			.reply({ content: await translate('questEnroll.missingQuestOrToken', interaction.guild!.id, interaction.user.id), flags: 64 })
+			.catch(() => null);
 		return;
 	}
 
@@ -421,8 +430,8 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 		const embedConfig = await getEmbedConfig(interaction.guild!.id);
 		const invalidEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle('Invalid token')
-			.setDescription(`The token you provided appears to be invalid or expired.\n\`${msg.slice(0, 500)}\``)
+			.setTitle(await translate('questEnroll.invalidTokenTitle', interaction.guild!.id, interaction.user.id))
+			.setDescription(await translate('questEnroll.invalidTokenDescription', interaction.guild!.id, interaction.user.id, { error: msg.slice(0, 500) }))
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
 		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);

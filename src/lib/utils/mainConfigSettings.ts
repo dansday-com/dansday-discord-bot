@@ -1,6 +1,7 @@
 export const DEFAULT_MAIN_EMBED_COLOR = '#ff0000';
 
 import { APP_NAME, APP_DOMAIN } from '../frontend/panelServer.js';
+import { normalizeServerLanguage, type ServerLanguage } from '../languages.js';
 
 export const DEFAULT_BOT_NICKNAME = APP_NAME;
 export const DEFAULT_MAIN_EMBED_FOOTER = `Powered by ${APP_DOMAIN} {year}`;
@@ -30,6 +31,7 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 	bot_avatar_url: string;
 	bot_banner_url: string;
 	staff_roles: string[];
+	language: ServerLanguage;
 } {
 	const { color, footer } = getEffectiveMainEmbedAppearance(raw);
 	const base = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
@@ -46,6 +48,7 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 		bot_bio: trimStr(base.bot_bio),
 		bot_avatar_url: trimStr(base.bot_avatar_url),
 		bot_banner_url: trimStr(base.bot_banner_url),
-		staff_roles: staffRoles
+		staff_roles: staffRoles,
+		language: normalizeServerLanguage(base.language)
 	};
 }

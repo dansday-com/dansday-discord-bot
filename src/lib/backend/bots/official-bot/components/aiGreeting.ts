@@ -2,6 +2,8 @@ import OpenAI from 'openai';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
+import { SERVER_SETTINGS } from '../../../../frontend/panelServer.js';
+import { normalizeServerLanguage, serverLanguageEnglishName } from '../../../../languages.js';
 
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -23,8 +25,13 @@ const KINDS = {
 	}
 };
 
-function cacheKey(kind, serverId) {
-	return `dansday:ai-greeting:${kind}:${serverId}`;
+function cacheKey(kind, serverId, lang) {
+	return `dansday:ai-greeting:${kind}:${serverId}:${lang}`;
+}
+
+async function serverLanguage(serverId) {
+	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
+	return normalizeServerLanguage(row?.settings?.language);
 }
 
 function normalizeBaseUrl(rawUrl) {
@@ -58,11 +65,11 @@ function parseLines(raw, kind) {
 		.slice(0, WANTED_LINES);
 }
 
-async function readCache(kind, serverId) {
+async function readCache(kind, serverId, lang) {
 	const redis = await getRedisClient().catch(() => null);
 	if (!redis) return null;
 	try {
-		const raw = await redis.get(cacheKey(kind, serverId));
+		const raw = await redis.get(cacheKey(kind, serverId, lang));
 		const parsed = raw ? JSON.parse(raw) : null;
 		return Array.isArray(parsed) && parsed.length ? parsed : null;
 	} catch {
@@ -70,15 +77,15 @@ async function readCache(kind, serverId) {
 	}
 }
 
-async function writeCache(kind, serverId, lines) {
+async function writeCache(kind, serverId, lang, lines) {
 	const redis = await getRedisClient().catch(() => null);
 	if (!redis) return;
 	try {
-		await redis.set(cacheKey(kind, serverId), JSON.stringify(lines), { EX: CACHE_TTL_SECONDS });
+		await redis.set(cacheKey(kind, serverId, lang), JSON.stringify(lines), { EX: CACHE_TTL_SECONDS });
 	} catch {}
 }
 
-async function generate(kind, config, serverName) {
+async function generate(kind, config, serverName, lang) {
 	const spec = KINDS[kind];
 	const client = new OpenAI({
 		baseURL: normalizeBaseUrl(config.api_url),
@@ -90,6 +97,8 @@ async function generate(kind, config, serverName) {
 	const prompt = `${spec.brief}
 
 The server is called "${serverName}".
+
+Write every line in ${serverLanguageEnglishName(lang)}. Keep the placeholders exactly as written, untranslated.
 
 Write exactly ${WANTED_LINES} different lines, one per line, nothing else — no numbering, no bullets, no quotes, no explanation.
 
@@ -114,20 +123,21 @@ For example: ${spec.example}`;
 export async function aiGreetingMessages(kind, { botId, serverId, serverName }) {
 	if (!KINDS[kind] || !botId || !serverId) return null;
 
-	const cached = await readCache(kind, serverId);
+	const lang = await serverLanguage(serverId);
+	const cached = await readCache(kind, serverId, lang);
 	if (cached) return cached;
 
 	const config = db.botAiFromDbRow(await db.getBotAiByBotId(botId).catch(() => null));
 	if (!config.enabled || !config.api_url || !config.api_key || !config.model) return null;
 
 	try {
-		const lines = await generate(kind, config, serverName || 'this server');
+		const lines = await generate(kind, config, serverName || 'this server', lang);
 		if (!lines.length) {
 			await logger.log(`⚠️ AI ${kind} message generation returned nothing usable, using the built-in messages`);
 			return null;
 		}
 
-		await writeCache(kind, serverId, lines);
+		await writeCache(kind, serverId, lang, lines);
 		await logger.log(`✨ AI wrote ${lines.length} ${kind} message(s) for ${serverName || serverId}`);
 		return lines;
 	} catch (error) {

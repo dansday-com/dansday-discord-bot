@@ -11,7 +11,7 @@ import {
 import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { CREATOR_CONTENT_HUB_SUFFIX, CREATOR_NOTIFICATIONS_MENU_BUTTON_ID } from '../creatorAlerts.js';
-import { translate, t } from '../../i18n.js';
+import { translate, serverTranslator } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 import { menuBackButton } from './menuBack.js';
@@ -68,11 +68,10 @@ async function runDuplicateContentCreatorAutoReject(opts: {
 		const app = await db.getContentCreatorApplicationById(server.id, appId);
 		if (!app || app.status !== 'pending') return;
 
-		const systemReason = t('contentCreator.channelEmbed.autoRejectReviewReason', 'en');
+		const tr = await serverTranslator(guild.id);
+		const systemReason = tr('contentCreator.channelEmbed.autoRejectReviewReason');
 		const conflictNote =
-			conflict.kind === 'pending'
-				? t('contentCreator.channelEmbed.autoRejectConflictPending', 'en')
-				: t('contentCreator.channelEmbed.autoRejectConflictApproved', 'en');
+			conflict.kind === 'pending' ? tr('contentCreator.channelEmbed.autoRejectConflictPending') : tr('contentCreator.channelEmbed.autoRejectConflictApproved');
 		const reviewReasonFull = `${systemReason}\n\n${conflictNote} <@${conflict.discordId}>`;
 
 		await db.updateContentCreatorApplicationStatus(app.id, 'rejected', undefined, reviewReasonFull);
@@ -97,24 +96,24 @@ async function runDuplicateContentCreatorAutoReject(opts: {
 			if (ch?.isTextBased()) {
 				const sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
 				if (sourceMessage) {
-					const staffDecisionLabel = t('contentCreator.embed.staffDecision', 'en');
-					const reviewedByLabel = t('contentCreator.embed.reviewedBy', 'en');
-					const statusLabel = t('contentCreator.embed.statusRejected', 'en');
-					const reviewedBySystem = t('contentCreator.embed.reviewedBySystem', 'en');
+					const staffDecisionLabel = tr('contentCreator.embed.staffDecision');
+					const reviewedByLabel = tr('contentCreator.embed.reviewedBy');
+					const statusLabel = tr('contentCreator.embed.statusRejected');
+					const reviewedBySystem = tr('contentCreator.embed.reviewedBySystem');
 					const updatedEmbed = new EmbedBuilder()
 						.setColor(0xef4444)
-						.setTitle(t('contentCreator.channelEmbed.titleRejected', 'en'))
+						.setTitle(tr('contentCreator.channelEmbed.titleRejected'))
 						.setDescription(
-							t('contentCreator.channelEmbed.descriptionReviewed', 'en', {
+							tr('contentCreator.channelEmbed.descriptionReviewed', {
 								mention: `<@${app.applicant_discord_id}>`,
 								tiktok: app.tiktok_username
 							})
 						)
 						.addFields(
-							{ name: t('contentCreator.channelEmbed.fieldStatus', 'en'), value: statusLabel, inline: true },
+							{ name: tr('contentCreator.channelEmbed.fieldStatus'), value: statusLabel, inline: true },
 							{ name: reviewedByLabel, value: reviewedBySystem, inline: true },
 							{
-								name: t('contentCreator.channelEmbed.fieldApplicantReason', 'en'),
+								name: tr('contentCreator.channelEmbed.fieldApplicantReason'),
 								value: truncateReason(app.reason),
 								inline: false
 							},
@@ -123,7 +122,7 @@ async function runDuplicateContentCreatorAutoReject(opts: {
 						.setTimestamp();
 					if (embedConfig?.FOOTER) {
 						updatedEmbed.setFooter({
-							text: `${embedConfig.FOOTER} ${t('contentCreator.channelEmbed.footerAppSuffix', 'en', { appId: app.id })}`
+							text: `${embedConfig.FOOTER} ${tr('contentCreator.channelEmbed.footerAppSuffix', { appId: app.id })}`
 						});
 					}
 					await sourceMessage.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);
@@ -247,7 +246,8 @@ async function flushLiveDigest(client: any, key: string) {
 	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
 	if (!channel || !channel.isTextBased()) return;
 
-	const parts = [`📊 **Live** · <@${meta.discordMemberId}> · @${meta.tiktokUsername} · #${meta.streamId}`];
+	const tr = await serverTranslator(guild.id);
+	const parts = [tr('contentCreator.live.digest', { mention: `<@${meta.discordMemberId}>`, tiktok: meta.tiktokUsername, streamId: meta.streamId })];
 	if (d.chat) parts.push(`💬 +${d.chat}`);
 	if (d.like) parts.push(`❤️ +${d.like}`);
 	if (d.gift) parts.push(`🎁 +${d.gift}`);
@@ -287,17 +287,18 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 	if (!channel || !channel.isTextBased()) return;
 
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+	const tr = await serverTranslator(guild.id);
 	const mention = `<@${discordMemberId}>`;
 	const liveUrl = `https://www.tiktok.com/@${encodeURIComponent(tiktokUsername)}/live`;
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig?.COLOR ?? 0xec4899)
-		.setTitle(t('contentCreator.channelEmbed.liveTitle', 'en'))
-		.setDescription(t('contentCreator.channelEmbed.liveDescription', 'en', { mention }))
+		.setTitle(tr('contentCreator.channelEmbed.liveTitle'))
+		.setDescription(tr('contentCreator.channelEmbed.liveDescription', { mention }))
 		.setTimestamp();
-	const streamFooter = `Stream #${streamId}`;
+	const streamFooter = tr('contentCreator.live.streamFooter', { streamId });
 	if (embedConfig?.FOOTER) embed.setFooter({ text: `${embedConfig.FOOTER} · ${streamFooter}`.slice(0, 2048) });
 	else embed.setFooter({ text: streamFooter });
-	const watchButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(liveUrl).setLabel(t('contentCreator.channelEmbed.liveWatchButton', 'en'));
+	const watchButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(liveUrl).setLabel(tr('contentCreator.channelEmbed.liveWatchButton'));
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(watchButton);
 
 	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, targetChannelId).catch(() => null);
@@ -322,12 +323,13 @@ async function broadcastLiveEnd(guild: any, discordMemberId: string, tiktokUsern
 	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
 	if (!channel || !channel.isTextBased()) return;
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+	const tr = await serverTranslator(guild.id);
 	const mention = `<@${discordMemberId}>`;
-	const title = status === 'ended' ? '⚫ Live ended' : '⚠️ Live connection error';
+	const title = status === 'ended' ? tr('contentCreator.live.endedTitle') : tr('contentCreator.live.errorTitle');
 	const embed = new EmbedBuilder()
 		.setColor(status === 'ended' ? 0x64748b : 0xef4444)
 		.setTitle(title)
-		.setDescription(`${mention} · @${tiktokUsername}\nStream session **#${streamId}**`)
+		.setDescription(`${mention} · @${tiktokUsername}\n${tr('contentCreator.live.sessionLine', { streamId })}`)
 		.setTimestamp();
 	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
 	await channel.send({ embeds: [embed] }).catch(() => null);
@@ -890,15 +892,16 @@ export async function handleContentCreatorModal(interaction: any) {
 		let postedMessageId: string | null = null;
 		if (admissionChannel && admissionChannel.isTextBased()) {
 			const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+			const tr = await serverTranslator(guild.id);
 			const embed = new EmbedBuilder()
 				.setColor(0xf59e0b)
-				.setTitle(t('contentCreator.channelEmbed.pendingTitle', 'en'))
-				.setDescription(t('contentCreator.channelEmbed.pendingDescription', 'en', { user: `<@${interaction.user.id}>` }))
+				.setTitle(tr('contentCreator.channelEmbed.pendingTitle'))
+				.setDescription(tr('contentCreator.channelEmbed.pendingDescription', { user: `<@${interaction.user.id}>` }))
 				.addFields(
-					{ name: t('contentCreator.channelEmbed.fieldTiktok', 'en'), value: `@${username}`, inline: true },
-					{ name: t('contentCreator.channelEmbed.fieldStatus', 'en'), value: t('contentCreator.channelEmbed.pendingStatus', 'en'), inline: true },
+					{ name: tr('contentCreator.channelEmbed.fieldTiktok'), value: `@${username}`, inline: true },
+					{ name: tr('contentCreator.channelEmbed.fieldStatus'), value: tr('contentCreator.channelEmbed.pendingStatus'), inline: true },
 					{
-						name: t('contentCreator.channelEmbed.fieldApplicantReason', 'en'),
+						name: tr('contentCreator.channelEmbed.fieldApplicantReason'),
 						value: truncateReason(reason),
 						inline: false
 					}
@@ -906,16 +909,16 @@ export async function handleContentCreatorModal(interaction: any) {
 				.setTimestamp();
 			if (embedConfig?.FOOTER) {
 				embed.setFooter({
-					text: `${embedConfig.FOOTER} ${t('contentCreator.channelEmbed.footerAppSuffix', 'en', { appId })}`
+					text: `${embedConfig.FOOTER} ${tr('contentCreator.channelEmbed.footerAppSuffix', { appId })}`
 				});
 			}
 			const approveButton = new ButtonBuilder()
 				.setCustomId(`content_creator_approve|${appId}`)
-				.setLabel(t('contentCreator.channelEmbed.buttonApprove', 'en'))
+				.setLabel(tr('contentCreator.channelEmbed.buttonApprove'))
 				.setStyle(ButtonStyle.Success);
 			const rejectButton = new ButtonBuilder()
 				.setCustomId(`content_creator_reject|${appId}`)
-				.setLabel(t('contentCreator.channelEmbed.buttonReject', 'en'))
+				.setLabel(tr('contentCreator.channelEmbed.buttonReject'))
 				.setStyle(ButtonStyle.Danger);
 			const pendingRole = await CONTENT_CREATOR.getPendingRole(guild.id);
 			const sent = await admissionChannel
@@ -977,7 +980,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 		}
 		const appId = Number(appIdStr);
 		if (!Number.isFinite(appId)) {
-			await interaction.editReply({ content: '❌ Invalid application ID.' });
+			await interaction.editReply({ content: await translate('contentCreator.review.invalidApplicationId', guild.id, interaction.user.id) });
 			return;
 		}
 
@@ -1006,7 +1009,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 		}
 		const app = await db.getContentCreatorApplicationById(server.id, appId);
 		if (!app) {
-			await interaction.editReply({ content: '❌ Application not found.' });
+			await interaction.editReply({ content: await translate('contentCreator.review.applicationNotFound', guild.id, interaction.user.id) });
 			return;
 		}
 
@@ -1021,7 +1024,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 		}
 
 		if (app.status !== 'pending') {
-			await interaction.editReply({ content: '⚠️ This application was already processed.' });
+			await interaction.editReply({ content: await translate('contentCreator.review.alreadyProcessed', guild.id, interaction.user.id) });
 			if (sourceMessage) await sourceMessage.edit({ components: [] }).catch(() => null);
 			return;
 		}
@@ -1032,9 +1035,10 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 
 		const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 		const applicantUser = await guild.client.users.fetch(app.applicant_discord_id).catch(() => null);
-		const staffDecisionLabel = t('contentCreator.embed.staffDecision', 'en');
-		const reviewedByLabel = t('contentCreator.embed.reviewedBy', 'en');
-		const statusLabel = decision === 'approve' ? t('contentCreator.embed.statusApproved', 'en') : t('contentCreator.embed.statusRejected', 'en');
+		const tr = await serverTranslator(guild.id);
+		const staffDecisionLabel = tr('contentCreator.embed.staffDecision');
+		const reviewedByLabel = tr('contentCreator.embed.reviewedBy');
+		const statusLabel = decision === 'approve' ? tr('contentCreator.embed.statusApproved') : tr('contentCreator.embed.statusRejected');
 
 		if (decision === 'approve') {
 			const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id);
@@ -1061,7 +1065,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 					.setFooter({ text: embedConfig.FOOTER });
 				await applicantUser.send({ embeds: [embed] }).catch(() => null);
 			}
-			await interaction.editReply({ content: `✅ Application #${app.id} approved.` });
+			await interaction.editReply({ content: await translate('contentCreator.review.approvedReply', guild.id, interaction.user.id, { appId: app.id }) });
 		} else {
 			if (applicantUser) {
 				const dmBody = await translate('contentCreator.dm.rejected', guild.id, applicantUser.id, {
@@ -1079,24 +1083,24 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 					.setFooter({ text: embedConfig.FOOTER });
 				await applicantUser.send({ embeds: [embed] }).catch(() => null);
 			}
-			await interaction.editReply({ content: `❌ Application #${app.id} rejected.` });
+			await interaction.editReply({ content: await translate('contentCreator.review.rejectedReply', guild.id, interaction.user.id, { appId: app.id }) });
 		}
 
 		if (sourceMessage) {
 			const updatedEmbed = new EmbedBuilder()
 				.setColor(decision === 'approve' ? 0x22c55e : 0xef4444)
-				.setTitle(decision === 'approve' ? t('contentCreator.channelEmbed.titleApproved', 'en') : t('contentCreator.channelEmbed.titleRejected', 'en'))
+				.setTitle(decision === 'approve' ? tr('contentCreator.channelEmbed.titleApproved') : tr('contentCreator.channelEmbed.titleRejected'))
 				.setDescription(
-					t('contentCreator.channelEmbed.descriptionReviewed', 'en', {
+					tr('contentCreator.channelEmbed.descriptionReviewed', {
 						mention: `<@${app.applicant_discord_id}>`,
 						tiktok: app.tiktok_username
 					})
 				)
 				.addFields(
-					{ name: t('contentCreator.channelEmbed.fieldStatus', 'en'), value: statusLabel, inline: true },
+					{ name: tr('contentCreator.channelEmbed.fieldStatus'), value: statusLabel, inline: true },
 					{ name: reviewedByLabel, value: `<@${interaction.user.id}>`, inline: true },
 					{
-						name: t('contentCreator.channelEmbed.fieldApplicantReason', 'en'),
+						name: tr('contentCreator.channelEmbed.fieldApplicantReason'),
 						value: truncateReason(app.reason),
 						inline: false
 					},
@@ -1105,7 +1109,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 				.setTimestamp();
 			if (embedConfig?.FOOTER) {
 				updatedEmbed.setFooter({
-					text: `${embedConfig.FOOTER} ${t('contentCreator.channelEmbed.footerAppSuffix', 'en', { appId: app.id })}`
+					text: `${embedConfig.FOOTER} ${tr('contentCreator.channelEmbed.footerAppSuffix', { appId: app.id })}`
 				});
 			}
 			await sourceMessage.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);

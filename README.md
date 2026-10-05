@@ -246,7 +246,7 @@ Each member signs in to their own account on those same pages.
 
 ### Panel
 
-- **One-command setup** - `/setup` creates every channel and wires it to its module. Nothing to pick by hand.
+- **One-command setup** - `/setup` asks for the server language, then creates every channel named in it and wires each one to its module. Nothing else to pick by hand.
 - **Granular permissions** - Owner and staff tiers control who changes what.
 - **Change log** - Every configuration save records who changed which setting, before and after. Embeds sent from the builder, invite edits and panel moderation are logged with who did them too.
 - **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
@@ -254,7 +254,7 @@ Each member signs in to their own account on those same pages.
 - **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
 - **Embed builder** - Rich embeds with live preview, placeholders and images.
 - **Bot appearance** - Own nickname, avatar, banner and bio per server, set on the Main page.
-- **Multi-language** - English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese for Discord buttons, selects and labels.
+- **Multi-language** - English, Indonesian, German, Spanish, French, Arabic, Malay and Simplified Chinese. Each server picks a language in `/setup` or on the Main page: it names the setup channels and is used for the menu, approval posts, every public bot message and the AI's chat and voice. Members can pick their own language for their private replies and DMs, and otherwise follow the server's.
 
 ### Community
 

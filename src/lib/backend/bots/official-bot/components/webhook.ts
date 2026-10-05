@@ -657,6 +657,26 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
 					}
+				} else if (payload.type === 'apply_server_language') {
+					try {
+						const guildId = payload.guild_id;
+						const { isServerLanguage } = await import('../../../../languages.js');
+						if (!guildId || !isServerLanguage(payload.language)) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id or unsupported language' }));
+							return;
+						}
+						const { rememberServerLanguage } = await import('../i18n.js');
+						const { applyServerLanguage } = await import('./commands/admin/setup.js');
+						rememberServerLanguage(guildId, payload.language);
+						applyServerLanguage(client, guildId, payload.language).catch((err) => logger.log(`❌ apply_server_language failed: ${err.message}`));
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (languageErr) {
+						await logger.log(`❌ apply_server_language failed: ${languageErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'apply_server_language failed', details: languageErr.message }));
+					}
 				} else if (payload.type === 'moderation_action') {
 					try {
 						const { performModerationAction } = await import('./moderation.js');

@@ -2780,7 +2780,7 @@ export async function claimVoiceRewardWindow(memberId: any, cooldownMs: number) 
 	return affected > 0;
 }
 
-export async function setMemberLanguage(serverId: any, discordMemberId: string, language = 'en') {
+export async function setMemberLanguage(serverId: any, discordMemberId: string, language: string | null) {
 	await initializeDatabase();
 	await db
 		.update(schema.serverMembers)
@@ -2791,13 +2791,13 @@ export async function setMemberLanguage(serverId: any, discordMemberId: string, 
 
 export async function getMemberLanguage(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
-	if (!serverId || !discordMemberId) return 'en';
+	if (!serverId || !discordMemberId) return null;
 	const rows = await db
 		.select({ language: schema.serverMembers.language })
 		.from(schema.serverMembers)
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	return rows[0]?.language || 'en';
+	return rows[0]?.language || null;
 }
 
 export async function recalculateServerMemberRanks(serverId: any) {

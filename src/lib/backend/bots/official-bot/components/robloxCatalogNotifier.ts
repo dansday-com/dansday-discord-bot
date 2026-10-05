@@ -22,7 +22,7 @@ import {
 	type RobloxCatalogItem,
 	type RobloxCatalogItemRef
 } from '../../../config.js';
-import { translate } from '../i18n.js';
+import { serverTranslator, translate, type Translator } from '../i18n.js';
 import { logger } from '../../../../utils/index.js';
 
 export const ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX = 'roblox_item_notification:';
@@ -71,9 +71,9 @@ function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
-function formatRobux(n: number | bigint): string {
+function formatRobux(n: number | bigint, tr: Translator): string {
 	const b = typeof n === 'bigint' ? n : BigInt(Math.trunc(Number(n)));
-	if (b === 0n) return 'FREE';
+	if (b === 0n) return tr('robloxCatalog.post.free');
 	if (b > MAX_SAFE_BIGINT || b < -MAX_SAFE_BIGINT) {
 		return `${b.toLocaleString('id-ID')} Robux`;
 	}
@@ -118,6 +118,7 @@ type ServerTarget = {
 	guildId: string;
 	channelId: string;
 	embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>;
+	tr: Translator;
 	channel: any;
 };
 
@@ -202,26 +203,27 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 		if (!channel || !channel.isTextBased()) continue;
 
 		const embedConfig = await getEmbedConfig(guildId);
-		targets.push({ serverId: server.id, guildId, channelId, embedConfig, channel });
+		const tr = await serverTranslator(guildId);
+		targets.push({ serverId: server.id, guildId, channelId, embedConfig, tr, channel });
 	}
 
 	return targets;
 }
 
-function changeFieldLabel(field: RobloxItemChange['field']): string {
-	if (field === 'total_quantity') return 'Total supply';
-	if (field === 'units_available') return 'Stock left';
-	if (field === 'lowest_resale_price') return 'Resale price';
-	return 'Price';
+function changeFieldLabel(field: RobloxItemChange['field'], tr: Translator): string {
+	if (field === 'total_quantity') return tr('robloxCatalog.notifications.types.total_quantity.label');
+	if (field === 'units_available') return tr('robloxCatalog.notifications.types.units_available.label');
+	if (field === 'lowest_resale_price') return tr('robloxCatalog.notifications.types.lowest_resale_price.label');
+	return tr('robloxCatalog.notifications.types.price.label');
 }
 
-function formatChangeLines(changes: RobloxItemChange[]): string | undefined {
+function formatChangeLines(changes: RobloxItemChange[], tr: Translator): string | undefined {
 	if (changes.length === 0) return undefined;
 	return changes
 		.map((c) => {
 			const isPrice = c.field === 'price' || c.field === 'lowest_resale_price';
-			const fmt = (v: bigint | number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
-			return `**${changeFieldLabel(c.field)}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
+			const fmt = (v: bigint | number | null) => (v == null ? '—' : isPrice ? formatRobux(v, tr) : formatCount(v));
+			return `**${changeFieldLabel(c.field, tr)}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 		})
 		.join('\n');
 }
@@ -233,11 +235,12 @@ async function sendItemEmbed(
 	changes: RobloxItemChange[],
 	fromOfficialRobloxCatalogQuery: boolean
 ) {
-	const changeLines = isNew ? undefined : formatChangeLines(changes);
+	const { tr } = target;
+	const changeLines = isNew ? undefined : formatChangeLines(changes, tr);
 	const isOfficial = isOfficialRobloxAccount(item) || fromOfficialRobloxCatalogQuery;
 	const isNewOfficial = isNew && isOfficial;
 	const url = robloxCatalogItemUrl(item.id);
-	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
+	const price = typeof item.price === 'number' ? formatRobux(item.price, tr) : '—';
 	const quantity = formatQuantityRatio(item);
 	const category = item.category?.trim() || '—';
 	const favorites = typeof item.favoriteCount === 'number' ? formatCount(item.favoriteCount) : '—';
@@ -246,18 +249,19 @@ async function sendItemEmbed(
 	const resaleOrSaleFields: { name: string; value: string; inline: boolean }[] = [];
 	if (item.hasResellers && typeof item.lowestResalePrice === 'number') {
 		resaleOrSaleFields.push({
-			name: 'Resale price',
-			value: formatRobux(item.lowestResalePrice),
+			name: tr('robloxCatalog.post.fields.resalePrice'),
+			value: formatRobux(item.lowestResalePrice, tr),
 			inline: true
 		});
 	} else if (item.offSaleDeadline) {
 		const ts = Math.floor(new Date(item.offSaleDeadline).getTime() / 1000);
 		if (Number.isFinite(ts)) {
-			resaleOrSaleFields.push({ name: 'Sale ends', value: `<t:${ts}:F>`, inline: true });
+			resaleOrSaleFields.push({ name: tr('robloxCatalog.post.fields.saleEnds'), value: `<t:${ts}:F>`, inline: true });
 		}
 	}
 
-	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
+	const itemName = item.name || tr('robloxCatalog.itemFallback', { id: item.id });
+	const title = (isNew ? itemName : tr('robloxCatalog.post.updatedTitle', { name: itemName })).slice(0, 256);
 
 	const watcherDiscordIds = await db.listServerRobloxItemNotificationDiscordIds(target.serverId, catalogAssetBi(item)).catch(() => [] as string[]);
 	const changedFields = changes.map((c) => c.field);
@@ -278,14 +282,20 @@ async function sendItemEmbed(
 		)
 		.setTitle(title)
 		.addFields(
-			{ name: 'Category', value: category.slice(0, 1024), inline: true },
-			{ name: 'Price', value: price, inline: true },
-			{ name: 'Creator', value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024), inline: true },
-			{ name: 'Quantity', value: quantity, inline: true },
-			{ name: 'Favorites', value: favorites, inline: true },
+			{ name: tr('robloxCatalog.post.fields.category'), value: category.slice(0, 1024), inline: true },
+			{ name: tr('robloxCatalog.post.fields.price'), value: price, inline: true },
+			{
+				name: tr('robloxCatalog.post.fields.creator'),
+				value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024),
+				inline: true
+			},
+			{ name: tr('robloxCatalog.post.fields.quantity'), value: quantity, inline: true },
+			{ name: tr('robloxCatalog.post.fields.favorites'), value: favorites, inline: true },
 			...resaleOrSaleFields,
-			{ name: 'Created', value: createdAt, inline: true },
-			...(watcherDiscordIds.length > 0 ? [{ name: 'Notifications', value: `🔔 ${formatCount(watcherDiscordIds.length)}`, inline: true }] : [])
+			{ name: tr('robloxCatalog.post.fields.created'), value: createdAt, inline: true },
+			...(watcherDiscordIds.length > 0
+				? [{ name: tr('robloxCatalog.post.fields.notifications'), value: `🔔 ${formatCount(watcherDiscordIds.length)}`, inline: true }]
+				: [])
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });
 
@@ -297,8 +307,12 @@ async function sendItemEmbed(
 	if (isUsableRobloxThumbnail(item.thumbnailUrl)) embed.setThumbnail(item.thumbnailUrl as string);
 
 	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️'),
-		new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId(`${ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX}${item.id}`).setLabel('Notify me').setEmoji('🔔')
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel(tr('robloxCatalog.post.openOnRoblox').slice(0, 80)).setEmoji('🛍️'),
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Secondary)
+			.setCustomId(`${ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX}${item.id}`)
+			.setLabel(tr('robloxCatalog.post.notifyMe').slice(0, 80))
+			.setEmoji('🔔')
 	);
 
 	const channelMentions = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null)) ?? [];
@@ -600,7 +614,7 @@ async function buildItemTypesPayload(
 	statusLine?: string
 ) {
 	const embedConfig = await getEmbedConfig(guildId);
-	const itemName = item.name?.trim() || `Item #${item.asset_id.toString()}`;
+	const itemName = item.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, userId, { id: item.asset_id.toString() }));
 	const selected = sanitizeNotificationTypes(selectedTypes);
 
 	const title = await translate('robloxCatalog.notifications.item.title', guildId, userId);
@@ -659,12 +673,14 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 	const title = await translate('robloxCatalog.notifications.menu.title', guildId, userId);
 	const description =
 		subscriptions.length === 0
-			? await translate('robloxCatalog.notifications.menu.empty', guildId, userId)
+			? await translate('robloxCatalog.notifications.menu.empty', guildId, userId, {
+					button: (await serverTranslator(guildId))('robloxCatalog.post.notifyMe')
+				})
 			: await translate('robloxCatalog.notifications.menu.description', guildId, userId, { count: formatCount(subscriptions.length) });
 
 	const lines = await Promise.all(
 		subscriptions.slice(0, 25).map(async (sub) => {
-			const name = sub.name?.trim() || `Item #${sub.assetId.toString()}`;
+			const name = sub.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, userId, { id: sub.assetId.toString() }));
 			return `**${name}**\n${await formatActiveTypes(sub.types, guildId, userId)}`;
 		})
 	);
@@ -681,7 +697,7 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 	if (subscriptions.length > 0) {
 		const options = await Promise.all(
 			subscriptions.slice(0, 25).map(async (sub) => ({
-				label: (sub.name?.trim() || `Item #${sub.assetId.toString()}`).slice(0, 100),
+				label: (sub.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, userId, { id: sub.assetId.toString() }))).slice(0, 100),
 				value: sub.assetId.toString(),
 				description: (await formatActiveTypes(sub.types, guildId, userId)).slice(0, 100)
 			}))
@@ -792,7 +808,7 @@ export async function handleRobloxItemNotificationTypesSelect(interaction: Strin
 
 	const types = sanitizeNotificationTypes(interaction.values || []);
 	const action = await db.setServerMemberRobloxItemNotificationTypes(context.member.id, item.id, types);
-	const itemName = item.name?.trim() || `Item #${assetId.toString()}`;
+	const itemName = item.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, interaction.user.id, { id: assetId.toString() }));
 	const watchers = await db.countServerRobloxItemNotifications(context.server.id, item.id).catch(() => 0);
 
 	const statusLine = await translate(

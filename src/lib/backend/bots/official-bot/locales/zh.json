@@ -114,7 +114,10 @@
 			"current": "当前语言",
 			"select": "选择语言",
 			"updated": "✅ 语言更新成功！",
-			"failed": "❌ 语言更新失败：{error}"
+			"failed": "❌ 语言更新失败：{error}",
+			"serverDefault": "服务器默认（{language}）",
+			"serverDefaultDescription": "跟随服务器语言",
+			"currentOption": "当前语言"
 		}
 	},
 	"leveling": {
@@ -126,6 +129,54 @@
 		"errors": {
 			"notRegistered": "⚠️ 本服务器尚未在机器人中注册。请先执行一次同步。",
 			"createRecordFailed": "❌ 创建成员记录失败，请重试。"
+		},
+		"fields": {
+			"level": "⭐ 等级",
+			"totalXp": "📊 XP 总量",
+			"rank": "🏆 排名",
+			"previousRank": "原排名",
+			"newRank": "新排名",
+			"progress": "⚡ 距离 {level} 级的进度",
+			"reward": "🎁 解锁奖励",
+			"activity": "💬 活跃度"
+		},
+		"xpToGo": "还差 **{xp}** XP",
+		"unranked": "未上榜",
+		"leaderboardButton": "排行榜",
+		"levelUp": {
+			"title": "🎉 升级啦！",
+			"description": "{member} 已达到 **{level} 级**！"
+		},
+		"rankUp": {
+			"title": "排名更新！",
+			"topSpot": "{member} 刚刚跻身前列！",
+			"climbed": "{member} 在排行榜上升了！"
+		},
+		"activity": {
+			"messages": "{count} 条消息",
+			"voice": "语音 {hours} 小时",
+			"streaming": "直播 {hours} 小时"
+		},
+		"log": {
+			"types": {
+				"chat": "聊天",
+				"voice": "语音",
+				"afkVoice": "AFK 语音",
+				"video": "视频",
+				"streaming": "直播",
+				"invite": "邀请"
+			},
+			"gain": "{emoji} {type} XP：{name} 获得 +{xp} XP",
+			"staff": "({multiplier}× 管理组 🛡️)",
+			"boost": "({multiplier}× 加成 ⚡)",
+			"friend": "(+{rate} 好友加成 🤝)",
+			"leech": "(−{rate} 吸取 🩸)",
+			"share": "📨 +{amount} 给 {name} ({percent}% 邀请分成{staff})",
+			"inviteNote": "因邀请 {name}",
+			"leechCredit": "🩸 吸取：{attacker} 从 {victim} 身上吸走了 +{amount} XP{pct}",
+			"unknownMember": "未知成员",
+			"someMember": "一名成员",
+			"someLeecher": "一名吸取者"
 		}
 	},
 	"invites": {
@@ -196,7 +247,10 @@
 		"messages": {
 			"welcomeBack": "✅ 欢迎回来，{member}！你的 AFK 状态已解除。",
 			"dmEmbedTitle": "📬 有人提到了你",
-			"dmMentioned": "{sender} 在 **{server}** · #{channel} 提到了你\\n\\n**消息：** {message}"
+			"dmMentioned": "{sender} 在 **{server}** · #{channel} 提到了你\\n\\n**消息：** {message}",
+			"away": "暂时离开",
+			"isAfk": "⏸️ {member} 目前处于 AFK 状态（已 {duration}）",
+			"isAfkWithMessage": "⏸️ {member} 目前处于 AFK 状态：**{message}**（已 {duration}）"
 		}
 	},
 	"giveaway": {
@@ -260,7 +314,41 @@
 			"finishChannelNotConfigured": "❌ 未配置抽奖频道。",
 			"finishChannelNotFound": "❌ 未找到抽奖频道。",
 			"failed": "❌ 打开抽奖表单失败：{error}",
-			"notEnoughInvites": "❌ 你需要 **{needed}** 个邀请才能参加此抽奖。你目前有 **{have}** 个。"
+			"notEnoughInvites": "❌ 你需要 **{needed}** 个邀请才能参加此抽奖。你目前有 **{have}** 个。",
+			"roleSelectFailed": "❌ 处理身份组选择失败：{error}",
+			"enterFailed": "❌ **参加抽奖失败**\\n\\n错误：{error}",
+			"finishFailed": "❌ 结束抽奖失败：{error}"
+		},
+		"unknownRole": "身份组 {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "无身份组限制",
+			"multipleEntries": "允许重复参加",
+			"singleEntry": "每位成员限参加一次",
+			"prizeLine": "**奖品：** {prize}",
+			"winnerLine": "**中奖人数：** {count}",
+			"winnersLine": "**中奖人数：** {count}",
+			"entriesLine": "**参加方式：** {entries}",
+			"rolesLine": "**身份组限制：** {roles}",
+			"invitesLine": "**所需邀请数：** {count}",
+			"hostedBy": "👤 发起人",
+			"enterButton": "🎉 参加抽奖"
+		},
+		"results": {
+			"endedTitle": "🎉 抽奖已结束",
+			"endedWinnersTitle": "🎉 抽奖已结束！",
+			"noEntries": "**{title}**\\n\\n❌ 无人参加！本次抽奖已结束，没有参与者。",
+			"noWinners": "**{title}**\\n\\n❌ 无法选出中奖者。",
+			"winnerLine": "🎊 **中奖者：** {winners}",
+			"winnersLine": "🎊 **中奖者：** {winners}",
+			"limitedEntriesOne": "⚠️ *由于参与人数不足，仅选出 {count} 名中奖者（原定 {requested} 名）。*",
+			"limitedEntriesMany": "⚠️ *由于参与人数不足，仅选出 {count} 名中奖者（原定 {requested} 名）。*",
+			"congrats": "恭喜！🎉"
+		},
+		"finished": {
+			"title": "✅ 抽奖已结束",
+			"noEntries": "你的抽奖 **\"{title}\"** 已提前结束。\\n\\n没有人参加。",
+			"noWinners": "你的抽奖 **\"{title}\"** 已提前结束。\\n\\n无法选出中奖者。",
+			"winners": "你的抽奖 **\"{title}\"** 已提前结束。\\n\\n**中奖者：** {winners}"
 		}
 	},
 	"feedback": {
@@ -284,6 +372,13 @@
 			"channelNotFound": "❌ 提交反馈失败：未找到反馈频道。",
 			"failed": "❌ 打开反馈表单失败：{error}",
 			"submitFailed": "❌ **反馈提交失败**\\n\\n错误：{error}\\n\\n请稍后重试。"
+		},
+		"channelEmbed": {
+			"title": "💬 新反馈",
+			"fieldFrom": "👤 提交者",
+			"fieldSubmitted": "🕐 提交时间",
+			"anonymous": "匿名",
+			"footerSuffix": "• 反馈编号：#{feedbackId}"
 		}
 	},
 	"staffRating": {
@@ -356,6 +451,40 @@
 			"missingCategory": "❌ 请先选择分类再继续。",
 			"permissionDenied": "❌ **权限不足**\\n\\n审核管理举报需要管理员权限。",
 			"reviewReasonRequired": "❌ 请填写你的判定理由。"
+		},
+		"embed": {
+			"staffDecision": "管理决定",
+			"reviewedBy": "审核人",
+			"statusApproved": "已通过",
+			"statusRejected": "已驳回"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "管理人员",
+			"fieldRating": "评分",
+			"fieldCategory": "分类",
+			"fieldReporter": "举报人",
+			"fieldStatus": "状态",
+			"fieldDescription": "描述",
+			"anonymousReporter": "匿名",
+			"pendingTitle": "🕒 待审核的管理举报",
+			"pendingStatus": "等待管理员审核",
+			"approveButton": "通过举报",
+			"rejectButton": "驳回举报",
+			"titleApproved": "✅ 管理举报已通过",
+			"titleRejected": "❌ 管理举报已驳回",
+			"footerReportSuffix": "• 举报编号：#{reportId}"
+		},
+		"ratingUpdate": {
+			"title": "⭐ 管理评分更新",
+			"description": "{staff} 收到了一条新评分。",
+			"ratingValue": "**{rating}/5.0**（共 {totalReports} 条举报）",
+			"fieldFeedback": "反馈内容",
+			"dm": "⭐ 你在 **{server}** 的管理评分现为 **{rating}/5.0**（共 {totalReports} 条举报）。"
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ 该举报已处理过。",
+			"approvedReply": "✅ 举报 #{reportId} 已通过。",
+			"rejectedReply": "❌ 举报 #{reportId} 已驳回。"
 		}
 	},
 	"contentCreator": {
@@ -405,6 +534,47 @@
 			"submitFailed": "❌ 内容创作者申请提交失败：{error}",
 			"permissionDenied": "❌ 审核内容创作者申请需要管理员权限。",
 			"reviewReasonRequired": "❌ 请填写你的判定理由。"
+		},
+		"embed": {
+			"staffDecision": "管理决定",
+			"reviewedBy": "审核人",
+			"reviewedBySystem": "自动（TikTok 账号重复）",
+			"statusApproved": "已通过",
+			"statusRejected": "已驳回"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 内容创作者申请待审核",
+			"pendingDescription": "{user} 申请了内容创作者权限。",
+			"pendingStatus": "等待管理员审核",
+			"fieldTiktok": "TikTok 用户名",
+			"fieldStatus": "状态",
+			"fieldApplicantReason": "理由",
+			"buttonApprove": "通过",
+			"buttonReject": "驳回",
+			"titleApproved": "✅ 内容创作者申请已通过",
+			"titleRejected": "❌ 内容创作者申请已驳回",
+			"descriptionReviewed": "{mention} • TikTok：@{tiktok}",
+			"footerAppSuffix": "• 申请编号：#{appId}",
+			"liveTitle": "🔴 内容创作者正在直播",
+			"liveDescription": "{mention} 正在 TikTok 直播！",
+			"liveWatchButton": "在 TikTok 观看直播",
+			"autoRejectReviewReason": "重复或冒充：该 TikTok 用户名已绑定到另一个 Discord 账户。",
+			"autoRejectConflictPending": "该账户已用此 TikTok 账号提交了一份**待审核**的申请。",
+			"autoRejectConflictApproved": "该账户是使用此 TikTok 账号且**已通过审核**的内容创作者。"
+		},
+		"live": {
+			"digest": "📊 **直播** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "直播 #{streamId}",
+			"endedTitle": "⚫ 直播已结束",
+			"errorTitle": "⚠️ 直播连接出错",
+			"sessionLine": "直播场次 **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ 申请编号无效。",
+			"applicationNotFound": "❌ 未找到该申请。",
+			"alreadyProcessed": "⚠️ 该申请已处理过。",
+			"approvedReply": "✅ 申请 #{appId} 已通过。",
+			"rejectedReply": "❌ 申请 #{appId} 已驳回。"
 		}
 	},
 	"notifications": {
@@ -469,7 +639,9 @@
 			"iconStatusUpdated": "已更新",
 			"iconStatusRemoved": "已移除",
 			"iconStatusFailed": "失败（身份组已更新，但无图标）",
-			"iconStatusInvalid": "格式无效（身份组已更新，但无图标）"
+			"iconStatusInvalid": "格式无效（身份组已更新，但无图标）",
+			"iconFailedFallback": "图标设置失败。身份组已更新，但未使用自定义图标。",
+			"iconNote": "⚠️ **图标说明：** {message}"
 		},
 		"deleted": {
 			"title": "✅ 赞助者专属身份组已删除",
@@ -490,7 +662,18 @@
 			"updateFailed": "❌ **身份组更新失败**\\n\\n错误：{error}\\n\\n请确认：\\n- 机器人拥有管理身份组的权限\\n- 身份组的各项限制有效",
 			"deleteFailed": "❌ 身份组删除失败：{error}",
 			"failed": "❌ 打开身份组创建表单失败：{error}",
-			"editFailed": "❌ 打开编辑表单失败：{error}"
+			"editFailed": "❌ 打开编辑表单失败：{error}",
+			"createFailedReason": "❌ **身份组创建失败**\n\n{reason}"
+		},
+		"colorDefault": "默认",
+		"anchor": {
+			"noBoosterRole": "本服务器还没有 Server Booster 身份组，有人助力服务器后才会出现。",
+			"botTooLow": "机器人自身的身份组必须高于 {role} 才能创建支持者身份组。",
+			"unknown": "无法确定支持者身份组的放置位置。"
+		},
+		"iconErrors": {
+			"boost": "本服务器需要 2 级助力才能使用身份组自定义图标。你可以改用 emoji！",
+			"invalidFormat": "URL 格式或文件类型无效"
 		}
 	},
 	"questEnroll": {
@@ -519,7 +702,24 @@
 		"autoQuestDisabled": "自动参加任务功能当前已关闭，请联系服务器管理员。",
 		"alreadyRunning": "你已经有一个自动任务在进行中，请等它完成后再开始新的。",
 		"announceInChannel": "每个结果都会发布在 {channel}。",
-		"announceDisabled": "未设置任务频道，因此不会发布任何消息，已领取的任务只会在任务列表中标记。"
+		"announceDisabled": "未设置任务频道，因此不会发布任何消息，已领取的任务只会在任务列表中标记。",
+		"result": {
+			"reward": "奖励",
+			"openInDiscord": "在 Discord 中打开",
+			"errorTitle": "任务报名出错",
+			"errorDescription": "{member}（{tag}）\n任务 `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Discord 用户令牌（不会保存）",
+			"placeholder": "违反 ToS 风险：你的账号可能被封禁，机器人/服务器也可能受影响。只粘贴一次，切勿公开。",
+			"claimAllTitle": "全部领取（令牌 — 高风险）",
+			"enrollTitle": "报名（令牌 — 高风险）"
+		},
+		"tokenTooShort": "令牌太短。",
+		"invalidTokenTitle": "令牌无效",
+		"invalidTokenDescription": "你提供的令牌似乎无效或已过期。\n`{error}`",
+		"invalidQuestId": "任务 ID 无效。",
+		"missingQuestOrToken": "缺少任务 ID 或令牌太短。"
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -553,7 +753,7 @@
 			"menu": {
 				"title": "🛍️ Roblox 物品通知",
 				"description": "你正在关注 {count} 件物品。选择其中一件即可修改通知条件。",
-				"empty": "你还没有关注任何 Roblox 物品。在商品帖子下点击 🔔 Notify me 即可开始。",
+				"empty": "你还没有关注任何 Roblox 物品。在商品帖子下点击 🔔 {button} 即可开始。",
 				"placeholder": "选择要编辑的物品……",
 				"disableAll": "🔕 全部关闭",
 				"disabledAll": "🔕 已关闭 {count} 件物品的通知。"
@@ -561,6 +761,24 @@
 			"errors": {
 				"invalidItem": "❌ 无法从这个按钮读取对应的商品信息。",
 				"memberNotFound": "❌ 你的成员资料尚未同步完成，请稍后再试。"
+			}
+		},
+		"itemFallback": "物品 #{id}",
+		"post": {
+			"free": "免费",
+			"updatedTitle": "[已更新] {name}",
+			"openOnRoblox": "在 Roblox 打开",
+			"notifyMe": "通知我",
+			"fields": {
+				"category": "类别",
+				"price": "价格",
+				"creator": "创作者",
+				"quantity": "数量",
+				"favorites": "收藏",
+				"created": "创建于",
+				"notifications": "通知",
+				"resalePrice": "转售价格",
+				"saleEnds": "销售截止"
 			}
 		}
 	},
@@ -619,6 +837,13 @@
 			"notFound": "❌ 未找到该链接或用户名对应的创作者。",
 			"tiktokCooling": "⏳ TikTok 目前限制查询，请几分钟后再试。",
 			"lookupFailed": "❌ 暂时无法查询该创作者，请稍后再试。"
+		},
+		"post": {
+			"platform": "平台",
+			"type": "类型",
+			"notifications": "通知",
+			"openOn": "在 {platform} 打开",
+			"notifyMe": "通知我"
 		}
 	},
 	"moderation": {
@@ -643,6 +868,382 @@
 		"done": "✅ 已对 {member} 执行{action}。案件 #{case}。",
 		"failed": "❌ {error}",
 		"invalidDuration": "❌ 请输入时长，如 10m、2h 或 7d。",
-		"notAllowed": "❌ 无法处理服务器所有者和机器人。"
+		"notAllowed": "❌ 无法处理服务器所有者和机器人。",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ 成员已被警告",
+				"timeout": "🔇 成员已被禁言",
+				"untimeout": "🔊 禁言已解除",
+				"kick": "👢 成员已被踢出",
+				"ban": "🔨 成员已被封禁",
+				"tempban": "⏳ 成员已被临时封禁",
+				"unban": "🕊️ 成员已解封",
+				"unwarn": "🧹 警告已移除",
+				"clearwarns": "🧹 警告已清除",
+				"tempban_expired": "⌛ 临时封禁已到期"
+			},
+			"bulkTitles": {
+				"role_add": "➕ 批量添加身份组",
+				"role_remove": "➖ 批量移除身份组"
+			},
+			"title": "{action} · 案例 #{case}",
+			"description": "已为 {member} 记录案例 **#{case}**。",
+			"fields": {
+				"member": "👤 成员",
+				"staff": "🛡️ 管理人员",
+				"source": "📍 来源",
+				"reason": "📝 原因",
+				"duration": "⏱️ 时长",
+				"activeWarnings": "📊 有效警告",
+				"role": "🎭 身份组"
+			},
+			"durationValue": "{duration}（{ends}结束）",
+			"noReason": "未提供原因",
+			"unknown": "未知",
+			"automatic": "自动",
+			"staffFallback": "管理人员",
+			"sources": {
+				"panel": "面板",
+				"menu": "菜单",
+				"discord": "Discord",
+				"auto": "自动"
+			},
+			"bulkSummary": "**{done}** 个完成 · {failed} 个失败",
+			"reasons": {
+				"unwarn": "已移除警告 #{case}",
+				"clearwarns": "已清除 {count} 条警告",
+				"escalation": "有效警告已达 {count} 条",
+				"tempbanExpired": "临时封禁案例 #{case} 已到期"
+			}
+		},
+		"memberDm": {
+			"server": "**服务器：** {server}",
+			"reason": "**原因：** {reason}",
+			"duration": "**时长：** {duration}"
+		}
+	},
+	"setup": {
+		"categoryName": "{botName} 菜单",
+		"channels": {
+			"menu": "「💻」菜单",
+			"bot_updates": "「⚙️」机器人更新",
+			"welcomer": "「🚪」欢迎",
+			"booster": "「🚀」助力",
+			"moderation": "「🔨」管理",
+			"leveling": "「🆙」等级",
+			"giveaway": "「🎁」抽奖",
+			"staff_rating": "「⭐」员工评价",
+			"discord_quest_notifier": "「📜」discord任务",
+			"content_creator": "「📽️」内容创作者",
+			"roblox_catalog_notifier": "「👗」roblox目录",
+			"items": "「🛍️」物品",
+			"minigames": "「🎲」小游戏"
+		},
+		"language": {
+			"title": "🌐 选择服务器语言",
+			"description": "为此服务器选择语言。它用于 `/setup` 创建的频道名称、菜单、审批消息、机器人的所有公开消息，以及 AI 的聊天和语音。\n\n成员仍可在菜单中为自己的私密回复和私信选择语言。你之后可以在网页面板的 **Configuration → Main** 中更改。",
+			"placeholder": "选择服务器语言",
+			"working": "⏳ 正在以 **{language}** 进行设置…",
+			"applied": "🌐 服务器语言：**{language}**"
+		}
+	},
+	"items": {
+		"common": {
+			"footer": "道具",
+			"aMemberActor": "一位成员",
+			"aMemberTarget": "一位成员",
+			"disguisedMember": "一位神秘成员 🎭",
+			"someone": "有人",
+			"item": "道具",
+			"anItem": "道具",
+			"them": "该成员",
+			"until": "（{time}结束）",
+			"activeUntil": "（生效中，{time}结束）",
+			"luckBonus": "（+{percent}% 幸运 🍀）",
+			"luckTaxDiscount": "（幸运 🍀 减税 {percent}%）",
+			"addressed": "{member}，{text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "偷窃被格挡",
+				"blockedDescription": "{target} 的**护盾**挡下了 {actor} 的偷窃！",
+				"immuneTitle": "偷窃被免疫抵消",
+				"immuneDescription": "{target} 仍处于免疫状态。{actor} 的偷窃毫无效果，**{item}** 也白白损失了。"
+			},
+			"bomb": {
+				"blockedTitle": "炸弹被格挡",
+				"blockedDescription": "{target} 的**护盾**挡下了 {actor} 的炸弹！",
+				"immuneTitle": "炸弹被免疫抵消",
+				"immuneDescription": "{target} 仍处于免疫状态。{actor} 的炸弹毫无效果，**{item}** 也白白损失了。"
+			},
+			"leech": {
+				"blockedTitle": "水蛭被格挡",
+				"blockedDescription": "{target} 的**护盾**挡下了 {actor} 的水蛭！",
+				"immuneTitle": "水蛭被免疫抵消",
+				"immuneDescription": "{target} 仍处于免疫状态。{actor} 的水蛭毫无效果，**{item}** 也白白损失了。"
+			}
+		},
+		"attack": {
+			"reflectedTitle": "攻击被反弹",
+			"reflectedDescription": "{target} 将攻击反弹给了 {actor}！",
+			"withItem": "用 **{item}** ",
+			"refundedValue": "{target} 获得了 {xp} 的赔付",
+			"bountyValue": "{actor} 还领取了 {xp}",
+			"immuneValue": "{target} 的免疫将于{time}结束",
+			"steal": {
+				"title": "成员遭到抢劫！",
+				"description": "{actor} {withItem}抢劫了 {target}！"
+			},
+			"bomb": {
+				"title": "成员遭到轰炸！",
+				"description": "{actor} {withItem}轰炸了 {target}！"
+			}
+		},
+		"fields": {
+			"skimRate": "抽取比例",
+			"received": "收到",
+			"tax": "税",
+			"bounty": "悬赏",
+			"xpLostByAttacker": "攻击者损失的 XP",
+			"attacker": "攻击者",
+			"victim": "受害者",
+			"xpStolen": "被偷 XP",
+			"xpDestroyed": "被摧毁 XP",
+			"insuranceRefund": "保险赔付",
+			"bountyCollected": "领取悬赏",
+			"immunity": "免疫"
+		},
+		"leech": {
+			"title": "水蛭已附着",
+			"description": "{actor} 在 {target} 身上放了一只水蛭，生效期间会抽走其部分 XP。"
+		},
+		"gift": {
+			"title": "礼物已送出",
+			"description": "{actor} 给 {target} 送了一份礼物！"
+		},
+		"bounty": {
+			"title": "悬赏已发布",
+			"description": "{actor} 对 {target} 发布了悬赏。下一个偷窃或轰炸其的人即可领取。"
+		},
+		"disguise": {
+			"title": "一位成员消失在人群中",
+			"description": "有人换上了**伪装**{until}。其攻击将隐藏名字，并已从排行榜上消失。"
+		},
+		"boost": {
+			"title": "加成已激活",
+			"description": "{actor} 激活了加成{until}。持续期间收益会成倍增加。"
+		},
+		"shield": {
+			"title": "护盾已激活",
+			"description": "{actor} 现已受到保护，来袭的偷窃、炸弹和水蛭都会被格挡{until}。"
+		},
+		"reflect": {
+			"title": "反弹已激活",
+			"description": "{actor} 会将下一次攻击反弹给攻击者{until}。"
+		},
+		"insurance": {
+			"title": "保险已激活",
+			"description": "{actor} 下次被抢劫或轰炸时，将获赔损失的 {percent}%{luck}{until}。"
+		},
+		"luck": {
+			"title": "幸运已激活",
+			"description": "{actor} 现拥有 +{percent}% 幸运，适用于偷窃、炸弹、小游戏、侦察、水蛭、礼物税、保险、好友加成和商店价格{until}。"
+		},
+		"spyCaught": {
+			"title": "间谍被抓",
+			"description": "{target} 抓到 {spy} 正试图窥探自己，对方一无所获。"
+		},
+		"adminGift": {
+			"title": "礼物到了",
+			"description": "{member} 收到了管理员赠送的 **{quantity}× {item}**。快去看看你的道具吧！"
+		},
+		"expired": {
+			"boost": {
+				"title": "加成结束",
+				"text": "你的 **{value}× 加成**已失效。"
+			},
+			"shield": {
+				"title": "护盾结束",
+				"text": "你的**护盾**已失效，你可能再次遭到攻击。"
+			},
+			"leech": {
+				"title": "水蛭结束",
+				"text": "你的 **{value}% 水蛭**已结束。",
+				"textWithTarget": "你对 {target} 的 **{value}% 水蛭**已结束。"
+			},
+			"reflect": {
+				"title": "反弹结束",
+				"text": "你的**反弹**已失效。"
+			},
+			"insurance": {
+				"title": "保险结束",
+				"text": "你的**保险**已到期。"
+			},
+			"disguise": {
+				"title": "伪装结束",
+				"announcement": "一位成员卸下了伪装，再次现身。"
+			},
+			"luck": {
+				"title": "幸运结束",
+				"text": "你的 **+{value}% 幸运**已失效。"
+			}
+		},
+		"immunityEnded": {
+			"title": "免疫结束",
+			"description": "{member} 不再免疫，又可以被攻击了！",
+			"anonymous": "一位成员不再免疫。"
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "偷窃冷却完毕",
+				"text": "你的偷窃冷却已结束，可以再次偷窃了！"
+			},
+			"bomb": {
+				"title": "炸弹冷却完毕",
+				"text": "你的炸弹冷却已结束，可以再次投放炸弹了！"
+			},
+			"insurance": {
+				"title": "保险冷却完毕",
+				"text": "你的保险冷却已结束，可以再次激活保险了！"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "一名成员",
+		"footer": "小游戏",
+		"win": {
+			"title": "🎲 小游戏胜利！",
+			"description": "{member} 以 {multiplier}× 下注 {wager}，**赢了**！"
+		},
+		"lose": {
+			"title": "🎲 小游戏失利",
+			"description": "{member} 以 {multiplier}× 下注 {wager}，**全部输光**。"
+		},
+		"fields": {
+			"payout": "奖金",
+			"netGain": "净收益",
+			"winChance": "胜率",
+			"xpLost": "损失 XP"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ 主题特效抽奖",
+			"description": "{member} 花费 {cost} 抽奖，抽中了 **{effect}**！"
+		},
+		"fields": {
+			"effect": "特效",
+			"xpSpent": "消耗 XP",
+			"variant": "变体"
+		}
+	},
+	"tasks": {
+		"footer": "任务",
+		"rarity": {
+			"common": "普通",
+			"uncommon": "优良",
+			"rare": "稀有",
+			"epic": "史诗",
+			"legendary": "传说",
+			"mythic": "神话"
+		},
+		"milestones": {
+			"7": "一周",
+			"30": "一个月",
+			"100": "百日",
+			"365": "一年"
+		},
+		"login": {
+			"jackpotTitle": "🎁 第 {day} 天大奖 — {rarity}！",
+			"dropTitle": "✨ {rarity}掉落！",
+			"description": "{member} 在第 {day} 天抽到了 **{rarity}** 物品！",
+			"fields": {
+				"item": "物品",
+				"rarity": "稀有度",
+				"worth": "价值"
+			}
+		},
+		"streak": {
+			"day": "{count} 天",
+			"days": "{count} 天",
+			"reset": {
+				"title": "💔 连续记录中断",
+				"description": "{member} 错过了 **{days}**，失去了 **{previous} 天**的连续记录。从第 1 天重新开始。",
+				"descriptionBurned": "{member} 错过了 **{days}**，失去了 **{previous} 天**的连续记录。{burned}从第 1 天重新开始。",
+				"burnedOne": "为了保住它，消耗了 1 张冻结卡。",
+				"burnedMany": "为了保住它，消耗了 {count} 张冻结卡。"
+			},
+			"frozen": {
+				"title": "🧊 连续记录已冻结",
+				"description": "{member} 错过了 **{days}** — {freezes}保住了 **{streak} 天**的连续记录。",
+				"one": "1 张冻结卡",
+				"many": "{count} 张冻结卡"
+			},
+			"fields": {
+				"longest": "最长记录",
+				"freezesUsed": "已用冻结卡",
+				"freezesLeft": "剩余冻结卡"
+			},
+			"milestone": {
+				"title": "{emoji} {label}连续记录",
+				"description": "{member} 刚刚达成 **{streak} 天**连续记录！"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 欢迎加入服务器！",
+		"fields": {
+			"accountCreated": "📅 账号创建于",
+			"memberCount": "👥 成员人数",
+			"invitedBy": "📨 邀请人"
+		},
+		"memberNumber": "第 {count} 位成员",
+		"inviterCount": "{inviter}（{count} 次邀请）",
+		"inviter": {
+			"vanity": "专属链接",
+			"server": "服务器邀请链接",
+			"someone": "某人"
+		},
+		"inviteSources": {
+			"invite": "Discord 链接",
+			"personal": "个人链接",
+			"vanity": "专属链接",
+			"server": "服务器链接",
+			"manual": "由管理人员设置",
+			"unknown": "未知"
+		},
+		"accountAge": {
+			"today": "今天",
+			"oneDay": "1 天前",
+			"days": "{days} 天前"
+		},
+		"unknownServer": "未知服务器"
+	},
+	"booster": {
+		"title": "💎 感谢你的助力！",
+		"fields": {
+			"boostLevel": "🚀 助力等级",
+			"totalBoosts": "✨ 助力总数",
+			"boostedSince": "📅 助力开始于"
+		},
+		"level": "{level} 级",
+		"justNow": "刚刚",
+		"unknownServer": "未知服务器"
+	},
+	"questNotifier": {
+		"defaultReward": "• 任务奖励",
+		"fields": {
+			"rewards": "奖励",
+			"tasks": "任务",
+			"game": "🎮 游戏",
+			"publisher": "🏢 发行商",
+			"expires": "⏳ 截止"
+		},
+		"test": "_测试通知 — 通知功能运行正常。_",
+		"openInDiscord": "在 Discord 中打开"
+	},
+	"forwarder": {
+		"title": "来自 {channel} 的消息",
+		"additionalAttachments": "其他附件"
 	}
 }

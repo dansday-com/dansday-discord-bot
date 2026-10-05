@@ -5,6 +5,7 @@ import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
 import { attributeJoin, type JoinInviteResult } from './invites.js';
 import { INVITE_SOURCE_LABEL } from '../../../../invites.js';
+import { serverTranslator, type Translator } from '../i18n.js';
 
 const INVITE_WAIT_MS = 5_000;
 
@@ -12,20 +13,21 @@ async function waitForInvite(member): Promise<JoinInviteResult | null> {
 	return Promise.race([attributeJoin(member), new Promise<null>((resolve) => setTimeout(() => resolve(null), INVITE_WAIT_MS))]).catch(() => null);
 }
 
-function inviterText(invite: JoinInviteResult | null): string {
+function inviterText(invite: JoinInviteResult | null, tr: Translator): string {
 	if (invite?.inviterDiscordId) return `<@${invite.inviterDiscordId}>`;
-	if (invite?.source === 'vanity') return 'the vanity link';
-	if (invite?.source === 'server') return 'the server invite link';
-	return 'someone';
+	if (invite?.source === 'vanity') return tr('welcomer.inviter.vanity');
+	if (invite?.source === 'server') return tr('welcomer.inviter.server');
+	return tr('welcomer.inviter.someone');
 }
 
-function invitedByText(invite: JoinInviteResult): string {
-	if (!invite.inviterDiscordId) return inviterText(invite);
-	const link = INVITE_SOURCE_LABEL[invite.source];
-	return `<@${invite.inviterDiscordId}> (${invite.inviterTotal ?? 0} invites)${link ? `\n${link}` : ''}`;
+function invitedByText(invite: JoinInviteResult, tr: Translator): string {
+	if (!invite.inviterDiscordId) return inviterText(invite, tr);
+	const link = INVITE_SOURCE_LABEL[invite.source] ? tr(`welcomer.inviteSources.${invite.source}`) : null;
+	const inviter = tr('welcomer.inviterCount', { inviter: `<@${invite.inviterDiscordId}>`, count: invite.inviterTotal ?? 0 });
+	return `${inviter}${link ? `\n${link}` : ''}`;
 }
 
-function replacePlaceholders(message, memberId, serverData, memberData, memberCount, invite: JoinInviteResult | null = null) {
+function replacePlaceholders(message, memberId, serverData, memberData, memberCount, tr: Translator, invite: JoinInviteResult | null = null) {
 	const now = new Date();
 	let profileCreatedAt = null;
 	if (memberData?.profile_created_at) {
@@ -36,14 +38,19 @@ function replacePlaceholders(message, memberId, serverData, memberData, memberCo
 		}
 	}
 	const accountAge = profileCreatedAt ? Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-	const accountAgeText = accountAge === 0 ? 'today' : accountAge === 1 ? '1 day ago' : `${accountAge} days ago`;
+	const accountAgeText =
+		accountAge === 0
+			? tr('welcomer.accountAge.today')
+			: accountAge === 1
+				? tr('welcomer.accountAge.oneDay')
+				: tr('welcomer.accountAge.days', { days: accountAge });
 
 	return message
 		.replace(/{user}/g, `<@${memberId}>`)
-		.replace(/{server}/g, serverData?.name || 'Unknown Server')
+		.replace(/{server}/g, serverData?.name || tr('welcomer.unknownServer'))
 		.replace(/{memberCount}/g, (memberCount || 0).toString())
 		.replace(/{accountAge}/g, accountAgeText)
-		.replace(/{inviter}/g, inviterText(invite))
+		.replace(/{inviter}/g, inviterText(invite, tr))
 		.replace(/{inviteCount}/g, (invite?.inviterTotal ?? 0).toString());
 }
 
@@ -99,8 +106,9 @@ async function welcomeUser(member, client) {
 
 		const guildMemberCount = member.guild?.memberCount ?? (serverData?.total_members || 0);
 		const invite = await waitForInvite(member);
+		const tr = await serverTranslator(member.guild.id);
 		const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-		const welcomeMessage = replacePlaceholders(randomMessage, member.user.id, serverData, memberData, guildMemberCount, invite);
+		const welcomeMessage = replacePlaceholders(randomMessage, member.user.id, serverData, memberData, guildMemberCount, tr, invite);
 
 		const embedConfig = await getEmbedConfig(member.guild.id);
 
@@ -116,25 +124,25 @@ async function welcomeUser(member, client) {
 
 		const welcomeEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle('🎉 Welcome to the Server!')
+			.setTitle(tr('welcomer.title'))
 			.setDescription(welcomeMessage)
 			.setThumbnail(memberData.avatar || null)
 			.addFields([
 				{
-					name: '📅 Account Created',
+					name: tr('welcomer.fields.accountCreated'),
 					value: `<t:${accountCreatedTimestamp}:R>`,
 					inline: true
 				},
 				{
-					name: '👥 Member Count',
-					value: `Member #${guildMemberCount || 0}`,
+					name: tr('welcomer.fields.memberCount'),
+					value: tr('welcomer.memberNumber', { count: guildMemberCount || 0 }),
 					inline: true
 				},
 				...(invite?.inviterDiscordId || invite?.source === 'vanity' || invite?.source === 'server'
 					? [
 							{
-								name: '📨 Invited By',
-								value: invitedByText(invite),
+								name: tr('welcomer.fields.invitedBy'),
+								value: invitedByText(invite, tr),
 								inline: true
 							}
 						]

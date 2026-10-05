@@ -2,7 +2,7 @@ import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, Embed
 import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate } from '../../i18n.js';
+import { translate, serverTranslator } from '../../i18n.js';
 import db from '../../../../../database.js';
 
 export async function handleFeedbackButton(interaction) {
@@ -126,11 +126,12 @@ export async function handleFeedbackModal(interaction) {
 		const feedbackId = await db.createFeedback(server.id, dbMember.id, feedbackMessage, isAnonymous);
 
 		const embedConfig = await getEmbedConfig(interaction.guild.id);
+		const tr = await serverTranslator(guild.id);
 
-		const feedbackEmbedTitle = '💬 Feedback Submission';
-		const fromLabel = '👤 From';
-		const submittedLabel = '🕐 Submitted';
-		const footerText = `${embedConfig.FOOTER} • Feedback ID: #${feedbackId}`;
+		const feedbackEmbedTitle = tr('feedback.channelEmbed.title');
+		const fromLabel = tr('feedback.channelEmbed.fieldFrom');
+		const submittedLabel = tr('feedback.channelEmbed.fieldSubmitted');
+		const footerText = `${embedConfig.FOOTER} ${tr('feedback.channelEmbed.footerSuffix', { feedbackId })}`;
 		const feedbackEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(feedbackEmbedTitle)
@@ -139,7 +140,7 @@ export async function handleFeedbackModal(interaction) {
 			.addFields([
 				{
 					name: fromLabel,
-					value: isAnonymous ? 'Anonymous' : `<@${user.id}>`,
+					value: isAnonymous ? tr('feedback.channelEmbed.anonymous') : `<@${user.id}>`,
 					inline: true
 				},
 				{
@@ -174,12 +175,13 @@ export async function handleFeedbackModal(interaction) {
 			successDescription += anonymousText;
 		}
 
+		const memberFooterSuffix = await translate('feedback.channelEmbed.footerSuffix', interaction.guild.id, interaction.user.id, { feedbackId });
 		const successEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(successTitle)
 			.setDescription(successDescription)
 			.setTimestamp()
-			.setFooter({ text: footerText });
+			.setFooter({ text: `${embedConfig.FOOTER} ${memberFooterSuffix}` });
 
 		await interaction.editReply({
 			embeds: [successEmbed]

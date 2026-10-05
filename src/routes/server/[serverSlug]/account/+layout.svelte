@@ -534,7 +534,7 @@
 		</div>
 
 		{#if activeChips.length > 0}
-			<div class="-mt-1.5 mb-4 flex [scrollbar-width:none] flex-nowrap gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+			<div class="-mt-1.5 mb-4 flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 				{#each activeChips as chip (chip.key)}
 					<span
 						class="inline-flex shrink-0 items-center gap-[7px] rounded-full border px-2.75 py-1.5 text-xs font-bold whitespace-nowrap text-(--chip)"

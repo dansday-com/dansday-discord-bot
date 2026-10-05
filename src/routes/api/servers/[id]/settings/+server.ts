@@ -9,6 +9,7 @@ import { BOT_BIO_MAX_LENGTH, normalizeMainConfigForPanel } from '$lib/utils/main
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { BOT_PROFILE_IMAGE, BOT_PROFILE_IMAGE_FORMATS_LABEL, sniffBotProfileImage, tooLargeMessage, type BotProfileImageKind } from '$lib/images.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
+import { isServerLanguage } from '$lib/languages.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -205,6 +206,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (bio.length > BOT_BIO_MAX_LENGTH) {
 				return json({ error: `Bot bio must be ${BOT_BIO_MAX_LENGTH} characters or fewer` }, { status: 400 });
 			}
+			if (rest.language !== undefined && !isServerLanguage(rest.language)) {
+				return json({ error: 'Unsupported server language' }, { status: 400 });
+			}
 
 			const existing = await db.getServerSettings(targetServerId, component).catch(() => null);
 			const existingRaw = existing?.settings && typeof existing.settings === 'object' ? (existing.settings as Record<string, unknown>) : {};
@@ -251,6 +255,21 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				.catch((err: any) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
 		}
 
+		let languageError = '';
+		if (component === SERVER_SETTINGS.component.main && panelServer?.discord_server_id) {
+			const before = normalizeMainConfigForPanel(previous).language;
+			const after = normalizeMainConfigForPanel(settings).language;
+			if (before !== after) {
+				const applied = await callOfficialBotWebhook(bot, {
+					type: 'apply_server_language',
+					guild_id: panelServer.discord_server_id,
+					language: after
+				});
+				const reply = (applied.body ?? {}) as { success?: boolean };
+				if (applied.status !== 200 || reply.success !== true) languageError = messageFromBotWebhookPayload(applied.body);
+			}
+		}
+
 		if (component === SERVER_SETTINGS.component.notifications) {
 			try {
 				const notifServer = await db.getServer(targetServerId);
@@ -279,6 +298,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		if (profileError) {
 			return json({ success: false, saved: true, error: `Settings saved, but the bot profile was not updated: ${profileError}` });
+		}
+		if (languageError) {
+			return json({
+				success: false,
+				saved: true,
+				error: `Settings saved, but the bot could not rename the setup channels or refresh the menu yet: ${languageError}. Run /setup in Discord to apply the language.`
+			});
 		}
 		return json({ success: true, data: result });
 	} catch (error: any) {

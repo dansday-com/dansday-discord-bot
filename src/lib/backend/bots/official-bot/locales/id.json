@@ -114,7 +114,10 @@
 			"current": "Bahasa Saat Ini",
 			"select": "Pilih Bahasa",
 			"updated": "✅ Bahasa berhasil diperbarui!",
-			"failed": "❌ Gagal memperbarui bahasa: {error}"
+			"failed": "❌ Gagal memperbarui bahasa: {error}",
+			"serverDefault": "Bawaan server ({language})",
+			"serverDefaultDescription": "Ikuti bahasa server",
+			"currentOption": "Bahasa saat ini"
 		}
 	},
 	"leveling": {
@@ -126,6 +129,54 @@
 		"errors": {
 			"notRegistered": "⚠️ Server ini tidak terdaftar dengan bot. Silakan jalankan sync terlebih dahulu.",
 			"createRecordFailed": "❌ Gagal membuat catatan anggota. Silakan coba lagi."
+		},
+		"fields": {
+			"level": "⭐ Level",
+			"totalXp": "📊 Total XP",
+			"rank": "🏆 Peringkat",
+			"previousRank": "Peringkat Sebelumnya",
+			"newRank": "Peringkat Baru",
+			"progress": "⚡ Progres ke Level {level}",
+			"reward": "🎁 Hadiah terbuka",
+			"activity": "💬 Aktivitas"
+		},
+		"xpToGo": "**{xp}** XP lagi",
+		"unranked": "Belum berperingkat",
+		"leaderboardButton": "Papan Peringkat",
+		"levelUp": {
+			"title": "🎉 Naik Level!",
+			"description": "{member} telah mencapai **Level {level}**!"
+		},
+		"rankUp": {
+			"title": "Peringkat Naik!",
+			"topSpot": "{member} baru saja merebut posisi teratas!",
+			"climbed": "{member} naik di papan peringkat!"
+		},
+		"activity": {
+			"messages": "{count} pesan",
+			"voice": "{hours} jam voice",
+			"streaming": "{hours} jam streaming"
+		},
+		"log": {
+			"types": {
+				"chat": "Chat",
+				"voice": "Voice",
+				"afkVoice": "Voice AFK",
+				"video": "Video",
+				"streaming": "Streaming",
+				"invite": "Undangan"
+			},
+			"gain": "{emoji} XP {type}: {name} mendapat +{xp} XP",
+			"staff": "({multiplier}× Staf 🛡️)",
+			"boost": "({multiplier}× Boost ⚡)",
+			"friend": "(+{rate} Boost teman 🤝)",
+			"leech": "(−{rate} Leech 🩸)",
+			"share": "📨 +{amount} untuk {name} ({percent}% bagian undangan{staff})",
+			"inviteNote": "karena mengundang {name}",
+			"leechCredit": "🩸 Leech: {attacker} menyedot +{amount} XP dari {victim}{pct}",
+			"unknownMember": "Tidak dikenal",
+			"someMember": "seorang anggota",
+			"someLeecher": "Seorang leecher"
 		}
 	},
 	"invites": {
@@ -196,7 +247,10 @@
 		"messages": {
 			"welcomeBack": "✅ Selamat datang kembali, {member}! Status AFK kamu telah dihapus.",
 			"dmEmbedTitle": "📬 Kamu disebutkan",
-			"dmMentioned": "{sender} menyebutmu di **{server}** · #{channel}\\n\\n**Pesan:** {message}"
+			"dmMentioned": "{sender} menyebutmu di **{server}** · #{channel}\\n\\n**Pesan:** {message}",
+			"away": "Sedang pergi",
+			"isAfk": "⏸️ {member} sedang AFK (sudah {duration})",
+			"isAfkWithMessage": "⏸️ {member} sedang AFK: **{message}** (sudah {duration})"
 		}
 	},
 	"giveaway": {
@@ -260,7 +314,41 @@
 			"finishChannelNotConfigured": "❌ Saluran giveaway tidak dikonfigurasi.",
 			"finishChannelNotFound": "❌ Saluran giveaway tidak ditemukan.",
 			"failed": "❌ Gagal membuka formulir giveaway: {error}",
-			"notEnoughInvites": "❌ Kamu butuh **{needed}** undangan untuk ikut giveaway ini. Kamu punya **{have}**."
+			"notEnoughInvites": "❌ Kamu butuh **{needed}** undangan untuk ikut giveaway ini. Kamu punya **{have}**.",
+			"roleSelectFailed": "❌ Gagal memproses pilihan role: {error}",
+			"enterFailed": "❌ **Gagal Mengikuti Giveaway**\\n\\nError: {error}",
+			"finishFailed": "❌ Gagal menyelesaikan giveaway: {error}"
+		},
+		"unknownRole": "Role {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "Tanpa batasan role",
+			"multipleEntries": "Boleh ikut lebih dari sekali",
+			"singleEntry": "Satu kali per member",
+			"prizeLine": "**Hadiah:** {prize}",
+			"winnerLine": "**Pemenang:** {count}",
+			"winnersLine": "**Pemenang:** {count}",
+			"entriesLine": "**Keikutsertaan:** {entries}",
+			"rolesLine": "**Batasan Role:** {roles}",
+			"invitesLine": "**Undangan Dibutuhkan:** {count}",
+			"hostedBy": "👤 Diadakan Oleh",
+			"enterButton": "🎉 Ikuti Giveaway"
+		},
+		"results": {
+			"endedTitle": "🎉 Giveaway Berakhir",
+			"endedWinnersTitle": "🎉 Giveaway Berakhir!",
+			"noEntries": "**{title}**\\n\\n❌ Tidak ada yang ikut! Giveaway telah berakhir tanpa peserta.",
+			"noWinners": "**{title}**\\n\\n❌ Tidak dapat memilih pemenang.",
+			"winnerLine": "🎊 **Pemenang:** {winners}",
+			"winnersLine": "🎊 **Pemenang:** {winners}",
+			"limitedEntriesOne": "⚠️ *Hanya {count} pemenang terpilih (dari {requested} yang diminta) karena peserta terbatas.*",
+			"limitedEntriesMany": "⚠️ *Hanya {count} pemenang terpilih (dari {requested} yang diminta) karena peserta terbatas.*",
+			"congrats": "Selamat! 🎉"
+		},
+		"finished": {
+			"title": "✅ Giveaway Selesai",
+			"noEntries": "Giveaway kamu **\"{title}\"** telah diselesaikan lebih awal.\\n\\nTidak ada peserta yang ikut.",
+			"noWinners": "Giveaway kamu **\"{title}\"** telah diselesaikan lebih awal.\\n\\nTidak dapat memilih pemenang.",
+			"winners": "Giveaway kamu **\"{title}\"** telah diselesaikan lebih awal.\\n\\n**Pemenang:** {winners}"
 		}
 	},
 	"feedback": {
@@ -284,6 +372,13 @@
 			"channelNotFound": "❌ Gagal mengirim feedback: Saluran feedback tidak ditemukan.",
 			"failed": "❌ Gagal membuka formulir feedback: {error}",
 			"submitFailed": "❌ **Gagal Mengirim Feedback**\\n\\nError: {error}\\n\\nSilakan coba lagi nanti."
+		},
+		"channelEmbed": {
+			"title": "💬 Feedback Masuk",
+			"fieldFrom": "👤 Dari",
+			"fieldSubmitted": "🕐 Dikirim",
+			"anonymous": "Anonim",
+			"footerSuffix": "• ID Feedback: #{feedbackId}"
 		}
 	},
 	"staffRating": {
@@ -356,6 +451,40 @@
 			"missingCategory": "❌ Silakan pilih kategori terlebih dahulu.",
 			"permissionDenied": "❌ **Izin Ditolak**\\n\\nKamu memerlukan izin admin untuk menyetujui atau menolak laporan staff.",
 			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
+		},
+		"embed": {
+			"staffDecision": "Keputusan staff",
+			"reviewedBy": "Ditinjau oleh",
+			"statusApproved": "Disetujui",
+			"statusRejected": "Ditolak"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Staff",
+			"fieldRating": "Rating",
+			"fieldCategory": "Kategori",
+			"fieldReporter": "Pelapor",
+			"fieldStatus": "Status",
+			"fieldDescription": "Deskripsi",
+			"anonymousReporter": "Anonim",
+			"pendingTitle": "🕒 Laporan Staff Menunggu Persetujuan",
+			"pendingStatus": "Menunggu persetujuan admin",
+			"approveButton": "Setujui Laporan",
+			"rejectButton": "Tolak Laporan",
+			"titleApproved": "✅ Laporan Staff Disetujui",
+			"titleRejected": "❌ Laporan Staff Ditolak",
+			"footerReportSuffix": "• ID Laporan: #{reportId}"
+		},
+		"ratingUpdate": {
+			"title": "⭐ Pembaruan Rating Staff",
+			"description": "{staff} menerima rating baru.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} laporan)",
+			"fieldFeedback": "Feedback",
+			"dm": "⭐ Rating staff kamu di **{server}** sekarang **{rating}/5.0** ({totalReports} laporan)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ Laporan ini sudah diproses.",
+			"approvedReply": "✅ Laporan #{reportId} disetujui.",
+			"rejectedReply": "❌ Laporan #{reportId} ditolak."
 		}
 	},
 	"contentCreator": {
@@ -405,6 +534,47 @@
 			"submitFailed": "❌ Gagal mengirim pengajuan content creator: {error}",
 			"permissionDenied": "❌ Kamu butuh izin admin untuk menyetujui atau menolak pengajuan content creator.",
 			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
+		},
+		"embed": {
+			"staffDecision": "Keputusan staff",
+			"reviewedBy": "Ditinjau oleh",
+			"reviewedBySystem": "Otomatis (TikTok duplikat)",
+			"statusApproved": "Disetujui",
+			"statusRejected": "Ditolak"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Pengajuan Content Creator Menunggu",
+			"pendingDescription": "{user} mengajukan akses Content Creator.",
+			"pendingStatus": "Menunggu persetujuan admin",
+			"fieldTiktok": "Username TikTok",
+			"fieldStatus": "Status",
+			"fieldApplicantReason": "Alasan",
+			"buttonApprove": "Setujui",
+			"buttonReject": "Tolak",
+			"titleApproved": "✅ Pengajuan Content Creator Disetujui",
+			"titleRejected": "❌ Pengajuan Content Creator Ditolak",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• ID Pengajuan: #{appId}",
+			"liveTitle": "🔴 Content Creator Sedang LIVE",
+			"liveDescription": "{mention} sedang live di TikTok!",
+			"liveWatchButton": "Tonton LIVE di TikTok",
+			"autoRejectReviewReason": "Duplikasi atau penyamaran: username TikTok ini sudah terhubung ke akun Discord lain.",
+			"autoRejectConflictPending": "Akun tersebut memiliki pengajuan yang **masih menunggu** untuk akun TikTok ini.",
+			"autoRejectConflictApproved": "Akun tersebut adalah content creator yang **sudah disetujui** dengan akun TikTok ini."
+		},
+		"live": {
+			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "Siaran #{streamId}",
+			"endedTitle": "⚫ Live berakhir",
+			"errorTitle": "⚠️ Koneksi live bermasalah",
+			"sessionLine": "Sesi siaran **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ ID pengajuan tidak valid.",
+			"applicationNotFound": "❌ Pengajuan tidak ditemukan.",
+			"alreadyProcessed": "⚠️ Pengajuan ini sudah diproses.",
+			"approvedReply": "✅ Pengajuan #{appId} disetujui.",
+			"rejectedReply": "❌ Pengajuan #{appId} ditolak."
 		}
 	},
 	"notifications": {
@@ -469,7 +639,9 @@
 			"iconStatusUpdated": "Diperbarui",
 			"iconStatusRemoved": "Dihapus",
 			"iconStatusFailed": "Gagal (role diperbarui tanpa ikon)",
-			"iconStatusInvalid": "Format tidak valid (role diperbarui tanpa ikon)"
+			"iconStatusInvalid": "Format tidak valid (role diperbarui tanpa ikon)",
+			"iconFailedFallback": "Gagal mengatur ikon. Role sudah diperbarui, tetapi tanpa ikon kustom.",
+			"iconNote": "⚠️ **Catatan tentang ikon:** {message}"
 		},
 		"deleted": {
 			"title": "✅ Role Supporter Kustom Dihapus",
@@ -490,7 +662,18 @@
 			"updateFailed": "❌ **Gagal Memperbarui Role**\\n\\nError: {error}\\n\\nPastikan:\\n- Bot memiliki izin untuk mengelola role\\n- Batasan role valid",
 			"deleteFailed": "❌ Gagal menghapus role: {error}",
 			"failed": "❌ Gagal membuka formulir pembuatan role: {error}",
-			"editFailed": "❌ Gagal membuka formulir edit: {error}"
+			"editFailed": "❌ Gagal membuka formulir edit: {error}",
+			"createFailedReason": "❌ **Gagal Membuat Role**\n\n{reason}"
+		},
+		"colorDefault": "Default",
+		"anchor": {
+			"noBoosterRole": "Server ini belum punya role Server Booster. Role itu muncul setelah ada yang boost server.",
+			"botTooLow": "Role bot harus berada di atas {role} untuk membuat role supporter.",
+			"unknown": "Tidak dapat menentukan posisi untuk role supporter."
+		},
+		"iconErrors": {
+			"boost": "Server ini memerlukan Level 2 Server Boost untuk menggunakan ikon role kustom. Kamu dapat menggunakan emoji sebagai gantinya!",
+			"invalidFormat": "Format URL atau jenis file tidak valid"
 		}
 	},
 	"questEnroll": {
@@ -519,7 +702,24 @@
 		"autoQuestDisabled": "Pendaftaran quest otomatis sedang dimatikan. Silakan hubungi administrator server.",
 		"alreadyRunning": "Kamu sudah punya quest otomatis yang sedang berjalan. Tunggu sampai selesai sebelum memulai lagi.",
 		"announceInChannel": "Setiap hasil diposting di {channel}.",
-		"announceDisabled": "Channel quest belum diatur, jadi tidak ada yang diposting — quest yang diklaim hanya ditandai di daftar quest."
+		"announceDisabled": "Channel quest belum diatur, jadi tidak ada yang diposting — quest yang diklaim hanya ditandai di daftar quest.",
+		"result": {
+			"reward": "Hadiah",
+			"openInDiscord": "Buka di Discord",
+			"errorTitle": "Gagal mendaftar quest",
+			"errorDescription": "{member} ({tag})\nQuest `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Token user Discord (tidak disimpan)",
+			"placeholder": "Risiko ToS: akunmu bisa di-ban, mungkin juga bot/server. Tempel sekali; jangan di publik.",
+			"claimAllTitle": "Klaim semua (token — risiko tinggi)",
+			"enrollTitle": "Daftar (token — risiko tinggi)"
+		},
+		"tokenTooShort": "Token terlalu pendek.",
+		"invalidTokenTitle": "Token tidak valid",
+		"invalidTokenDescription": "Token yang kamu berikan sepertinya tidak valid atau sudah kedaluwarsa.\n`{error}`",
+		"invalidQuestId": "ID quest tidak valid.",
+		"missingQuestOrToken": "ID quest tidak ada atau token terlalu pendek."
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -553,7 +753,7 @@
 			"menu": {
 				"title": "🛍️ Notifikasi Item Roblox",
 				"description": "Kamu memantau {count} item. Pilih salah satu untuk mengubah jenis notifikasinya.",
-				"empty": "Kamu belum memantau item Roblox apa pun. Tekan 🔔 Notify me di bawah postingan katalog untuk mulai.",
+				"empty": "Kamu belum memantau item Roblox apa pun. Tekan 🔔 {button} di bawah postingan katalog untuk mulai.",
 				"placeholder": "Pilih item untuk diubah...",
 				"disableAll": "🔕 Matikan semua",
 				"disabledAll": "🔕 Notifikasi untuk {count} item dimatikan."
@@ -561,6 +761,24 @@
 			"errors": {
 				"invalidItem": "❌ Item katalog dari tombol ini tidak bisa dibaca.",
 				"memberNotFound": "❌ Profil member kamu belum tersinkron. Coba lagi sebentar."
+			}
+		},
+		"itemFallback": "Item #{id}",
+		"post": {
+			"free": "GRATIS",
+			"updatedTitle": "[Diperbarui] {name}",
+			"openOnRoblox": "Buka di Roblox",
+			"notifyMe": "Beri tahu saya",
+			"fields": {
+				"category": "Kategori",
+				"price": "Harga",
+				"creator": "Kreator",
+				"quantity": "Jumlah",
+				"favorites": "Favorit",
+				"created": "Dibuat",
+				"notifications": "Notifikasi",
+				"resalePrice": "Harga jual ulang",
+				"saleEnds": "Penjualan berakhir"
 			}
 		}
 	},
@@ -619,6 +837,13 @@
 			"notFound": "❌ Kreator dengan link atau handle itu tidak ditemukan.",
 			"tiktokCooling": "⏳ TikTok sedang membatasi pencarian. Coba lagi beberapa menit lagi.",
 			"lookupFailed": "❌ Tidak bisa mencari kreator itu sekarang. Coba lagi nanti."
+		},
+		"post": {
+			"platform": "Platform",
+			"type": "Jenis",
+			"notifications": "Notifikasi",
+			"openOn": "Buka di {platform}",
+			"notifyMe": "Beri tahu saya"
 		}
 	},
 	"moderation": {
@@ -643,6 +868,382 @@
 		"done": "✅ {action} diterapkan ke {member}. Kasus #{case}.",
 		"failed": "❌ {error}",
 		"invalidDuration": "❌ Masukkan durasi seperti 10m, 2h atau 7d.",
-		"notAllowed": "❌ Pemilik server dan bot tidak bisa dimoderasi."
+		"notAllowed": "❌ Pemilik server dan bot tidak bisa dimoderasi.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ Member Diperingatkan",
+				"timeout": "🔇 Member Di-timeout",
+				"untimeout": "🔊 Timeout Dihapus",
+				"kick": "👢 Member Di-kick",
+				"ban": "🔨 Member Di-ban",
+				"tempban": "⏳ Member Di-ban Sementara",
+				"unban": "🕊️ Ban Member Dicabut",
+				"unwarn": "🧹 Peringatan Dihapus",
+				"clearwarns": "🧹 Semua Peringatan Dihapus",
+				"tempban_expired": "⌛ Ban Sementara Berakhir"
+			},
+			"bulkTitles": {
+				"role_add": "➕ Tambah Role Massal",
+				"role_remove": "➖ Hapus Role Massal"
+			},
+			"title": "{action} · Kasus #{case}",
+			"description": "Kasus **#{case}** dicatat untuk {member}.",
+			"fields": {
+				"member": "👤 Member",
+				"staff": "🛡️ Staf",
+				"source": "📍 Sumber",
+				"reason": "📝 Alasan",
+				"duration": "⏱️ Durasi",
+				"activeWarnings": "📊 Peringatan Aktif",
+				"role": "🎭 Role"
+			},
+			"durationValue": "{duration} (berakhir {ends})",
+			"noReason": "Tidak ada alasan",
+			"unknown": "Tidak diketahui",
+			"automatic": "Otomatis",
+			"staffFallback": "staf",
+			"sources": {
+				"panel": "panel",
+				"menu": "menu",
+				"discord": "discord",
+				"auto": "otomatis"
+			},
+			"bulkSummary": "**{done}** berhasil · {failed} gagal",
+			"reasons": {
+				"unwarn": "Menghapus peringatan #{case}",
+				"clearwarns": "Menghapus {count} peringatan",
+				"escalation": "Mencapai {count} peringatan aktif",
+				"tempbanExpired": "Kasus ban sementara #{case} berakhir"
+			}
+		},
+		"memberDm": {
+			"server": "**Server:** {server}",
+			"reason": "**Alasan:** {reason}",
+			"duration": "**Durasi:** {duration}"
+		}
+	},
+	"setup": {
+		"categoryName": "Menu {botName}",
+		"channels": {
+			"menu": "「💻」menu",
+			"bot_updates": "「⚙️」pembaruan-bot",
+			"welcomer": "「🚪」selamat-datang",
+			"booster": "「🚀」booster",
+			"moderation": "「🔨」moderasi",
+			"leveling": "「🆙」level",
+			"giveaway": "「🎁」giveaway",
+			"staff_rating": "「⭐」rating-staf",
+			"discord_quest_notifier": "「📜」quest-discord",
+			"content_creator": "「📽️」kreator-konten",
+			"roblox_catalog_notifier": "「👗」katalog-roblox",
+			"items": "「🛍️」item",
+			"minigames": "「🎲」minigame"
+		},
+		"language": {
+			"title": "🌐 Pilih bahasa server",
+			"description": "Pilih bahasa untuk server ini. Bahasa ini dipakai untuk nama channel yang dibuat `/setup`, menu, postingan persetujuan, semua pesan publik bot, serta obrolan dan suara AI.\n\nAnggota tetap bisa memilih bahasa sendiri di menu untuk balasan pribadi dan DM mereka. Kamu bisa mengubahnya nanti di panel web pada **Configuration → Main**.",
+			"placeholder": "Pilih bahasa server",
+			"working": "⏳ Menyiapkan dalam **{language}**…",
+			"applied": "🌐 Bahasa server: **{language}**"
+		}
+	},
+	"items": {
+		"common": {
+			"footer": "Item",
+			"aMemberActor": "Seorang anggota",
+			"aMemberTarget": "seorang anggota",
+			"disguisedMember": "Anggota misterius 🎭",
+			"someone": "Seseorang",
+			"item": "item",
+			"anItem": "sebuah item",
+			"them": "anggota itu",
+			"until": " (berakhir {time})",
+			"activeUntil": " (aktif, berakhir {time})",
+			"luckBonus": " (+{percent}% keberuntungan 🍀)",
+			"luckTaxDiscount": " (pajak −{percent}% berkat keberuntungan 🍀)",
+			"addressed": "{member}, {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "Pencurian Diblokir",
+				"blockedDescription": "**Perisai** milik {target} memblokir pencurian dari {actor}!",
+				"immuneTitle": "Pencurian Diserap Imunitas",
+				"immuneDescription": "{target} masih kebal. Pencurian dari {actor} tidak berpengaruh dan **{item}** hilang sia-sia."
+			},
+			"bomb": {
+				"blockedTitle": "Bom Diblokir",
+				"blockedDescription": "**Perisai** milik {target} memblokir bom dari {actor}!",
+				"immuneTitle": "Bom Diserap Imunitas",
+				"immuneDescription": "{target} masih kebal. Bom dari {actor} tidak berpengaruh dan **{item}** hilang sia-sia."
+			},
+			"leech": {
+				"blockedTitle": "Lintah Diblokir",
+				"blockedDescription": "**Perisai** milik {target} memblokir lintah dari {actor}!",
+				"immuneTitle": "Lintah Diserap Imunitas",
+				"immuneDescription": "{target} masih kebal. Lintah dari {actor} tidak berpengaruh dan **{item}** hilang sia-sia."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "Serangan Dipantulkan",
+			"reflectedDescription": "{target} memantulkan serangan kembali ke {actor}!",
+			"withItem": " dengan **{item}**",
+			"refundedValue": "{target} mendapat pengembalian {xp}",
+			"bountyValue": "{actor} juga mengklaim {xp}",
+			"immuneValue": "Imunitas {target} berakhir {time}",
+			"steal": {
+				"title": "Anggota Dirampok!",
+				"description": "{actor} merampok {target}{withItem}!"
+			},
+			"bomb": {
+				"title": "Anggota Dibom!",
+				"description": "{actor} mengebom {target}{withItem}!"
+			}
+		},
+		"fields": {
+			"skimRate": "Tingkat sedotan",
+			"received": "Diterima",
+			"tax": "Pajak",
+			"bounty": "Hadiah buruan",
+			"xpLostByAttacker": "XP penyerang yang hilang",
+			"attacker": "Penyerang",
+			"victim": "Korban",
+			"xpStolen": "XP dicuri",
+			"xpDestroyed": "XP dihancurkan",
+			"insuranceRefund": "Pengembalian asuransi",
+			"bountyCollected": "Hadiah buruan diklaim",
+			"immunity": "Imunitas"
+		},
+		"leech": {
+			"title": "Lintah Terpasang",
+			"description": "{actor} memasang lintah pada {target}, menyedot sebagian XP-nya selama aktif."
+		},
+		"gift": {
+			"title": "Hadiah Terkirim",
+			"description": "{actor} mengirim hadiah ke {target}!"
+		},
+		"bounty": {
+			"title": "Hadiah Buruan Dipasang",
+			"description": "{actor} memasang hadiah buruan untuk {target}. Siapa pun yang mencuri atau mengebomnya berikutnya akan mendapatkannya."
+		},
+		"disguise": {
+			"title": "Seorang Anggota Menghilang di Keramaian",
+			"description": "Seseorang memakai **Penyamaran**{until}. Serangannya kini menyembunyikan namanya dan dia menghilang dari papan peringkat."
+		},
+		"boost": {
+			"title": "Boost Diaktifkan",
+			"description": "{actor} mengaktifkan boost{until}. Perolehan dilipatgandakan selama boost berlangsung."
+		},
+		"shield": {
+			"title": "Perisai Diaktifkan",
+			"description": "{actor} kini terlindungi, jadi pencurian, bom, dan lintah yang masuk akan diblokir{until}."
+		},
+		"reflect": {
+			"title": "Pantulan Diaktifkan",
+			"description": "{actor} akan memantulkan serangan berikutnya kembali ke penyerang{until}."
+		},
+		"insurance": {
+			"title": "Asuransi Diaktifkan",
+			"description": "{actor} akan mendapat pengembalian {percent}%{luck} dari kerugiannya saat dirampok atau dibom berikutnya{until}."
+		},
+		"luck": {
+			"title": "Keberuntungan Diaktifkan",
+			"description": "{actor} kini punya +{percent}% keberuntungan untuk curi, bom, minigame, mata-mata, lintah, pajak hadiah, asuransi, boost teman, dan harga toko{until}."
+		},
+		"spyCaught": {
+			"title": "Mata-mata Tertangkap",
+			"description": "{target} memergoki {spy} yang mencoba memata-matainya. Tidak ada info yang didapat."
+		},
+		"adminGift": {
+			"title": "Ada Hadiah Datang",
+			"description": "{member} menerima **{quantity}× {item}** dari admin. Cek item kamu!"
+		},
+		"expired": {
+			"boost": {
+				"title": "Boost Berakhir",
+				"text": "**Boost {value}×** kamu sudah habis."
+			},
+			"shield": {
+				"title": "Perisai Berakhir",
+				"text": "**Perisai** kamu sudah habis. Kamu bisa diserang lagi."
+			},
+			"leech": {
+				"title": "Lintah Berakhir",
+				"text": "**Lintah {value}%** kamu sudah berakhir.",
+				"textWithTarget": "**Lintah {value}%** kamu pada {target} sudah berakhir."
+			},
+			"reflect": {
+				"title": "Pantulan Berakhir",
+				"text": "**Pantulan** kamu sudah habis."
+			},
+			"insurance": {
+				"title": "Asuransi Berakhir",
+				"text": "**Asuransi** kamu sudah kedaluwarsa."
+			},
+			"disguise": {
+				"title": "Penyamaran Berakhir",
+				"announcement": "Seorang anggota melepas penyamarannya. Dia terlihat lagi."
+			},
+			"luck": {
+				"title": "Keberuntungan Berakhir",
+				"text": "**Keberuntungan +{value}%** kamu sudah habis."
+			}
+		},
+		"immunityEnded": {
+			"title": "Imunitas Berakhir",
+			"description": "{member} tidak lagi kebal. Bebas diserang lagi!",
+			"anonymous": "Seorang anggota tidak lagi kebal."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "Cooldown Curi Selesai",
+				"text": "Cooldown curi kamu sudah selesai. Kamu bisa mencuri lagi!"
+			},
+			"bomb": {
+				"title": "Cooldown Bom Selesai",
+				"text": "Cooldown bom kamu sudah selesai. Kamu bisa mengebom lagi!"
+			},
+			"insurance": {
+				"title": "Cooldown Asuransi Selesai",
+				"text": "Cooldown asuransi kamu sudah selesai. Kamu bisa mengaktifkan asuransi lagi!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "Seorang anggota",
+		"footer": "Minigame",
+		"win": {
+			"title": "🎲 Menang Minigame!",
+			"description": "{member} bertaruh {wager} dengan {multiplier}× dan **menang**!"
+		},
+		"lose": {
+			"title": "🎲 Kalah Minigame",
+			"description": "{member} bertaruh {wager} dengan {multiplier}× dan **kehilangan semuanya**."
+		},
+		"fields": {
+			"payout": "Pembayaran",
+			"netGain": "Untung bersih",
+			"winChance": "Peluang menang",
+			"xpLost": "XP hilang"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ Spin Efek Tema",
+			"description": "{member} memutar seharga {cost} dan mendapat **{effect}**!"
+		},
+		"fields": {
+			"effect": "Efek",
+			"xpSpent": "XP terpakai",
+			"variant": "Varian"
+		}
+	},
+	"tasks": {
+		"footer": "Tugas",
+		"rarity": {
+			"common": "Biasa",
+			"uncommon": "Tidak Biasa",
+			"rare": "Langka",
+			"epic": "Epik",
+			"legendary": "Legendaris",
+			"mythic": "Mitos"
+		},
+		"milestones": {
+			"7": "Satu minggu",
+			"30": "Satu bulan",
+			"100": "Seratus hari",
+			"365": "Satu tahun"
+		},
+		"login": {
+			"jackpotTitle": "🎁 Jackpot hari ke-{day} — {rarity}!",
+			"dropTitle": "✨ Drop {rarity}!",
+			"description": "{member} mendapat item **{rarity}** di hari ke-{day}!",
+			"fields": {
+				"item": "Item",
+				"rarity": "Kelangkaan",
+				"worth": "Nilai"
+			}
+		},
+		"streak": {
+			"day": "{count} hari",
+			"days": "{count} hari",
+			"reset": {
+				"title": "💔 Streak Hangus",
+				"description": "{member} melewatkan **{days}** dan kehilangan streak **{previous} hari**. Kembali ke hari 1.",
+				"descriptionBurned": "{member} melewatkan **{days}** dan kehilangan streak **{previous} hari**. {burned} Kembali ke hari 1.",
+				"burnedOne": "1 freeze habis terpakai demi mempertahankannya.",
+				"burnedMany": "{count} freeze habis terpakai demi mempertahankannya."
+			},
+			"frozen": {
+				"title": "🧊 Streak Dibekukan",
+				"description": "{member} melewatkan **{days}** — {freezes} menjaga streak **{streak} hari** tetap hidup.",
+				"one": "satu streak freeze",
+				"many": "{count} streak freeze"
+			},
+			"fields": {
+				"longest": "Terpanjang",
+				"freezesUsed": "Freeze terpakai",
+				"freezesLeft": "Sisa freeze"
+			},
+			"milestone": {
+				"title": "{emoji} Streak {label}",
+				"description": "{member} baru saja mencapai streak **{streak} hari**!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 Selamat Datang di Server!",
+		"fields": {
+			"accountCreated": "📅 Akun Dibuat",
+			"memberCount": "👥 Jumlah Member",
+			"invitedBy": "📨 Diundang Oleh"
+		},
+		"memberNumber": "Member #{count}",
+		"inviterCount": "{inviter} ({count} undangan)",
+		"inviter": {
+			"vanity": "link vanity",
+			"server": "link undangan server",
+			"someone": "seseorang"
+		},
+		"inviteSources": {
+			"invite": "Link Discord",
+			"personal": "Link pribadi",
+			"vanity": "Link vanity",
+			"server": "Link server",
+			"manual": "Diatur oleh staf",
+			"unknown": "Tidak diketahui"
+		},
+		"accountAge": {
+			"today": "hari ini",
+			"oneDay": "1 hari yang lalu",
+			"days": "{days} hari yang lalu"
+		},
+		"unknownServer": "Server Tidak Dikenal"
+	},
+	"booster": {
+		"title": "💎 Terima Kasih Sudah Boost!",
+		"fields": {
+			"boostLevel": "🚀 Level Boost",
+			"totalBoosts": "✨ Total Boost",
+			"boostedSince": "📅 Boost Sejak"
+		},
+		"level": "Level {level}",
+		"justNow": "Baru saja",
+		"unknownServer": "Server Tidak Dikenal"
+	},
+	"questNotifier": {
+		"defaultReward": "• Hadiah quest",
+		"fields": {
+			"rewards": "Hadiah",
+			"tasks": "Tugas",
+			"game": "🎮 Game",
+			"publisher": "🏢 Penerbit",
+			"expires": "⏳ Berakhir"
+		},
+		"test": "_Notifikasi uji — notifier berfungsi._",
+		"openInDiscord": "Buka di Discord"
+	},
+	"forwarder": {
+		"title": "Pesan dari {channel}",
+		"additionalAttachments": "Lampiran Tambahan"
 	}
 }

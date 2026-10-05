@@ -103,8 +103,9 @@ import {
 	CREATOR_CONTENT_HUB_SUFFIX,
 	isCreatorMenuId
 } from './creatorAlerts.js';
-import { translate } from '../i18n.js';
+import { memberTranslator, translate, translateServer } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
+import { SETUP_LANGUAGE_SELECT_ID, handleSetupLanguageSelect } from './commands/admin/setup.js';
 import db from '../../../../database.js';
 import { computeCardToken } from '../../../../frontend/public/items/index.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
@@ -433,13 +434,14 @@ async function handleMyAccountLinkButton(interaction) {
 	const fields: { name: string; value: string; inline?: boolean }[] = [];
 	const stats = await db.getMemberLevelByDiscordId(server.id, userId).catch(() => null);
 	if (stats) {
+		const tr = await memberTranslator(guildId, userId);
 		const level = Number(stats.level) || 1;
 		const xp = Number(stats.xp) || 0;
 		const rank = Number(stats.rank) || 0;
 
-		fields.push({ name: '⭐ Level', value: level.toLocaleString(), inline: true });
-		fields.push({ name: '📊 Total XP', value: xp.toLocaleString(), inline: true });
-		fields.push({ name: '🏆 Rank', value: rank > 0 ? `#${rank}` : 'Unranked', inline: true });
+		fields.push({ name: tr('leveling.fields.level'), value: level.toLocaleString(), inline: true });
+		fields.push({ name: tr('leveling.fields.totalXp'), value: xp.toLocaleString(), inline: true });
+		fields.push({ name: tr('leveling.fields.rank'), value: rank > 0 ? `#${rank}` : tr('leveling.unranked'), inline: true });
 
 		try {
 			const floorXp = await getLevelRequirement(level, guildId);
@@ -448,8 +450,8 @@ async function handleMyAccountLinkButton(interaction) {
 			const ratio = Math.max(0, Math.min(1, (xp - floorXp) / span));
 			const filled = Math.round(ratio * 10);
 			fields.push({
-				name: `⚡ Progress to Level ${level + 1}`,
-				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, Math.ceil(nextXp - xp)).toLocaleString()}** XP to go`,
+				name: tr('leveling.fields.progress', { level: level + 1 }),
+				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n${tr('leveling.xpToGo', { xp: Math.max(0, Math.ceil(nextXp - xp)).toLocaleString() })}`,
 				inline: false
 			});
 		} catch (_) {}
@@ -457,9 +459,12 @@ async function handleMyAccountLinkButton(interaction) {
 		const messages = Number(stats.chat_total) || 0;
 		const voiceHours = Math.round((Number(stats.voice_minutes_total) || 0) / 60);
 		const streamHours = Math.round((Number(stats.voice_minutes_streaming) || 0) / 60);
-		const activity = [`${messages.toLocaleString()} messages`, `${voiceHours.toLocaleString()}h voice`];
-		if (streamHours > 0) activity.push(`${streamHours.toLocaleString()}h streaming`);
-		fields.push({ name: '💬 Activity', value: activity.join(' · '), inline: false });
+		const activity = [
+			tr('leveling.activity.messages', { count: messages.toLocaleString() }),
+			tr('leveling.activity.voice', { hours: voiceHours.toLocaleString() })
+		];
+		if (streamHours > 0) activity.push(tr('leveling.activity.streaming', { hours: streamHours.toLocaleString() }));
+		fields.push({ name: tr('leveling.fields.activity'), value: activity.join(' · '), inline: false });
 	}
 
 	await replyEmbed(fields.length > 0 ? null : description, [row], fields);
@@ -646,15 +651,14 @@ export async function handleButtonInteraction(interaction) {
 	}
 }
 
-export async function createInterfaceEmbed(client, guildId, userId = null) {
+export async function createInterfaceEmbed(client, guildId) {
 	if (!guildId) {
 		throw new Error('Guild ID is required to create interface embed');
 	}
 
 	const embedConfig = await getEmbedConfig(guildId);
-	const langUserId = userId || '0';
-	const title = await translate('interface.panel.title', guildId, langUserId, { botName: embedConfig.NICKNAME });
-	const description = await translate('interface.panel.description', guildId, langUserId);
+	const title = await translateServer('interface.panel.title', guildId, { botName: embedConfig.NICKNAME });
+	const description = await translateServer('interface.panel.description', guildId);
 
 	const interfaceEmbed = {
 		color: embedConfig.COLOR,
@@ -672,34 +676,33 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 	return interfaceEmbed;
 }
 
-export async function createInterfaceButtons(guildId: string | null = null, userId: string | null = null) {
-	const menuLabel = await translate('menu.button', guildId || '', userId || '0');
+export async function createInterfaceButtons(guildId: string) {
+	const menuLabel = await translateServer('menu.button', guildId);
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
 	return [new ActionRowBuilder().addComponents(menuButton)];
 }
 
-export async function sendInterfaceToChannel(targetChannel, interaction, client) {
-	try {
-		const interfaceEmbed = await createInterfaceEmbed(client, interaction.guild.id, interaction.user.id);
-		const buttonRow = await createInterfaceButtons(interaction.guild.id, interaction.user.id);
+function isInterfaceMessage(message, botUserId: string) {
+	if (message.author?.id !== botUserId) return false;
+	return message.components?.some((row) => row.components?.some((c) => c.customId === 'bot_menu')) ?? false;
+}
 
-		await targetChannel.send({
-			embeds: [interfaceEmbed],
-			components: Array.isArray(buttonRow) ? buttonRow : [buttonRow]
-		});
+export async function refreshInterfaceInChannel(targetChannel, client, { sendIfMissing }: { sendIfMissing: boolean }) {
+	if (!targetChannel?.guild) return;
+	const payload = {
+		embeds: [await createInterfaceEmbed(client, targetChannel.guild.id)],
+		components: await createInterfaceButtons(targetChannel.guild.id)
+	};
 
-		await logger.log(`🎮 Bot interface sent to ${targetChannel.name} by ${interaction.user.tag} (${interaction.user.id})`);
-	} catch (error) {
-		const errorMsg = await translate('interface.panel.error', interaction.guild.id, interaction.user.id, {
-			error: error.message
-		});
-
-		await interaction.reply({
-			content: errorMsg,
-			flags: 64
-		});
-		await logger.log(`❌ Interface send failed: ${error.message}`);
+	const recent = await targetChannel.messages?.fetch({ limit: 50 }).catch(() => null);
+	const existing = recent?.find((m) => isInterfaceMessage(m, client.user.id)) ?? null;
+	if (existing) {
+		await existing.edit(payload);
+		await logger.log(`🎮 Bot interface refreshed in ${targetChannel.name}`);
+	} else if (sendIfMissing) {
+		await targetChannel.send(payload);
+		await logger.log(`🎮 Bot interface sent to ${targetChannel.name}`);
 	}
 }
 
@@ -841,6 +844,8 @@ function init(client) {
 					await handleModerationActionSelect(interaction);
 				} else if (customId === 'settings_language_select') {
 					await handleLanguageSelect(interaction);
+				} else if (customId === SETUP_LANGUAGE_SELECT_ID) {
+					await handleSetupLanguageSelect(interaction, client);
 				} else if (customId === 'notifications_select') {
 					await handleNotificationsSelect(interaction);
 				} else if (customId === ROBLOX_NOTIFICATIONS_SELECT_ID) {

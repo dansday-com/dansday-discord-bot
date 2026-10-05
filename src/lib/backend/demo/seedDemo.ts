@@ -394,7 +394,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				member_since: toMySQLDateTime(new Date(base - n * 43200000)) as any,
 				is_booster: n % 9 === 0,
 				booster_since: n % 9 === 0 ? (toMySQLDateTime(new Date(base - n * 22200000)) as any) : (null as any),
-				language: 'en',
+				language: null,
 				created_at: nowDb,
 				updated_at: nowDb,
 				level: {

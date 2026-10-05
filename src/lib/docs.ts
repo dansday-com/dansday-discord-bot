@@ -1,5 +1,6 @@
 import { EFFECTS, EFFECT_SPIN_COST } from './effects.js';
 import { APP_URL } from './frontend/panelServer.js';
+import { serverLanguageList } from './languages.js';
 
 export const DOCS_TITLE = 'Bot documentation';
 export const DOCS_URL = `${APP_URL}/docs`;
@@ -29,7 +30,7 @@ export const sections = [
 		label: '/setup',
 		heading: 'The /setup command',
 		iconClass: 'fas fa-terminal',
-		lead: 'Run /setup in Discord (owner or Administrator only). It creates a menu category with these channels, wires each one to its module and posts the bot interface. If no owner account exists yet, it hands you a registration link to claim ownership.'
+		lead: 'Run /setup in Discord (owner or Administrator only) and pick the server language first. It creates a menu category with these channels named in that language, wires each one to its module and posts the bot interface. Running it again with a different language renames the channels. If no owner account exists yet, it hands you a registration link to claim ownership.'
 	},
 	{
 		id: 'accounts',
@@ -410,7 +411,7 @@ export const startSteps = [
 	{
 		icon: 'fa-terminal',
 		title: 'Run /setup once',
-		desc: 'Creates every channel, wires it to its module and posts the menu. Owner or Administrator only.'
+		desc: 'Pick the server language, then it creates every channel, wires it to its module and posts the menu. Owner or Administrator only.'
 	},
 	{
 		icon: 'fa-right-to-bracket',
@@ -511,8 +512,12 @@ export const modules = [
 		icon: 'fa-gear',
 		accent: '#2f8f4e',
 		title: 'Main',
-		what: 'How the bot looks in this server, plus the embed style and staff roles used everywhere.',
+		what: 'How the bot looks and speaks in this server, plus the embed style and staff roles used everywhere.',
 		fields: [
+			{
+				label: 'Server Language',
+				desc: `${serverLanguageList('or')}. Names the setup channels and is used for the menu, approval posts, every public bot message and the AI chat and voice. Members who pick their own language still get private replies and DMs in it.`
+			},
 			{ label: 'Bot Nickname', desc: 'Name the bot shows in this server. Empty uses the default.' },
 			{ label: 'Bot Avatar', desc: 'Profile picture in this server only. PNG, JPG or GIF up to 2MB.' },
 			{ label: 'Bot Banner', desc: 'Profile banner in this server only. PNG, JPG or GIF up to 4MB.' },
@@ -827,7 +832,7 @@ export const discordMenu = [
 	},
 	{
 		label: '🌐 Select Language',
-		desc: 'Switches the Discord interface language (English, Indonesian, German, Spanish, Arabic, Malay or Simplified Chinese).'
+		desc: `Switches your own Discord interface language (${serverLanguageList('or')}), or follows the server language.`
 	},
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
 	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Themes, Guide).' }

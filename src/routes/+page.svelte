@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../home.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { serverLanguageList } from '$lib/languages.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, publicSiteOrigin, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
@@ -310,7 +311,7 @@
 		{
 			icon: 'fa-language',
 			title: 'Multi-language',
-			desc: 'English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese across Discord flows.',
+			desc: `${serverLanguageList('and')} across Discord flows.`,
 			more: 'Buttons, selects and labels all follow the choice.'
 		},
 		{

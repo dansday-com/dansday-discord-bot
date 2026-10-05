@@ -6,7 +6,7 @@
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
-	import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGES } from '$lib/languages.js';
+	import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGES, serverLanguageLabel } from '$lib/languages.js';
 	import { BOT_BIO_MAX_LENGTH, DEFAULT_MAIN_EMBED_COLOR } from '$lib/utils/mainConfigSettings.js';
 	import {
 		BOT_PROFILE_IMAGE,
@@ -35,7 +35,7 @@
 		if (next && untrack(() => Object.values(data.defaultFooters).includes(defaultFooter.trim()))) defaultFooter = next;
 	});
 
-	const languageOptions = SERVER_LANGUAGES.map((l) => ({ value: l.code, label: l.code === 'en' ? l.name : `${l.name} (${l.englishName})` }));
+	const languageOptions = SERVER_LANGUAGES.map((l) => ({ value: l.code, label: serverLanguageLabel(l.code) }));
 
 	let pending = $state<Record<BotProfileImageKind, string | null | undefined>>({ avatar: undefined, banner: undefined });
 	let preparing = $state<BotProfileImageKind | null>(null);

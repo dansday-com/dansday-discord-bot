@@ -119,7 +119,7 @@
 			"select": "Seleccionar idioma",
 			"updated": "✅ ¡Idioma actualizado correctamente!",
 			"failed": "❌ No se pudo actualizar el idioma: {error}",
-			"serverDefault": "Predeterminado del servidor ({language})",
+			"serverDefault": "Predeterminado del servidor: {language}",
 			"serverDefaultDescription": "Seguir el idioma del servidor",
 			"currentOption": "Idioma actual"
 		}

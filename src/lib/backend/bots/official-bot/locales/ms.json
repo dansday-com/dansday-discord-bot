@@ -119,7 +119,7 @@
 			"select": "Pilih Bahasa",
 			"updated": "✅ Bahasa berjaya dikemas kini!",
 			"failed": "❌ Gagal kemas kini bahasa: {error}",
-			"serverDefault": "Lalai server ({language})",
+			"serverDefault": "Lalai server: {language}",
 			"serverDefaultDescription": "Ikut bahasa server",
 			"currentOption": "Bahasa semasa"
 		}

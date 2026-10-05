@@ -27,8 +27,10 @@ export function normalizeServerLanguage(value: unknown): ServerLanguage {
 	return isServerLanguage(value) ? value : DEFAULT_SERVER_LANGUAGE;
 }
 
-export function serverLanguageName(code: unknown): string {
-	return SERVER_LANGUAGES.find((l) => l.code === code)?.name ?? String(code ?? '');
+export function serverLanguageLabel(code: unknown): string {
+	const language = SERVER_LANGUAGES.find((l) => l.code === code);
+	if (!language) return String(code ?? '');
+	return language.name === language.englishName ? language.name : `${language.name} (${language.englishName})`;
 }
 
 export function serverLanguageEnglishName(code: unknown): string {

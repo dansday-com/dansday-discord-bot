@@ -119,7 +119,7 @@
 			"select": "اختيار اللغة",
 			"updated": "✅ تم تحديث اللغة بنجاح!",
 			"failed": "❌ تعذّر تحديث اللغة: {error}",
-			"serverDefault": "افتراضي الخادم ({language})",
+			"serverDefault": "افتراضي الخادم: {language}",
 			"serverDefaultDescription": "اتباع لغة الخادم",
 			"currentOption": "اللغة الحالية"
 		}

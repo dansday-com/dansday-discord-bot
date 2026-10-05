@@ -19,7 +19,7 @@ import {
 	SERVER_LANGUAGE_CODES,
 	isServerLanguage,
 	serverLanguageFromDiscordLocale,
-	serverLanguageName,
+	serverLanguageLabel,
 	type ServerLanguage
 } from '../../../../../../languages.js';
 import { defaultGreetingMessages } from '../../../../../../localizedDefaults.js';
@@ -240,9 +240,8 @@ export async function execute(interaction: any, _client: any) {
 			.setPlaceholder(await translate('setup.language.placeholder', gid, uid))
 			.addOptions(
 				SERVER_LANGUAGES.map((l) => ({
-					label: l.name,
+					label: serverLanguageLabel(l.code),
 					value: l.code,
-					description: l.code === 'en' ? undefined : l.englishName,
 					default: l.code === suggested
 				}))
 			);
@@ -280,7 +279,7 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 		if (!isServerLanguage(lang)) return;
 
 		await interaction.update({
-			embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(t('setup.language.working', lang, { language: serverLanguageName(lang) }))],
+			embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(t('setup.language.working', lang, { language: serverLanguageLabel(lang) }))],
 			components: []
 		});
 
@@ -415,7 +414,7 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 		});
 
 		const channelSummary =
-			(await translate('setup.language.applied', gid, uid, { language: serverLanguageName(lang) })) +
+			(await translate('setup.language.applied', gid, uid, { language: serverLanguageLabel(lang) })) +
 			'\n' +
 			(createdKeys.length
 				? await translate('interface.panel.setupChannelsCreated', gid, uid, { count: createdKeys.length })

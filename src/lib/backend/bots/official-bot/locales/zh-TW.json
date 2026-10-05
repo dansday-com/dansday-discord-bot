@@ -119,7 +119,7 @@
 			"select": "選擇語言",
 			"updated": "✅ 語言已更新！",
 			"failed": "❌ 語言更新失敗：{error}",
-			"serverDefault": "伺服器預設（{language}）",
+			"serverDefault": "伺服器預設：{language}",
 			"serverDefaultDescription": "跟隨伺服器語言",
 			"currentOption": "目前語言"
 		}

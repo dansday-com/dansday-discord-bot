@@ -119,7 +119,7 @@
 			"select": "Taal kiezen",
 			"updated": "✅ Taal bijgewerkt!",
 			"failed": "❌ Kon de taal niet bijwerken: {error}",
-			"serverDefault": "Servertaal ({language})",
+			"serverDefault": "Servertaal: {language}",
 			"serverDefaultDescription": "Volg de taal van de server",
 			"currentOption": "Huidige taal"
 		}

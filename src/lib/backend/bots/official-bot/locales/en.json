@@ -119,7 +119,7 @@
 			"select": "Select Language",
 			"updated": "✅ Language updated successfully!",
 			"failed": "❌ Failed to update language: {error}",
-			"serverDefault": "Server default ({language})",
+			"serverDefault": "Server default: {language}",
 			"serverDefaultDescription": "Follow the server language",
 			"currentOption": "Current language"
 		}

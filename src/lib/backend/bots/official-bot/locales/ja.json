@@ -119,7 +119,7 @@
 			"select": "言語を選択",
 			"updated": "✅ 言語を変更しました！",
 			"failed": "❌ 言語の変更に失敗しました：{error}",
-			"serverDefault": "サーバーのデフォルト（{language}）",
+			"serverDefault": "サーバーのデフォルト：{language}",
 			"serverDefaultDescription": "サーバーの言語に合わせる",
 			"currentOption": "現在の言語"
 		}

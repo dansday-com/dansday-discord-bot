@@ -119,7 +119,7 @@
 			"select": "Pilih Bahasa",
 			"updated": "✅ Bahasa berhasil diperbarui!",
 			"failed": "❌ Gagal memperbarui bahasa: {error}",
-			"serverDefault": "Bawaan server ({language})",
+			"serverDefault": "Bawaan server: {language}",
 			"serverDefaultDescription": "Ikuti bahasa server",
 			"currentOption": "Bahasa saat ini"
 		}

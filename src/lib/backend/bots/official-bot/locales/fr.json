@@ -119,7 +119,7 @@
 			"select": "Choisir la langue",
 			"updated": "✅ Langue mise à jour !",
 			"failed": "❌ Impossible de mettre à jour la langue : {error}",
-			"serverDefault": "Langue du serveur ({language})",
+			"serverDefault": "Langue du serveur : {language}",
 			"serverDefaultDescription": "Suivre la langue du serveur",
 			"currentOption": "Langue actuelle"
 		}

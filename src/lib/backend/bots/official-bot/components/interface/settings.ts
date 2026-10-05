@@ -4,7 +4,7 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
 import { translate, getAvailableLanguages, getUserLanguage, getServerLanguage } from '../../i18n.js';
-import { isServerLanguage, serverLanguageName } from '../../../../../languages.js';
+import { isServerLanguage, serverLanguageLabel } from '../../../../../languages.js';
 
 const SERVER_DEFAULT_VALUE = 'server';
 
@@ -20,9 +20,9 @@ async function buildLanguagePanel(interaction, server) {
 	const langTitle = await translate('settings.language.title', g, u);
 	const langDesc = await translate('settings.language.description', g, u);
 	const currentLangText = await translate('settings.language.current', g, u);
-	const serverDefaultLabel = await translate('settings.language.serverDefault', g, u, { language: serverLanguageName(serverLang) });
+	const serverDefaultLabel = await translate('settings.language.serverDefault', g, u, { language: serverLanguageLabel(serverLang) });
 	const currentOptionText = await translate('settings.language.currentOption', g, u);
-	const currentDisplay = ownLang ? serverLanguageName(currentLang) : serverDefaultLabel;
+	const currentDisplay = ownLang ? serverLanguageLabel(currentLang) : serverDefaultLabel;
 
 	const languageEmbed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
@@ -39,7 +39,7 @@ async function buildLanguagePanel(interaction, server) {
 			default: !ownLang
 		},
 		...getAvailableLanguages().map((lang) => ({
-			label: serverLanguageName(lang),
+			label: serverLanguageLabel(lang),
 			value: lang,
 			description: lang === ownLang ? currentOptionText.slice(0, 100) : undefined,
 			default: lang === ownLang
@@ -164,9 +164,9 @@ export async function handleLanguageSelect(interaction) {
 
 		const successMsg = await translate('settings.language.updated', interaction.guild.id, interaction.user.id);
 		const langName = ownLang
-			? serverLanguageName(ownLang)
+			? serverLanguageLabel(ownLang)
 			: await translate('settings.language.serverDefault', interaction.guild.id, interaction.user.id, {
-					language: serverLanguageName(await getServerLanguage(interaction.guild.id))
+					language: serverLanguageLabel(await getServerLanguage(interaction.guild.id))
 				});
 
 		await interaction.editReply(await buildLanguagePanel(interaction, server)).catch(() => null);

@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 Torre · Retirada",
-				"description": "{member} se retiró en el piso {floor} de {floors} y **aseguró {payout}**."
+				"description": "{member} se retiró en el piso {floor} y **aseguró {payout}**."
 			},
 			"cleared": {
 				"title": "🗼 Torre · ¡Superada!",
-				"description": "¡{member} superó los {floors} pisos y **aseguró el premio gordo de {payout}**!"
+				"description": "¡{member} llegó a la cima y **aseguró el premio gordo de {payout}**!"
 			},
 			"bust": {
 				"title": "🗼 Torre · Atrapado",
-				"description": "{member} cayó en una trampa en el piso {floor} de {floors} y **perdió {lost}**."
+				"description": "{member} cayó en una trampa en el piso {floor} y **perdió {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} cayó en una trampa en el piso {floor} de {floors} **sin nada que perder**."
+				"description": "{member} cayó en una trampa en el piso {floor} **sin nada que perder**."
 			},
 			"fields": {
 				"floor": "Piso",

@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 高塔・結算",
-				"description": "{member} 在第 {floor} 層（共 {floors} 層）結算，**帶走了 {payout}**。"
+				"description": "{member} 在第 {floor} 層結算，**帶走了 {payout}**。"
 			},
 			"cleared": {
 				"title": "🗼 高塔・通關！",
-				"description": "{member} 通關了全部 {floors} 層，**帶走了 {payout} 大獎**！"
+				"description": "{member} 登上了塔頂，**帶走了 {payout} 大獎**！"
 			},
 			"bust": {
 				"title": "🗼 高塔・中陷阱",
-				"description": "{member} 在第 {floor} 層（共 {floors} 層）踩中陷阱，**失去了 {lost}**。"
+				"description": "{member} 在第 {floor} 層踩中陷阱，**失去了 {lost}**。"
 			},
 			"bustEmpty": {
-				"description": "{member} 在第 {floor} 層（共 {floors} 層）踩中陷阱，**沒有任何損失**。"
+				"description": "{member} 在第 {floor} 層踩中陷阱，**沒有任何損失**。"
 			},
 			"fields": {
 				"floor": "樓層",

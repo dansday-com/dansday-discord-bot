@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 Tower · Cashed Out",
-				"description": "{member} cashed out on floor {floor} of {floors} and **banked {payout}**."
+				"description": "{member} cashed out on floor {floor} and **banked {payout}**."
 			},
 			"cleared": {
 				"title": "🗼 Tower · Cleared!",
-				"description": "{member} cleared all {floors} floors and **banked the {payout} jackpot**!"
+				"description": "{member} reached the top and **banked the {payout} jackpot**!"
 			},
 			"bust": {
 				"title": "🗼 Tower · Trapped",
-				"description": "{member} hit a trap on floor {floor} of {floors} and **dropped {lost}**."
+				"description": "{member} hit a trap on floor {floor} and **dropped {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} hit a trap on floor {floor} of {floors} with **nothing to drop**."
+				"description": "{member} hit a trap on floor {floor} with **nothing to drop**."
 			},
 			"fields": {
 				"floor": "Floor",

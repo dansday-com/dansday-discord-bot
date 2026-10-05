@@ -327,7 +327,6 @@ async function announceTower(client: any, ctx: any) {
 		const story = {
 			member: actor ? `${actor}` : tr('minigames.someone'),
 			floor: result.floor,
-			floors: TOWER_FLOORS,
 			payout: fmtXp(result.payout),
 			lost: fmtXp(result.lost)
 		};
@@ -340,7 +339,7 @@ async function announceTower(client: any, ctx: any) {
 			.setTitle(tr(`minigames.tower.${key}.title`))
 			.setDescription(tr(`minigames.tower.${storyKey}.description`, story))
 			.addFields(
-				{ name: tr('minigames.tower.fields.floor'), value: `${result.floor} / ${TOWER_FLOORS}`, inline: true },
+				{ name: tr('minigames.tower.fields.floor'), value: `${result.floor}`, inline: true },
 				{ name: tr('minigames.tower.fields.safeChance'), value: luckBoostLabel(result.base, result.luckPercent, { max: 100 }), inline: true },
 				{ name: tr('minigames.tower.fields.prize'), value: prize, inline: true }
 			)

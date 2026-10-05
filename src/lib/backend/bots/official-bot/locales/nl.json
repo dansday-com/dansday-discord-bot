@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 Toren · Uitbetaald",
-				"description": "{member} liet zich uitbetalen op verdieping {floor} van {floors} en **bracht {payout} binnen**."
+				"description": "{member} liet zich uitbetalen op verdieping {floor} en **bracht {payout} binnen**."
 			},
 			"cleared": {
 				"title": "🗼 Toren · Uitgespeeld!",
-				"description": "{member} haalde alle {floors} verdiepingen en **bracht de jackpot van {payout} binnen**!"
+				"description": "{member} bereikte de top en **bracht de jackpot van {payout} binnen**!"
 			},
 			"bust": {
 				"title": "🗼 Toren · In de val",
-				"description": "{member} liep op verdieping {floor} van {floors} in een val en **verloor {lost}**."
+				"description": "{member} liep op verdieping {floor} in een val en **verloor {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} liep op verdieping {floor} van {floors} in een val **zonder iets te verliezen**."
+				"description": "{member} liep op verdieping {floor} in een val **zonder iets te verliezen**."
 			},
 			"fields": {
 				"floor": "Verdieping",

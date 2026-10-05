@@ -100,7 +100,7 @@
 		if (h.game === TOWER_GAME) {
 			const floor = Math.round(Number(h.multiplier) || 0);
 			const payout = Number(h.payout) || 0;
-			const badges: Badge[] = [{ icon: 'fa-stairs', text: `Floor ${floor} of ${TOWER_FLOORS}` }];
+			const badges: Badge[] = [{ icon: 'fa-stairs', text: `Floor ${floor}` }];
 			const dropped = payout > 0 ? 0 : towerPrize(floor - 1);
 			if (dropped > 0) badges.push({ icon: 'fa-arrow-down', text: `Dropped ${fmt(dropped)} XP` });
 			if (h.chance != null) {

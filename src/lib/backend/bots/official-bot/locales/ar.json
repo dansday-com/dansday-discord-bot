@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 البرج · صرف الجائزة",
-				"description": "صرف {member} جائزته في الطابق {floor} من {floors} و**حصد {payout}**."
+				"description": "صرف {member} جائزته في الطابق {floor} و**حصد {payout}**."
 			},
 			"cleared": {
 				"title": "🗼 البرج · تم الاجتياز!",
-				"description": "اجتاز {member} جميع الطوابق الـ{floors} و**حصد الجائزة الكبرى {payout}**!"
+				"description": "وصل {member} إلى القمة و**حصد الجائزة الكبرى {payout}**!"
 			},
 			"bust": {
 				"title": "🗼 البرج · وقع في فخ",
-				"description": "وقع {member} في فخ في الطابق {floor} من {floors} و**خسر {lost}**."
+				"description": "وقع {member} في فخ في الطابق {floor} و**خسر {lost}**."
 			},
 			"bustEmpty": {
-				"description": "وقع {member} في فخ في الطابق {floor} من {floors} **دون أن يخسر شيئًا**."
+				"description": "وقع {member} في فخ في الطابق {floor} **دون أن يخسر شيئًا**."
 			},
 			"fields": {
 				"floor": "الطابق",

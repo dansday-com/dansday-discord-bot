@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 Tower · Ganjaran Diambil",
-				"description": "{member} mengambil ganjaran di tingkat {floor} daripada {floors} dan **menyimpan {payout}**."
+				"description": "{member} mengambil ganjaran di tingkat {floor} dan **menyimpan {payout}**."
 			},
 			"cleared": {
 				"title": "🗼 Tower · Ditawan!",
-				"description": "{member} menawan kesemua {floors} tingkat dan **menyimpan jackpot {payout}**!"
+				"description": "{member} sampai ke puncak dan **menyimpan jackpot {payout}**!"
 			},
 			"bust": {
 				"title": "🗼 Tower · Terperangkap",
-				"description": "{member} terkena perangkap di tingkat {floor} daripada {floors} dan **kehilangan {lost}**."
+				"description": "{member} terkena perangkap di tingkat {floor} dan **kehilangan {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} terkena perangkap di tingkat {floor} daripada {floors} **tanpa apa-apa untuk hilang**."
+				"description": "{member} terkena perangkap di tingkat {floor} **tanpa apa-apa untuk hilang**."
 			},
 			"fields": {
 				"floor": "Tingkat",

@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 Torre · Incassato",
-				"description": "{member} ha incassato al piano {floor} di {floors} e **si porta a casa {payout}**."
+				"description": "{member} ha incassato al piano {floor} e **si porta a casa {payout}**."
 			},
 			"cleared": {
 				"title": "🗼 Torre · Completata!",
-				"description": "{member} ha superato tutti gli {floors} piani e **si porta a casa il jackpot da {payout}**!"
+				"description": "{member} ha raggiunto la cima e **si porta a casa il jackpot da {payout}**!"
 			},
 			"bust": {
 				"title": "🗼 Torre · In trappola",
-				"description": "{member} ha trovato una trappola al piano {floor} di {floors} e **ha perso {lost}**."
+				"description": "{member} ha trovato una trappola al piano {floor} e **ha perso {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} ha trovato una trappola al piano {floor} di {floors} **senza nulla da perdere**."
+				"description": "{member} ha trovato una trappola al piano {floor} **senza nulla da perdere**."
 			},
 			"fields": {
 				"floor": "Piano",

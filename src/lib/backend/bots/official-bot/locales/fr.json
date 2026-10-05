@@ -1239,18 +1239,18 @@
 		"tower": {
 			"cashout": {
 				"title": "🗼 Tour · Encaissé",
-				"description": "{member} a encaissé à l'étage {floor} sur {floors} et **empoche {payout}**."
+				"description": "{member} a encaissé à l'étage {floor} et **empoche {payout}**."
 			},
 			"cleared": {
 				"title": "🗼 Tour · Terminée !",
-				"description": "{member} a franchi les {floors} étages et **empoche le jackpot de {payout}** !"
+				"description": "{member} a atteint le sommet et **empoche le jackpot de {payout}** !"
 			},
 			"bust": {
 				"title": "🗼 Tour · Piégé",
-				"description": "{member} a déclenché un piège à l'étage {floor} sur {floors} et **perd {lost}**."
+				"description": "{member} a déclenché un piège à l'étage {floor} et **perd {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} a déclenché un piège à l'étage {floor} sur {floors} **sans rien à perdre**."
+				"description": "{member} a déclenché un piège à l'étage {floor} **sans rien à perdre**."
 			},
 			"fields": {
 				"floor": "Étage",

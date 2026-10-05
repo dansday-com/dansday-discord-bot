@@ -172,6 +172,7 @@
 	const assetsPnl = $derived(Number(d.assets_pnl) || 0);
 	const minigamesNet = $derived(Number(d.minigames_net) || 0);
 	const minigamesWinRate = $derived((d.minigames_plays ?? 0) > 0 ? Math.round((Number(d.minigames_wins) / Number(d.minigames_plays)) * 100) : 0);
+	const towerCashRate = $derived((d.tower_climbs ?? 0) > 0 ? Math.round((Number(d.tower_cashed) / Number(d.tower_climbs)) * 100) : 0);
 
 	const usagePie = $derived.by(() => {
 		const rows = (ins.effect_usage ?? []) as { effect_type: string; uses: number }[];
@@ -338,7 +339,7 @@
 		</StatCard>
 	{/if}
 
-	<DashGrid cols={3}>
+	<DashGrid cols={2}>
 		<StatCard icon="fa-chart-line" title="Market" tone="teal">
 			<StatHero label="assets value · XP" value={fmt(d.assets_market_value)} countTo={d.assets_market_value}>
 				{#snippet trailing()}
@@ -351,7 +352,7 @@
 			</MiniGrid>
 		</StatCard>
 
-		<StatCard icon="fa-dice" title="Minigames" tone="pink">
+		<StatCard icon="fa-dice" title="Gamble" tone="pink">
 			<RingStat pct={minigamesWinRate} label="win rate" {grow} color={minigamesWinRate >= 50 ? 'var(--color-success)' : 'var(--color-warning)'}>
 				{#snippet side()}
 					<div>
@@ -367,6 +368,25 @@
 			<MiniGrid cols={2}>
 				<MiniStat icon="fa-coins" value={fmt(d.minigames_wagered)} label="XP wagered" />
 				<MiniStat icon="fa-trophy" value={fmt(d.minigames_biggest_win)} label="Biggest win" />
+			</MiniGrid>
+		</StatCard>
+
+		<StatCard icon="fa-tower-observation" title="Tower" tone="amber">
+			<RingStat pct={towerCashRate} label="cashed out" {grow} color={towerCashRate >= 50 ? 'var(--color-success)' : 'var(--color-warning)'}>
+				{#snippet side()}
+					<div>
+						<span class="text-base-content block text-lg font-extrabold tabular-nums">{fmt(d.tower_climbs)}</span>
+						<small class="text-base-content/50 text-[10px] font-semibold tracking-[0.06em] uppercase">climbs</small>
+					</div>
+					<div>
+						<span class="text-success block text-lg font-extrabold tabular-nums">+{fmt(d.tower_won)}</span>
+						<small class="text-base-content/50 text-[10px] font-semibold tracking-[0.06em] uppercase">XP won</small>
+					</div>
+				{/snippet}
+			</RingStat>
+			<MiniGrid cols={2}>
+				<MiniStat icon="fa-stairs" value={fmt(d.tower_best_floor)} label="Highest floor" />
+				<MiniStat icon="fa-trophy" value={fmt(d.tower_biggest_win)} label="Biggest win" />
 			</MiniGrid>
 		</StatCard>
 

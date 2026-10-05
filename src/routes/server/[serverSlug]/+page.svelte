@@ -89,6 +89,9 @@
 	const voiceSplit = $derived(split([liveStats.leveling_total_voice_active ?? 0, liveStats.leveling_total_voice_afk ?? 0]));
 	const marketSplit = $derived(split([liveStats.assets_buy_volume ?? 0, liveStats.assets_sell_volume ?? 0]));
 	const heistSplit = $derived(split([liveStats.items_steals_landed ?? 0, liveStats.items_steals_caught ?? 0]));
+	const gameSplit = $derived(split([liveStats.minigames_plays ?? 0, liveStats.tower_climbs ?? 0]));
+	const gamesPlayed = $derived((Number(liveStats.minigames_plays) || 0) + (Number(liveStats.tower_climbs) || 0));
+	const towerCashRate = $derived(Math.round(pct(liveStats.tower_cashed, liveStats.tower_climbs)));
 	const streamSplit = $derived(
 		split([liveStats.streams_likes ?? 0, liveStats.streams_chat_messages ?? 0, liveStats.streams_gifts ?? 0, liveStats.streams_shares ?? 0])
 	);
@@ -310,14 +313,26 @@
 
 	<StatCard icon="fa-dice" title="Minigames" tone="pink">
 		<StatHero
-			label="XP wagered"
-			value={fmt(liveStats.minigames_wagered)}
-			hint="{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out"
+			label="Games played"
+			value={fmt(gamesPlayed)}
+			hint="{fmt(liveStats.minigames_wagered)} XP wagered · {fmt(liveStats.tower_climbers)} Tower climbers"
 		/>
-		<MeterBar head="Player win rate" meta="{minigamesWinRate}%" pct={Math.max(4, minigamesWinRate)} />
-		<MiniGrid cols={2}>
-			<MiniStat icon="fa-trophy" value={fmt(liveStats.minigames_biggest_win)} label="Biggest win" />
-			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net >= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="Net winnings" />
+		<SegBar
+			head="Game mix"
+			meta="Gamble · Tower"
+			title="Gamble rounds vs Tower climbs"
+			segments={[
+				{ label: `Gamble ${fmt(liveStats.minigames_plays)}`, pct: gameSplit[0], color: FILL.primary },
+				{ label: `Tower ${fmt(liveStats.tower_climbs)}`, pct: gameSplit[1], color: FILL.accent }
+			]}
+		/>
+		<MiniGrid cols={3}>
+			<MiniStat icon="fa-percent" value="{minigamesWinRate}%" label="Gamble wins" />
+			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net >= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="Gamble net" />
+			<MiniStat icon="fa-trophy" value={fmt(liveStats.minigames_biggest_win)} label="Biggest gamble" />
+			<MiniStat icon="fa-sack-dollar" value={fmt(liveStats.tower_paid_out)} label="Tower XP won" />
+			<MiniStat icon="fa-stairs" value={fmt(liveStats.tower_best_floor)} label="Highest floor" />
+			<MiniStat icon="fa-tower-observation" value="{towerCashRate}%" label="Cash-out rate" />
 		</MiniGrid>
 	</StatCard>
 

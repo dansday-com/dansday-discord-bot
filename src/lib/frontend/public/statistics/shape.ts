@@ -38,6 +38,12 @@ export type PublicPageStats = {
 	minigames_wins: number;
 	minigames_plays: number;
 	minigames_biggest_win: number;
+	tower_climbs: number;
+	tower_cashed: number;
+	tower_paid_out: number;
+	tower_biggest_win: number;
+	tower_best_floor: number;
+	tower_climbers: number;
 	items_stolen: number;
 	items_bombed: number;
 	items_gifted: number;
@@ -134,6 +140,12 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			minigames_wins: Number(s.minigames_wins ?? 0),
 			minigames_plays: Number(s.minigames_plays ?? 0),
 			minigames_biggest_win: Number(s.minigames_biggest_win ?? 0),
+			tower_climbs: Number(s.tower_climbs ?? 0),
+			tower_cashed: Number(s.tower_cashed ?? 0),
+			tower_paid_out: Number(s.tower_paid_out ?? 0),
+			tower_biggest_win: Number(s.tower_biggest_win ?? 0),
+			tower_best_floor: Number(s.tower_best_floor ?? 0),
+			tower_climbers: Number(s.tower_climbers ?? 0),
 			items_stolen: Number(s.items_stolen ?? 0),
 			items_bombed: Number(s.items_bombed ?? 0),
 			items_gifted: Number(s.items_gifted ?? 0),

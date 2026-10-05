@@ -4,6 +4,8 @@ const MAX_FIELDS = [
 	'leveling_max_level',
 	'items_biggest_steal',
 	'minigames_biggest_win',
+	'tower_biggest_win',
+	'tower_best_floor',
 	'streams_peak_viewers',
 	'quests_active',
 	'roblox_items_watched'

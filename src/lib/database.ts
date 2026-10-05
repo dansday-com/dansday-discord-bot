@@ -3810,12 +3810,18 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		`),
 		db.execute(sql`
 			SELECT
-				COALESCE(SUM(ml.wager), 0) AS wagered,
-				COALESCE(SUM(ml.payout), 0) AS paid_out,
-				COALESCE(SUM(ml.xp), 0) AS net,
-				COALESCE(SUM(CASE WHEN ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
-				COUNT(*) AS plays,
-				COALESCE(MAX(CASE WHEN ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win
+				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN ml.wager ELSE 0 END), 0) AS wagered,
+				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN ml.payout ELSE 0 END), 0) AS paid_out,
+				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN ml.xp ELSE 0 END), 0) AS net,
+				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} AND ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS plays,
+				COALESCE(MAX(CASE WHEN ml.game <> ${TOWER_GAME} AND ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win,
+				COALESCE(SUM(CASE WHEN ml.game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
+				COALESCE(SUM(CASE WHEN ml.game = ${TOWER_GAME} AND ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
+				COALESCE(SUM(CASE WHEN ml.game = ${TOWER_GAME} THEN ml.payout ELSE 0 END), 0) AS tower_paid_out,
+				COALESCE(MAX(CASE WHEN ml.game = ${TOWER_GAME} AND ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS tower_biggest_win,
+				COALESCE(MAX(CASE WHEN ml.game = ${TOWER_GAME} AND ml.outcome = 'win' THEN ml.multiplier ELSE 0 END), 0) AS tower_best_floor,
+				COUNT(DISTINCT CASE WHEN ml.game = ${TOWER_GAME} THEN ml.member_id END) AS tower_climbers
 			FROM server_member_minigame_logs ml INNER JOIN server_members sm ON sm.id = ml.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
@@ -3876,6 +3882,12 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		minigames_wins: Number(mg.wins) || 0,
 		minigames_plays: Number(mg.plays) || 0,
 		minigames_biggest_win: Number(mg.biggest_win) || 0,
+		tower_climbs: Number(mg.tower_climbs) || 0,
+		tower_cashed: Number(mg.tower_cashed) || 0,
+		tower_paid_out: Number(mg.tower_paid_out) || 0,
+		tower_biggest_win: Number(mg.tower_biggest_win) || 0,
+		tower_best_floor: Math.round(Number(mg.tower_best_floor) || 0),
+		tower_climbers: Number(mg.tower_climbers) || 0,
 		items_stolen: Number(it.stolen) || 0,
 		items_bombed: Number(it.bombed) || 0,
 		items_gifted: Number(it.gifted) || 0,
@@ -4112,11 +4124,16 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 			`),
 		db.execute(sql`
 				SELECT
-					COALESCE(SUM(wager), 0) AS wagered,
-					COALESCE(SUM(xp), 0) AS net,
-					COALESCE(SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
-					COUNT(*) AS plays,
-					COALESCE(MAX(CASE WHEN outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win
+					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} THEN wager ELSE 0 END), 0) AS wagered,
+					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} THEN xp ELSE 0 END), 0) AS net,
+					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS plays,
+					COALESCE(MAX(CASE WHEN game <> ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
+					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
+					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
+					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN payout ELSE 0 END), 0) AS tower_won,
+					COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS tower_biggest_win,
+					COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN multiplier ELSE 0 END), 0) AS tower_best_floor
 				FROM server_member_minigame_logs WHERE member_id = ${mid}
 			`),
 		db.execute(sql`
@@ -4199,6 +4216,11 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 		minigames_wins: Number(mg.wins) || 0,
 		minigames_plays: Number(mg.plays) || 0,
 		minigames_biggest_win: Number(mg.biggest_win) || 0,
+		tower_climbs: Number(mg.tower_climbs) || 0,
+		tower_cashed: Number(mg.tower_cashed) || 0,
+		tower_won: Number(mg.tower_won) || 0,
+		tower_biggest_win: Number(mg.tower_biggest_win) || 0,
+		tower_best_floor: Math.round(Number(mg.tower_best_floor) || 0),
 		items_buys: Number(out.buys) || 0,
 		items_buy_spend: Number(out.buy_spend) || 0,
 		items_activations: Number(out.activations) || 0,

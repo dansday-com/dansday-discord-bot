@@ -3324,17 +3324,22 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 export async function getActiveTowerRun(memberId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(
-		sql`SELECT id, floor FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
+		sql`SELECT id, slot, floor FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
 	);
 	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
 }
 
-export async function getLastTowerRun(memberId: any) {
+export async function getTowerWindow(memberId: any) {
 	await initializeDatabase();
-	const rows = await db.execute(sql`SELECT slot, created_at FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} ORDER BY id DESC LIMIT 1`);
-	const row = ((rows[0] as unknown as any[]) || [])[0];
-	const at = row ? parseMySQLDateTimeUtc(row.created_at) : null;
-	return at ? { slot: Number(row.slot) || 1, at } : null;
+	const id = Number(memberId);
+	const [lastRows, startRows] = await Promise.all([
+		db.execute(sql`SELECT slot FROM server_member_tower_runs WHERE member_id = ${id} ORDER BY id DESC LIMIT 1`),
+		db.execute(sql`SELECT created_at FROM server_member_tower_runs WHERE member_id = ${id} AND slot = 1 ORDER BY id DESC LIMIT 1`)
+	]);
+	const last = ((lastRows[0] as unknown as any[]) || [])[0];
+	const start = ((startRows[0] as unknown as any[]) || [])[0];
+	const startedAt = start ? parseMySQLDateTimeUtc(start.created_at) : null;
+	return last && startedAt ? { climbs: Number(last.slot) || 1, startedAt } : null;
 }
 
 export async function createTowerRun(memberId: any, slot: number) {
@@ -8352,7 +8357,7 @@ export default {
 	logMemberItemAction,
 	logMinigameAction,
 	getActiveTowerRun,
-	getLastTowerRun,
+	getTowerWindow,
 	createTowerRun,
 	stepTowerRun,
 	getMemberMinigameHistory,

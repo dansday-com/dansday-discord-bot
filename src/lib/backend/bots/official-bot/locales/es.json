@@ -1238,24 +1238,24 @@
 		},
 		"tower": {
 			"cashout": {
-				"title": "🗼 Torre: retirada",
-				"description": "{member} subió hasta el piso {floor} de {floors} y **se retiró con {payout}**."
+				"title": "🗼 Torre · Retirada",
+				"description": "{member} se retiró en el piso {floor} de {floors} y **aseguró {payout}**."
 			},
 			"cleared": {
-				"title": "🗼 ¡Torre superada!",
-				"description": "¡{member} superó los {floors} pisos y se llevó el **premio gordo de {payout}**!"
+				"title": "🗼 Torre · ¡Superada!",
+				"description": "¡{member} superó los {floors} pisos y **aseguró el premio gordo de {payout}**!"
 			},
 			"bust": {
-				"title": "🗼 Trampa en la torre",
-				"description": "{member} cayó en una trampa en el piso {floor} y **perdió los {lost} que llevaba**."
+				"title": "🗼 Torre · Atrapado",
+				"description": "{member} cayó en una trampa en el piso {floor} de {floors} y **perdió {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} cayó en una trampa en el piso {floor} y se fue con las manos vacías."
+				"description": "{member} cayó en una trampa en el piso {floor} de {floors} **sin nada que perder**."
 			},
 			"fields": {
 				"floor": "Piso",
 				"safeChance": "Probabilidad de salvarse",
-				"dropped": "Premio perdido"
+				"prize": "Premio"
 			}
 		}
 	},

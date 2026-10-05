@@ -1238,24 +1238,24 @@
 		},
 		"tower": {
 			"cashout": {
-				"title": "🗼 Turm: Auszahlung",
-				"description": "{member} ist bis Etage {floor} von {floors} geklettert und hat sich **{payout} auszahlen lassen**."
+				"title": "🗼 Turm · Ausgezahlt",
+				"description": "{member} hat sich auf Etage {floor} von {floors} auszahlen lassen und **{payout} gesichert**."
 			},
 			"cleared": {
-				"title": "🗼 Turm bezwungen!",
-				"description": "{member} hat alle {floors} Etagen geschafft und den **Jackpot von {payout}** geholt!"
+				"title": "🗼 Turm · Bezwungen!",
+				"description": "{member} hat alle {floors} Etagen geschafft und **den Jackpot von {payout} gesichert**!"
 			},
 			"bust": {
-				"title": "🗼 Falle im Turm",
-				"description": "{member} ist auf Etage {floor} in eine Falle getappt und hat **die gesammelten {lost} verloren**."
+				"title": "🗼 Turm · In der Falle",
+				"description": "{member} ist auf Etage {floor} von {floors} in eine Falle getappt und hat **{lost} verloren**."
 			},
 			"bustEmpty": {
-				"description": "{member} ist auf Etage {floor} in eine Falle getappt und geht leer aus."
+				"description": "{member} ist auf Etage {floor} von {floors} in eine Falle getappt und hatte **noch nichts zu verlieren**."
 			},
 			"fields": {
 				"floor": "Etage",
 				"safeChance": "Überlebenschance",
-				"dropped": "Verlorener Gewinn"
+				"prize": "Gewinn"
 			}
 		}
 	},

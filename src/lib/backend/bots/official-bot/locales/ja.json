@@ -1238,24 +1238,24 @@
 		},
 		"tower": {
 			"cashout": {
-				"title": "🗼 タワーで換金",
-				"description": "{member}が{floors}階中{floor}階まで登り、**{payout}を獲得しました**。"
+				"title": "🗼 タワー・換金",
+				"description": "{member}が{floors}階中{floor}階で換金し、**{payout}を獲得しました**。"
 			},
 			"cleared": {
-				"title": "🗼 タワー制覇！",
-				"description": "{member}が全{floors}階を制覇し、**ジャックポット{payout}**を獲得しました！"
+				"title": "🗼 タワー・制覇！",
+				"description": "{member}が全{floors}階を制覇し、**ジャックポット{payout}を獲得しました**！"
 			},
 			"bust": {
-				"title": "🗼 タワーの罠",
-				"description": "{member}が{floor}階で罠にかかり、**持っていた{lost}を失いました**。"
+				"title": "🗼 タワー・罠",
+				"description": "{member}が{floors}階中{floor}階で罠にかかり、**{lost}を失いました**。"
 			},
 			"bustEmpty": {
-				"description": "{member}が{floor}階で罠にかかり、何も得られませんでした。"
+				"description": "{member}が{floors}階中{floor}階で罠にかかりましたが、**失うものはありませんでした**。"
 			},
 			"fields": {
 				"floor": "階層",
 				"safeChance": "安全確率",
-				"dropped": "失った賞金"
+				"prize": "賞金"
 			}
 		}
 	},

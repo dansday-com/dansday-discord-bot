@@ -1238,24 +1238,24 @@
 		},
 		"tower": {
 			"cashout": {
-				"title": "🗼 Tower Cash-Out",
-				"description": "{member} climbed to floor {floor} of {floors} and **cashed out {payout}**."
+				"title": "🗼 Tower · Cashed Out",
+				"description": "{member} cashed out on floor {floor} of {floors} and **banked {payout}**."
 			},
 			"cleared": {
-				"title": "🗼 Tower Cleared!",
-				"description": "{member} cleared all {floors} floors and took the **{payout} jackpot**!"
+				"title": "🗼 Tower · Cleared!",
+				"description": "{member} cleared all {floors} floors and **banked the {payout} jackpot**!"
 			},
 			"bust": {
-				"title": "🗼 Tower Trap",
-				"description": "{member} hit a trap on floor {floor} and **dropped the {lost} they were carrying**."
+				"title": "🗼 Tower · Trapped",
+				"description": "{member} hit a trap on floor {floor} of {floors} and **dropped {lost}**."
 			},
 			"bustEmpty": {
-				"description": "{member} hit a trap on floor {floor} and walked away with nothing."
+				"description": "{member} hit a trap on floor {floor} of {floors} with **nothing to drop**."
 			},
 			"fields": {
 				"floor": "Floor",
 				"safeChance": "Safe chance",
-				"dropped": "Prize dropped"
+				"prize": "Prize"
 			}
 		}
 	},

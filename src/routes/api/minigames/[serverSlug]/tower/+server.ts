@@ -6,7 +6,6 @@ import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/inde
 import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
 import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
-import { TOWER_COOLDOWN_HOURS } from '$lib/tower.js';
 
 const RATE_WINDOW_MS = 60 * 1000;
 const MAX_ACTIONS = 60;
@@ -52,7 +51,6 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {
 		const code = webhookResult.body?.error;
 		const friendly: Record<string, string> = {
-			no_runs_left: `No climbs left. They come back ${TOWER_COOLDOWN_HOURS} hours after your last climb.`,
 			no_active_run: 'That climb is already over.',
 			run_changed: 'That climb already moved on.',
 			nothing_to_cash: 'Clear a floor before cashing out.',

@@ -1,5 +1,5 @@
 import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectSummary } from './items.js';
-import { TOWER_COOLDOWN_HOURS, TOWER_DOORS, TOWER_FLOORS, TOWER_PRIZES, TOWER_RUNS_PER_DAY } from './tower.js';
+import { TOWER_RESET_HOURS } from './tower.js';
 
 export const GUIDE_TITLE = 'How the XP Game Works';
 export const GUIDE_SUBTITLE = 'Earn XP, clear tasks, shop for items, and outplay everyone.';
@@ -169,7 +169,7 @@ export const FEATURES: GuideFeature[] = [
 				icon: 'fa-tower-observation',
 				accent: '#1f9e8f',
 				title: 'Tower',
-				desc: `Free, ${TOWER_RUNS_PER_DAY} climbs that come back ${TOWER_COOLDOWN_HOURS} hours after your last one. Each of the ${TOWER_FLOORS} floors has ${TOWER_DOORS} doors and one is a trap. Cash out after any floor, or reach the top for ${TOWER_PRIZES[TOWER_FLOORS - 1].toLocaleString('en-US')} XP. A trap only drops what you are carrying, never your own XP.`
+				desc: `Free. Odds drop each floor and each climb, reset after ${TOWER_RESET_HOURS}h.`
 			}
 		],
 		note: {

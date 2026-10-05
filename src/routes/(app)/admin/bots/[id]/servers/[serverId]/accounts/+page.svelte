@@ -95,8 +95,7 @@
 	}
 
 	type PendingAction =
-		| { kind: 'account'; accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string }
-		| { kind: 'invite'; inviteId: number; label: string };
+		{ kind: 'account'; accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string } | { kind: 'invite'; inviteId: number; label: string };
 	let pending = $state<PendingAction | null>(null);
 	let confirming = $state(false);
 

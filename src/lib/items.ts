@@ -1,19 +1,7 @@
 import { BRAND_PRIMARY } from './brand.js';
 
 export type ItemEffectId =
-	| 'steal'
-	| 'bomb'
-	| 'boost'
-	| 'shield'
-	| 'leech'
-	| 'reflect'
-	| 'insurance'
-	| 'gift'
-	| 'bounty'
-	| 'spy'
-	| 'disguise'
-	| 'purifier'
-	| 'luck';
+	'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier' | 'luck';
 
 export const BAG_CAPACITY = 50;
 

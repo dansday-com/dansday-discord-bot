@@ -5,14 +5,15 @@ import { getSpendableXp, spendXp, reevaluateLevel } from './xp-economy.js';
 import { getActiveLuckPercent } from './items.js';
 import { luckBoostLabel } from '../../../../items.js';
 import {
-	TOWER_BASE_SAFE_CHANCE,
-	TOWER_COOLDOWN_HOURS,
 	TOWER_DOORS,
 	TOWER_FLOORS,
 	TOWER_GAME,
-	TOWER_RUNS_PER_DAY,
+	TOWER_RESET_HOURS,
+	towerBaseChance,
+	towerLuckBonus,
 	towerPrize,
-	towerSafeChance
+	towerSafeChance,
+	towerTrapCount
 } from '../../../../tower.js';
 import { serverTranslator } from '../i18n.js';
 
@@ -21,7 +22,7 @@ const MAX_MULTIPLIER = 10;
 const MIN_WAGER = 1;
 const ANNOUNCE_DELAY_MS = 7000;
 const TOWER_ANNOUNCE_DELAY_MS = 1500;
-const TOWER_COOLDOWN_MS = TOWER_COOLDOWN_HOURS * 3600000;
+const TOWER_RESET_MS = TOWER_RESET_HOURS * 3600000;
 
 function clampMultiplier(raw: any): number {
 	const m = Number(raw);
@@ -182,20 +183,29 @@ function queueTower<T>(memberId: number, task: () => Promise<T>): Promise<T> {
 }
 
 async function loadTower(memberId: number) {
-	const [run, last, luckPercent] = await Promise.all([db.getActiveTowerRun(memberId), db.getLastTowerRun(memberId), getActiveLuckPercent(memberId)]);
-	const resetsInMs = last ? Math.max(0, last.at.getTime() + TOWER_COOLDOWN_MS - Date.now()) : 0;
-	const used = last && resetsInMs > 0 ? Math.min(TOWER_RUNS_PER_DAY, last.slot) : 0;
+	const [run, window, luckPercent] = await Promise.all([db.getActiveTowerRun(memberId), db.getTowerWindow(memberId), getActiveLuckPercent(memberId)]);
+	const resetsInMs = window ? Math.max(0, window.startedAt.getTime() + TOWER_RESET_MS - Date.now()) : 0;
+	const used = window && resetsInMs > 0 ? window.climbs : 0;
 	const floor = run ? Number(run.floor) || 0 : 0;
 	const state = {
 		active: !!run,
 		floor,
 		prize: towerPrize(floor),
-		runsLeft: TOWER_RUNS_PER_DAY - used,
+		climb: run ? Math.max(1, Number(run.slot) || 1) : used + 1,
+		climbsUsed: used,
 		resetsInMs,
-		chance: towerSafeChance(luckPercent),
 		luckPercent
 	};
 	return { run, used, state };
+}
+
+function placeTraps(picked: number, safe: boolean, count: number): number[] {
+	const others = Array.from({ length: TOWER_DOORS }, (_, d) => d).filter((d) => d !== picked);
+	for (let i = others.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[others[i], others[j]] = [others[j], others[i]];
+	}
+	return safe ? others.slice(0, count) : [picked, ...others.slice(0, count - 1)];
 }
 
 export async function handleTowerAction(client: any, payload: any) {
@@ -226,9 +236,11 @@ export async function handleTowerAction(client: any, payload: any) {
 
 		if (action === 'start') {
 			if (run) return { ok: true, state };
-			if (state.runsLeft <= 0) return { ok: false, error: 'no_runs_left', state };
 			await db.createTowerRun(ctx.memberId, used + 1);
-			return { ok: true, state: { ...state, active: true, runsLeft: state.runsLeft - 1, resetsInMs: TOWER_COOLDOWN_MS } };
+			return {
+				ok: true,
+				state: { ...state, active: true, climb: used + 1, climbsUsed: used + 1, resetsInMs: used > 0 ? state.resetsInMs : TOWER_RESET_MS }
+			};
 		}
 
 		if (!run) return { ok: false, error: 'no_active_run', state };
@@ -246,11 +258,10 @@ export async function handleTowerAction(client: any, payload: any) {
 		const picked = Math.floor(Number(door));
 		if (!(picked >= 0 && picked < TOWER_DOORS)) return { ok: false, error: 'invalid_door', state };
 
-		const safe = Math.random() * 100 < state.chance;
-		const others = Array.from({ length: TOWER_DOORS }, (_, d) => d).filter((d) => d !== picked);
-		const trapDoor = safe ? others[Math.floor(Math.random() * others.length)] : picked;
 		const floor = cleared + 1;
-		const reveal = { door: picked, trapDoor, floor };
+		const chance = towerSafeChance(floor, state.climb, state.luckPercent);
+		const safe = Math.random() * 100 < chance;
+		const reveal = { door: picked, trapDoors: placeTraps(picked, safe, towerTrapCount(chance)), floor };
 
 		if (!safe) {
 			if (!(await db.stepTowerRun(run.id, cleared, { floor: cleared, status: 'bust' }))) return { ok: false, error: 'run_changed', state };
@@ -270,6 +281,9 @@ export async function handleTowerAction(client: any, payload: any) {
 
 async function finishTower(client: any, ctx: any, state: any, step: any) {
 	const { guildId, actorDiscordId, memberId } = ctx;
+	const base = towerBaseChance(step.floor, state.climb);
+	const bonus = towerLuckBonus(step.floor, state.climb, state.luckPercent);
+	const chance = towerSafeChance(step.floor, state.climb, state.luckPercent);
 
 	if (step.payout > 0) {
 		await db.ensureMemberLevel(memberId);
@@ -285,20 +299,22 @@ async function finishTower(client: any, ctx: any, state: any, step: any) {
 			payout: step.payout,
 			xp: step.payout,
 			outcome: step.payout > 0 ? 'win' : 'lose',
-			chance: state.chance,
-			luck_percent: state.luckPercent || null
+			chance,
+			luck_percent: bonus > 0 ? bonus : null
 		})
 		.catch(() => null);
 
 	if (step.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
 
-	const result = { ...step, luckPercent: state.luckPercent };
+	const result = { ...step, base, bonus };
 	setTimeout(() => {
 		announceTower(client, { guildId, actorDiscordId, result }).catch(() => null);
 	}, TOWER_ANNOUNCE_DELAY_MS);
 
 	return { ok: true, step, state: { ...state, active: false, floor: 0, prize: 0 } };
 }
+
+const TOWER_OUTCOME_KEY: Record<string, string> = { cashed: 'cashout', cleared: 'cleared', bust: 'bust' };
 
 async function announceTower(client: any, ctx: any) {
 	const { guildId, actorDiscordId, result } = ctx;
@@ -319,33 +335,28 @@ async function announceTower(client: any, ctx: any) {
 		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
-		const actorMention = actor ? `${actor}` : tr('minigames.someone');
-		const story = { member: actorMention, floor: result.floor, floors: TOWER_FLOORS, payout: fmtXp(result.payout), lost: fmtXp(result.lost) };
-		const floorField = { name: tr('minigames.tower.fields.floor'), value: `${result.floor} / ${TOWER_FLOORS}`, inline: true };
-		const chanceField = {
-			name: tr('minigames.tower.fields.safeChance'),
-			value: luckBoostLabel(TOWER_BASE_SAFE_CHANCE, result.luckPercent, { max: 100 }),
-			inline: true
+		const story = {
+			member: actor ? `${actor}` : tr('minigames.someone'),
+			floor: result.floor,
+			floors: TOWER_FLOORS,
+			payout: fmtXp(result.payout),
+			lost: fmtXp(result.lost)
 		};
+		const key = TOWER_OUTCOME_KEY[result.outcome] ?? 'bust';
+		const storyKey = key === 'bust' && !(result.lost > 0) ? 'bustEmpty' : key;
+		const prize = result.payout > 0 ? `+${fmtXp(result.payout)}` : result.lost > 0 ? `~~${fmtXp(result.lost)}~~` : fmtXp(0);
 
 		const embed = new EmbedBuilder()
 			.setColor(0xc8911a)
+			.setTitle(tr(`minigames.tower.${key}.title`))
+			.setDescription(tr(`minigames.tower.${storyKey}.description`, story))
+			.addFields(
+				{ name: tr('minigames.tower.fields.floor'), value: `${result.floor} / ${TOWER_FLOORS}`, inline: true },
+				{ name: tr('minigames.tower.fields.safeChance'), value: luckBoostLabel(result.base, result.bonus, { max: 100 }), inline: true },
+				{ name: tr('minigames.tower.fields.prize'), value: prize, inline: true }
+			)
 			.setFooter({ text: embedConfig.FOOTER || tr('minigames.footer') })
 			.setTimestamp();
-
-		if (result.outcome === 'bust') {
-			const key = result.lost > 0 ? 'bust' : 'bustEmpty';
-			embed.setTitle(tr('minigames.tower.bust.title')).setDescription(tr(`minigames.tower.${key}.description`, story));
-			embed.addFields(floorField);
-			if (result.lost > 0) embed.addFields({ name: tr('minigames.tower.fields.dropped'), value: fmtXp(result.lost), inline: true });
-			embed.addFields(chanceField);
-		} else {
-			const key = result.outcome === 'cleared' ? 'cleared' : 'cashout';
-			embed
-				.setTitle(tr(`minigames.tower.${key}.title`))
-				.setDescription(tr(`minigames.tower.${key}.description`, story))
-				.addFields(floorField, { name: tr('minigames.fields.payout'), value: `+${fmtXp(result.payout)}`, inline: true }, chanceField);
-		}
 
 		const content = actor ? `${actor}` : undefined;
 		await channel.send({ content, embeds: [embed] }).catch(() => null);

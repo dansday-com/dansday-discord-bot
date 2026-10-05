@@ -30,7 +30,7 @@
 			category: 'tower',
 			icon: 'fa-tower-observation',
 			name: 'Tower',
-			desc: 'Free to climb. Dodge the trap on every floor, then cash out or push for the top.',
+			desc: 'Pick a door, climb, cash out.',
 			accent: '#1f9e8f',
 			tag: 'Free',
 			tagIcon: 'fa-gift'

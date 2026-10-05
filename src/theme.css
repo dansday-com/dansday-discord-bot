@@ -33,6 +33,10 @@
 	--animate-game-verdict: game-verdict 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
 	--animate-pop-in: pop-in 0.5s ease;
 	--animate-item-burst: item-burst 0.5s ease;
+	--animate-tower-knock: tower-knock 0.7s ease-in-out infinite;
+	--animate-tower-gain: tower-gain 0.9s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+	--animate-tower-burst: tower-burst 0.85s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+	--animate-tower-flash: tower-flash 0.7s ease-out forwards;
 
 	@keyframes blob-drift {
 		0% {
@@ -151,6 +155,50 @@
 		to {
 			transform: scale(1);
 			opacity: 1;
+		}
+	}
+
+	@keyframes tower-knock {
+		0%,
+		100% {
+			scale: 1;
+		}
+		50% {
+			scale: 0.94;
+		}
+	}
+
+	@keyframes tower-gain {
+		0% {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		20% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+			transform: translateY(-16px);
+		}
+	}
+
+	@keyframes tower-burst {
+		0% {
+			opacity: 1;
+			transform: translate(0, 0) scale(0.7);
+		}
+		100% {
+			opacity: 0;
+			transform: translate(var(--x), var(--y)) scale(1);
+		}
+	}
+
+	@keyframes tower-flash {
+		0% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
 		}
 	}
 

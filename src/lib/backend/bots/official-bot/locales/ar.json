@@ -86,7 +86,9 @@
 			"day": "يوم",
 			"days": "أيام"
 		},
-		"defaultFooter": "مدعوم من {domain} {year}"
+		"defaultFooter": "مدعوم من {domain} {year}",
+		"yes": "نعم",
+		"no": "لا"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "رسالة AFK (اختياري)",
 			"messagePlaceholder": "مثال: آخذ استراحة، أذاكر، إلخ.",
-			"deafenLabel": "إيقاف السماع في الصوت؟ (نعم/لا، افتراضي نعم)",
-			"deafenPlaceholder": "نعم أو لا (اتركه فارغًا لـ نعم)"
+			"deafenLabel": "إيقاف السماع في الصوت؟"
 		},
 		"buttons": {
 			"remove": "🔄 إزالة AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**الخطوة 1 من 2: اختيار الرتب (اختياري)**",
 			"step1Description": "اختر من القائمة بالأسفل الرتب التي يمكنها المشاركة في هذا السحب. اترك الخيار فارغًا أو اضغط \"متابعة إلى النموذج\" للسماح لجميع الرتب.",
 			"roleSelectPlaceholder": "اختر الرتب التي يمكنها المشاركة (اختياري)...",
-			"continueButton": "متابعة إلى النموذج"
+			"continueButton": "متابعة إلى النموذج",
+			"multipleEntries": "السماح بمشاركات متعددة؟"
 		},
 		"active": {
 			"title": "🎉 تم العثور على سحب نشط",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "مثال: 60 لساعة واحدة، 1440 ليوم كامل",
 			"winnerCountLabel": "عدد الفائزين",
 			"winnerCountPlaceholder": "كم عدد الفائزين؟ (الافتراضي: 1)",
-			"multipleEntriesLabel": "السماح بمشاركات متعددة؟ (نعم/لا)",
-			"multipleEntriesPlaceholder": "نعم أو لا (الافتراضي: لا)"
+			"invitesLabel": "الدعوات المطلوبة (0 = بدون شرط)",
+			"invitesPlaceholder": "0 يسمح للجميع بالمشاركة"
 		},
 		"created": {
 			"title": "✅ تم إنشاء السحب!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ تحتاج إلى **{needed}** دعوات للمشاركة في هذا السحب. لديك **{have}**.",
 			"roleSelectFailed": "❌ تعذّرت معالجة اختيار الرتب: {error}",
 			"enterFailed": "❌ **تعذّرت المشاركة في السحب**\\n\\nالخطأ: {error}",
-			"finishFailed": "❌ تعذّر إنهاء السحب: {error}"
+			"finishFailed": "❌ تعذّر إنهاء السحب: {error}",
+			"invalidInvites": "❌ **سحب غير صالح**\\n\\nيجب أن تكون الدعوات المطلوبة 0 أو عدداً صحيحاً."
 		},
 		"unknownRole": "الرتبة {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "ملاحظاتك",
 			"placeholder": "شاركنا ملاحظاتك أو اقتراحاتك أو ما يشغلك...",
 			"maxLength": 2000,
-			"anonymousLabel": "إرسال بشكل مجهول؟ (نعم/لا)",
-			"anonymousPlaceholder": "نعم أو لا (الافتراضي: لا)"
+			"anonymousLabel": "إرسال بشكل مجهول؟"
 		},
 		"submitted": {
 			"title": "✅ تم إرسال الملاحظات!",
@@ -406,6 +408,28 @@
 			"reasonLabel": "السبب (مطلوب)",
 			"reasonPlaceholder": "اشرح قرارك لصاحب البلاغ…"
 		},
+		"embed": {
+			"staffDecision": "قرار الطاقم",
+			"reviewedBy": "تمت المراجعة بواسطة",
+			"statusApproved": "مقبول",
+			"statusRejected": "مرفوض"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "عضو الطاقم",
+			"fieldRating": "التقييم",
+			"fieldCategory": "الفئة",
+			"fieldReporter": "المُبلِّغ",
+			"fieldStatus": "الحالة",
+			"fieldDescription": "الوصف",
+			"anonymousReporter": "مجهول",
+			"pendingTitle": "🕒 بلاغ طاقم قيد المراجعة",
+			"pendingStatus": "بانتظار موافقة المشرفين",
+			"approveButton": "قبول البلاغ",
+			"rejectButton": "رفض البلاغ",
+			"titleApproved": "✅ تم قبول بلاغ الطاقم",
+			"titleRejected": "❌ تم رفض بلاغ الطاقم",
+			"footerReportSuffix": "• رقم البلاغ: #{reportId}"
+		},
 		"modal": {
 			"title": "الإبلاغ عن عضو في الطاقم",
 			"ratingLabel": "التقييم (من 1 إلى 5 نجوم)",
@@ -413,8 +437,7 @@
 			"categoryLabel": "الفئة",
 			"descriptionLabel": "الوصف",
 			"descriptionPlaceholder": "صف تجربتك مع عضو الطاقم هذا...",
-			"anonymousLabel": "إرسال بشكل مجهول؟ (نعم/لا)",
-			"anonymousPlaceholder": "نعم أو لا (الافتراضي: لا)"
+			"anonymousLabel": "إرسال بشكل مجهول؟"
 		},
 		"submitted": {
 			"title": "✅ تم إرسال البلاغ",
@@ -453,28 +476,6 @@
 			"permissionDenied": "❌ **تم رفض الصلاحية**\\n\\nتحتاج إلى صلاحيات إشرافية لقبول بلاغات الطاقم أو رفضها.",
 			"reviewReasonRequired": "❌ أدخل سببًا لقرارك من فضلك."
 		},
-		"embed": {
-			"staffDecision": "قرار الطاقم",
-			"reviewedBy": "تمت المراجعة بواسطة",
-			"statusApproved": "مقبول",
-			"statusRejected": "مرفوض"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "عضو الطاقم",
-			"fieldRating": "التقييم",
-			"fieldCategory": "الفئة",
-			"fieldReporter": "المُبلِّغ",
-			"fieldStatus": "الحالة",
-			"fieldDescription": "الوصف",
-			"anonymousReporter": "مجهول",
-			"pendingTitle": "🕒 بلاغ طاقم قيد المراجعة",
-			"pendingStatus": "بانتظار موافقة المشرفين",
-			"approveButton": "قبول البلاغ",
-			"rejectButton": "رفض البلاغ",
-			"titleApproved": "✅ تم قبول بلاغ الطاقم",
-			"titleRejected": "❌ تم رفض بلاغ الطاقم",
-			"footerReportSuffix": "• رقم البلاغ: #{reportId}"
-		},
 		"ratingUpdate": {
 			"title": "⭐ تحديث تقييم الطاقم",
 			"description": "تلقّى {staff} تقييمًا جديدًا.",
@@ -510,32 +511,6 @@
 			"reasonLabel": "السبب (مطلوب)",
 			"reasonPlaceholder": "اشرح قرارك لمقدّم الطلب…"
 		},
-		"modal": {
-			"title": "التقديم كصانع محتوى",
-			"usernameLabel": "اسم المستخدم في TikTok",
-			"usernamePlaceholder": "مثال: dansday",
-			"reasonLabel": "لماذا تريد أن تصبح صانع محتوى؟",
-			"reasonPlaceholder": "أخبرنا باختصار لماذا يجب قبولك..."
-		},
-		"submitted": "✅ تم إرسال طلبك كصانع محتوى باسم **{username}** وهو بانتظار موافقة الطاقم.",
-		"dm": {
-			"approved": "تمت الموافقة على طلبك في **{server}**.\\n\\nTikTok: **{username}**\\nتم منحك رتبة صانع المحتوى.",
-			"rejected": "لم تتم الموافقة على طلبك في **{server}** هذه المرة.\\n\\nTikTok: **{username}**\\n\\n**السبب:** {reason}\\n\\nيمكنك التقديم مجددًا بعد انتهاء فترة الانتظار (إن كان خادمك يستخدم واحدة).",
-			"embedTitleApproved": "✅ تمت الموافقة على صانع المحتوى",
-			"embedTitleRejected": "❌ لم تتم الموافقة على صانع المحتوى"
-		},
-		"autoRejectApplicantReason": "تكرار أو انتحال هوية: اسم المستخدم هذا في TikTok مرتبط بحساب Discord آخر.",
-		"errors": {
-			"notConfigured": "❌ قبول صنّاع المحتوى غير مُعدّ في هذا الخادم.",
-			"alreadyCreator": "✅ لديك رتبة صانع المحتوى في هذا الخادم بالفعل.",
-			"invalidUsername": "❌ اسم المستخدم في TikTok غير صالح. استخدم الحروف والأرقام والنقاط والشرطات السفلية فقط.",
-			"reasonRequired": "❌ اذكر سبب رغبتك في أن تصبح صانع محتوى.",
-			"pendingExists": "❌ لديك طلب صانع محتوى قيد المراجعة بالفعل.",
-			"cooldown": "❌ عليك الانتظار **{days} يوم** قبل إرسال طلب صانع محتوى آخر.",
-			"submitFailed": "❌ تعذّر إرسال طلب صانع المحتوى: {error}",
-			"permissionDenied": "❌ تحتاج إلى صلاحيات إشرافية لقبول طلبات صنّاع المحتوى أو رفضها.",
-			"reviewReasonRequired": "❌ أدخل سببًا لقرارك من فضلك."
-		},
 		"embed": {
 			"staffDecision": "قرار الطاقم",
 			"reviewedBy": "تمت المراجعة بواسطة",
@@ -562,6 +537,32 @@
 			"autoRejectReviewReason": "تكرار أو انتحال هوية: اسم المستخدم هذا في TikTok مرتبط بحساب Discord آخر.",
 			"autoRejectConflictPending": "لدى ذلك الحساب طلب **قيد المراجعة** لاسم TikTok هذا.",
 			"autoRejectConflictApproved": "ذلك الحساب صانع محتوى **معتمد** يستخدم اسم TikTok هذا."
+		},
+		"modal": {
+			"title": "التقديم كصانع محتوى",
+			"usernameLabel": "اسم المستخدم في TikTok",
+			"usernamePlaceholder": "مثال: dansday",
+			"reasonLabel": "لماذا تريد أن تصبح صانع محتوى؟",
+			"reasonPlaceholder": "أخبرنا باختصار لماذا يجب قبولك..."
+		},
+		"submitted": "✅ تم إرسال طلبك كصانع محتوى باسم **{username}** وهو بانتظار موافقة الطاقم.",
+		"dm": {
+			"approved": "تمت الموافقة على طلبك في **{server}**.\\n\\nTikTok: **{username}**\\nتم منحك رتبة صانع المحتوى.",
+			"rejected": "لم تتم الموافقة على طلبك في **{server}** هذه المرة.\\n\\nTikTok: **{username}**\\n\\n**السبب:** {reason}\\n\\nيمكنك التقديم مجددًا بعد انتهاء فترة الانتظار (إن كان خادمك يستخدم واحدة).",
+			"embedTitleApproved": "✅ تمت الموافقة على صانع المحتوى",
+			"embedTitleRejected": "❌ لم تتم الموافقة على صانع المحتوى"
+		},
+		"autoRejectApplicantReason": "تكرار أو انتحال هوية: اسم المستخدم هذا في TikTok مرتبط بحساب Discord آخر.",
+		"errors": {
+			"notConfigured": "❌ قبول صنّاع المحتوى غير مُعدّ في هذا الخادم.",
+			"alreadyCreator": "✅ لديك رتبة صانع المحتوى في هذا الخادم بالفعل.",
+			"invalidUsername": "❌ اسم المستخدم في TikTok غير صالح. استخدم الحروف والأرقام والنقاط والشرطات السفلية فقط.",
+			"reasonRequired": "❌ اذكر سبب رغبتك في أن تصبح صانع محتوى.",
+			"pendingExists": "❌ لديك طلب صانع محتوى قيد المراجعة بالفعل.",
+			"cooldown": "❌ عليك الانتظار **{days} يوم** قبل إرسال طلب صانع محتوى آخر.",
+			"submitFailed": "❌ تعذّر إرسال طلب صانع المحتوى: {error}",
+			"permissionDenied": "❌ تحتاج إلى صلاحيات إشرافية لقبول طلبات صنّاع المحتوى أو رفضها.",
+			"reviewReasonRequired": "❌ أدخل سببًا لقرارك من فضلك."
 		},
 		"live": {
 			"digest": "📊 **بث مباشر** · {mention} · @{tiktok} · #{streamId}",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 تعديل رتبة الداعم المخصصة",
 			"nameLabel": "اسم الرتبة",
 			"namePlaceholder": "أدخل اسم رتبتك المخصصة...",
-			"colorLabel": "لون الرتبة (سداسي/عشري/اسم)",
-			"colorPlaceholder": "#FF5733 أو 16729395 أو أحمر (اختياري)",
+			"colorLabel": "لون الرتبة (سداسي)",
+			"colorPlaceholder": "#FF5733 (اختياري)",
 			"iconLabel": "أيقونة الرتبة (إيموجي أو رابط صورة)",
 			"iconPlaceholder": "🔥 أو https://example.com/icon.png (اختياري)"
 		},

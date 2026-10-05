@@ -86,7 +86,9 @@
 			"day": "dag",
 			"days": "dagen"
 		},
-		"defaultFooter": "Mogelijk gemaakt door {domain} {year}"
+		"defaultFooter": "Mogelijk gemaakt door {domain} {year}",
+		"yes": "Ja",
+		"no": "Nee"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "AFK-bericht (optioneel)",
 			"messagePlaceholder": "bijv. Even pauze, Aan het studeren, enz.",
-			"deafenLabel": "Geluid uitzetten? (ja/nee, standaard: ja)",
-			"deafenPlaceholder": "ja of nee (laat leeg voor ja)"
+			"deafenLabel": "Geluid uitzetten?"
 		},
 		"buttons": {
 			"remove": "🔄 AFK uitzetten"
@@ -261,7 +262,8 @@
 			"step1Title": "**Stap 1 van 2: rollen kiezen (optioneel)**",
 			"step1Description": "Kies in het menu hieronder welke rollen aan deze giveaway mogen meedoen. Laat het leeg of klik op \"Door naar formulier\" om alle rollen toe te laten.",
 			"roleSelectPlaceholder": "Kies welke rollen mogen meedoen (optioneel)...",
-			"continueButton": "Door naar formulier"
+			"continueButton": "Door naar formulier",
+			"multipleEntries": "Meerdere deelnames toegestaan?"
 		},
 		"active": {
 			"title": "🎉 Actieve giveaway gevonden",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "bijv. 60 voor 1 uur, 1440 voor 1 dag",
 			"winnerCountLabel": "Aantal winnaars",
 			"winnerCountPlaceholder": "Hoeveel winnaars? (standaard: 1)",
-			"multipleEntriesLabel": "Meerdere deelnames toegestaan? (ja/nee)",
-			"multipleEntriesPlaceholder": "ja of nee (standaard: nee)"
+			"invitesLabel": "Benodigde uitnodigingen (0 = geen eis)",
+			"invitesPlaceholder": "0 = iedereen mag meedoen"
 		},
 		"created": {
 			"title": "✅ Giveaway aangemaakt!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ Je hebt **{needed}** uitnodigingen nodig om mee te doen aan deze giveaway. Je hebt er **{have}**.",
 			"roleSelectFailed": "❌ Kon de rolkeuze niet verwerken: {error}",
 			"enterFailed": "❌ **Meedoen aan giveaway mislukt**\\n\\nFout: {error}",
-			"finishFailed": "❌ Kon de giveaway niet beëindigen: {error}"
+			"finishFailed": "❌ Kon de giveaway niet beëindigen: {error}",
+			"invalidInvites": "❌ **Ongeldige giveaway**\\n\\nBenodigde uitnodigingen moet 0 of een geheel getal zijn."
 		},
 		"unknownRole": "Rol {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "Jouw feedback",
 			"placeholder": "Deel je feedback, suggesties of zorgen...",
 			"maxLength": 2000,
-			"anonymousLabel": "Anoniem versturen? (ja/nee)",
-			"anonymousPlaceholder": "ja of nee (standaard: nee)"
+			"anonymousLabel": "Anoniem versturen?"
 		},
 		"submitted": {
 			"title": "✅ Feedback verstuurd!",
@@ -435,8 +437,7 @@
 			"categoryLabel": "Categorie",
 			"descriptionLabel": "Beschrijving",
 			"descriptionPlaceholder": "Beschrijf je ervaring met dit staflid...",
-			"anonymousLabel": "Anoniem versturen? (ja/nee)",
-			"anonymousPlaceholder": "ja of nee (standaard: nee)"
+			"anonymousLabel": "Anoniem versturen?"
 		},
 		"submitted": {
 			"title": "✅ Melding verstuurd",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 Eigen supporterrol bewerken",
 			"nameLabel": "Rolnaam",
 			"namePlaceholder": "Voer de naam van je eigen rol in...",
-			"colorLabel": "Rolkleur (hex/decimaal/naam)",
-			"colorPlaceholder": "#FF5733 of 16729395 of rood (optioneel)",
+			"colorLabel": "Rolkleur (hex)",
+			"colorPlaceholder": "#FF5733 (optioneel)",
 			"iconLabel": "Rolicoon (emoji of afbeeldings-URL)",
 			"iconPlaceholder": "🔥 of https://example.com/icon.png (optioneel)"
 		},

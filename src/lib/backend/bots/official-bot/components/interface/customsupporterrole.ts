@@ -4,8 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
-import { getUserLanguage, memberTranslator, translate } from '../../i18n.js';
-import { parseColorName } from '../../localizedInput.js';
+import { memberTranslator, translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 
 const supporterRoles = new Map();
@@ -132,28 +131,12 @@ function isValidImageUrl(url) {
 	return true;
 }
 
-function parseColor(colorInput, lang?: string) {
-	if (!colorInput || colorInput.trim() === '') {
-		return null;
-	}
-
-	const trimmed = colorInput.trim();
-
-	if (trimmed.startsWith('#')) {
-		const hex = trimmed.substring(1);
-		if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
-			return parseInt(hex, 16);
-		}
-	} else if (/^[0-9A-Fa-f]{6}$/.test(trimmed)) {
-		return parseInt(trimmed, 16);
-	}
-
-	const decimal = parseInt(trimmed, 10);
-	if (!isNaN(decimal) && decimal >= 0 && decimal <= 0xffffff) {
-		return decimal;
-	}
-
-	return parseColorName(trimmed, lang);
+function parseColor(colorInput) {
+	const input = String(colorInput ?? '').trim();
+	const hex = input.replace(/^#/, '');
+	if (/^[0-9A-Fa-f]{6}$/.test(hex)) return parseInt(hex, 16);
+	if (/^\d+$/.test(input) && Number(input) <= 0xffffff) return Number(input);
+	return null;
 }
 
 class AnchorError extends Error {
@@ -505,7 +488,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			}
 
 			const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
-			const roleColor = parseColor(colorInput, tr.lang);
+			const roleColor = parseColor(colorInput);
 			const updateData: any = {
 				name: roleName,
 				reason: `Custom supporter role updated for ${member.user.tag} (${member.user.id})`
@@ -676,7 +659,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			return;
 		}
 
-		const roleColor = parseColor(colorInput, await getUserLanguage(interaction.guild.id, interaction.user.id));
+		const roleColor = parseColor(colorInput);
 
 		const trimmedIconInput = iconInput?.trim() || '';
 		let iconStatus = 'none';

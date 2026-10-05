@@ -86,7 +86,9 @@
 			"day": "天",
 			"days": "天"
 		},
-		"defaultFooter": "由 {domain} 提供支持 {year}"
+		"defaultFooter": "由 {domain} 提供支持 {year}",
+		"yes": "是",
+		"no": "否"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "AFK 留言（可选）",
 			"messagePlaceholder": "例如：休息一下、学习中等等。",
-			"deafenLabel": "语音中关闭收听？（是/否，默认：是）",
-			"deafenPlaceholder": "是 或 否（留空视为 是）"
+			"deafenLabel": "语音中关闭收听？"
 		},
 		"buttons": {
 			"remove": "🔄 解除 AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**第 1 步，共 2 步：选择身份组（可选）**",
 			"step1Description": "在下方菜单中选择可以参加本次抽奖的身份组。留空或点击“继续填写表单”则所有身份组都可参加。",
 			"roleSelectPlaceholder": "选择可参加的身份组（可选）……",
-			"continueButton": "继续填写表单"
+			"continueButton": "继续填写表单",
+			"multipleEntries": "允许重复参加？"
 		},
 		"active": {
 			"title": "🎉 发现进行中的抽奖",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "例如：60 表示 1 小时，1440 表示 1 天",
 			"winnerCountLabel": "中奖人数",
 			"winnerCountPlaceholder": "中奖几人？（默认：1）",
-			"multipleEntriesLabel": "允许重复参加？（是/否）",
-			"multipleEntriesPlaceholder": "是 或 否（默认：否）"
+			"invitesLabel": "所需邀请数（0 = 无要求）",
+			"invitesPlaceholder": "0 表示所有人都可参加"
 		},
 		"created": {
 			"title": "✅ 抽奖已创建！",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ 你需要 **{needed}** 个邀请才能参加此抽奖。你目前有 **{have}** 个。",
 			"roleSelectFailed": "❌ 处理身份组选择失败：{error}",
 			"enterFailed": "❌ **参加抽奖失败**\\n\\n错误：{error}",
-			"finishFailed": "❌ 结束抽奖失败：{error}"
+			"finishFailed": "❌ 结束抽奖失败：{error}",
+			"invalidInvites": "❌ **抽奖无效**\\n\\n所需邀请数必须是 0 或整数。"
 		},
 		"unknownRole": "身份组 {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "你的反馈",
 			"placeholder": "欢迎分享你的反馈、建议或问题……",
 			"maxLength": 2000,
-			"anonymousLabel": "匿名提交？（是/否）",
-			"anonymousPlaceholder": "是 或 否（默认：否）"
+			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {
 			"title": "✅ 反馈已提交！",
@@ -406,6 +408,28 @@
 			"reasonLabel": "理由（必填）",
 			"reasonPlaceholder": "向举报者说明你的判定理由…"
 		},
+		"embed": {
+			"staffDecision": "管理决定",
+			"reviewedBy": "审核人",
+			"statusApproved": "已通过",
+			"statusRejected": "已驳回"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "管理人员",
+			"fieldRating": "评分",
+			"fieldCategory": "分类",
+			"fieldReporter": "举报人",
+			"fieldStatus": "状态",
+			"fieldDescription": "描述",
+			"anonymousReporter": "匿名",
+			"pendingTitle": "🕒 待审核的管理举报",
+			"pendingStatus": "等待管理员审核",
+			"approveButton": "通过举报",
+			"rejectButton": "驳回举报",
+			"titleApproved": "✅ 管理举报已通过",
+			"titleRejected": "❌ 管理举报已驳回",
+			"footerReportSuffix": "• 举报编号：#{reportId}"
+		},
 		"modal": {
 			"title": "举报管理人员",
 			"ratingLabel": "评分（1-5 星）",
@@ -413,8 +437,7 @@
 			"categoryLabel": "分类",
 			"descriptionLabel": "详细说明",
 			"descriptionPlaceholder": "请描述你与这位管理人员的经历……",
-			"anonymousLabel": "匿名提交？（是/否）",
-			"anonymousPlaceholder": "是 或 否（默认：否）"
+			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {
 			"title": "✅ 举报已提交",
@@ -453,28 +476,6 @@
 			"permissionDenied": "❌ **权限不足**\\n\\n审核管理举报需要管理员权限。",
 			"reviewReasonRequired": "❌ 请填写你的判定理由。"
 		},
-		"embed": {
-			"staffDecision": "管理决定",
-			"reviewedBy": "审核人",
-			"statusApproved": "已通过",
-			"statusRejected": "已驳回"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "管理人员",
-			"fieldRating": "评分",
-			"fieldCategory": "分类",
-			"fieldReporter": "举报人",
-			"fieldStatus": "状态",
-			"fieldDescription": "描述",
-			"anonymousReporter": "匿名",
-			"pendingTitle": "🕒 待审核的管理举报",
-			"pendingStatus": "等待管理员审核",
-			"approveButton": "通过举报",
-			"rejectButton": "驳回举报",
-			"titleApproved": "✅ 管理举报已通过",
-			"titleRejected": "❌ 管理举报已驳回",
-			"footerReportSuffix": "• 举报编号：#{reportId}"
-		},
 		"ratingUpdate": {
 			"title": "⭐ 管理评分更新",
 			"description": "{staff} 收到了一条新评分。",
@@ -510,32 +511,6 @@
 			"reasonLabel": "理由（必填）",
 			"reasonPlaceholder": "向申请者说明你的判定理由…"
 		},
-		"modal": {
-			"title": "申请成为内容创作者",
-			"usernameLabel": "TikTok 用户名",
-			"usernamePlaceholder": "示例：dansday",
-			"reasonLabel": "你为什么想成为内容创作者？",
-			"reasonPlaceholder": "简单说说我们为什么应该接受你的申请……"
-		},
-		"submitted": "✅ 你以 **{username}** 提交的内容创作者申请已送出，正在等待管理团队审核。",
-		"dm": {
-			"approved": "你在 **{server}** 的申请已通过。\\n\\nTikTok：**{username}**\\n内容创作者身份组已分配给你。",
-			"rejected": "你在 **{server}** 的申请这次未通过。\\n\\nTikTok：**{username}**\\n\\n**理由：** {reason}\\n\\n冷却期结束后你可以再次申请（如果你的服务器设置了冷却期）。",
-			"embedTitleApproved": "✅ 内容创作者申请已通过",
-			"embedTitleRejected": "❌ 内容创作者申请未通过"
-		},
-		"autoRejectApplicantReason": "重复或冒充：该 TikTok 用户名已绑定到另一个 Discord 账户。",
-		"errors": {
-			"notConfigured": "❌ 本服务器尚未配置内容创作者招募功能。",
-			"alreadyCreator": "✅ 你已经拥有本服务器的内容创作者身份组。",
-			"invalidUsername": "❌ TikTok 用户名无效。只能使用字母、数字、句点和下划线。",
-			"reasonRequired": "❌ 请填写你想成为内容创作者的理由。",
-			"pendingExists": "❌ 你已有一份待审核的内容创作者申请。",
-			"cooldown": "❌ 你需要等待 **{days} 天** 才能再次提交内容创作者申请。",
-			"submitFailed": "❌ 内容创作者申请提交失败：{error}",
-			"permissionDenied": "❌ 审核内容创作者申请需要管理员权限。",
-			"reviewReasonRequired": "❌ 请填写你的判定理由。"
-		},
 		"embed": {
 			"staffDecision": "管理决定",
 			"reviewedBy": "审核人",
@@ -562,6 +537,32 @@
 			"autoRejectReviewReason": "重复或冒充：该 TikTok 用户名已绑定到另一个 Discord 账户。",
 			"autoRejectConflictPending": "该账户已用此 TikTok 账号提交了一份**待审核**的申请。",
 			"autoRejectConflictApproved": "该账户是使用此 TikTok 账号且**已通过审核**的内容创作者。"
+		},
+		"modal": {
+			"title": "申请成为内容创作者",
+			"usernameLabel": "TikTok 用户名",
+			"usernamePlaceholder": "示例：dansday",
+			"reasonLabel": "你为什么想成为内容创作者？",
+			"reasonPlaceholder": "简单说说我们为什么应该接受你的申请……"
+		},
+		"submitted": "✅ 你以 **{username}** 提交的内容创作者申请已送出，正在等待管理团队审核。",
+		"dm": {
+			"approved": "你在 **{server}** 的申请已通过。\\n\\nTikTok：**{username}**\\n内容创作者身份组已分配给你。",
+			"rejected": "你在 **{server}** 的申请这次未通过。\\n\\nTikTok：**{username}**\\n\\n**理由：** {reason}\\n\\n冷却期结束后你可以再次申请（如果你的服务器设置了冷却期）。",
+			"embedTitleApproved": "✅ 内容创作者申请已通过",
+			"embedTitleRejected": "❌ 内容创作者申请未通过"
+		},
+		"autoRejectApplicantReason": "重复或冒充：该 TikTok 用户名已绑定到另一个 Discord 账户。",
+		"errors": {
+			"notConfigured": "❌ 本服务器尚未配置内容创作者招募功能。",
+			"alreadyCreator": "✅ 你已经拥有本服务器的内容创作者身份组。",
+			"invalidUsername": "❌ TikTok 用户名无效。只能使用字母、数字、句点和下划线。",
+			"reasonRequired": "❌ 请填写你想成为内容创作者的理由。",
+			"pendingExists": "❌ 你已有一份待审核的内容创作者申请。",
+			"cooldown": "❌ 你需要等待 **{days} 天** 才能再次提交内容创作者申请。",
+			"submitFailed": "❌ 内容创作者申请提交失败：{error}",
+			"permissionDenied": "❌ 审核内容创作者申请需要管理员权限。",
+			"reviewReasonRequired": "❌ 请填写你的判定理由。"
 		},
 		"live": {
 			"digest": "📊 **直播** · {mention} · @{tiktok} · #{streamId}",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 编辑赞助者专属身份组",
 			"nameLabel": "身份组名称",
 			"namePlaceholder": "输入你的专属身份组名称……",
-			"colorLabel": "身份组颜色（十六进制/十进制/颜色名）",
-			"colorPlaceholder": "#FF5733 或 16729395 或 红色（可选）",
+			"colorLabel": "身份组颜色（十六进制）",
+			"colorPlaceholder": "#FF5733（可选）",
 			"iconLabel": "身份组图标（emoji 或图片链接）",
 			"iconPlaceholder": "🔥 或 https://example.com/icon.png（可选）"
 		},

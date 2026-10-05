@@ -86,7 +86,9 @@
 			"day": "hari",
 			"days": "hari"
 		},
-		"defaultFooter": "Didukung oleh {domain} {year}"
+		"defaultFooter": "Didukung oleh {domain} {year}",
+		"yes": "Ya",
+		"no": "Tidak"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "Pesan AFK (Opsional)",
 			"messagePlaceholder": "misalnya, Istirahat, Belajar, dll.",
-			"deafenLabel": "Deafen di Voice? (ya/tidak, default: ya)",
-			"deafenPlaceholder": "ya atau tidak (kosongkan untuk ya)"
+			"deafenLabel": "Deafen di Voice?"
 		},
 		"buttons": {
 			"remove": "🔄 Hapus AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**Langkah 1 dari 2: Pilih Role (Opsional)**",
 			"step1Description": "Pilih role yang dapat mengikuti giveaway ini dari dropdown di bawah. Kosongkan atau klik \"Lanjut ke Formulir\" untuk mengizinkan semua role.",
 			"roleSelectPlaceholder": "Pilih role yang dapat mengikuti (opsional)...",
-			"continueButton": "Lanjut ke Formulir"
+			"continueButton": "Lanjut ke Formulir",
+			"multipleEntries": "Boleh Masuk Beberapa Kali?"
 		},
 		"active": {
 			"title": "🎉 Giveaway Aktif Ditemukan",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "misalnya, 60 untuk 1 jam, 1440 untuk 1 hari",
 			"winnerCountLabel": "Jumlah Pemenang",
 			"winnerCountPlaceholder": "Berapa banyak pemenang? (default: 1)",
-			"multipleEntriesLabel": "Boleh Masuk Beberapa Kali? (ya/tidak)",
-			"multipleEntriesPlaceholder": "ya atau tidak (default: tidak)"
+			"invitesLabel": "Undangan Dibutuhkan (0 = tanpa syarat)",
+			"invitesPlaceholder": "0 berarti semua bisa ikut"
 		},
 		"created": {
 			"title": "✅ Giveaway Dibuat!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ Kamu butuh **{needed}** undangan untuk ikut giveaway ini. Kamu punya **{have}**.",
 			"roleSelectFailed": "❌ Gagal memproses pilihan role: {error}",
 			"enterFailed": "❌ **Gagal Mengikuti Giveaway**\\n\\nError: {error}",
-			"finishFailed": "❌ Gagal menyelesaikan giveaway: {error}"
+			"finishFailed": "❌ Gagal menyelesaikan giveaway: {error}",
+			"invalidInvites": "❌ **Giveaway Tidak Valid**\\n\\nUndangan yang dibutuhkan harus 0 atau bilangan bulat."
 		},
 		"unknownRole": "Role {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "Feedback Kamu",
 			"placeholder": "Silakan bagikan feedback, saran, atau kekhawatiran kamu...",
 			"maxLength": 2000,
-			"anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
-			"anonymousPlaceholder": "ya atau tidak (default: tidak)"
+			"anonymousLabel": "Kirim Secara Anonim?"
 		},
 		"submitted": {
 			"title": "✅ Feedback Terkirim!",
@@ -406,6 +408,28 @@
 			"reasonLabel": "Alasan (wajib)",
 			"reasonPlaceholder": "Jelaskan keputusanmu ke pelapor…"
 		},
+		"embed": {
+			"staffDecision": "Keputusan staff",
+			"reviewedBy": "Ditinjau oleh",
+			"statusApproved": "Disetujui",
+			"statusRejected": "Ditolak"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Staff",
+			"fieldRating": "Rating",
+			"fieldCategory": "Kategori",
+			"fieldReporter": "Pelapor",
+			"fieldStatus": "Status",
+			"fieldDescription": "Deskripsi",
+			"anonymousReporter": "Anonim",
+			"pendingTitle": "🕒 Laporan Staff Menunggu Persetujuan",
+			"pendingStatus": "Menunggu persetujuan admin",
+			"approveButton": "Setujui Laporan",
+			"rejectButton": "Tolak Laporan",
+			"titleApproved": "✅ Laporan Staff Disetujui",
+			"titleRejected": "❌ Laporan Staff Ditolak",
+			"footerReportSuffix": "• ID Laporan: #{reportId}"
+		},
 		"modal": {
 			"title": "Laporkan Staff",
 			"ratingLabel": "Rating (1-5 bintang)",
@@ -413,8 +437,7 @@
 			"categoryLabel": "Kategori",
 			"descriptionLabel": "Deskripsi",
 			"descriptionPlaceholder": "Jelaskan pengalaman kamu dengan staff ini...",
-			"anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
-			"anonymousPlaceholder": "ya atau tidak (default: tidak)"
+			"anonymousLabel": "Kirim Secara Anonim?"
 		},
 		"submitted": {
 			"title": "✅ Laporan Terkirim",
@@ -453,28 +476,6 @@
 			"permissionDenied": "❌ **Izin Ditolak**\\n\\nKamu memerlukan izin admin untuk menyetujui atau menolak laporan staff.",
 			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
 		},
-		"embed": {
-			"staffDecision": "Keputusan staff",
-			"reviewedBy": "Ditinjau oleh",
-			"statusApproved": "Disetujui",
-			"statusRejected": "Ditolak"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "Staff",
-			"fieldRating": "Rating",
-			"fieldCategory": "Kategori",
-			"fieldReporter": "Pelapor",
-			"fieldStatus": "Status",
-			"fieldDescription": "Deskripsi",
-			"anonymousReporter": "Anonim",
-			"pendingTitle": "🕒 Laporan Staff Menunggu Persetujuan",
-			"pendingStatus": "Menunggu persetujuan admin",
-			"approveButton": "Setujui Laporan",
-			"rejectButton": "Tolak Laporan",
-			"titleApproved": "✅ Laporan Staff Disetujui",
-			"titleRejected": "❌ Laporan Staff Ditolak",
-			"footerReportSuffix": "• ID Laporan: #{reportId}"
-		},
 		"ratingUpdate": {
 			"title": "⭐ Pembaruan Rating Staff",
 			"description": "{staff} menerima rating baru.",
@@ -510,32 +511,6 @@
 			"reasonLabel": "Alasan (wajib)",
 			"reasonPlaceholder": "Jelaskan keputusanmu ke pemohon…"
 		},
-		"modal": {
-			"title": "Daftar Sebagai Content Creator",
-			"usernameLabel": "Username TikTok",
-			"usernamePlaceholder": "contoh: dansday",
-			"reasonLabel": "Kenapa kamu ingin menjadi content creator?",
-			"reasonPlaceholder": "Jelaskan singkat kenapa kamu layak diterima..."
-		},
-		"submitted": "✅ Pengajuan content creator kamu untuk **{username}** sudah dikirim dan menunggu persetujuan staff.",
-		"dm": {
-			"approved": "Pengajuan kamu di **{server}** disetujui.\\n\\nTikTok: **{username}**\\nRole Content Creator sudah diberikan.",
-			"rejected": "Pengajuan kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\n\\n**Alasan:** {reason}\\n\\nKamu bisa mengajukan lagi setelah masa cooldown (jika server memakai cooldown).",
-			"embedTitleApproved": "✅ Content creator disetujui",
-			"embedTitleRejected": "❌ Content creator tidak disetujui"
-		},
-		"autoRejectApplicantReason": "Duplikasi atau penyamaran: username TikTok ini sudah terhubung ke akun Discord lain.",
-		"errors": {
-			"notConfigured": "❌ Sistem pengajuan content creator belum dikonfigurasi untuk server ini.",
-			"alreadyCreator": "✅ Kamu sudah memiliki role Content Creator di server ini.",
-			"invalidUsername": "❌ Username TikTok tidak valid. Gunakan huruf, angka, titik, dan garis bawah saja.",
-			"reasonRequired": "❌ Tolong isi alasan kenapa kamu ingin menjadi content creator.",
-			"pendingExists": "❌ Kamu masih punya pengajuan content creator yang pending.",
-			"cooldown": "❌ Kamu harus menunggu **{days} hari** sebelum mengirim pengajuan content creator lagi.",
-			"submitFailed": "❌ Gagal mengirim pengajuan content creator: {error}",
-			"permissionDenied": "❌ Kamu butuh izin admin untuk menyetujui atau menolak pengajuan content creator.",
-			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
-		},
 		"embed": {
 			"staffDecision": "Keputusan staff",
 			"reviewedBy": "Ditinjau oleh",
@@ -562,6 +537,32 @@
 			"autoRejectReviewReason": "Duplikasi atau penyamaran: username TikTok ini sudah terhubung ke akun Discord lain.",
 			"autoRejectConflictPending": "Akun tersebut memiliki pengajuan yang **masih menunggu** untuk akun TikTok ini.",
 			"autoRejectConflictApproved": "Akun tersebut adalah content creator yang **sudah disetujui** dengan akun TikTok ini."
+		},
+		"modal": {
+			"title": "Daftar Sebagai Content Creator",
+			"usernameLabel": "Username TikTok",
+			"usernamePlaceholder": "contoh: dansday",
+			"reasonLabel": "Kenapa kamu ingin menjadi content creator?",
+			"reasonPlaceholder": "Jelaskan singkat kenapa kamu layak diterima..."
+		},
+		"submitted": "✅ Pengajuan content creator kamu untuk **{username}** sudah dikirim dan menunggu persetujuan staff.",
+		"dm": {
+			"approved": "Pengajuan kamu di **{server}** disetujui.\\n\\nTikTok: **{username}**\\nRole Content Creator sudah diberikan.",
+			"rejected": "Pengajuan kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\n\\n**Alasan:** {reason}\\n\\nKamu bisa mengajukan lagi setelah masa cooldown (jika server memakai cooldown).",
+			"embedTitleApproved": "✅ Content creator disetujui",
+			"embedTitleRejected": "❌ Content creator tidak disetujui"
+		},
+		"autoRejectApplicantReason": "Duplikasi atau penyamaran: username TikTok ini sudah terhubung ke akun Discord lain.",
+		"errors": {
+			"notConfigured": "❌ Sistem pengajuan content creator belum dikonfigurasi untuk server ini.",
+			"alreadyCreator": "✅ Kamu sudah memiliki role Content Creator di server ini.",
+			"invalidUsername": "❌ Username TikTok tidak valid. Gunakan huruf, angka, titik, dan garis bawah saja.",
+			"reasonRequired": "❌ Tolong isi alasan kenapa kamu ingin menjadi content creator.",
+			"pendingExists": "❌ Kamu masih punya pengajuan content creator yang pending.",
+			"cooldown": "❌ Kamu harus menunggu **{days} hari** sebelum mengirim pengajuan content creator lagi.",
+			"submitFailed": "❌ Gagal mengirim pengajuan content creator: {error}",
+			"permissionDenied": "❌ Kamu butuh izin admin untuk menyetujui atau menolak pengajuan content creator.",
+			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
 		},
 		"live": {
 			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 Edit Role Supporter Kustom",
 			"nameLabel": "Nama Role",
 			"namePlaceholder": "Masukkan nama role kustom kamu...",
-			"colorLabel": "Warna Role (Hex/Desimal/Nama)",
-			"colorPlaceholder": "#FF5733 atau 16729395 atau merah (opsional)",
+			"colorLabel": "Warna Role (Hex)",
+			"colorPlaceholder": "#FF5733 (opsional)",
 			"iconLabel": "Ikon Role (Emoji atau URL Gambar)",
 			"iconPlaceholder": "🔥 atau https://example.com/icon.png (opsional)"
 		},

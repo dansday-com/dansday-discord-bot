@@ -2,8 +2,8 @@ import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, Embed
 import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate, serverTranslator } from '../../i18n.js';
-import { parseYesNo } from '../../localizedInput.js';
+import { memberTranslator, translate, serverTranslator } from '../../i18n.js';
+import { textField, yesNoField, yesNoValue } from './formFields.js';
 import db from '../../../../../database.js';
 
 export async function handleFeedbackButton(interaction) {
@@ -24,27 +24,15 @@ export async function handleFeedbackButton(interaction) {
 		const modalTitle = await translate('feedback.modal.title', interaction.guild.id, interaction.user.id);
 		const modal = new ModalBuilder().setCustomId('feedback_submit').setTitle(modalTitle);
 
-		const feedbackLabel = await translate('feedback.modal.label', interaction.guild.id, interaction.user.id);
-		const feedbackPlaceholder = await translate('feedback.modal.placeholder', interaction.guild.id, interaction.user.id);
+		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 		const feedbackInput = new TextInputBuilder()
 			.setCustomId('feedback_message')
-			.setLabel(feedbackLabel)
 			.setStyle(TextInputStyle.Paragraph)
-			.setPlaceholder(feedbackPlaceholder)
+			.setPlaceholder(tr('feedback.modal.placeholder'))
 			.setRequired(true)
 			.setMaxLength(2000);
 
-		const anonymousLabel = await translate('feedback.modal.anonymousLabel', interaction.guild.id, interaction.user.id);
-		const anonymousPlaceholder = await translate('feedback.modal.anonymousPlaceholder', interaction.guild.id, interaction.user.id);
-		const anonymousInput = new TextInputBuilder()
-			.setCustomId('anonymous')
-			.setLabel(anonymousLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(anonymousPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		modal.addComponents(new ActionRowBuilder().addComponents(feedbackInput), new ActionRowBuilder().addComponents(anonymousInput));
+		modal.addLabelComponents(textField(tr('feedback.modal.label'), feedbackInput), yesNoField(tr, tr('feedback.modal.anonymousLabel'), 'anonymous', false));
 
 		await interaction.showModal(modal);
 		await logger.log(`💬 Feedback modal shown to ${member.user.tag} (${member.user.id})`);
@@ -86,7 +74,7 @@ export async function handleFeedbackModal(interaction) {
 			return;
 		}
 
-		const isAnonymous = parseYesNo(interaction.fields.getTextInputValue('anonymous')) === true;
+		const isAnonymous = yesNoValue(interaction.fields, 'anonymous', false);
 
 		let feedbackChannelId;
 		try {

@@ -86,7 +86,9 @@
 			"day": "giorno",
 			"days": "giorni"
 		},
-		"defaultFooter": "Offerto da {domain} {year}"
+		"defaultFooter": "Offerto da {domain} {year}",
+		"yes": "Sì",
+		"no": "No"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "Messaggio AFK (facoltativo)",
 			"messagePlaceholder": "es. Faccio una pausa, Sto studiando, ecc.",
-			"deafenLabel": "Disattivare l'audio in vocale? (sì/no)",
-			"deafenPlaceholder": "sì o no (lascia vuoto per sì)"
+			"deafenLabel": "Disattivare l'audio in vocale?"
 		},
 		"buttons": {
 			"remove": "🔄 Rimuovi AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**Passo 1 di 2: seleziona i ruoli (facoltativo)**",
 			"step1Description": "Seleziona dal menu a tendina qui sotto i ruoli che possono partecipare a questo giveaway. Lascia vuoto o clicca \"Continua al modulo\" per consentire tutti i ruoli.",
 			"roleSelectPlaceholder": "Seleziona i ruoli che possono partecipare (facoltativo)...",
-			"continueButton": "Continua al modulo"
+			"continueButton": "Continua al modulo",
+			"multipleEntries": "Partecipazioni multiple?"
 		},
 		"active": {
 			"title": "🎉 Giveaway attivo trovato",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "es. 60 per 1 ora, 1440 per 1 giorno",
 			"winnerCountLabel": "Numero di vincitori",
 			"winnerCountPlaceholder": "Quanti vincitori? (predefinito: 1)",
-			"multipleEntriesLabel": "Partecipazioni multiple? (sì/no)",
-			"multipleEntriesPlaceholder": "sì o no (predefinito: no)"
+			"invitesLabel": "Inviti richiesti (0 = nessun requisito)",
+			"invitesPlaceholder": "0 = tutti possono partecipare"
 		},
 		"created": {
 			"title": "✅ Giveaway creato!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ Ti servono **{needed}** inviti per partecipare a questo giveaway. Ne hai **{have}**.",
 			"roleSelectFailed": "❌ Impossibile elaborare la selezione dei ruoli: {error}",
 			"enterFailed": "❌ **Impossibile partecipare al giveaway**\\n\\nErrore: {error}",
-			"finishFailed": "❌ Impossibile terminare il giveaway: {error}"
+			"finishFailed": "❌ Impossibile terminare il giveaway: {error}",
+			"invalidInvites": "❌ **Giveaway non valido**\\n\\nGli inviti richiesti devono essere 0 o un numero intero."
 		},
 		"unknownRole": "Ruolo {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "Il tuo feedback",
 			"placeholder": "Condividi il tuo feedback, i tuoi suggerimenti o i tuoi dubbi...",
 			"maxLength": 2000,
-			"anonymousLabel": "Inviare in forma anonima? (sì/no)",
-			"anonymousPlaceholder": "sì o no (predefinito: no)"
+			"anonymousLabel": "Inviare in forma anonima?"
 		},
 		"submitted": {
 			"title": "✅ Feedback inviato!",
@@ -435,8 +437,7 @@
 			"categoryLabel": "Categoria",
 			"descriptionLabel": "Descrizione",
 			"descriptionPlaceholder": "Descrivi la tua esperienza con questo membro dello staff...",
-			"anonymousLabel": "Inviare in forma anonima? (sì/no)",
-			"anonymousPlaceholder": "sì o no (predefinito: no)"
+			"anonymousLabel": "Inviare in forma anonima?"
 		},
 		"submitted": {
 			"title": "✅ Segnalazione inviata",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 Modifica ruolo Supporter personalizzato",
 			"nameLabel": "Nome del ruolo",
 			"namePlaceholder": "Inserisci il nome del tuo ruolo personalizzato...",
-			"colorLabel": "Colore del ruolo (hex/decimale/nome)",
-			"colorPlaceholder": "#FF5733 o 16729395 o rosso (facoltativo)",
+			"colorLabel": "Colore del ruolo (hex)",
+			"colorPlaceholder": "#FF5733 (facoltativo)",
 			"iconLabel": "Icona del ruolo (emoji o URL immagine)",
 			"iconPlaceholder": "🔥 o https://example.com/icon.png (facoltativo)"
 		},

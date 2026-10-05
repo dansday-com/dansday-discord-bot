@@ -3,8 +3,8 @@ import { getEmbedConfig, getBotConfig, AFK_CONFIG } from '../../../../config.js'
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
-import { translate, translateServer } from '../../i18n.js';
-import { parseYesNo } from '../../localizedInput.js';
+import { memberTranslator, translate, translateServer } from '../../i18n.js';
+import { textField, yesNoField, yesNoValue } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
 
 const DEFAULT_AFK_MESSAGE = 'Away';
@@ -252,29 +252,15 @@ export async function handleAFKButton(interaction) {
 		const modalTitle = await translate('afk.title', interaction.guild.id, interaction.user.id);
 		const modal = new ModalBuilder().setCustomId('afk_set').setTitle(modalTitle);
 
-		const messageLabel = await translate('afk.modal.messageLabel', interaction.guild.id, interaction.user.id);
-		const messagePlaceholder = await translate('afk.modal.messagePlaceholder', interaction.guild.id, interaction.user.id);
+		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 		const messageInput = new TextInputBuilder()
 			.setCustomId('afk_message')
-			.setLabel(messageLabel)
 			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(messagePlaceholder)
+			.setPlaceholder(tr('afk.modal.messagePlaceholder'))
 			.setRequired(false)
 			.setMaxLength(100);
 
-		const deafenLabel = await translate('afk.modal.deafenLabel', interaction.guild.id, interaction.user.id);
-		const deafenPlaceholder = await translate('afk.modal.deafenPlaceholder', interaction.guild.id, interaction.user.id);
-		const deafenInput = new TextInputBuilder()
-			.setCustomId('afk_deafen')
-			.setLabel(deafenLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(deafenPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		const messageRow = new ActionRowBuilder().addComponents(messageInput);
-		const deafenRow = new ActionRowBuilder().addComponents(deafenInput);
-		modal.addComponents(messageRow, deafenRow);
+		modal.addLabelComponents(textField(tr('afk.modal.messageLabel'), messageInput), yesNoField(tr, tr('afk.modal.deafenLabel'), 'afk_deafen', true));
 
 		await interaction.showModal(modal);
 		await logger.log(`⏸️ AFK modal shown to ${member.id}`);
@@ -312,7 +298,7 @@ export async function handleAFKModal(interaction) {
 
 		const afkMessage = interaction.fields.getTextInputValue('afk_message')?.trim() || DEFAULT_AFK_MESSAGE;
 
-		const shouldDeafen = parseYesNo(interaction.fields.getTextInputValue('afk_deafen')) !== false;
+		const shouldDeafen = yesNoValue(interaction.fields, 'afk_deafen', true);
 
 		await setAFK(member, afkMessage, shouldDeafen);
 

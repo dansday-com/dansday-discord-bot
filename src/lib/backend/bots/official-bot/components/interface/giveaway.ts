@@ -1,15 +1,78 @@
-import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, RoleSelectMenuBuilder } from 'discord.js';
+import {
+	ModalBuilder,
+	TextInputBuilder,
+	ActionRowBuilder,
+	TextInputStyle,
+	EmbedBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	RoleSelectMenuBuilder,
+	StringSelectMenuBuilder
+} from 'discord.js';
 import { getEmbedConfig, GIVEAWAY, NOTIFICATIONS, getServerForCurrentBot } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { translate, serverTranslator, memberTranslator, type Translator } from '../../i18n.js';
-import { parseYesNo } from '../../localizedInput.js';
+import { textField } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
 
 function giveawayRoleMention(guild, roleId, tr: Translator) {
 	const role = guild.roles.cache.get(roleId);
 	return role ? `<@&${roleId}>` : tr('giveaway.unknownRole', { roleId });
+}
+
+const pendingMultipleEntries = new Map<string, boolean>();
+
+function pendingKey(interaction) {
+	return `${interaction.guild.id}:${interaction.user.id}`;
+}
+
+function multipleEntriesRow(tr: Translator, allowed: boolean) {
+	const question = tr('giveaway.create.multipleEntries');
+	return new ActionRowBuilder().addComponents(
+		new StringSelectMenuBuilder()
+			.setCustomId('giveaway_multiple_select')
+			.addOptions(
+				{ label: `${question} ${tr('common.no')}`.slice(0, 100), value: 'no', default: !allowed },
+				{ label: `${question} ${tr('common.yes')}`.slice(0, 100), value: 'yes', default: allowed }
+			)
+	);
+}
+
+async function showGiveawayModal(interaction, customId: string) {
+	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
+	const field = (id: string, key: string, style: TextInputStyle, required: boolean, maxLength: number) =>
+		textField(
+			tr(`giveaway.modal.${key}Label`),
+			new TextInputBuilder()
+				.setCustomId(id)
+				.setStyle(style)
+				.setPlaceholder(tr(`giveaway.modal.${key}Placeholder`).slice(0, 100))
+				.setRequired(required)
+				.setMaxLength(maxLength)
+		);
+	const modal = new ModalBuilder()
+		.setCustomId(customId)
+		.setTitle(tr('giveaway.create.title').slice(0, 45))
+		.addLabelComponents(
+			field('giveaway_title', 'title', TextInputStyle.Short, true, 256),
+			field('giveaway_prize', 'prize', TextInputStyle.Paragraph, true, 2000),
+			field('giveaway_duration', 'duration', TextInputStyle.Short, true, 10),
+			field('giveaway_winner_count', 'winnerCount', TextInputStyle.Short, false, 3),
+			field('giveaway_min_invites', 'invites', TextInputStyle.Short, false, 4)
+		);
+	await interaction.showModal(modal);
+}
+
+export async function handleGiveawayMultipleSelect(interaction) {
+	if (!(await hasPermission(interaction.member, 'giveaway'))) return;
+	const allowed = interaction.values?.[0] === 'yes';
+	pendingMultipleEntries.set(pendingKey(interaction), allowed);
+	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
+	const rows = (interaction.message?.components ?? []).map((row) => ActionRowBuilder.from(row));
+	rows[0] = multipleEntriesRow(tr, allowed);
+	await interaction.update({ components: rows }).catch(() => interaction.deferUpdate().catch(() => null));
 }
 
 function buildGiveawayWinnersDescription(tr: Translator, giveaway, winners, winnerMentions: string) {
@@ -127,6 +190,8 @@ export async function handleGiveawayButton(interaction) {
 
 		const roleSelectRow = new ActionRowBuilder().addComponents(roleSelect);
 		const buttonRow = new ActionRowBuilder().addComponents(continueButton, backButton);
+		pendingMultipleEntries.set(pendingKey(interaction), false);
+		const multipleRow = multipleEntriesRow(await memberTranslator(interaction.guild.id, interaction.user.id), false);
 
 		const createTitle = await translate('giveaway.create.title', interaction.guild.id, interaction.user.id);
 		const step1Title = await translate('giveaway.create.step1Title', interaction.guild.id, interaction.user.id);
@@ -140,7 +205,7 @@ export async function handleGiveawayButton(interaction) {
 
 		await interaction.update({
 			embeds: [roleSelectEmbed],
-			components: [roleSelectRow, buttonRow]
+			components: [multipleRow, roleSelectRow, buttonRow]
 		});
 
 		await logger.log(`🎉 Giveaway role selector shown to ${member.user.tag} (${member.user.id})`);
@@ -164,68 +229,7 @@ export async function handleGiveawayRoleSelect(interaction) {
 
 		await logger.log(`🔍 Role selection: ${selectedRoles.length} roles selected for giveaway by ${interaction.user.tag}`);
 
-		const modalTitle = await translate('giveaway.create.title', interaction.guild.id, interaction.user.id);
-		const modal = new ModalBuilder().setCustomId(`giveaway_create_${selectedRoles.length > 0 ? selectedRoles.join('_') : 'none'}`).setTitle(modalTitle);
-
-		const titleLabel = await translate('giveaway.modal.titleLabel', interaction.guild.id, interaction.user.id);
-		const titlePlaceholder = await translate('giveaway.modal.titlePlaceholder', interaction.guild.id, interaction.user.id);
-		const titleInput = new TextInputBuilder()
-			.setCustomId('giveaway_title')
-			.setLabel(titleLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(titlePlaceholder)
-			.setRequired(true)
-			.setMaxLength(256);
-
-		const prizeLabel = await translate('giveaway.modal.prizeLabel', interaction.guild.id, interaction.user.id);
-		const prizePlaceholder = await translate('giveaway.modal.prizePlaceholder', interaction.guild.id, interaction.user.id);
-		const prizeInput = new TextInputBuilder()
-			.setCustomId('giveaway_prize')
-			.setLabel(prizeLabel)
-			.setStyle(TextInputStyle.Paragraph)
-			.setPlaceholder(prizePlaceholder)
-			.setRequired(true)
-			.setMaxLength(2000);
-
-		const durationLabel = await translate('giveaway.modal.durationLabel', interaction.guild.id, interaction.user.id);
-		const durationPlaceholder = await translate('giveaway.modal.durationPlaceholder', interaction.guild.id, interaction.user.id);
-		const durationInput = new TextInputBuilder()
-			.setCustomId('giveaway_duration')
-			.setLabel(durationLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(durationPlaceholder)
-			.setRequired(true)
-			.setMaxLength(10);
-
-		const winnerCountLabel = await translate('giveaway.modal.winnerCountLabel', interaction.guild.id, interaction.user.id);
-		const winnerCountPlaceholder = await translate('giveaway.modal.winnerCountPlaceholder', interaction.guild.id, interaction.user.id);
-		const winnerCountInput = new TextInputBuilder()
-			.setCustomId('giveaway_winner_count')
-			.setLabel(winnerCountLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(winnerCountPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		const multipleEntriesLabel = await translate('giveaway.modal.multipleEntriesLabel', interaction.guild.id, interaction.user.id);
-		const multipleEntriesPlaceholder = await translate('giveaway.modal.multipleEntriesPlaceholder', interaction.guild.id, interaction.user.id);
-		const multipleEntriesInput = new TextInputBuilder()
-			.setCustomId('giveaway_multiple_entries')
-			.setLabel(multipleEntriesLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(multipleEntriesPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		const titleRow = new ActionRowBuilder().addComponents(titleInput);
-		const prizeRow = new ActionRowBuilder().addComponents(prizeInput);
-		const durationRow = new ActionRowBuilder().addComponents(durationInput);
-		const winnerCountRow = new ActionRowBuilder().addComponents(winnerCountInput);
-		const multipleEntriesRow = new ActionRowBuilder().addComponents(multipleEntriesInput);
-
-		modal.addComponents(titleRow, prizeRow, durationRow, winnerCountRow, multipleEntriesRow);
-
-		await interaction.showModal(modal);
+		await showGiveawayModal(interaction, `giveaway_create_${selectedRoles.length > 0 ? selectedRoles.join('_') : 'none'}`);
 		await logger.log(
 			`🎉 Giveaway modal shown to ${interaction.user.tag} (${interaction.user.id}) with roles: ${selectedRoles.length > 0 ? selectedRoles.join(', ') : 'none'}`
 		);
@@ -252,68 +256,7 @@ export async function handleGiveawayRoleSelect(interaction) {
 
 export async function handleGiveawaySkipRolesContinue(interaction) {
 	try {
-		const modalTitle = await translate('giveaway.create.title', interaction.guild.id, interaction.user.id);
-		const modal = new ModalBuilder().setCustomId('giveaway_create_none').setTitle(modalTitle);
-
-		const titleLabel = await translate('giveaway.modal.titleLabel', interaction.guild.id, interaction.user.id);
-		const titlePlaceholder = await translate('giveaway.modal.titlePlaceholder', interaction.guild.id, interaction.user.id);
-		const titleInput = new TextInputBuilder()
-			.setCustomId('giveaway_title')
-			.setLabel(titleLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(titlePlaceholder)
-			.setRequired(true)
-			.setMaxLength(256);
-
-		const prizeLabel = await translate('giveaway.modal.prizeLabel', interaction.guild.id, interaction.user.id);
-		const prizePlaceholder = await translate('giveaway.modal.prizePlaceholder', interaction.guild.id, interaction.user.id);
-		const prizeInput = new TextInputBuilder()
-			.setCustomId('giveaway_prize')
-			.setLabel(prizeLabel)
-			.setStyle(TextInputStyle.Paragraph)
-			.setPlaceholder(prizePlaceholder)
-			.setRequired(true)
-			.setMaxLength(2000);
-
-		const durationLabel = await translate('giveaway.modal.durationLabel', interaction.guild.id, interaction.user.id);
-		const durationPlaceholder = await translate('giveaway.modal.durationPlaceholder', interaction.guild.id, interaction.user.id);
-		const durationInput = new TextInputBuilder()
-			.setCustomId('giveaway_duration')
-			.setLabel(durationLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(durationPlaceholder)
-			.setRequired(true)
-			.setMaxLength(10);
-
-		const winnerCountLabel = await translate('giveaway.modal.winnerCountLabel', interaction.guild.id, interaction.user.id);
-		const winnerCountPlaceholder = await translate('giveaway.modal.winnerCountPlaceholder', interaction.guild.id, interaction.user.id);
-		const winnerCountInput = new TextInputBuilder()
-			.setCustomId('giveaway_winner_count')
-			.setLabel(winnerCountLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(winnerCountPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		const multipleEntriesLabel = await translate('giveaway.modal.multipleEntriesLabel', interaction.guild.id, interaction.user.id);
-		const multipleEntriesPlaceholder = await translate('giveaway.modal.multipleEntriesPlaceholder', interaction.guild.id, interaction.user.id);
-		const multipleEntriesInput = new TextInputBuilder()
-			.setCustomId('giveaway_multiple_entries')
-			.setLabel(multipleEntriesLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(multipleEntriesPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		const titleRow = new ActionRowBuilder().addComponents(titleInput);
-		const prizeRow = new ActionRowBuilder().addComponents(prizeInput);
-		const durationRow = new ActionRowBuilder().addComponents(durationInput);
-		const winnerCountRow = new ActionRowBuilder().addComponents(winnerCountInput);
-		const multipleEntriesRow = new ActionRowBuilder().addComponents(multipleEntriesInput);
-
-		modal.addComponents(titleRow, prizeRow, durationRow, winnerCountRow, multipleEntriesRow);
-
-		await interaction.showModal(modal);
+		await showGiveawayModal(interaction, 'giveaway_create_none');
 		await logger.log(`🎉 Giveaway modal shown to ${interaction.user.tag} (${interaction.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error showing giveaway modal: ${error.message}`);
@@ -381,7 +324,14 @@ export async function handleGiveawayModal(interaction) {
 			return;
 		}
 
-		const multipleEntriesAllowed = parseYesNo(interaction.fields.getTextInputValue('giveaway_multiple_entries')) === true;
+		const invitesStr = interaction.fields.getTextInputValue('giveaway_min_invites')?.trim() || '0';
+		const minInvites = /^\d+$/.test(invitesStr) ? Number(invitesStr) : NaN;
+		if (!Number.isFinite(minInvites)) {
+			await interaction.editReply({ content: await translate('giveaway.errors.invalidInvites', interaction.guild.id, interaction.user.id) });
+			return;
+		}
+
+		const multipleEntriesAllowed = pendingMultipleEntries.get(pendingKey(interaction)) ?? false;
 
 		let allowedRoles = null;
 		if (interaction.customId.startsWith('giveaway_create_')) {
@@ -455,7 +405,6 @@ export async function handleGiveawayModal(interaction) {
 		const now = new Date();
 		const endsAt = new Date(now.getTime() + duration * 60 * 1000);
 		const endsAtTimestamp = Math.floor(endsAt.getTime() / 1000);
-		const minInvites = await GIVEAWAY.getMinInvites(guild.id).catch(() => 0);
 
 		const giveawayData = {
 			server_id: server.id,
@@ -470,6 +419,7 @@ export async function handleGiveawayModal(interaction) {
 		};
 
 		const giveaway = await db.createGiveaway(giveawayData);
+		pendingMultipleEntries.delete(pendingKey(interaction));
 
 		const tr = await serverTranslator(guild.id);
 		const roleRestrictionNone = tr('giveaway.announcement.noRoleRestrictions');

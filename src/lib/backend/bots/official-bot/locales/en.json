@@ -86,7 +86,9 @@
 			"day": "day",
 			"days": "days"
 		},
-		"defaultFooter": "Powered by {domain} {year}"
+		"defaultFooter": "Powered by {domain} {year}",
+		"yes": "Yes",
+		"no": "No"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "AFK Message (Optional)",
 			"messagePlaceholder": "e.g., Taking a break, Studying, etc.",
-			"deafenLabel": "Deafen in Voice? (yes/no, default: yes)",
-			"deafenPlaceholder": "yes or no (leave empty for yes)"
+			"deafenLabel": "Deafen in Voice?"
 		},
 		"buttons": {
 			"remove": "🔄 Remove AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**Step 1 of 2: Select Roles (Optional)**",
 			"step1Description": "Select roles that can enter this giveaway from the dropdown below. Leave empty or click \"Continue to Form\" to allow all roles.",
 			"roleSelectPlaceholder": "Select roles that can enter (optional)...",
-			"continueButton": "Continue to Form"
+			"continueButton": "Continue to Form",
+			"multipleEntries": "Multiple Entries Allowed?"
 		},
 		"active": {
 			"title": "🎉 Active Giveaway Found",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "e.g., 60 for 1 hour, 1440 for 1 day",
 			"winnerCountLabel": "Number of Winners",
 			"winnerCountPlaceholder": "How many winners? (default: 1)",
-			"multipleEntriesLabel": "Multiple Entries Allowed? (yes/no)",
-			"multipleEntriesPlaceholder": "yes or no (default: no)"
+			"invitesLabel": "Invites Needed (0 = no requirement)",
+			"invitesPlaceholder": "0 lets everyone enter"
 		},
 		"created": {
 			"title": "✅ Giveaway Created!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ You need **{needed}** invites to enter this giveaway. You have **{have}**.",
 			"roleSelectFailed": "❌ Failed to process role selection: {error}",
 			"enterFailed": "❌ **Failed to Enter Giveaway**\\n\\nError: {error}",
-			"finishFailed": "❌ Failed to finish giveaway: {error}"
+			"finishFailed": "❌ Failed to finish giveaway: {error}",
+			"invalidInvites": "❌ **Invalid Giveaway**\\n\\nInvites needed must be 0 or a whole number."
 		},
 		"unknownRole": "Role {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "Your Feedback",
 			"placeholder": "Please share your feedback, suggestions, or concerns...",
 			"maxLength": 2000,
-			"anonymousLabel": "Submit Anonymously? (yes/no)",
-			"anonymousPlaceholder": "yes or no (default: no)"
+			"anonymousLabel": "Submit Anonymously?"
 		},
 		"submitted": {
 			"title": "✅ Feedback Submitted!",
@@ -435,8 +437,7 @@
 			"categoryLabel": "Category",
 			"descriptionLabel": "Description",
 			"descriptionPlaceholder": "Please describe your experience with this staff member...",
-			"anonymousLabel": "Submit Anonymously? (yes/no)",
-			"anonymousPlaceholder": "yes or no (default: no)"
+			"anonymousLabel": "Submit Anonymously?"
 		},
 		"submitted": {
 			"title": "✅ Report Submitted",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 Edit Custom Supporter Role",
 			"nameLabel": "Role Name",
 			"namePlaceholder": "Enter your custom role name...",
-			"colorLabel": "Role Color (Hex/Decimal/Name)",
-			"colorPlaceholder": "#FF5733 or 16729395 or red (optional)",
+			"colorLabel": "Role Color (Hex)",
+			"colorPlaceholder": "#FF5733 (optional)",
 			"iconLabel": "Role Icon (Emoji or Image URL)",
 			"iconPlaceholder": "🔥 or https://example.com/icon.png (optional)"
 		},

@@ -86,7 +86,9 @@
 			"day": "día",
 			"days": "días"
 		},
-		"defaultFooter": "Con la tecnología de {domain} {year}"
+		"defaultFooter": "Con la tecnología de {domain} {year}",
+		"yes": "Sí",
+		"no": "No"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "Mensaje de AFK (opcional)",
 			"messagePlaceholder": "p. ej., Tomando un descanso, Estudiando, etc.",
-			"deafenLabel": "¿Ensordecer en voz? (sí/no)",
-			"deafenPlaceholder": "sí o no (déjalo vacío para sí)"
+			"deafenLabel": "¿Ensordecer en voz?"
 		},
 		"buttons": {
 			"remove": "🔄 Quitar AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**Paso 1 de 2: Seleccionar roles (opcional)**",
 			"step1Description": "Selecciona en el menú de abajo los roles que pueden participar en este sorteo. Déjalo vacío o haz clic en \"Continuar al formulario\" para permitir todos los roles.",
 			"roleSelectPlaceholder": "Selecciona los roles que pueden participar (opcional)...",
-			"continueButton": "Continuar al formulario"
+			"continueButton": "Continuar al formulario",
+			"multipleEntries": "¿Permitir varias participaciones?"
 		},
 		"active": {
 			"title": "🎉 Sorteo activo encontrado",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "p. ej., 60 para 1 hora, 1440 para 1 día",
 			"winnerCountLabel": "Número de ganadores",
 			"winnerCountPlaceholder": "¿Cuántos ganadores? (predeterminado: 1)",
-			"multipleEntriesLabel": "¿Permitir varias participaciones? (sí/no)",
-			"multipleEntriesPlaceholder": "sí o no (predeterminado: no)"
+			"invitesLabel": "Invitaciones necesarias (0 = sin requisito)",
+			"invitesPlaceholder": "0 permite entrar a todos"
 		},
 		"created": {
 			"title": "✅ ¡Sorteo creado!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ Necesitas **{needed}** invitaciones para entrar en este sorteo. Tienes **{have}**.",
 			"roleSelectFailed": "❌ No se pudo procesar la selección de roles: {error}",
 			"enterFailed": "❌ **No se pudo participar en el sorteo**\\n\\nError: {error}",
-			"finishFailed": "❌ No se pudo finalizar el sorteo: {error}"
+			"finishFailed": "❌ No se pudo finalizar el sorteo: {error}",
+			"invalidInvites": "❌ **Sorteo no válido**\\n\\nLas invitaciones necesarias deben ser 0 o un número entero."
 		},
 		"unknownRole": "Rol {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "Tus comentarios",
 			"placeholder": "Comparte tus comentarios, sugerencias o inquietudes...",
 			"maxLength": 2000,
-			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
-			"anonymousPlaceholder": "sí o no (predeterminado: no)"
+			"anonymousLabel": "¿Enviar de forma anónima?"
 		},
 		"submitted": {
 			"title": "✅ ¡Comentarios enviados!",
@@ -406,6 +408,28 @@
 			"reasonLabel": "Motivo (obligatorio)",
 			"reasonPlaceholder": "Explica tu decisión a quien lo reportó…"
 		},
+		"embed": {
+			"staffDecision": "Decisión del staff",
+			"reviewedBy": "Revisado por",
+			"statusApproved": "Aprobado",
+			"statusRejected": "Rechazado"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Miembro del staff",
+			"fieldRating": "Valoración",
+			"fieldCategory": "Categoría",
+			"fieldReporter": "Reportado por",
+			"fieldStatus": "Estado",
+			"fieldDescription": "Descripción",
+			"anonymousReporter": "Anónimo",
+			"pendingTitle": "🕒 Reporte de staff pendiente",
+			"pendingStatus": "Pendiente de aprobación de un administrador",
+			"approveButton": "Aprobar reporte",
+			"rejectButton": "Rechazar reporte",
+			"titleApproved": "✅ Reporte de staff aprobado",
+			"titleRejected": "❌ Reporte de staff rechazado",
+			"footerReportSuffix": "• ID del reporte: #{reportId}"
+		},
 		"modal": {
 			"title": "Reportar a un miembro del staff",
 			"ratingLabel": "Valoración (1-5 estrellas)",
@@ -413,8 +437,7 @@
 			"categoryLabel": "Categoría",
 			"descriptionLabel": "Descripción",
 			"descriptionPlaceholder": "Describe tu experiencia con este miembro del staff...",
-			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
-			"anonymousPlaceholder": "sí o no (predeterminado: no)"
+			"anonymousLabel": "¿Enviar de forma anónima?"
 		},
 		"submitted": {
 			"title": "✅ Reporte enviado",
@@ -453,28 +476,6 @@
 			"permissionDenied": "❌ **Permiso denegado**\\n\\nNecesitas permisos de administrador para aprobar o rechazar reportes de staff.",
 			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
 		},
-		"embed": {
-			"staffDecision": "Decisión del staff",
-			"reviewedBy": "Revisado por",
-			"statusApproved": "Aprobado",
-			"statusRejected": "Rechazado"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "Miembro del staff",
-			"fieldRating": "Valoración",
-			"fieldCategory": "Categoría",
-			"fieldReporter": "Reportado por",
-			"fieldStatus": "Estado",
-			"fieldDescription": "Descripción",
-			"anonymousReporter": "Anónimo",
-			"pendingTitle": "🕒 Reporte de staff pendiente",
-			"pendingStatus": "Pendiente de aprobación de un administrador",
-			"approveButton": "Aprobar reporte",
-			"rejectButton": "Rechazar reporte",
-			"titleApproved": "✅ Reporte de staff aprobado",
-			"titleRejected": "❌ Reporte de staff rechazado",
-			"footerReportSuffix": "• ID del reporte: #{reportId}"
-		},
 		"ratingUpdate": {
 			"title": "⭐ Actualización de valoración del staff",
 			"description": "{staff} ha recibido una nueva valoración.",
@@ -510,32 +511,6 @@
 			"reasonLabel": "Motivo (obligatorio)",
 			"reasonPlaceholder": "Explica tu decisión a quien lo solicitó…"
 		},
-		"modal": {
-			"title": "Solicitar ser creador de contenido",
-			"usernameLabel": "Usuario de TikTok",
-			"usernamePlaceholder": "ejemplo: dansday",
-			"reasonLabel": "¿Por qué quieres ser creador de contenido?",
-			"reasonPlaceholder": "Cuéntanos brevemente por qué deberíamos aceptarte..."
-		},
-		"submitted": "✅ Tu solicitud de creador de contenido para **{username}** se envió y está esperando la aprobación del staff.",
-		"dm": {
-			"approved": "Tu solicitud en **{server}** fue aprobada.\\n\\nTikTok: **{username}**\\nSe te ha asignado el rol de creador de contenido.",
-			"rejected": "Tu solicitud en **{server}** no fue aprobada esta vez.\\n\\nTikTok: **{username}**\\n\\n**Motivo:** {reason}\\n\\nPuedes volver a solicitarlo después del periodo de espera (si tu servidor usa uno).",
-			"embedTitleApproved": "✅ Creador de contenido aprobado",
-			"embedTitleRejected": "❌ Creador de contenido no aprobado"
-		},
-		"autoRejectApplicantReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
-		"errors": {
-			"notConfigured": "❌ La admisión de creadores de contenido no está configurada en este servidor.",
-			"alreadyCreator": "✅ Ya tienes el rol de creador de contenido en este servidor.",
-			"invalidUsername": "❌ El usuario de TikTok no es válido. Usa solo letras, números, puntos y guiones bajos.",
-			"reasonRequired": "❌ Indica tu motivo para convertirte en creador de contenido.",
-			"pendingExists": "❌ Ya tienes una solicitud de creador de contenido pendiente.",
-			"cooldown": "❌ Debes esperar **{days} día(s)** antes de enviar otra solicitud de creador de contenido.",
-			"submitFailed": "❌ No se pudo enviar la solicitud de creador de contenido: {error}",
-			"permissionDenied": "❌ Necesitas permisos de administrador para aprobar o rechazar solicitudes de creador de contenido.",
-			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
-		},
 		"embed": {
 			"staffDecision": "Decisión del staff",
 			"reviewedBy": "Revisado por",
@@ -562,6 +537,32 @@
 			"autoRejectReviewReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
 			"autoRejectConflictPending": "Esa cuenta tiene una solicitud **pendiente** para este usuario de TikTok.",
 			"autoRejectConflictApproved": "Esa cuenta es un creador de contenido **aprobado** que usa este usuario de TikTok."
+		},
+		"modal": {
+			"title": "Solicitar ser creador de contenido",
+			"usernameLabel": "Usuario de TikTok",
+			"usernamePlaceholder": "ejemplo: dansday",
+			"reasonLabel": "¿Por qué quieres ser creador de contenido?",
+			"reasonPlaceholder": "Cuéntanos brevemente por qué deberíamos aceptarte..."
+		},
+		"submitted": "✅ Tu solicitud de creador de contenido para **{username}** se envió y está esperando la aprobación del staff.",
+		"dm": {
+			"approved": "Tu solicitud en **{server}** fue aprobada.\\n\\nTikTok: **{username}**\\nSe te ha asignado el rol de creador de contenido.",
+			"rejected": "Tu solicitud en **{server}** no fue aprobada esta vez.\\n\\nTikTok: **{username}**\\n\\n**Motivo:** {reason}\\n\\nPuedes volver a solicitarlo después del periodo de espera (si tu servidor usa uno).",
+			"embedTitleApproved": "✅ Creador de contenido aprobado",
+			"embedTitleRejected": "❌ Creador de contenido no aprobado"
+		},
+		"autoRejectApplicantReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
+		"errors": {
+			"notConfigured": "❌ La admisión de creadores de contenido no está configurada en este servidor.",
+			"alreadyCreator": "✅ Ya tienes el rol de creador de contenido en este servidor.",
+			"invalidUsername": "❌ El usuario de TikTok no es válido. Usa solo letras, números, puntos y guiones bajos.",
+			"reasonRequired": "❌ Indica tu motivo para convertirte en creador de contenido.",
+			"pendingExists": "❌ Ya tienes una solicitud de creador de contenido pendiente.",
+			"cooldown": "❌ Debes esperar **{days} día(s)** antes de enviar otra solicitud de creador de contenido.",
+			"submitFailed": "❌ No se pudo enviar la solicitud de creador de contenido: {error}",
+			"permissionDenied": "❌ Necesitas permisos de administrador para aprobar o rechazar solicitudes de creador de contenido.",
+			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
 		},
 		"live": {
 			"digest": "📊 **En directo** · {mention} · @{tiktok} · #{streamId}",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 Editar rol de colaborador personalizado",
 			"nameLabel": "Nombre del rol",
 			"namePlaceholder": "Introduce el nombre de tu rol personalizado...",
-			"colorLabel": "Color del rol (hex/decimal/nombre)",
-			"colorPlaceholder": "#FF5733 o 16729395 o rojo (opcional)",
+			"colorLabel": "Color del rol (hex)",
+			"colorPlaceholder": "#FF5733 (opcional)",
 			"iconLabel": "Icono del rol (emoji o URL de imagen)",
 			"iconPlaceholder": "🔥 o https://example.com/icon.png (opcional)"
 		},

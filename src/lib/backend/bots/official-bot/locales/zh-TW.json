@@ -86,7 +86,9 @@
 			"day": "天",
 			"days": "天"
 		},
-		"defaultFooter": "由 {domain} 提供技術支援 {year}"
+		"defaultFooter": "由 {domain} 提供技術支援 {year}",
+		"yes": "是",
+		"no": "否"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "AFK 訊息（選填）",
 			"messagePlaceholder": "例如：休息一下、讀書中等等",
-			"deafenLabel": "在語音中拒聽？（是/否，預設：是）",
-			"deafenPlaceholder": "是 或 否（留空即為 是）"
+			"deafenLabel": "在語音中拒聽？"
 		},
 		"buttons": {
 			"remove": "🔄 解除 AFK"
@@ -261,7 +262,8 @@
 			"step1Title": "**步驟 1／2：選擇身分組（選填）**",
 			"step1Description": "從下方選單選擇可以參加這次抽獎的身分組。留空或點選「繼續填寫表單」，則所有身分組都能參加。",
 			"roleSelectPlaceholder": "選擇可以參加的身分組（選填）……",
-			"continueButton": "繼續填寫表單"
+			"continueButton": "繼續填寫表單",
+			"multipleEntries": "允許重複參加？"
 		},
 		"active": {
 			"title": "🎉 你有進行中的抽獎",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "例如：60 代表 1 小時，1440 代表 1 天",
 			"winnerCountLabel": "得獎人數",
 			"winnerCountPlaceholder": "要抽出幾位得獎者？（預設：1）",
-			"multipleEntriesLabel": "允許重複參加？（是/否）",
-			"multipleEntriesPlaceholder": "是 或 否（預設：否）"
+			"invitesLabel": "所需邀請數（0 = 無要求）",
+			"invitesPlaceholder": "0 表示所有人都可參加"
 		},
 		"created": {
 			"title": "✅ 抽獎已建立！",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ 你需要 **{needed}** 個邀請才能參加這次抽獎，你目前有 **{have}** 個。",
 			"roleSelectFailed": "❌ 處理身分組選擇時失敗：{error}",
 			"enterFailed": "❌ **參加抽獎失敗**\\n\\n錯誤：{error}",
-			"finishFailed": "❌ 結束抽獎失敗：{error}"
+			"finishFailed": "❌ 結束抽獎失敗：{error}",
+			"invalidInvites": "❌ **抽獎無效**\\n\\n所需邀請數必須是 0 或整數。"
 		},
 		"unknownRole": "身分組 {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "你的意見回饋",
 			"placeholder": "歡迎分享你的意見、建議或疑慮……",
 			"maxLength": 2000,
-			"anonymousLabel": "匿名提交？（是/否）",
-			"anonymousPlaceholder": "是 或 否（預設：否）"
+			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {
 			"title": "✅ 意見回饋已提交！",
@@ -435,8 +437,7 @@
 			"categoryLabel": "類別",
 			"descriptionLabel": "說明",
 			"descriptionPlaceholder": "請描述你與這位工作人員互動的經驗……",
-			"anonymousLabel": "匿名提交？（是/否）",
-			"anonymousPlaceholder": "是 或 否（預設：否）"
+			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {
 			"title": "✅ 評價已提交",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 編輯支持者專屬身分組",
 			"nameLabel": "身分組名稱",
 			"namePlaceholder": "輸入你的專屬身分組名稱……",
-			"colorLabel": "身分組顏色（十六進位／十進位／顏色名稱）",
-			"colorPlaceholder": "#FF5733 或 16729395 或 紅色（選填）",
+			"colorLabel": "身分組顏色（十六進位）",
+			"colorPlaceholder": "#FF5733（選填）",
 			"iconLabel": "身分組圖示（表情符號或圖片網址）",
 			"iconPlaceholder": "🔥 或 https://example.com/icon.png（選填）"
 		},

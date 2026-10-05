@@ -86,7 +86,9 @@
 			"day": "日",
 			"days": "日"
 		},
-		"defaultFooter": "提供：{domain} {year}"
+		"defaultFooter": "提供：{domain} {year}",
+		"yes": "はい",
+		"no": "いいえ"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "AFKメッセージ（任意）",
 			"messagePlaceholder": "例：休憩中、勉強中 など",
-			"deafenLabel": "ボイスでスピーカーミュートする？（はい/いいえ、既定：はい）",
-			"deafenPlaceholder": "はい または いいえ（空欄ならはい）"
+			"deafenLabel": "ボイスでスピーカーミュートする？"
 		},
 		"buttons": {
 			"remove": "🔄 AFKを解除"
@@ -261,7 +262,8 @@
 			"step1Title": "**ステップ1/2：ロールを選択（任意）**",
 			"step1Description": "下のドロップダウンから、このギブアウェイに参加できるロールを選んでください。空のままにするか「フォームへ進む」をクリックすると、すべてのロールが参加できます。",
 			"roleSelectPlaceholder": "参加できるロールを選択（任意）...",
-			"continueButton": "フォームへ進む"
+			"continueButton": "フォームへ進む",
+			"multipleEntries": "複数回の参加を許可する？"
 		},
 		"active": {
 			"title": "🎉 開催中のギブアウェイがあります",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "例：1時間なら60、1日なら1440",
 			"winnerCountLabel": "当選者数",
 			"winnerCountPlaceholder": "当選者は何人？（既定：1）",
-			"multipleEntriesLabel": "複数回の参加を許可する？（はい/いいえ）",
-			"multipleEntriesPlaceholder": "はい または いいえ（既定：いいえ）"
+			"invitesLabel": "必要な招待数（0 = 条件なし）",
+			"invitesPlaceholder": "0 で全員が参加できます"
 		},
 		"created": {
 			"title": "✅ ギブアウェイを作成しました！",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ このギブアウェイに参加するには**{needed}**人の招待が必要です。現在は**{have}**人です。",
 			"roleSelectFailed": "❌ ロール選択の処理に失敗しました：{error}",
 			"enterFailed": "❌ **ギブアウェイへの参加に失敗しました**\\n\\nエラー：{error}",
-			"finishFailed": "❌ ギブアウェイの終了に失敗しました：{error}"
+			"finishFailed": "❌ ギブアウェイの終了に失敗しました：{error}",
+			"invalidInvites": "❌ **無効なギブアウェイ**\\n\\n必要な招待数は 0 または整数で入力してください。"
 		},
 		"unknownRole": "ロール {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "あなたのフィードバック",
 			"placeholder": "ご意見、ご提案、気になる点などを教えてください...",
 			"maxLength": 2000,
-			"anonymousLabel": "匿名で送信する？（はい/いいえ）",
-			"anonymousPlaceholder": "はい または いいえ（既定：いいえ）"
+			"anonymousLabel": "匿名で送信する？"
 		},
 		"submitted": {
 			"title": "✅ フィードバックを送信しました！",
@@ -435,8 +437,7 @@
 			"categoryLabel": "カテゴリー",
 			"descriptionLabel": "内容",
 			"descriptionPlaceholder": "このスタッフとのやり取りについて教えてください...",
-			"anonymousLabel": "匿名で送信する？（はい/いいえ）",
-			"anonymousPlaceholder": "はい または いいえ（既定：いいえ）"
+			"anonymousLabel": "匿名で送信する？"
 		},
 		"submitted": {
 			"title": "✅ 報告を送信しました",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 サポーター専用ロールを編集",
 			"nameLabel": "ロール名",
 			"namePlaceholder": "ロール名を入力...",
-			"colorLabel": "ロールの色（16進数/10進数/色名）",
-			"colorPlaceholder": "#FF5733 または 16729395 または 赤（任意）",
+			"colorLabel": "ロールの色（16進数）",
+			"colorPlaceholder": "#FF5733（任意）",
 			"iconLabel": "ロールアイコン（絵文字または画像URL）",
 			"iconPlaceholder": "🔥 または https://example.com/icon.png（任意）"
 		},

@@ -86,7 +86,9 @@
 			"day": "Tag",
 			"days": "Tage"
 		},
-		"defaultFooter": "Bereitgestellt von {domain} {year}"
+		"defaultFooter": "Bereitgestellt von {domain} {year}",
+		"yes": "Ja",
+		"no": "Nein"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -233,8 +235,7 @@
 		"modal": {
 			"messageLabel": "AFK-Nachricht (optional)",
 			"messagePlaceholder": "z. B. Mache Pause, Lerne usw.",
-			"deafenLabel": "Im Voice stummschalten? (ja/nein)",
-			"deafenPlaceholder": "ja oder nein (leer lassen für ja)"
+			"deafenLabel": "Im Voice stummschalten?"
 		},
 		"buttons": {
 			"remove": "🔄 AFK entfernen"
@@ -261,7 +262,8 @@
 			"step1Title": "**Schritt 1 von 2: Rollen auswählen (optional)**",
 			"step1Description": "Wähle unten die Rollen aus, die an diesem Gewinnspiel teilnehmen dürfen. Lasse die Auswahl leer oder klicke auf \"Weiter zum Formular\", um alle Rollen zuzulassen.",
 			"roleSelectPlaceholder": "Rollen auswählen, die teilnehmen dürfen (optional)...",
-			"continueButton": "Weiter zum Formular"
+			"continueButton": "Weiter zum Formular",
+			"multipleEntries": "Mehrfachteilnahme erlaubt?"
 		},
 		"active": {
 			"title": "🎉 Aktives Gewinnspiel gefunden",
@@ -277,8 +279,8 @@
 			"durationPlaceholder": "z. B. 60 für 1 Stunde, 1440 für 1 Tag",
 			"winnerCountLabel": "Anzahl der Gewinner",
 			"winnerCountPlaceholder": "Wie viele Gewinner? (Standard: 1)",
-			"multipleEntriesLabel": "Mehrfachteilnahme erlaubt? (ja/nein)",
-			"multipleEntriesPlaceholder": "ja oder nein (Standard: nein)"
+			"invitesLabel": "Benötigte Einladungen (0 = keine)",
+			"invitesPlaceholder": "0 = alle können teilnehmen"
 		},
 		"created": {
 			"title": "✅ Gewinnspiel erstellt!",
@@ -319,7 +321,8 @@
 			"notEnoughInvites": "❌ Du brauchst **{needed}** Einladungen, um an diesem Giveaway teilzunehmen. Du hast **{have}**.",
 			"roleSelectFailed": "❌ Rollenauswahl konnte nicht verarbeitet werden: {error}",
 			"enterFailed": "❌ **Teilnahme am Gewinnspiel fehlgeschlagen**\\n\\nFehler: {error}",
-			"finishFailed": "❌ Gewinnspiel konnte nicht beendet werden: {error}"
+			"finishFailed": "❌ Gewinnspiel konnte nicht beendet werden: {error}",
+			"invalidInvites": "❌ **Ungültiges Gewinnspiel**\\n\\nBenötigte Einladungen müssen 0 oder eine ganze Zahl sein."
 		},
 		"unknownRole": "Rolle {roleId}",
 		"announcement": {
@@ -359,8 +362,7 @@
 			"label": "Dein Feedback",
 			"placeholder": "Teile uns dein Feedback, deine Vorschläge oder Anliegen mit...",
 			"maxLength": 2000,
-			"anonymousLabel": "Anonym senden? (ja/nein)",
-			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
+			"anonymousLabel": "Anonym senden?"
 		},
 		"submitted": {
 			"title": "✅ Feedback gesendet!",
@@ -406,6 +408,28 @@
 			"reasonLabel": "Begründung (erforderlich)",
 			"reasonPlaceholder": "Erkläre der meldenden Person deine Entscheidung…"
 		},
+		"embed": {
+			"staffDecision": "Entscheidung des Teams",
+			"reviewedBy": "Geprüft von",
+			"statusApproved": "Genehmigt",
+			"statusRejected": "Abgelehnt"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Teammitglied",
+			"fieldRating": "Bewertung",
+			"fieldCategory": "Kategorie",
+			"fieldReporter": "Meldende Person",
+			"fieldStatus": "Status",
+			"fieldDescription": "Beschreibung",
+			"anonymousReporter": "Anonym",
+			"pendingTitle": "🕒 Offene Team-Meldung",
+			"pendingStatus": "Wartet auf Admin-Freigabe",
+			"approveButton": "Meldung genehmigen",
+			"rejectButton": "Meldung ablehnen",
+			"titleApproved": "✅ Team-Meldung genehmigt",
+			"titleRejected": "❌ Team-Meldung abgelehnt",
+			"footerReportSuffix": "• Meldungs-ID: #{reportId}"
+		},
 		"modal": {
 			"title": "Teammitglied melden",
 			"ratingLabel": "Bewertung (1-5 Sterne)",
@@ -413,8 +437,7 @@
 			"categoryLabel": "Kategorie",
 			"descriptionLabel": "Beschreibung",
 			"descriptionPlaceholder": "Beschreibe bitte deine Erfahrung mit diesem Teammitglied...",
-			"anonymousLabel": "Anonym senden? (ja/nein)",
-			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
+			"anonymousLabel": "Anonym senden?"
 		},
 		"submitted": {
 			"title": "✅ Meldung gesendet",
@@ -453,28 +476,6 @@
 			"permissionDenied": "❌ **Zugriff verweigert**\\n\\nDu benötigst Admin-Berechtigungen, um Team-Meldungen zu genehmigen oder abzulehnen.",
 			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
 		},
-		"embed": {
-			"staffDecision": "Entscheidung des Teams",
-			"reviewedBy": "Geprüft von",
-			"statusApproved": "Genehmigt",
-			"statusRejected": "Abgelehnt"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "Teammitglied",
-			"fieldRating": "Bewertung",
-			"fieldCategory": "Kategorie",
-			"fieldReporter": "Meldende Person",
-			"fieldStatus": "Status",
-			"fieldDescription": "Beschreibung",
-			"anonymousReporter": "Anonym",
-			"pendingTitle": "🕒 Offene Team-Meldung",
-			"pendingStatus": "Wartet auf Admin-Freigabe",
-			"approveButton": "Meldung genehmigen",
-			"rejectButton": "Meldung ablehnen",
-			"titleApproved": "✅ Team-Meldung genehmigt",
-			"titleRejected": "❌ Team-Meldung abgelehnt",
-			"footerReportSuffix": "• Meldungs-ID: #{reportId}"
-		},
 		"ratingUpdate": {
 			"title": "⭐ Team-Bewertung aktualisiert",
 			"description": "{staff} hat eine neue Bewertung erhalten.",
@@ -510,32 +511,6 @@
 			"reasonLabel": "Begründung (erforderlich)",
 			"reasonPlaceholder": "Erkläre der bewerbenden Person deine Entscheidung…"
 		},
-		"modal": {
-			"title": "Als Content Creator bewerben",
-			"usernameLabel": "TikTok-Benutzername",
-			"usernamePlaceholder": "Beispiel: dansday",
-			"reasonLabel": "Warum möchtest du Content Creator werden?",
-			"reasonPlaceholder": "Erzähl uns kurz, warum du angenommen werden solltest..."
-		},
-		"submitted": "✅ Deine Content-Creator-Bewerbung für **{username}** wurde gesendet und wartet auf die Freigabe durch das Team.",
-		"dm": {
-			"approved": "Deine Bewerbung in **{server}** wurde genehmigt.\\n\\nTikTok: **{username}**\\nDeine Content-Creator-Rolle wurde zugewiesen.",
-			"rejected": "Deine Bewerbung in **{server}** wurde dieses Mal nicht genehmigt.\\n\\nTikTok: **{username}**\\n\\n**Begründung:** {reason}\\n\\nDu kannst dich nach der Abklingzeit erneut bewerben (falls dein Server eine verwendet).",
-			"embedTitleApproved": "✅ Content Creator genehmigt",
-			"embedTitleRejected": "❌ Content Creator nicht genehmigt"
-		},
-		"autoRejectApplicantReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
-		"errors": {
-			"notConfigured": "❌ Die Aufnahme von Content Creators ist für diesen Server nicht konfiguriert.",
-			"alreadyCreator": "✅ Du hast die Content-Creator-Rolle auf diesem Server bereits.",
-			"invalidUsername": "❌ Der TikTok-Benutzername ist ungültig. Verwende nur Buchstaben, Zahlen, Punkte und Unterstriche.",
-			"reasonRequired": "❌ Bitte gib deine Begründung an, warum du Content Creator werden möchtest.",
-			"pendingExists": "❌ Du hast bereits eine ausstehende Content-Creator-Bewerbung.",
-			"cooldown": "❌ Du musst **{days} Tag(e)** warten, bevor du eine weitere Content-Creator-Bewerbung senden kannst.",
-			"submitFailed": "❌ Content-Creator-Bewerbung konnte nicht gesendet werden: {error}",
-			"permissionDenied": "❌ Du benötigst Admin-Berechtigungen, um Content-Creator-Bewerbungen zu genehmigen oder abzulehnen.",
-			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
-		},
 		"embed": {
 			"staffDecision": "Entscheidung des Teams",
 			"reviewedBy": "Geprüft von",
@@ -562,6 +537,32 @@
 			"autoRejectReviewReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
 			"autoRejectConflictPending": "Dieses Konto hat eine **offene** Bewerbung für diesen TikTok-Namen.",
 			"autoRejectConflictApproved": "Dieses Konto ist ein **genehmigter** Content Creator mit diesem TikTok-Namen."
+		},
+		"modal": {
+			"title": "Als Content Creator bewerben",
+			"usernameLabel": "TikTok-Benutzername",
+			"usernamePlaceholder": "Beispiel: dansday",
+			"reasonLabel": "Warum möchtest du Content Creator werden?",
+			"reasonPlaceholder": "Erzähl uns kurz, warum du angenommen werden solltest..."
+		},
+		"submitted": "✅ Deine Content-Creator-Bewerbung für **{username}** wurde gesendet und wartet auf die Freigabe durch das Team.",
+		"dm": {
+			"approved": "Deine Bewerbung in **{server}** wurde genehmigt.\\n\\nTikTok: **{username}**\\nDeine Content-Creator-Rolle wurde zugewiesen.",
+			"rejected": "Deine Bewerbung in **{server}** wurde dieses Mal nicht genehmigt.\\n\\nTikTok: **{username}**\\n\\n**Begründung:** {reason}\\n\\nDu kannst dich nach der Abklingzeit erneut bewerben (falls dein Server eine verwendet).",
+			"embedTitleApproved": "✅ Content Creator genehmigt",
+			"embedTitleRejected": "❌ Content Creator nicht genehmigt"
+		},
+		"autoRejectApplicantReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
+		"errors": {
+			"notConfigured": "❌ Die Aufnahme von Content Creators ist für diesen Server nicht konfiguriert.",
+			"alreadyCreator": "✅ Du hast die Content-Creator-Rolle auf diesem Server bereits.",
+			"invalidUsername": "❌ Der TikTok-Benutzername ist ungültig. Verwende nur Buchstaben, Zahlen, Punkte und Unterstriche.",
+			"reasonRequired": "❌ Bitte gib deine Begründung an, warum du Content Creator werden möchtest.",
+			"pendingExists": "❌ Du hast bereits eine ausstehende Content-Creator-Bewerbung.",
+			"cooldown": "❌ Du musst **{days} Tag(e)** warten, bevor du eine weitere Content-Creator-Bewerbung senden kannst.",
+			"submitFailed": "❌ Content-Creator-Bewerbung konnte nicht gesendet werden: {error}",
+			"permissionDenied": "❌ Du benötigst Admin-Berechtigungen, um Content-Creator-Bewerbungen zu genehmigen oder abzulehnen.",
+			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
 		},
 		"live": {
 			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
@@ -605,8 +606,8 @@
 			"editTitle": "💎 Eigene Supporter-Rolle bearbeiten",
 			"nameLabel": "Rollenname",
 			"namePlaceholder": "Gib deinen eigenen Rollennamen ein...",
-			"colorLabel": "Rollenfarbe (Hex/Dezimal/Name)",
-			"colorPlaceholder": "#FF5733 oder 16729395 oder rot (optional)",
+			"colorLabel": "Rollenfarbe (Hex)",
+			"colorPlaceholder": "#FF5733 (optional)",
 			"iconLabel": "Rollensymbol (Emoji oder Bild-URL)",
 			"iconPlaceholder": "🔥 oder https://example.com/icon.png (optional)"
 		},

@@ -744,13 +744,6 @@ export const GIVEAWAY = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return false;
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		return settings?.settings?.giveaway_creator_can_participate ?? false;
-	},
-
-	async getMinInvites(guildId: string): Promise<number> {
-		requireBotConfig();
-		requireGuildId(guildId, 'getting giveaway minimum invites');
-		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
-		return Math.max(0, Math.floor(Number(settings?.settings?.giveaway_min_invites) || 0));
 	}
 };
 

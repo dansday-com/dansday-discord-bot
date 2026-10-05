@@ -10,8 +10,8 @@ import {
 } from 'discord.js';
 import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate, serverTranslator, type Translator } from '../../i18n.js';
-import { parseYesNo } from '../../localizedInput.js';
+import { memberTranslator, translate, serverTranslator, type Translator } from '../../i18n.js';
+import { textField, yesNoField, yesNoValue } from './formFields.js';
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
@@ -506,27 +506,18 @@ export async function handleStaffRatingContinue(interaction) {
 		const modalTitle = await translate('staffRating.modal.title', interaction.guild.id, interaction.user.id);
 		const modal = new ModalBuilder().setCustomId(`staff_rating_submit|${staffUserId}|${ratingValue}|${categoryValue}`).setTitle(modalTitle);
 
-		const descriptionLabel = await translate('staffRating.modal.descriptionLabel', interaction.guild.id, interaction.user.id);
-		const descriptionPlaceholder = await translate('staffRating.modal.descriptionPlaceholder', interaction.guild.id, interaction.user.id);
+		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 		const descriptionInput = new TextInputBuilder()
 			.setCustomId('description')
-			.setLabel(descriptionLabel)
 			.setStyle(TextInputStyle.Paragraph)
-			.setPlaceholder(descriptionPlaceholder)
+			.setPlaceholder(tr('staffRating.modal.descriptionPlaceholder'))
 			.setRequired(true)
 			.setMaxLength(1000);
 
-		const anonymousLabel = await translate('staffRating.modal.anonymousLabel', interaction.guild.id, interaction.user.id);
-		const anonymousPlaceholder = await translate('staffRating.modal.anonymousPlaceholder', interaction.guild.id, interaction.user.id);
-		const anonymousInput = new TextInputBuilder()
-			.setCustomId('anonymous')
-			.setLabel(anonymousLabel)
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(anonymousPlaceholder)
-			.setRequired(false)
-			.setMaxLength(3);
-
-		modal.addComponents(new ActionRowBuilder().addComponents(descriptionInput), new ActionRowBuilder().addComponents(anonymousInput));
+		modal.addLabelComponents(
+			textField(tr('staffRating.modal.descriptionLabel'), descriptionInput),
+			yesNoField(tr, tr('staffRating.modal.anonymousLabel'), 'anonymous', false)
+		);
 
 		await interaction.showModal(modal);
 	} catch (error) {
@@ -588,7 +579,7 @@ export async function handleStaffRatingModal(interaction) {
 			return;
 		}
 
-		const isAnonymous = parseYesNo(interaction.fields.getTextInputValue('anonymous')) === true;
+		const isAnonymous = yesNoValue(interaction.fields, 'anonymous', false);
 
 		const botConfig = getBotConfig();
 		const server = await db.getServerByDiscordId(botConfig.id, guild.id);

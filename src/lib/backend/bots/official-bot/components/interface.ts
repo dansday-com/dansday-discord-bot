@@ -29,7 +29,8 @@ import {
 	handleGiveawayEnterButton,
 	handleGiveawayRoleSelect,
 	handleGiveawaySkipRolesContinue,
-	handleGiveawayFinish
+	handleGiveawayFinish,
+	handleGiveawayMultipleSelect
 } from './interface/giveaway.js';
 import { handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
 import { handleInvitesButton, handleInviteSlugButton, handleInviteSlugModal, INVITE_SLUG_BUTTON_ID, INVITE_SLUG_MODAL_ID } from './interface/invites.js';
@@ -861,6 +862,9 @@ function init(client) {
 					await handleStaffRatingCategorySelect(interaction);
 				} else if (customId.startsWith('moderation_action|')) {
 					await handleModerationActionSelect(interaction);
+				} else if (customId === 'giveaway_multiple_select') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
+					await handleGiveawayMultipleSelect(interaction);
 				} else if (customId === 'settings_language_select') {
 					await handleLanguageSelect(interaction);
 				} else if (customId === SETUP_LANGUAGE_SELECT_ID) {

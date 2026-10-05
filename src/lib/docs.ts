@@ -622,8 +622,7 @@ export const modules = [
 		fields: [
 			{ label: 'Giveaway module', desc: 'When off, giveaways and their Discord UI are disabled.' },
 			{ label: 'Giveaway Channel', desc: 'Where giveaways post and winners are announced.' },
-			{ label: 'Creator can participate', desc: 'Allow giveaway creators to enter their own giveaways.' },
-			{ label: 'Invites needed to enter', desc: 'Members need this many invites to enter. Applies to giveaways created after saving.' }
+			{ label: 'Creator can participate', desc: 'Allow giveaway creators to enter their own giveaways.' }
 		]
 	},
 	{
@@ -818,7 +817,10 @@ export const modules = [
 export const discordMenu = [
 	{ label: '📋 Menu', desc: 'The main button in the menu channel. Open to every member; every feature button is always listed.' },
 	{ label: '💎 Custom Supporter Role', desc: 'Opens a modal to create or edit a personal role (name, color, icon).' },
-	{ label: '🎉 Create Giveaway', desc: 'Starts the giveaway flow: pick an eligibility role, then fill the details form.' },
+	{
+		label: '🎉 Create Giveaway',
+		desc: 'Starts the giveaway flow: choose whether members can enter more than once, pick eligibility roles, then fill the details form, including how many invites are needed to enter (0 for none).'
+	},
 	{ label: '⏸️ Set AFK Status', desc: 'Opens the AFK modal, or shows your current AFK status with a Remove AFK button.' },
 	{ label: '💬 Submit Feedback', desc: 'Opens the feedback modal with a message field and an anonymous option.' },
 	{ label: '🛡️ Staff Rating', desc: 'Pick a staff member, choose a 1 to 5 score and category, and submit a rating.' },

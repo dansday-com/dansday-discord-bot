@@ -126,6 +126,13 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 	if (!menuCategory) {
 		menuCategory = guild.channels.cache.find((c: any) => c.type === ChannelType.GuildCategory && categoryNames.has(c.name)) ?? null;
 	}
+	if (!menuCategory) {
+		const menuNames = setupChannelNames(SETUP_CHANNEL_DEFS.find((d) => d.settingsKey === 'menu')!);
+		const existingMenu = guild.channels.cache.find(
+			(c: any) => c.type === ChannelType.GuildText && c.parent?.type === ChannelType.GuildCategory && menuNames.has(channelNameKey(c.name))
+		);
+		menuCategory = existingMenu?.parent ?? null;
+	}
 
 	if (!menuCategory && !create) return null;
 
@@ -187,8 +194,8 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 	return { channelMap, createdKeys, menuChannel };
 }
 
-export async function applyServerLanguage(client: any, guildId: string, lang: ServerLanguage) {
-	rememberServerLanguage(guildId, lang);
+export async function syncServerMenu(client: any, guildId: string) {
+	const lang = await getServerLanguage(guildId);
 	const guild = client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId).catch(() => null));
 	const botConfig = getBotConfig();
 	if (!guild || !botConfig) return;
@@ -198,7 +205,7 @@ export async function applyServerLanguage(client: any, guildId: string, lang: Se
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
 	const synced = await syncSetupChannels(guild, server.id, lang, embedConfig.NICKNAME, false);
 	if (synced?.menuChannel) await refreshInterfaceInChannel(synced.menuChannel, client, { sendIfMissing: false });
-	await logger.log(`🌐 Applied server language ${lang} in ${guild.name}`);
+	await logger.log(`🎮 Synced setup channels and menu (${lang}) in ${guild.name}`);
 }
 
 export async function execute(interaction: any, _client: any) {

@@ -659,13 +659,15 @@ export async function createInterfaceEmbed(client, guildId) {
 	const embedConfig = await getEmbedConfig(guildId);
 	const title = await translateServer('interface.panel.title', guildId, { botName: embedConfig.NICKNAME });
 	const description = await translateServer('interface.panel.description', guildId);
+	const guild = client.guilds.cache.get(guildId);
+	const botMember = guild ? await guild.members.fetchMe().catch(() => guild.members.me) : null;
 
 	const interfaceEmbed = {
 		color: embedConfig.COLOR,
 		title,
 		description,
 		thumbnail: {
-			url: client.user.displayAvatarURL()
+			url: (botMember ?? client.user).displayAvatarURL()
 		},
 		footer: {
 			text: embedConfig.FOOTER

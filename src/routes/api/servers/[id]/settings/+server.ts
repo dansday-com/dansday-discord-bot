@@ -256,19 +256,19 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				.catch((err: any) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
 		}
 
-		let languageError = '';
-		if (component === SERVER_SETTINGS.component.main && panelServer?.discord_server_id) {
-			const before = normalizeMainConfigForPanel(previous).language;
-			const after = normalizeMainConfigForPanel(settings).language;
-			if (before !== after) {
-				const applied = await callOfficialBotWebhook(bot, {
-					type: 'apply_server_language',
-					guild_id: panelServer.discord_server_id,
-					language: after
-				});
-				const reply = (applied.body ?? {}) as { success?: boolean };
-				if (applied.status !== 200 || reply.success !== true) languageError = messageFromBotWebhookPayload(applied.body);
-			}
+		let menuError = '';
+		if (
+			component === SERVER_SETTINGS.component.main &&
+			panelServer?.discord_server_id &&
+			diffSettings(previous, settings as Record<string, unknown>).length > 0
+		) {
+			const synced = await callOfficialBotWebhook(bot, {
+				type: 'sync_server_menu',
+				guild_id: panelServer.discord_server_id,
+				language: normalizeMainConfigForPanel(settings).language
+			});
+			const reply = (synced.body ?? {}) as { success?: boolean };
+			if (synced.status !== 200 || reply.success !== true) menuError = messageFromBotWebhookPayload(synced.body);
 		}
 
 		if (component === SERVER_SETTINGS.component.notifications) {
@@ -300,11 +300,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (profileError) {
 			return json({ success: false, saved: true, error: `Settings saved, but the bot profile was not updated: ${profileError}` });
 		}
-		if (languageError) {
+		if (menuError) {
 			return json({
 				success: false,
 				saved: true,
-				error: `Settings saved, but the bot could not rename the setup channels or refresh the menu yet: ${languageError}. Run /setup in Discord to apply the language.`
+				error: `Settings saved, but the menu in Discord was not updated yet: ${menuError}.`
 			});
 		}
 		return json({ success: true, data: result });

@@ -5,6 +5,7 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
 import { memberTranslator, translate } from '../../i18n.js';
+import { parseColorName } from '../../localizedInput.js';
 import { menuBackButton } from './menuBack.js';
 
 const supporterRoles = new Map();
@@ -152,26 +153,7 @@ function parseColor(colorInput) {
 		return decimal;
 	}
 
-	const colorNames = {
-		red: 0xff0000,
-		green: 0x00ff00,
-		blue: 0x0000ff,
-		yellow: 0xffff00,
-		orange: 0xffa500,
-		purple: 0x800080,
-		pink: 0xffc0cb,
-		cyan: 0x00ffff,
-		black: 0x000000,
-		white: 0xffffff,
-		gray: 0x808080,
-		grey: 0x808080
-	};
-
-	if (colorNames[trimmed.toLowerCase()]) {
-		return colorNames[trimmed.toLowerCase()];
-	}
-
-	return null;
+	return parseColorName(trimmed);
 }
 
 class AnchorError extends Error {

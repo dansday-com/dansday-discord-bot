@@ -4,6 +4,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { escalationStepFor } from '../../../../moderation-rules.js';
 import { memberTranslator, serverTranslator, type Translator } from '../i18n.js';
+import { parseLocalizedDuration } from '../localizedInput.js';
 
 export const MODERATION_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'] as const;
 export const BULK_MODERATION_ACTIONS = ['role_add', 'role_remove'] as const;
@@ -57,18 +58,7 @@ export function formatDuration(seconds: number | null | undefined) {
 }
 
 export function parseDuration(input: string | null | undefined) {
-	if (!input) return null;
-	let total = 0;
-	const re = /(\d+)\s*([smhdw]?)/gi;
-	let match;
-	let found = false;
-	while ((match = re.exec(String(input))) !== null) {
-		found = true;
-		const n = Number(match[1]);
-		const unit = (match[2] || 'm').toLowerCase();
-		total += n * ({ s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] ?? 60);
-	}
-	return found && total > 0 ? total : null;
+	return parseLocalizedDuration(input);
 }
 
 async function memberLabel(serverId: number, discordId: string | null | undefined) {

@@ -231,8 +231,8 @@
 		"modal": {
 			"messageLabel": "Pesan AFK (Opsional)",
 			"messagePlaceholder": "misalnya, Istirahat, Belajar, dll.",
-			"deafenLabel": "Deafen di Voice? (yes/no, default: yes)",
-			"deafenPlaceholder": "yes atau no (kosongkan untuk yes)"
+			"deafenLabel": "Deafen di Voice? (ya/tidak, default: ya)",
+			"deafenPlaceholder": "ya atau tidak (kosongkan untuk ya)"
 		},
 		"buttons": {
 			"remove": "🔄 Hapus AFK"
@@ -275,8 +275,8 @@
 			"durationPlaceholder": "misalnya, 60 untuk 1 jam, 1440 untuk 1 hari",
 			"winnerCountLabel": "Jumlah Pemenang",
 			"winnerCountPlaceholder": "Berapa banyak pemenang? (default: 1)",
-			"multipleEntriesLabel": "Boleh Masuk Beberapa Kali? (yes/no)",
-			"multipleEntriesPlaceholder": "yes atau no (default: no)"
+			"multipleEntriesLabel": "Boleh Masuk Beberapa Kali? (ya/tidak)",
+			"multipleEntriesPlaceholder": "ya atau tidak (default: tidak)"
 		},
 		"created": {
 			"title": "✅ Giveaway Dibuat!",
@@ -357,8 +357,8 @@
 			"label": "Feedback Kamu",
 			"placeholder": "Silakan bagikan feedback, saran, atau kekhawatiran kamu...",
 			"maxLength": 2000,
-			"anonymousLabel": "Kirim Secara Anonim? (yes/no)",
-			"anonymousPlaceholder": "yes atau no (default: no)"
+			"anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
+			"anonymousPlaceholder": "ya atau tidak (default: tidak)"
 		},
 		"submitted": {
 			"title": "✅ Feedback Terkirim!",
@@ -409,11 +409,10 @@
 			"ratingLabel": "Rating (1-5 bintang)",
 			"ratingPlaceholder": "1 = Sangat Buruk, 5 = Sangat Baik",
 			"categoryLabel": "Kategori",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Deskripsi",
 			"descriptionPlaceholder": "Jelaskan pengalaman kamu dengan staff ini...",
-			"anonymousLabel": "Kirim Secara Anonim? (yes/no)",
-			"anonymousPlaceholder": "yes atau no (default: no)"
+			"anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
+			"anonymousPlaceholder": "ya atau tidak (default: tidak)"
 		},
 		"submitted": {
 			"title": "✅ Laporan Terkirim",
@@ -438,7 +437,7 @@
 		"errors": {
 			"noStaffSelected": "❌ Silakan pilih staff yang ingin dilaporkan.",
 			"invalidRating": "❌ **Rating Tidak Valid**\\n\\nRating harus berupa angka antara 1 dan 5.",
-			"invalidCategory": "❌ **Kategori Tidak Valid**\\n\\nGunakan salah satu: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **Kategori Tidak Valid**\\n\\nPilih kategori dari daftar.",
 			"emptyDescription": "❌ **Deskripsi Diperlukan**\\n\\nSilakan berikan deskripsi pengalaman kamu.",
 			"cannotReportSelf": "❌ Kamu tidak bisa melaporkan diri sendiri!",
 			"notStaff": "❌ Member yang dipilih bukan staff.",
@@ -605,7 +604,7 @@
 			"nameLabel": "Nama Role",
 			"namePlaceholder": "Masukkan nama role kustom kamu...",
 			"colorLabel": "Warna Role (Hex/Desimal/Nama)",
-			"colorPlaceholder": "#FF5733 atau 16729395 atau red (opsional)",
+			"colorPlaceholder": "#FF5733 atau 16729395 atau merah (opsional)",
 			"iconLabel": "Ikon Role (Emoji atau URL Gambar)",
 			"iconPlaceholder": "🔥 atau https://example.com/icon.png (opsional)"
 		},
@@ -863,11 +862,11 @@
 		},
 		"modal": {
 			"reason": "Alasan",
-			"duration": "Durasi (mis. 10m, 2h, 7d)"
+			"duration": "Durasi (mis. 10 menit, 2 jam, 7 hari)"
 		},
 		"done": "✅ {action} diterapkan ke {member}. Kasus #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Masukkan durasi seperti 10m, 2h atau 7d.",
+		"invalidDuration": "❌ Masukkan durasi seperti 10 menit, 2 jam atau 7 hari.",
 		"notAllowed": "❌ Pemilik server dan bot tidak bisa dimoderasi.",
 		"caseLog": {
 			"titles": {

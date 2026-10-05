@@ -3,6 +3,7 @@ import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate, serverTranslator } from '../../i18n.js';
+import { parseYesNo } from '../../localizedInput.js';
 import db from '../../../../../database.js';
 
 export async function handleFeedbackButton(interaction) {
@@ -85,8 +86,7 @@ export async function handleFeedbackModal(interaction) {
 			return;
 		}
 
-		const anonymousValue = interaction.fields.getTextInputValue('anonymous')?.trim().toLowerCase() || 'no';
-		const isAnonymous = anonymousValue === 'yes' || anonymousValue === 'ya';
+		const isAnonymous = parseYesNo(interaction.fields.getTextInputValue('anonymous')) === true;
 
 		let feedbackChannelId;
 		try {

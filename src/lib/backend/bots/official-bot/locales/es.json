@@ -231,8 +231,8 @@
 		"modal": {
 			"messageLabel": "Mensaje de AFK (opcional)",
 			"messagePlaceholder": "p. ej., Tomando un descanso, Estudiando, etc.",
-			"deafenLabel": "¿Ensordecer en voz? (yes/no)",
-			"deafenPlaceholder": "yes o no (déjalo vacío para yes)"
+			"deafenLabel": "¿Ensordecer en voz? (sí/no)",
+			"deafenPlaceholder": "sí o no (déjalo vacío para sí)"
 		},
 		"buttons": {
 			"remove": "🔄 Quitar AFK"
@@ -275,8 +275,8 @@
 			"durationPlaceholder": "p. ej., 60 para 1 hora, 1440 para 1 día",
 			"winnerCountLabel": "Número de ganadores",
 			"winnerCountPlaceholder": "¿Cuántos ganadores? (predeterminado: 1)",
-			"multipleEntriesLabel": "¿Permitir varias participaciones? (yes/no)",
-			"multipleEntriesPlaceholder": "yes o no (predeterminado: no)"
+			"multipleEntriesLabel": "¿Permitir varias participaciones? (sí/no)",
+			"multipleEntriesPlaceholder": "sí o no (predeterminado: no)"
 		},
 		"created": {
 			"title": "✅ ¡Sorteo creado!",
@@ -357,8 +357,8 @@
 			"label": "Tus comentarios",
 			"placeholder": "Comparte tus comentarios, sugerencias o inquietudes...",
 			"maxLength": 2000,
-			"anonymousLabel": "¿Enviar de forma anónima? (yes/no)",
-			"anonymousPlaceholder": "yes o no (predeterminado: no)"
+			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
+			"anonymousPlaceholder": "sí o no (predeterminado: no)"
 		},
 		"submitted": {
 			"title": "✅ ¡Comentarios enviados!",
@@ -409,11 +409,10 @@
 			"ratingLabel": "Valoración (1-5 estrellas)",
 			"ratingPlaceholder": "1 = Muy mala, 5 = Excelente",
 			"categoryLabel": "Categoría",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Descripción",
 			"descriptionPlaceholder": "Describe tu experiencia con este miembro del staff...",
-			"anonymousLabel": "¿Enviar de forma anónima? (yes/no)",
-			"anonymousPlaceholder": "yes o no (predeterminado: no)"
+			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
+			"anonymousPlaceholder": "sí o no (predeterminado: no)"
 		},
 		"submitted": {
 			"title": "✅ Reporte enviado",
@@ -438,7 +437,7 @@
 		"errors": {
 			"noStaffSelected": "❌ Selecciona a un miembro del staff para reportar.",
 			"invalidRating": "❌ **Valoración no válida**\\n\\nLa valoración debe ser un número entre 1 y 5.",
-			"invalidCategory": "❌ **Categoría no válida**\\n\\nUsa una de estas: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **Categoría no válida**\\n\\nElige una categoría de la lista.",
 			"emptyDescription": "❌ **Descripción obligatoria**\\n\\nDescribe tu experiencia.",
 			"cannotReportSelf": "❌ ¡No puedes reportarte a ti mismo!",
 			"notStaff": "❌ El miembro seleccionado no forma parte del staff.",
@@ -605,7 +604,7 @@
 			"nameLabel": "Nombre del rol",
 			"namePlaceholder": "Introduce el nombre de tu rol personalizado...",
 			"colorLabel": "Color del rol (hex/decimal/nombre)",
-			"colorPlaceholder": "#FF5733 o 16729395 o red (opcional)",
+			"colorPlaceholder": "#FF5733 o 16729395 o rojo (opcional)",
 			"iconLabel": "Icono del rol (emoji o URL de imagen)",
 			"iconPlaceholder": "🔥 o https://example.com/icon.png (opcional)"
 		},
@@ -863,11 +862,11 @@
 		},
 		"modal": {
 			"reason": "Motivo",
-			"duration": "Duración (p. ej. 10m, 2h, 7d)"
+			"duration": "Duración (p. ej. 10 min, 2 h, 7 días)"
 		},
 		"done": "✅ {action} aplicado a {member}. Caso #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Introduce una duración como 10m, 2h o 7d.",
+		"invalidDuration": "❌ Introduce una duración como 10 min, 2 h o 7 días.",
 		"notAllowed": "❌ El dueño del servidor y los bots no se pueden moderar.",
 		"caseLog": {
 			"titles": {

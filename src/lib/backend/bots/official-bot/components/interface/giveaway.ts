@@ -4,6 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { translate, serverTranslator, memberTranslator, type Translator } from '../../i18n.js';
+import { parseYesNo } from '../../localizedInput.js';
 import { menuBackButton } from './menuBack.js';
 
 function giveawayRoleMention(guild, roleId, tr: Translator) {
@@ -345,7 +346,6 @@ export async function handleGiveawayModal(interaction) {
 		const prize = interaction.fields.getTextInputValue('giveaway_prize').trim();
 		const durationStr = interaction.fields.getTextInputValue('giveaway_duration').trim();
 		const winnerCountStr = interaction.fields.getTextInputValue('giveaway_winner_count').trim() || '1';
-		const multipleEntriesStr = interaction.fields.getTextInputValue('giveaway_multiple_entries').trim().toLowerCase() || 'no';
 
 		if (!title || title.length === 0) {
 			const errorMsg = await translate('giveaway.errors.invalidTitle', interaction.guild.id, interaction.user.id);
@@ -381,7 +381,7 @@ export async function handleGiveawayModal(interaction) {
 			return;
 		}
 
-		const multipleEntriesAllowed = multipleEntriesStr === 'yes' || multipleEntriesStr === 'y' || multipleEntriesStr === 'true';
+		const multipleEntriesAllowed = parseYesNo(interaction.fields.getTextInputValue('giveaway_multiple_entries')) === true;
 
 		let allowedRoles = null;
 		if (interaction.customId.startsWith('giveaway_create_')) {

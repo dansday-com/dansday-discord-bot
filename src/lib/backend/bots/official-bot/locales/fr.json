@@ -231,8 +231,8 @@
 		"modal": {
 			"messageLabel": "Message AFK (facultatif)",
 			"messagePlaceholder": "ex. : En pause, En train de réviser, etc.",
-			"deafenLabel": "Sourdine en vocal ? (yes/no, défaut : yes)",
-			"deafenPlaceholder": "yes ou no (laisse vide pour yes)"
+			"deafenLabel": "Sourdine en vocal ? (oui/non, défaut : oui)",
+			"deafenPlaceholder": "oui ou non (laisse vide pour oui)"
 		},
 		"buttons": {
 			"remove": "🔄 Retirer l'AFK"
@@ -275,8 +275,8 @@
 			"durationPlaceholder": "ex. : 60 pour 1 heure, 1440 pour 1 jour",
 			"winnerCountLabel": "Nombre de gagnants",
 			"winnerCountPlaceholder": "Combien de gagnants ? (défaut : 1)",
-			"multipleEntriesLabel": "Participations multiples ? (yes/no)",
-			"multipleEntriesPlaceholder": "yes ou no (défaut : no)"
+			"multipleEntriesLabel": "Participations multiples ? (oui/non)",
+			"multipleEntriesPlaceholder": "oui ou non (défaut : non)"
 		},
 		"created": {
 			"title": "✅ Giveaway créé !",
@@ -357,8 +357,8 @@
 			"label": "Ton avis",
 			"placeholder": "Partage ton avis, tes suggestions ou tes préoccupations...",
 			"maxLength": 2000,
-			"anonymousLabel": "Envoyer anonymement ? (yes/no)",
-			"anonymousPlaceholder": "yes ou no (défaut : no)"
+			"anonymousLabel": "Envoyer anonymement ? (oui/non)",
+			"anonymousPlaceholder": "oui ou non (défaut : non)"
 		},
 		"submitted": {
 			"title": "✅ Avis envoyé !",
@@ -431,11 +431,10 @@
 			"ratingLabel": "Note (1 à 5 étoiles)",
 			"ratingPlaceholder": "1 = Très mauvais, 5 = Excellent",
 			"categoryLabel": "Catégorie",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Description",
 			"descriptionPlaceholder": "Décris ton expérience avec ce membre du staff...",
-			"anonymousLabel": "Envoyer anonymement ? (yes/no)",
-			"anonymousPlaceholder": "yes ou no (par défaut : no)"
+			"anonymousLabel": "Envoyer anonymement ? (oui/non)",
+			"anonymousPlaceholder": "oui ou non (par défaut : non)"
 		},
 		"submitted": {
 			"title": "✅ Signalement envoyé",
@@ -460,7 +459,7 @@
 		"errors": {
 			"noStaffSelected": "❌ Choisis un membre du staff à signaler.",
 			"invalidRating": "❌ **Note invalide**\\n\\nLa note doit être un nombre entre 1 et 5.",
-			"invalidCategory": "❌ **Catégorie invalide**\\n\\nUtilise l'une de ces valeurs : helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **Catégorie invalide**\\n\\nChoisis une catégorie dans la liste.",
 			"emptyDescription": "❌ **Description obligatoire**\\n\\nDécris ton expérience, s'il te plaît.",
 			"cannotReportSelf": "❌ Tu ne peux pas te signaler toi-même !",
 			"notStaff": "❌ Le membre sélectionné ne fait pas partie du staff.",
@@ -605,7 +604,7 @@
 			"nameLabel": "Nom du rôle",
 			"namePlaceholder": "Saisis le nom de ton rôle personnalisé...",
 			"colorLabel": "Couleur du rôle (hex/décimal/nom)",
-			"colorPlaceholder": "#FF5733 ou 16729395 ou red (facultatif)",
+			"colorPlaceholder": "#FF5733 ou 16729395 ou rouge (facultatif)",
 			"iconLabel": "Icône du rôle (emoji ou URL d'image)",
 			"iconPlaceholder": "🔥 ou https://example.com/icon.png (facultatif)"
 		},
@@ -863,11 +862,11 @@
 		},
 		"modal": {
 			"reason": "Raison",
-			"duration": "Durée (ex. 10m, 2h, 7d)"
+			"duration": "Durée (ex. 10 min, 2 h, 7 j)"
 		},
 		"done": "✅ Action « {action} » appliquée à {member}. Cas #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Indique une durée comme 10m, 2h ou 7d.",
+		"invalidDuration": "❌ Indique une durée comme 10 min, 2 h ou 7 j.",
 		"notAllowed": "❌ Le propriétaire du serveur et les bots ne peuvent pas être modérés.",
 		"caseLog": {
 			"titles": {

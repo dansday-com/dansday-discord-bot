@@ -231,8 +231,8 @@
 		"modal": {
 			"messageLabel": "AFK 留言（可选）",
 			"messagePlaceholder": "例如：休息一下、学习中等等。",
-			"deafenLabel": "语音中关闭收听？（yes/no，默认：yes）",
-			"deafenPlaceholder": "yes 或 no（留空视为 yes）"
+			"deafenLabel": "语音中关闭收听？（是/否，默认：是）",
+			"deafenPlaceholder": "是 或 否（留空视为 是）"
 		},
 		"buttons": {
 			"remove": "🔄 解除 AFK"
@@ -275,8 +275,8 @@
 			"durationPlaceholder": "例如：60 表示 1 小时，1440 表示 1 天",
 			"winnerCountLabel": "中奖人数",
 			"winnerCountPlaceholder": "中奖几人？（默认：1）",
-			"multipleEntriesLabel": "允许重复参加？（yes/no）",
-			"multipleEntriesPlaceholder": "yes 或 no（默认：no）"
+			"multipleEntriesLabel": "允许重复参加？（是/否）",
+			"multipleEntriesPlaceholder": "是 或 否（默认：否）"
 		},
 		"created": {
 			"title": "✅ 抽奖已创建！",
@@ -357,8 +357,8 @@
 			"label": "你的反馈",
 			"placeholder": "欢迎分享你的反馈、建议或问题……",
 			"maxLength": 2000,
-			"anonymousLabel": "匿名提交？（yes/no）",
-			"anonymousPlaceholder": "yes 或 no（默认：no）"
+			"anonymousLabel": "匿名提交？（是/否）",
+			"anonymousPlaceholder": "是 或 否（默认：否）"
 		},
 		"submitted": {
 			"title": "✅ 反馈已提交！",
@@ -409,11 +409,10 @@
 			"ratingLabel": "评分（1-5 星）",
 			"ratingPlaceholder": "1 = 很差，5 = 非常好",
 			"categoryLabel": "分类",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "详细说明",
 			"descriptionPlaceholder": "请描述你与这位管理人员的经历……",
-			"anonymousLabel": "匿名提交？（yes/no）",
-			"anonymousPlaceholder": "yes 或 no（默认：no）"
+			"anonymousLabel": "匿名提交？（是/否）",
+			"anonymousPlaceholder": "是 或 否（默认：否）"
 		},
 		"submitted": {
 			"title": "✅ 举报已提交",
@@ -438,7 +437,7 @@
 		"errors": {
 			"noStaffSelected": "❌ 请选择要举报的管理人员。",
 			"invalidRating": "❌ **评分无效**\\n\\n评分必须是 1 到 5 之间的数字。",
-			"invalidCategory": "❌ **分类无效**\\n\\n请使用以下之一：helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **分类无效**\\n\\n请从列表中选择一个分类。",
 			"emptyDescription": "❌ **需要填写说明**\\n\\n请描述一下你的经历。",
 			"cannotReportSelf": "❌ 你不能举报自己！",
 			"notStaff": "❌ 所选成员不是管理人员。",
@@ -605,7 +604,7 @@
 			"nameLabel": "身份组名称",
 			"namePlaceholder": "输入你的专属身份组名称……",
 			"colorLabel": "身份组颜色（十六进制/十进制/颜色名）",
-			"colorPlaceholder": "#FF5733 或 16729395 或 red（可选）",
+			"colorPlaceholder": "#FF5733 或 16729395 或 红色（可选）",
 			"iconLabel": "身份组图标（emoji 或图片链接）",
 			"iconPlaceholder": "🔥 或 https://example.com/icon.png（可选）"
 		},
@@ -863,11 +862,11 @@
 		},
 		"modal": {
 			"reason": "原因",
-			"duration": "时长（如 10m、2h、7d）"
+			"duration": "时长（如 10分钟、2小时、7天）"
 		},
 		"done": "✅ 已对 {member} 执行{action}。案件 #{case}。",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ 请输入时长，如 10m、2h 或 7d。",
+		"invalidDuration": "❌ 请输入时长，如 10分钟、2小时 或 7天。",
 		"notAllowed": "❌ 无法处理服务器所有者和机器人。",
 		"caseLog": {
 			"titles": {

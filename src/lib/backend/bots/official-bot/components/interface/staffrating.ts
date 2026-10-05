@@ -11,6 +11,7 @@ import {
 import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate, serverTranslator, type Translator } from '../../i18n.js';
+import { parseYesNo } from '../../localizedInput.js';
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
@@ -587,8 +588,7 @@ export async function handleStaffRatingModal(interaction) {
 			return;
 		}
 
-		const anonymousValue = interaction.fields.getTextInputValue('anonymous')?.trim().toLowerCase() || 'no';
-		const isAnonymous = anonymousValue === 'yes' || anonymousValue === 'ya';
+		const isAnonymous = parseYesNo(interaction.fields.getTextInputValue('anonymous')) === true;
 
 		const botConfig = getBotConfig();
 		const server = await db.getServerByDiscordId(botConfig.id, guild.id);

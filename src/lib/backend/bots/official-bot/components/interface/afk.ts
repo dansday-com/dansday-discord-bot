@@ -4,6 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { translate, translateServer } from '../../i18n.js';
+import { parseYesNo } from '../../localizedInput.js';
 import { menuBackButton } from './menuBack.js';
 
 const DEFAULT_AFK_MESSAGE = 'Away';
@@ -311,8 +312,7 @@ export async function handleAFKModal(interaction) {
 
 		const afkMessage = interaction.fields.getTextInputValue('afk_message')?.trim() || DEFAULT_AFK_MESSAGE;
 
-		const deafenValue = interaction.fields.getTextInputValue('afk_deafen')?.trim().toLowerCase();
-		const shouldDeafen = deafenValue !== 'no';
+		const shouldDeafen = parseYesNo(interaction.fields.getTextInputValue('afk_deafen')) !== false;
 
 		await setAFK(member, afkMessage, shouldDeafen);
 

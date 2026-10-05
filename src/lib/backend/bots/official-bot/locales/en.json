@@ -431,7 +431,6 @@
 			"ratingLabel": "Rating (1-5 stars)",
 			"ratingPlaceholder": "1 = Very Poor, 5 = Excellent",
 			"categoryLabel": "Category",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Description",
 			"descriptionPlaceholder": "Please describe your experience with this staff member...",
 			"anonymousLabel": "Submit Anonymously? (yes/no)",
@@ -460,7 +459,7 @@
 		"errors": {
 			"noStaffSelected": "❌ Please select a staff member to report.",
 			"invalidRating": "❌ **Invalid Rating**\\n\\nRating must be a number between 1 and 5.",
-			"invalidCategory": "❌ **Invalid Category**\\n\\nPlease use one of: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **Invalid Category**\\n\\nPlease pick a category from the list.",
 			"emptyDescription": "❌ **Description Required**\\n\\nPlease provide a description of your experience.",
 			"cannotReportSelf": "❌ You cannot report yourself!",
 			"notStaff": "❌ The selected member is not a staff member.",

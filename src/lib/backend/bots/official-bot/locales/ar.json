@@ -231,8 +231,8 @@
 		"modal": {
 			"messageLabel": "رسالة AFK (اختياري)",
 			"messagePlaceholder": "مثال: آخذ استراحة، أذاكر، إلخ.",
-			"deafenLabel": "إيقاف السماع في الصوت؟ (yes/no، افتراضي yes)",
-			"deafenPlaceholder": "yes أو no (اتركه فارغًا لـ yes)"
+			"deafenLabel": "إيقاف السماع في الصوت؟ (نعم/لا، افتراضي نعم)",
+			"deafenPlaceholder": "نعم أو لا (اتركه فارغًا لـ نعم)"
 		},
 		"buttons": {
 			"remove": "🔄 إزالة AFK"
@@ -275,8 +275,8 @@
 			"durationPlaceholder": "مثال: 60 لساعة واحدة، 1440 ليوم كامل",
 			"winnerCountLabel": "عدد الفائزين",
 			"winnerCountPlaceholder": "كم عدد الفائزين؟ (الافتراضي: 1)",
-			"multipleEntriesLabel": "السماح بمشاركات متعددة؟ (yes/no)",
-			"multipleEntriesPlaceholder": "yes أو no (الافتراضي: no)"
+			"multipleEntriesLabel": "السماح بمشاركات متعددة؟ (نعم/لا)",
+			"multipleEntriesPlaceholder": "نعم أو لا (الافتراضي: لا)"
 		},
 		"created": {
 			"title": "✅ تم إنشاء السحب!",
@@ -357,8 +357,8 @@
 			"label": "ملاحظاتك",
 			"placeholder": "شاركنا ملاحظاتك أو اقتراحاتك أو ما يشغلك...",
 			"maxLength": 2000,
-			"anonymousLabel": "إرسال بشكل مجهول؟ (yes/no)",
-			"anonymousPlaceholder": "yes أو no (الافتراضي: no)"
+			"anonymousLabel": "إرسال بشكل مجهول؟ (نعم/لا)",
+			"anonymousPlaceholder": "نعم أو لا (الافتراضي: لا)"
 		},
 		"submitted": {
 			"title": "✅ تم إرسال الملاحظات!",
@@ -409,11 +409,10 @@
 			"ratingLabel": "التقييم (من 1 إلى 5 نجوم)",
 			"ratingPlaceholder": "1 = ضعيف جدًا، 5 = ممتاز",
 			"categoryLabel": "الفئة",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "الوصف",
 			"descriptionPlaceholder": "صف تجربتك مع عضو الطاقم هذا...",
-			"anonymousLabel": "إرسال بشكل مجهول؟ (yes/no)",
-			"anonymousPlaceholder": "yes أو no (الافتراضي: no)"
+			"anonymousLabel": "إرسال بشكل مجهول؟ (نعم/لا)",
+			"anonymousPlaceholder": "نعم أو لا (الافتراضي: لا)"
 		},
 		"submitted": {
 			"title": "✅ تم إرسال البلاغ",
@@ -438,7 +437,7 @@
 		"errors": {
 			"noStaffSelected": "❌ اختر عضو الطاقم المراد الإبلاغ عنه.",
 			"invalidRating": "❌ **تقييم غير صالح**\\n\\nيجب أن يكون التقييم رقمًا بين 1 و 5.",
-			"invalidCategory": "❌ **فئة غير صالحة**\\n\\nاستخدم إحدى هذه الفئات: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **فئة غير صالحة**\\n\\nاختر فئة من القائمة.",
 			"emptyDescription": "❌ **الوصف مطلوب**\\n\\nصف تجربتك من فضلك.",
 			"cannotReportSelf": "❌ لا يمكنك الإبلاغ عن نفسك!",
 			"notStaff": "❌ العضو المحدد ليس من الطاقم.",
@@ -605,7 +604,7 @@
 			"nameLabel": "اسم الرتبة",
 			"namePlaceholder": "أدخل اسم رتبتك المخصصة...",
 			"colorLabel": "لون الرتبة (سداسي/عشري/اسم)",
-			"colorPlaceholder": "#FF5733 أو 16729395 أو red (اختياري)",
+			"colorPlaceholder": "#FF5733 أو 16729395 أو أحمر (اختياري)",
 			"iconLabel": "أيقونة الرتبة (إيموجي أو رابط صورة)",
 			"iconPlaceholder": "🔥 أو https://example.com/icon.png (اختياري)"
 		},
@@ -863,11 +862,11 @@
 		},
 		"modal": {
 			"reason": "السبب",
-			"duration": "المدة (مثل 10m، 2h، 7d)"
+			"duration": "المدة (مثل 10 دقائق، 2 ساعات، 7 أيام)"
 		},
 		"done": "✅ تم تطبيق {action} على {member}. القضية #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ أدخل مدة مثل 10m أو 2h أو 7d.",
+		"invalidDuration": "❌ أدخل مدة مثل 10 دقائق أو 2 ساعات أو 7 أيام.",
 		"notAllowed": "❌ لا يمكن الإشراف على مالك الخادم أو البوتات.",
 		"caseLog": {
 			"titles": {

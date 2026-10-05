@@ -9,6 +9,7 @@ import {
 	publicSiteOrigin,
 	serverSettingsComponent
 } from '../../../config.js';
+import { domainToUnicode } from 'node:url';
 import { inviteJoinPath } from '../../../../invites.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
@@ -204,6 +205,12 @@ async function handleMenuCategory(interaction, categoryId: string) {
 	}
 }
 
+function linkLabel(url: string): string {
+	const u = new URL(url);
+	const host = domainToUnicode(u.hostname) || u.hostname;
+	return `${host}${u.port ? `:${u.port}` : ''}${decodeURI(u.pathname).replace(/\/$/, '')}`;
+}
+
 async function handleMenuButton(interaction) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
 	if (!member) {
@@ -294,13 +301,13 @@ async function handleMenuButton(interaction) {
 	if (siteUrl) {
 		let siteLink = siteUrl;
 		try {
-			siteLink = `[${new URL(siteUrl).host}${new URL(siteUrl).pathname.replace(/\/$/, '')}](${siteUrl})`;
+			siteLink = `[${linkLabel(siteUrl)}](${siteUrl})`;
 		} catch (_) {}
 		description = `${menuDesc}\n\n${await translate('menu.website', interaction.guild.id, interaction.user.id, { url: siteLink })}`;
 		if (publicServer?.joinUrl) {
 			let joinLink = publicServer.joinUrl;
 			try {
-				joinLink = `[${new URL(publicServer.joinUrl).host}${new URL(publicServer.joinUrl).pathname}](${publicServer.joinUrl})`;
+				joinLink = `[${linkLabel(publicServer.joinUrl)}](${publicServer.joinUrl})`;
 			} catch (_) {}
 			description += `\n${await translate('menu.join', interaction.guild.id, interaction.user.id, { url: joinLink })}`;
 		}

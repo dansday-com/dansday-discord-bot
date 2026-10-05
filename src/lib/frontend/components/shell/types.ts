@@ -6,4 +6,5 @@ export type NavTab = {
 	active: boolean;
 	badge?: string;
 	badgeBump?: boolean;
+	children?: NavTab[];
 };

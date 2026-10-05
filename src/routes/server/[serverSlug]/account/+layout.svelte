@@ -218,12 +218,19 @@
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
 	});
 
+	const inOverview = $derived(isOverview || isThemes || isRewards || isGuide);
+
+	function subTabs(kind: string, tabs: { id: string; label: string; icon: string }[], activeId: string | null): NavTab[] {
+		return tabs.map((t) => ({ label: t.label, icon: t.icon, href: `${accountBase}/${kind}/${t.id}/${navHash}`, active: activeId === t.id }));
+	}
+
 	const sectionTabs: NavTab[] = $derived([
 		{
 			label: 'Overview',
 			icon: 'fa-gauge-high',
 			href: `${accountBase}/overview/information/${navHash}`,
-			active: isOverview || isThemes || isRewards || isGuide
+			active: inOverview,
+			children: subTabs('overview', overviewTabs, inOverview ? activeCat : null)
 		},
 		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
 		{
@@ -233,23 +240,33 @@
 			href: `${accountBase}/items/all/${navHash}`,
 			active: isItems,
 			badge: itemsEnabled ? `${pd.bagStock ?? 0}/${BAG_CAPACITY}` : undefined,
-			badgeBump: bagPulse
+			badgeBump: bagPulse,
+			children: itemsEnabled ? subTabs('items', typeTabs, isItems ? activeCat : null) : undefined
 		},
-		{ label: 'Minigames', icon: 'fa-dice', href: `${accountBase}/minigames/all/${navHash}`, active: isMinigames },
-		{ label: 'Assets', icon: 'fa-chart-line', href: `${accountBase}/assets/top/${navHash}`, active: isAssets },
-		{ label: 'History', icon: 'fa-clock-rotate-left', href: `${accountBase}/history/all/${navHash}`, active: isHistory }
+		{
+			label: 'Minigames',
+			icon: 'fa-dice',
+			href: `${accountBase}/minigames/all/${navHash}`,
+			active: isMinigames,
+			children: minigamesEnabled ? subTabs('minigames', minigameTabs, isMinigames ? activeCat : null) : undefined
+		},
+		{
+			label: 'Assets',
+			icon: 'fa-chart-line',
+			href: `${accountBase}/assets/top/${navHash}`,
+			active: isAssets,
+			children: assetsEnabled ? subTabs('assets', assetTabs, isAssets ? activeCat : null) : undefined
+		},
+		{
+			label: 'History',
+			icon: 'fa-clock-rotate-left',
+			href: `${accountBase}/history/all/${navHash}`,
+			active: isHistory,
+			children: subTabs('history', historyTabs, isHistory ? historyCat : null)
+		}
 	]);
 
-	const catTabs: NavTab[] | null = $derived.by(() => {
-		const build = (kind: string, tabs: { id: string; label: string; icon: string }[], activeId: string) =>
-			tabs.map((t) => ({ label: t.label, icon: t.icon, href: `${accountBase}/${kind}/${t.id}/${navHash}`, active: activeId === t.id }));
-		if (isHistory) return build('history', historyTabs, historyCat);
-		if (isItems) return build('items', typeTabs, activeCat);
-		if (isAssets) return build('assets', assetTabs, activeCat);
-		if (isMinigames) return build('minigames', minigameTabs, activeCat);
-		if (isOverview || isThemes || isRewards || isGuide) return build('overview', overviewTabs, activeCat);
-		return null;
-	});
+	const catTabs = $derived(sectionTabs.find((t) => t.active)?.children ?? null);
 
 	const sessionKey = $derived(`items_card_${data.server.slug}`);
 
@@ -580,5 +597,5 @@
 		{@render children()}
 	{/if}
 
-	<NavWheel tabs={sectionTabs} subTabs={disabledFeature ? null : catTabs} label="Account menu" />
+	<NavWheel tabs={sectionTabs} label="Account menu" />
 </div>

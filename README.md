@@ -254,7 +254,7 @@ Each member signs in to their own account on those same pages.
 - **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
 - **Embed builder** - Rich embeds with live preview, placeholders and images.
 - **Bot appearance** - Own nickname, avatar, banner and bio per server, set on the Main page.
-- **Multi-language** - English, Indonesian, German, Spanish, French, Italian, Dutch, Arabic, Malay, Simplified Chinese and Japanese. Each server picks a language in `/setup` or on the Main page: it names the setup channels and is used for the menu, approval posts, every public bot message and the AI's chat and voice. Members can pick their own language for their private replies and DMs, and otherwise follow the server's.
+- **Multi-language** - English, Indonesian, German, Spanish, French, Italian, Dutch, Arabic, Malay, Simplified Chinese, Traditional Chinese and Japanese. Each server picks a language in `/setup` or on the Main page: it names the setup channels and is used for the menu, approval posts, every public bot message and the AI's chat and voice. Members can pick their own language for their private replies and DMs, and otherwise follow the server's.
 
 ### Community
 

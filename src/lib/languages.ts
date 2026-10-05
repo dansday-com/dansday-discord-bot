@@ -8,7 +8,8 @@ export const SERVER_LANGUAGES = [
 	{ code: 'nl', name: 'Nederlands', englishName: 'Dutch', discordLocales: ['nl'] },
 	{ code: 'ar', name: 'العربية', englishName: 'Arabic', discordLocales: [] },
 	{ code: 'ms', name: 'Bahasa Melayu', englishName: 'Malay', discordLocales: [] },
-	{ code: 'zh', name: '简体中文', englishName: 'Simplified Chinese', discordLocales: ['zh-CN', 'zh-TW'] },
+	{ code: 'zh', name: '简体中文', englishName: 'Simplified Chinese', discordLocales: ['zh-CN'] },
+	{ code: 'zh-TW', name: '繁體中文', englishName: 'Traditional Chinese', discordLocales: ['zh-TW'] },
 	{ code: 'ja', name: '日本語', englishName: 'Japanese', discordLocales: ['ja'] }
 ] as const;
 

@@ -1,0 +1,1388 @@
+{
+	"menu": {
+		"title": "📋 {botName} 機器人選單",
+		"description": "請從下方按鈕選擇功能：",
+		"website": "🌐 伺服器頁面：{url}",
+		"join": "📨 邀請連結：{url}",
+		"noAccess": "❌ 你沒有任何功能的使用權限。",
+		"button": "📋 選單",
+		"account": "👤 帳號",
+		"stats": {
+			"members": "👥 成員",
+			"totalXp": "📊 總 XP",
+			"topLevel": "⭐ 最高等級"
+		},
+		"back": "⬅️ 返回",
+		"categories": {
+			"me": {
+				"button": "👤 我的",
+				"description": "你的狀態與通知。"
+			},
+			"community": {
+				"button": "🎉 社群",
+				"description": "抽獎、意見回饋與工作人員評分。"
+			},
+			"perks": {
+				"button": "💎 福利",
+				"description": "支持者與創作者福利。"
+			},
+			"staff": {
+				"button": "🔨 工作人員",
+				"description": "給工作人員與管理員使用的工具。"
+			}
+		},
+		"items": {
+			"afk": "設定或清除你的 AFK 狀態。",
+			"notifications": "選擇要通知你的頻道。",
+			"invites": "查看你的邀請並取得邀請連結。",
+			"quest": "領取進行中的 Discord 任務。",
+			"giveaway": "在這個伺服器舉辦抽獎。",
+			"feedback": "向伺服器團隊傳送意見回饋。",
+			"staffRating": "為工作人員評分或檢舉工作人員。",
+			"customSupporterRole": "建立或編輯你的專屬身分組。",
+			"contentCreator": "查看創作者或申請加入。",
+			"moderation": "警告、禁言、踢出或停權成員。"
+		}
+	},
+	"interface": {
+		"panel": {
+			"title": "{botName} 機器人面板",
+			"description": "點選 **選單**，即可依照你的身分組權限使用機器人功能。",
+			"sent": "✅ 機器人介面已傳送到 {channel}！",
+			"setupHasOwnerAccount": "✅ 機器人介面已傳送到 {channel}。這個伺服器已經有擁有者帳號，請直接在網頁面板登入。未建立新的邀請。",
+			"setupSignInLinkLine": "[**點這裡開啟面板**]({url})",
+			"setupOpenPanelButton": "開啟面板",
+			"setupOwnerInviteReady": "✅ 機器人介面已傳送到 {channel}。\n\n只有你看得到這則訊息。未使用的擁有者邀請連結會在建立後 **24 小時** 失效。\n\n[**點這裡註冊為擁有者**]({url})",
+			"setupOwnerInviteButton": "開啟註冊頁面",
+			"setupOwnerInviteEmbedTitle": "擁有者註冊",
+			"setupNotOwnerTitle": "權限不足",
+			"setupNotOwnerBody": "只有 **伺服器擁有者** 才能使用 `/setup`。",
+			"setupNotTextChannelTitle": "頻道無效",
+			"setupNotTextChannelBody": "請選擇一個 **文字頻道**。",
+			"joinTitle": "感謝你將 {botName} 加入伺服器！",
+			"joinBody": "執行 `/setup` 來建立頻道並完成設定。",
+			"joinAskAi": "不知道從哪裡開始？直接提及 {botMention} 發問就好，它會閱讀說明文件，一步步帶你完成設定。",
+			"joinDocsButton": "說明文件",
+			"joinSupportButton": "支援伺服器",
+			"setupChannelsCreated": "已建立 **{count}** 個新頻道。",
+			"setupChannelsAllPresent": "所有頻道都已存在，沒有需要新建的頻道。",
+			"setupWarnNoBotConfig": "⚠️ 介面已傳送，但無法取得機器人設定。",
+			"setupWarnNoServer": "⚠️ 介面已傳送，但找不到伺服器紀錄，無法產生邀請。",
+			"error": "❌ 介面傳送失敗：{error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ 這個伺服器已關閉此功能。管理員可以在機器人設定面板中啟用。",
+			"memberNotFound": "❌ 無法取得成員資訊。",
+			"unknownButton": "❌ 未知的按鈕互動。",
+			"buttonError": "❌ **按鈕錯誤**：處理你的點選時發生錯誤。\\n\\n請再試一次或聯絡管理員。",
+			"modalError": "❌ **表單錯誤**：處理你送出的表單時發生錯誤。\\n\\n請再試一次或聯絡管理員。",
+			"selectionError": "❌ **選擇錯誤**：處理你的選擇時發生錯誤。\\n\\n請再試一次或聯絡管理員。"
+		},
+		"timeUnits": {
+			"hour": "小時",
+			"hours": "小時",
+			"day": "天",
+			"days": "天"
+		},
+		"defaultFooter": "由 {domain} 提供技術支援 {year}"
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **支持者福利**",
+			"description": "擁有自訂名稱與顏色的專屬身分組是支持者福利。請為這個伺服器加成，或擁有下列任一身分組：\\n{roles}",
+			"footer": "為伺服器加成即可解鎖。"
+		},
+		"denied": {
+			"title": "❌ **權限不足**",
+			"description": "你需要下列任一身分組才能使用 **{action}**：\\n{roles}",
+			"footer": "如果你認為這是錯誤，請聯絡伺服器管理員。"
+		},
+		"ownerRequired": {
+			"title": "❌ **需要擁有者註冊**",
+			"description": "伺服器擁有者必須先在網頁面板註冊帳號，其他人才能使用 **{action}** 功能。"
+		},
+		"notConfigured": {
+			"title": "❌ **尚未設定權限**",
+			"description": "伺服器擁有者或管理員必須先設定身分組權限，其他人才能使用 **{action}** 功能。"
+		},
+		"requiredRoleFallback": "所需的身分組"
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 語言設定",
+			"description": "選擇你偏好的語言：",
+			"current": "目前語言",
+			"select": "選擇語言",
+			"updated": "✅ 語言已更新！",
+			"failed": "❌ 語言更新失敗：{error}",
+			"serverDefault": "伺服器預設（{language}）",
+			"serverDefaultDescription": "跟隨伺服器語言",
+			"currentOption": "目前語言"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 你的帳號頁面：{url}",
+			"noMember": "⚠️ 這個伺服器還沒有你的紀錄。請先傳送一則訊息或加入語音頻道。",
+			"unavailable": "⚠️ 這個伺服器未開放公開頁面。"
+		},
+		"errors": {
+			"notRegistered": "⚠️ 這個伺服器尚未在機器人中註冊。請先執行一次同步。",
+			"createRecordFailed": "❌ 建立成員紀錄失敗，請再試一次。"
+		},
+		"fields": {
+			"level": "⭐ 等級",
+			"totalXp": "📊 總 XP",
+			"rank": "🏆 排名",
+			"previousRank": "先前排名",
+			"newRank": "新排名",
+			"progress": "⚡ 升到 {level} 級的進度",
+			"reward": "🎁 已解鎖獎勵",
+			"activity": "💬 活躍度"
+		},
+		"xpToGo": "還差 **{xp}** XP",
+		"unranked": "未上榜",
+		"leaderboardButton": "排行榜",
+		"levelUp": {
+			"title": "🎉 升級了！",
+			"description": "{member} 已經升到 **{level} 級**！"
+		},
+		"rankUp": {
+			"title": "排名更新！",
+			"topSpot": "{member} 剛剛擠進了排行榜前段！",
+			"climbed": "{member} 在排行榜上的名次上升了！"
+		},
+		"activity": {
+			"messages": "{count} 則訊息",
+			"voice": "語音 {hours} 小時",
+			"streaming": "直播 {hours} 小時"
+		},
+		"log": {
+			"types": {
+				"chat": "聊天",
+				"voice": "語音",
+				"afkVoice": "AFK 語音",
+				"video": "視訊",
+				"streaming": "直播",
+				"invite": "邀請"
+			},
+			"gain": "{emoji} {type} XP：{name} 獲得 +{xp} XP",
+			"staff": "（{multiplier}× 工作人員 🛡️）",
+			"boost": "（{multiplier}× 加成 ⚡）",
+			"friend": "（+{rate} 好友加成 🤝）",
+			"leech": "（−{rate} 水蛭 🩸）",
+			"share": "📨 +{amount} 給 {name}（{percent}% 邀請分成{staff}）",
+			"inviteNote": "因為邀請了 {name}",
+			"leechCredit": "🩸 水蛭：{attacker} 從 {victim} 身上吸走了 +{amount} XP{pct}",
+			"unknownMember": "未知成員",
+			"someMember": "一位成員",
+			"someLeecher": "一位吸血者"
+		}
+	},
+	"invites": {
+		"button": "📨 邀請",
+		"title": "📨 你的邀請",
+		"reward": "每有一位新成員透過你的連結加入{hold}，你就能獲得 **{xp} XP**。",
+		"hold": "並待滿 {hours} 小時",
+		"staffNote": "🛡️ 工作人員可獲得 {multiplier} 倍的邀請 XP。",
+		"share": "📈 只要你邀請的成員還留在伺服器，你還能獲得他們聊天與語音 XP 的 **{percent}%**。",
+		"link": "🔗 你的專屬邀請連結：{url}",
+		"noLink": "⚠️ 我無法在這裡建立邀請連結。請工作人員給我「建立邀請」權限。",
+		"copyButton": "開啟邀請連結",
+		"customizeButton": "✏️ 自訂連結",
+		"slugTitle": "自訂你的邀請連結",
+		"slugLabel": "連結名稱（{min}–{max} 個字母、數字或連字號）",
+		"slugInvalid": "❌ 請使用 {min}–{max} 個字母、數字或連字號。",
+		"slugTaken": "❌ **{slug}** 已經有人使用了，請換一個名稱。",
+		"slugSaved": "✅ 你的邀請連結現在是 {url}",
+		"fields": {
+			"total": "📨 總計",
+			"active": "✅ 仍在伺服器",
+			"left": "🚪 已離開",
+			"fake": "🕵️ 無效",
+			"bonus": "➕ 額外獎勵",
+			"xp": "⭐ 獲得的 XP",
+			"pending": "⏳ 等待中",
+			"invitedBy": "👤 邀請人",
+			"shareXp": "🤝 分成所得"
+		},
+		"error": "❌ 無法載入你的邀請，請稍後再試。"
+	},
+	"afk": {
+		"title": "⏸️ 設定 AFK 狀態",
+		"current": {
+			"title": "⏸️ 你目前處於 AFK 狀態",
+			"description": "**狀態：** {message}\\n**時長：** {duration}",
+			"howToRemove": "💡 如何解除",
+			"howToRemoveValue": "• 點選下方按鈕解除 AFK\\n• 傳送任意訊息（自動解除 AFK 並取消靜音）\\n• 如果是機器人將你靜音的，解除 AFK 時會自動取消靜音"
+		},
+		"set": {
+			"title": "✅ AFK 狀態已設定！",
+			"description": "你現在已標記為 AFK：**{message}**{voiceInfo}",
+			"howToRemove": "💡 如何解除",
+			"howToRemoveValue": "• 傳送任意訊息（自動解除 AFK 並取消靜音）\\n• 點選 AFK 按鈕後解除（如果是機器人將你靜音的，會一併取消）\\n• 如果你是被機器人靜音的，解除 AFK 時會自動取消靜音",
+			"voiceMutedDeafened": "\\n\\n你在語音中會被靜音並拒聽。",
+			"voiceMutedOnly": "\\n\\n你在語音中會被靜音（不會拒聽）。"
+		},
+		"removed": {
+			"title": "✅ AFK 狀態已解除！",
+			"description": "歡迎回來！你的 AFK 狀態已解除。"
+		},
+		"modal": {
+			"messageLabel": "AFK 訊息（選填）",
+			"messagePlaceholder": "例如：休息一下、讀書中等等",
+			"deafenLabel": "在語音中拒聽？（是/否，預設：是）",
+			"deafenPlaceholder": "是 或 否（留空即為 是）"
+		},
+		"buttons": {
+			"remove": "🔄 解除 AFK"
+		},
+		"errors": {
+			"disabledOnServer": "❌ 這個伺服器已關閉 AFK 功能。管理員可以在機器人設定面板中啟用。",
+			"notAFK": "❌ 你目前不在 AFK 狀態。",
+			"failed": "❌ 無法開啟 AFK 表單：{error}",
+			"setFailed": "❌ **AFK 設定失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。",
+			"removeFailed": "❌ **AFK 解除失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。"
+		},
+		"messages": {
+			"welcomeBack": "✅ 歡迎回來，{member}！你的 AFK 狀態已解除。",
+			"dmEmbedTitle": "📬 有人提及了你",
+			"dmMentioned": "{sender} 在 **{server}** · #{channel} 提及了你\\n\\n**訊息：** {message}",
+			"away": "暫時離開",
+			"isAfk": "⏸️ {member} 目前處於 AFK 狀態（已離開 {duration}）",
+			"isAfkWithMessage": "⏸️ {member} 目前處於 AFK 狀態：**{message}**（已離開 {duration}）"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 建立抽獎",
+			"step1Title": "**步驟 1／2：選擇身分組（選填）**",
+			"step1Description": "從下方選單選擇可以參加這次抽獎的身分組。留空或點選「繼續填寫表單」，則所有身分組都能參加。",
+			"roleSelectPlaceholder": "選擇可以參加的身分組（選填）……",
+			"continueButton": "繼續填寫表單"
+		},
+		"active": {
+			"title": "🎉 你有進行中的抽獎",
+			"description": "你已經有一個進行中的抽獎：\\n\\n**{title}**\\n**獎品：** {prize}\\n\\n你想要怎麼做？",
+			"ends": "⏰ 結束時間"
+		},
+		"modal": {
+			"titleLabel": "標題",
+			"titlePlaceholder": "輸入抽獎標題……",
+			"prizeLabel": "獎品",
+			"prizePlaceholder": "獎品是什麼？",
+			"durationLabel": "持續時間（分鐘）",
+			"durationPlaceholder": "例如：60 代表 1 小時，1440 代表 1 天",
+			"winnerCountLabel": "得獎人數",
+			"winnerCountPlaceholder": "要抽出幾位得獎者？（預設：1）",
+			"multipleEntriesLabel": "允許重複參加？（是/否）",
+			"multipleEntriesPlaceholder": "是 或 否（預設：否）"
+		},
+		"created": {
+			"title": "✅ 抽獎已建立！",
+			"description": "你的抽獎已建立，並發布在 {channel}！"
+		},
+		"entered": {
+			"title": "✅ 已參加抽獎！",
+			"description": "你已成功參加抽獎，祝你好運！🍀"
+		},
+		"buttons": {
+			"finish": "🏁 結束抽獎"
+		},
+		"errors": {
+			"memberNotFound": "❌ 無法取得成員資訊。",
+			"activeExists": "❌ 你已經有一個進行中的抽獎，請先將它結束。",
+			"invalidTitle": "❌ **抽獎無效**\\n\\n標題不能空白。",
+			"invalidPrize": "❌ **抽獎無效**\\n\\n獎品不能空白。",
+			"invalidDuration": "❌ **抽獎無效**\\n\\n持續時間必須是正數（單位：分鐘）。",
+			"invalidWinnerCount": "❌ **抽獎無效**\\n\\n得獎人數必須是正數。",
+			"channelNotConfigured": "❌ 無法建立抽獎：尚未設定抽獎頻道。請在面板中完成設定。",
+			"channelNotFound": "❌ 無法建立抽獎：找不到抽獎頻道。",
+			"channelError": "❌ 無法建立抽獎：讀取抽獎頻道設定時發生錯誤。",
+			"createFailed": "❌ **抽獎建立失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。",
+			"invalidMessage": "❌ 抽獎訊息無效。",
+			"invalidId": "❌ 抽獎 ID 無效。",
+			"notFound": "❌ 找不到這個抽獎，或抽獎已經結束。",
+			"ended": "❌ 這個抽獎已經結束了。",
+			"roleRestriction": "❌ **身分組限制**\\n\\n這次抽獎僅限下列身分組參加：\\n{roles}\\n\\n你必須同時擁有以上所有身分組才能參加。",
+			"memberNotFoundDB": "❌ 資料庫中找不到這位成員，請稍後再試。",
+			"cannotEnterOwn": "❌ 你不能參加自己舉辦的抽獎！",
+			"alreadyEntered": "❌ 你已經參加過這次抽獎了！",
+			"finishOwnOnly": "❌ 你只能結束自己舉辦的抽獎。",
+			"finishNotActive": "❌ 這個抽獎目前沒有在進行中。",
+			"finishChannelError": "❌ 無法取得抽獎頻道。",
+			"finishChannelNotConfigured": "❌ 尚未設定抽獎頻道。",
+			"finishChannelNotFound": "❌ 找不到抽獎頻道。",
+			"failed": "❌ 無法開啟抽獎表單：{error}",
+			"notEnoughInvites": "❌ 你需要 **{needed}** 個邀請才能參加這次抽獎，你目前有 **{have}** 個。",
+			"roleSelectFailed": "❌ 處理身分組選擇時失敗：{error}",
+			"enterFailed": "❌ **參加抽獎失敗**\\n\\n錯誤：{error}",
+			"finishFailed": "❌ 結束抽獎失敗：{error}"
+		},
+		"unknownRole": "身分組 {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "沒有身分組限制",
+			"multipleEntries": "可重複參加",
+			"singleEntry": "每位成員限參加一次",
+			"prizeLine": "**獎品：** {prize}",
+			"winnerLine": "**得獎人數：** {count}",
+			"winnersLine": "**得獎人數：** {count}",
+			"entriesLine": "**參加方式：** {entries}",
+			"rolesLine": "**身分組限制：** {roles}",
+			"invitesLine": "**所需邀請數：** {count}",
+			"hostedBy": "👤 舉辦者",
+			"enterButton": "🎉 參加抽獎"
+		},
+		"results": {
+			"endedTitle": "🎉 抽獎已結束",
+			"endedWinnersTitle": "🎉 抽獎結束！",
+			"noEntries": "**{title}**\\n\\n❌ 沒有人參加！這次抽獎已結束，沒有任何參加者。",
+			"noWinners": "**{title}**\\n\\n❌ 無法抽出得獎者。",
+			"winnerLine": "🎊 **得獎者：** {winners}",
+			"winnersLine": "🎊 **得獎者：** {winners}",
+			"limitedEntriesOne": "⚠️ *由於參加人數不足，只抽出 {count} 位得獎者（原定 {requested} 位）。*",
+			"limitedEntriesMany": "⚠️ *由於參加人數不足，只抽出 {count} 位得獎者（原定 {requested} 位）。*",
+			"congrats": "恭喜！🎉"
+		},
+		"finished": {
+			"title": "✅ 抽獎已結束",
+			"noEntries": "你的抽獎 **「{title}」** 已提前結束。\\n\\n沒有人參加。",
+			"noWinners": "你的抽獎 **「{title}」** 已提前結束。\\n\\n無法抽出得獎者。",
+			"winners": "你的抽獎 **「{title}」** 已提前結束。\\n\\n**得獎者：** {winners}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 提交意見回饋",
+			"label": "你的意見回饋",
+			"placeholder": "歡迎分享你的意見、建議或疑慮……",
+			"maxLength": 2000,
+			"anonymousLabel": "匿名提交？（是/否）",
+			"anonymousPlaceholder": "是 或 否（預設：否）"
+		},
+		"submitted": {
+			"title": "✅ 意見回饋已提交！",
+			"description": "感謝你的意見回饋！內容已成功提交。",
+			"anonymous": "\\n\\n🔒 你的意見回饋已匿名提交。"
+		},
+		"errors": {
+			"invalid": "❌ **意見回饋無效**\\n\\n回饋內容不能空白。",
+			"channelError": "❌ 無法提交意見回饋：讀取回饋頻道設定時發生錯誤。",
+			"channelNotConfigured": "❌ 無法提交意見回饋：尚未設定回饋頻道。",
+			"channelNotFound": "❌ 無法提交意見回饋：找不到回饋頻道。",
+			"failed": "❌ 無法開啟意見回饋表單：{error}",
+			"submitFailed": "❌ **意見回饋提交失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。"
+		},
+		"channelEmbed": {
+			"title": "💬 新的意見回饋",
+			"fieldFrom": "👤 提交者",
+			"fieldSubmitted": "🕐 提交時間",
+			"anonymous": "匿名",
+			"footerSuffix": "• 回饋編號：#{feedbackId}"
+		}
+	},
+	"staffRating": {
+		"title": "📋 評價工作人員",
+		"selectStaff": "選擇工作人員",
+		"selectStaffPlaceholder": "選擇要評價的工作人員……",
+		"button": "🛡️ 工作人員評分",
+		"selectRatingPrompt": "選擇評分",
+		"selectCategoryPrompt": "選擇類別",
+		"status": {
+			"staff": "工作人員：{staff}",
+			"ratingPending": "評分：尚未選擇",
+			"ratingSelected": "評分：{rating}/5",
+			"categoryPending": "類別：尚未選擇",
+			"categorySelected": "類別：{category}"
+		},
+		"buttons": {
+			"continue": "繼續"
+		},
+		"reviewModal": {
+			"titleApprove": "核准工作人員評價",
+			"titleReject": "駁回工作人員評價",
+			"reasonLabel": "理由（必填）",
+			"reasonPlaceholder": "向評價者說明你的決定……"
+		},
+		"embed": {
+			"staffDecision": "管理決定",
+			"reviewedBy": "審核者",
+			"statusApproved": "已核准",
+			"statusRejected": "已駁回"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "工作人員",
+			"fieldRating": "評分",
+			"fieldCategory": "類別",
+			"fieldReporter": "評價者",
+			"fieldStatus": "狀態",
+			"fieldDescription": "說明",
+			"anonymousReporter": "匿名",
+			"pendingTitle": "🕒 待審核的工作人員評價",
+			"pendingStatus": "等待管理員審核",
+			"approveButton": "核准評價",
+			"rejectButton": "駁回評價",
+			"titleApproved": "✅ 工作人員評價已核准",
+			"titleRejected": "❌ 工作人員評價已駁回",
+			"footerReportSuffix": "• 評價編號：#{reportId}"
+		},
+		"modal": {
+			"title": "評價工作人員",
+			"ratingLabel": "評分（1-5 顆星）",
+			"ratingPlaceholder": "1 = 非常差，5 = 非常好",
+			"categoryLabel": "類別",
+			"descriptionLabel": "說明",
+			"descriptionPlaceholder": "請描述你與這位工作人員互動的經驗……",
+			"anonymousLabel": "匿名提交？（是/否）",
+			"anonymousPlaceholder": "是 或 否（預設：否）"
+		},
+		"submitted": {
+			"title": "✅ 評價已提交",
+			"description": "你的評價已成功提交，正在等待管理員審核。審核完成後我們會通知你。",
+			"anonymous": "\\n\\n🔒 你的評價已匿名提交。",
+			"roleUpdated": "\\n\\n⭐ **工作人員評分已更新**\\n{roleName}\\n評分：{rating}/5.00（共 {totalReports} 則評價）"
+		},
+		"dm": {
+			"approved": "你在 **{server}** 對 {staff} 的評價已核准。\\n\\n**評分：** {rating}/5\\n**類別：** {category}\\n**意見內容：** {description}\\n\\n**管理備註：** {reason}\\n\\n感謝你協助我們督促團隊負起責任。",
+			"rejected": "你在 **{server}** 對 {staff} 的評價未獲核准。\\n\\n**理由：** {reason}\\n\\n如果你還有其他情況想補充，可以聯絡管理團隊。",
+			"embedTitleApproved": "✅ 評價已核准",
+			"embedTitleRejected": "❌ 評價未獲核准"
+		},
+		"categories": {
+			"helpful": "👍 很有幫助",
+			"unhelpful": "👎 沒有幫助",
+			"abuse": "⚠️ 濫用職權",
+			"slow_response": "⏰ 回應太慢",
+			"excellent": "⭐ 服務優秀",
+			"rude": "😠 態度惡劣"
+		},
+		"errors": {
+			"noStaffSelected": "❌ 請選擇要評價的工作人員。",
+			"invalidRating": "❌ **評分無效**\\n\\n評分必須是 1 到 5 之間的數字。",
+			"invalidCategory": "❌ **類別無效**\\n\\n請從清單中選擇一個類別。",
+			"emptyDescription": "❌ **必須填寫說明**\\n\\n請描述一下你的經驗。",
+			"cannotReportSelf": "❌ 你不能評價自己！",
+			"notStaff": "❌ 你選擇的成員不是工作人員。",
+			"onCooldown": "❌ **評價冷卻中**\\n\\n你必須再等 {time} {unit} 才能再次評價這位工作人員。\\n\\n上次評價：{lastRated}",
+			"submitFailed": "❌ **評價提交失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。",
+			"notConfigured": "❌ 這個伺服器尚未設定工作人員評分系統。",
+			"noStaffConfigured": "❌ 這個伺服器尚未設定工作人員身分組。請管理員先設定工作人員權限。",
+			"noStaffAvailable": "❌ 目前找不到任何工作人員。請稍後再試或聯絡伺服器管理員。",
+			"missingRating": "❌ 請先選擇評分再繼續。",
+			"missingCategory": "❌ 請先選擇類別再繼續。",
+			"permissionDenied": "❌ **權限不足**\\n\\n你需要管理員權限才能核准或駁回工作人員評價。",
+			"reviewReasonRequired": "❌ 請輸入你做出這個決定的理由。"
+		},
+		"ratingUpdate": {
+			"title": "⭐ 工作人員評分更新",
+			"description": "{staff} 收到了一則新評分。",
+			"ratingValue": "**{rating}/5.0**（共 {totalReports} 則評價）",
+			"fieldFeedback": "意見內容",
+			"dm": "⭐ 你在 **{server}** 的工作人員評分現在是 **{rating}/5.0**（共 {totalReports} 則評價）。"
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ 這則評價已經處理過了。",
+			"approvedReply": "✅ 評價 #{reportId} 已核准。",
+			"rejectedReply": "❌ 評價 #{reportId} 已駁回。"
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 內容創作者",
+		"list": {
+			"title": "🎬 內容創作者",
+			"description": "這個伺服器已通過審核的內容創作者：",
+			"none": "目前還沒有通過審核的內容創作者。",
+			"applyButton": "申請"
+		},
+		"dismiss": {
+			"button": "退出內容創作者",
+			"confirmTitle": "⚠️ 要移除內容創作者身分組嗎？",
+			"confirmDescription": "你將失去這個伺服器的內容創作者身分組。如果工作人員允許，之後可以再次申請。\n\n**確定要繼續嗎？**",
+			"yes": "是，移除身分組",
+			"no": "否，取消",
+			"removed": "✅ 你的內容創作者身分組已移除。"
+		},
+		"reviewModal": {
+			"titleApprove": "核准申請",
+			"titleReject": "駁回申請",
+			"reasonLabel": "理由（必填）",
+			"reasonPlaceholder": "向申請者說明你的決定……"
+		},
+		"embed": {
+			"staffDecision": "管理決定",
+			"reviewedBy": "審核者",
+			"reviewedBySystem": "自動（TikTok 帳號重複）",
+			"statusApproved": "已核准",
+			"statusRejected": "已駁回"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 內容創作者申請待審核",
+			"pendingDescription": "{user} 申請了內容創作者權限。",
+			"pendingStatus": "等待管理員審核",
+			"fieldTiktok": "TikTok 使用者名稱",
+			"fieldStatus": "狀態",
+			"fieldApplicantReason": "理由",
+			"buttonApprove": "核准",
+			"buttonReject": "駁回",
+			"titleApproved": "✅ 內容創作者申請已核准",
+			"titleRejected": "❌ 內容創作者申請已駁回",
+			"descriptionReviewed": "{mention} • TikTok：@{tiktok}",
+			"footerAppSuffix": "• 申請編號：#{appId}",
+			"liveTitle": "🔴 內容創作者正在直播",
+			"liveDescription": "{mention} 正在 TikTok 直播！",
+			"liveWatchButton": "到 TikTok 觀看直播",
+			"autoRejectReviewReason": "重複或冒用：這個 TikTok 使用者名稱已經連結到另一個 Discord 帳號。",
+			"autoRejectConflictPending": "該帳號已經用這個 TikTok 帳號提交了一份 **待審核** 的申請。",
+			"autoRejectConflictApproved": "該帳號是使用這個 TikTok 帳號、**已通過審核** 的內容創作者。"
+		},
+		"modal": {
+			"title": "申請成為內容創作者",
+			"usernameLabel": "TikTok 使用者名稱",
+			"usernamePlaceholder": "例如：dansday",
+			"reasonLabel": "你為什麼想成為內容創作者？",
+			"reasonPlaceholder": "簡單說說我們為什麼應該接受你的申請……"
+		},
+		"submitted": "✅ 你以 **{username}** 提交的內容創作者申請已送出，正在等待工作人員審核。",
+		"dm": {
+			"approved": "你在 **{server}** 的申請已核准。\\n\\nTikTok：**{username}**\\n你已獲得內容創作者身分組。",
+			"rejected": "你在 **{server}** 的申請這次未獲核准。\\n\\nTikTok：**{username}**\\n\\n**理由：** {reason}\\n\\n冷卻期結束後，你可以再次申請（如果你的伺服器有設定冷卻期）。",
+			"embedTitleApproved": "✅ 內容創作者申請已核准",
+			"embedTitleRejected": "❌ 內容創作者申請未獲核准"
+		},
+		"autoRejectApplicantReason": "重複或冒用：這個 TikTok 使用者名稱已經連結到另一個 Discord 帳號。",
+		"errors": {
+			"notConfigured": "❌ 這個伺服器尚未設定內容創作者申請功能。",
+			"alreadyCreator": "✅ 你已經擁有這個伺服器的內容創作者身分組。",
+			"invalidUsername": "❌ TikTok 使用者名稱無效。只能使用英文字母、數字、句點和底線。",
+			"reasonRequired": "❌ 請填寫你想成為內容創作者的理由。",
+			"pendingExists": "❌ 你已經有一份待審核的內容創作者申請。",
+			"cooldown": "❌ 你必須等待 **{days} 天** 才能再次提交內容創作者申請。",
+			"submitFailed": "❌ 內容創作者申請提交失敗：{error}",
+			"permissionDenied": "❌ 你需要管理員權限才能核准或駁回內容創作者申請。",
+			"reviewReasonRequired": "❌ 請輸入你做出這個決定的理由。"
+		},
+		"live": {
+			"digest": "📊 **直播** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "直播 #{streamId}",
+			"endedTitle": "⚫ 直播已結束",
+			"errorTitle": "⚠️ 直播連線錯誤",
+			"sessionLine": "直播場次 **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ 申請編號無效。",
+			"applicationNotFound": "❌ 找不到這份申請。",
+			"alreadyProcessed": "⚠️ 這份申請已經處理過了。",
+			"approvedReply": "✅ 申請 #{appId} 已核准。",
+			"rejectedReply": "❌ 申請 #{appId} 已駁回。"
+		}
+	},
+	"notifications": {
+		"button": "🔔 通知",
+		"title": "🔔 通知偏好設定",
+		"description": "選擇你想接收通知的頻道。有新通知時，會個別提及你。",
+		"selectPlaceholder": "選擇通知頻道……",
+		"updated": "✅ 你的通知偏好設定已更新。",
+		"errors": {
+			"notConfigured": "❌ 這個伺服器尚未設定通知。",
+			"noRoles": "❌ 目前還沒有設定任何通知頻道。請管理員到控制台設定通知。",
+			"noneEnabled": "❌ 這個伺服器沒有啟用任何通知功能。"
+		},
+		"hub": {
+			"title": "🔔 通知偏好設定",
+			"description": "選擇你要管理的通知類型。",
+			"channels": "📢 頻道通知",
+			"roblox": "🛍️ Roblox 物品通知",
+			"creators": "📡 創作者通知"
+		},
+		"active": "**已開啟：** {channels}",
+		"none": "**已開啟：** 目前沒有。"
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 建立支持者專屬身分組",
+			"editTitle": "💎 編輯支持者專屬身分組",
+			"nameLabel": "身分組名稱",
+			"namePlaceholder": "輸入你的專屬身分組名稱……",
+			"colorLabel": "身分組顏色（十六進位／十進位／顏色名稱）",
+			"colorPlaceholder": "#FF5733 或 16729395 或 紅色（選填）",
+			"iconLabel": "身分組圖示（表情符號或圖片網址）",
+			"iconPlaceholder": "🔥 或 https://example.com/icon.png（選填）"
+		},
+		"existing": {
+			"title": "💎 支持者專屬身分組",
+			"description": "你已經有一個專屬身分組：**{roleName}**\\n\\n請選擇要執行的操作：",
+			"currentRole": "📋 目前的身分組"
+		},
+		"created": {
+			"title": "✅ 支持者專屬身分組已建立！",
+			"description": "你的專屬身分組 **{roleName}** 已建立並指派給你！{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **無法使用自訂圖示：** 這個伺服器需要達到伺服器加成等級 2，才能使用身分組自訂圖示（圖片）。你可以改用表情符號！",
+			"iconWarningGeneric": "\\n\\n⚠️ **注意：** 圖示設定失敗，但身分組已成功建立。",
+			"roleDetails": "🎨 身分組詳細資料",
+			"roleDetailsValue": "**名稱：** {name}\\n**顏色：** {color}\\n**圖示：** {icon}",
+			"role": "💎 身分組",
+			"iconStatusSet": "已設定",
+			"iconStatusNone": "無",
+			"iconStatusFailed": "失敗（身分組已建立，但沒有圖示）",
+			"iconStatusInvalid": "格式無效（身分組已建立，但沒有圖示）"
+		},
+		"updated": {
+			"title": "✅ 支持者專屬身分組已更新！",
+			"description": "你的專屬身分組 **{roleName}** 已更新！{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **無法使用自訂圖示：** 這個伺服器需要達到伺服器加成等級 2，才能使用身分組自訂圖示（圖片）。你可以改用表情符號！",
+			"iconWarningGeneric": "\\n\\n⚠️ **注意：** 圖示設定失敗，但身分組已成功更新。",
+			"roleDetails": "🎨 身分組詳細資料",
+			"roleDetailsValue": "**名稱：** {name}\\n**顏色：** {color}\\n**圖示：** {icon}",
+			"role": "💎 身分組",
+			"iconStatusUnchanged": "未變更",
+			"iconStatusUpdated": "已更新",
+			"iconStatusRemoved": "已移除",
+			"iconStatusFailed": "失敗（身分組已更新，但沒有圖示）",
+			"iconStatusInvalid": "格式無效（身分組已更新，但沒有圖示）",
+			"iconFailedFallback": "圖示設定失敗。身分組已更新，但沒有套用自訂圖示。",
+			"iconNote": "⚠️ **圖示注意事項：** {message}"
+		},
+		"deleted": {
+			"title": "✅ 支持者專屬身分組已刪除",
+			"description": "你的專屬身分組 **{roleName}** 已刪除。"
+		},
+		"buttons": {
+			"edit": "✏️ 編輯身分組",
+			"delete": "🗑️ 刪除身分組"
+		},
+		"errors": {
+			"noRole": "❌ 你沒有可以編輯的專屬身分組。",
+			"noRoleDelete": "❌ 你沒有可以刪除的專屬身分組。",
+			"alreadyHasRole": "❌ **你已經有一個專屬身分組**\\n\\n同一時間只能擁有一個支持者專屬身分組。\\n\\n💡 請使用 **✏️ 編輯身分組** 來修改，或先使用 **🗑️ 刪除身分組** 再建立新的。",
+			"invalidName": "❌ **身分組名稱無效**\\n\\n身分組名稱長度必須介於 1 到 100 個字元之間。",
+			"boostRequired": "❌ **無法使用自訂圖示**\\n\\n這個伺服器需要達到 **伺服器加成等級 2**，才能使用身分組自訂圖示（圖片）。\\n\\n💡 **小提示：** 你可以改用 **表情符號**（例如 🔥、⭐ 或任何自訂表情符號），不需要伺服器加成。",
+			"boostRequiredCreate": "❌ **需要伺服器加成**\\n\\n這個伺服器需要達到 **伺服器加成等級 2**，才能建立具備部分功能的支持者專屬身分組。\\n\\n💡 **你可以這樣做：**\\n- 請伺服器管理員將伺服器加成提升到等級 2\\n- 或聯絡伺服器工作人員尋求協助\\n\\n**錯誤詳細資料：** {error}",
+			"createFailed": "❌ **身分組建立失敗**\\n\\n錯誤：{error}\\n\\n請確認：\\n- 機器人擁有建立身分組的權限\\n- 機器人擁有管理身分組的權限\\n- 身分組的位置限制設定正確",
+			"updateFailed": "❌ **身分組更新失敗**\\n\\n錯誤：{error}\\n\\n請確認：\\n- 機器人擁有管理身分組的權限\\n- 身分組的各項限制設定正確",
+			"deleteFailed": "❌ 身分組刪除失敗：{error}",
+			"failed": "❌ 無法開啟身分組建立表單：{error}",
+			"editFailed": "❌ 無法開啟編輯表單：{error}",
+			"createFailedReason": "❌ **身分組建立失敗**\n\n{reason}"
+		},
+		"colorDefault": "預設",
+		"anchor": {
+			"noBoosterRole": "這個伺服器還沒有 Server Booster（伺服器加成者）身分組，要等有人為伺服器加成後才會出現。",
+			"botTooLow": "機器人自己的身分組必須高於 {role}，才能建立支持者身分組。",
+			"unknown": "無法判斷支持者身分組應該放在哪個位置。"
+		},
+		"iconErrors": {
+			"boost": "這個伺服器需要達到伺服器加成等級 2，才能使用身分組自訂圖示。你可以改用表情符號！",
+			"invalidFormat": "網址格式或檔案類型無效"
+		}
+	},
+	"questEnroll": {
+		"menuButton": "🔮 Discord 任務",
+		"listTitle": "🔮 Discord 任務",
+		"listEmpty": "目前沒有進行中的 Discord 任務。",
+		"listAllClaimed": "✅ 你已經領取了所有進行中的 Discord 任務。",
+		"listClaimedTag": "已領取",
+		"claimAllButton": "全部領取",
+		"alreadyClaimed": "已領取",
+		"alreadyClaimedDescription": "你之前已經參加過 **{questName}**，獎勵也已經領取了。每個任務每位成員只能領取一次。",
+		"pendingTitle": "⏳ 正在背景執行",
+		"pendingDescription": "我們 **不會** 將你的 Token 儲存在資料庫中。\n\n**風險：** Discord 可能會限制或停權與這組 Token 綁定的 **使用者帳號**；在某些情況下，**機器人或伺服器** 也可能受到影響。這並非 Discord 官方支援的行為，是你自己選擇繼續的。",
+		"precheckNotFoundTitle": "這個帳號沒有此任務",
+		"precheckNotFoundDescription": "與你的 Token 綁定的 Discord 帳號中沒有這個任務。請開啟 **Discord → 任務**，需要的話先接受任務，然後再試一次。",
+		"precheckExpiredTitle": "任務已過期",
+		"precheckExpiredDescription": "這個 Discord 帳號的此任務已經過期。",
+		"precheckRewardClaimedTitle": "獎勵已領取",
+		"precheckRewardClaimedDescription": "這個任務的獎勵已經在此 **Discord 帳號** 上領取過了（例如在其他伺服器或 Discord 用戶端中完成）。自動參加無法再次領取。",
+		"precheckCompletedTitle": "任務已完成",
+		"precheckCompletedDescription": "這個 **Discord 帳號** 已經完成了任務的所有目標。如果還有尚未領取的獎勵，請到 **Discord → 任務** 領取；自動參加無法再增加進度。",
+		"claimAllPendingTitle": "⏳ 正在領取所有任務",
+		"claimAllPendingDescription": "正在逐一參加 **{count}** 個任務。\n\n我們 **不會** 將你的 Token 儲存在資料庫中。\n\n**風險：** Discord 可能會限制或停權與這組 Token 綁定的 **使用者帳號**；在某些情況下，**機器人或伺服器** 也可能受到影響。這並非 Discord 官方支援的行為，是你自己選擇繼續的。",
+		"claimAllNothingTitle": "沒有可領取的任務",
+		"claimAllNothingDescription": "這個 Discord 帳號目前沒有可以參加的進行中任務。",
+		"autoQuestDisabled": "自動參加任務功能目前已停用，請聯絡伺服器管理員。",
+		"alreadyRunning": "你已經有一個自動任務正在執行，請等它完成後再開始新的。",
+		"announceInChannel": "每個結果都會發布在 {channel}。",
+		"announceDisabled": "尚未設定任務頻道，因此不會發布任何公告，已領取的任務只會在任務清單中標示。",
+		"result": {
+			"reward": "獎勵",
+			"openInDiscord": "在 Discord 中開啟",
+			"errorTitle": "任務參加錯誤",
+			"errorDescription": "{member}（{tag}）\n任務 `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Discord 使用者 Token（不會儲存）",
+			"placeholder": "違反服務條款風險：你的帳號可能被停權，機器人／伺服器也可能受影響。只貼上一次，絕對不要公開。",
+			"claimAllTitle": "全部領取（Token — 高風險）",
+			"enrollTitle": "參加任務（Token — 高風險）"
+		},
+		"tokenTooShort": "Token 太短。",
+		"invalidTokenTitle": "Token 無效",
+		"invalidTokenDescription": "你提供的 Token 似乎無效或已過期。\n`{error}`",
+		"invalidQuestId": "任務 ID 無效。",
+		"missingQuestOrToken": "缺少任務 ID，或 Token 太短。",
+		"taskTypes": {
+			"default": "任務",
+			"WATCH_VIDEO": "觀看影片",
+			"WATCH_VIDEO_ON_MOBILE": "觀看影片（手機版）",
+			"PLAY_ON_DESKTOP": "在電腦版遊玩",
+			"PLAY_ON_DESKTOP_V2": "在電腦版遊玩",
+			"PLAY_ON_XBOX": "在 Xbox 上遊玩",
+			"PLAY_ON_PLAYSTATION": "在 PlayStation 上遊玩",
+			"STREAM_ON_DESKTOP": "在電腦版直播",
+			"PLAY_ACTIVITY": "活動",
+			"ACHIEVEMENT_IN_ACTIVITY": "活動內成就",
+			"ACHIEVEMENT_IN_GAME": "遊戲內成就"
+		},
+		"task": {
+			"forMinute": "{task} {count} 分鐘",
+			"forMinutes": "{task} {count} 分鐘",
+			"forSeconds": "{task} {count} 秒",
+			"secondsTarget": "{task} · {count} 秒",
+			"target": "{task} · 目標 {count}"
+		},
+		"reward": {
+			"fallback": "任務獎勵",
+			"currency": "{count}× Discord 任務貨幣"
+		},
+		"auto": {
+			"notFound": {
+				"title": "參加任務",
+				"description": "這個帳號沒有回傳此任務。請在 Discord 中開啟 **任務**，需要的話先接受任務，並確認 Token 屬於該使用者。"
+			},
+			"expired": {
+				"title": "參加任務",
+				"description": "這個任務已經過期。"
+			},
+			"alreadyComplete": {
+				"title": "✅ 任務已完成",
+				"description": "**獎勵：** {reward}\n如果還沒領取，請到 Discord 用戶端的 **任務** 中領取。"
+			},
+			"enrollFailed": {
+				"title": "參加任務失敗",
+				"description": "參加任務時 Discord 回傳了 HTTP {status}。你可能需要先在用戶端中接受這個任務，或是你的 Token 可能無效。"
+			},
+			"complete": {
+				"title": "✅ 任務完成",
+				"description": "**獎勵：** {reward}\n請開啟 **Discord → 任務**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ 僅完成參加",
+				"description": "已參加 **{quest}**。任務設定中沒有偵測到可執行的目標，如有需要，請在 **Discord** 用戶端中完成。\n\n**獎勵：** {reward}"
+			},
+			"achievementMissing": {
+				"title": "成就任務",
+				"description": "任務設定中缺少應用程式 ID 或成就目標。請在 Discord 用戶端中完成 **{task}**。\n\n**獎勵：** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ 成就任務已完成",
+				"description": "**{quest}**\n**獎勵：** {reward}\n請到 **Discord → 任務** 領取"
+			},
+			"achievementIncomplete": {
+				"title": "成就任務 — 未完成",
+				"description": "{error}\n\n**獎勵：** {reward}"
+			},
+			"activityNoUser": {
+				"title": "活動任務",
+				"description": "無法從 Token 解析出你的使用者 ID。請使用一般的 **使用者** Token（不是機器人 Token）。\n\n**獎勵：** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ 活動任務已完成",
+				"description": "**{quest}**\n**獎勵：** {reward}\n請到 **Discord → 任務** 領取"
+			},
+			"activityIncomplete": {
+				"title": "活動任務 — 未完成",
+				"description": "進度未能及時完成{detail}。\n\n**獎勵：** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ 僅完成參加",
+				"description": "已參加 **{quest}**。**{task}** 需要任務設定中的 **應用程式 ID** 才能傳送 API 心跳訊號，請在 Discord 用戶端（電腦版／主機）中完成。\n\n**獎勵：** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ 任務已完成",
+				"description": "**{quest}**（{task}）\n**獎勵：** {reward}\n請到 **Discord → 任務** 領取"
+			},
+			"platformIncomplete": {
+				"title": "任務 — 未完成",
+				"description": "進度未能及時完成{detail}。如果是 **直播** 或 **主機** 任務，請讓真正的用戶端保持運作，或稍後再試。\n\n**獎勵：** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ 僅完成參加",
+				"description": "已參加 **{quest}**。不支援的任務類型（**{task}**），請在 Discord 用戶端中完成。\n\n**獎勵：** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "參加任務",
+				"description": "無法讀取這個任務的影片長度。"
+			},
+			"videoDone": {
+				"title": "✅ 影片任務已完成",
+				"description": "**{quest}**\n**獎勵：** {reward}\n請到 **Discord → 任務** 領取"
+			},
+			"videoIncomplete": {
+				"title": "參加任務 — 未完成",
+				"description": "進度未能及時達到目標{detail}。請在 Discord 用戶端中看完影片，或再試一次。"
+			}
+		}
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"removed": "🔕 之後不會再因為 **{item}** 提及你。",
+			"saved": "🔔 已儲存。**{item}** 出現以下變動時會提及你：{types}。共 {count} 人追蹤中。",
+			"noTypes": "無",
+			"types": {
+				"price": {
+					"label": "價格",
+					"description": "賣家設定的價格有變動。"
+				},
+				"lowest_resale_price": {
+					"label": "轉售價格",
+					"description": "最低轉售價格有變動。"
+				},
+				"units_available": {
+					"label": "剩餘庫存",
+					"description": "仍可購買的數量有變動。"
+				},
+				"total_quantity": {
+					"label": "總供應量",
+					"description": "總發行數量有變動。"
+				}
+			},
+			"item": {
+				"title": "🔔 物品通知",
+				"description": "選擇 [{item}]({url}) 在哪些情況下要提及你。取消所有選項即可停止這個物品的通知。",
+				"active": "**通知條件：** {types}",
+				"placeholder": "選擇你想收到的通知……"
+			},
+			"menu": {
+				"title": "🛍️ Roblox 物品通知",
+				"description": "你正在追蹤 {count} 個物品。選擇其中一個即可修改通知條件。",
+				"empty": "你還沒有追蹤任何 Roblox 物品。在商品貼文下方點選 🔔 {button} 即可開始。",
+				"placeholder": "選擇要編輯的物品……",
+				"disableAll": "🔕 全部關閉",
+				"disabledAll": "🔕 已關閉 {count} 個物品的通知。"
+			},
+			"errors": {
+				"invalidItem": "❌ 無法從這個按鈕讀取對應的商品。",
+				"memberNotFound": "❌ 你的成員資料尚未同步完成，請稍後再試。"
+			}
+		},
+		"itemFallback": "物品 #{id}",
+		"post": {
+			"free": "免費",
+			"updatedTitle": "【已更新】{name}",
+			"openOnRoblox": "在 Roblox 上開啟",
+			"notifyMe": "通知我",
+			"fields": {
+				"category": "類別",
+				"price": "價格",
+				"creator": "創作者",
+				"quantity": "數量",
+				"favorites": "收藏數",
+				"created": "建立時間",
+				"notifications": "通知",
+				"resalePrice": "轉售價格",
+				"saleEnds": "販售截止"
+			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "新影片",
+				"description": "發布了新影片、Shorts 短片或直播回放。"
+			},
+			"live": {
+				"label": "直播",
+				"description": "創作者開始直播。"
+			},
+			"post": {
+				"label": "新貼文",
+				"description": "發布了新的 YouTube 社群貼文或 TikTok 貼文。"
+			}
+		},
+		"saved": "🔔 已儲存。**{creator}** 有以下動態時會提及你：{types}。共 {count} 人追蹤中。",
+		"removed": "🔕 之後不會再因為 **{creator}** 提及你。",
+		"noTypes": "無",
+		"creator": {
+			"title": "🔔 創作者通知",
+			"description": "選擇 [{creator}]({url})（{platform}）的哪些動態要提及你。取消所有選項即可取消追蹤。",
+			"active": "**通知條件：** {types}",
+			"placeholder": "選擇你想收到的通知……"
+		},
+		"menu": {
+			"title": "📡 創作者通知",
+			"description": "你追蹤了 {count} 位創作者。選擇其中一位即可修改通知條件。",
+			"empty": "你還沒有追蹤任何創作者。點選「➕ 追蹤創作者」即可開始。",
+			"placeholder": "選擇要編輯的創作者……",
+			"follow": "➕ 追蹤創作者",
+			"recent": "🕘 最近的通知",
+			"disableAll": "🔕 全部取消追蹤",
+			"disabledAll": "🔕 已取消追蹤 {count} 位創作者。"
+		},
+		"follow": {
+			"title": "➕ 追蹤創作者",
+			"description": "選擇平台，然後貼上創作者的個人檔案連結或帳號名稱。",
+			"modalTitle": "在 {platform} 上追蹤",
+			"inputLabel": "{platform} 連結或帳號名稱"
+		},
+		"recent": {
+			"title": "🕘 最近的創作者通知",
+			"empty": "還沒有任何創作者通知。你追蹤的創作者發布內容後，就會顯示在這裡。"
+		},
+		"errors": {
+			"invalidCreator": "❌ 無法讀取這個創作者連結或帳號名稱。",
+			"memberNotFound": "❌ 你的成員資料尚未同步完成，請稍後再試。",
+			"notFound": "❌ 找不到符合這個連結或帳號名稱的創作者。",
+			"tiktokCooling": "⏳ TikTok 目前正在限制查詢頻率，請過幾分鐘再試。",
+			"lookupFailed": "❌ 目前無法查詢這位創作者，請稍後再試。"
+		},
+		"post": {
+			"platform": "平台",
+			"type": "類型",
+			"notifications": "通知",
+			"openOn": "在 {platform} 上開啟",
+			"notifyMe": "通知我"
+		}
+	},
+	"moderation": {
+		"button": "🔨 管理",
+		"selectUser": "選擇要處置的成員。",
+		"selectUserPlaceholder": "選擇成員",
+		"selectAction": "選擇要對 {member} 執行的操作。",
+		"selectActionPlaceholder": "選擇操作",
+		"actions": {
+			"warn": "警告",
+			"timeout": "禁言",
+			"untimeout": "解除禁言",
+			"kick": "踢出",
+			"ban": "停權",
+			"tempban": "暫時停權",
+			"clearwarns": "清除警告"
+		},
+		"modal": {
+			"reason": "原因",
+			"duration": "時長（例如 10分鐘、2小時、7天）"
+		},
+		"done": "✅ 已對 {member} 執行「{action}」。案件 #{case}。",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ 請輸入時長，例如 10分鐘、2小時 或 7天。",
+		"notAllowed": "❌ 無法處置伺服器擁有者和機器人。",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ 成員已被警告",
+				"timeout": "🔇 成員已被禁言",
+				"untimeout": "🔊 已解除禁言",
+				"kick": "👢 成員已被踢出",
+				"ban": "🔨 成員已被停權",
+				"tempban": "⏳ 成員已被暫時停權",
+				"unban": "🕊️ 成員已解除停權",
+				"unwarn": "🧹 已移除警告",
+				"clearwarns": "🧹 已清除警告",
+				"tempban_expired": "⌛ 暫時停權已到期"
+			},
+			"bulkTitles": {
+				"role_add": "➕ 批次新增身分組",
+				"role_remove": "➖ 批次移除身分組"
+			},
+			"title": "{action} · 案件 #{case}",
+			"description": "已為 {member} 記錄案件 **#{case}**。",
+			"fields": {
+				"member": "👤 成員",
+				"staff": "🛡️ 工作人員",
+				"source": "📍 來源",
+				"reason": "📝 原因",
+				"duration": "⏱️ 時長",
+				"activeWarnings": "📊 有效警告",
+				"role": "🎭 身分組"
+			},
+			"durationValue": "{duration}（於 {ends} 結束）",
+			"noReason": "未提供原因",
+			"unknown": "未知",
+			"automatic": "自動",
+			"staffFallback": "工作人員",
+			"sources": {
+				"panel": "面板",
+				"menu": "選單",
+				"discord": "Discord",
+				"auto": "自動"
+			},
+			"bulkSummary": "**{done}** 個完成 · {failed} 個失敗",
+			"reasons": {
+				"unwarn": "已移除警告 #{case}",
+				"clearwarns": "已清除 {count} 則警告",
+				"escalation": "有效警告已達 {count} 則",
+				"tempbanExpired": "暫時停權案件 #{case} 已到期"
+			}
+		},
+		"memberDm": {
+			"server": "**伺服器：** {server}",
+			"reason": "**原因：** {reason}",
+			"duration": "**時長：** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n}天",
+			"h": "{n}小時",
+			"m": "{n}分鐘",
+			"s": "{n}秒"
+		}
+	},
+	"setup": {
+		"categoryName": "{botName} 選單",
+		"channels": {
+			"menu": "「💻」選單",
+			"bot_updates": "「⚙️」機器人更新",
+			"welcomer": "「🚪」歡迎",
+			"booster": "「🚀」加成者",
+			"moderation": "「🔨」管理",
+			"leveling": "「🆙」等級",
+			"giveaway": "「🎁」抽獎",
+			"staff_rating": "「⭐」工作人員評分",
+			"discord_quest_notifier": "「📜」discord任務",
+			"content_creator": "「📽️」內容創作者",
+			"roblox_catalog_notifier": "「👗」roblox目錄",
+			"items": "「🛍️」道具",
+			"minigames": "「🎲」小遊戲"
+		},
+		"language": {
+			"title": "🌐 選擇伺服器語言",
+			"description": "為這個伺服器選擇語言。`/setup` 建立的頻道會以這個語言命名，選單、審核貼文、機器人的所有公開訊息，以及 AI 的聊天和語音也都會使用它。\n\n成員仍然可以在選單中，為自己的私人回覆和私訊選擇語言。你之後可以在網頁面板的 **Configuration → Main** 中變更。",
+			"placeholder": "選擇伺服器語言",
+			"working": "⏳ 正在以 **{language}** 進行設定……",
+			"applied": "🌐 伺服器語言：**{language}**"
+		},
+		"commandDescription": "設定機器人：選擇伺服器語言，然後建立選單與頻道。僅限管理員。"
+	},
+	"items": {
+		"common": {
+			"footer": "道具",
+			"aMemberActor": "一位成員",
+			"aMemberTarget": "一位成員",
+			"disguisedMember": "一位神秘成員 🎭",
+			"someone": "有人",
+			"item": "道具",
+			"anItem": "一個道具",
+			"them": "對方",
+			"until": "（持續到 {time}）",
+			"activeUntil": "（效果持續到 {time}）",
+			"luckBonus": "（+{percent}% 幸運 🍀）",
+			"luckTaxDiscount": "（幸運 🍀 減稅 {percent}%）",
+			"addressed": "{member}，{text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "偷竊被擋下",
+				"blockedDescription": "{target} 的 **護盾** 擋下了 {actor} 的偷竊！",
+				"immuneTitle": "偷竊被免疫抵銷",
+				"immuneDescription": "{target} 仍處於免疫狀態。{actor} 的偷竊完全沒有效果，**{item}** 也白白浪費了。"
+			},
+			"bomb": {
+				"blockedTitle": "炸彈被擋下",
+				"blockedDescription": "{target} 的 **護盾** 擋下了 {actor} 的炸彈！",
+				"immuneTitle": "炸彈被免疫抵銷",
+				"immuneDescription": "{target} 仍處於免疫狀態。{actor} 的炸彈完全沒有效果，**{item}** 也白白浪費了。"
+			},
+			"leech": {
+				"blockedTitle": "水蛭被擋下",
+				"blockedDescription": "{target} 的 **護盾** 擋下了 {actor} 的水蛭！",
+				"immuneTitle": "水蛭被免疫抵銷",
+				"immuneDescription": "{target} 仍處於免疫狀態。{actor} 的水蛭完全沒有效果，**{item}** 也白白浪費了。"
+			}
+		},
+		"attack": {
+			"reflectedTitle": "攻擊被反彈",
+			"reflectedDescription": "{target} 把攻擊反彈回 {actor} 身上！",
+			"withItem": "用 **{item}** ",
+			"refundedValue": "{target} 獲得了 {xp} 的理賠",
+			"bountyValue": "{actor} 還領取了 {xp}",
+			"immuneValue": "{target} 的免疫效果持續到 {time}",
+			"steal": {
+				"title": "成員遭到搶劫！",
+				"description": "{actor} {withItem}搶劫了 {target}！"
+			},
+			"bomb": {
+				"title": "成員遭到轟炸！",
+				"description": "{actor} {withItem}轟炸了 {target}！"
+			}
+		},
+		"fields": {
+			"skimRate": "抽成比例",
+			"received": "收到",
+			"tax": "稅金",
+			"bounty": "懸賞",
+			"xpLostByAttacker": "攻擊者損失的 XP",
+			"attacker": "攻擊者",
+			"victim": "受害者",
+			"xpStolen": "被偷走的 XP",
+			"xpDestroyed": "被摧毀的 XP",
+			"insuranceRefund": "保險理賠",
+			"bountyCollected": "領取的懸賞",
+			"immunity": "免疫"
+		},
+		"leech": {
+			"title": "水蛭已附著",
+			"description": "{actor} 在 {target} 身上放了一隻水蛭，效果持續期間會吸走對方一部分 XP。"
+		},
+		"gift": {
+			"title": "禮物已送出",
+			"description": "{actor} 送了一份禮物給 {target}！"
+		},
+		"bounty": {
+			"title": "懸賞已發布",
+			"description": "{actor} 對 {target} 發布了懸賞。下一個偷竊或轟炸他的人就能領走。"
+		},
+		"disguise": {
+			"title": "一位成員消失在人群中",
+			"description": "有人換上了 **偽裝**{until}。他的攻擊將不會顯示名字，而且他已從排行榜上消失。"
+		},
+		"boost": {
+			"title": "加成已啟用",
+			"description": "{actor} 啟用了加成{until}。效果持續期間收益會倍增。"
+		},
+		"shield": {
+			"title": "護盾已啟用",
+			"description": "{actor} 現在受到保護，來襲的偷竊、炸彈和水蛭都會被擋下{until}。"
+		},
+		"reflect": {
+			"title": "反彈已啟用",
+			"description": "{actor} 會把下一次攻擊反彈給攻擊者{until}。"
+		},
+		"insurance": {
+			"title": "保險已啟用",
+			"description": "{actor} 下次被搶劫或轟炸時，將獲得損失 {percent}%{luck} 的理賠{until}。"
+		},
+		"luck": {
+			"title": "幸運已啟用",
+			"description": "{actor} 現在擁有 +{percent}% 幸運，適用於偷竊、炸彈、小遊戲、偵察、水蛭、禮物稅、保險、好友加成和商店價格{until}。"
+		},
+		"spyCaught": {
+			"title": "間諜被抓到了",
+			"description": "{target} 抓到 {spy} 正在偵察自己，對方什麼情報都沒拿到。"
+		},
+		"adminGift": {
+			"title": "禮物送達了",
+			"description": "{member} 收到了管理員贈送的 **{quantity}× {item}**。快去看看你的道具吧！"
+		},
+		"expired": {
+			"boost": {
+				"title": "加成結束",
+				"text": "你的 **{value}× 加成** 效果已經結束。"
+			},
+			"shield": {
+				"title": "護盾結束",
+				"text": "你的 **護盾** 效果已經結束，你可能會再次遭到攻擊。"
+			},
+			"leech": {
+				"title": "水蛭結束",
+				"text": "你的 **{value}% 水蛭** 已經結束。",
+				"textWithTarget": "你對 {target} 施放的 **{value}% 水蛭** 已經結束。"
+			},
+			"reflect": {
+				"title": "反彈結束",
+				"text": "你的 **反彈** 效果已經結束。"
+			},
+			"insurance": {
+				"title": "保險結束",
+				"text": "你的 **保險** 已經到期。"
+			},
+			"disguise": {
+				"title": "偽裝結束",
+				"announcement": "一位成員卸下了偽裝，再次現身了。"
+			},
+			"luck": {
+				"title": "幸運結束",
+				"text": "你的 **+{value}% 幸運** 效果已經結束。"
+			}
+		},
+		"immunityEnded": {
+			"title": "免疫結束",
+			"description": "{member} 已經不再免疫，又可以被攻擊了！",
+			"anonymous": "一位成員已經不再免疫。"
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "偷竊冷卻完畢",
+				"text": "你的偷竊冷卻時間結束了，可以再次偷竊！"
+			},
+			"bomb": {
+				"title": "炸彈冷卻完畢",
+				"text": "你的炸彈冷卻時間結束了，可以再次丟炸彈！"
+			},
+			"insurance": {
+				"title": "保險冷卻完畢",
+				"text": "你的保險冷卻時間結束了，可以再次啟用保險！"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "一位成員",
+		"footer": "小遊戲",
+		"win": {
+			"title": "🎲 小遊戲獲勝！",
+			"description": "{member} 以 {multiplier}× 倍率下注 {wager}，**贏了**！"
+		},
+		"lose": {
+			"title": "🎲 小遊戲落敗",
+			"description": "{member} 以 {multiplier}× 倍率下注 {wager}，結果 **全部輸光**。"
+		},
+		"fields": {
+			"payout": "獎金",
+			"netGain": "淨收益",
+			"winChance": "勝率",
+			"xpLost": "損失的 XP"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ 主題特效轉蛋",
+			"description": "{member} 花了 {cost} 轉蛋，抽中了 **{effect}**！"
+		},
+		"fields": {
+			"effect": "特效",
+			"xpSpent": "花費的 XP",
+			"variant": "款式"
+		}
+	},
+	"tasks": {
+		"footer": "任務",
+		"rarity": {
+			"common": "普通",
+			"uncommon": "罕見",
+			"rare": "稀有",
+			"epic": "史詩",
+			"legendary": "傳說",
+			"mythic": "神話"
+		},
+		"milestones": {
+			"7": "一週",
+			"30": "一個月",
+			"100": "百日",
+			"365": "一年"
+		},
+		"login": {
+			"jackpotTitle": "🎁 第 {day} 天大獎 — {rarity}！",
+			"dropTitle": "✨ {rarity}掉寶！",
+			"description": "{member} 在第 {day} 天抽到了 **{rarity}** 道具！",
+			"fields": {
+				"item": "道具",
+				"rarity": "稀有度",
+				"worth": "價值"
+			}
+		},
+		"streak": {
+			"day": "{count} 天",
+			"days": "{count} 天",
+			"reset": {
+				"title": "💔 連續紀錄中斷",
+				"description": "{member} 錯過了 **{days}**，失去了 **{previous} 天** 的連續紀錄。從第 1 天重新開始。",
+				"descriptionBurned": "{member} 錯過了 **{days}**，失去了 **{previous} 天** 的連續紀錄。{burned}從第 1 天重新開始。",
+				"burnedOne": "為了保住紀錄，用掉了 1 張凍結卡。",
+				"burnedMany": "為了保住紀錄，用掉了 {count} 張凍結卡。"
+			},
+			"frozen": {
+				"title": "🧊 連續紀錄已凍結",
+				"description": "{member} 錯過了 **{days}**，但 {freezes} 保住了 **{streak} 天** 的連續紀錄。",
+				"one": "1 張凍結卡",
+				"many": "{count} 張凍結卡"
+			},
+			"fields": {
+				"longest": "最長紀錄",
+				"freezesUsed": "已使用的凍結卡",
+				"freezesLeft": "剩餘的凍結卡"
+			},
+			"milestone": {
+				"title": "{emoji} {label}連續紀錄",
+				"description": "{member} 剛剛達成 **{streak} 天** 連續紀錄！"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 歡迎加入伺服器！",
+		"fields": {
+			"accountCreated": "📅 帳號建立時間",
+			"memberCount": "👥 成員人數",
+			"invitedBy": "📨 邀請人"
+		},
+		"memberNumber": "第 {count} 位成員",
+		"inviterCount": "{inviter}（{count} 次邀請）",
+		"inviter": {
+			"vanity": "自訂邀請連結",
+			"server": "伺服器邀請連結",
+			"someone": "某人"
+		},
+		"inviteSources": {
+			"invite": "Discord 連結",
+			"personal": "個人連結",
+			"vanity": "自訂邀請連結",
+			"server": "伺服器連結",
+			"manual": "由工作人員設定",
+			"unknown": "未知"
+		},
+		"accountAge": {
+			"today": "今天",
+			"oneDay": "1 天前",
+			"days": "{days} 天前"
+		},
+		"unknownServer": "未知伺服器",
+		"defaultMessages": [
+			"👋 歡迎 {user} 加入 {server}！你是第 {memberCount} 位成員（帳號年齡：{accountAge}）。",
+			"🎉 {user} 加入了 {server}！第 {memberCount} 位成員 | 帳號年齡：{accountAge}。",
+			"🌟 歡迎 {user}！你現在是 {server} 的一份子了（第 {memberCount} 位成員，帳號年齡：{accountAge}）。",
+			"🚀 {user} 剛剛加入了 {server}！第 {memberCount} 位成員 | 帳號年齡：{accountAge}。",
+			"🎊 哈囉 {user}！歡迎來到 {server}！你是第 {memberCount} 位成員（帳號年齡：{accountAge}）。"
+		]
+	},
+	"booster": {
+		"title": "💎 感謝你的加成！",
+		"fields": {
+			"boostLevel": "🚀 加成等級",
+			"totalBoosts": "✨ 加成總數",
+			"boostedSince": "📅 開始加成時間"
+		},
+		"level": "等級 {level}",
+		"justNow": "剛剛",
+		"unknownServer": "未知伺服器",
+		"defaultMessages": [
+			"🎉 {user} 剛剛為 {server} 加成了！目前等級：{boostLevel} | 加成總數：{totalBoosts}。",
+			"💎 感謝 {user} 為 {server} 加成！我們現在是等級 {boostLevel}，共有 {totalBoosts} 次加成。",
+			"🚀 {user} 為 {server} 加成了！伺服器等級：{boostLevel} | 加成數：{totalBoosts}。",
+			"🔥 超級感謝 {user} 為 {server} 加成！加成總數：{totalBoosts}（等級 {boostLevel}）。",
+			"⭐ {user} 剛剛為 {server} 送上一次加成！等級 {boostLevel}，共 {totalBoosts} 次加成。"
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "獎勵",
+			"tasks": "任務內容",
+			"game": "🎮 遊戲",
+			"publisher": "🏢 發行商",
+			"expires": "⏳ 截止時間"
+		},
+		"test": "_測試通知 — 通知功能運作正常。_",
+		"openInDiscord": "在 Discord 中開啟"
+	},
+	"forwarder": {
+		"title": "來自 {channel} 的訊息",
+		"additionalAttachments": "其他附件"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "我現在無法產生回覆，請再試一次。",
+			"keyRejected": "AI API 金鑰遭到拒絕，請檢查機器人面板中的設定。",
+			"rateLimited": "AI 服務目前請求過於頻繁，請稍後再試。",
+			"failed": "連線到 AI 服務時發生錯誤。"
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **未知的指令**：`/{command}`\n\n這個指令不存在。目前只能使用 `/setup`。",
+			"failed": "❌ **指令錯誤**：`/{command}`\n\n指令未能正常執行。\n**錯誤**：{error}\n\n請再試一次；如果問題持續發生，請聯絡管理員。",
+			"unexpected": "❌ **未預期的錯誤**：`/{command}`\n\n發生未預期的錯誤，請再試一次。",
+			"critical": "❌ **嚴重錯誤**：處理你的指令時發生未預期的錯誤。\n\n請稍後再試或聯絡管理員。"
+		}
+	}
+}

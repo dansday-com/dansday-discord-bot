@@ -1,4 +1,4 @@
-import { normalizeMainConfigForPanel } from './mainConfigSettings.js';
+import { normalizeMainConfigForPanel } from './mainConfig.js';
 
 const MAIN = 'Configuration → Main';
 

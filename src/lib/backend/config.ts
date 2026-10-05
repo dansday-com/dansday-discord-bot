@@ -6,11 +6,12 @@ const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { logger } from '../utils/index.js';
-import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
+import { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
+import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
 import { levelRewardsFromSettings, type LevelRewardRules } from '../level-rewards.js';
 import { normalizeServerLanguage } from '../languages.js';
-import { defaultGreetingMessages, greetingMessagesFor, isDefaultGreetingSet } from '../greetingDefaults.js';
+import { defaultGreetingMessages, greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
 
 interface BotConfig {
 	id: number;
@@ -399,6 +400,9 @@ export {
 	fetchQuestsMe,
 	precheckQuestPayloadForEnrollment,
 	runQuestUserAutomation,
+	parseQuestRewardLine,
+	parseQuestTaskLine,
+	questTaskLabel,
 	type DiscordQuestSummary,
 	type QuestAutomationResult
 } from './api/discord-quest-api.js';

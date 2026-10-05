@@ -22,10 +22,13 @@ import {
 	serverLanguageName,
 	type ServerLanguage
 } from '../../../../../../languages.js';
-import { defaultGreetingMessages } from '../../../../../../greetingDefaults.js';
+import { defaultGreetingMessages } from '../../../../../../localizedDefaults.js';
 export const commandDefinition = {
 	name: 'setup',
-	description: 'Set up the bot: creates a {botName} category with all required channels. Administrator only.',
+	description: t('setup.commandDescription', 'en').slice(0, 100),
+	description_localizations: Object.fromEntries(
+		SERVER_LANGUAGES.flatMap((l) => l.discordLocales.filter((loc) => loc !== 'en-US').map((loc) => [loc, t('setup.commandDescription', l.code).slice(0, 100)]))
+	),
 	options: []
 };
 

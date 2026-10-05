@@ -141,6 +141,10 @@ function primaryTaskKeyFromConfig(cfg: Record<string, unknown>): string {
 	return '';
 }
 
+export function questTaskLabel(key: string): string {
+	return labelForTaskKey(key);
+}
+
 function labelForTaskKey(key: string): string {
 	if (!key) return 'Quest';
 	if (TASK_KEY_LABELS[key]) return TASK_KEY_LABELS[key];
@@ -504,16 +508,58 @@ function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record
 }
 
 const DISCORD_QUEST_REWARD_QTY_FIELD = '\u006f\u0072\u0062_quantity';
+const QUEST_REWARD_FALLBACK = 'Quest reward';
+const QUEST_CURRENCY_LABEL = 'Discord quest currency';
+
+export type QuestRewardPart = { kind: 'currency'; quantity: number } | { kind: 'name'; name: string };
+
+export function parseQuestRewardLine(line: unknown): QuestRewardPart[] {
+	const text = String(line ?? '')
+		.replace(/^•\s*/, '')
+		.trim();
+	if (!text || text === QUEST_REWARD_FALLBACK) return [];
+	const currency = new RegExp(`^(\\d+)× ${QUEST_CURRENCY_LABEL}$`);
+	return text.split(' · ').map((part) => {
+		const m = currency.exec(part);
+		return m ? { kind: 'currency', quantity: Number(m[1]) } : { kind: 'name', name: part };
+	});
+}
+
+export type QuestTaskLine =
+	| { kind: 'label' }
+	| { kind: 'minutes'; value: number }
+	| { kind: 'seconds'; value: number }
+	| { kind: 'secondsTarget'; value: number }
+	| { kind: 'target'; value: number }
+	| { kind: 'custom'; text: string };
+
+export function parseQuestTaskLine(line: unknown, taskKey: string): QuestTaskLine {
+	const label = labelForTaskKey(taskKey);
+	const text = String(line ?? '').trim();
+	if (!text || text === label) return { kind: 'label' };
+	const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const shapes: [QuestTaskLine['kind'], RegExp][] = [
+		['minutes', new RegExp(`^${esc} for (\\d+) minutes?$`)],
+		['seconds', new RegExp(`^${esc} for (\\d+(?:\\.\\d+)?) seconds$`)],
+		['secondsTarget', new RegExp(`^${esc} · (\\d+(?:\\.\\d+)?) seconds$`)],
+		['target', new RegExp(`^${esc} · target (\\d+(?:\\.\\d+)?)$`)]
+	];
+	for (const [kind, re] of shapes) {
+		const m = re.exec(text);
+		if (m) return { kind, value: Number(m[1]) } as QuestTaskLine;
+	}
+	return { kind: 'custom', text };
+}
 
 function rewardLineFromQuest(quest: Record<string, unknown>): string {
 	const rewards = rewardListFromQuest(quest);
-	if (rewards.length === 0) return 'Quest reward';
+	if (rewards.length === 0) return QUEST_REWARD_FALLBACK;
 	const parts: string[] = [];
 	for (const r of rewards) {
 		const rec = r as Record<string, unknown>;
 		const qty = rec[DISCORD_QUEST_REWARD_QTY_FIELD];
 		if (typeof qty === 'number' && qty > 0) {
-			parts.push(`${qty}× Discord quest currency`);
+			parts.push(`${qty}× ${QUEST_CURRENCY_LABEL}`);
 			continue;
 		}
 		const nm = (rec.messages as Record<string, unknown> | undefined)?.name;
@@ -531,7 +577,7 @@ function rewardLineFromQuest(quest: Record<string, unknown>): string {
 						: '';
 		if (typeStr) parts.push(typeStr);
 	}
-	return parts.length ? [...new Set(parts)].join(' · ') : 'Quest reward';
+	return parts.length ? [...new Set(parts)].join(' · ') : QUEST_REWARD_FALLBACK;
 }
 
 function rewardJsonMatchesDiscordCurrencyHeuristic(r: Record<string, unknown> | null | undefined): boolean {
@@ -987,13 +1033,36 @@ function enrolledAtMsFromQuest(quest: Record<string, unknown>): number {
 	return Date.now();
 }
 
+export type QuestAutomationCode =
+	| 'notFound'
+	| 'expired'
+	| 'alreadyComplete'
+	| 'enrollFailed'
+	| 'complete'
+	| 'enrolledNoTask'
+	| 'achievementMissing'
+	| 'achievementDone'
+	| 'achievementIncomplete'
+	| 'activityNoUser'
+	| 'activityDone'
+	| 'activityIncomplete'
+	| 'enrolledNeedsAppId'
+	| 'platformDone'
+	| 'platformIncomplete'
+	| 'unsupportedTask'
+	| 'videoNoDuration'
+	| 'videoDone'
+	| 'videoIncomplete';
+
 export type QuestAutomationResult = {
 	ok: boolean;
 	questName: string;
 	rewardLine: string;
 	questUrl: string;
-	title: string;
-	description: string;
+	code: QuestAutomationCode;
+	taskKey?: string;
+	error?: string;
+	httpStatus?: number;
 };
 
 export async function runQuestUserAutomation(userToken: string, questId: string): Promise<QuestAutomationResult> {
@@ -1012,8 +1081,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName: 'Unknown quest',
 				rewardLine: '',
 				questUrl: qUrl,
-				title: 'Quest enroll',
-				description: 'This quest was not returned for that account. Open **Quests** in Discord, accept it if needed, and ensure the token matches that user.'
+				code: 'notFound'
 			};
 		}
 
@@ -1028,8 +1096,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: 'Quest enroll',
-				description: 'That quest has expired.'
+				code: 'expired'
 			};
 		}
 
@@ -1039,8 +1106,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: '✅ Quest already complete',
-				description: `**Reward:** ${rewardLine || 'Quest reward'}\nClaim it in the Discord client under **Quests** if you have not yet.`
+				code: 'alreadyComplete'
 			};
 		}
 
@@ -1057,8 +1123,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: 'Quest enroll failed',
-				description: `Discord returned HTTP ${enrollRes.status} when enrolling. You may need to accept the quest in the client first, or your token may be invalid.`
+				code: 'enrollFailed',
+				httpStatus: enrollRes.status
 			};
 		}
 
@@ -1071,8 +1137,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: '✅ Quest complete',
-				description: `**Reward:** ${rewardLine || 'Quest reward'}\nOpen **Discord → Quests**`
+				code: 'complete'
 			};
 		}
 
@@ -1086,8 +1151,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: '⚠️ Enrolled only',
-				description: `Enrolled in **${questName}**. No runnable task was detected in the quest config — finish in the **Discord** client if needed.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+				code: 'enrolledNoTask'
 			};
 		}
 
@@ -1110,8 +1174,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 					questName,
 					rewardLine,
 					questUrl: qUrl,
-					title: 'Achievement quest',
-					description: `Missing application id or achievement target in the quest config. Finish **${labelForTaskKey(taskKey)}** in the Discord client.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+					code: 'achievementMissing',
+					taskKey
 				};
 			}
 			const ach = await completeAchievementViaDiscordSays(token, applicationId, questTarget);
@@ -1123,8 +1187,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 					questName,
 					rewardLine,
 					questUrl: qUrl,
-					title: '✅ Achievement quest finished',
-					description: `**${questName}**\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
+					code: 'achievementDone'
 				};
 			}
 			return {
@@ -1132,8 +1195,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: 'Achievement quest — incomplete',
-				description: `${ach.error}\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+				code: 'achievementIncomplete',
+				error: ach.error
 			};
 		}
 
@@ -1145,8 +1208,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 					questName,
 					rewardLine,
 					questUrl: qUrl,
-					title: 'Activity quest',
-					description: `Could not resolve your user id from the token. Use a normal **user** token (not a bot token).\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+					code: 'activityNoUser'
 				};
 			}
 			const knownTargetSec = heartbeatDurationTargetSec(taskKey, pt.obj);
@@ -1166,8 +1228,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 					questName,
 					rewardLine,
 					questUrl: qUrl,
-					title: '✅ Activity quest finished',
-					description: `**${questName}**\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
+					code: 'activityDone'
 				};
 			}
 			return {
@@ -1175,8 +1236,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: 'Activity quest — incomplete',
-				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+				code: 'activityIncomplete',
+				error: hb.lastError
 			};
 		}
 
@@ -1204,8 +1265,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 					questName,
 					rewardLine,
 					questUrl: qUrl,
-					title: '⚠️ Enrolled only',
-					description: `Enrolled in **${questName}**. **${labelForTaskKey(taskKey)}** needs an **application id** in the quest config for API heartbeats — finish in the Discord client (desktop / console).\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+					code: 'enrolledNeedsAppId',
+					taskKey
 				};
 			}
 
@@ -1219,8 +1280,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 					questName,
 					rewardLine,
 					questUrl: qUrl,
-					title: '✅ Quest finished',
-					description: `**${questName}** (${labelForTaskKey(taskKey)})\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
+					code: 'platformDone',
+					taskKey
 				};
 			}
 			return {
@@ -1228,8 +1289,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: 'Quest — incomplete',
-				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}. For **stream** or **console** quests, keep the real client active or retry later.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+				code: 'platformIncomplete',
+				error: hb.lastError
 			};
 		}
 
@@ -1239,8 +1300,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: '⚠️ Enrolled only',
-				description: `Enrolled in **${questName}**. Unsupported task type (**${labelForTaskKey(taskKey)}**) — complete it in the Discord client.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
+				code: 'unsupportedTask',
+				taskKey
 			};
 		}
 
@@ -1252,8 +1313,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: 'Quest enroll',
-				description: 'Could not read the video duration for this quest.'
+				code: 'videoNoDuration'
 			};
 		}
 
@@ -1293,8 +1353,7 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				questName,
 				rewardLine,
 				questUrl: qUrl,
-				title: '✅ Video quest finished',
-				description: `**${questName}**\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
+				code: 'videoDone'
 			};
 		}
 
@@ -1303,8 +1362,8 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 			questName,
 			rewardLine,
 			questUrl: qUrl,
-			title: 'Quest enroll — incomplete',
-			description: `Progress did not reach the target in time${lastError ? ` (${lastError})` : ''}. Finish watching in the Discord client or try again.`
+			code: 'videoIncomplete',
+			error: lastError
 		};
 	} finally {
 		wipe();

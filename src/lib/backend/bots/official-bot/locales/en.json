@@ -85,7 +85,8 @@
 			"hours": "hours",
 			"day": "day",
 			"days": "days"
-		}
+		},
+		"defaultFooter": "Powered by {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **Permissions Not Configured**",
 			"description": "The server owner or administrator must configure role permissions before anyone can use the **{action}** feature."
-		}
+		},
+		"requiredRoleFallback": "the required role"
 	},
 	"settings": {
 		"language": {
@@ -718,7 +720,109 @@
 		"invalidTokenTitle": "Invalid token",
 		"invalidTokenDescription": "The token you provided appears to be invalid or expired.\n`{error}`",
 		"invalidQuestId": "Invalid quest id.",
-		"missingQuestOrToken": "Missing quest id or token too short."
+		"missingQuestOrToken": "Missing quest id or token too short.",
+		"taskTypes": {
+			"default": "Quest",
+			"WATCH_VIDEO": "Watch video",
+			"WATCH_VIDEO_ON_MOBILE": "Watch video (mobile)",
+			"PLAY_ON_DESKTOP": "Play on desktop",
+			"PLAY_ON_DESKTOP_V2": "Play on desktop",
+			"PLAY_ON_XBOX": "Play on Xbox",
+			"PLAY_ON_PLAYSTATION": "Play on PlayStation",
+			"STREAM_ON_DESKTOP": "Stream on desktop",
+			"PLAY_ACTIVITY": "Activity",
+			"ACHIEVEMENT_IN_ACTIVITY": "Achievement in activity",
+			"ACHIEVEMENT_IN_GAME": "Achievement in game"
+		},
+		"task": {
+			"forMinute": "{task} for {count} minute",
+			"forMinutes": "{task} for {count} minutes",
+			"forSeconds": "{task} for {count} seconds",
+			"secondsTarget": "{task} · {count} seconds",
+			"target": "{task} · target {count}"
+		},
+		"reward": {
+			"fallback": "Quest reward",
+			"currency": "{count}× Discord quest currency"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Quest enroll",
+				"description": "This quest was not returned for that account. Open **Quests** in Discord, accept it if needed, and make sure the token belongs to that user."
+			},
+			"expired": {
+				"title": "Quest enroll",
+				"description": "That quest has expired."
+			},
+			"alreadyComplete": {
+				"title": "✅ Quest already complete",
+				"description": "**Reward:** {reward}\nClaim it in the Discord client under **Quests** if you have not yet."
+			},
+			"enrollFailed": {
+				"title": "Quest enroll failed",
+				"description": "Discord returned HTTP {status} when enrolling. You may need to accept the quest in the client first, or your token may be invalid."
+			},
+			"complete": {
+				"title": "✅ Quest complete",
+				"description": "**Reward:** {reward}\nOpen **Discord → Quests**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Enrolled only",
+				"description": "Enrolled in **{quest}**. No runnable task was detected in the quest config — finish in the **Discord** client if needed.\n\n**Reward:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Achievement quest",
+				"description": "Missing application id or achievement target in the quest config. Finish **{task}** in the Discord client.\n\n**Reward:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Achievement quest finished",
+				"description": "**{quest}**\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"achievementIncomplete": {
+				"title": "Achievement quest — incomplete",
+				"description": "{error}\n\n**Reward:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Activity quest",
+				"description": "Could not resolve your user id from the token. Use a normal **user** token (not a bot token).\n\n**Reward:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Activity quest finished",
+				"description": "**{quest}**\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"activityIncomplete": {
+				"title": "Activity quest — incomplete",
+				"description": "Progress did not finish in time{detail}.\n\n**Reward:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Enrolled only",
+				"description": "Enrolled in **{quest}**. **{task}** needs an **application id** in the quest config for API heartbeats — finish in the Discord client (desktop / console).\n\n**Reward:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Quest finished",
+				"description": "**{quest}** ({task})\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"platformIncomplete": {
+				"title": "Quest — incomplete",
+				"description": "Progress did not finish in time{detail}. For **stream** or **console** quests, keep the real client active or retry later.\n\n**Reward:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Enrolled only",
+				"description": "Enrolled in **{quest}**. Unsupported task type (**{task}**) — complete it in the Discord client.\n\n**Reward:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Quest enroll",
+				"description": "Could not read the video duration for this quest."
+			},
+			"videoDone": {
+				"title": "✅ Video quest finished",
+				"description": "**{quest}**\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"videoIncomplete": {
+				"title": "Quest enroll — incomplete",
+				"description": "Progress did not reach the target in time{detail}. Finish watching in the Discord client or try again."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -919,6 +1023,12 @@
 			"server": "**Server:** {server}",
 			"reason": "**Reason:** {reason}",
 			"duration": "**Duration:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n}d",
+			"h": "{n}h",
+			"m": "{n}m",
+			"s": "{n}s"
 		}
 	},
 	"setup": {
@@ -944,7 +1054,8 @@
 			"placeholder": "Select the server language",
 			"working": "⏳ Setting up in **{language}**…",
 			"applied": "🌐 Server language: **{language}**"
-		}
+		},
+		"commandDescription": "Set up the bot: pick the server language, then create the menu and channels. Admins only."
 	},
 	"items": {
 		"common": {
@@ -1216,7 +1327,14 @@
 			"oneDay": "1 day ago",
 			"days": "{days} days ago"
 		},
-		"unknownServer": "Unknown Server"
+		"unknownServer": "Unknown Server",
+		"defaultMessages": [
+			"👋 Welcome {user} to {server}! You are member #{memberCount} (Account age: {accountAge}).",
+			"🎉 {user} joined {server}! Member #{memberCount} | Account age: {accountAge}.",
+			"🌟 Welcome {user}! You're now part of {server} (Member #{memberCount}, Account age: {accountAge}).",
+			"🚀 {user} just joined {server}! Member #{memberCount} | Account age: {accountAge}.",
+			"🎊 Hello {user}! Welcome to {server}! You're member #{memberCount} (Account age: {accountAge})."
+		]
 	},
 	"booster": {
 		"title": "💎 Thank You for Boosting!",
@@ -1227,10 +1345,16 @@
 		},
 		"level": "Level {level}",
 		"justNow": "Just now",
-		"unknownServer": "Unknown Server"
+		"unknownServer": "Unknown Server",
+		"defaultMessages": [
+			"🎉 {user} just boosted {server}! Current level: {boostLevel} | Total boosts: {totalBoosts}.",
+			"💎 Thanks {user} for boosting {server}! We're now Level {boostLevel} with {totalBoosts} boosts.",
+			"🚀 {user} boosted {server}! Server Level: {boostLevel} | Boosts: {totalBoosts}.",
+			"🔥 Huge thanks to {user} for boosting {server}! Total boosts: {totalBoosts} (Level {boostLevel}).",
+			"⭐ {user} just gave {server} a boost! Level {boostLevel} with {totalBoosts} boosts."
+		]
 	},
 	"questNotifier": {
-		"defaultReward": "• Quest reward",
 		"fields": {
 			"rewards": "Rewards",
 			"tasks": "Tasks",
@@ -1244,5 +1368,21 @@
 	"forwarder": {
 		"title": "Message from {channel}",
 		"additionalAttachments": "Additional Attachments"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "I could not generate a response right now. Please try again.",
+			"keyRejected": "The AI API key was rejected. Please check the bot panel settings.",
+			"rateLimited": "The AI service is rate limited right now. Please try again in a moment.",
+			"failed": "Something went wrong while contacting the AI service."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Unknown Command**: `/{command}`\n\nThis command doesn't exist. Only `/setup` is available.",
+			"failed": "❌ **Command Error**: `/{command}`\n\nThe command failed to execute properly.\n**Error**: {error}\n\nPlease try again or contact an administrator if the issue persists.",
+			"unexpected": "❌ **Unexpected Error**: `/{command}`\n\nAn unexpected error occurred. Please try again.",
+			"critical": "❌ **Critical Error**: An unexpected error occurred while processing your command.\n\nPlease try again later or contact an administrator."
+		}
 	}
 }

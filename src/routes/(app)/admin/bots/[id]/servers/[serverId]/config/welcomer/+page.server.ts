@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { greetingMessagesFor } from '$lib/greetingDefaults.js';
+import { greetingMessagesFor } from '$lib/localizedDefaults.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

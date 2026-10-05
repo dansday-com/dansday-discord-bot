@@ -3,6 +3,7 @@ import type { APIApplicationCommand } from 'discord-api-types/v10';
 import { getBotToken, getApplicationId } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { commandDefinition as setupCommand, execute as setupExecute } from './commands/admin/setup.js';
+import { translate } from '../i18n.js';
 
 const commandDefinitions = [setupCommand];
 
@@ -56,6 +57,8 @@ async function deployCommands(_clearFirst = false) {
 function init(client: any) {
 	client.on('interactionCreate', async (interaction: any) => {
 		if (interaction.isChatInputCommand()) {
+			const guildId = interaction.guild?.id ?? '';
+			const userId = interaction.user?.id ?? '';
 			try {
 				const user = interaction.user;
 				const commandName = interaction.commandName;
@@ -72,15 +75,15 @@ function init(client: any) {
 					let errorMessage: string;
 					switch (result.reason) {
 						case 'unknown_command':
-							errorMessage = `❌ **Unknown Command**: \`/${interaction.commandName}\`\n\nThis command doesn't exist. Only \`/setup\` is available.`;
+							errorMessage = await translate('commands.errors.unknown', guildId, userId, { command: interaction.commandName });
 							await logger.log(`❌ Unknown command attempted: /${interaction.commandName} by ${interaction.user.tag}`);
 							break;
 						case 'execution_error':
-							errorMessage = `❌ **Command Error**: \`/${interaction.commandName}\`\n\nThe command failed to execute properly.\n**Error**: ${result.error}\n\nPlease try again or contact an administrator if the issue persists.`;
+							errorMessage = await translate('commands.errors.failed', guildId, userId, { command: interaction.commandName, error: result.error });
 							await logger.log(`❌ Command execution error: /${interaction.commandName} by ${interaction.user.tag} - ${result.error}`);
 							break;
 						default:
-							errorMessage = `❌ **Unexpected Error**: \`/${interaction.commandName}\`\n\nAn unexpected error occurred. Please try again.`;
+							errorMessage = await translate('commands.errors.unexpected', guildId, userId, { command: interaction.commandName });
 							await logger.log(`❌ Unexpected command error: /${interaction.commandName} by ${interaction.user.tag} - ${result.reason}`);
 					}
 					await interaction.reply({ content: errorMessage, flags: 64 });
@@ -91,7 +94,7 @@ function init(client: any) {
 				await logger.log(`❌ Critical error in interaction handler: ${error.message}`);
 				try {
 					await interaction.reply({
-						content: `❌ **Critical Error**: An unexpected error occurred while processing your command.\n\nPlease try again later or contact an administrator.`,
+						content: await translate('commands.errors.critical', guildId, userId),
 						flags: 64
 					});
 				} catch (replyError: any) {

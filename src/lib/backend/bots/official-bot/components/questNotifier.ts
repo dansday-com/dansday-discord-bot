@@ -11,6 +11,7 @@ import {
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { serverTranslator } from '../i18n.js';
+import { questRewardText, questTaskText } from './questText.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
@@ -61,9 +62,9 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const tr = await serverTranslator(guildId);
-	const rewardsCore = quest.reward || tr('questNotifier.defaultReward');
+	const rewardsCore = questRewardText(tr, quest.reward);
 	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
-	const taskBlock = `• ${(quest.questDescription || quest.taskTypeLabel).slice(0, 1006)} ▶️`.slice(0, 1024);
+	const taskBlock = `• ${questTaskText(tr, quest.questDescription || quest.taskTypeLabel, quest.taskTypeKey).slice(0, 1006)} ▶️`.slice(0, 1024);
 	const expiresBlock = quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? discordTs(quest.expiresAt, 'R') : '—';
 
 	const fields: { name: string; value: string; inline?: boolean }[] = [

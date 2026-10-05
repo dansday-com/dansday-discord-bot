@@ -85,7 +85,8 @@
 			"hours": "ساعات",
 			"day": "يوم",
 			"days": "أيام"
-		}
+		},
+		"defaultFooter": "مدعوم من {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **الصلاحيات غير مُعدّة**",
 			"description": "على مالك الخادم أو أحد المشرفين ضبط صلاحيات الرتب قبل أن يتمكن أي أحد من استخدام ميزة **{action}**."
-		}
+		},
+		"requiredRoleFallback": "الرتبة المطلوبة"
 	},
 	"settings": {
 		"language": {
@@ -718,7 +720,109 @@
 		"invalidTokenTitle": "توكن غير صالح",
 		"invalidTokenDescription": "يبدو أن التوكن الذي قدمته غير صالح أو منتهي الصلاحية.\n`{error}`",
 		"invalidQuestId": "معرّف المهمة غير صالح.",
-		"missingQuestOrToken": "معرّف المهمة مفقود أو التوكن قصير جدًا."
+		"missingQuestOrToken": "معرّف المهمة مفقود أو التوكن قصير جدًا.",
+		"taskTypes": {
+			"default": "مهمة",
+			"WATCH_VIDEO": "مشاهدة فيديو",
+			"WATCH_VIDEO_ON_MOBILE": "مشاهدة فيديو (الجوال)",
+			"PLAY_ON_DESKTOP": "اللعب على الكمبيوتر",
+			"PLAY_ON_DESKTOP_V2": "اللعب على الكمبيوتر",
+			"PLAY_ON_XBOX": "اللعب على Xbox",
+			"PLAY_ON_PLAYSTATION": "اللعب على PlayStation",
+			"STREAM_ON_DESKTOP": "البث من الكمبيوتر",
+			"PLAY_ACTIVITY": "نشاط",
+			"ACHIEVEMENT_IN_ACTIVITY": "إنجاز في نشاط",
+			"ACHIEVEMENT_IN_GAME": "إنجاز في لعبة"
+		},
+		"task": {
+			"forMinute": "{task} لمدة {count} دقيقة",
+			"forMinutes": "{task} لمدة {count} دقيقة",
+			"forSeconds": "{task} لمدة {count} ثانية",
+			"secondsTarget": "{task} · {count} ثانية",
+			"target": "{task} · الهدف {count}"
+		},
+		"reward": {
+			"fallback": "مكافأة المهمة",
+			"currency": "{count}× من عملة مهام Discord"
+		},
+		"auto": {
+			"notFound": {
+				"title": "التسجيل في المهمة",
+				"description": "لم تظهر هذه المهمة لذلك الحساب. افتح **المهام** في Discord، واقبلها إن لزم الأمر، وتأكد من أن التوكن يخص ذلك المستخدم."
+			},
+			"expired": {
+				"title": "التسجيل في المهمة",
+				"description": "انتهت صلاحية تلك المهمة."
+			},
+			"alreadyComplete": {
+				"title": "✅ المهمة مكتملة بالفعل",
+				"description": "**المكافأة:** {reward}\nاستلمها من تطبيق Discord ضمن **المهام** إن لم تفعل بعد."
+			},
+			"enrollFailed": {
+				"title": "فشل التسجيل في المهمة",
+				"description": "أعاد Discord الرمز HTTP {status} أثناء التسجيل. قد تحتاج إلى قبول المهمة في التطبيق أولًا، أو قد يكون التوكن الخاص بك غير صالح."
+			},
+			"complete": {
+				"title": "✅ اكتملت المهمة",
+				"description": "**المكافأة:** {reward}\nافتح **Discord ← المهام**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ تم التسجيل فقط",
+				"description": "تم التسجيل في **{quest}**. لم يُعثر على أي هدف قابل للتنفيذ في إعدادات المهمة — أكملها في تطبيق **Discord** إن لزم الأمر.\n\n**المكافأة:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "مهمة إنجاز",
+				"description": "معرّف التطبيق أو هدف الإنجاز مفقود في إعدادات المهمة. أكمل **{task}** في تطبيق Discord.\n\n**المكافأة:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ اكتملت مهمة الإنجاز",
+				"description": "**{quest}**\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"achievementIncomplete": {
+				"title": "مهمة إنجاز — غير مكتملة",
+				"description": "{error}\n\n**المكافأة:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "مهمة نشاط",
+				"description": "تعذّر تحديد معرّف المستخدم الخاص بك من التوكن. استخدم توكن **مستخدم** عاديًا (وليس توكن بوت).\n\n**المكافأة:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ اكتملت مهمة النشاط",
+				"description": "**{quest}**\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"activityIncomplete": {
+				"title": "مهمة نشاط — غير مكتملة",
+				"description": "لم يكتمل التقدّم في الوقت المحدد{detail}.\n\n**المكافأة:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ تم التسجيل فقط",
+				"description": "تم التسجيل في **{quest}**. يحتاج **{task}** إلى **معرّف تطبيق** في إعدادات المهمة لإرسال نبضات API — أكملها في تطبيق Discord (الكمبيوتر / جهاز الألعاب).\n\n**المكافأة:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ انتهت المهمة",
+				"description": "**{quest}** ({task})\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"platformIncomplete": {
+				"title": "المهمة — غير مكتملة",
+				"description": "لم يكتمل التقدّم في الوقت المحدد{detail}. في مهام **البث** أو **أجهزة الألعاب**، أبقِ التطبيق الحقيقي نشطًا أو أعد المحاولة لاحقًا.\n\n**المكافأة:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ تم التسجيل فقط",
+				"description": "تم التسجيل في **{quest}**. نوع هدف غير مدعوم (**{task}**) — أكمله في تطبيق Discord.\n\n**المكافأة:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "التسجيل في المهمة",
+				"description": "تعذّرت قراءة مدة الفيديو لهذه المهمة."
+			},
+			"videoDone": {
+				"title": "✅ اكتملت مهمة الفيديو",
+				"description": "**{quest}**\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"videoIncomplete": {
+				"title": "التسجيل في المهمة — غير مكتمل",
+				"description": "لم يصل التقدّم إلى الهدف في الوقت المحدد{detail}. أكمل المشاهدة في تطبيق Discord أو حاول مجددًا."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -919,6 +1023,12 @@
 			"server": "**الخادم:** {server}",
 			"reason": "**السبب:** {reason}",
 			"duration": "**المدة:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} يوم",
+			"h": "{n} ساعة",
+			"m": "{n} دقيقة",
+			"s": "{n} ثانية"
 		}
 	},
 	"setup": {
@@ -944,7 +1054,8 @@
 			"placeholder": "اختر لغة الخادم",
 			"working": "⏳ جارٍ الإعداد باللغة **{language}**…",
 			"applied": "🌐 لغة الخادم: **{language}**"
-		}
+		},
+		"commandDescription": "إعداد البوت: اختر لغة الخادم، ثم أنشئ القائمة والقنوات. للمشرفين فقط."
 	},
 	"items": {
 		"common": {
@@ -1216,7 +1327,14 @@
 			"oneDay": "قبل يوم واحد",
 			"days": "قبل {days} يومًا"
 		},
-		"unknownServer": "خادم غير معروف"
+		"unknownServer": "خادم غير معروف",
+		"defaultMessages": [
+			"👋 أهلاً بك {user} في {server}! أنت العضو رقم {memberCount} (عمر الحساب: {accountAge}).",
+			"🎉 انضم {user} إلى {server}! العضو رقم {memberCount} | عمر الحساب: {accountAge}.",
+			"🌟 مرحباً {user}! أصبحت الآن جزءاً من {server} (العضو رقم {memberCount}، عمر الحساب: {accountAge}).",
+			"🚀 انضم {user} للتو إلى {server}! العضو رقم {memberCount} | عمر الحساب: {accountAge}.",
+			"🎊 أهلاً {user}! مرحباً بك في {server}! أنت العضو رقم {memberCount} (عمر الحساب: {accountAge})."
+		]
 	},
 	"booster": {
 		"title": "💎 شكرًا لك على تعزيز الخادم!",
@@ -1227,10 +1345,16 @@
 		},
 		"level": "المستوى {level}",
 		"justNow": "الآن",
-		"unknownServer": "خادم غير معروف"
+		"unknownServer": "خادم غير معروف",
+		"defaultMessages": [
+			"🎉 قام {user} للتو بتعزيز {server}! المستوى الحالي: {boostLevel} | إجمالي التعزيزات: {totalBoosts}.",
+			"💎 شكراً {user} على تعزيز {server}! أصبحنا الآن في المستوى {boostLevel} مع {totalBoosts} تعزيزات.",
+			"🚀 قام {user} بتعزيز {server}! مستوى الخادم: {boostLevel} | التعزيزات: {totalBoosts}.",
+			"🔥 شكراً جزيلاً لـ {user} على تعزيز {server}! إجمالي التعزيزات: {totalBoosts} (المستوى {boostLevel}).",
+			"⭐ منح {user} للتو تعزيزاً لـ {server}! المستوى {boostLevel} مع {totalBoosts} تعزيزات."
+		]
 	},
 	"questNotifier": {
-		"defaultReward": "• مكافأة المهمة",
 		"fields": {
 			"rewards": "المكافآت",
 			"tasks": "المهام",
@@ -1244,5 +1368,21 @@
 	"forwarder": {
 		"title": "رسالة من {channel}",
 		"additionalAttachments": "مرفقات إضافية"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "تعذّر عليّ إنشاء رد الآن. حاول مرة أخرى من فضلك.",
+			"keyRejected": "تم رفض مفتاح API الخاص بالذكاء الاصطناعي. يُرجى التحقق من إعدادات لوحة البوت.",
+			"rateLimited": "خدمة الذكاء الاصطناعي بلغت حد الطلبات حاليًا. حاول مرة أخرى بعد قليل.",
+			"failed": "حدث خطأ أثناء الاتصال بخدمة الذكاء الاصطناعي."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **أمر غير معروف**: `/{command}`\n\nهذا الأمر غير موجود. الأمر الوحيد المتاح هو `/setup`.",
+			"failed": "❌ **خطأ في الأمر**: `/{command}`\n\nفشل تنفيذ الأمر بشكل صحيح.\n**الخطأ**: {error}\n\nحاول مرة أخرى أو تواصل مع أحد المشرفين إن استمرت المشكلة.",
+			"unexpected": "❌ **خطأ غير متوقع**: `/{command}`\n\nحدث خطأ غير متوقع. حاول مرة أخرى.",
+			"critical": "❌ **خطأ فادح**: حدث خطأ غير متوقع أثناء معالجة أمرك.\n\nحاول مرة أخرى لاحقًا أو تواصل مع أحد المشرفين."
+		}
 	}
 }

@@ -25,6 +25,7 @@
 		"src/lib/themes.ts",
 		"src/lib/images.ts",
 		"src/lib/languages.ts",
-		"src/lib/greetingDefaults.ts"
+		"src/lib/localizedDefaults.ts",
+		"src/lib/localeStore.ts"
 	]
 }

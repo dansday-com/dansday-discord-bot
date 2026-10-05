@@ -3,6 +3,7 @@ import { getEmbedConfig, runQuestUserAutomation, type QuestAutomationResult } fr
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { serverTranslator } from '../i18n.js';
+import { questResultText, questRewardText } from './questText.js';
 
 const activeEnrollUsers = new Set<string>();
 
@@ -51,11 +52,12 @@ async function postQuestResult(job: QuestEnrollJob | QuestClaimAllJob, result: Q
 	if (!channel) return;
 	const embedConfig = await getEmbedConfig(job.guildId);
 	const tr = await serverTranslator(job.guildId);
+	const text = questResultText(tr, result);
 	const embed = new EmbedBuilder()
 		.setColor(result.ok ? embedConfig.COLOR : 0xed4245)
-		.setTitle(result.title)
-		.setDescription(result.description)
-		.addFields({ name: tr('questEnroll.result.reward'), value: (result.rewardLine || '—').slice(0, 1024), inline: false })
+		.setTitle(text.title.slice(0, 256))
+		.setDescription(text.description.slice(0, 4096))
+		.addFields({ name: tr('questEnroll.result.reward'), value: questRewardText(tr, result.rewardLine).slice(0, 1024), inline: false })
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

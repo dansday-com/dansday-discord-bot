@@ -6,8 +6,10 @@ import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
-import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
-import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
+import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
+import { DEFAULT_LEVELING_SETTINGS } from './backend/config.js';
+import { DEFAULT_SERVER_LANGUAGE } from './languages.js';
+import { defaultGreetingMessages, defaultMainEmbedFooter } from './localizedDefaults.js';
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
@@ -1403,9 +1405,9 @@ async function seedNewServerSettings(serverId: number) {
 		if (component === SERVER_SETTINGS.component.leveling) {
 			Object.assign(baseSettings, DEFAULT_LEVELING_SETTINGS);
 		} else if (component === SERVER_SETTINGS.component.welcomer) {
-			baseSettings.messages = DEFAULT_WELCOMER_MESSAGES;
+			baseSettings.messages = defaultGreetingMessages('welcomer', DEFAULT_SERVER_LANGUAGE);
 		} else if (component === SERVER_SETTINGS.component.booster) {
-			baseSettings.messages = DEFAULT_BOOSTER_MESSAGES;
+			baseSettings.messages = defaultGreetingMessages('booster', DEFAULT_SERVER_LANGUAGE);
 		} else if (component === SERVER_SETTINGS.component.giveaway) {
 			baseSettings.giveaway_min_invites = 0;
 		}
@@ -1421,7 +1423,7 @@ async function seedNewServerSettings(serverId: number) {
 
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
 		color: DEFAULT_MAIN_EMBED_COLOR,
-		footer: DEFAULT_MAIN_EMBED_FOOTER,
+		footer: defaultMainEmbedFooter(DEFAULT_SERVER_LANGUAGE),
 		bot_nickname: DEFAULT_BOT_NICKNAME,
 		...DEFAULT_MODERATION_RULE_SETTINGS,
 		...DEFAULT_LEVEL_REWARD_SETTINGS

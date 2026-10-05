@@ -37,7 +37,7 @@ function clip(text: string, max = 1024) {
 	return text.length > max ? text.substring(0, max - 3) + '...' : text;
 }
 
-export function formatDuration(seconds: number | null | undefined) {
+export function formatDuration(tr: Translator, seconds: number | null | undefined) {
 	if (!seconds || seconds <= 0) return null;
 	const units: [number, string][] = [
 		[86400, 'd'],
@@ -46,14 +46,14 @@ export function formatDuration(seconds: number | null | undefined) {
 	];
 	const parts: string[] = [];
 	let rest = Math.floor(seconds);
-	for (const [size, label] of units) {
+	for (const [size, unit] of units) {
 		const n = Math.floor(rest / size);
 		if (n > 0) {
-			parts.push(`${n}${label}`);
+			parts.push(tr(`moderation.durationUnits.${unit}`, { n }));
 			rest -= n * size;
 		}
 	}
-	if (parts.length === 0) parts.push(`${rest}s`);
+	if (parts.length === 0) parts.push(tr('moderation.durationUnits.s', { n: rest }));
 	return parts.join(' ');
 }
 
@@ -121,7 +121,7 @@ async function recordCase(
 		{ name: tr('moderation.caseLog.fields.source'), value: sourceLabel(tr, opts.source), inline: true },
 		{ name: tr('moderation.caseLog.fields.reason'), value: clip(opts.reason || tr('moderation.caseLog.noReason')), inline: false }
 	];
-	const duration = formatDuration(opts.durationSeconds);
+	const duration = formatDuration(tr, opts.durationSeconds);
 	if (duration && expiresAt) {
 		fields.push({
 			name: tr('moderation.caseLog.fields.duration'),
@@ -157,7 +157,7 @@ async function notifyMember(user: any, guild: any, action: string, reason: strin
 		tr('moderation.memberDm.server', { server: guild.name }),
 		tr('moderation.memberDm.reason', { reason: reason || tr('moderation.caseLog.noReason') })
 	];
-	const duration = formatDuration(durationSeconds);
+	const duration = formatDuration(tr, durationSeconds);
 	if (duration) lines.push(tr('moderation.memberDm.duration', { duration }));
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 	const embed = new EmbedBuilder()

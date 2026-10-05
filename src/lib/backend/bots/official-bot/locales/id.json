@@ -85,7 +85,8 @@
 			"hours": "jam",
 			"day": "hari",
 			"days": "hari"
-		}
+		},
+		"defaultFooter": "Didukung oleh {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **Izin Belum Dikonfigurasi**",
 			"description": "Owner server atau administrator harus mengkonfigurasi izin role sebelum siapapun dapat menggunakan fitur **{action}**."
-		}
+		},
+		"requiredRoleFallback": "role yang diperlukan"
 	},
 	"settings": {
 		"language": {
@@ -718,7 +720,109 @@
 		"invalidTokenTitle": "Token tidak valid",
 		"invalidTokenDescription": "Token yang kamu berikan sepertinya tidak valid atau sudah kedaluwarsa.\n`{error}`",
 		"invalidQuestId": "ID quest tidak valid.",
-		"missingQuestOrToken": "ID quest tidak ada atau token terlalu pendek."
+		"missingQuestOrToken": "ID quest tidak ada atau token terlalu pendek.",
+		"taskTypes": {
+			"default": "Quest",
+			"WATCH_VIDEO": "Tonton video",
+			"WATCH_VIDEO_ON_MOBILE": "Tonton video (seluler)",
+			"PLAY_ON_DESKTOP": "Main di desktop",
+			"PLAY_ON_DESKTOP_V2": "Main di desktop",
+			"PLAY_ON_XBOX": "Main di Xbox",
+			"PLAY_ON_PLAYSTATION": "Main di PlayStation",
+			"STREAM_ON_DESKTOP": "Streaming di desktop",
+			"PLAY_ACTIVITY": "Aktivitas",
+			"ACHIEVEMENT_IN_ACTIVITY": "Pencapaian di aktivitas",
+			"ACHIEVEMENT_IN_GAME": "Pencapaian di game"
+		},
+		"task": {
+			"forMinute": "{task} selama {count} menit",
+			"forMinutes": "{task} selama {count} menit",
+			"forSeconds": "{task} selama {count} detik",
+			"secondsTarget": "{task} · {count} detik",
+			"target": "{task} · target {count}"
+		},
+		"reward": {
+			"fallback": "Hadiah quest",
+			"currency": "{count}× mata uang quest Discord"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Pendaftaran quest",
+				"description": "Quest ini tidak ditemukan untuk akun tersebut. Buka **Quests** di Discord, terima quest jika perlu, dan pastikan token itu milik pengguna tersebut."
+			},
+			"expired": {
+				"title": "Pendaftaran quest",
+				"description": "Quest itu sudah kedaluwarsa."
+			},
+			"alreadyComplete": {
+				"title": "✅ Quest sudah selesai",
+				"description": "**Hadiah:** {reward}\nKlaim di klien Discord pada **Quests** jika belum."
+			},
+			"enrollFailed": {
+				"title": "Gagal mendaftar quest",
+				"description": "Discord mengembalikan HTTP {status} saat mendaftar. Kamu mungkin perlu menerima quest di klien terlebih dahulu, atau token kamu mungkin tidak valid."
+			},
+			"complete": {
+				"title": "✅ Quest selesai",
+				"description": "**Hadiah:** {reward}\nBuka **Discord → Quests**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Hanya terdaftar",
+				"description": "Terdaftar di **{quest}**. Tidak ada tugas yang bisa dijalankan di konfigurasi quest — selesaikan di klien **Discord** jika perlu.\n\n**Hadiah:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Quest pencapaian",
+				"description": "ID aplikasi atau target pencapaian tidak ada di konfigurasi quest. Selesaikan **{task}** di klien Discord.\n\n**Hadiah:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Quest pencapaian selesai",
+				"description": "**{quest}**\n**Hadiah:** {reward}\nKlaim di **Discord → Quests**"
+			},
+			"achievementIncomplete": {
+				"title": "Quest pencapaian — belum selesai",
+				"description": "{error}\n\n**Hadiah:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Quest aktivitas",
+				"description": "Tidak dapat menentukan ID pengguna kamu dari token. Gunakan token **user** biasa (bukan token bot).\n\n**Hadiah:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Quest aktivitas selesai",
+				"description": "**{quest}**\n**Hadiah:** {reward}\nKlaim di **Discord → Quests**"
+			},
+			"activityIncomplete": {
+				"title": "Quest aktivitas — belum selesai",
+				"description": "Progres tidak selesai tepat waktu{detail}.\n\n**Hadiah:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Hanya terdaftar",
+				"description": "Terdaftar di **{quest}**. **{task}** memerlukan **ID aplikasi** di konfigurasi quest untuk heartbeat API — selesaikan di klien Discord (desktop / konsol).\n\n**Hadiah:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Quest selesai",
+				"description": "**{quest}** ({task})\n**Hadiah:** {reward}\nKlaim di **Discord → Quests**"
+			},
+			"platformIncomplete": {
+				"title": "Quest — belum selesai",
+				"description": "Progres tidak selesai tepat waktu{detail}. Untuk quest **streaming** atau **konsol**, biarkan klien asli tetap aktif atau coba lagi nanti.\n\n**Hadiah:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Hanya terdaftar",
+				"description": "Terdaftar di **{quest}**. Jenis tugas tidak didukung (**{task}**) — selesaikan di klien Discord.\n\n**Hadiah:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Pendaftaran quest",
+				"description": "Tidak dapat membaca durasi video untuk quest ini."
+			},
+			"videoDone": {
+				"title": "✅ Quest video selesai",
+				"description": "**{quest}**\n**Hadiah:** {reward}\nKlaim di **Discord → Quests**"
+			},
+			"videoIncomplete": {
+				"title": "Pendaftaran quest — belum selesai",
+				"description": "Progres tidak mencapai target tepat waktu{detail}. Selesaikan menonton di klien Discord atau coba lagi."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -919,6 +1023,12 @@
 			"server": "**Server:** {server}",
 			"reason": "**Alasan:** {reason}",
 			"duration": "**Durasi:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} hari",
+			"h": "{n} jam",
+			"m": "{n} mnt",
+			"s": "{n} dtk"
 		}
 	},
 	"setup": {
@@ -944,7 +1054,8 @@
 			"placeholder": "Pilih bahasa server",
 			"working": "⏳ Menyiapkan dalam **{language}**…",
 			"applied": "🌐 Bahasa server: **{language}**"
-		}
+		},
+		"commandDescription": "Siapkan bot: pilih bahasa server, lalu buat menu dan channel. Khusus admin."
 	},
 	"items": {
 		"common": {
@@ -1216,7 +1327,14 @@
 			"oneDay": "1 hari yang lalu",
 			"days": "{days} hari yang lalu"
 		},
-		"unknownServer": "Server Tidak Dikenal"
+		"unknownServer": "Server Tidak Dikenal",
+		"defaultMessages": [
+			"👋 Selamat datang {user} di {server}! Kamu adalah anggota ke-{memberCount} (Usia akun: {accountAge}).",
+			"🎉 {user} bergabung ke {server}! Anggota ke-{memberCount} | Usia akun: {accountAge}.",
+			"🌟 Selamat datang {user}! Sekarang kamu bagian dari {server} (Anggota ke-{memberCount}, Usia akun: {accountAge}).",
+			"🚀 {user} baru saja bergabung ke {server}! Anggota ke-{memberCount} | Usia akun: {accountAge}.",
+			"🎊 Halo {user}! Selamat datang di {server}! Kamu anggota ke-{memberCount} (Usia akun: {accountAge})."
+		]
 	},
 	"booster": {
 		"title": "💎 Terima Kasih Sudah Boost!",
@@ -1227,10 +1345,16 @@
 		},
 		"level": "Level {level}",
 		"justNow": "Baru saja",
-		"unknownServer": "Server Tidak Dikenal"
+		"unknownServer": "Server Tidak Dikenal",
+		"defaultMessages": [
+			"🎉 {user} baru saja mem-boost {server}! Level saat ini: {boostLevel} | Total boost: {totalBoosts}.",
+			"💎 Terima kasih {user} sudah mem-boost {server}! Sekarang kita Level {boostLevel} dengan {totalBoosts} boost.",
+			"🚀 {user} mem-boost {server}! Level server: {boostLevel} | Boost: {totalBoosts}.",
+			"🔥 Terima kasih banyak {user} sudah mem-boost {server}! Total boost: {totalBoosts} (Level {boostLevel}).",
+			"⭐ {user} baru saja memberi boost untuk {server}! Level {boostLevel} dengan {totalBoosts} boost."
+		]
 	},
 	"questNotifier": {
-		"defaultReward": "• Hadiah quest",
 		"fields": {
 			"rewards": "Hadiah",
 			"tasks": "Tugas",
@@ -1244,5 +1368,21 @@
 	"forwarder": {
 		"title": "Pesan dari {channel}",
 		"additionalAttachments": "Lampiran Tambahan"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "Aku tidak bisa membuat respons saat ini. Silakan coba lagi.",
+			"keyRejected": "API key AI ditolak. Silakan periksa pengaturan di panel bot.",
+			"rateLimited": "Layanan AI sedang terkena batas permintaan. Silakan coba lagi sebentar lagi.",
+			"failed": "Terjadi kesalahan saat menghubungi layanan AI."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Perintah Tidak Dikenal**: `/{command}`\n\nPerintah ini tidak ada. Hanya `/setup` yang tersedia.",
+			"failed": "❌ **Error Perintah**: `/{command}`\n\nPerintah gagal dijalankan dengan benar.\n**Error**: {error}\n\nSilakan coba lagi atau hubungi administrator jika masalah berlanjut.",
+			"unexpected": "❌ **Error Tak Terduga**: `/{command}`\n\nTerjadi kesalahan yang tidak terduga. Silakan coba lagi.",
+			"critical": "❌ **Error Kritis**: Terjadi kesalahan tak terduga saat memproses perintah kamu.\n\nSilakan coba lagi nanti atau hubungi administrator."
+		}
 	}
 }

@@ -85,7 +85,8 @@
 			"hours": "小时",
 			"day": "天",
 			"days": "天"
-		}
+		},
+		"defaultFooter": "由 {domain} 提供支持 {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **权限未配置**",
 			"description": "服务器所有者或管理员必须先配置身份组权限，其他人才能使用 **{action}** 功能。"
-		}
+		},
+		"requiredRoleFallback": "所需的身份组"
 	},
 	"settings": {
 		"language": {
@@ -718,7 +720,109 @@
 		"invalidTokenTitle": "令牌无效",
 		"invalidTokenDescription": "你提供的令牌似乎无效或已过期。\n`{error}`",
 		"invalidQuestId": "任务 ID 无效。",
-		"missingQuestOrToken": "缺少任务 ID 或令牌太短。"
+		"missingQuestOrToken": "缺少任务 ID 或令牌太短。",
+		"taskTypes": {
+			"default": "任务",
+			"WATCH_VIDEO": "观看视频",
+			"WATCH_VIDEO_ON_MOBILE": "观看视频（手机）",
+			"PLAY_ON_DESKTOP": "在桌面端游玩",
+			"PLAY_ON_DESKTOP_V2": "在桌面端游玩",
+			"PLAY_ON_XBOX": "在 Xbox 上游玩",
+			"PLAY_ON_PLAYSTATION": "在 PlayStation 上游玩",
+			"STREAM_ON_DESKTOP": "在桌面端直播",
+			"PLAY_ACTIVITY": "活动",
+			"ACHIEVEMENT_IN_ACTIVITY": "活动内成就",
+			"ACHIEVEMENT_IN_GAME": "游戏内成就"
+		},
+		"task": {
+			"forMinute": "{task} {count} 分钟",
+			"forMinutes": "{task} {count} 分钟",
+			"forSeconds": "{task} {count} 秒",
+			"secondsTarget": "{task} · {count} 秒",
+			"target": "{task} · 目标 {count}"
+		},
+		"reward": {
+			"fallback": "任务奖励",
+			"currency": "{count}× Discord 任务货币"
+		},
+		"auto": {
+			"notFound": {
+				"title": "任务报名",
+				"description": "该账户未返回这个任务。请在 Discord 中打开 **任务**，需要的话先接受任务，并确认令牌属于该用户。"
+			},
+			"expired": {
+				"title": "任务报名",
+				"description": "该任务已过期。"
+			},
+			"alreadyComplete": {
+				"title": "✅ 任务已完成",
+				"description": "**奖励：** {reward}\n如果还没领取，请在 Discord 客户端的 **任务** 中领取。"
+			},
+			"enrollFailed": {
+				"title": "任务报名失败",
+				"description": "报名时 Discord 返回了 HTTP {status}。你可能需要先在客户端中接受该任务，或者你的令牌可能无效。"
+			},
+			"complete": {
+				"title": "✅ 任务完成",
+				"description": "**奖励：** {reward}\n打开 **Discord → 任务**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ 仅已报名",
+				"description": "已报名 **{quest}**。任务配置中未检测到可执行的目标，如有需要，请在 **Discord** 客户端中完成。\n\n**奖励：** {reward}"
+			},
+			"achievementMissing": {
+				"title": "成就任务",
+				"description": "任务配置中缺少应用 ID 或成就目标。请在 Discord 客户端中完成 **{task}**。\n\n**奖励：** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ 成就任务已完成",
+				"description": "**{quest}**\n**奖励：** {reward}\n请在 **Discord → 任务** 中领取"
+			},
+			"achievementIncomplete": {
+				"title": "成就任务 — 未完成",
+				"description": "{error}\n\n**奖励：** {reward}"
+			},
+			"activityNoUser": {
+				"title": "活动任务",
+				"description": "无法从令牌中解析你的用户 ID。请使用普通的 **用户** 令牌（不是机器人令牌）。\n\n**奖励：** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ 活动任务已完成",
+				"description": "**{quest}**\n**奖励：** {reward}\n请在 **Discord → 任务** 中领取"
+			},
+			"activityIncomplete": {
+				"title": "活动任务 — 未完成",
+				"description": "进度未能按时完成{detail}。\n\n**奖励：** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ 仅已报名",
+				"description": "已报名 **{quest}**。**{task}** 需要在任务配置中提供 **应用 ID** 才能发送 API 心跳，请在 Discord 客户端（桌面端 / 主机）中完成。\n\n**奖励：** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ 任务已完成",
+				"description": "**{quest}**（{task}）\n**奖励：** {reward}\n请在 **Discord → 任务** 中领取"
+			},
+			"platformIncomplete": {
+				"title": "任务 — 未完成",
+				"description": "进度未能按时完成{detail}。对于 **直播** 或 **主机** 任务，请保持真实客户端处于活动状态，或稍后重试。\n\n**奖励：** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ 仅已报名",
+				"description": "已报名 **{quest}**。不支持的任务类型（**{task}**），请在 Discord 客户端中完成。\n\n**奖励：** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "任务报名",
+				"description": "无法读取该任务的视频时长。"
+			},
+			"videoDone": {
+				"title": "✅ 视频任务已完成",
+				"description": "**{quest}**\n**奖励：** {reward}\n请在 **Discord → 任务** 中领取"
+			},
+			"videoIncomplete": {
+				"title": "任务报名 — 未完成",
+				"description": "进度未能按时达到目标{detail}。请在 Discord 客户端中看完视频，或重试。"
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -919,6 +1023,12 @@
 			"server": "**服务器：** {server}",
 			"reason": "**原因：** {reason}",
 			"duration": "**时长：** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n}天",
+			"h": "{n}小时",
+			"m": "{n}分钟",
+			"s": "{n}秒"
 		}
 	},
 	"setup": {
@@ -944,7 +1054,8 @@
 			"placeholder": "选择服务器语言",
 			"working": "⏳ 正在以 **{language}** 进行设置…",
 			"applied": "🌐 服务器语言：**{language}**"
-		}
+		},
+		"commandDescription": "设置机器人：选择服务器语言，然后创建菜单和频道。仅限管理员。"
 	},
 	"items": {
 		"common": {
@@ -1216,7 +1327,14 @@
 			"oneDay": "1 天前",
 			"days": "{days} 天前"
 		},
-		"unknownServer": "未知服务器"
+		"unknownServer": "未知服务器",
+		"defaultMessages": [
+			"👋 欢迎 {user} 加入 {server}！你是第 {memberCount} 位成员（账号年龄：{accountAge}）。",
+			"🎉 {user} 加入了 {server}！第 {memberCount} 位成员 | 账号年龄：{accountAge}。",
+			"🌟 欢迎 {user}！你现在是 {server} 的一员了（第 {memberCount} 位成员，账号年龄：{accountAge}）。",
+			"🚀 {user} 刚刚加入了 {server}！第 {memberCount} 位成员 | 账号年龄：{accountAge}。",
+			"🎊 你好 {user}！欢迎来到 {server}！你是第 {memberCount} 位成员（账号年龄：{accountAge}）。"
+		]
 	},
 	"booster": {
 		"title": "💎 感谢你的助力！",
@@ -1227,10 +1345,16 @@
 		},
 		"level": "{level} 级",
 		"justNow": "刚刚",
-		"unknownServer": "未知服务器"
+		"unknownServer": "未知服务器",
+		"defaultMessages": [
+			"🎉 {user} 刚刚助力了 {server}！当前等级：{boostLevel} | 助力总数：{totalBoosts}。",
+			"💎 感谢 {user} 助力 {server}！我们现在是 {boostLevel} 级，共有 {totalBoosts} 次助力。",
+			"🚀 {user} 助力了 {server}！服务器等级：{boostLevel} | 助力数：{totalBoosts}。",
+			"🔥 非常感谢 {user} 助力 {server}！助力总数：{totalBoosts}（{boostLevel} 级）。",
+			"⭐ {user} 刚刚为 {server} 送上一次助力！{boostLevel} 级，共 {totalBoosts} 次助力。"
+		]
 	},
 	"questNotifier": {
-		"defaultReward": "• 任务奖励",
 		"fields": {
 			"rewards": "奖励",
 			"tasks": "任务",
@@ -1244,5 +1368,21 @@
 	"forwarder": {
 		"title": "来自 {channel} 的消息",
 		"additionalAttachments": "其他附件"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "我现在无法生成回复，请重试。",
+			"keyRejected": "AI API 密钥被拒绝，请检查机器人面板设置。",
+			"rateLimited": "AI 服务当前请求过于频繁，请稍后再试。",
+			"failed": "连接 AI 服务时出错。"
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **未知命令**：`/{command}`\n\n此命令不存在。仅可使用 `/setup`。",
+			"failed": "❌ **命令错误**：`/{command}`\n\n命令未能正常执行。\n**错误**：{error}\n\n请重试；如果问题仍然存在，请联系管理员。",
+			"unexpected": "❌ **意外错误**：`/{command}`\n\n发生意外错误，请重试。",
+			"critical": "❌ **严重错误**：处理你的命令时发生意外错误。\n\n请稍后重试或联系管理员。"
+		}
 	}
 }

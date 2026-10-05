@@ -12,7 +12,7 @@ import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
 import { buildKnowledgeTools, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
-import { aiLanguageInstruction } from '../i18n.js';
+import { aiLanguageInstruction, translateServer } from '../i18n.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
@@ -494,7 +494,7 @@ async function handleMessageCreate(message) {
 					await message.reply({ files: imageFiles, allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
 					return;
 				}
-				await message.reply({ content: 'I could not generate a response right now. Please try again.' }).catch(() => {});
+				await message.reply({ content: await translateServer('ai.errors.noResponse', message.guild.id) }).catch(() => {});
 				return;
 			}
 
@@ -531,13 +531,9 @@ async function handleMessageCreate(message) {
 		const status = error instanceof OpenAI.APIError ? error.status : null;
 		await logger.log(`❌ AI chat error${status ? ` (${status})` : ''}: ${error.message}`);
 
-		const notice =
-			status === 401 || status === 403
-				? 'The AI API key was rejected. Please check the bot panel settings.'
-				: status === 429
-					? 'The AI service is rate limited right now. Please try again in a moment.'
-					: 'Something went wrong while contacting the AI service.';
-		await message.reply({ content: notice }).catch(() => {});
+		const noticeKey = status === 401 || status === 403 ? 'ai.errors.keyRejected' : status === 429 ? 'ai.errors.rateLimited' : 'ai.errors.failed';
+		const notice = await translateServer(noticeKey, message.guild?.id ?? '').catch(() => '');
+		if (notice) await message.reply({ content: notice }).catch(() => {});
 	}
 }
 

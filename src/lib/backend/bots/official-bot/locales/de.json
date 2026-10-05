@@ -85,7 +85,8 @@
 			"hours": "Stunden",
 			"day": "Tag",
 			"days": "Tage"
-		}
+		},
+		"defaultFooter": "Bereitgestellt von {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **Berechtigungen nicht konfiguriert**",
 			"description": "Der Serverinhaber oder ein Administrator muss die Rollenberechtigungen konfigurieren, bevor die Funktion **{action}** genutzt werden kann."
-		}
+		},
+		"requiredRoleFallback": "die erforderliche Rolle"
 	},
 	"settings": {
 		"language": {
@@ -718,7 +720,109 @@
 		"invalidTokenTitle": "Ungültiger Token",
 		"invalidTokenDescription": "Der angegebene Token scheint ungültig oder abgelaufen zu sein.\n`{error}`",
 		"invalidQuestId": "Ungültige Quest-ID.",
-		"missingQuestOrToken": "Quest-ID fehlt oder Token zu kurz."
+		"missingQuestOrToken": "Quest-ID fehlt oder Token zu kurz.",
+		"taskTypes": {
+			"default": "Quest",
+			"WATCH_VIDEO": "Video ansehen",
+			"WATCH_VIDEO_ON_MOBILE": "Video ansehen (mobil)",
+			"PLAY_ON_DESKTOP": "Am PC spielen",
+			"PLAY_ON_DESKTOP_V2": "Am PC spielen",
+			"PLAY_ON_XBOX": "Auf Xbox spielen",
+			"PLAY_ON_PLAYSTATION": "Auf PlayStation spielen",
+			"STREAM_ON_DESKTOP": "Am PC streamen",
+			"PLAY_ACTIVITY": "Aktivität",
+			"ACHIEVEMENT_IN_ACTIVITY": "Erfolg in Aktivität",
+			"ACHIEVEMENT_IN_GAME": "Erfolg im Spiel"
+		},
+		"task": {
+			"forMinute": "{task} für {count} Minute",
+			"forMinutes": "{task} für {count} Minuten",
+			"forSeconds": "{task} für {count} Sekunden",
+			"secondsTarget": "{task} · {count} Sekunden",
+			"target": "{task} · Ziel {count}"
+		},
+		"reward": {
+			"fallback": "Quest-Belohnung",
+			"currency": "{count}× Discord-Quest-Währung"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Quest-Anmeldung",
+				"description": "Diese Quest wurde für dieses Konto nicht zurückgegeben. Öffne **Quests** in Discord, nimm sie gegebenenfalls an und stelle sicher, dass der Token zu diesem Benutzer gehört."
+			},
+			"expired": {
+				"title": "Quest-Anmeldung",
+				"description": "Diese Quest ist abgelaufen."
+			},
+			"alreadyComplete": {
+				"title": "✅ Quest bereits abgeschlossen",
+				"description": "**Belohnung:** {reward}\nLöse sie im Discord-Client unter **Quests** ein, falls du das noch nicht getan hast."
+			},
+			"enrollFailed": {
+				"title": "Quest-Anmeldung fehlgeschlagen",
+				"description": "Discord hat bei der Anmeldung HTTP {status} zurückgegeben. Möglicherweise musst du die Quest zuerst im Client annehmen, oder dein Token ist ungültig."
+			},
+			"complete": {
+				"title": "✅ Quest abgeschlossen",
+				"description": "**Belohnung:** {reward}\nÖffne **Discord → Quests**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Nur angemeldet",
+				"description": "Für **{quest}** angemeldet. In der Quest-Konfiguration wurde keine ausführbare Aufgabe gefunden — schließe sie bei Bedarf im **Discord**-Client ab.\n\n**Belohnung:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Erfolgs-Quest",
+				"description": "In der Quest-Konfiguration fehlt die Anwendungs-ID oder das Erfolgsziel. Schließe **{task}** im Discord-Client ab.\n\n**Belohnung:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Erfolgs-Quest abgeschlossen",
+				"description": "**{quest}**\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"achievementIncomplete": {
+				"title": "Erfolgs-Quest — unvollständig",
+				"description": "{error}\n\n**Belohnung:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Aktivitäts-Quest",
+				"description": "Deine Benutzer-ID konnte nicht aus dem Token ermittelt werden. Verwende einen normalen **Nutzer**-Token (keinen Bot-Token).\n\n**Belohnung:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Aktivitäts-Quest abgeschlossen",
+				"description": "**{quest}**\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"activityIncomplete": {
+				"title": "Aktivitäts-Quest — unvollständig",
+				"description": "Der Fortschritt wurde nicht rechtzeitig abgeschlossen{detail}.\n\n**Belohnung:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Nur angemeldet",
+				"description": "Für **{quest}** angemeldet. **{task}** benötigt eine **Anwendungs-ID** in der Quest-Konfiguration für API-Heartbeats — schließe die Quest im Discord-Client ab (PC / Konsole).\n\n**Belohnung:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Quest abgeschlossen",
+				"description": "**{quest}** ({task})\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"platformIncomplete": {
+				"title": "Quest — unvollständig",
+				"description": "Der Fortschritt wurde nicht rechtzeitig abgeschlossen{detail}. Halte bei **Stream**- oder **Konsolen**-Quests den echten Client aktiv oder versuche es später erneut.\n\n**Belohnung:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Nur angemeldet",
+				"description": "Für **{quest}** angemeldet. Nicht unterstützter Aufgabentyp (**{task}**) — schließe die Quest im Discord-Client ab.\n\n**Belohnung:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Quest-Anmeldung",
+				"description": "Die Videodauer für diese Quest konnte nicht gelesen werden."
+			},
+			"videoDone": {
+				"title": "✅ Video-Quest abgeschlossen",
+				"description": "**{quest}**\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"videoIncomplete": {
+				"title": "Quest-Anmeldung — unvollständig",
+				"description": "Der Fortschritt hat das Ziel nicht rechtzeitig erreicht{detail}. Schau das Video im Discord-Client zu Ende oder versuche es erneut."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -919,6 +1023,12 @@
 			"server": "**Server:** {server}",
 			"reason": "**Grund:** {reason}",
 			"duration": "**Dauer:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} T",
+			"h": "{n} Std",
+			"m": "{n} Min",
+			"s": "{n} Sek"
 		}
 	},
 	"setup": {
@@ -944,7 +1054,8 @@
 			"placeholder": "Serversprache auswählen",
 			"working": "⏳ Einrichtung auf **{language}** läuft…",
 			"applied": "🌐 Serversprache: **{language}**"
-		}
+		},
+		"commandDescription": "Bot einrichten: Serversprache wählen, dann Menü und Kanäle erstellen. Nur für Admins."
 	},
 	"items": {
 		"common": {
@@ -1216,7 +1327,14 @@
 			"oneDay": "vor 1 Tag",
 			"days": "vor {days} Tagen"
 		},
-		"unknownServer": "Unbekannter Server"
+		"unknownServer": "Unbekannter Server",
+		"defaultMessages": [
+			"👋 Willkommen {user} auf {server}! Du bist Mitglied #{memberCount} (Kontoalter: {accountAge}).",
+			"🎉 {user} ist {server} beigetreten! Mitglied #{memberCount} | Kontoalter: {accountAge}.",
+			"🌟 Willkommen {user}! Du bist jetzt Teil von {server} (Mitglied #{memberCount}, Kontoalter: {accountAge}).",
+			"🚀 {user} ist gerade {server} beigetreten! Mitglied #{memberCount} | Kontoalter: {accountAge}.",
+			"🎊 Hallo {user}! Willkommen auf {server}! Du bist Mitglied #{memberCount} (Kontoalter: {accountAge})."
+		]
 	},
 	"booster": {
 		"title": "💎 Danke fürs Boosten!",
@@ -1227,10 +1345,16 @@
 		},
 		"level": "Level {level}",
 		"justNow": "Gerade eben",
-		"unknownServer": "Unbekannter Server"
+		"unknownServer": "Unbekannter Server",
+		"defaultMessages": [
+			"🎉 {user} hat {server} gerade geboostet! Aktuelles Level: {boostLevel} | Boosts insgesamt: {totalBoosts}.",
+			"💎 Danke {user} fürs Boosten von {server}! Wir sind jetzt Level {boostLevel} mit {totalBoosts} Boosts.",
+			"🚀 {user} hat {server} geboostet! Server-Level: {boostLevel} | Boosts: {totalBoosts}.",
+			"🔥 Riesigen Dank an {user} fürs Boosten von {server}! Boosts insgesamt: {totalBoosts} (Level {boostLevel}).",
+			"⭐ {user} hat {server} gerade einen Boost geschenkt! Level {boostLevel} mit {totalBoosts} Boosts."
+		]
 	},
 	"questNotifier": {
-		"defaultReward": "• Quest-Belohnung",
 		"fields": {
 			"rewards": "Belohnungen",
 			"tasks": "Aufgaben",
@@ -1244,5 +1368,21 @@
 	"forwarder": {
 		"title": "Nachricht aus {channel}",
 		"additionalAttachments": "Weitere Anhänge"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "Ich konnte gerade keine Antwort erstellen. Bitte versuche es erneut.",
+			"keyRejected": "Der KI-API-Schlüssel wurde abgelehnt. Bitte überprüfe die Einstellungen im Bot-Panel.",
+			"rateLimited": "Der KI-Dienst ist gerade durch ein Ratenlimit eingeschränkt. Bitte versuche es gleich noch einmal.",
+			"failed": "Beim Kontaktieren des KI-Dienstes ist ein Fehler aufgetreten."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Unbekannter Befehl**: `/{command}`\n\nDieser Befehl existiert nicht. Nur `/setup` ist verfügbar.",
+			"failed": "❌ **Befehlsfehler**: `/{command}`\n\nDer Befehl konnte nicht korrekt ausgeführt werden.\n**Fehler**: {error}\n\nBitte versuche es erneut oder wende dich an einen Administrator, wenn das Problem weiterhin besteht.",
+			"unexpected": "❌ **Unerwarteter Fehler**: `/{command}`\n\nEin unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.",
+			"critical": "❌ **Kritischer Fehler**: Beim Verarbeiten deines Befehls ist ein unerwarteter Fehler aufgetreten.\n\nBitte versuche es später erneut oder wende dich an einen Administrator."
+		}
 	}
 }

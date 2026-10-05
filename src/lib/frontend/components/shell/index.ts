@@ -1,5 +1,6 @@
 export { default as PageShell } from './PageShell.svelte';
 export { default as NavTabs } from './NavTabs.svelte';
+export { default as NavWheel } from './NavWheel.svelte';
 export { default as DocHero } from './DocHero.svelte';
 export { default as DocSection } from './DocSection.svelte';
 export { default as StepGrid } from './StepGrid.svelte';

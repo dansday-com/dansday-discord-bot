@@ -88,7 +88,11 @@
 	<meta name="theme-color" content={BRAND_PRIMARY} />
 </svelte:head>
 
-<div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday" style={themeVars(memberTheme)}>
+<div
+	class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip max-sm:has-[[data-nav-wheel]]:pb-22"
+	data-theme="dansday"
+	style={themeVars(memberTheme)}
+>
 	{#if themeBackdrop}
 		<div
 			class="pointer-events-none fixed top-0 left-0 -z-20 h-lvh w-full bg-cover bg-scroll bg-center bg-no-repeat sm:bg-fixed"

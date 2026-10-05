@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
-	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
+	import { NavTabs, NavWheel, type NavTab } from '$lib/frontend/components/shell';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { MemberTheme } from '$lib/themes.js';
@@ -289,7 +289,7 @@
 
 	function flyToBag(fromEl: HTMLElement | null, iconClass: string) {
 		if (!fromEl || typeof document === 'undefined') return;
-		const bagTab = document.querySelector('[data-tab-id="items"]');
+		const bagTab = Array.from(document.querySelectorAll('[data-tab-id="items"]')).find((el) => el.getClientRects().length > 0);
 		if (!bagTab) return;
 		const start = fromEl.getBoundingClientRect();
 		const end = bagTab.getBoundingClientRect();
@@ -562,14 +562,14 @@
 
 	{@render walletHero()}
 
-	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+	<div class="mb-4 hidden flex-wrap items-center justify-between gap-3 sm:flex">
 		<NavTabs variant="segment" tabs={sectionTabs} />
 	</div>
 
 	{#if disabledFeature}
 		{''}
 	{:else if catTabs}
-		<div class="mb-4">
+		<div class="mb-4 hidden sm:block">
 			<NavTabs tabs={catTabs} arrows />
 		</div>
 	{/if}
@@ -579,4 +579,6 @@
 	{:else}
 		{@render children()}
 	{/if}
+
+	<NavWheel tabs={sectionTabs} subTabs={disabledFeature ? null : catTabs} label="Account menu" />
 </div>

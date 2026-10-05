@@ -1235,6 +1235,28 @@
 			"netGain": "Ganancia neta",
 			"winChance": "Probabilidad de ganar",
 			"xpLost": "XP perdida"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 Torre: retirada",
+				"description": "{member} subió hasta el piso {floor} de {floors} y **se retiró con {payout}**."
+			},
+			"cleared": {
+				"title": "🗼 ¡Torre superada!",
+				"description": "¡{member} superó los {floors} pisos y se llevó el **premio gordo de {payout}**!"
+			},
+			"bust": {
+				"title": "🗼 Trampa en la torre",
+				"description": "{member} cayó en una trampa en el piso {floor} y **perdió los {lost} que llevaba**."
+			},
+			"bustEmpty": {
+				"description": "{member} cayó en una trampa en el piso {floor} y se fue con las manos vacías."
+			},
+			"fields": {
+				"floor": "Piso",
+				"safeChance": "Probabilidad de salvarse",
+				"dropped": "Premio perdido"
+			}
 		}
 	},
 	"themeEffects": {

@@ -125,7 +125,8 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 	}));
 }
 
-const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big'];
+const TOWER_METRICS: LeaderboardMetric[] = ['minigames_tower_net', 'minigames_tower_ratio', 'minigames_tower_big'];
+const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big', ...TOWER_METRICS];
 
 function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
@@ -137,13 +138,17 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 	const value = (e: any): number => {
 		switch (metric) {
 			case 'minigames_gamble_ratio':
+			case 'minigames_tower_ratio':
 				return ratio(e);
 			case 'minigames_gamble_big':
+			case 'minigames_tower_big':
 				return Number(e.minigame_big_win ?? 0);
 			default:
 				return Number(e.minigame_net ?? 0);
 		}
 	};
+	const tower = TOWER_METRICS.includes(metric);
+	const tieBreak = (e: any): number => (tower ? Number(e.minigame_net ?? 0) : 0);
 
 	const pool = entries;
 
@@ -151,6 +156,9 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 		const vb = value(b);
 		const va = value(a);
 		if (vb !== va) return vb - va;
+		const tb = tieBreak(b);
+		const ta = tieBreak(a);
+		if (tb !== ta) return tb - ta;
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -173,6 +181,7 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 		minigame_total: Number(e.minigame_total ?? 0),
 		minigame_big_win: Number(e.minigame_big_win ?? 0),
 		minigame_ratio: Math.round(ratio(e) * 10) / 10,
+		...(tower ? { minigame_best_floor: Math.round(Number(e.minigame_best_floor ?? 0)) } : {}),
 		rank: null
 	}));
 }
@@ -353,7 +362,7 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 	let rows: LeaderboardRow[];
 	const since = periodSince(period);
 	if (MINIGAMES_METRICS.includes(metric)) {
-		const entries = await db.getMinigamesLeaderboard(serverId, since).catch(() => []);
+		const entries = await db.getMinigamesLeaderboard(serverId, since, TOWER_METRICS.includes(metric) ? 'tower' : 'gamble').catch(() => []);
 		rows = buildMinigamesRows(entries, metric, limit);
 	} else if (BOUNTY_METRICS.includes(metric)) {
 		const entries = await db.getItemsBountyLeaderboard(serverId, since).catch(() => []);

@@ -317,7 +317,7 @@
 		<MeterBar head="Player win rate" meta="{minigamesWinRate}%" pct={Math.max(4, minigamesWinRate)} />
 		<MiniGrid cols={2}>
 			<MiniStat icon="fa-trophy" value={fmt(liveStats.minigames_biggest_win)} label="Biggest win" />
-			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net <= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="House edge" />
+			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net >= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="Net winnings" />
 		</MiniGrid>
 	</StatCard>
 

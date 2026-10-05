@@ -8,9 +8,10 @@ import {
 	STREAK_FREEZE_EARN_EVERY,
 	LOGIN_CYCLE_DAYS,
 	RECENT_WINDOW_DAYS,
-	dayKeyFor,
-	weekKeyFor,
-	weekStartDayKey,
+	DAY_MINUTES,
+	minuteKeyFor,
+	periodOpen,
+	loginReadyInMs,
 	streakMilestone,
 	xpRewardFor,
 	loginRewardFor,
@@ -92,7 +93,7 @@ async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boo
 }
 
 export async function handleLoginClaim(client: any, payload: any) {
-	const { guild_id, actor_discord_id, tz_offset } = payload || {};
+	const { guild_id, actor_discord_id } = payload || {};
 	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
@@ -109,18 +110,17 @@ export async function handleLoginClaim(client: any, payload: any) {
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!memberId) return { ok: false, error: 'member_not_found' };
 
-	const tzOffsetMin = Number(tz_offset) || 0;
-	const dayKey = dayKeyFor(Date.now(), tzOffsetMin);
+	const nowMs = Date.now();
+	const nowKey = minuteKeyFor(nowMs);
 
 	const before = (await db.ensureMemberClaim(memberId)) as any;
-	if (before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
-		return { ok: false, error: 'already_claimed' };
-	}
+	const readyInMs = loginReadyInMs(before?.last_claim_day_key == null ? null : Number(before.last_claim_day_key), nowMs);
+	if (readyInMs > 0) return { ok: false, error: 'already_claimed', readyInMs };
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const catalog = itemsAllowed ? await loadRewardCatalog(server.id) : [];
 
-	const applied = await db.applyMemberClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
+	const applied = await db.applyMemberClaim(memberId, nowKey, LOGIN_CYCLE_DAYS);
 	if (!applied.changed) return { ok: false, error: 'already_claimed' };
 
 	const day = Number(applied.row?.cycle_day) || 1;
@@ -187,10 +187,11 @@ export async function handleTaskClaim(client: any, payload: any) {
 	const tzOffsetMin = Number(tz_offset) || 0;
 	await db.ensureMemberStreak(memberId, tzOffsetMin).catch(() => null);
 	const nowMs = Date.now();
-	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
-	const weekKey = weekKeyFor(nowMs, tzOffsetMin);
-	const periodKey = period === 'weekly' ? weekKey : dayKey;
-	const windowStartMs = period === 'weekly' ? weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000 : dayKey * 86400000 + tzOffsetMin * 60000;
+	const [latestDaily, latestWeekly] = await Promise.all([db.getLatestTaskKey(memberId, 'daily'), db.getLatestTaskKey(memberId, 'weekly')]);
+	const dayKey = periodOpen(latestDaily, 'daily', nowMs) ? latestDaily : null;
+	const periodKey = period === 'weekly' ? (periodOpen(latestWeekly, 'weekly', nowMs) ? latestWeekly : null) : dayKey;
+	if (periodKey == null) return { ok: false, error: 'task_not_found' };
+	const windowStartMs = periodKey * 60000;
 
 	const rows = (await db.getMemberTasks(memberId, periodKey, period).catch(() => [])) as any[];
 	const row = rows.find((r) => Number(r.slot) === Number(slot));
@@ -219,12 +220,12 @@ export async function handleTaskClaim(client: any, payload: any) {
 		return { ok: false, error: 'grant_failed' };
 	}
 
-	const after = (await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as any[];
+	const after = dayKey == null ? [] : ((await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as any[]);
 	const allClaimed = after.length > 0 && after.every((r) => !!r.claimed_at);
 
 	let streakResult: any = null;
 	let milestone: any = null;
-	streakResult = await db.applyStreakDay(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
+	if (dayKey != null) streakResult = await db.applyStreakDay(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
 	if (streakResult?.changed) {
 		milestone = streakMilestone(Number(streakResult.streak) || 0);
 		await announceStreak(client, guild_id, actor_discord_id, streakResult, milestone).catch(() => null);
@@ -388,12 +389,11 @@ export async function announceStreak(client: any, guildId: any, discordMemberId:
 
 export async function sweepBrokenStreaks(client: any) {
 	const stale = (await db.listStaleStreaks(500).catch(() => [])) as any[];
+	const nowKey = minuteKeyFor(Date.now());
 
 	for (const row of stale) {
-		const tzOffsetMin = Number(row.tz_offset_min) || 0;
-		const today = dayKeyFor(Date.now(), tzOffsetMin);
 		const last = Number(row.last_claim_day_key);
-		const missed = today - last - 1;
+		const missed = Math.floor((nowKey - last) / DAY_MINUTES) - 1;
 		if (missed < 1) continue;
 
 		const streak = Number(row.current_streak) || 0;
@@ -401,7 +401,7 @@ export async function sweepBrokenStreaks(client: any) {
 		const longest = Number(row.longest_streak) || streak;
 
 		if (freezes >= missed) {
-			await db.expireStreak(row.member_id, last + missed, freezes - missed, false).catch(() => null);
+			await db.expireStreak(row.member_id, last + missed * DAY_MINUTES, freezes - missed, false).catch(() => null);
 			await announceStreak(
 				client,
 				row.discord_server_id,
@@ -420,7 +420,7 @@ export async function sweepBrokenStreaks(client: any) {
 			continue;
 		}
 
-		await db.expireStreak(row.member_id, today - 1, freezes, true).catch(() => null);
+		await db.expireStreak(row.member_id, nowKey - DAY_MINUTES, freezes, true).catch(() => null);
 		await announceStreak(
 			client,
 			row.discord_server_id,

@@ -602,6 +602,18 @@ CREATE TABLE IF NOT EXISTS server_member_minigame_logs (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_member_tower_runs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    slot INT NOT NULL DEFAULT 1,
+    floor INT NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'active',
+    payout INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_member_tasks (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
@@ -847,6 +859,7 @@ CREATE INDEX IF NOT EXISTS idx_server_member_claims_member ON server_member_clai
 CREATE INDEX IF NOT EXISTS idx_server_member_streaks_member ON server_member_streaks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_member ON server_member_minigame_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_created ON server_member_minigame_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_tower_runs_member ON server_member_tower_runs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_placed ON server_member_item_bounties(placed_by_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_created ON server_member_item_bounties(created_at);

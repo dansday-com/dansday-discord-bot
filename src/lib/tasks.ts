@@ -1258,6 +1258,28 @@ export const WEEKLY_DIFFICULTY_PLAN: TaskDifficulty[] = Array.from({ length: WEE
 
 export const WEEKLY_REWARD_MULTIPLIER = 6;
 
+export const DAY_MINUTES = 1440;
+
+export function minuteKeyFor(nowMs: number): number {
+	return Math.floor(nowMs / 60000);
+}
+
+export function periodOpen(key: number | null, period: TaskPeriod, nowMs: number): key is number {
+	return key != null && minuteKeyFor(nowMs) - key < PERIOD_MINUTES[period];
+}
+
+export function msUntilPeriodEnds(key: number, period: TaskPeriod, nowMs: number): number {
+	return Math.max(0, (key + PERIOD_MINUTES[period]) * 60000 - nowMs);
+}
+
+export function loginReadyInMs(lastKey: number | null, nowMs: number): number {
+	return lastKey == null ? 0 : Math.max(0, (lastKey + DAY_MINUTES) * 60000 - nowMs);
+}
+
+export function loginCycleBroken(lastKey: number | null, nowMs: number): boolean {
+	return lastKey != null && minuteKeyFor(nowMs) - lastKey >= 2 * DAY_MINUTES;
+}
+
 export function dayKeyFor(nowMs: number, tzOffsetMin = 0): number {
 	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	return Math.floor((nowMs - offsetMs) / 86400000);

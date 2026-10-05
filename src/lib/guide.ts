@@ -1,4 +1,5 @@
 import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectSummary } from './items.js';
+import { TOWER_COOLDOWN_HOURS, TOWER_DOORS, TOWER_FLOORS, TOWER_PRIZES, TOWER_RUNS_PER_DAY } from './tower.js';
 
 export const GUIDE_TITLE = 'How the XP Game Works';
 export const GUIDE_SUBTITLE = 'Earn XP, clear tasks, shop for items, and outplay everyone.';
@@ -117,8 +118,18 @@ export const FEATURES: GuideFeature[] = [
 			{ icon: 'fa-fire', title: 'Keep the streak', desc: 'Finish any one task — daily or weekly — to bank the day. +2% task XP per streak day, up to +100%.' }
 		],
 		cards: [
-			{ icon: 'fa-sun', accent: '#c8911a', title: '18 tasks every day', desc: 'Six easy, six medium, six hard, reset at midnight on your own clock.' },
-			{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '18 weekly tasks', desc: 'All hard, Monday to Sunday, sized against a full week of activity.' },
+			{
+				icon: 'fa-sun',
+				accent: '#c8911a',
+				title: '18 tasks every day',
+				desc: 'Six easy, six medium, six hard. A fresh set comes 24 hours after the current one started.'
+			},
+			{
+				icon: 'fa-calendar-week',
+				accent: '#7b5ea7',
+				title: '18 weekly tasks',
+				desc: 'All hard, sized against a full week of activity. A fresh set comes 7 days after the current one started.'
+			},
 			{
 				icon: 'fa-gauge-high',
 				accent: '#e43d12',
@@ -139,25 +150,32 @@ export const FEATURES: GuideFeature[] = [
 			icon: 'fa-calendar-check',
 			accent: '#c8911a',
 			title: '🎁 Daily check-in',
-			text: 'One claim a day. XP runs 1,000 up to 50,000 on day 7, and every day has a 50% shot at a shop item instead. Rare drops get likelier the deeper you go — mythic 1% on day 1, 4% on day 7. Miss a day and you restart at day 1.'
+			text: 'One claim every 24 hours, counted from your last claim. XP runs 1,000 up to 50,000 on day 7, and every day has a 50% shot at a shop item instead. Rare drops get likelier the deeper you go — mythic 1% on day 1, 4% on day 7. Wait more than 48 hours and you restart at day 1.'
 		}
 	},
 	{
 		id: 'minigames',
 		icon: 'fa-dice',
 		title: 'Minigames',
-		lead: 'Free-to-play games where you wager XP for a shot at more. New games get added over time.',
+		lead: 'Games on the Minigames tab. Gamble wagers XP for a shot at more, Tower is free. New games get added over time.',
 		steps: [
 			{ icon: 'fa-dice', title: 'Open Minigames', desc: 'Pick a game from the Minigames tab. No item or ticket needed.' },
 			{ icon: 'fa-percent', title: 'Set your odds', desc: 'In Gamble you pick the multiplier up to 10×; win chance is 100 ÷ it.' },
 			{ icon: 'fa-coins', title: 'Wager XP', desc: 'Only XP earned above your level is at risk, so a loss never de-levels you.' },
 			{ icon: 'fa-bolt', title: 'Play & win', desc: 'Results post to the channel and feed the Minigames leaderboard.' }
 		],
-		cards: [],
+		cards: [
+			{
+				icon: 'fa-tower-observation',
+				accent: '#1f9e8f',
+				title: 'Tower',
+				desc: `Free, ${TOWER_RUNS_PER_DAY} climbs that come back ${TOWER_COOLDOWN_HOURS} hours after your last one. Each of the ${TOWER_FLOORS} floors has ${TOWER_DOORS} doors and one is a trap. Cash out after any floor, or reach the top for ${TOWER_PRIZES[TOWER_FLOORS - 1].toLocaleString('en-US')} XP. A trap only drops what you are carrying, never your own XP.`
+			}
+		],
 		note: {
 			icon: 'fa-triangle-exclamation',
 			accent: '#b23b2e',
-			title: '⚠️ The house edge shows up over time',
+			title: '⚠️ Losses add up over time',
 			text: 'Odds are fair on each play, but chasing losses drains XP fast. Only wager what you can afford to drop on the leaderboard.'
 		}
 	},

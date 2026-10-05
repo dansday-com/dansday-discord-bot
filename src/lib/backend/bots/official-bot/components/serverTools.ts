@@ -25,6 +25,9 @@ const LEADERBOARD_METRICS = [
 	'minigames_gamble_net',
 	'minigames_gamble_ratio',
 	'minigames_gamble_big',
+	'minigames_tower_net',
+	'minigames_tower_ratio',
+	'minigames_tower_big',
 	'items_bounty_total',
 	'items_bounty_claimer',
 	'items_bounty_give',
@@ -240,10 +243,13 @@ function metricValue(metric, r) {
 		case 'streaming':
 			return num(r.voice_minutes_streaming);
 		case 'minigames_gamble_net':
+		case 'minigames_tower_net':
 			return num(r.minigame_net);
 		case 'minigames_gamble_ratio':
+		case 'minigames_tower_ratio':
 			return num(r.minigame_ratio);
 		case 'minigames_gamble_big':
+		case 'minigames_tower_big':
 			return num(r.minigame_big_win);
 		case 'items_bounty_total':
 			return num(r.bounty_on_them);
@@ -272,6 +278,19 @@ function metricValue(metric, r) {
 }
 
 function metricDetail(metric, r) {
+	if (metric.startsWith('minigames_tower_')) {
+		const total = num(r.minigame_total);
+		const wins = num(r.minigame_wins);
+		return {
+			xp_won: num(r.minigame_net),
+			climbs: total,
+			banked: wins,
+			trapped: Math.max(0, total - wins),
+			win_rate_percent: num(r.minigame_ratio),
+			biggest_win: num(r.minigame_big_win),
+			best_floor: num(r.minigame_best_floor)
+		};
+	}
 	if (metric.startsWith('minigames_')) {
 		const total = num(r.minigame_total);
 		const wins = num(r.minigame_wins);
@@ -560,7 +579,7 @@ const STATS_DESCRIPTION =
 	'Everything about this Discord server itself plus its public statistics: when the server was created, its member and channel counts, boost level and booster count, vanity invite, and totals for XP, messages, voice minutes, items, minigames, assets, giveaways, quests and staff reviews. Use this for any "how many", "how big", "how active is this server" question and for "when was this server created / made / founded / how old is it" — answer that only from server.discord_created_at, which comes straight from Discord, and never infer it from a member join date, an account creation date or the oldest member. This is server-wide data, not about one person.';
 
 const LEADERBOARD_DESCRIPTION =
-	'The public leaderboard for this server. Use it for "who is number one", "top players", "who has the most XP / messages / voice time", "who steals the most", "biggest gambler", or where a ranking stands. Pick the metric that matches what they asked and leave it out for XP. Every ranked member is covered, including negative and zero scores, so losses are tracked too: for "who lost the most", "biggest loser", "who is down the most XP", "worst at gambling" pass order "worst" with the matching metric — do not say losses are untracked. Each row returns the metric value plus its detail, so for gambling you get net XP, plays, wins, losses, win rate and biggest win. Members who are disguised never appear.';
+	'The public leaderboard for this server. Use it for "who is number one", "top players", "who has the most XP / messages / voice time", "who steals the most", "biggest gambler", or where a ranking stands. Pick the metric that matches what they asked and leave it out for XP. Every ranked member is covered, including negative and zero scores, so losses are tracked too: for "who lost the most", "biggest loser", "who is down the most XP", "worst at gambling" pass order "worst" with the matching metric — do not say losses are untracked. Each row returns the metric value plus its detail, so for gambling you get net XP, plays, wins, losses, win rate and biggest win. The minigames_gamble_* metrics are the Gamble game only and the minigames_tower_* metrics are the free Tower game only: use those for "who is best at the Tower", "who won the most from the Tower" or "highest floor", where each row gives XP won, climbs, banked, trapped, win rate, biggest win and best floor. Members who are disguised never appear.';
 
 const MEMBER_DESCRIPTION =
 	"Look up ONE named member's PUBLIC profile in this server: their level, XP, rank, messages, voice minutes, roles, join date and staff rating. Use it when someone asks about another member by name or mention. It only returns public profile fields — a member's bag, assets, minigames, history and tasks are private, so never use this to try to read those.";

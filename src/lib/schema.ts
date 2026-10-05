@@ -1130,6 +1130,23 @@ export const serverMemberMinigameLogs = mysqlTable(
 	(t) => [index('idx_server_member_minigame_logs_member').on(t.member_id, t.created_at), index('idx_server_member_minigame_logs_created').on(t.created_at)]
 );
 
+export const serverMemberTowerRuns = mysqlTable(
+	'server_member_tower_runs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		slot: int('slot').notNull().default(1),
+		floor: int('floor').notNull().default(0),
+		status: varchar('status', { length: 16 }).notNull().default('active'),
+		payout: int('payout').notNull().default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_member_tower_runs_member').on(t.member_id, t.created_at)]
+);
+
 export const serverMemberLevelFriends = mysqlTable(
 	'server_member_level_friends',
 	{

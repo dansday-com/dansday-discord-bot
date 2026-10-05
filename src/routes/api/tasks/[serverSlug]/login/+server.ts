@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {
 		const code = webhookResult.body?.error;
 		const friendly: Record<string, string> = {
-			already_claimed: 'You already claimed your reward today.',
+			already_claimed: 'Already claimed. The next check-in unlocks 24 hours after your last one.',
 			grant_failed: 'Could not deliver the reward. Try again.'
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Claim failed.');

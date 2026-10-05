@@ -5,6 +5,7 @@ import { BAG_CAPACITY, effectSummary, formatDuration, getItemEffect } from '../.
 import { computeCardToken, loadItemsShared } from '../../../../frontend/public/items/index.js';
 import { loadTasksShared } from '../../../../frontend/public/tasks/index.js';
 import { SERVER_SETTINGS } from '../../../../frontend/panelServer.js';
+import { TOWER_GAME } from '../../../../tower.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzKnown, memberTzOffset, nameOfMember, num, publicServer, safeConfig } from './aiToolShared.js';
 
 const MAX_HISTORY_ROWS = 20;
@@ -217,6 +218,7 @@ async function accountMinigames(ctx, member) {
 			wager_xp: num(r.wager),
 			result: r.outcome,
 			xp_change: num(r.xp),
+			...(r.game === TOWER_GAME ? { floor: num(r.multiplier) } : {}),
 			when: r.created_at ? new Date(r.created_at).toISOString() : null
 		})),
 		never_played: plays === 0
@@ -270,8 +272,7 @@ async function accountTasks(ctx, member) {
 		minigamesEnabled: ctx.minigamesEnabled,
 		assetsEnabled: ctx.assetsEnabled,
 		tzOffsetMin,
-		tzKnown,
-		generate: tzKnown
+		tzKnown
 	}).catch((error) => {
 		logger.log(`❌ AI task lookup failed: ${error.message}`);
 		return null;
@@ -293,15 +294,6 @@ async function accountTasks(ctx, member) {
 
 	const streak = tasks.streak ?? {};
 	const login = tasks.login ?? {};
-
-	if (!tzKnown && daily.length === 0 && weekly.length === 0) {
-		return {
-			tasks_not_ready: true,
-			reason: 'timezone_unknown',
-			tell_the_user:
-				'Their tasks have not been created yet because the bot does not know their timezone. Tell them to open their account page on the website once — tasks reset at midnight on their own clock, so it needs to know where they are before it can generate them.'
-		};
-	}
 
 	return {
 		daily_resets_in: formatMs(num(tasks.resetsInMs)),
@@ -336,9 +328,10 @@ async function accountTasks(ctx, member) {
 			cycle_length: num(login.cycleDays),
 			claimed_today: login.claimedToday === true,
 			can_claim_now: login.canClaim === true,
+			next_claim_in: login.canClaim === true ? null : formatMs(num(login.readyInMs)),
 			cycles_completed: num(login.cyclesCompleted),
 			how_it_works:
-				'One claim a day. Day 7 is the jackpot. Miss a day and the cycle restarts at day 1. Each reward is rolled when they claim it, so nobody knows what a day gives until it is opened — never guess or promise a reward.'
+				'One claim every 24 hours, counted from their last claim. Day 7 is the jackpot. If more than 48 hours pass since the last claim, the cycle restarts at day 1. Each reward is rolled when they claim it, so nobody knows what a day gives until it is opened — never guess or promise a reward.'
 		}
 	};
 }
@@ -394,7 +387,7 @@ const ITEMS_DESCRIPTION = `Everything the asker owns. Lists every item in their 
 
 const ASSETS_DESCRIPTION = `The asker's own investments in the assets market: each holding, what they put in, what it is worth now, profit or loss, and the 24 hour move. Use it for "what am I invested in", "am I up or down", "how are my assets doing". ${OWN_ONLY}`;
 
-const MINIGAMES_DESCRIPTION = `The asker's own minigame record: how many times they played, wins and losses, XP wagered, net XP won or lost, their biggest win, and their last few games. Use it for "how am I doing at gambling", "how much have I lost", "my biggest win". ${OWN_ONLY}`;
+const MINIGAMES_DESCRIPTION = `The asker's own minigame record: how many times they played, wins and losses, XP wagered, net XP won or lost, their biggest win, and their last few games. It covers every minigame: Gamble, which wagers XP, and the free Tower, whose rows have no wager and carry the floor the climb ended on. Use it for "how am I doing at gambling", "how much have I lost", "my biggest win", "how did my Tower climbs go". ${OWN_ONLY}`;
 
 const HISTORY_DESCRIPTION = `The asker's own recent activity — buys, uses, attacks they made or took, gifts, trades and XP changes, newest first. Use it for "what happened to me", "who robbed me", "what did I buy", "where did my XP go". Attackers who were disguised stay anonymous. ${OWN_ONLY}`;
 

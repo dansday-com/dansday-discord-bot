@@ -1235,6 +1235,28 @@
 			"netGain": "淨收益",
 			"winChance": "勝率",
 			"xpLost": "損失的 XP"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 高塔結算",
+				"description": "{member} 爬到了第 {floor} 層（共 {floors} 層），**帶走了 {payout}**。"
+			},
+			"cleared": {
+				"title": "🗼 高塔通關！",
+				"description": "{member} 通關了全部 {floors} 層，拿下 **{payout} 大獎**！"
+			},
+			"bust": {
+				"title": "🗼 高塔陷阱",
+				"description": "{member} 在第 {floor} 層踩中陷阱，**丟掉了手上的 {lost}**。"
+			},
+			"bustEmpty": {
+				"description": "{member} 在第 {floor} 層踩中陷阱，空手而歸。"
+			},
+			"fields": {
+				"floor": "樓層",
+				"safeChance": "安全機率",
+				"dropped": "失去的獎勵"
+			}
 		}
 	},
 	"themeEffects": {

@@ -20,8 +20,10 @@
 	let claimingLogin = $state(false);
 	let tab = $state<'daily' | 'weekly'>('daily');
 	let now = $state(Date.now());
-	let resetAt = $state(Date.now() + (Number(data.tasks?.resetsInMs) || 0));
-	let weeklyResetAt = $state(Date.now() + (Number(data.tasks?.weeklyResetsInMs) || 0));
+	const at = (ms: any) => (Number(ms) > 0 ? Date.now() + Number(ms) : 0);
+	let resetAt = $state(at(data.tasks?.resetsInMs));
+	let weeklyResetAt = $state(at(data.tasks?.weeklyResetsInMs));
+	let loginReadyAt = $state(at(data.tasks?.login?.readyInMs));
 	let celebrate = $state<{ streak: number; emoji: string; label: string } | null>(null);
 	let loginWin = $state<{ day: number; jackpot: boolean; text: string } | null>(null);
 	let taskWin = $state<{ title: string; text: string; item: boolean } | null>(null);
@@ -89,8 +91,9 @@
 		if (synced) return;
 		if (!incoming) return;
 		live = incoming;
-		resetAt = Date.now() + (Number(incoming.resetsInMs) || 0);
-		weeklyResetAt = Date.now() + (Number(incoming.weeklyResetsInMs) || 0);
+		resetAt = at(incoming.resetsInMs);
+		weeklyResetAt = at(incoming.weeklyResetsInMs);
+		loginReadyAt = at(incoming.login?.readyInMs);
 	});
 
 	let ticker: any = null;
@@ -119,8 +122,9 @@
 	function applyState(next: any) {
 		live = next;
 		synced = true;
-		resetAt = Date.now() + (Number(next.resetsInMs) || 0);
-		weeklyResetAt = Date.now() + (Number(next.weeklyResetsInMs) || 0);
+		resetAt = at(next.resetsInMs);
+		weeklyResetAt = at(next.weeklyResetsInMs);
+		loginReadyAt = at(next.login?.readyInMs);
 		ctx.setTaskSummary?.(next.streak ?? null);
 
 		if (next.streakEarned && next.streakMilestone) {
@@ -139,12 +143,24 @@
 	const doneCount = $derived(dailyTasks.filter((t) => t.claimed).length);
 	const weeklyDone = $derived(weeklyTasks.filter((t) => t.claimed).length);
 
-	const countdown = $derived.by(() => {
-		const ms = Math.max(0, resetAt - now);
-		const h = Math.floor(ms / 3600000);
-		const m = Math.floor((ms % 3600000) / 60000);
-		const s = Math.floor((ms % 60000) / 1000);
+	function clock(ms: number) {
+		const left = Math.max(0, ms);
+		const h = Math.floor(left / 3600000);
+		const m = Math.floor((left % 3600000) / 60000);
+		const s = Math.floor((left % 60000) / 1000);
 		return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+	}
+
+	const countdown = $derived(clock(resetAt - now));
+	const loginCountdown = $derived(clock(loginReadyAt - now));
+
+	let refreshedFor = 0;
+	$effect(() => {
+		if (!synced) return;
+		const due = [loginReadyAt, resetAt, weeklyResetAt].filter((t) => t > 0 && t > refreshedFor && t <= now);
+		if (due.length === 0) return;
+		refreshedFor = Math.max(...due);
+		refresh();
 	});
 
 	const weeklyCountdown = $derived.by(() => {
@@ -305,18 +321,16 @@
 							<i class="fas fa-gift text-warning"></i> Daily check-in
 						</h3>
 						<p class="text-base-content/60 mt-1 text-xs">
-							{#if login.tzKnown === false}
-								Checking today’s reward…
-							{:else if login.canClaim}
+							{#if login.canClaim}
 								Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
 							{:else}
-								Claimed today. Come back tomorrow for day {login.nextDay}.
+								Claimed. Day {login.nextDay} unlocks 24 hours after your last claim.
 							{/if}
 						</p>
 					</div>
-					{#if !login.canClaim && login.tzKnown !== false}
-						<span class="text-success inline-flex items-center gap-1.5 text-xs font-bold">
-							<i class="fas fa-circle-check"></i> Claimed today
+					{#if !login.canClaim}
+						<span class="text-base-content/60 inline-flex items-center gap-1.5 text-xs font-bold tabular-nums">
+							<i class="fas fa-hourglass-half text-warning"></i> Next in {loginCountdown}
 						</span>
 					{/if}
 				</div>

@@ -8,11 +8,11 @@ import {
 	STREAK_FREEZE_MAX,
 	STREAK_FREEZE_EARN_EVERY,
 	LOGIN_CYCLE_DAYS,
-	dayKeyFor,
-	weekKeyFor,
-	weekStartDayKey,
-	msUntilNextDay,
-	msUntilNextWeek,
+	minuteKeyFor,
+	periodOpen,
+	msUntilPeriodEnds,
+	loginReadyInMs,
+	loginCycleBroken,
 	generateDailyTasks,
 	DEFAULT_LEVELING_RATES,
 	type LevelingRates,
@@ -276,10 +276,15 @@ export async function loadTasksShared(opts: {
 	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
 	const assetsEnabled = opts.assetsEnabled === true;
 	const nowMs = opts.nowMs ?? Date.now();
-	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
-	const weekKey = weekKeyFor(nowMs, tzOffsetMin);
-	const dayStartMs = dayKey * 86400000 + tzOffsetMin * 60000;
-	const weekStartMs = weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000;
+	const nowKey = minuteKeyFor(nowMs);
+	const [latestDaily, latestWeekly] = await Promise.all([
+		db.getLatestTaskKey(member.id, 'daily').catch(() => null),
+		db.getLatestTaskKey(member.id, 'weekly').catch(() => null)
+	]);
+	const dayKey = periodOpen(latestDaily, 'daily', nowMs) ? latestDaily : nowKey;
+	const weekKey = periodOpen(latestWeekly, 'weekly', nowMs) ? latestWeekly : nowKey;
+	const dayStartMs = dayKey * 60000;
+	const weekStartMs = weekKey * 60000;
 
 	const levels = (await db.ensureMemberLevel(member.id).catch(() => null)) as any;
 	const streakRow = (await db.ensureMemberStreak(member.id, opts.tzKnown !== false ? tzOffsetMin : undefined).catch(() => null)) as any;
@@ -333,22 +338,22 @@ export async function loadTasksShared(opts: {
 
 	const completedToday = daily.some((t) => t.complete) || weekly.some((t) => t.complete);
 	const earnedStreak =
-		completedToday && Number(streakRow?.last_claim_day_key) !== dayKey
+		daily.length > 0 && completedToday && Number(streakRow?.last_claim_day_key) !== dayKey
 			? await db.applyStreakDay(member.id, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null)
 			: null;
 
 	return {
 		dayKey,
 		weekKey,
-		resetsInMs: msUntilNextDay(nowMs, tzOffsetMin),
-		weeklyResetsInMs: msUntilNextWeek(nowMs, tzOffsetMin),
+		resetsInMs: msUntilPeriodEnds(dayKey, 'daily', nowMs),
+		weeklyResetsInMs: msUntilPeriodEnds(weekKey, 'weekly', nowMs),
 		daily,
 		weekly,
 		tasks: daily,
 		streak: shapeStreak(earnedStreak?.row ?? streakRow),
 		streakEarned: !!earnedStreak?.changed,
 		streakMilestone: earnedStreak?.changed ? streakMilestone(Number(earnedStreak.streak) || 0) : null,
-		login: shapeLogin(loginRow, member, dayKey, catalog, measuredDailyEarn, opts.tzKnown !== false),
+		login: shapeLogin(loginRow, nowMs, catalog),
 		reelPool: (() => {
 			const costs = catalog.map((c) => c.cost);
 			return [...catalog]
@@ -366,15 +371,16 @@ export async function memberDailyEarn(memberId: any): Promise<number> {
 	return Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
 }
 
-function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number; cost: number }[], dailyEarn = 0, tzKnown = true) {
+function shapeLogin(row: any, nowMs: number, catalog: { id: number; cost: number }[]) {
 	const cycleDay = Number(row?.cycle_day) || 0;
 	const last = row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key);
 	const cyclesCompleted = Number(row?.cycles_completed) || 0;
 
-	const broken = last != null && last < dayKey - 1;
+	const broken = loginCycleBroken(last, nowMs);
 	const nextDay = broken || cycleDay >= LOGIN_CYCLE_DAYS ? 1 : cycleDay + 1;
-	const claimedToday = last === dayKey;
-	const canClaim = tzKnown && !claimedToday;
+	const readyInMs = loginReadyInMs(last, nowMs);
+	const claimedToday = readyInMs > 0;
+	const canClaim = !claimedToday;
 
 	const rewards = loginCyclePreview().map((r) => ({
 		...r,
@@ -388,7 +394,7 @@ function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number
 		nextDay,
 		claimedToday,
 		canClaim,
-		tzKnown,
+		readyInMs,
 		cycleDays: LOGIN_CYCLE_DAYS,
 		cyclesCompleted,
 		rewards

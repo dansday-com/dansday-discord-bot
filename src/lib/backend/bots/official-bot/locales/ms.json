@@ -1235,6 +1235,28 @@
 			"netGain": "Untung bersih",
 			"winChance": "Peluang menang",
 			"xpLost": "XP hilang"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 Tower: Ganjaran Diambil",
+				"description": "{member} naik ke tingkat {floor} daripada {floors} dan **membawa pulang {payout}**."
+			},
+			"cleared": {
+				"title": "🗼 Tower Ditawan!",
+				"description": "{member} menawan kesemua {floors} tingkat dan meraih **jackpot {payout}**!"
+			},
+			"bust": {
+				"title": "🗼 Perangkap Tower",
+				"description": "{member} terkena perangkap di tingkat {floor} dan **kehilangan {lost} yang telah dikumpul**."
+			},
+			"bustEmpty": {
+				"description": "{member} terkena perangkap di tingkat {floor} dan pulang dengan tangan kosong."
+			},
+			"fields": {
+				"floor": "Tingkat",
+				"safeChance": "Peluang selamat",
+				"dropped": "Ganjaran hilang"
+			}
 		}
 	},
 	"themeEffects": {

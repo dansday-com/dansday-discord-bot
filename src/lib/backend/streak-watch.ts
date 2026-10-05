@@ -1,5 +1,5 @@
 import db from '../database.js';
-import { TASK_BY_ID, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY, streakMilestone, dayKeyFor, weekKeyFor, weekStartDayKey, type TaskMetric } from '../tasks.js';
+import { TASK_BY_ID, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY, streakMilestone, periodOpen, type TaskMetric } from '../tasks.js';
 
 type StreakAnnouncer = (guildId: string, discordMemberId: string, streakResult: any, milestone: any) => Promise<any>;
 
@@ -43,17 +43,16 @@ async function anyComplete(memberId: number, periodKey: number, period: 'daily' 
 	return false;
 }
 
-export async function bankStreakIfEarned(memberId: any, opts: { tzOffsetMin?: number } = {}) {
+export async function bankStreakIfEarned(memberId: any) {
 	const id = Number(memberId);
 	if (!id) return null;
 
 	const streakRow = (await db.getMemberStreak(id).catch(() => null)) as any;
 	if (!streakRow) return null;
 
-	const tzOffsetMin = Number.isFinite(Number(opts.tzOffsetMin)) ? Number(opts.tzOffsetMin) : Number(streakRow.tz_offset_min) || 0;
-
 	const nowMs = Date.now();
-	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
+	const [dayKey, weekKey] = await Promise.all([db.getLatestTaskKey(id, 'daily').catch(() => null), db.getLatestTaskKey(id, 'weekly').catch(() => null)]);
+	if (!periodOpen(dayKey, 'daily', nowMs)) return null;
 	if (Number(streakRow.last_claim_day_key) === dayKey) return null;
 
 	const key = `${id}:${dayKey}`;
@@ -61,11 +60,9 @@ export async function bankStreakIfEarned(memberId: any, opts: { tzOffsetMin?: nu
 	inFlight.add(key);
 
 	try {
-		const weekKey = weekKeyFor(nowMs, tzOffsetMin);
-		const dayStartMs = dayKey * 86400000 + tzOffsetMin * 60000;
-		const weekStartMs = weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000;
-
-		const earned = (await anyComplete(id, dayKey, 'daily', dayStartMs)) || (await anyComplete(id, weekKey, 'weekly', weekStartMs));
+		const earned =
+			(await anyComplete(id, dayKey, 'daily', dayKey * 60000)) ||
+			(periodOpen(weekKey, 'weekly', nowMs) && (await anyComplete(id, weekKey, 'weekly', weekKey * 60000)));
 		if (!earned) return null;
 
 		const result = await db.applyStreakDay(id, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);

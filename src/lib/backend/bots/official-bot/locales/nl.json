@@ -1235,6 +1235,28 @@
 			"netGain": "Nettowinst",
 			"winChance": "Winkans",
 			"xpLost": "XP verloren"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 Toren: uitbetaald",
+				"description": "{member} klom naar verdieping {floor} van {floors} en **liet {payout} uitbetalen**."
+			},
+			"cleared": {
+				"title": "🗼 Toren uitgespeeld!",
+				"description": "{member} haalde alle {floors} verdiepingen en won de **jackpot van {payout}**!"
+			},
+			"bust": {
+				"title": "🗼 Val in de toren",
+				"description": "{member} liep op verdieping {floor} in een val en **verloor de verzamelde {lost}**."
+			},
+			"bustEmpty": {
+				"description": "{member} liep op verdieping {floor} in een val en gaat met lege handen naar huis."
+			},
+			"fields": {
+				"floor": "Verdieping",
+				"safeChance": "Overlevingskans",
+				"dropped": "Verloren prijs"
+			}
 		}
 	},
 	"themeEffects": {

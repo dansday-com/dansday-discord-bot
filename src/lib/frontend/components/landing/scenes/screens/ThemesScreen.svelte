@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { EFFECT_SPIN_COST, effectMeta } from '$lib/effects.js';
 	import { avatar } from '../scripts/common.js';
 	import type { SceneScreenProps } from '../types.js';
 
@@ -12,11 +11,22 @@
 
 	const SPIN = { press: 1800, open: 2100, land: 5200, close: 7200 };
 	const PAINT = { hero: 7200, row: 9600, card: 10200 };
-	const REEL = ['glitch', 'sparkle', 'fire', 'sakura', 'love', 'blackhole', 'autumn', 'pulse', 'aurora'].map((id) => effectMeta(id)!);
+	const REEL = [
+		{ id: 'aurora', label: 'Aurora', icon: 'fa-mountain-sun' },
+		{ id: 'sparkle', label: 'Sparkle', icon: 'fa-wand-magic-sparkles' },
+		{ id: 'fire', label: 'Fire', icon: 'fa-fire-flame-curved' },
+		{ id: 'sakura', label: 'Sakura', icon: 'fa-spa' },
+		{ id: 'love', label: 'Love', icon: 'fa-heart' },
+		{ id: 'blackhole', label: 'Black Hole', icon: 'fa-record-vinyl' },
+		{ id: 'autumn', label: 'Autumn', icon: 'fa-leaf' },
+		{ id: 'pulse', label: 'Pulse', icon: 'fa-wave-square' },
+		{ id: 'glitch', label: 'Glitch', icon: 'fa-tower-broadcast' }
+	];
 	const WON = REEL[REEL.length - 1];
 	const SEED = 7;
 	const ACCENT = '#c0330f';
 	const START_XP = 4432;
+	const SPIN_COST = 1000;
 	const CELL = 44;
 
 	let Effect = $state<Effect | null>(null);
@@ -27,7 +37,7 @@
 	const tapped = (at: number) => t >= at && t < at + 520;
 	const modalOpen = $derived(t >= SPIN.open && t < SPIN.close);
 	const landed = $derived(t >= SPIN.land);
-	const xp = $derived(landed ? START_XP - EFFECT_SPIN_COST : START_XP);
+	const xp = $derived(landed ? START_XP - SPIN_COST : START_XP);
 
 	const reelOffset = $derived.by(() => {
 		const p = Math.max(0, Math.min(1, (t - SPIN.open) / (SPIN.land - SPIN.open)));
@@ -83,7 +93,7 @@
 			class="themes-press relative mt-2 flex h-8 items-center justify-center gap-1.5 overflow-hidden rounded-lg bg-linear-to-br from-[#e0a52a] to-[#b8860b] text-[11.5px] font-extrabold text-white"
 			class:themes-pressed={tapped(SPIN.press)}
 		>
-			<i class="fas fa-dice"></i>Spin · {fmt(EFFECT_SPIN_COST)} XP
+			<i class="fas fa-dice"></i>Spin · {fmt(SPIN_COST)} XP
 			{#if tapped(SPIN.press)}<span class="themes-ripple"></span>{/if}
 		</span>
 		<p class="text-base-content/55 mt-1.5 text-[10px] leading-snug">Every spin rolls a fresh effect and a one-of-a-kind variant.</p>
@@ -146,7 +156,7 @@
 			</ul>
 		</div>
 		<p class="mt-2.5 text-[11.5px] font-bold {landed ? 'text-success' : 'text-base-content/55'}">
-			{landed ? `${WON.label} is yours. −${fmt(EFFECT_SPIN_COST)} XP` : 'Rolling…'}
+			{landed ? `${WON.label} is yours. −${fmt(SPIN_COST)} XP` : 'Rolling…'}
 		</p>
 	</div>
 </div>

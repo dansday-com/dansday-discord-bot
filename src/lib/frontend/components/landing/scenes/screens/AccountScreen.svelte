@@ -82,18 +82,6 @@
 		</div>
 	</div>
 
-	<div class="border-base-300 bg-base-200 mx-3 mt-2.5 flex shrink-0 gap-1 overflow-hidden rounded-xl border p-1">
-		{#each ['Task', 'Rewards', 'Items', 'Minigames'] as tab (tab)}
-			<span
-				class="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-bold {tab === 'Items'
-					? 'bg-base-100 text-base-content shadow-sm'
-					: 'text-base-content/55'}"
-			>
-				{tab}{#if tab === 'Items'}<span class="bg-primary/12 text-primary rounded-full px-1.5 text-[9.5px]">{t < PICK ? 1 : 0}/50</span>{/if}
-			</span>
-		{/each}
-	</div>
-
 	{#snippet itemCard(cat: string, icon: string, name: string, desc: string, price: number, owned: boolean)}
 		<article
 			class="relative flex flex-col gap-1.5 overflow-hidden rounded-[14px] border p-2.5"
@@ -139,6 +127,20 @@
 		{@render itemCard('#d35400', 'fa-bomb', 'Bomb', "Burn 1–50% of a member's XP.", 600, false)}
 		{@render itemCard('#4b6584', 'fa-magnifying-glass', 'Spy', "Scout a member's bag before you strike.", 300, false)}
 	</div>
+
+	<span
+		class="from-secondary to-primary ring-base-200 absolute bottom-2.5 left-1/2 grid size-11 -translate-x-1/2 place-items-center rounded-full bg-linear-to-br text-white shadow-[0_8px_18px_-6px_color-mix(in_srgb,var(--color-primary)_75%,transparent)] ring-[3px]"
+	>
+		<span class="flex flex-col items-center gap-px leading-none">
+			<i class="fas fa-chevron-up text-[6.5px] opacity-75"></i>
+			<i class="fas fa-store text-[14px]"></i>
+		</span>
+		<span
+			class="border-base-300 bg-base-100 text-base-content absolute -top-1 left-[62%] rounded-full border px-1 py-px text-[8.5px] leading-none font-bold whitespace-nowrap tabular-nums shadow-sm"
+		>
+			{t < PICK ? 1 : 0}/50
+		</span>
+	</span>
 
 	<div class="account-overlay absolute inset-0 bg-black/40" class:account-overlay-on={sheetOpen || outcomeOpen}></div>
 

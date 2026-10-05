@@ -1,5 +1,8 @@
 import AccountScreen from '../screens/AccountScreen.svelte';
 import DashboardScreen from '../screens/DashboardScreen.svelte';
+import PublicScreen from '../screens/PublicScreen.svelte';
+import TasksScreen from '../screens/TasksScreen.svelte';
+import ThemesScreen from '../screens/ThemesScreen.svelte';
 import VoiceScreen from '../screens/VoiceScreen.svelte';
 import { defineScene } from './common.js';
 
@@ -90,6 +93,99 @@ export const account = defineScene({
 			to: 15000,
 			title: 'The server hears about it',
 			desc: 'Your wallet updates live, levels and all, and the hit is posted in your items channel.'
+		}
+	]
+});
+
+export const publicStats = defineScene({
+	id: 'public',
+	label: 'Public statistics',
+	icon: 'fa-chart-pie',
+	tagline: 'Statistics, leaderboard and members on a public link.',
+	screen: PublicScreen,
+	url: 'night-owls.dansday.dev',
+	duration: 15000,
+	rest: 13500,
+	steps: [
+		{
+			from: 0,
+			to: 2400,
+			title: 'One public link',
+			desc: 'Statistics, leaderboard and member list for your server. Visitors need no login.'
+		},
+		{
+			from: 2400,
+			to: 5200,
+			title: 'Numbers count live',
+			desc: 'XP, messages, items and games tick up as they happen in Discord.'
+		},
+		{
+			from: 5200,
+			to: 15000,
+			title: 'Ranks move live',
+			desc: 'Boards for XP, chat, voice, invites, items and minigames. Rows reorder the moment someone passes another.'
+		}
+	]
+});
+
+export const tasks = defineScene({
+	id: 'tasks',
+	label: 'Tasks & streaks',
+	icon: 'fa-list-check',
+	tagline: 'A task list made for each member, with nothing to set up.',
+	screen: TasksScreen,
+	url: 'dansday.dev',
+	duration: 15000,
+	rest: 13500,
+	steps: [
+		{
+			from: 0,
+			to: 5200,
+			title: 'Tasks made for them',
+			desc: 'Eighteen a day and eighteen a week, sized from their own last seven days. No two members get the same list.'
+		},
+		{
+			from: 5200,
+			to: 9600,
+			title: 'Clear the day, keep the streak',
+			desc: 'Each full day adds 2% reward XP, up to double. Freezes cover a missed day.'
+		},
+		{
+			from: 9600,
+			to: 15000,
+			title: 'Check in for the big one',
+			desc: 'A 7-day cycle from 1,000 to 50,000 XP, sometimes a shop item instead.'
+		}
+	]
+});
+
+export const themes = defineScene({
+	id: 'themes',
+	label: 'Card themes',
+	icon: 'fa-wand-magic-sparkles',
+	tagline: 'Seventy animated effects, won with XP.',
+	screen: ThemesScreen,
+	url: 'dansday.dev',
+	duration: 15000,
+	rest: 13500,
+	steps: [
+		{
+			from: 0,
+			to: 5200,
+			title: 'Spin for an effect',
+			desc: '1,000 XP a spin. Seventy animated effects, from fire and aurora to a black hole.'
+		},
+		{
+			from: 5200,
+			to: 9600,
+			title: 'Theirs to keep',
+			desc: 'Every spin rolls a fresh effect and a one-of-a-kind variant. Spins are never lost.'
+		},
+		{
+			from: 9600,
+			to: 15000,
+			title: 'Everyone sees it',
+			desc: 'It repaints their account, their leaderboard row and their card in the member list.'
 		}
 	]
 });

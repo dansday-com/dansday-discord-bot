@@ -222,7 +222,7 @@ export const member = defineScene({
 
 export const staff = defineScene({
 	id: 'staff',
-	label: 'Staff',
+	label: 'Moderation',
 	icon: 'fa-shield-halved',
 	tagline: 'Moderation lives in the same menu.',
 	channel: MENU_CHANNEL,

@@ -194,3 +194,73 @@ export const roblox = defineScene({
 		}
 	]
 });
+
+export const inviteShare = defineScene({
+	id: 'invite-share',
+	label: 'Invite XP share',
+	icon: 'fa-user-plus',
+	tagline: 'Bring someone in, then earn from what they earn.',
+	channel: 'xp-log',
+	duration: 15000,
+	rest: 13500,
+	people: { bot: BOT },
+	context: [{ id: 'bonus', at: -1, who: 'bot', time: 'Yesterday at 21:10', text: '📨 Invite XP: Kai gained +1000 XP for inviting Nova' }],
+	events: [
+		{
+			id: 'chat',
+			at: 1400,
+			who: 'bot',
+			time: at('20:14'),
+			text: '💬 Chat XP: Nova gained +20 XP · 📨 +5 to Kai (25% invite share)',
+			pop: { text: '★ +5 XP', tone: 'gold' }
+		},
+		{
+			id: 'voice',
+			at: 4200,
+			who: 'bot',
+			time: at('20:31'),
+			text: '🎤 Voice XP: Nova gained +60 XP · 📨 +15 to Kai (25% invite share)',
+			pop: { text: '★ +15 XP', tone: 'gold' }
+		},
+		{
+			id: 'invites',
+			at: 8200,
+			who: 'bot',
+			time: at('20:40'),
+			ephemeral: true,
+			embed: {
+				color: '#c8911a',
+				title: '📨 Your Invites',
+				description:
+					'Earn **1000 XP** for each new member who joins with your link and stays 24h.\n📈 You also get **25%** of the chat and voice XP your invited members earn, for as long as they stay.',
+				fields: [
+					{ name: '📨 Total', value: '5', inline: true },
+					{ name: '✅ Still here', value: '4', inline: true },
+					{ name: '⭐ XP earned', value: '4,000', inline: true },
+					{ name: '🤝 From shares', value: '1,935', inline: true }
+				],
+				footer: FOOTER
+			}
+		}
+	],
+	steps: [
+		{
+			from: 0,
+			to: 3800,
+			title: 'They earn, you earn',
+			desc: 'After the join bonus, the inviter gets up to 25% of the chat and voice XP that member earns. It is paid on top, the member keeps all of theirs.'
+		},
+		{
+			from: 3800,
+			to: 7800,
+			title: 'For as long as they stay',
+			desc: 'No time limit. New accounts, your own link and rejoins never pay.'
+		},
+		{
+			from: 7800,
+			to: 15000,
+			title: 'Every member has a link',
+			desc: 'A personal invite link from the Discord menu, with its own join page and a running total of what it earned.'
+		}
+	]
+});

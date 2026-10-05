@@ -690,6 +690,22 @@ function isInterfaceMessage(message, botUserId: string) {
 	return message.components?.some((row) => row.components?.some((c) => c.customId === 'bot_menu')) ?? false;
 }
 
+function interfaceUpToDate(message, payload) {
+	const current = message.embeds?.[0];
+	const next = payload.embeds[0];
+	const currentLabel = message.components?.[0]?.components?.[0]?.label;
+	const nextLabel = payload.components[0]?.components?.[0]?.data?.label;
+	return (
+		!!current &&
+		current.title === next.title &&
+		current.description === next.description &&
+		current.color === next.color &&
+		current.footer?.text === next.footer.text &&
+		current.thumbnail?.url === next.thumbnail.url &&
+		currentLabel === nextLabel
+	);
+}
+
 export async function refreshInterfaceInChannel(targetChannel, client, { sendIfMissing }: { sendIfMissing: boolean }) {
 	if (!targetChannel?.guild) return;
 	const payload = {
@@ -700,6 +716,7 @@ export async function refreshInterfaceInChannel(targetChannel, client, { sendIfM
 	const recent = await targetChannel.messages?.fetch({ limit: 50 }).catch(() => null);
 	const existing = recent?.find((m) => isInterfaceMessage(m, client.user.id)) ?? null;
 	if (existing) {
+		if (interfaceUpToDate(existing, payload)) return;
 		await existing.edit(payload);
 		await logger.log(`🎮 Bot interface refreshed in ${targetChannel.name}`);
 	} else if (sendIfMissing) {

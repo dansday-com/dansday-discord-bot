@@ -205,7 +205,12 @@ export async function syncServerMenu(client: any, guildId: string) {
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
 	const synced = await syncSetupChannels(guild, server.id, lang, embedConfig.NICKNAME, false);
 	if (synced?.menuChannel) await refreshInterfaceInChannel(synced.menuChannel, client, { sendIfMissing: false });
-	await logger.log(`🎮 Synced setup channels and menu (${lang}) in ${guild.name}`);
+}
+
+export async function syncAllServerMenus(client: any) {
+	for (const guild of client.guilds.cache.values()) {
+		await syncServerMenu(client, guild.id).catch((err: any) => logger.log(`⚠️ Menu sync failed for ${guild.name}: ${err.message}`));
+	}
 }
 
 export async function execute(interaction: any, _client: any) {

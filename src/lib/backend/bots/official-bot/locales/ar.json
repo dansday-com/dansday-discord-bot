@@ -279,8 +279,8 @@
 			"durationPlaceholder": "مثال: 60 لساعة واحدة، 1440 ليوم كامل",
 			"winnerCountLabel": "عدد الفائزين",
 			"winnerCountPlaceholder": "كم عدد الفائزين؟ (الافتراضي: 1)",
-			"invitesLabel": "الدعوات المطلوبة (0 = بدون شرط)",
-			"invitesPlaceholder": "0 يسمح للجميع بالمشاركة"
+			"invitesLabel": "الدعوات المطلوبة",
+			"invitesPlaceholder": "0 = بدون شرط"
 		},
 		"created": {
 			"title": "✅ تم إنشاء السحب!",

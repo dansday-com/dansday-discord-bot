@@ -279,8 +279,8 @@
 			"durationPlaceholder": "例如：60 表示 1 小时，1440 表示 1 天",
 			"winnerCountLabel": "中奖人数",
 			"winnerCountPlaceholder": "中奖几人？（默认：1）",
-			"invitesLabel": "所需邀请数（0 = 无要求）",
-			"invitesPlaceholder": "0 表示所有人都可参加"
+			"invitesLabel": "所需邀请数",
+			"invitesPlaceholder": "0 = 无要求"
 		},
 		"created": {
 			"title": "✅ 抽奖已创建！",

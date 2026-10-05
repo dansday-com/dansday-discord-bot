@@ -279,8 +279,8 @@
 			"durationPlaceholder": "cth., 60 untuk 1 jam, 1440 untuk 1 hari",
 			"winnerCountLabel": "Bilangan Pemenang",
 			"winnerCountPlaceholder": "Berapa ramai pemenang? (lalai: 1)",
-			"invitesLabel": "Jemputan Diperlukan (0 = tiada syarat)",
-			"invitesPlaceholder": "0 bermaksud semua boleh sertai"
+			"invitesLabel": "Jemputan Diperlukan",
+			"invitesPlaceholder": "0 = tiada syarat"
 		},
 		"created": {
 			"title": "✅ Giveaway Dibuat!",

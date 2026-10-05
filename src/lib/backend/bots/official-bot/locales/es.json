@@ -279,8 +279,8 @@
 			"durationPlaceholder": "p. ej., 60 para 1 hora, 1440 para 1 día",
 			"winnerCountLabel": "Número de ganadores",
 			"winnerCountPlaceholder": "¿Cuántos ganadores? (predeterminado: 1)",
-			"invitesLabel": "Invitaciones necesarias (0 = sin requisito)",
-			"invitesPlaceholder": "0 permite entrar a todos"
+			"invitesLabel": "Invitaciones necesarias",
+			"invitesPlaceholder": "0 = sin requisito"
 		},
 		"created": {
 			"title": "✅ ¡Sorteo creado!",

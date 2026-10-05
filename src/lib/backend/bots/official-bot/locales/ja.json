@@ -279,8 +279,8 @@
 			"durationPlaceholder": "例：1時間なら60、1日なら1440",
 			"winnerCountLabel": "当選者数",
 			"winnerCountPlaceholder": "当選者は何人？（既定：1）",
-			"invitesLabel": "必要な招待数（0 = 条件なし）",
-			"invitesPlaceholder": "0 で全員が参加できます"
+			"invitesLabel": "必要な招待数",
+			"invitesPlaceholder": "0 = 条件なし"
 		},
 		"created": {
 			"title": "✅ ギブアウェイを作成しました！",

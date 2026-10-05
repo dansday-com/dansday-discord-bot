@@ -279,8 +279,8 @@
 			"durationPlaceholder": "misalnya, 60 untuk 1 jam, 1440 untuk 1 hari",
 			"winnerCountLabel": "Jumlah Pemenang",
 			"winnerCountPlaceholder": "Berapa banyak pemenang? (default: 1)",
-			"invitesLabel": "Undangan Dibutuhkan (0 = tanpa syarat)",
-			"invitesPlaceholder": "0 berarti semua bisa ikut"
+			"invitesLabel": "Undangan Dibutuhkan",
+			"invitesPlaceholder": "0 = tanpa syarat"
 		},
 		"created": {
 			"title": "✅ Giveaway Dibuat!",

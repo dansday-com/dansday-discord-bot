@@ -279,8 +279,8 @@
 			"durationPlaceholder": "例如：60 代表 1 小時，1440 代表 1 天",
 			"winnerCountLabel": "得獎人數",
 			"winnerCountPlaceholder": "要抽出幾位得獎者？（預設：1）",
-			"invitesLabel": "所需邀請數（0 = 無要求）",
-			"invitesPlaceholder": "0 表示所有人都可參加"
+			"invitesLabel": "所需邀請數",
+			"invitesPlaceholder": "0 = 無要求"
 		},
 		"created": {
 			"title": "✅ 抽獎已建立！",

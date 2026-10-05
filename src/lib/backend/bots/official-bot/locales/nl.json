@@ -279,8 +279,8 @@
 			"durationPlaceholder": "bijv. 60 voor 1 uur, 1440 voor 1 dag",
 			"winnerCountLabel": "Aantal winnaars",
 			"winnerCountPlaceholder": "Hoeveel winnaars? (standaard: 1)",
-			"invitesLabel": "Benodigde uitnodigingen (0 = geen eis)",
-			"invitesPlaceholder": "0 = iedereen mag meedoen"
+			"invitesLabel": "Benodigde uitnodigingen",
+			"invitesPlaceholder": "0 = geen eis"
 		},
 		"created": {
 			"title": "✅ Giveaway aangemaakt!",

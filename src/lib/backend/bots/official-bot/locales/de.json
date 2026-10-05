@@ -279,8 +279,8 @@
 			"durationPlaceholder": "z. B. 60 für 1 Stunde, 1440 für 1 Tag",
 			"winnerCountLabel": "Anzahl der Gewinner",
 			"winnerCountPlaceholder": "Wie viele Gewinner? (Standard: 1)",
-			"invitesLabel": "Benötigte Einladungen (0 = keine)",
-			"invitesPlaceholder": "0 = alle können teilnehmen"
+			"invitesLabel": "Benötigte Einladungen",
+			"invitesPlaceholder": "0 = keine"
 		},
 		"created": {
 			"title": "✅ Gewinnspiel erstellt!",

@@ -279,8 +279,8 @@
 			"durationPlaceholder": "es. 60 per 1 ora, 1440 per 1 giorno",
 			"winnerCountLabel": "Numero di vincitori",
 			"winnerCountPlaceholder": "Quanti vincitori? (predefinito: 1)",
-			"invitesLabel": "Inviti richiesti (0 = nessun requisito)",
-			"invitesPlaceholder": "0 = tutti possono partecipare"
+			"invitesLabel": "Inviti richiesti",
+			"invitesPlaceholder": "0 = nessun requisito"
 		},
 		"created": {
 			"title": "✅ Giveaway creato!",

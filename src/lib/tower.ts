@@ -6,6 +6,7 @@ export const TOWER_FLOORS = TOWER_PRIZES.length;
 export const TOWER_FLOOR_CHANCES = [75, 70, 65, 60, 55, 50, 45, 40, 35, 30] as const;
 export const TOWER_FATIGUE = 0.88;
 export const TOWER_MIN_CHANCE = 0.1;
+export const TOWER_HIGH_FLOOR = 3;
 
 function towerFloorIndex(floor: any): number {
 	return Math.min(TOWER_FLOORS, Math.max(1, Math.floor(Number(floor) || 1))) - 1;
@@ -31,6 +32,12 @@ export function towerSafeChance(floor: any, climb: any = 1, luckPercent: any = 0
 	const base = towerBaseChance(floor, climb);
 	const luck = Math.max(0, Number(luckPercent) || 0);
 	return luck > 0 ? Math.min(100, round1(base + luck)) : base;
+}
+
+export function towerReachChance(floor: any, climb: any = 1): number {
+	let chance = 100;
+	for (let f = 1; f <= towerFloorIndex(floor) + 1; f++) chance = (chance * towerBaseChance(f, climb)) / 100;
+	return chance;
 }
 
 export function towerTrapCount(chance: any): number {

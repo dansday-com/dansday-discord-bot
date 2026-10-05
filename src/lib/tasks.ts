@@ -1,3 +1,5 @@
+import { TOWER_FLOOR_CHANCES, TOWER_HIGH_FLOOR, towerReachChance } from './tower.js';
+
 export const DAILY_TASK_SLOTS = 18;
 export const WEEKLY_TASK_SLOTS = 18;
 export const STREAK_FREEZE_MAX = 3;
@@ -99,7 +101,12 @@ export type TaskMetric =
 	| 'xp_solo_media'
 	| 'xp_solo_chat'
 	| 'xp_unleeched'
-	| 'invites_joined';
+	| 'invites_joined'
+	| 'tower_climbed'
+	| 'tower_cashed'
+	| 'tower_high'
+	| 'tower_trapped'
+	| 'tower_lucky';
 
 export type TaskRequirement = 'leveling' | 'minigames' | 'items' | 'assets';
 
@@ -123,6 +130,7 @@ export type TaskDefinition = {
 	periods?: TaskPeriod[];
 	maxGoal?: number;
 	needsInvites?: boolean;
+	wagerFree?: boolean;
 	describe: (goal: number, ctx?: TaskDescribeContext) => string;
 };
 
@@ -1069,6 +1077,74 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		costEffect: '*',
 		costExtraEffect: 'luck',
 		describe: (g) => `Win ${g} gamble${g === 1 ? '' : 's'} with Luck active`
+	},
+	{
+		id: 'tower_climb',
+		metric: 'tower_climbed',
+		label: 'Stair master',
+		icon: 'fa-tower-observation',
+		accent: '#1f9e8f',
+		unit: 'rounds',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		wagerFree: true,
+		describe: (g) => (g === 1 ? 'Finish a Tower climb' : `Finish ${g} Tower climbs`)
+	},
+	{
+		id: 'tower_cash',
+		metric: 'tower_cashed',
+		label: 'Bank it',
+		icon: 'fa-sack-dollar',
+		accent: '#c8911a',
+		unit: 'wins',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		wagerFree: true,
+		successChance: TOWER_FLOOR_CHANCES[0],
+		describe: (g) => (g === 1 ? 'Cash out of the Tower' : `Cash out of the Tower ${g} times`)
+	},
+	{
+		id: 'tower_high',
+		metric: 'tower_high',
+		label: 'Thin air',
+		icon: 'fa-mountain',
+		accent: '#2f6f9f',
+		unit: 'wins',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		wagerFree: true,
+		successChance: towerReachChance(TOWER_HIGH_FLOOR),
+		describe: (g) => `Cash out at Tower floor ${TOWER_HIGH_FLOOR} or higher${g === 1 ? '' : ` ${g} times`}`
+	},
+	{
+		id: 'tower_trap',
+		metric: 'tower_trapped',
+		label: 'Booby trap',
+		icon: 'fa-skull-crossbones',
+		accent: '#8e44ad',
+		unit: 'rounds',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		wagerFree: true,
+		describe: (g) => (g === 1 ? 'Hit a trap in the Tower' : `Hit ${g} traps in the Tower`)
+	},
+	{
+		id: 'tower_lucky',
+		metric: 'tower_lucky',
+		label: 'Lucky climb',
+		icon: 'fa-clover',
+		accent: '#1f8a4c',
+		unit: 'rounds',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		costExtraEffect: 'luck',
+		wagerFree: true,
+		describe: (g) => `Finish ${g} Tower climb${g === 1 ? '' : 's'} with Luck active`
 	},
 	{
 		id: 'bounty_claim',
@@ -2423,7 +2499,7 @@ export function sufferedLossXp(def: TaskDefinition, elig: TaskEligibility): numb
 export const WAGER_RISK_SHARE = 0.05;
 
 export function riskPerUnitXp(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
-	if (def.requires !== 'minigames') return 0;
+	if (def.requires !== 'minigames' || def.wagerFree) return 0;
 	if (def.unit === 'xp' || def.costIsGoal) return 0;
 
 	const bankroll = unboostedEarnRate(elig, 'daily') * WORTH_BUDGET_SHARE;

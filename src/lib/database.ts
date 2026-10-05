@@ -14,6 +14,7 @@ import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
 import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
+import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -2487,6 +2488,21 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
+	const TOWER_FILTERS: Record<string, any> = {
+		tower_climbed: sql``,
+		tower_cashed: sql` AND outcome = 'win'`,
+		tower_high: sql` AND outcome = 'win' AND multiplier >= ${TOWER_HIGH_FLOOR}`,
+		tower_trapped: sql` AND outcome = 'lose'`,
+		tower_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`
+	};
+
+	if (TOWER_FILTERS[String(metric)] !== undefined) {
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since} AND game = ${TOWER_GAME}${TOWER_FILTERS[String(metric)]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
 	if (metric === 'invites_joined') {
 		const rows: any = await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`
@@ -3478,7 +3494,14 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null,
 			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), ...(hideDisguised ? [hideDisguised] : [])))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				isNull(schema.serverMembers.deleted_at),
+				eq(schema.serverMembers.is_bot, false),
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -4613,7 +4636,14 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 			and(eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id), sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), ...(hideDisguised ? [hideDisguised] : [])))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				isNull(schema.serverMembers.deleted_at),
+				eq(schema.serverMembers.is_bot, false),
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -4657,7 +4687,14 @@ export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' |
 			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), ...(hideDisguised ? [hideDisguised] : [])))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				isNull(schema.serverMembers.deleted_at),
+				eq(schema.serverMembers.is_bot, false),
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,

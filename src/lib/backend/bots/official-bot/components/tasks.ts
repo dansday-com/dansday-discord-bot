@@ -20,6 +20,7 @@ import {
 	type TaskMetric
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
+import { serverTranslator, type Translator } from '../i18n.js';
 
 const ANNOUNCE_DELAY_MS = 7000;
 
@@ -246,20 +247,41 @@ export async function handleTaskClaim(client: any, payload: any) {
 	};
 }
 
-function streakAnnouncement(streakResult: any, milestone: any, member: any) {
+function rarityLabel(tr: Translator, tier: RarityTier): string {
+	const meta = rarityMeta(tier);
+	const key = `tasks.rarity.${meta.id}`;
+	const label = tr(key);
+	return label === key ? meta.label : label;
+}
+
+function milestoneLabel(tr: Translator, milestone: { at: number; label: string }): string {
+	const key = `tasks.milestones.${milestone.at}`;
+	const label = tr(key);
+	return label === key ? milestone.label : label;
+}
+
+function streakAnnouncement(tr: Translator, streakResult: any, milestone: any, member: any) {
 	const streak = Number(streakResult.streak) || 0;
 	const freezeUsed = Number(streakResult.freezeUsed) || 0;
 	const daysMissed = Number(streakResult.daysMissed) || 0;
 	const previous = Number(streakResult.previousStreak) || 0;
-	const dayWord = (n: number) => (n === 1 ? 'day' : 'days');
+	const dayCount = (n: number) => tr(n === 1 ? 'tasks.streak.day' : 'tasks.streak.days', { count: n });
+	const mention = `${member}`;
 
 	if (streakResult.reset) {
-		const burned = freezeUsed > 0 ? ` Burned ${freezeUsed} ${freezeUsed === 1 ? 'freeze' : 'freezes'} trying to hold it.` : '';
+		const lost = { member: mention, days: dayCount(daysMissed), previous };
+		const description =
+			freezeUsed > 0
+				? tr('tasks.streak.reset.descriptionBurned', {
+						...lost,
+						burned: tr(freezeUsed === 1 ? 'tasks.streak.reset.burnedOne' : 'tasks.streak.reset.burnedMany', { count: freezeUsed })
+					})
+				: tr('tasks.streak.reset.description', lost);
 		return {
 			accent: 'bomb',
-			title: '💔 Streak Reset',
-			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** and lost a **${previous}-day** streak.${burned} Back to day 1.`,
-			fields: [{ name: 'Longest ever', value: `${Number(streakResult.row?.longest_streak) || previous} days`, inline: true }]
+			title: tr('tasks.streak.reset.title'),
+			description,
+			fields: [{ name: tr('tasks.streak.fields.longest'), value: dayCount(Number(streakResult.row?.longest_streak) || previous), inline: true }]
 		};
 	}
 
@@ -267,11 +289,16 @@ function streakAnnouncement(streakResult: any, milestone: any, member: any) {
 		const left = Number(streakResult.freezesLeft) || 0;
 		return {
 			accent: 'shield',
-			title: '🧊 Streak Frozen',
-			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** — ${freezeUsed === 1 ? 'a streak freeze' : `${freezeUsed} streak freezes`} kept the **${streak}-day** streak alive.`,
+			title: tr('tasks.streak.frozen.title'),
+			description: tr('tasks.streak.frozen.description', {
+				member: mention,
+				days: dayCount(daysMissed),
+				freezes: tr(freezeUsed === 1 ? 'tasks.streak.frozen.one' : 'tasks.streak.frozen.many', { count: freezeUsed }),
+				streak
+			}),
 			fields: [
-				{ name: 'Freezes used', value: `${freezeUsed}`, inline: true },
-				{ name: 'Freezes left', value: `${left}`, inline: true }
+				{ name: tr('tasks.streak.fields.freezesUsed'), value: `${freezeUsed}`, inline: true },
+				{ name: tr('tasks.streak.fields.freezesLeft'), value: `${left}`, inline: true }
 			]
 		};
 	}
@@ -279,8 +306,8 @@ function streakAnnouncement(streakResult: any, milestone: any, member: any) {
 	if (milestone) {
 		return {
 			accent: 'luck',
-			title: `${milestone.emoji} ${milestone.label} Streak`,
-			description: `${member} just hit a **${streak}-day** streak!`,
+			title: tr('tasks.streak.milestone.title', { emoji: milestone.emoji, label: milestoneLabel(tr, milestone) }),
+			description: tr('tasks.streak.milestone.description', { member: mention, streak }),
 			fields: []
 		};
 	}
@@ -303,20 +330,22 @@ async function announceLoginItem(client: any, guildId: any, discordMemberId: any
 		if (!member) return;
 
 		const { EmbedBuilder } = await import('discord.js');
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: 'Tasks' }));
+		const tr = await serverTranslator(guildId);
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
 
 		const worth = Number(ctx.item?.cost) || 0;
 		const meta = rarityMeta(ctx.tier);
+		const rarity = rarityLabel(tr, ctx.tier);
 		const embed = new EmbedBuilder()
 			.setColor(parseInt(meta.accent.slice(1), 16))
-			.setTitle(ctx.jackpot ? `🎁 Day ${ctx.day} jackpot — ${meta.label}!` : `✨ ${meta.label} drop!`)
-			.setDescription(`${member} rolled a **${meta.label}** item on day ${ctx.day}!`)
+			.setTitle(ctx.jackpot ? tr('tasks.login.jackpotTitle', { day: ctx.day, rarity }) : tr('tasks.login.dropTitle', { rarity }))
+			.setDescription(tr('tasks.login.description', { member: `${member}`, rarity, day: ctx.day }))
 			.addFields(
-				{ name: 'Item', value: String(ctx.item?.name || '—'), inline: true },
-				{ name: 'Rarity', value: meta.label, inline: true },
-				{ name: 'Worth', value: `${worth.toLocaleString()} XP`, inline: true }
+				{ name: tr('tasks.login.fields.item'), value: String(ctx.item?.name || '—'), inline: true },
+				{ name: tr('tasks.login.fields.rarity'), value: rarity, inline: true },
+				{ name: tr('tasks.login.fields.worth'), value: `${worth.toLocaleString()} XP`, inline: true }
 			)
-			.setFooter({ text: embedConfig.FOOTER || 'Tasks' })
+			.setFooter({ text: embedConfig.FOOTER || tr('tasks.footer') })
 			.setTimestamp();
 
 		await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
@@ -338,17 +367,18 @@ export async function announceStreak(client: any, guildId: any, discordMemberId:
 	const member = await guild.members.fetch(String(discordMemberId)).catch(() => null);
 	if (!member) return;
 
-	const plan = streakAnnouncement(streakResult, milestone, member);
+	const tr = await serverTranslator(String(guildId));
+	const plan = streakAnnouncement(tr, streakResult, milestone, member);
 	if (!plan) return;
 
 	const { EmbedBuilder } = await import('discord.js');
-	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Tasks' }));
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
 
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(plan.accent))
 		.setTitle(plan.title)
 		.setDescription(plan.description)
-		.setFooter({ text: embedConfig.FOOTER || 'Tasks' })
+		.setFooter({ text: embedConfig.FOOTER || tr('tasks.footer') })
 		.setTimestamp();
 
 	if (plan.fields.length > 0) embed.addFields(plan.fields);

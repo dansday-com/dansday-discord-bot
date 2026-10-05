@@ -85,7 +85,8 @@
 			"hours": "ساعات",
 			"day": "يوم",
 			"days": "أيام"
-		}
+		},
+		"defaultFooter": "مدعوم من {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **الصلاحيات غير مُعدّة**",
 			"description": "على مالك الخادم أو أحد المشرفين ضبط صلاحيات الرتب قبل أن يتمكن أي أحد من استخدام ميزة **{action}**."
-		}
+		},
+		"requiredRoleFallback": "الرتبة المطلوبة"
 	},
 	"settings": {
 		"language": {
@@ -114,7 +116,10 @@
 			"current": "اللغة الحالية",
 			"select": "اختيار اللغة",
 			"updated": "✅ تم تحديث اللغة بنجاح!",
-			"failed": "❌ تعذّر تحديث اللغة: {error}"
+			"failed": "❌ تعذّر تحديث اللغة: {error}",
+			"serverDefault": "افتراضي الخادم ({language})",
+			"serverDefaultDescription": "اتباع لغة الخادم",
+			"currentOption": "اللغة الحالية"
 		}
 	},
 	"leveling": {
@@ -126,6 +131,54 @@
 		"errors": {
 			"notRegistered": "⚠️ هذا الخادم غير مسجّل لدى البوت. نفّذ عملية مزامنة أولًا.",
 			"createRecordFailed": "❌ تعذّر إنشاء سجل العضو. حاول مرة أخرى."
+		},
+		"fields": {
+			"level": "⭐ المستوى",
+			"totalXp": "📊 إجمالي الخبرة",
+			"rank": "🏆 الترتيب",
+			"previousRank": "الترتيب السابق",
+			"newRank": "الترتيب الجديد",
+			"progress": "⚡ التقدّم إلى المستوى {level}",
+			"reward": "🎁 تم فتح مكافأة",
+			"activity": "💬 النشاط"
+		},
+		"xpToGo": "متبقٍ **{xp}** XP",
+		"unranked": "غير مصنّف",
+		"leaderboardButton": "لوحة المتصدرين",
+		"levelUp": {
+			"title": "🎉 ارتقاء في المستوى!",
+			"description": "وصل {member} إلى **المستوى {level}**!"
+		},
+		"rankUp": {
+			"title": "تحديث الترتيب!",
+			"topSpot": "حجز {member} للتو مركزًا في القمة!",
+			"climbed": "تقدّم {member} في لوحة المتصدرين!"
+		},
+		"activity": {
+			"messages": "{count} رسالة",
+			"voice": "{hours} س صوت",
+			"streaming": "{hours} س بث"
+		},
+		"log": {
+			"types": {
+				"chat": "الدردشة",
+				"voice": "الصوت",
+				"afkVoice": "الصوت (AFK)",
+				"video": "الفيديو",
+				"streaming": "البث",
+				"invite": "الدعوة"
+			},
+			"gain": "{emoji} XP {type}: حصل {name} على +{xp} XP",
+			"staff": "({multiplier}× طاقم الإدارة 🛡️)",
+			"boost": "({multiplier}× تعزيز ⚡)",
+			"friend": "(+{rate} تعزيز الأصدقاء 🤝)",
+			"leech": "(−{rate} امتصاص 🩸)",
+			"share": "📨 +{amount} إلى {name} ({percent}% حصة الدعوة{staff})",
+			"inviteNote": "مقابل دعوة {name}",
+			"leechCredit": "🩸 امتصاص: سحب {attacker} +{amount} XP من {victim}{pct}",
+			"unknownMember": "غير معروف",
+			"someMember": "أحد الأعضاء",
+			"someLeecher": "أحد الماصّين"
 		}
 	},
 	"invites": {
@@ -180,8 +233,8 @@
 		"modal": {
 			"messageLabel": "رسالة AFK (اختياري)",
 			"messagePlaceholder": "مثال: آخذ استراحة، أذاكر، إلخ.",
-			"deafenLabel": "إيقاف السماع في الصوت؟ (yes/no، افتراضي yes)",
-			"deafenPlaceholder": "yes أو no (اتركه فارغًا لـ yes)"
+			"deafenLabel": "إيقاف السماع في الصوت؟ (نعم/لا، افتراضي نعم)",
+			"deafenPlaceholder": "نعم أو لا (اتركه فارغًا لـ نعم)"
 		},
 		"buttons": {
 			"remove": "🔄 إزالة AFK"
@@ -196,7 +249,10 @@
 		"messages": {
 			"welcomeBack": "✅ أهلًا بعودتك يا {member}! تمت إزالة حالة AFK الخاصة بك.",
 			"dmEmbedTitle": "📬 تمت الإشارة إليك",
-			"dmMentioned": "{sender} أشار إليك في **{server}** · #{channel}\\n\\n**الرسالة:** {message}"
+			"dmMentioned": "{sender} أشار إليك في **{server}** · #{channel}\\n\\n**الرسالة:** {message}",
+			"away": "غير متواجد",
+			"isAfk": "⏸️ {member} في وضع AFK حاليًا (منذ {duration})",
+			"isAfkWithMessage": "⏸️ {member} في وضع AFK حاليًا: **{message}** (منذ {duration})"
 		}
 	},
 	"giveaway": {
@@ -221,8 +277,8 @@
 			"durationPlaceholder": "مثال: 60 لساعة واحدة، 1440 ليوم كامل",
 			"winnerCountLabel": "عدد الفائزين",
 			"winnerCountPlaceholder": "كم عدد الفائزين؟ (الافتراضي: 1)",
-			"multipleEntriesLabel": "السماح بمشاركات متعددة؟ (yes/no)",
-			"multipleEntriesPlaceholder": "yes أو no (الافتراضي: no)"
+			"multipleEntriesLabel": "السماح بمشاركات متعددة؟ (نعم/لا)",
+			"multipleEntriesPlaceholder": "نعم أو لا (الافتراضي: لا)"
 		},
 		"created": {
 			"title": "✅ تم إنشاء السحب!",
@@ -260,7 +316,41 @@
 			"finishChannelNotConfigured": "❌ قناة السحوبات غير مُعدّة.",
 			"finishChannelNotFound": "❌ لم يتم العثور على قناة السحوبات.",
 			"failed": "❌ تعذّر فتح نموذج السحب: {error}",
-			"notEnoughInvites": "❌ تحتاج إلى **{needed}** دعوات للمشاركة في هذا السحب. لديك **{have}**."
+			"notEnoughInvites": "❌ تحتاج إلى **{needed}** دعوات للمشاركة في هذا السحب. لديك **{have}**.",
+			"roleSelectFailed": "❌ تعذّرت معالجة اختيار الرتب: {error}",
+			"enterFailed": "❌ **تعذّرت المشاركة في السحب**\\n\\nالخطأ: {error}",
+			"finishFailed": "❌ تعذّر إنهاء السحب: {error}"
+		},
+		"unknownRole": "الرتبة {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "بدون قيود على الرتب",
+			"multipleEntries": "يُسمح بمشاركات متعددة",
+			"singleEntry": "مشاركة واحدة لكل عضو",
+			"prizeLine": "**الجائزة:** {prize}",
+			"winnerLine": "**عدد الفائزين:** {count}",
+			"winnersLine": "**عدد الفائزين:** {count}",
+			"entriesLine": "**المشاركات:** {entries}",
+			"rolesLine": "**قيود الرتب:** {roles}",
+			"invitesLine": "**الدعوات المطلوبة:** {count}",
+			"hostedBy": "👤 المُنظِّم",
+			"enterButton": "🎉 شارك في السحب"
+		},
+		"results": {
+			"endedTitle": "🎉 انتهى السحب",
+			"endedWinnersTitle": "🎉 انتهى السحب!",
+			"noEntries": "**{title}**\\n\\n❌ لا توجد مشاركات! انتهى السحب دون أي مشاركين.",
+			"noWinners": "**{title}**\\n\\n❌ تعذّر اختيار الفائزين.",
+			"winnerLine": "🎊 **الفائز:** {winners}",
+			"winnersLine": "🎊 **الفائزون:** {winners}",
+			"limitedEntriesOne": "⚠️ *تم اختيار {count} فائز فقط (من أصل {requested} مطلوبين) بسبب قلة المشاركات.*",
+			"limitedEntriesMany": "⚠️ *تم اختيار {count} فائزين فقط (من أصل {requested} مطلوبين) بسبب قلة المشاركات.*",
+			"congrats": "تهانينا! 🎉"
+		},
+		"finished": {
+			"title": "✅ تم إنهاء السحب",
+			"noEntries": "تم إنهاء سحبك **\"{title}\"** مبكرًا.\\n\\nلم يشارك أحد.",
+			"noWinners": "تم إنهاء سحبك **\"{title}\"** مبكرًا.\\n\\nتعذّر اختيار الفائزين.",
+			"winners": "تم إنهاء سحبك **\"{title}\"** مبكرًا.\\n\\n**الفائزون:** {winners}"
 		}
 	},
 	"feedback": {
@@ -269,8 +359,8 @@
 			"label": "ملاحظاتك",
 			"placeholder": "شاركنا ملاحظاتك أو اقتراحاتك أو ما يشغلك...",
 			"maxLength": 2000,
-			"anonymousLabel": "إرسال بشكل مجهول؟ (yes/no)",
-			"anonymousPlaceholder": "yes أو no (الافتراضي: no)"
+			"anonymousLabel": "إرسال بشكل مجهول؟ (نعم/لا)",
+			"anonymousPlaceholder": "نعم أو لا (الافتراضي: لا)"
 		},
 		"submitted": {
 			"title": "✅ تم إرسال الملاحظات!",
@@ -284,6 +374,13 @@
 			"channelNotFound": "❌ تعذّر إرسال الملاحظات: لم يتم العثور على قناة الملاحظات.",
 			"failed": "❌ تعذّر فتح نموذج الملاحظات: {error}",
 			"submitFailed": "❌ **تعذّر إرسال الملاحظات**\\n\\nالخطأ: {error}\\n\\nحاول مرة أخرى لاحقًا."
+		},
+		"channelEmbed": {
+			"title": "💬 ملاحظات جديدة",
+			"fieldFrom": "👤 من",
+			"fieldSubmitted": "🕐 وقت الإرسال",
+			"anonymous": "مجهول",
+			"footerSuffix": "• رقم الملاحظة: #{feedbackId}"
 		}
 	},
 	"staffRating": {
@@ -314,11 +411,10 @@
 			"ratingLabel": "التقييم (من 1 إلى 5 نجوم)",
 			"ratingPlaceholder": "1 = ضعيف جدًا، 5 = ممتاز",
 			"categoryLabel": "الفئة",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "الوصف",
 			"descriptionPlaceholder": "صف تجربتك مع عضو الطاقم هذا...",
-			"anonymousLabel": "إرسال بشكل مجهول؟ (yes/no)",
-			"anonymousPlaceholder": "yes أو no (الافتراضي: no)"
+			"anonymousLabel": "إرسال بشكل مجهول؟ (نعم/لا)",
+			"anonymousPlaceholder": "نعم أو لا (الافتراضي: لا)"
 		},
 		"submitted": {
 			"title": "✅ تم إرسال البلاغ",
@@ -343,7 +439,7 @@
 		"errors": {
 			"noStaffSelected": "❌ اختر عضو الطاقم المراد الإبلاغ عنه.",
 			"invalidRating": "❌ **تقييم غير صالح**\\n\\nيجب أن يكون التقييم رقمًا بين 1 و 5.",
-			"invalidCategory": "❌ **فئة غير صالحة**\\n\\nاستخدم إحدى هذه الفئات: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **فئة غير صالحة**\\n\\nاختر فئة من القائمة.",
 			"emptyDescription": "❌ **الوصف مطلوب**\\n\\nصف تجربتك من فضلك.",
 			"cannotReportSelf": "❌ لا يمكنك الإبلاغ عن نفسك!",
 			"notStaff": "❌ العضو المحدد ليس من الطاقم.",
@@ -356,6 +452,40 @@
 			"missingCategory": "❌ اختر فئة قبل المتابعة.",
 			"permissionDenied": "❌ **تم رفض الصلاحية**\\n\\nتحتاج إلى صلاحيات إشرافية لقبول بلاغات الطاقم أو رفضها.",
 			"reviewReasonRequired": "❌ أدخل سببًا لقرارك من فضلك."
+		},
+		"embed": {
+			"staffDecision": "قرار الطاقم",
+			"reviewedBy": "تمت المراجعة بواسطة",
+			"statusApproved": "مقبول",
+			"statusRejected": "مرفوض"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "عضو الطاقم",
+			"fieldRating": "التقييم",
+			"fieldCategory": "الفئة",
+			"fieldReporter": "المُبلِّغ",
+			"fieldStatus": "الحالة",
+			"fieldDescription": "الوصف",
+			"anonymousReporter": "مجهول",
+			"pendingTitle": "🕒 بلاغ طاقم قيد المراجعة",
+			"pendingStatus": "بانتظار موافقة المشرفين",
+			"approveButton": "قبول البلاغ",
+			"rejectButton": "رفض البلاغ",
+			"titleApproved": "✅ تم قبول بلاغ الطاقم",
+			"titleRejected": "❌ تم رفض بلاغ الطاقم",
+			"footerReportSuffix": "• رقم البلاغ: #{reportId}"
+		},
+		"ratingUpdate": {
+			"title": "⭐ تحديث تقييم الطاقم",
+			"description": "تلقّى {staff} تقييمًا جديدًا.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} بلاغ)",
+			"fieldFeedback": "الملاحظات",
+			"dm": "⭐ أصبح تقييمك في الطاقم على **{server}** الآن **{rating}/5.0** ({totalReports} بلاغ)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ تمت معالجة هذا البلاغ بالفعل.",
+			"approvedReply": "✅ تم قبول البلاغ #{reportId}.",
+			"rejectedReply": "❌ تم رفض البلاغ #{reportId}."
 		}
 	},
 	"contentCreator": {
@@ -405,6 +535,47 @@
 			"submitFailed": "❌ تعذّر إرسال طلب صانع المحتوى: {error}",
 			"permissionDenied": "❌ تحتاج إلى صلاحيات إشرافية لقبول طلبات صنّاع المحتوى أو رفضها.",
 			"reviewReasonRequired": "❌ أدخل سببًا لقرارك من فضلك."
+		},
+		"embed": {
+			"staffDecision": "قرار الطاقم",
+			"reviewedBy": "تمت المراجعة بواسطة",
+			"reviewedBySystem": "تلقائي (حساب TikTok مكرر)",
+			"statusApproved": "مقبول",
+			"statusRejected": "مرفوض"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 طلب صانع محتوى قيد المراجعة",
+			"pendingDescription": "طلب {user} الحصول على صلاحية صانع المحتوى.",
+			"pendingStatus": "بانتظار موافقة المشرفين",
+			"fieldTiktok": "اسم المستخدم في TikTok",
+			"fieldStatus": "الحالة",
+			"fieldApplicantReason": "السبب",
+			"buttonApprove": "قبول",
+			"buttonReject": "رفض",
+			"titleApproved": "✅ تم قبول طلب صانع المحتوى",
+			"titleRejected": "❌ تم رفض طلب صانع المحتوى",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• رقم الطلب: #{appId}",
+			"liveTitle": "🔴 صانع محتوى في بث مباشر الآن",
+			"liveDescription": "{mention} يبث الآن مباشرة على TikTok!",
+			"liveWatchButton": "شاهد البث المباشر على TikTok",
+			"autoRejectReviewReason": "تكرار أو انتحال هوية: اسم المستخدم هذا في TikTok مرتبط بحساب Discord آخر.",
+			"autoRejectConflictPending": "لدى ذلك الحساب طلب **قيد المراجعة** لاسم TikTok هذا.",
+			"autoRejectConflictApproved": "ذلك الحساب صانع محتوى **معتمد** يستخدم اسم TikTok هذا."
+		},
+		"live": {
+			"digest": "📊 **بث مباشر** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "البث #{streamId}",
+			"endedTitle": "⚫ انتهى البث المباشر",
+			"errorTitle": "⚠️ خطأ في اتصال البث المباشر",
+			"sessionLine": "جلسة البث **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ رقم الطلب غير صالح.",
+			"applicationNotFound": "❌ لم يتم العثور على الطلب.",
+			"alreadyProcessed": "⚠️ تمت معالجة هذا الطلب بالفعل.",
+			"approvedReply": "✅ تم قبول الطلب #{appId}.",
+			"rejectedReply": "❌ تم رفض الطلب #{appId}."
 		}
 	},
 	"notifications": {
@@ -435,7 +606,7 @@
 			"nameLabel": "اسم الرتبة",
 			"namePlaceholder": "أدخل اسم رتبتك المخصصة...",
 			"colorLabel": "لون الرتبة (سداسي/عشري/اسم)",
-			"colorPlaceholder": "#FF5733 أو 16729395 أو red (اختياري)",
+			"colorPlaceholder": "#FF5733 أو 16729395 أو أحمر (اختياري)",
 			"iconLabel": "أيقونة الرتبة (إيموجي أو رابط صورة)",
 			"iconPlaceholder": "🔥 أو https://example.com/icon.png (اختياري)"
 		},
@@ -469,7 +640,9 @@
 			"iconStatusUpdated": "تم التحديث",
 			"iconStatusRemoved": "تمت الإزالة",
 			"iconStatusFailed": "فشل (حُدّثت الرتبة بدون أيقونة)",
-			"iconStatusInvalid": "صيغة غير صالحة (حُدّثت الرتبة بدون أيقونة)"
+			"iconStatusInvalid": "صيغة غير صالحة (حُدّثت الرتبة بدون أيقونة)",
+			"iconFailedFallback": "تعذّر تعيين الأيقونة. تم تحديث الرتبة ولكن بدون الأيقونة المخصصة.",
+			"iconNote": "⚠️ **ملاحظة حول الأيقونة:** {message}"
 		},
 		"deleted": {
 			"title": "✅ تم حذف رتبة الداعم المخصصة",
@@ -490,7 +663,18 @@
 			"updateFailed": "❌ **تعذّر تحديث الرتبة**\\n\\nالخطأ: {error}\\n\\nتأكد من الآتي:\\n- أن البوت يملك صلاحية إدارة الرتب\\n- أن قيود الرتبة صحيحة",
 			"deleteFailed": "❌ تعذّر حذف الرتبة: {error}",
 			"failed": "❌ تعذّر فتح نموذج إنشاء الرتبة: {error}",
-			"editFailed": "❌ تعذّر فتح نموذج التعديل: {error}"
+			"editFailed": "❌ تعذّر فتح نموذج التعديل: {error}",
+			"createFailedReason": "❌ **تعذّر إنشاء الرتبة**\n\n{reason}"
+		},
+		"colorDefault": "افتراضي",
+		"anchor": {
+			"noBoosterRole": "لا يملك هذا الخادم رتبة Server Booster بعد. تظهر بمجرد أن يعزز أحدهم الخادم.",
+			"botTooLow": "يجب أن تكون رتبة البوت أعلى من {role} لإنشاء رتب الداعمين.",
+			"unknown": "تعذّر تحديد مكان وضع رتبة الداعم."
+		},
+		"iconErrors": {
+			"boost": "يحتاج هذا الخادم إلى المستوى الثاني من Boost لاستخدام أيقونات الرتب المخصصة. يمكنك استخدام إيموجي بدلًا من ذلك!",
+			"invalidFormat": "تنسيق الرابط أو نوع الملف غير صالح"
 		}
 	},
 	"questEnroll": {
@@ -519,7 +703,126 @@
 		"autoQuestDisabled": "الانضمام التلقائي للمهام معطّل حاليًا. تواصل مع أحد مشرفي الخادم من فضلك.",
 		"alreadyRunning": "لديك مهمة تلقائية قيد التنفيذ بالفعل. انتظر انتهاءها قبل بدء أخرى.",
 		"announceInChannel": "يتم نشر كل نتيجة في {channel}.",
-		"announceDisabled": "لا توجد قناة مهام مُعدّة، لذا لن يُنشر أي شيء — المهام المستلمة تُعلَّم فقط في قائمة المهام."
+		"announceDisabled": "لا توجد قناة مهام مُعدّة، لذا لن يُنشر أي شيء — المهام المستلمة تُعلَّم فقط في قائمة المهام.",
+		"result": {
+			"reward": "المكافأة",
+			"openInDiscord": "فتح في Discord",
+			"errorTitle": "خطأ في التسجيل بالمهمة",
+			"errorDescription": "{member} ({tag})\nالمهمة `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "توكن مستخدم Discord (لا يتم حفظه)",
+			"placeholder": "خطر مخالفة الشروط: قد يُحظر حسابك وربما البوت/الخادم. الصقه مرة واحدة ولا تنشره أبدًا.",
+			"claimAllTitle": "استلام الكل (توكن — خطر مرتفع)",
+			"enrollTitle": "التسجيل (توكن — خطر مرتفع)"
+		},
+		"tokenTooShort": "التوكن قصير جدًا.",
+		"invalidTokenTitle": "توكن غير صالح",
+		"invalidTokenDescription": "يبدو أن التوكن الذي قدمته غير صالح أو منتهي الصلاحية.\n`{error}`",
+		"invalidQuestId": "معرّف المهمة غير صالح.",
+		"missingQuestOrToken": "معرّف المهمة مفقود أو التوكن قصير جدًا.",
+		"taskTypes": {
+			"default": "مهمة",
+			"WATCH_VIDEO": "مشاهدة فيديو",
+			"WATCH_VIDEO_ON_MOBILE": "مشاهدة فيديو (الجوال)",
+			"PLAY_ON_DESKTOP": "اللعب على الكمبيوتر",
+			"PLAY_ON_DESKTOP_V2": "اللعب على الكمبيوتر",
+			"PLAY_ON_XBOX": "اللعب على Xbox",
+			"PLAY_ON_PLAYSTATION": "اللعب على PlayStation",
+			"STREAM_ON_DESKTOP": "البث من الكمبيوتر",
+			"PLAY_ACTIVITY": "نشاط",
+			"ACHIEVEMENT_IN_ACTIVITY": "إنجاز في نشاط",
+			"ACHIEVEMENT_IN_GAME": "إنجاز في لعبة"
+		},
+		"task": {
+			"forMinute": "{task} لمدة {count} دقيقة",
+			"forMinutes": "{task} لمدة {count} دقيقة",
+			"forSeconds": "{task} لمدة {count} ثانية",
+			"secondsTarget": "{task} · {count} ثانية",
+			"target": "{task} · الهدف {count}"
+		},
+		"reward": {
+			"fallback": "مكافأة المهمة",
+			"currency": "{count}× من عملة مهام Discord"
+		},
+		"auto": {
+			"notFound": {
+				"title": "التسجيل في المهمة",
+				"description": "لم تظهر هذه المهمة لذلك الحساب. افتح **المهام** في Discord، واقبلها إن لزم الأمر، وتأكد من أن التوكن يخص ذلك المستخدم."
+			},
+			"expired": {
+				"title": "التسجيل في المهمة",
+				"description": "انتهت صلاحية تلك المهمة."
+			},
+			"alreadyComplete": {
+				"title": "✅ المهمة مكتملة بالفعل",
+				"description": "**المكافأة:** {reward}\nاستلمها من تطبيق Discord ضمن **المهام** إن لم تفعل بعد."
+			},
+			"enrollFailed": {
+				"title": "فشل التسجيل في المهمة",
+				"description": "أعاد Discord الرمز HTTP {status} أثناء التسجيل. قد تحتاج إلى قبول المهمة في التطبيق أولًا، أو قد يكون التوكن الخاص بك غير صالح."
+			},
+			"complete": {
+				"title": "✅ اكتملت المهمة",
+				"description": "**المكافأة:** {reward}\nافتح **Discord ← المهام**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ تم التسجيل فقط",
+				"description": "تم التسجيل في **{quest}**. لم يُعثر على أي هدف قابل للتنفيذ في إعدادات المهمة — أكملها في تطبيق **Discord** إن لزم الأمر.\n\n**المكافأة:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "مهمة إنجاز",
+				"description": "معرّف التطبيق أو هدف الإنجاز مفقود في إعدادات المهمة. أكمل **{task}** في تطبيق Discord.\n\n**المكافأة:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ اكتملت مهمة الإنجاز",
+				"description": "**{quest}**\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"achievementIncomplete": {
+				"title": "مهمة إنجاز — غير مكتملة",
+				"description": "{error}\n\n**المكافأة:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "مهمة نشاط",
+				"description": "تعذّر تحديد معرّف المستخدم الخاص بك من التوكن. استخدم توكن **مستخدم** عاديًا (وليس توكن بوت).\n\n**المكافأة:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ اكتملت مهمة النشاط",
+				"description": "**{quest}**\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"activityIncomplete": {
+				"title": "مهمة نشاط — غير مكتملة",
+				"description": "لم يكتمل التقدّم في الوقت المحدد{detail}.\n\n**المكافأة:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ تم التسجيل فقط",
+				"description": "تم التسجيل في **{quest}**. يحتاج **{task}** إلى **معرّف تطبيق** في إعدادات المهمة لإرسال نبضات API — أكملها في تطبيق Discord (الكمبيوتر / جهاز الألعاب).\n\n**المكافأة:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ انتهت المهمة",
+				"description": "**{quest}** ({task})\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"platformIncomplete": {
+				"title": "المهمة — غير مكتملة",
+				"description": "لم يكتمل التقدّم في الوقت المحدد{detail}. في مهام **البث** أو **أجهزة الألعاب**، أبقِ التطبيق الحقيقي نشطًا أو أعد المحاولة لاحقًا.\n\n**المكافأة:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ تم التسجيل فقط",
+				"description": "تم التسجيل في **{quest}**. نوع هدف غير مدعوم (**{task}**) — أكمله في تطبيق Discord.\n\n**المكافأة:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "التسجيل في المهمة",
+				"description": "تعذّرت قراءة مدة الفيديو لهذه المهمة."
+			},
+			"videoDone": {
+				"title": "✅ اكتملت مهمة الفيديو",
+				"description": "**{quest}**\n**المكافأة:** {reward}\nاستلمها من **Discord ← المهام**"
+			},
+			"videoIncomplete": {
+				"title": "التسجيل في المهمة — غير مكتمل",
+				"description": "لم يصل التقدّم إلى الهدف في الوقت المحدد{detail}. أكمل المشاهدة في تطبيق Discord أو حاول مجددًا."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -553,7 +856,7 @@
 			"menu": {
 				"title": "🛍️ تنبيهات عناصر Roblox",
 				"description": "أنت تتابع {count} عنصر. اختر واحدًا لتغيير ما يُنبّهك.",
-				"empty": "لا تتابع أي عنصر Roblox بعد. اضغط 🔔 Notify me أسفل أي منشور في الكتالوج للبدء.",
+				"empty": "لا تتابع أي عنصر Roblox بعد. اضغط 🔔 {button} أسفل أي منشور في الكتالوج للبدء.",
 				"placeholder": "اختر عنصرًا لتعديله...",
 				"disableAll": "🔕 تعطيل الكل",
 				"disabledAll": "🔕 تم تعطيل التنبيهات لـ {count} عنصر."
@@ -561,6 +864,24 @@
 			"errors": {
 				"invalidItem": "❌ تعذّرت قراءة عنصر الكتالوج من هذا الزر.",
 				"memberNotFound": "❌ ملف عضويتك لم تتم مزامنته بعد. حاول مرة أخرى بعد قليل."
+			}
+		},
+		"itemFallback": "العنصر #{id}",
+		"post": {
+			"free": "مجاني",
+			"updatedTitle": "[محدَّث] {name}",
+			"openOnRoblox": "فتح على Roblox",
+			"notifyMe": "نبّهني",
+			"fields": {
+				"category": "الفئة",
+				"price": "السعر",
+				"creator": "المنشئ",
+				"quantity": "الكمية",
+				"favorites": "المفضلة",
+				"created": "تاريخ الإنشاء",
+				"notifications": "التنبيهات",
+				"resalePrice": "سعر إعادة البيع",
+				"saleEnds": "ينتهي البيع"
 			}
 		}
 	},
@@ -619,6 +940,13 @@
 			"notFound": "❌ لم يتم العثور على صانع محتوى بهذا الرابط أو الاسم.",
 			"tiktokCooling": "⏳ يقيّد TikTok عمليات البحث حاليًا. حاول بعد بضع دقائق.",
 			"lookupFailed": "❌ تعذر البحث عن صانع المحتوى الآن. حاول لاحقًا."
+		},
+		"post": {
+			"platform": "المنصة",
+			"type": "النوع",
+			"notifications": "التنبيهات",
+			"openOn": "فتح على {platform}",
+			"notifyMe": "نبّهني"
 		}
 	},
 	"moderation": {
@@ -638,11 +966,423 @@
 		},
 		"modal": {
 			"reason": "السبب",
-			"duration": "المدة (مثل 10m، 2h، 7d)"
+			"duration": "المدة (مثل 10 دقائق، 2 ساعات، 7 أيام)"
 		},
 		"done": "✅ تم تطبيق {action} على {member}. القضية #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ أدخل مدة مثل 10m أو 2h أو 7d.",
-		"notAllowed": "❌ لا يمكن الإشراف على مالك الخادم أو البوتات."
+		"invalidDuration": "❌ أدخل مدة مثل 10 دقائق أو 2 ساعات أو 7 أيام.",
+		"notAllowed": "❌ لا يمكن الإشراف على مالك الخادم أو البوتات.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ تم تحذير عضو",
+				"timeout": "🔇 تم إسكات عضو مؤقتًا",
+				"untimeout": "🔊 تمت إزالة الإسكات",
+				"kick": "👢 تم طرد عضو",
+				"ban": "🔨 تم حظر عضو",
+				"tempban": "⏳ تم حظر عضو مؤقتًا",
+				"unban": "🕊️ تم رفع الحظر عن عضو",
+				"unwarn": "🧹 تمت إزالة تحذير",
+				"clearwarns": "🧹 تم مسح التحذيرات",
+				"tempban_expired": "⌛ انتهى الحظر المؤقت"
+			},
+			"bulkTitles": {
+				"role_add": "➕ إضافة رتبة بشكل جماعي",
+				"role_remove": "➖ إزالة رتبة بشكل جماعي"
+			},
+			"title": "{action} · القضية #{case}",
+			"description": "تم تسجيل القضية **#{case}** للعضو {member}.",
+			"fields": {
+				"member": "👤 العضو",
+				"staff": "🛡️ المشرف",
+				"source": "📍 المصدر",
+				"reason": "📝 السبب",
+				"duration": "⏱️ المدة",
+				"activeWarnings": "📊 التحذيرات النشطة",
+				"role": "🎭 الرتبة"
+			},
+			"durationValue": "{duration} (تنتهي {ends})",
+			"noReason": "لم يُذكر سبب",
+			"unknown": "غير معروف",
+			"automatic": "تلقائي",
+			"staffFallback": "الطاقم",
+			"sources": {
+				"panel": "لوحة التحكم",
+				"menu": "القائمة",
+				"discord": "Discord",
+				"auto": "تلقائي"
+			},
+			"bulkSummary": "**{done}** تم · {failed} فشل",
+			"reasons": {
+				"unwarn": "تمت إزالة التحذير #{case}",
+				"clearwarns": "تم مسح {count} من التحذيرات",
+				"escalation": "بلغ {count} من التحذيرات النشطة",
+				"tempbanExpired": "انتهت قضية الحظر المؤقت #{case}"
+			}
+		},
+		"memberDm": {
+			"server": "**الخادم:** {server}",
+			"reason": "**السبب:** {reason}",
+			"duration": "**المدة:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} يوم",
+			"h": "{n} ساعة",
+			"m": "{n} دقيقة",
+			"s": "{n} ثانية"
+		}
+	},
+	"setup": {
+		"categoryName": "قائمة {botName}",
+		"channels": {
+			"menu": "「💻」القائمة",
+			"bot_updates": "「⚙️」تحديثات-البوت",
+			"welcomer": "「🚪」الترحيب",
+			"booster": "「🚀」المعززون",
+			"moderation": "「🔨」الإشراف",
+			"leveling": "「🆙」المستوى",
+			"giveaway": "「🎁」السحوبات",
+			"staff_rating": "「⭐」تقييم-الطاقم",
+			"discord_quest_notifier": "「📜」مهام-ديسكورد",
+			"content_creator": "「📽️」صناع-المحتوى",
+			"roblox_catalog_notifier": "「👗」كتالوج-روبلوكس",
+			"items": "「🛍️」العناصر",
+			"minigames": "「🎲」الألعاب-المصغرة"
+		},
+		"language": {
+			"title": "🌐 اختر لغة الخادم",
+			"description": "اختر لغة هذا الخادم. تُستخدم لتسمية القنوات التي ينشئها `/setup`، وللقائمة، ومنشورات الموافقة، وجميع رسائل البوت العامة، ولمحادثة الذكاء الاصطناعي وصوته.\n\nلا يزال بإمكان الأعضاء اختيار لغتهم الخاصة من القائمة لردودهم الخاصة ورسائلهم المباشرة. يمكنك تغيير ذلك لاحقاً من لوحة الويب ضمن **Configuration → Main**.",
+			"placeholder": "اختر لغة الخادم",
+			"working": "⏳ جارٍ الإعداد باللغة **{language}**…",
+			"applied": "🌐 لغة الخادم: **{language}**"
+		},
+		"commandDescription": "إعداد البوت: اختر لغة الخادم، ثم أنشئ القائمة والقنوات. للمشرفين فقط."
+	},
+	"items": {
+		"common": {
+			"footer": "العناصر",
+			"aMemberActor": "عضو ما",
+			"aMemberTarget": "عضو ما",
+			"disguisedMember": "عضو غامض 🎭",
+			"someone": "شخص ما",
+			"item": "العنصر",
+			"anItem": "عنصر",
+			"them": "ذلك العضو",
+			"until": " (ينتهي {time})",
+			"activeUntil": " (نشط، ينتهي {time})",
+			"luckBonus": " (+{percent}% حظ 🍀)",
+			"luckTaxDiscount": " (−{percent}% من الضريبة بفضل الحظ 🍀)",
+			"addressed": "{member}، {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "تم صدّ السرقة",
+				"blockedDescription": "صدّ **درع** {target} سرقة {actor}!",
+				"immuneTitle": "امتصّت الحصانة السرقة",
+				"immuneDescription": "{target} لا يزال محصّنًا. لم يكن لسرقة {actor} أي أثر، وضاع **{item}**."
+			},
+			"bomb": {
+				"blockedTitle": "تم صدّ القنبلة",
+				"blockedDescription": "صدّ **درع** {target} قنبلة {actor}!",
+				"immuneTitle": "امتصّت الحصانة القنبلة",
+				"immuneDescription": "{target} لا يزال محصّنًا. لم يكن لقنبلة {actor} أي أثر، وضاع **{item}**."
+			},
+			"leech": {
+				"blockedTitle": "تم صدّ العلقة",
+				"blockedDescription": "صدّ **درع** {target} علقة {actor}!",
+				"immuneTitle": "امتصّت الحصانة العلقة",
+				"immuneDescription": "{target} لا يزال محصّنًا. لم يكن لعلقة {actor} أي أثر، وضاع **{item}**."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "تم عكس الهجوم",
+			"reflectedDescription": "عكس {target} الهجوم على {actor}!",
+			"withItem": " باستخدام **{item}**",
+			"refundedValue": "استردّ {target} {xp}",
+			"bountyValue": "حصل {actor} أيضًا على {xp}",
+			"immuneValue": "تنتهي حصانة {target} {time}",
+			"steal": {
+				"title": "تمت سرقة عضو!",
+				"description": "سرق {actor} {target}{withItem}!"
+			},
+			"bomb": {
+				"title": "تم قصف عضو!",
+				"description": "قصف {actor} {target}{withItem}!"
+			}
+		},
+		"fields": {
+			"skimRate": "نسبة الاقتطاع",
+			"received": "المستلَم",
+			"tax": "الضريبة",
+			"bounty": "المكافأة",
+			"xpLostByAttacker": "الخبرة التي خسرها المهاجم",
+			"attacker": "المهاجم",
+			"victim": "الضحية",
+			"xpStolen": "الخبرة المسروقة",
+			"xpDestroyed": "الخبرة المدمَّرة",
+			"insuranceRefund": "تعويض التأمين",
+			"bountyCollected": "تحصيل المكافأة",
+			"immunity": "الحصانة"
+		},
+		"leech": {
+			"title": "تم تثبيت علقة",
+			"description": "ثبّت {actor} علقة على {target} تقتطع جزءًا من خبرته طوال مدة نشاطها."
+		},
+		"gift": {
+			"title": "تم إرسال هدية",
+			"description": "أرسل {actor} هدية إلى {target}!"
+		},
+		"bounty": {
+			"title": "تم وضع مكافأة",
+			"description": "وضع {actor} مكافأة على {target}. من يسرقه أو يقصفه تاليًا يحصل عليها."
+		},
+		"disguise": {
+			"title": "عضو اختفى وسط الحشد",
+			"description": "ارتدى شخص ما **تنكّرًا**{until}. هجماته الآن تُخفي اسمه، واختفى من لوحة المتصدرين."
+		},
+		"boost": {
+			"title": "تم تفعيل المعزّز",
+			"description": "فعّل {actor} معزّزًا{until}. تتضاعف المكاسب طوال مدته."
+		},
+		"shield": {
+			"title": "تم تفعيل الدرع",
+			"description": "{actor} محمي الآن، لذا سيتم صدّ أي سرقة أو قنبلة أو علقة قادمة{until}."
+		},
+		"reflect": {
+			"title": "تم تفعيل الانعكاس",
+			"description": "سيعكس {actor} الهجوم التالي على المهاجم{until}."
+		},
+		"insurance": {
+			"title": "تم تفعيل التأمين",
+			"description": "سيُعوَّض {actor} بنسبة {percent}%{luck} من خسارته في المرة القادمة التي يتعرض فيها للسرقة أو القصف{until}."
+		},
+		"luck": {
+			"title": "تم تفعيل الحظ",
+			"description": "يمتلك {actor} الآن +{percent}% حظ في السرقة والقنبلة والألعاب المصغّرة والتجسس والعلقة وضريبة الهدايا والتأمين ومعزّز الأصدقاء وأسعار المتجر{until}."
+		},
+		"spyCaught": {
+			"title": "تم كشف جاسوس",
+			"description": "ضبط {target} {spy} وهو يحاول التجسس عليه. لم يتم جمع أي معلومات."
+		},
+		"adminGift": {
+			"title": "وصلت هدية",
+			"description": "حصل {member} على **{quantity}× {item}** من المشرف. تفقّد عناصرك!"
+		},
+		"expired": {
+			"boost": {
+				"title": "انتهى المعزّز",
+				"text": "انتهى مفعول **المعزّز {value}×** الخاص بك."
+			},
+			"shield": {
+				"title": "انتهى الدرع",
+				"text": "انتهى مفعول **الدرع** الخاص بك. يمكن مهاجمتك مجددًا."
+			},
+			"leech": {
+				"title": "انتهت العلقة",
+				"text": "انتهت **العلقة {value}%** الخاصة بك.",
+				"textWithTarget": "انتهت **العلقة {value}%** الخاصة بك على {target}."
+			},
+			"reflect": {
+				"title": "انتهى الانعكاس",
+				"text": "انتهى مفعول **الانعكاس** الخاص بك."
+			},
+			"insurance": {
+				"title": "انتهى التأمين",
+				"text": "انتهت صلاحية **التأمين** الخاص بك."
+			},
+			"disguise": {
+				"title": "انتهى التنكّر",
+				"announcement": "خلع أحد الأعضاء تنكّره، وأصبح مرئيًا من جديد."
+			},
+			"luck": {
+				"title": "انتهى الحظ",
+				"text": "انتهى مفعول **الحظ +{value}%** الخاص بك."
+			}
+		},
+		"immunityEnded": {
+			"title": "انتهت الحصانة",
+			"description": "لم يعد {member} محصّنًا. أصبح هدفًا مشروعًا من جديد!",
+			"anonymous": "لم يعد أحد الأعضاء محصّنًا."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "انتهت فترة انتظار السرقة",
+				"text": "انتهت فترة انتظار السرقة. يمكنك السرقة مجددًا!"
+			},
+			"bomb": {
+				"title": "انتهت فترة انتظار القنبلة",
+				"text": "انتهت فترة انتظار القنبلة. يمكنك القصف مجددًا!"
+			},
+			"insurance": {
+				"title": "انتهت فترة انتظار التأمين",
+				"text": "انتهت فترة انتظار التأمين. يمكنك تفعيل التأمين مجددًا!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "أحد الأعضاء",
+		"footer": "الألعاب المصغّرة",
+		"win": {
+			"title": "🎲 فوز في اللعبة المصغّرة!",
+			"description": "راهن {member} بـ {wager} على {multiplier}× و**فاز**!"
+		},
+		"lose": {
+			"title": "🎲 خسارة في اللعبة المصغّرة",
+			"description": "راهن {member} بـ {wager} على {multiplier}× و**خسر كل شيء**."
+		},
+		"fields": {
+			"payout": "العائد",
+			"netGain": "صافي الربح",
+			"winChance": "فرصة الفوز",
+			"xpLost": "الخبرة المفقودة"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ دوران تأثير السمة",
+			"description": "دار {member} مقابل {cost} وحصل على **{effect}**!"
+		},
+		"fields": {
+			"effect": "التأثير",
+			"xpSpent": "الخبرة المنفقة",
+			"variant": "النسخة"
+		}
+	},
+	"tasks": {
+		"footer": "المهام",
+		"rarity": {
+			"common": "عادي",
+			"uncommon": "غير شائع",
+			"rare": "نادر",
+			"epic": "ملحمي",
+			"legendary": "أسطوري",
+			"mythic": "خرافي"
+		},
+		"milestones": {
+			"7": "أسبوع كامل",
+			"30": "شهر كامل",
+			"100": "مئة يوم",
+			"365": "سنة كاملة"
+		},
+		"login": {
+			"jackpotTitle": "🎁 الجائزة الكبرى لليوم {day} — {rarity}!",
+			"dropTitle": "✨ غنيمة {rarity}!",
+			"description": "حصل {member} على عنصر **{rarity}** في اليوم {day}!",
+			"fields": {
+				"item": "العنصر",
+				"rarity": "الندرة",
+				"worth": "القيمة"
+			}
+		},
+		"streak": {
+			"day": "يوم واحد",
+			"days": "{count} يوم",
+			"reset": {
+				"title": "💔 انقطعت السلسلة",
+				"description": "غاب {member} لمدة **{days}** وخسر سلسلة من **{previous} يوم**. العودة إلى اليوم 1.",
+				"descriptionBurned": "غاب {member} لمدة **{days}** وخسر سلسلة من **{previous} يوم**. {burned} العودة إلى اليوم 1.",
+				"burnedOne": "استُهلك تجميد واحد في محاولة الحفاظ عليها.",
+				"burnedMany": "استُهلك {count} تجميد في محاولة الحفاظ عليها."
+			},
+			"frozen": {
+				"title": "🧊 تم تجميد السلسلة",
+				"description": "غاب {member} لمدة **{days}** — وبفضل {freezes} بقيت سلسلة **{streak} يوم** مستمرة.",
+				"one": "تجميد سلسلة واحد",
+				"many": "{count} تجميد سلسلة"
+			},
+			"fields": {
+				"longest": "الأطول على الإطلاق",
+				"freezesUsed": "التجميدات المستخدمة",
+				"freezesLeft": "التجميدات المتبقية"
+			},
+			"milestone": {
+				"title": "{emoji} سلسلة {label}",
+				"description": "وصل {member} للتو إلى سلسلة **{streak} يوم**!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 أهلًا بك في الخادم!",
+		"fields": {
+			"accountCreated": "📅 تاريخ إنشاء الحساب",
+			"memberCount": "👥 عدد الأعضاء",
+			"invitedBy": "📨 تمت الدعوة بواسطة"
+		},
+		"memberNumber": "العضو رقم {count}",
+		"inviterCount": "{inviter} ({count} دعوات)",
+		"inviter": {
+			"vanity": "الرابط المخصص",
+			"server": "رابط دعوة الخادم",
+			"someone": "شخص ما"
+		},
+		"inviteSources": {
+			"invite": "رابط Discord",
+			"personal": "رابط شخصي",
+			"vanity": "رابط مخصص",
+			"server": "رابط الخادم",
+			"manual": "حدده الطاقم",
+			"unknown": "غير معروف"
+		},
+		"accountAge": {
+			"today": "اليوم",
+			"oneDay": "قبل يوم واحد",
+			"days": "قبل {days} يومًا"
+		},
+		"unknownServer": "خادم غير معروف",
+		"defaultMessages": [
+			"👋 أهلاً بك {user} في {server}! أنت العضو رقم {memberCount} (عمر الحساب: {accountAge}).",
+			"🎉 انضم {user} إلى {server}! العضو رقم {memberCount} | عمر الحساب: {accountAge}.",
+			"🌟 مرحباً {user}! أصبحت الآن جزءاً من {server} (العضو رقم {memberCount}، عمر الحساب: {accountAge}).",
+			"🚀 انضم {user} للتو إلى {server}! العضو رقم {memberCount} | عمر الحساب: {accountAge}.",
+			"🎊 أهلاً {user}! مرحباً بك في {server}! أنت العضو رقم {memberCount} (عمر الحساب: {accountAge})."
+		]
+	},
+	"booster": {
+		"title": "💎 شكرًا لك على تعزيز الخادم!",
+		"fields": {
+			"boostLevel": "🚀 مستوى التعزيز",
+			"totalBoosts": "✨ إجمالي التعزيزات",
+			"boostedSince": "📅 يعزز الخادم منذ"
+		},
+		"level": "المستوى {level}",
+		"justNow": "الآن",
+		"unknownServer": "خادم غير معروف",
+		"defaultMessages": [
+			"🎉 قام {user} للتو بتعزيز {server}! المستوى الحالي: {boostLevel} | إجمالي التعزيزات: {totalBoosts}.",
+			"💎 شكراً {user} على تعزيز {server}! أصبحنا الآن في المستوى {boostLevel} مع {totalBoosts} تعزيزات.",
+			"🚀 قام {user} بتعزيز {server}! مستوى الخادم: {boostLevel} | التعزيزات: {totalBoosts}.",
+			"🔥 شكراً جزيلاً لـ {user} على تعزيز {server}! إجمالي التعزيزات: {totalBoosts} (المستوى {boostLevel}).",
+			"⭐ منح {user} للتو تعزيزاً لـ {server}! المستوى {boostLevel} مع {totalBoosts} تعزيزات."
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "المكافآت",
+			"tasks": "المهام",
+			"game": "🎮 اللعبة",
+			"publisher": "🏢 الناشر",
+			"expires": "⏳ تنتهي"
+		},
+		"test": "_إشعار تجريبي — نظام التنبيهات يعمل._",
+		"openInDiscord": "فتح في Discord"
+	},
+	"forwarder": {
+		"title": "رسالة من {channel}",
+		"additionalAttachments": "مرفقات إضافية"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "تعذّر عليّ إنشاء رد الآن. حاول مرة أخرى من فضلك.",
+			"keyRejected": "تم رفض مفتاح API الخاص بالذكاء الاصطناعي. يُرجى التحقق من إعدادات لوحة البوت.",
+			"rateLimited": "خدمة الذكاء الاصطناعي بلغت حد الطلبات حاليًا. حاول مرة أخرى بعد قليل.",
+			"failed": "حدث خطأ أثناء الاتصال بخدمة الذكاء الاصطناعي."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **أمر غير معروف**: `/{command}`\n\nهذا الأمر غير موجود. الأمر الوحيد المتاح هو `/setup`.",
+			"failed": "❌ **خطأ في الأمر**: `/{command}`\n\nفشل تنفيذ الأمر بشكل صحيح.\n**الخطأ**: {error}\n\nحاول مرة أخرى أو تواصل مع أحد المشرفين إن استمرت المشكلة.",
+			"unexpected": "❌ **خطأ غير متوقع**: `/{command}`\n\nحدث خطأ غير متوقع. حاول مرة أخرى.",
+			"critical": "❌ **خطأ فادح**: حدث خطأ غير متوقع أثناء معالجة أمرك.\n\nحاول مرة أخرى لاحقًا أو تواصل مع أحد المشرفين."
+		}
 	}
 }

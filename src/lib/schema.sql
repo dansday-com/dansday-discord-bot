@@ -243,7 +243,7 @@ CREATE TABLE IF NOT EXISTS server_members (
     booster_since DATETIME NULL,
     is_bot BOOLEAN NOT NULL DEFAULT FALSE,
     is_owner BOOLEAN NOT NULL DEFAULT FALSE,
-    language VARCHAR(10) DEFAULT 'en',
+    language VARCHAR(10) NULL DEFAULT NULL,
     deleted_at DATETIME NULL DEFAULT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,

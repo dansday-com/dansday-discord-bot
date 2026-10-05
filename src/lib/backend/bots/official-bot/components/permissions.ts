@@ -129,7 +129,10 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 	} catch (e) {}
 
 	const requiredRoles = await getRequiredRolesForAction(guild, action);
-	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';
+	const roleList =
+		requiredRoles.length > 0
+			? requiredRoles.map((role) => `**${role}**`).join(', ')
+			: await translate('permissions.requiredRoleFallback', guild.id, userId ?? '');
 
 	const scope = action === 'custom_supporter_role' ? 'permissions.supporterRoleDenied' : 'permissions.denied';
 	const title = await translate(`${scope}.title`, guild.id, userId ?? '');

@@ -85,7 +85,8 @@
 			"hours": "hours",
 			"day": "day",
 			"days": "days"
-		}
+		},
+		"defaultFooter": "Powered by {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **Permissions Not Configured**",
 			"description": "The server owner or administrator must configure role permissions before anyone can use the **{action}** feature."
-		}
+		},
+		"requiredRoleFallback": "the required role"
 	},
 	"settings": {
 		"language": {
@@ -114,7 +116,10 @@
 			"current": "Current Language",
 			"select": "Select Language",
 			"updated": "✅ Language updated successfully!",
-			"failed": "❌ Failed to update language: {error}"
+			"failed": "❌ Failed to update language: {error}",
+			"serverDefault": "Server default ({language})",
+			"serverDefaultDescription": "Follow the server language",
+			"currentOption": "Current language"
 		}
 	},
 	"leveling": {
@@ -126,6 +131,54 @@
 		"errors": {
 			"notRegistered": "⚠️ This server is not registered with the bot. Please run a sync first.",
 			"createRecordFailed": "❌ Failed to create member record. Please try again."
+		},
+		"fields": {
+			"level": "⭐ Level",
+			"totalXp": "📊 Total XP",
+			"rank": "🏆 Rank",
+			"previousRank": "Previous Rank",
+			"newRank": "New Rank",
+			"progress": "⚡ Progress to Level {level}",
+			"reward": "🎁 Reward unlocked",
+			"activity": "💬 Activity"
+		},
+		"xpToGo": "**{xp}** XP to go",
+		"unranked": "Unranked",
+		"leaderboardButton": "Leaderboard",
+		"levelUp": {
+			"title": "🎉 Level Up!",
+			"description": "{member} has reached **Level {level}**!"
+		},
+		"rankUp": {
+			"title": "Rank Update!",
+			"topSpot": "{member} just secured a top spot!",
+			"climbed": "{member} climbed the leaderboard!"
+		},
+		"activity": {
+			"messages": "{count} messages",
+			"voice": "{hours}h voice",
+			"streaming": "{hours}h streaming"
+		},
+		"log": {
+			"types": {
+				"chat": "Chat",
+				"voice": "Voice",
+				"afkVoice": "AFK Voice",
+				"video": "Video",
+				"streaming": "Streaming",
+				"invite": "Invite"
+			},
+			"gain": "{emoji} {type} XP: {name} gained +{xp} XP",
+			"staff": "({multiplier}× Staff 🛡️)",
+			"boost": "({multiplier}× Boost ⚡)",
+			"friend": "(+{rate} Friend boost 🤝)",
+			"leech": "(−{rate} Leech 🩸)",
+			"share": "📨 +{amount} to {name} ({percent}% invite share{staff})",
+			"inviteNote": "for inviting {name}",
+			"leechCredit": "🩸 Leech: {attacker} siphoned +{amount} XP from {victim}{pct}",
+			"unknownMember": "Unknown",
+			"someMember": "a member",
+			"someLeecher": "A leecher"
 		}
 	},
 	"invites": {
@@ -196,7 +249,10 @@
 		"messages": {
 			"welcomeBack": "✅ Welcome back, {member}! Your AFK status has been removed.",
 			"dmEmbedTitle": "📬 You were mentioned",
-			"dmMentioned": "{sender} mentioned you in **{server}** · #{channel}\\n\\n**Message:** {message}"
+			"dmMentioned": "{sender} mentioned you in **{server}** · #{channel}\\n\\n**Message:** {message}",
+			"away": "Away",
+			"isAfk": "⏸️ {member} is currently AFK (for {duration})",
+			"isAfkWithMessage": "⏸️ {member} is currently AFK: **{message}** (for {duration})"
 		}
 	},
 	"giveaway": {
@@ -260,7 +316,41 @@
 			"finishChannelNotConfigured": "❌ Giveaway channel not configured.",
 			"finishChannelNotFound": "❌ Giveaway channel not found.",
 			"failed": "❌ Failed to open giveaway form: {error}",
-			"notEnoughInvites": "❌ You need **{needed}** invites to enter this giveaway. You have **{have}**."
+			"notEnoughInvites": "❌ You need **{needed}** invites to enter this giveaway. You have **{have}**.",
+			"roleSelectFailed": "❌ Failed to process role selection: {error}",
+			"enterFailed": "❌ **Failed to Enter Giveaway**\\n\\nError: {error}",
+			"finishFailed": "❌ Failed to finish giveaway: {error}"
+		},
+		"unknownRole": "Role {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "No role restrictions",
+			"multipleEntries": "Multiple entries allowed",
+			"singleEntry": "Single entry per member",
+			"prizeLine": "**Prize:** {prize}",
+			"winnerLine": "**Winner:** {count}",
+			"winnersLine": "**Winners:** {count}",
+			"entriesLine": "**Entries:** {entries}",
+			"rolesLine": "**Role Restrictions:** {roles}",
+			"invitesLine": "**Invites Needed:** {count}",
+			"hostedBy": "👤 Hosted By",
+			"enterButton": "🎉 Enter Giveaway"
+		},
+		"results": {
+			"endedTitle": "🎉 Giveaway Ended",
+			"endedWinnersTitle": "🎉 Giveaway Ended!",
+			"noEntries": "**{title}**\\n\\n❌ No entries! The giveaway has ended with no participants.",
+			"noWinners": "**{title}**\\n\\n❌ Could not select winners.",
+			"winnerLine": "🎊 **Winner:** {winners}",
+			"winnersLine": "🎊 **Winners:** {winners}",
+			"limitedEntriesOne": "⚠️ *Only {count} winner selected ({requested} requested) due to limited entries.*",
+			"limitedEntriesMany": "⚠️ *Only {count} winners selected ({requested} requested) due to limited entries.*",
+			"congrats": "Congratulations! 🎉"
+		},
+		"finished": {
+			"title": "✅ Giveaway Finished",
+			"noEntries": "Your giveaway **\"{title}\"** has been finished early.\\n\\nNo participants entered.",
+			"noWinners": "Your giveaway **\"{title}\"** has been finished early.\\n\\nCould not select winners.",
+			"winners": "Your giveaway **\"{title}\"** has been finished early.\\n\\n**Winners:** {winners}"
 		}
 	},
 	"feedback": {
@@ -284,6 +374,13 @@
 			"channelNotFound": "❌ Failed to submit feedback: Feedback channel not found.",
 			"failed": "❌ Failed to open feedback form: {error}",
 			"submitFailed": "❌ **Failed to Submit Feedback**\\n\\nError: {error}\\n\\nPlease try again later."
+		},
+		"channelEmbed": {
+			"title": "💬 Feedback Submission",
+			"fieldFrom": "👤 From",
+			"fieldSubmitted": "🕐 Submitted",
+			"anonymous": "Anonymous",
+			"footerSuffix": "• Feedback ID: #{feedbackId}"
 		}
 	},
 	"staffRating": {
@@ -336,7 +433,6 @@
 			"ratingLabel": "Rating (1-5 stars)",
 			"ratingPlaceholder": "1 = Very Poor, 5 = Excellent",
 			"categoryLabel": "Category",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Description",
 			"descriptionPlaceholder": "Please describe your experience with this staff member...",
 			"anonymousLabel": "Submit Anonymously? (yes/no)",
@@ -365,7 +461,7 @@
 		"errors": {
 			"noStaffSelected": "❌ Please select a staff member to report.",
 			"invalidRating": "❌ **Invalid Rating**\\n\\nRating must be a number between 1 and 5.",
-			"invalidCategory": "❌ **Invalid Category**\\n\\nPlease use one of: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **Invalid Category**\\n\\nPlease pick a category from the list.",
 			"emptyDescription": "❌ **Description Required**\\n\\nPlease provide a description of your experience.",
 			"cannotReportSelf": "❌ You cannot report yourself!",
 			"notStaff": "❌ The selected member is not a staff member.",
@@ -378,6 +474,18 @@
 			"missingCategory": "❌ Please select a category before continuing.",
 			"permissionDenied": "❌ **Permission Denied**\\n\\nYou need admin permissions to approve or reject staff reports.",
 			"reviewReasonRequired": "❌ Please enter a reason for your decision."
+		},
+		"ratingUpdate": {
+			"title": "⭐ Staff Rating Update",
+			"description": "{staff} received a new rating.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} reports)",
+			"fieldFeedback": "Feedback",
+			"dm": "⭐ Your staff rating in **{server}** is now **{rating}/5.0** ({totalReports} reports)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ This report has already been processed.",
+			"approvedReply": "✅ Report #{reportId} approved.",
+			"rejectedReply": "❌ Report #{reportId} rejected."
 		}
 	},
 	"contentCreator": {
@@ -454,6 +562,20 @@
 			"submitFailed": "❌ Failed to submit content creator application: {error}",
 			"permissionDenied": "❌ You need admin permissions to approve or reject content creator applications.",
 			"reviewReasonRequired": "❌ Please enter a reason for your decision."
+		},
+		"live": {
+			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "Stream #{streamId}",
+			"endedTitle": "⚫ Live ended",
+			"errorTitle": "⚠️ Live connection error",
+			"sessionLine": "Stream session **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ Invalid application ID.",
+			"applicationNotFound": "❌ Application not found.",
+			"alreadyProcessed": "⚠️ This application was already processed.",
+			"approvedReply": "✅ Application #{appId} approved.",
+			"rejectedReply": "❌ Application #{appId} rejected."
 		}
 	},
 	"notifications": {
@@ -518,7 +640,9 @@
 			"iconStatusUpdated": "Updated",
 			"iconStatusRemoved": "Removed",
 			"iconStatusFailed": "Failed (role updated without icon)",
-			"iconStatusInvalid": "Invalid format (role updated without icon)"
+			"iconStatusInvalid": "Invalid format (role updated without icon)",
+			"iconFailedFallback": "Failed to set the icon. The role was updated but without the custom icon.",
+			"iconNote": "⚠️ **Note about icon:** {message}"
 		},
 		"deleted": {
 			"title": "✅ Custom Supporter Role Deleted",
@@ -539,7 +663,18 @@
 			"updateFailed": "❌ **Failed to Update Role**\\n\\nError: {error}\\n\\nPlease make sure:\\n- The bot has permission to manage roles\\n- Role constraints are valid",
 			"deleteFailed": "❌ Failed to delete role: {error}",
 			"failed": "❌ Failed to open role creation form: {error}",
-			"editFailed": "❌ Failed to open edit form: {error}"
+			"editFailed": "❌ Failed to open edit form: {error}",
+			"createFailedReason": "❌ **Failed to Create Role**\n\n{reason}"
+		},
+		"colorDefault": "Default",
+		"anchor": {
+			"noBoosterRole": "This server has no Server Booster role yet. It appears once someone boosts the server.",
+			"botTooLow": "The bot's own role must be above {role} to create supporter roles.",
+			"unknown": "Could not determine where to place the supporter role."
+		},
+		"iconErrors": {
+			"boost": "This server needs Level 2 Server Boost to use custom role icons. You can use an emoji instead!",
+			"invalidFormat": "Invalid URL format or file type"
 		}
 	},
 	"questEnroll": {
@@ -568,7 +703,126 @@
 		"autoQuestDisabled": "Auto quest enrollment is currently disabled. Please contact a server administrator.",
 		"alreadyRunning": "You already have an auto quest running. Please wait for it to finish before starting another.",
 		"announceInChannel": "Each result is posted in {channel}.",
-		"announceDisabled": "No quest channel is set, so nothing is announced — claimed quests are just marked in the quest list."
+		"announceDisabled": "No quest channel is set, so nothing is announced — claimed quests are just marked in the quest list.",
+		"result": {
+			"reward": "Reward",
+			"openInDiscord": "Open in Discord",
+			"errorTitle": "Quest enroll error",
+			"errorDescription": "{member} ({tag})\nQuest `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Discord user token (not saved)",
+			"placeholder": "ToS risk: your account may be banned; bot/server possible. Paste once; never in public.",
+			"claimAllTitle": "Claim all (token — high risk)",
+			"enrollTitle": "Enroll (token — high risk)"
+		},
+		"tokenTooShort": "Token too short.",
+		"invalidTokenTitle": "Invalid token",
+		"invalidTokenDescription": "The token you provided appears to be invalid or expired.\n`{error}`",
+		"invalidQuestId": "Invalid quest id.",
+		"missingQuestOrToken": "Missing quest id or token too short.",
+		"taskTypes": {
+			"default": "Quest",
+			"WATCH_VIDEO": "Watch video",
+			"WATCH_VIDEO_ON_MOBILE": "Watch video (mobile)",
+			"PLAY_ON_DESKTOP": "Play on desktop",
+			"PLAY_ON_DESKTOP_V2": "Play on desktop",
+			"PLAY_ON_XBOX": "Play on Xbox",
+			"PLAY_ON_PLAYSTATION": "Play on PlayStation",
+			"STREAM_ON_DESKTOP": "Stream on desktop",
+			"PLAY_ACTIVITY": "Activity",
+			"ACHIEVEMENT_IN_ACTIVITY": "Achievement in activity",
+			"ACHIEVEMENT_IN_GAME": "Achievement in game"
+		},
+		"task": {
+			"forMinute": "{task} for {count} minute",
+			"forMinutes": "{task} for {count} minutes",
+			"forSeconds": "{task} for {count} seconds",
+			"secondsTarget": "{task} · {count} seconds",
+			"target": "{task} · target {count}"
+		},
+		"reward": {
+			"fallback": "Quest reward",
+			"currency": "{count}× Discord quest currency"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Quest enroll",
+				"description": "This quest was not returned for that account. Open **Quests** in Discord, accept it if needed, and make sure the token belongs to that user."
+			},
+			"expired": {
+				"title": "Quest enroll",
+				"description": "That quest has expired."
+			},
+			"alreadyComplete": {
+				"title": "✅ Quest already complete",
+				"description": "**Reward:** {reward}\nClaim it in the Discord client under **Quests** if you have not yet."
+			},
+			"enrollFailed": {
+				"title": "Quest enroll failed",
+				"description": "Discord returned HTTP {status} when enrolling. You may need to accept the quest in the client first, or your token may be invalid."
+			},
+			"complete": {
+				"title": "✅ Quest complete",
+				"description": "**Reward:** {reward}\nOpen **Discord → Quests**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Enrolled only",
+				"description": "Enrolled in **{quest}**. No runnable task was detected in the quest config — finish in the **Discord** client if needed.\n\n**Reward:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Achievement quest",
+				"description": "Missing application id or achievement target in the quest config. Finish **{task}** in the Discord client.\n\n**Reward:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Achievement quest finished",
+				"description": "**{quest}**\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"achievementIncomplete": {
+				"title": "Achievement quest — incomplete",
+				"description": "{error}\n\n**Reward:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Activity quest",
+				"description": "Could not resolve your user id from the token. Use a normal **user** token (not a bot token).\n\n**Reward:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Activity quest finished",
+				"description": "**{quest}**\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"activityIncomplete": {
+				"title": "Activity quest — incomplete",
+				"description": "Progress did not finish in time{detail}.\n\n**Reward:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Enrolled only",
+				"description": "Enrolled in **{quest}**. **{task}** needs an **application id** in the quest config for API heartbeats — finish in the Discord client (desktop / console).\n\n**Reward:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Quest finished",
+				"description": "**{quest}** ({task})\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"platformIncomplete": {
+				"title": "Quest — incomplete",
+				"description": "Progress did not finish in time{detail}. For **stream** or **console** quests, keep the real client active or retry later.\n\n**Reward:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Enrolled only",
+				"description": "Enrolled in **{quest}**. Unsupported task type (**{task}**) — complete it in the Discord client.\n\n**Reward:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Quest enroll",
+				"description": "Could not read the video duration for this quest."
+			},
+			"videoDone": {
+				"title": "✅ Video quest finished",
+				"description": "**{quest}**\n**Reward:** {reward}\nClaim in **Discord → Quests**"
+			},
+			"videoIncomplete": {
+				"title": "Quest enroll — incomplete",
+				"description": "Progress did not reach the target in time{detail}. Finish watching in the Discord client or try again."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -602,7 +856,7 @@
 			"menu": {
 				"title": "🛍️ Roblox Item Notifications",
 				"description": "You are watching {count} item(s). Select one to change what notifies you.",
-				"empty": "You are not watching any Roblox item yet. Press 🔔 Notify me under a catalog post to start.",
+				"empty": "You are not watching any Roblox item yet. Press 🔔 {button} under a catalog post to start.",
 				"placeholder": "Select an item to edit...",
 				"disableAll": "🔕 Disable all",
 				"disabledAll": "🔕 Disabled notifications for {count} item(s)."
@@ -610,6 +864,24 @@
 			"errors": {
 				"invalidItem": "❌ That catalog item could not be read from this button.",
 				"memberNotFound": "❌ Your member profile is not synced yet. Try again in a moment."
+			}
+		},
+		"itemFallback": "Item #{id}",
+		"post": {
+			"free": "FREE",
+			"updatedTitle": "[Updated] {name}",
+			"openOnRoblox": "Open on Roblox",
+			"notifyMe": "Notify me",
+			"fields": {
+				"category": "Category",
+				"price": "Price",
+				"creator": "Creator",
+				"quantity": "Quantity",
+				"favorites": "Favorites",
+				"created": "Created",
+				"notifications": "Notifications",
+				"resalePrice": "Resale price",
+				"saleEnds": "Sale ends"
 			}
 		}
 	},
@@ -668,6 +940,13 @@
 			"notFound": "❌ No creator found with that link or handle.",
 			"tiktokCooling": "⏳ TikTok is rate limiting lookups right now. Try again in a few minutes.",
 			"lookupFailed": "❌ Could not look up that creator right now. Try again later."
+		},
+		"post": {
+			"platform": "Platform",
+			"type": "Type",
+			"notifications": "Notifications",
+			"openOn": "Open on {platform}",
+			"notifyMe": "Notify me"
 		}
 	},
 	"moderation": {
@@ -692,6 +971,418 @@
 		"done": "✅ {action} applied to {member}. Case #{case}.",
 		"failed": "❌ {error}",
 		"invalidDuration": "❌ Enter a duration like 10m, 2h or 7d.",
-		"notAllowed": "❌ The server owner and bots cannot be moderated."
+		"notAllowed": "❌ The server owner and bots cannot be moderated.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ Member Warned",
+				"timeout": "🔇 Member Timed Out",
+				"untimeout": "🔊 Timeout Removed",
+				"kick": "👢 Member Kicked",
+				"ban": "🔨 Member Banned",
+				"tempban": "⏳ Member Temporarily Banned",
+				"unban": "🕊️ Member Unbanned",
+				"unwarn": "🧹 Warning Removed",
+				"clearwarns": "🧹 Warnings Cleared",
+				"tempban_expired": "⌛ Tempban Expired"
+			},
+			"bulkTitles": {
+				"role_add": "➕ Bulk Role Add",
+				"role_remove": "➖ Bulk Role Remove"
+			},
+			"title": "{action} · Case #{case}",
+			"description": "Case **#{case}** recorded for {member}.",
+			"fields": {
+				"member": "👤 Member",
+				"staff": "🛡️ Staff",
+				"source": "📍 Source",
+				"reason": "📝 Reason",
+				"duration": "⏱️ Duration",
+				"activeWarnings": "📊 Active Warnings",
+				"role": "🎭 Role"
+			},
+			"durationValue": "{duration} (ends {ends})",
+			"noReason": "No reason provided",
+			"unknown": "Unknown",
+			"automatic": "Automatic",
+			"staffFallback": "staff",
+			"sources": {
+				"panel": "panel",
+				"menu": "menu",
+				"discord": "discord",
+				"auto": "auto"
+			},
+			"bulkSummary": "**{done}** done · {failed} failed",
+			"reasons": {
+				"unwarn": "Removed warning #{case}",
+				"clearwarns": "Cleared {count} warning(s)",
+				"escalation": "Reached {count} active warnings",
+				"tempbanExpired": "Tempban case #{case} expired"
+			}
+		},
+		"memberDm": {
+			"server": "**Server:** {server}",
+			"reason": "**Reason:** {reason}",
+			"duration": "**Duration:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n}d",
+			"h": "{n}h",
+			"m": "{n}m",
+			"s": "{n}s"
+		}
+	},
+	"setup": {
+		"categoryName": "{botName} Menu",
+		"channels": {
+			"menu": "「💻」menu",
+			"bot_updates": "「⚙️」bot-updates",
+			"welcomer": "「🚪」welcome",
+			"booster": "「🚀」booster",
+			"moderation": "「🔨」moderation",
+			"leveling": "「🆙」level",
+			"giveaway": "「🎁」giveaway",
+			"staff_rating": "「⭐」staff-rating",
+			"discord_quest_notifier": "「📜」discord-quest",
+			"content_creator": "「📽️」content-creator",
+			"roblox_catalog_notifier": "「👗」roblox-catalog",
+			"items": "「🛍️」items",
+			"minigames": "「🎲」minigames"
+		},
+		"language": {
+			"title": "🌐 Choose the server language",
+			"description": "Pick the language for this server. It names the channels `/setup` creates and is used for the menu, approval posts, every public bot message, and the AI's chat and voice.\n\nMembers can still choose their own language in the menu for their private replies and DMs. You can change this later in the web panel under **Configuration → Main**.",
+			"placeholder": "Select the server language",
+			"working": "⏳ Setting up in **{language}**…",
+			"applied": "🌐 Server language: **{language}**"
+		},
+		"commandDescription": "Set up the bot: pick the server language, then create the menu and channels. Admins only."
+	},
+	"items": {
+		"common": {
+			"footer": "Items",
+			"aMemberActor": "A member",
+			"aMemberTarget": "a member",
+			"disguisedMember": "A mysterious member 🎭",
+			"someone": "Someone",
+			"item": "item",
+			"anItem": "an item",
+			"them": "them",
+			"until": " (until {time})",
+			"activeUntil": " (active until {time})",
+			"luckBonus": " (+{percent}% luck 🍀)",
+			"luckTaxDiscount": " (−{percent}% luck 🍀 on tax)",
+			"addressed": "{member}, {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "Steal Blocked",
+				"blockedDescription": "{target}'s **Shield** blocked {actor}'s steal!",
+				"immuneTitle": "Steal Absorbed by Immunity",
+				"immuneDescription": "{target} is still immune. {actor}'s steal did nothing and the **{item}** was lost."
+			},
+			"bomb": {
+				"blockedTitle": "Bomb Blocked",
+				"blockedDescription": "{target}'s **Shield** blocked {actor}'s bomb!",
+				"immuneTitle": "Bomb Absorbed by Immunity",
+				"immuneDescription": "{target} is still immune. {actor}'s bomb did nothing and the **{item}** was lost."
+			},
+			"leech": {
+				"blockedTitle": "Leech Blocked",
+				"blockedDescription": "{target}'s **Shield** blocked {actor}'s leech!",
+				"immuneTitle": "Leech Absorbed by Immunity",
+				"immuneDescription": "{target} is still immune. {actor}'s leech did nothing and the **{item}** was lost."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "Attack Reflected",
+			"reflectedDescription": "{target} reflected the attack back at {actor}!",
+			"withItem": " with **{item}**",
+			"refundedValue": "{target} was refunded {xp}",
+			"bountyValue": "{actor} also claimed {xp}",
+			"immuneValue": "{target} is immune until {time}",
+			"steal": {
+				"title": "Member Robbed!",
+				"description": "{actor} robbed {target}{withItem}!"
+			},
+			"bomb": {
+				"title": "Member Bombed!",
+				"description": "{actor} bombed {target}{withItem}!"
+			}
+		},
+		"fields": {
+			"skimRate": "Skim rate",
+			"received": "Received",
+			"tax": "Tax",
+			"bounty": "Bounty",
+			"xpLostByAttacker": "XP lost by attacker",
+			"attacker": "Attacker",
+			"victim": "Victim",
+			"xpStolen": "XP stolen",
+			"xpDestroyed": "XP destroyed",
+			"insuranceRefund": "Insurance refund",
+			"bountyCollected": "Bounty collected",
+			"immunity": "Immunity"
+		},
+		"leech": {
+			"title": "Leech Attached",
+			"description": "{actor} attached a leech to {target}, siphoning a cut of their XP while active."
+		},
+		"gift": {
+			"title": "Gift Sent",
+			"description": "{actor} sent a gift to {target}!"
+		},
+		"bounty": {
+			"title": "Bounty Placed",
+			"description": "{actor} placed a bounty on {target}. Whoever steals or bombs them next collects it."
+		},
+		"disguise": {
+			"title": "A Member Vanished into the Crowd",
+			"description": "Someone slipped on a **Disguise**{until}. Their attacks now hide their name and they've dropped off the leaderboard."
+		},
+		"boost": {
+			"title": "Boost Activated",
+			"description": "{actor} activated a boost{until}. Earnings are multiplied while it lasts."
+		},
+		"shield": {
+			"title": "Shield Activated",
+			"description": "{actor} is now protected, so incoming steals, bombs and leeches will be blocked{until}."
+		},
+		"reflect": {
+			"title": "Reflect Activated",
+			"description": "{actor} will bounce the next attack back at the attacker{until}."
+		},
+		"insurance": {
+			"title": "Insurance Activated",
+			"description": "{actor} will be refunded {percent}%{luck} of their loss the next time they are robbed or bombed{until}."
+		},
+		"luck": {
+			"title": "Luck Activated",
+			"description": "{actor} is now running +{percent}% luck across steal, bomb, minigames, spy, leech, gift tax, insurance, friend boost and shop prices{until}."
+		},
+		"spyCaught": {
+			"title": "Spy Caught",
+			"description": "{target} caught {spy} trying to spy on them. No intel was gathered."
+		},
+		"adminGift": {
+			"title": "A Gift Has Arrived",
+			"description": "{member} received **{quantity}× {item}** from the admin. Check your items!"
+		},
+		"expired": {
+			"boost": {
+				"title": "Boost Ended",
+				"text": "Your **{value}× Boost** has worn off."
+			},
+			"shield": {
+				"title": "Shield Ended",
+				"text": "Your **Shield** has worn off. You can be attacked again."
+			},
+			"leech": {
+				"title": "Leech Ended",
+				"text": "Your **{value}% Leech** has ended.",
+				"textWithTarget": "Your **{value}% Leech** on {target} has ended."
+			},
+			"reflect": {
+				"title": "Reflect Ended",
+				"text": "Your **Reflect** has worn off."
+			},
+			"insurance": {
+				"title": "Insurance Ended",
+				"text": "Your **Insurance** has expired."
+			},
+			"disguise": {
+				"title": "Disguise Ended",
+				"announcement": "A member stepped out of disguise. They are visible again."
+			},
+			"luck": {
+				"title": "Luck Ended",
+				"text": "Your **+{value}% Luck** has worn off."
+			}
+		},
+		"immunityEnded": {
+			"title": "Immunity Ended",
+			"description": "{member} is no longer immune. Fair game again!",
+			"anonymous": "A member is no longer immune."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "Steal Cooldown Ready",
+				"text": "Your steal cooldown is up. You can steal again!"
+			},
+			"bomb": {
+				"title": "Bomb Cooldown Ready",
+				"text": "Your bomb cooldown is up. You can bomb again!"
+			},
+			"insurance": {
+				"title": "Insurance Cooldown Ready",
+				"text": "Your insurance cooldown is up. You can activate insurance again!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "A member",
+		"footer": "Minigames",
+		"win": {
+			"title": "🎲 Minigame Win!",
+			"description": "{member} wagered {wager} at {multiplier}× and **won**!"
+		},
+		"lose": {
+			"title": "🎲 Minigame Lost",
+			"description": "{member} wagered {wager} at {multiplier}× and **lost it all**."
+		},
+		"fields": {
+			"payout": "Payout",
+			"netGain": "Net gain",
+			"winChance": "Win chance",
+			"xpLost": "XP lost"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ Theme Effect Spin",
+			"description": "{member} spun for {cost} and landed **{effect}**!"
+		},
+		"fields": {
+			"effect": "Effect",
+			"xpSpent": "XP spent",
+			"variant": "Variant"
+		}
+	},
+	"tasks": {
+		"footer": "Tasks",
+		"rarity": {
+			"common": "Common",
+			"uncommon": "Uncommon",
+			"rare": "Rare",
+			"epic": "Epic",
+			"legendary": "Legendary",
+			"mythic": "Mythic"
+		},
+		"milestones": {
+			"7": "One week",
+			"30": "One month",
+			"100": "Century",
+			"365": "One year"
+		},
+		"login": {
+			"jackpotTitle": "🎁 Day {day} jackpot — {rarity}!",
+			"dropTitle": "✨ {rarity} drop!",
+			"description": "{member} rolled a **{rarity}** item on day {day}!",
+			"fields": {
+				"item": "Item",
+				"rarity": "Rarity",
+				"worth": "Worth"
+			}
+		},
+		"streak": {
+			"day": "{count} day",
+			"days": "{count} days",
+			"reset": {
+				"title": "💔 Streak Reset",
+				"description": "{member} missed **{days}** and lost a **{previous}-day** streak. Back to day 1.",
+				"descriptionBurned": "{member} missed **{days}** and lost a **{previous}-day** streak. {burned} Back to day 1.",
+				"burnedOne": "Burned 1 freeze trying to hold it.",
+				"burnedMany": "Burned {count} freezes trying to hold it."
+			},
+			"frozen": {
+				"title": "🧊 Streak Frozen",
+				"description": "{member} missed **{days}** — {freezes} kept the **{streak}-day** streak alive.",
+				"one": "a streak freeze",
+				"many": "{count} streak freezes"
+			},
+			"fields": {
+				"longest": "Longest ever",
+				"freezesUsed": "Freezes used",
+				"freezesLeft": "Freezes left"
+			},
+			"milestone": {
+				"title": "{emoji} {label} Streak",
+				"description": "{member} just hit a **{streak}-day** streak!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 Welcome to the Server!",
+		"fields": {
+			"accountCreated": "📅 Account Created",
+			"memberCount": "👥 Member Count",
+			"invitedBy": "📨 Invited By"
+		},
+		"memberNumber": "Member #{count}",
+		"inviterCount": "{inviter} ({count} invites)",
+		"inviter": {
+			"vanity": "the vanity link",
+			"server": "the server invite link",
+			"someone": "someone"
+		},
+		"inviteSources": {
+			"invite": "Discord link",
+			"personal": "Personal link",
+			"vanity": "Vanity link",
+			"server": "Server link",
+			"manual": "Set by staff",
+			"unknown": "Unknown"
+		},
+		"accountAge": {
+			"today": "today",
+			"oneDay": "1 day ago",
+			"days": "{days} days ago"
+		},
+		"unknownServer": "Unknown Server",
+		"defaultMessages": [
+			"👋 Welcome {user} to {server}! You are member #{memberCount} (Account age: {accountAge}).",
+			"🎉 {user} joined {server}! Member #{memberCount} | Account age: {accountAge}.",
+			"🌟 Welcome {user}! You're now part of {server} (Member #{memberCount}, Account age: {accountAge}).",
+			"🚀 {user} just joined {server}! Member #{memberCount} | Account age: {accountAge}.",
+			"🎊 Hello {user}! Welcome to {server}! You're member #{memberCount} (Account age: {accountAge})."
+		]
+	},
+	"booster": {
+		"title": "💎 Thank You for Boosting!",
+		"fields": {
+			"boostLevel": "🚀 Boost Level",
+			"totalBoosts": "✨ Total Boosts",
+			"boostedSince": "📅 Boosted Since"
+		},
+		"level": "Level {level}",
+		"justNow": "Just now",
+		"unknownServer": "Unknown Server",
+		"defaultMessages": [
+			"🎉 {user} just boosted {server}! Current level: {boostLevel} | Total boosts: {totalBoosts}.",
+			"💎 Thanks {user} for boosting {server}! We're now Level {boostLevel} with {totalBoosts} boosts.",
+			"🚀 {user} boosted {server}! Server Level: {boostLevel} | Boosts: {totalBoosts}.",
+			"🔥 Huge thanks to {user} for boosting {server}! Total boosts: {totalBoosts} (Level {boostLevel}).",
+			"⭐ {user} just gave {server} a boost! Level {boostLevel} with {totalBoosts} boosts."
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "Rewards",
+			"tasks": "Tasks",
+			"game": "🎮 Game",
+			"publisher": "🏢 Publisher",
+			"expires": "⏳ Expires"
+		},
+		"test": "_Test notification — notifier is working._",
+		"openInDiscord": "Open in Discord"
+	},
+	"forwarder": {
+		"title": "Message from {channel}",
+		"additionalAttachments": "Additional Attachments"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "I could not generate a response right now. Please try again.",
+			"keyRejected": "The AI API key was rejected. Please check the bot panel settings.",
+			"rateLimited": "The AI service is rate limited right now. Please try again in a moment.",
+			"failed": "Something went wrong while contacting the AI service."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Unknown Command**: `/{command}`\n\nThis command doesn't exist. Only `/setup` is available.",
+			"failed": "❌ **Command Error**: `/{command}`\n\nThe command failed to execute properly.\n**Error**: {error}\n\nPlease try again or contact an administrator if the issue persists.",
+			"unexpected": "❌ **Unexpected Error**: `/{command}`\n\nAn unexpected error occurred. Please try again.",
+			"critical": "❌ **Critical Error**: An unexpected error occurred while processing your command.\n\nPlease try again later or contact an administrator."
+		}
 	}
 }

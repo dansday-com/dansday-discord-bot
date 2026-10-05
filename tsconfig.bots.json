@@ -23,6 +23,9 @@
 		"src/lib/effects.ts",
 		"src/lib/brand.ts",
 		"src/lib/themes.ts",
-		"src/lib/images.ts"
+		"src/lib/images.ts",
+		"src/lib/languages.ts",
+		"src/lib/localizedDefaults.ts",
+		"src/lib/localeStore.ts"
 	]
 }

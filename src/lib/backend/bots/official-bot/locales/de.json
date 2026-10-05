@@ -85,7 +85,8 @@
 			"hours": "Stunden",
 			"day": "Tag",
 			"days": "Tage"
-		}
+		},
+		"defaultFooter": "Bereitgestellt von {domain} {year}"
 	},
 	"permissions": {
 		"supporterRoleDenied": {
@@ -105,7 +106,8 @@
 		"notConfigured": {
 			"title": "❌ **Berechtigungen nicht konfiguriert**",
 			"description": "Der Serverinhaber oder ein Administrator muss die Rollenberechtigungen konfigurieren, bevor die Funktion **{action}** genutzt werden kann."
-		}
+		},
+		"requiredRoleFallback": "die erforderliche Rolle"
 	},
 	"settings": {
 		"language": {
@@ -114,7 +116,10 @@
 			"current": "Aktuelle Sprache",
 			"select": "Sprache auswählen",
 			"updated": "✅ Sprache erfolgreich aktualisiert!",
-			"failed": "❌ Sprache konnte nicht aktualisiert werden: {error}"
+			"failed": "❌ Sprache konnte nicht aktualisiert werden: {error}",
+			"serverDefault": "Server-Standard ({language})",
+			"serverDefaultDescription": "Der Serversprache folgen",
+			"currentOption": "Aktuelle Sprache"
 		}
 	},
 	"leveling": {
@@ -126,6 +131,54 @@
 		"errors": {
 			"notRegistered": "⚠️ Dieser Server ist nicht beim Bot registriert. Bitte führe zuerst eine Synchronisierung durch.",
 			"createRecordFailed": "❌ Mitgliedseintrag konnte nicht erstellt werden. Bitte versuche es erneut."
+		},
+		"fields": {
+			"level": "⭐ Level",
+			"totalXp": "📊 Gesamt-XP",
+			"rank": "🏆 Rang",
+			"previousRank": "Vorheriger Rang",
+			"newRank": "Neuer Rang",
+			"progress": "⚡ Fortschritt bis Level {level}",
+			"reward": "🎁 Belohnung freigeschaltet",
+			"activity": "💬 Aktivität"
+		},
+		"xpToGo": "Noch **{xp}** XP",
+		"unranked": "Ohne Rang",
+		"leaderboardButton": "Rangliste",
+		"levelUp": {
+			"title": "🎉 Level-Up!",
+			"description": "{member} hat **Level {level}** erreicht!"
+		},
+		"rankUp": {
+			"title": "Rang-Update!",
+			"topSpot": "{member} hat sich einen Spitzenplatz gesichert!",
+			"climbed": "{member} ist in der Rangliste aufgestiegen!"
+		},
+		"activity": {
+			"messages": "{count} Nachrichten",
+			"voice": "{hours} Std. Voice",
+			"streaming": "{hours} Std. Streaming"
+		},
+		"log": {
+			"types": {
+				"chat": "Chat",
+				"voice": "Voice",
+				"afkVoice": "AFK-Voice",
+				"video": "Video",
+				"streaming": "Streaming",
+				"invite": "Einladungs"
+			},
+			"gain": "{emoji} {type}-XP: {name} hat +{xp} XP erhalten",
+			"staff": "({multiplier}× Team 🛡️)",
+			"boost": "({multiplier}× Boost ⚡)",
+			"friend": "(+{rate} Freundes-Boost 🤝)",
+			"leech": "(−{rate} Leech 🩸)",
+			"share": "📨 +{amount} an {name} ({percent}% Einladungsanteil{staff})",
+			"inviteNote": "für die Einladung von {name}",
+			"leechCredit": "🩸 Leech: {attacker} hat {victim} +{amount} XP abgezapft{pct}",
+			"unknownMember": "Unbekannt",
+			"someMember": "einem Mitglied",
+			"someLeecher": "Ein Leecher"
 		}
 	},
 	"invites": {
@@ -180,8 +233,8 @@
 		"modal": {
 			"messageLabel": "AFK-Nachricht (optional)",
 			"messagePlaceholder": "z. B. Mache Pause, Lerne usw.",
-			"deafenLabel": "Im Voice stummschalten? (yes/no)",
-			"deafenPlaceholder": "yes oder no (leer lassen für yes)"
+			"deafenLabel": "Im Voice stummschalten? (ja/nein)",
+			"deafenPlaceholder": "ja oder nein (leer lassen für ja)"
 		},
 		"buttons": {
 			"remove": "🔄 AFK entfernen"
@@ -196,7 +249,10 @@
 		"messages": {
 			"welcomeBack": "✅ Willkommen zurück, {member}! Dein AFK-Status wurde entfernt.",
 			"dmEmbedTitle": "📬 Du wurdest erwähnt",
-			"dmMentioned": "{sender} hat dich in **{server}** · #{channel} erwähnt\\n\\n**Nachricht:** {message}"
+			"dmMentioned": "{sender} hat dich in **{server}** · #{channel} erwähnt\\n\\n**Nachricht:** {message}",
+			"away": "Abwesend",
+			"isAfk": "⏸️ {member} ist gerade AFK (seit {duration})",
+			"isAfkWithMessage": "⏸️ {member} ist gerade AFK: **{message}** (seit {duration})"
 		}
 	},
 	"giveaway": {
@@ -221,8 +277,8 @@
 			"durationPlaceholder": "z. B. 60 für 1 Stunde, 1440 für 1 Tag",
 			"winnerCountLabel": "Anzahl der Gewinner",
 			"winnerCountPlaceholder": "Wie viele Gewinner? (Standard: 1)",
-			"multipleEntriesLabel": "Mehrfachteilnahme erlaubt? (yes/no)",
-			"multipleEntriesPlaceholder": "yes oder no (Standard: no)"
+			"multipleEntriesLabel": "Mehrfachteilnahme erlaubt? (ja/nein)",
+			"multipleEntriesPlaceholder": "ja oder nein (Standard: nein)"
 		},
 		"created": {
 			"title": "✅ Gewinnspiel erstellt!",
@@ -260,7 +316,41 @@
 			"finishChannelNotConfigured": "❌ Gewinnspielkanal ist nicht konfiguriert.",
 			"finishChannelNotFound": "❌ Gewinnspielkanal nicht gefunden.",
 			"failed": "❌ Gewinnspielformular konnte nicht geöffnet werden: {error}",
-			"notEnoughInvites": "❌ Du brauchst **{needed}** Einladungen, um an diesem Giveaway teilzunehmen. Du hast **{have}**."
+			"notEnoughInvites": "❌ Du brauchst **{needed}** Einladungen, um an diesem Giveaway teilzunehmen. Du hast **{have}**.",
+			"roleSelectFailed": "❌ Rollenauswahl konnte nicht verarbeitet werden: {error}",
+			"enterFailed": "❌ **Teilnahme am Gewinnspiel fehlgeschlagen**\\n\\nFehler: {error}",
+			"finishFailed": "❌ Gewinnspiel konnte nicht beendet werden: {error}"
+		},
+		"unknownRole": "Rolle {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "Keine Rollenbeschränkung",
+			"multipleEntries": "Mehrfachteilnahme erlaubt",
+			"singleEntry": "Eine Teilnahme pro Mitglied",
+			"prizeLine": "**Preis:** {prize}",
+			"winnerLine": "**Gewinner:** {count}",
+			"winnersLine": "**Gewinner:** {count}",
+			"entriesLine": "**Teilnahmen:** {entries}",
+			"rolesLine": "**Rollenbeschränkung:** {roles}",
+			"invitesLine": "**Benötigte Einladungen:** {count}",
+			"hostedBy": "👤 Veranstaltet von",
+			"enterButton": "🎉 Am Gewinnspiel teilnehmen"
+		},
+		"results": {
+			"endedTitle": "🎉 Gewinnspiel beendet",
+			"endedWinnersTitle": "🎉 Gewinnspiel beendet!",
+			"noEntries": "**{title}**\\n\\n❌ Keine Teilnahmen! Das Gewinnspiel ist ohne Teilnehmer zu Ende gegangen.",
+			"noWinners": "**{title}**\\n\\n❌ Es konnten keine Gewinner ausgewählt werden.",
+			"winnerLine": "🎊 **Gewinner:** {winners}",
+			"winnersLine": "🎊 **Gewinner:** {winners}",
+			"limitedEntriesOne": "⚠️ *Nur {count} Gewinner ausgewählt ({requested} angefragt), da es zu wenige Teilnahmen gab.*",
+			"limitedEntriesMany": "⚠️ *Nur {count} Gewinner ausgewählt ({requested} angefragt), da es zu wenige Teilnahmen gab.*",
+			"congrats": "Herzlichen Glückwunsch! 🎉"
+		},
+		"finished": {
+			"title": "✅ Gewinnspiel beendet",
+			"noEntries": "Dein Gewinnspiel **\"{title}\"** wurde vorzeitig beendet.\\n\\nNiemand hat teilgenommen.",
+			"noWinners": "Dein Gewinnspiel **\"{title}\"** wurde vorzeitig beendet.\\n\\nEs konnten keine Gewinner ausgewählt werden.",
+			"winners": "Dein Gewinnspiel **\"{title}\"** wurde vorzeitig beendet.\\n\\n**Gewinner:** {winners}"
 		}
 	},
 	"feedback": {
@@ -269,8 +359,8 @@
 			"label": "Dein Feedback",
 			"placeholder": "Teile uns dein Feedback, deine Vorschläge oder Anliegen mit...",
 			"maxLength": 2000,
-			"anonymousLabel": "Anonym senden? (yes/no)",
-			"anonymousPlaceholder": "yes oder no (Standard: no)"
+			"anonymousLabel": "Anonym senden? (ja/nein)",
+			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
 		},
 		"submitted": {
 			"title": "✅ Feedback gesendet!",
@@ -284,6 +374,13 @@
 			"channelNotFound": "❌ Feedback konnte nicht gesendet werden: Feedback-Kanal nicht gefunden.",
 			"failed": "❌ Feedback-Formular konnte nicht geöffnet werden: {error}",
 			"submitFailed": "❌ **Feedback konnte nicht gesendet werden**\\n\\nFehler: {error}\\n\\nBitte versuche es später erneut."
+		},
+		"channelEmbed": {
+			"title": "💬 Neues Feedback",
+			"fieldFrom": "👤 Von",
+			"fieldSubmitted": "🕐 Gesendet",
+			"anonymous": "Anonym",
+			"footerSuffix": "• Feedback-ID: #{feedbackId}"
 		}
 	},
 	"staffRating": {
@@ -314,11 +411,10 @@
 			"ratingLabel": "Bewertung (1-5 Sterne)",
 			"ratingPlaceholder": "1 = Sehr schlecht, 5 = Ausgezeichnet",
 			"categoryLabel": "Kategorie",
-			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
 			"descriptionLabel": "Beschreibung",
 			"descriptionPlaceholder": "Beschreibe bitte deine Erfahrung mit diesem Teammitglied...",
-			"anonymousLabel": "Anonym senden? (yes/no)",
-			"anonymousPlaceholder": "yes oder no (Standard: no)"
+			"anonymousLabel": "Anonym senden? (ja/nein)",
+			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
 		},
 		"submitted": {
 			"title": "✅ Meldung gesendet",
@@ -343,7 +439,7 @@
 		"errors": {
 			"noStaffSelected": "❌ Bitte wähle ein Teammitglied zum Melden aus.",
 			"invalidRating": "❌ **Ungültige Bewertung**\\n\\nDie Bewertung muss eine Zahl zwischen 1 und 5 sein.",
-			"invalidCategory": "❌ **Ungültige Kategorie**\\n\\nBitte verwende eine davon: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"invalidCategory": "❌ **Ungültige Kategorie**\\n\\nBitte wähle eine Kategorie aus der Liste.",
 			"emptyDescription": "❌ **Beschreibung erforderlich**\\n\\nBitte beschreibe deine Erfahrung.",
 			"cannotReportSelf": "❌ Du kannst dich nicht selbst melden!",
 			"notStaff": "❌ Das ausgewählte Mitglied ist kein Teammitglied.",
@@ -356,6 +452,40 @@
 			"missingCategory": "❌ Bitte wähle vor dem Fortfahren eine Kategorie aus.",
 			"permissionDenied": "❌ **Zugriff verweigert**\\n\\nDu benötigst Admin-Berechtigungen, um Team-Meldungen zu genehmigen oder abzulehnen.",
 			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
+		},
+		"embed": {
+			"staffDecision": "Entscheidung des Teams",
+			"reviewedBy": "Geprüft von",
+			"statusApproved": "Genehmigt",
+			"statusRejected": "Abgelehnt"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Teammitglied",
+			"fieldRating": "Bewertung",
+			"fieldCategory": "Kategorie",
+			"fieldReporter": "Meldende Person",
+			"fieldStatus": "Status",
+			"fieldDescription": "Beschreibung",
+			"anonymousReporter": "Anonym",
+			"pendingTitle": "🕒 Offene Team-Meldung",
+			"pendingStatus": "Wartet auf Admin-Freigabe",
+			"approveButton": "Meldung genehmigen",
+			"rejectButton": "Meldung ablehnen",
+			"titleApproved": "✅ Team-Meldung genehmigt",
+			"titleRejected": "❌ Team-Meldung abgelehnt",
+			"footerReportSuffix": "• Meldungs-ID: #{reportId}"
+		},
+		"ratingUpdate": {
+			"title": "⭐ Team-Bewertung aktualisiert",
+			"description": "{staff} hat eine neue Bewertung erhalten.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} Meldungen)",
+			"fieldFeedback": "Feedback",
+			"dm": "⭐ Deine Team-Bewertung in **{server}** liegt jetzt bei **{rating}/5.0** ({totalReports} Meldungen)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ Diese Meldung wurde bereits bearbeitet.",
+			"approvedReply": "✅ Meldung #{reportId} genehmigt.",
+			"rejectedReply": "❌ Meldung #{reportId} abgelehnt."
 		}
 	},
 	"contentCreator": {
@@ -405,6 +535,47 @@
 			"submitFailed": "❌ Content-Creator-Bewerbung konnte nicht gesendet werden: {error}",
 			"permissionDenied": "❌ Du benötigst Admin-Berechtigungen, um Content-Creator-Bewerbungen zu genehmigen oder abzulehnen.",
 			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
+		},
+		"embed": {
+			"staffDecision": "Entscheidung des Teams",
+			"reviewedBy": "Geprüft von",
+			"reviewedBySystem": "Automatisch (doppeltes TikTok-Konto)",
+			"statusApproved": "Genehmigt",
+			"statusRejected": "Abgelehnt"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Offene Content-Creator-Bewerbung",
+			"pendingDescription": "{user} hat Content-Creator-Zugang beantragt.",
+			"pendingStatus": "Wartet auf Admin-Freigabe",
+			"fieldTiktok": "TikTok-Benutzername",
+			"fieldStatus": "Status",
+			"fieldApplicantReason": "Begründung",
+			"buttonApprove": "Genehmigen",
+			"buttonReject": "Ablehnen",
+			"titleApproved": "✅ Content-Creator-Bewerbung genehmigt",
+			"titleRejected": "❌ Content-Creator-Bewerbung abgelehnt",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• Bewerbungs-ID: #{appId}",
+			"liveTitle": "🔴 Content Creator ist LIVE",
+			"liveDescription": "{mention} ist jetzt live auf TikTok!",
+			"liveWatchButton": "LIVE auf TikTok ansehen",
+			"autoRejectReviewReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
+			"autoRejectConflictPending": "Dieses Konto hat eine **offene** Bewerbung für diesen TikTok-Namen.",
+			"autoRejectConflictApproved": "Dieses Konto ist ein **genehmigter** Content Creator mit diesem TikTok-Namen."
+		},
+		"live": {
+			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "Stream #{streamId}",
+			"endedTitle": "⚫ Live beendet",
+			"errorTitle": "⚠️ Verbindungsfehler beim Livestream",
+			"sessionLine": "Stream-Sitzung **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ Ungültige Bewerbungs-ID.",
+			"applicationNotFound": "❌ Bewerbung nicht gefunden.",
+			"alreadyProcessed": "⚠️ Diese Bewerbung wurde bereits bearbeitet.",
+			"approvedReply": "✅ Bewerbung #{appId} genehmigt.",
+			"rejectedReply": "❌ Bewerbung #{appId} abgelehnt."
 		}
 	},
 	"notifications": {
@@ -435,7 +606,7 @@
 			"nameLabel": "Rollenname",
 			"namePlaceholder": "Gib deinen eigenen Rollennamen ein...",
 			"colorLabel": "Rollenfarbe (Hex/Dezimal/Name)",
-			"colorPlaceholder": "#FF5733 oder 16729395 oder red (optional)",
+			"colorPlaceholder": "#FF5733 oder 16729395 oder rot (optional)",
 			"iconLabel": "Rollensymbol (Emoji oder Bild-URL)",
 			"iconPlaceholder": "🔥 oder https://example.com/icon.png (optional)"
 		},
@@ -469,7 +640,9 @@
 			"iconStatusUpdated": "Aktualisiert",
 			"iconStatusRemoved": "Entfernt",
 			"iconStatusFailed": "Fehlgeschlagen (Rolle ohne Symbol aktualisiert)",
-			"iconStatusInvalid": "Ungültiges Format (Rolle ohne Symbol aktualisiert)"
+			"iconStatusInvalid": "Ungültiges Format (Rolle ohne Symbol aktualisiert)",
+			"iconFailedFallback": "Das Symbol konnte nicht gesetzt werden. Die Rolle wurde aktualisiert, aber ohne eigenes Symbol.",
+			"iconNote": "⚠️ **Hinweis zum Symbol:** {message}"
 		},
 		"deleted": {
 			"title": "✅ Eigene Supporter-Rolle gelöscht",
@@ -490,7 +663,18 @@
 			"updateFailed": "❌ **Rolle konnte nicht aktualisiert werden**\\n\\nFehler: {error}\\n\\nStelle bitte sicher, dass:\\n- der Bot Rollen verwalten darf\\n- die Rollenvorgaben gültig sind",
 			"deleteFailed": "❌ Rolle konnte nicht gelöscht werden: {error}",
 			"failed": "❌ Formular zum Erstellen der Rolle konnte nicht geöffnet werden: {error}",
-			"editFailed": "❌ Bearbeitungsformular konnte nicht geöffnet werden: {error}"
+			"editFailed": "❌ Bearbeitungsformular konnte nicht geöffnet werden: {error}",
+			"createFailedReason": "❌ **Rolle konnte nicht erstellt werden**\n\n{reason}"
+		},
+		"colorDefault": "Standard",
+		"anchor": {
+			"noBoosterRole": "Dieser Server hat noch keine Server-Booster-Rolle. Sie erscheint, sobald jemand den Server boostet.",
+			"botTooLow": "Die eigene Rolle des Bots muss über {role} liegen, um Supporter-Rollen zu erstellen.",
+			"unknown": "Die Position für die Supporter-Rolle konnte nicht bestimmt werden."
+		},
+		"iconErrors": {
+			"boost": "Dieser Server benötigt Server-Boost Level 2 für eigene Rollensymbole. Du kannst stattdessen ein Emoji verwenden!",
+			"invalidFormat": "Ungültiges URL-Format oder ungültiger Dateityp"
 		}
 	},
 	"questEnroll": {
@@ -519,7 +703,126 @@
 		"autoQuestDisabled": "Die automatische Quest-Anmeldung ist derzeit deaktiviert. Bitte wende dich an eine Serveradministration.",
 		"alreadyRunning": "Für dich läuft bereits eine automatische Quest. Warte, bis sie fertig ist, bevor du eine neue startest.",
 		"announceInChannel": "Jedes Ergebnis wird in {channel} veröffentlicht.",
-		"announceDisabled": "Es ist kein Quest-Kanal festgelegt, daher wird nichts veröffentlicht — eingelöste Quests werden nur in der Quest-Liste markiert."
+		"announceDisabled": "Es ist kein Quest-Kanal festgelegt, daher wird nichts veröffentlicht — eingelöste Quests werden nur in der Quest-Liste markiert.",
+		"result": {
+			"reward": "Belohnung",
+			"openInDiscord": "In Discord öffnen",
+			"errorTitle": "Fehler bei der Quest-Anmeldung",
+			"errorDescription": "{member} ({tag})\nQuest `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Discord-Nutzertoken (wird nicht gespeichert)",
+			"placeholder": "ToS-Risiko: Dein Konto kann gebannt werden, evtl. auch Bot/Server. Einmal einfügen, nie öffentlich.",
+			"claimAllTitle": "Alle einlösen (Token — hohes Risiko)",
+			"enrollTitle": "Anmelden (Token — hohes Risiko)"
+		},
+		"tokenTooShort": "Token zu kurz.",
+		"invalidTokenTitle": "Ungültiger Token",
+		"invalidTokenDescription": "Der angegebene Token scheint ungültig oder abgelaufen zu sein.\n`{error}`",
+		"invalidQuestId": "Ungültige Quest-ID.",
+		"missingQuestOrToken": "Quest-ID fehlt oder Token zu kurz.",
+		"taskTypes": {
+			"default": "Quest",
+			"WATCH_VIDEO": "Video ansehen",
+			"WATCH_VIDEO_ON_MOBILE": "Video ansehen (mobil)",
+			"PLAY_ON_DESKTOP": "Am PC spielen",
+			"PLAY_ON_DESKTOP_V2": "Am PC spielen",
+			"PLAY_ON_XBOX": "Auf Xbox spielen",
+			"PLAY_ON_PLAYSTATION": "Auf PlayStation spielen",
+			"STREAM_ON_DESKTOP": "Am PC streamen",
+			"PLAY_ACTIVITY": "Aktivität",
+			"ACHIEVEMENT_IN_ACTIVITY": "Erfolg in Aktivität",
+			"ACHIEVEMENT_IN_GAME": "Erfolg im Spiel"
+		},
+		"task": {
+			"forMinute": "{task} für {count} Minute",
+			"forMinutes": "{task} für {count} Minuten",
+			"forSeconds": "{task} für {count} Sekunden",
+			"secondsTarget": "{task} · {count} Sekunden",
+			"target": "{task} · Ziel {count}"
+		},
+		"reward": {
+			"fallback": "Quest-Belohnung",
+			"currency": "{count}× Discord-Quest-Währung"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Quest-Anmeldung",
+				"description": "Diese Quest wurde für dieses Konto nicht zurückgegeben. Öffne **Quests** in Discord, nimm sie gegebenenfalls an und stelle sicher, dass der Token zu diesem Benutzer gehört."
+			},
+			"expired": {
+				"title": "Quest-Anmeldung",
+				"description": "Diese Quest ist abgelaufen."
+			},
+			"alreadyComplete": {
+				"title": "✅ Quest bereits abgeschlossen",
+				"description": "**Belohnung:** {reward}\nLöse sie im Discord-Client unter **Quests** ein, falls du das noch nicht getan hast."
+			},
+			"enrollFailed": {
+				"title": "Quest-Anmeldung fehlgeschlagen",
+				"description": "Discord hat bei der Anmeldung HTTP {status} zurückgegeben. Möglicherweise musst du die Quest zuerst im Client annehmen, oder dein Token ist ungültig."
+			},
+			"complete": {
+				"title": "✅ Quest abgeschlossen",
+				"description": "**Belohnung:** {reward}\nÖffne **Discord → Quests**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Nur angemeldet",
+				"description": "Für **{quest}** angemeldet. In der Quest-Konfiguration wurde keine ausführbare Aufgabe gefunden — schließe sie bei Bedarf im **Discord**-Client ab.\n\n**Belohnung:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Erfolgs-Quest",
+				"description": "In der Quest-Konfiguration fehlt die Anwendungs-ID oder das Erfolgsziel. Schließe **{task}** im Discord-Client ab.\n\n**Belohnung:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Erfolgs-Quest abgeschlossen",
+				"description": "**{quest}**\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"achievementIncomplete": {
+				"title": "Erfolgs-Quest — unvollständig",
+				"description": "{error}\n\n**Belohnung:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Aktivitäts-Quest",
+				"description": "Deine Benutzer-ID konnte nicht aus dem Token ermittelt werden. Verwende einen normalen **Nutzer**-Token (keinen Bot-Token).\n\n**Belohnung:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Aktivitäts-Quest abgeschlossen",
+				"description": "**{quest}**\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"activityIncomplete": {
+				"title": "Aktivitäts-Quest — unvollständig",
+				"description": "Der Fortschritt wurde nicht rechtzeitig abgeschlossen{detail}.\n\n**Belohnung:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Nur angemeldet",
+				"description": "Für **{quest}** angemeldet. **{task}** benötigt eine **Anwendungs-ID** in der Quest-Konfiguration für API-Heartbeats — schließe die Quest im Discord-Client ab (PC / Konsole).\n\n**Belohnung:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Quest abgeschlossen",
+				"description": "**{quest}** ({task})\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"platformIncomplete": {
+				"title": "Quest — unvollständig",
+				"description": "Der Fortschritt wurde nicht rechtzeitig abgeschlossen{detail}. Halte bei **Stream**- oder **Konsolen**-Quests den echten Client aktiv oder versuche es später erneut.\n\n**Belohnung:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Nur angemeldet",
+				"description": "Für **{quest}** angemeldet. Nicht unterstützter Aufgabentyp (**{task}**) — schließe die Quest im Discord-Client ab.\n\n**Belohnung:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Quest-Anmeldung",
+				"description": "Die Videodauer für diese Quest konnte nicht gelesen werden."
+			},
+			"videoDone": {
+				"title": "✅ Video-Quest abgeschlossen",
+				"description": "**{quest}**\n**Belohnung:** {reward}\nEinlösen unter **Discord → Quests**"
+			},
+			"videoIncomplete": {
+				"title": "Quest-Anmeldung — unvollständig",
+				"description": "Der Fortschritt hat das Ziel nicht rechtzeitig erreicht{detail}. Schau das Video im Discord-Client zu Ende oder versuche es erneut."
+			}
+		}
 	},
 	"robloxCatalog": {
 		"notifications": {
@@ -553,7 +856,7 @@
 			"menu": {
 				"title": "🛍️ Roblox-Artikel-Benachrichtigungen",
 				"description": "Du beobachtest {count} Artikel. Wähle einen aus, um seine Benachrichtigungsarten zu ändern.",
-				"empty": "Du beobachtest noch keinen Roblox-Artikel. Drücke 🔔 Notify me unter einem Katalogbeitrag, um zu starten.",
+				"empty": "Du beobachtest noch keinen Roblox-Artikel. Drücke 🔔 {button} unter einem Katalogbeitrag, um zu starten.",
 				"placeholder": "Artikel zum Bearbeiten auswählen...",
 				"disableAll": "🔕 Alle deaktivieren",
 				"disabledAll": "🔕 Benachrichtigungen für {count} Artikel deaktiviert."
@@ -561,6 +864,24 @@
 			"errors": {
 				"invalidItem": "❌ Der Katalogartikel dieses Buttons konnte nicht gelesen werden.",
 				"memberNotFound": "❌ Dein Mitgliedsprofil ist noch nicht synchronisiert. Versuche es gleich erneut."
+			}
+		},
+		"itemFallback": "Artikel #{id}",
+		"post": {
+			"free": "GRATIS",
+			"updatedTitle": "[Aktualisiert] {name}",
+			"openOnRoblox": "Auf Roblox öffnen",
+			"notifyMe": "Benachrichtige mich",
+			"fields": {
+				"category": "Kategorie",
+				"price": "Preis",
+				"creator": "Ersteller",
+				"quantity": "Menge",
+				"favorites": "Favoriten",
+				"created": "Erstellt",
+				"notifications": "Benachrichtigungen",
+				"resalePrice": "Wiederverkaufspreis",
+				"saleEnds": "Verkauf endet"
 			}
 		}
 	},
@@ -619,6 +940,13 @@
 			"notFound": "❌ Kein Creator mit diesem Link oder Handle gefunden.",
 			"tiktokCooling": "⏳ TikTok begrenzt gerade Abfragen. Versuche es in ein paar Minuten erneut.",
 			"lookupFailed": "❌ Dieser Creator kann gerade nicht gesucht werden. Versuche es später erneut."
+		},
+		"post": {
+			"platform": "Plattform",
+			"type": "Typ",
+			"notifications": "Benachrichtigungen",
+			"openOn": "Auf {platform} öffnen",
+			"notifyMe": "Benachrichtige mich"
 		}
 	},
 	"moderation": {
@@ -638,11 +966,423 @@
 		},
 		"modal": {
 			"reason": "Grund",
-			"duration": "Dauer (z. B. 10m, 2h, 7d)"
+			"duration": "Dauer (z. B. 10 Min, 2 Std, 7 Tage)"
 		},
 		"done": "✅ {action} auf {member} angewendet. Fall #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Gib eine Dauer wie 10m, 2h oder 7d ein.",
-		"notAllowed": "❌ Der Serverbesitzer und Bots können nicht moderiert werden."
+		"invalidDuration": "❌ Gib eine Dauer wie 10 Min, 2 Std oder 7 Tage ein.",
+		"notAllowed": "❌ Der Serverbesitzer und Bots können nicht moderiert werden.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ Mitglied verwarnt",
+				"timeout": "🔇 Mitglied im Timeout",
+				"untimeout": "🔊 Timeout aufgehoben",
+				"kick": "👢 Mitglied gekickt",
+				"ban": "🔨 Mitglied gebannt",
+				"tempban": "⏳ Mitglied temporär gebannt",
+				"unban": "🕊️ Mitglied entbannt",
+				"unwarn": "🧹 Verwarnung entfernt",
+				"clearwarns": "🧹 Verwarnungen gelöscht",
+				"tempban_expired": "⌛ Temporärer Bann abgelaufen"
+			},
+			"bulkTitles": {
+				"role_add": "➕ Rolle an viele vergeben",
+				"role_remove": "➖ Rolle bei vielen entfernen"
+			},
+			"title": "{action} · Fall #{case}",
+			"description": "Fall **#{case}** für {member} erfasst.",
+			"fields": {
+				"member": "👤 Mitglied",
+				"staff": "🛡️ Team",
+				"source": "📍 Quelle",
+				"reason": "📝 Grund",
+				"duration": "⏱️ Dauer",
+				"activeWarnings": "📊 Aktive Verwarnungen",
+				"role": "🎭 Rolle"
+			},
+			"durationValue": "{duration} (endet {ends})",
+			"noReason": "Kein Grund angegeben",
+			"unknown": "Unbekannt",
+			"automatic": "Automatisch",
+			"staffFallback": "Team",
+			"sources": {
+				"panel": "Panel",
+				"menu": "Menü",
+				"discord": "Discord",
+				"auto": "automatisch"
+			},
+			"bulkSummary": "**{done}** erledigt · {failed} fehlgeschlagen",
+			"reasons": {
+				"unwarn": "Verwarnung #{case} entfernt",
+				"clearwarns": "{count} Verwarnung(en) gelöscht",
+				"escalation": "{count} aktive Verwarnungen erreicht",
+				"tempbanExpired": "Temporärer Bann aus Fall #{case} abgelaufen"
+			}
+		},
+		"memberDm": {
+			"server": "**Server:** {server}",
+			"reason": "**Grund:** {reason}",
+			"duration": "**Dauer:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} T",
+			"h": "{n} Std",
+			"m": "{n} Min",
+			"s": "{n} Sek"
+		}
+	},
+	"setup": {
+		"categoryName": "{botName} Menü",
+		"channels": {
+			"menu": "「💻」menü",
+			"bot_updates": "「⚙️」bot-updates",
+			"welcomer": "「🚪」willkommen",
+			"booster": "「🚀」booster",
+			"moderation": "「🔨」moderation",
+			"leveling": "「🆙」level",
+			"giveaway": "「🎁」gewinnspiel",
+			"staff_rating": "「⭐」team-bewertung",
+			"discord_quest_notifier": "「📜」discord-quests",
+			"content_creator": "「📽️」content-creator",
+			"roblox_catalog_notifier": "「👗」roblox-katalog",
+			"items": "「🛍️」items",
+			"minigames": "「🎲」minispiele"
+		},
+		"language": {
+			"title": "🌐 Serversprache wählen",
+			"description": "Wähle die Sprache für diesen Server. Sie bestimmt die Namen der Kanäle, die `/setup` erstellt, und wird für das Menü, Freigabe-Beiträge, alle öffentlichen Bot-Nachrichten sowie den Chat und die Sprachausgabe der KI verwendet.\n\nMitglieder können im Menü weiterhin ihre eigene Sprache für private Antworten und DMs wählen. Du kannst das später im Webpanel unter **Configuration → Main** ändern.",
+			"placeholder": "Serversprache auswählen",
+			"working": "⏳ Einrichtung auf **{language}** läuft…",
+			"applied": "🌐 Serversprache: **{language}**"
+		},
+		"commandDescription": "Bot einrichten: Serversprache wählen, dann Menü und Kanäle erstellen. Nur für Admins."
+	},
+	"items": {
+		"common": {
+			"footer": "Items",
+			"aMemberActor": "Ein Mitglied",
+			"aMemberTarget": "ein Mitglied",
+			"disguisedMember": "Ein mysteriöses Mitglied 🎭",
+			"someone": "Jemand",
+			"item": "Item",
+			"anItem": "ein Item",
+			"them": "dieses Mitglied",
+			"until": " (endet {time})",
+			"activeUntil": " (aktiv, endet {time})",
+			"luckBonus": " (+{percent}% Glück 🍀)",
+			"luckTaxDiscount": " (−{percent}% Steuer durch Glück 🍀)",
+			"addressed": "{member}, {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "Diebstahl blockiert",
+				"blockedDescription": "Der **Schild** von {target} hat den Diebstahl von {actor} blockiert!",
+				"immuneTitle": "Diebstahl von Immunität abgefangen",
+				"immuneDescription": "{target} ist noch immun. Der Diebstahl von {actor} blieb wirkungslos, **{item}** ist verloren."
+			},
+			"bomb": {
+				"blockedTitle": "Bombe blockiert",
+				"blockedDescription": "Der **Schild** von {target} hat die Bombe von {actor} blockiert!",
+				"immuneTitle": "Bombe von Immunität abgefangen",
+				"immuneDescription": "{target} ist noch immun. Die Bombe von {actor} blieb wirkungslos, **{item}** ist verloren."
+			},
+			"leech": {
+				"blockedTitle": "Blutegel blockiert",
+				"blockedDescription": "Der **Schild** von {target} hat den Blutegel von {actor} blockiert!",
+				"immuneTitle": "Blutegel von Immunität abgefangen",
+				"immuneDescription": "{target} ist noch immun. Der Blutegel von {actor} blieb wirkungslos, **{item}** ist verloren."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "Angriff reflektiert",
+			"reflectedDescription": "{target} hat den Angriff auf {actor} zurückgeworfen!",
+			"withItem": " mit **{item}**",
+			"refundedValue": "{target} hat {xp} erstattet bekommen",
+			"bountyValue": "{actor} hat außerdem {xp} kassiert",
+			"immuneValue": "Die Immunität von {target} endet {time}",
+			"steal": {
+				"title": "Mitglied ausgeraubt!",
+				"description": "{actor} hat {target}{withItem} ausgeraubt!"
+			},
+			"bomb": {
+				"title": "Mitglied gebombt!",
+				"description": "{actor} hat {target}{withItem} gebombt!"
+			}
+		},
+		"fields": {
+			"skimRate": "Abschöpfrate",
+			"received": "Erhalten",
+			"tax": "Steuer",
+			"bounty": "Kopfgeld",
+			"xpLostByAttacker": "XP-Verlust des Angreifers",
+			"attacker": "Angreifer",
+			"victim": "Opfer",
+			"xpStolen": "Gestohlene XP",
+			"xpDestroyed": "Vernichtete XP",
+			"insuranceRefund": "Versicherungserstattung",
+			"bountyCollected": "Kopfgeld kassiert",
+			"immunity": "Immunität"
+		},
+		"leech": {
+			"title": "Blutegel angesetzt",
+			"description": "{actor} hat {target} einen Blutegel angesetzt, der einen Teil der XP abzweigt, solange er aktiv ist."
+		},
+		"gift": {
+			"title": "Geschenk verschickt",
+			"description": "{actor} hat {target} ein Geschenk geschickt!"
+		},
+		"bounty": {
+			"title": "Kopfgeld ausgesetzt",
+			"description": "{actor} hat ein Kopfgeld auf {target} ausgesetzt. Wer dieses Mitglied als Nächstes bestiehlt oder bombt, kassiert es."
+		},
+		"disguise": {
+			"title": "Ein Mitglied ist in der Menge verschwunden",
+			"description": "Jemand hat sich eine **Verkleidung** übergeworfen{until}. Bei Angriffen bleibt der Name nun verborgen, und das Mitglied ist von der Rangliste verschwunden."
+		},
+		"boost": {
+			"title": "Boost aktiviert",
+			"description": "{actor} hat einen Boost aktiviert{until}. Solange er läuft, werden die Einnahmen vervielfacht."
+		},
+		"shield": {
+			"title": "Schild aktiviert",
+			"description": "{actor} ist jetzt geschützt – eingehende Diebstähle, Bomben und Blutegel werden blockiert{until}."
+		},
+		"reflect": {
+			"title": "Reflexion aktiviert",
+			"description": "{actor} wirft den nächsten Angriff auf den Angreifer zurück{until}."
+		},
+		"insurance": {
+			"title": "Versicherung aktiviert",
+			"description": "{actor} bekommt beim nächsten Raub oder Bombenangriff {percent}%{luck} des Verlusts erstattet{until}."
+		},
+		"luck": {
+			"title": "Glück aktiviert",
+			"description": "{actor} hat jetzt +{percent}% Glück auf Diebstahl, Bombe, Minispiele, Spionage, Blutegel, Geschenksteuer, Versicherung, Freundes-Boost und Shoppreise{until}."
+		},
+		"spyCaught": {
+			"title": "Spion erwischt",
+			"description": "{target} hat {spy} beim Spionieren erwischt. Es wurden keine Informationen gesammelt."
+		},
+		"adminGift": {
+			"title": "Ein Geschenk ist da",
+			"description": "{member} hat **{quantity}× {item}** vom Admin erhalten. Schau in deine Items!"
+		},
+		"expired": {
+			"boost": {
+				"title": "Boost beendet",
+				"text": "Dein **{value}×-Boost** ist abgelaufen."
+			},
+			"shield": {
+				"title": "Schild beendet",
+				"text": "Dein **Schild** ist abgelaufen. Du kannst wieder angegriffen werden."
+			},
+			"leech": {
+				"title": "Blutegel beendet",
+				"text": "Dein **{value}%-Blutegel** ist beendet.",
+				"textWithTarget": "Dein **{value}%-Blutegel** auf {target} ist beendet."
+			},
+			"reflect": {
+				"title": "Reflexion beendet",
+				"text": "Deine **Reflexion** ist abgelaufen."
+			},
+			"insurance": {
+				"title": "Versicherung beendet",
+				"text": "Deine **Versicherung** ist abgelaufen."
+			},
+			"disguise": {
+				"title": "Verkleidung beendet",
+				"announcement": "Ein Mitglied hat seine Verkleidung abgelegt und ist wieder sichtbar."
+			},
+			"luck": {
+				"title": "Glück beendet",
+				"text": "Dein **+{value}% Glück** ist abgelaufen."
+			}
+		},
+		"immunityEnded": {
+			"title": "Immunität beendet",
+			"description": "{member} ist nicht mehr immun. Wieder Freiwild!",
+			"anonymous": "Ein Mitglied ist nicht mehr immun."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "Diebstahl-Abklingzeit vorbei",
+				"text": "Deine Diebstahl-Abklingzeit ist vorbei. Du kannst wieder stehlen!"
+			},
+			"bomb": {
+				"title": "Bomben-Abklingzeit vorbei",
+				"text": "Deine Bomben-Abklingzeit ist vorbei. Du kannst wieder bomben!"
+			},
+			"insurance": {
+				"title": "Versicherungs-Abklingzeit vorbei",
+				"text": "Deine Versicherungs-Abklingzeit ist vorbei. Du kannst die Versicherung wieder aktivieren!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "Ein Mitglied",
+		"footer": "Minispiele",
+		"win": {
+			"title": "🎲 Minispiel gewonnen!",
+			"description": "{member} hat {wager} bei {multiplier}× gesetzt und **gewonnen**!"
+		},
+		"lose": {
+			"title": "🎲 Minispiel verloren",
+			"description": "{member} hat {wager} bei {multiplier}× gesetzt und **alles verloren**."
+		},
+		"fields": {
+			"payout": "Auszahlung",
+			"netGain": "Nettogewinn",
+			"winChance": "Gewinnchance",
+			"xpLost": "Verlorene XP"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ Theme-Effekt-Dreh",
+			"description": "{member} hat für {cost} gedreht und **{effect}** erwischt!"
+		},
+		"fields": {
+			"effect": "Effekt",
+			"xpSpent": "Ausgegebene XP",
+			"variant": "Variante"
+		}
+	},
+	"tasks": {
+		"footer": "Aufgaben",
+		"rarity": {
+			"common": "Gewöhnlich",
+			"uncommon": "Ungewöhnlich",
+			"rare": "Selten",
+			"epic": "Episch",
+			"legendary": "Legendär",
+			"mythic": "Mythisch"
+		},
+		"milestones": {
+			"7": "Eine Woche",
+			"30": "Ein Monat",
+			"100": "Hundert Tage",
+			"365": "Ein Jahr"
+		},
+		"login": {
+			"jackpotTitle": "🎁 Jackpot an Tag {day} — {rarity}!",
+			"dropTitle": "✨ Drop: {rarity}!",
+			"description": "{member} hat an Tag {day} ein Item der Seltenheit **{rarity}** gezogen!",
+			"fields": {
+				"item": "Item",
+				"rarity": "Seltenheit",
+				"worth": "Wert"
+			}
+		},
+		"streak": {
+			"day": "{count} Tag",
+			"days": "{count} Tage",
+			"reset": {
+				"title": "💔 Streak verloren",
+				"description": "{member} hat **{days}** verpasst und eine Streak von **{previous} Tagen** verloren. Zurück auf Tag 1.",
+				"descriptionBurned": "{member} hat **{days}** verpasst und eine Streak von **{previous} Tagen** verloren. {burned} Zurück auf Tag 1.",
+				"burnedOne": "1 Freeze wurde beim Rettungsversuch verbraucht.",
+				"burnedMany": "{count} Freezes wurden beim Rettungsversuch verbraucht."
+			},
+			"frozen": {
+				"title": "🧊 Streak eingefroren",
+				"description": "{member} hat **{days}** verpasst — dank {freezes} lebt die Streak von **{streak} Tagen** weiter.",
+				"one": "eines Streak-Freezes",
+				"many": "{count} Streak-Freezes"
+			},
+			"fields": {
+				"longest": "Längste Streak",
+				"freezesUsed": "Verbrauchte Freezes",
+				"freezesLeft": "Übrige Freezes"
+			},
+			"milestone": {
+				"title": "{emoji} Streak: {label}",
+				"description": "{member} hat gerade eine Streak von **{streak} Tagen** erreicht!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 Willkommen auf dem Server!",
+		"fields": {
+			"accountCreated": "📅 Konto erstellt",
+			"memberCount": "👥 Mitgliederzahl",
+			"invitedBy": "📨 Eingeladen von"
+		},
+		"memberNumber": "Mitglied #{count}",
+		"inviterCount": "{inviter} ({count} Einladungen)",
+		"inviter": {
+			"vanity": "Vanity-Link",
+			"server": "Server-Einladungslink",
+			"someone": "jemand"
+		},
+		"inviteSources": {
+			"invite": "Discord-Link",
+			"personal": "Persönlicher Link",
+			"vanity": "Vanity-Link",
+			"server": "Server-Link",
+			"manual": "Vom Team festgelegt",
+			"unknown": "Unbekannt"
+		},
+		"accountAge": {
+			"today": "heute",
+			"oneDay": "vor 1 Tag",
+			"days": "vor {days} Tagen"
+		},
+		"unknownServer": "Unbekannter Server",
+		"defaultMessages": [
+			"👋 Willkommen {user} auf {server}! Du bist Mitglied #{memberCount} (Kontoalter: {accountAge}).",
+			"🎉 {user} ist {server} beigetreten! Mitglied #{memberCount} | Kontoalter: {accountAge}.",
+			"🌟 Willkommen {user}! Du bist jetzt Teil von {server} (Mitglied #{memberCount}, Kontoalter: {accountAge}).",
+			"🚀 {user} ist gerade {server} beigetreten! Mitglied #{memberCount} | Kontoalter: {accountAge}.",
+			"🎊 Hallo {user}! Willkommen auf {server}! Du bist Mitglied #{memberCount} (Kontoalter: {accountAge})."
+		]
+	},
+	"booster": {
+		"title": "💎 Danke fürs Boosten!",
+		"fields": {
+			"boostLevel": "🚀 Boost-Level",
+			"totalBoosts": "✨ Boosts gesamt",
+			"boostedSince": "📅 Boostet seit"
+		},
+		"level": "Level {level}",
+		"justNow": "Gerade eben",
+		"unknownServer": "Unbekannter Server",
+		"defaultMessages": [
+			"🎉 {user} hat {server} gerade geboostet! Aktuelles Level: {boostLevel} | Boosts insgesamt: {totalBoosts}.",
+			"💎 Danke {user} fürs Boosten von {server}! Wir sind jetzt Level {boostLevel} mit {totalBoosts} Boosts.",
+			"🚀 {user} hat {server} geboostet! Server-Level: {boostLevel} | Boosts: {totalBoosts}.",
+			"🔥 Riesigen Dank an {user} fürs Boosten von {server}! Boosts insgesamt: {totalBoosts} (Level {boostLevel}).",
+			"⭐ {user} hat {server} gerade einen Boost geschenkt! Level {boostLevel} mit {totalBoosts} Boosts."
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "Belohnungen",
+			"tasks": "Aufgaben",
+			"game": "🎮 Spiel",
+			"publisher": "🏢 Publisher",
+			"expires": "⏳ Läuft ab"
+		},
+		"test": "_Testbenachrichtigung — der Notifier funktioniert._",
+		"openInDiscord": "In Discord öffnen"
+	},
+	"forwarder": {
+		"title": "Nachricht aus {channel}",
+		"additionalAttachments": "Weitere Anhänge"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "Ich konnte gerade keine Antwort erstellen. Bitte versuche es erneut.",
+			"keyRejected": "Der KI-API-Schlüssel wurde abgelehnt. Bitte überprüfe die Einstellungen im Bot-Panel.",
+			"rateLimited": "Der KI-Dienst ist gerade durch ein Ratenlimit eingeschränkt. Bitte versuche es gleich noch einmal.",
+			"failed": "Beim Kontaktieren des KI-Dienstes ist ein Fehler aufgetreten."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Unbekannter Befehl**: `/{command}`\n\nDieser Befehl existiert nicht. Nur `/setup` ist verfügbar.",
+			"failed": "❌ **Befehlsfehler**: `/{command}`\n\nDer Befehl konnte nicht korrekt ausgeführt werden.\n**Fehler**: {error}\n\nBitte versuche es erneut oder wende dich an einen Administrator, wenn das Problem weiterhin besteht.",
+			"unexpected": "❌ **Unerwarteter Fehler**: `/{command}`\n\nEin unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.",
+			"critical": "❌ **Kritischer Fehler**: Beim Verarbeiten deines Befehls ist ein unerwarteter Fehler aufgetreten.\n\nBitte versuche es später erneut oder wende dich an einen Administrator."
+		}
 	}
 }

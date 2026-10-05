@@ -399,7 +399,7 @@ export const serverMembers = mysqlTable(
 		booster_since: datetime('booster_since'),
 		is_bot: boolean('is_bot').notNull().default(false),
 		is_owner: boolean('is_owner').notNull().default(false),
-		language: varchar('language', { length: 10 }).default('en'),
+		language: varchar('language', { length: 10 }),
 		deleted_at: datetime('deleted_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()

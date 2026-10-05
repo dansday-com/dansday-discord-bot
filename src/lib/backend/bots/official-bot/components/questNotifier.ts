@@ -10,6 +10,8 @@ import {
 	type DiscordQuestSummary
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
+import { serverTranslator } from '../i18n.js';
+import { questRewardText, questTaskText } from './questText.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
@@ -59,24 +61,25 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	if (!channel || !channel.isTextBased()) throw new Error('Channel not found or not text-based');
 
 	const embedConfig = await getEmbedConfig(guildId);
-	const rewardsCore = quest.reward || '• Quest reward';
+	const tr = await serverTranslator(guildId);
+	const rewardsCore = questRewardText(tr, quest.reward);
 	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
-	const taskBlock = `• ${(quest.questDescription || quest.taskTypeLabel).slice(0, 1006)} ▶️`.slice(0, 1024);
+	const taskBlock = `• ${questTaskText(tr, quest.questDescription || quest.taskTypeLabel, quest.taskTypeKey).slice(0, 1006)} ▶️`.slice(0, 1024);
 	const expiresBlock = quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? discordTs(quest.expiresAt, 'R') : '—';
 
 	const fields: { name: string; value: string; inline?: boolean }[] = [
-		{ name: 'Rewards', value: rewardsBlock, inline: false },
-		{ name: 'Tasks', value: taskBlock, inline: false },
+		{ name: tr('questNotifier.fields.rewards'), value: rewardsBlock, inline: false },
+		{ name: tr('questNotifier.fields.tasks'), value: taskBlock, inline: false },
 		{
-			name: '🎮 Game',
+			name: tr('questNotifier.fields.game'),
 			value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
 			inline: true
 		}
 	];
 	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
-	if (pub) fields.push({ name: '🏢 Publisher', value: pub.slice(0, 1024), inline: true });
+	if (pub) fields.push({ name: tr('questNotifier.fields.publisher'), value: pub.slice(0, 1024), inline: true });
 
-	fields.push({ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true });
+	fields.push({ name: tr('questNotifier.fields.expires'), value: expiresBlock.slice(0, 1024), inline: true });
 
 	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).addFields(fields);
 
@@ -92,11 +95,11 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	embed.setTimestamp(startMs);
 
 	if (opts?.test) {
-		embed.setDescription('_Test notification — notifier is working._');
+		embed.setDescription(tr('questNotifier.test'));
 	}
 
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel(tr('questNotifier.openInDiscord').slice(0, 80)).setEmoji('🖥️')
 	);
 
 	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(channel.guild.id, channel.id).catch(() => null);

@@ -24,6 +24,7 @@ import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountDeclarations, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
 import { buildKnowledgeDeclarations, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { appendAiMessage } from './aiSession.js';
+import { aiLanguageInstruction } from '../i18n.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
 
 const INPUT_RATE = 16000;
@@ -182,9 +183,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
 	const extendedThinking = isExtendedThinking(config.voice_model);
 	const toolBehavior = extendedThinking ? Behavior.NON_BLOCKING : Behavior.BLOCKING;
-	const systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), VOICE_SERVER_DATA_NOTE]
-		.filter(Boolean)
-		.join('\n\n');
+	let systemInstruction = '';
 
 	let wikis: any[] = [];
 
@@ -967,6 +966,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	async function connectLive() {
+		const languageNote = await aiLanguageInstruction(guildId, 'voice').catch(() => '');
+		systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), languageNote, VOICE_SERVER_DATA_NOTE]
+			.filter(Boolean)
+			.join('\n\n');
+
 		wikis = await getEnabledWikis(botId).catch(() => []);
 		const wikiDeclaration = buildWikiDeclaration(wikis);
 		if (wikiDeclaration) logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);

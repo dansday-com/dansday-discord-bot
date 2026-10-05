@@ -3,6 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
+import { serverTranslator } from '../i18n.js';
 
 function replaceBoosterPlaceholders(message, memberId, serverName, boostLevel, totalBoosts) {
 	return message
@@ -85,8 +86,9 @@ async function thankBooster(member, client) {
 			guildBoostLevel = serverData?.boost_level || 0;
 		}
 
+		const tr = await serverTranslator(member.guild.id);
 		const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-		const serverName = member.guild?.name || serverData?.name || 'Unknown Server';
+		const serverName = member.guild?.name || serverData?.name || tr('booster.unknownServer');
 		const thankMessage = replaceBoosterPlaceholders(randomMessage, member.user.id, serverName, guildBoostLevel, guildBoostCount);
 		const embedConfig = await getEmbedConfig(member.guild.id);
 
@@ -100,31 +102,31 @@ async function thankBooster(member, client) {
 			try {
 				const boosterEmbed = new EmbedBuilder()
 					.setColor(embedConfig.COLOR)
-					.setTitle('💎 Thank You for Boosting!')
+					.setTitle(tr('booster.title'))
 					.setDescription(thankMessage)
 					.setThumbnail(memberData.avatar || null)
 					.addFields([
 						{
-							name: '🚀 Boost Level',
-							value: `Level ${guildBoostLevel}`,
+							name: tr('booster.fields.boostLevel'),
+							value: tr('booster.level', { level: guildBoostLevel }),
 							inline: true
 						},
 						{
-							name: '✨ Total Boosts',
+							name: tr('booster.fields.totalBoosts'),
 							value: `${guildBoostCount}`,
 							inline: true
 						},
 						{
-							name: '📅 Boosted Since',
+							name: tr('booster.fields.boostedSince'),
 							value: (() => {
-								if (!memberData.booster_since) return 'Just now';
+								if (!memberData.booster_since) return tr('booster.justNow');
 								let boosterSinceDate;
 								if (memberData.booster_since instanceof Date) {
 									boosterSinceDate = memberData.booster_since;
 								} else {
 									boosterSinceDate = parseMySQLDateTimeUtc(memberData.booster_since);
 								}
-								return boosterSinceDate ? `<t:${Math.floor(boosterSinceDate.getTime() / 1000)}:R>` : 'Just now';
+								return boosterSinceDate ? `<t:${Math.floor(boosterSinceDate.getTime() / 1000)}:R>` : tr('booster.justNow');
 							})(),
 							inline: false
 						}

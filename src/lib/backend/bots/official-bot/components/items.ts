@@ -3,6 +3,7 @@ import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp, reevaluateLevel } from './xp-economy.js';
+import { serverTranslator, type Translator } from '../i18n.js';
 import {
 	TARGETED_EFFECTS,
 	ANNOUNCED_EFFECTS,
@@ -11,7 +12,6 @@ import {
 	effectiveBagStock,
 	effectAccentInt,
 	formatDuration,
-	DISGUISED_MENTION,
 	discountedItemCost,
 	floatingWallClockMs
 } from '../../../../items.js';
@@ -1084,6 +1084,7 @@ function fmtXp(n: any): string {
 }
 
 type EmbedCtx = {
+	tr: Translator;
 	embed: any;
 	effectType: string;
 	result: any;
@@ -1094,27 +1095,48 @@ type EmbedCtx = {
 	immuneRel: string | null;
 };
 
-function attackDefendedEmbed({ embed, actorMention, targetMention, item, outcome }: EmbedCtx, noun: string) {
+function trOr(tr: Translator, key: string, fallback: string, params: Record<string, any> = {}): string {
+	const value = tr(key, params);
+	return value === key ? fallback : value;
+}
+
+function untilNote(tr: Translator, date: any, key = 'items.common.until'): string {
+	const rel = discordRelative(date);
+	return rel ? tr(key, { time: rel }) : '';
+}
+
+function luckNote(tr: Translator, luckPercent: any, key = 'items.common.luckBonus'): string {
+	return luckPercent > 0 ? tr(key, { percent: luckPercent }) : '';
+}
+
+function itemsFooter(tr: Translator, embedConfig: any): string {
+	return embedConfig?.FOOTER || tr('items.common.footer');
+}
+
+function attackDefendedEmbed({ tr, embed, actorMention, targetMention, item, outcome }: EmbedCtx, noun: 'steal' | 'bomb' | 'leech') {
 	if (outcome === 'blocked') {
 		embed
 			.setColor(effectAccentInt('shield'))
-			.setTitle(`🛡️ ${noun.charAt(0).toUpperCase() + noun.slice(1)} Blocked`)
-			.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${noun}!`);
+			.setTitle(`🛡️ ${tr(`items.defended.${noun}.blockedTitle`)}`)
+			.setDescription(tr(`items.defended.${noun}.blockedDescription`, { actor: actorMention, target: targetMention }));
 		return embed;
 	}
 	if (outcome === 'immune') {
 		embed
 			.setColor(effectAccentInt('shield'))
-			.setTitle(`🛡️ ${noun.charAt(0).toUpperCase() + noun.slice(1)} Absorbed by Immunity`)
-			.setDescription(`${targetMention} is still immune. ${actorMention}'s ${noun} did nothing and the **${item?.name || 'item'}** was lost.`);
+			.setTitle(`🛡️ ${tr(`items.defended.${noun}.immuneTitle`)}`)
+			.setDescription(
+				tr(`items.defended.${noun}.immuneDescription`, { actor: actorMention, target: targetMention, item: item?.name || tr('items.common.item') })
+			);
 		return embed;
 	}
 	return null;
 }
 
-function buffEmbed({ embed, actorMention, result }: EmbedCtx, emoji: string, title: string, desc: string) {
-	const untilRel = discordRelative(result?.expiresAt);
-	embed.setTitle(`${emoji} ${title}`).setDescription(`${actorMention} ${desc}${untilRel ? ` (until ${untilRel})` : ''}.`);
+function buffEmbed({ tr, embed, actorMention, result }: EmbedCtx, emoji: string, key: string, params: Record<string, any> = {}) {
+	embed
+		.setTitle(`${emoji} ${tr(`items.${key}.title`)}`)
+		.setDescription(tr(`items.${key}.description`, { actor: actorMention, until: untilNote(tr, result?.expiresAt), ...params }));
 	return embed;
 }
 
@@ -1124,64 +1146,49 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 	leech: (ctx) => {
 		const defended = attackDefendedEmbed(ctx, 'leech');
 		if (defended) return defended;
-		const skimNote = ctx.result?.luckPercent > 0 ? ` (+${ctx.result.luckPercent}% luck 🍀)` : '';
+		const { tr } = ctx;
 		return ctx.embed
-			.setTitle('🩸 Leech Attached')
-			.setDescription(`${ctx.actorMention} attached a leech to ${ctx.targetMention}, siphoning a cut of their XP while active.`)
-			.addFields({ name: 'Skim rate', value: `${ctx.result?.skimPercent ?? 0}%${skimNote}`, inline: true });
+			.setTitle(`🩸 ${tr('items.leech.title')}`)
+			.setDescription(tr('items.leech.description', { actor: ctx.actorMention, target: ctx.targetMention }))
+			.addFields({ name: tr('items.fields.skimRate'), value: `${ctx.result?.skimPercent ?? 0}%${luckNote(tr, ctx.result?.luckPercent)}`, inline: true });
 	},
 	gift: (ctx) => {
-		const luckNote = ctx.result?.luckPercent > 0 ? ` (−${ctx.result.luckPercent}% luck 🍀 on tax)` : '';
+		const { tr } = ctx;
+		const taxLuck = luckNote(tr, ctx.result?.luckPercent, 'items.common.luckTaxDiscount');
 		return ctx.embed
-			.setTitle('🎁 Gift Sent')
-			.setDescription(`${ctx.actorMention} sent a gift to ${ctx.targetMention}!`)
+			.setTitle(`🎁 ${tr('items.gift.title')}`)
+			.setDescription(tr('items.gift.description', { actor: ctx.actorMention, target: ctx.targetMention }))
 			.addFields(
-				{ name: 'Received', value: fmtXp(ctx.result?.xp), inline: true },
-				...(ctx.result?.taxPercent > 0 || luckNote ? [{ name: 'Tax', value: `${(ctx.result?.taxPercent ?? 0).toFixed(1)}%${luckNote}`, inline: true }] : [])
+				{ name: tr('items.fields.received'), value: fmtXp(ctx.result?.xp), inline: true },
+				...(ctx.result?.taxPercent > 0 || taxLuck
+					? [{ name: tr('items.fields.tax'), value: `${(ctx.result?.taxPercent ?? 0).toFixed(1)}%${taxLuck}`, inline: true }]
+					: [])
 			);
 	},
 	bounty: (ctx) =>
 		ctx.embed
-			.setTitle('🎯 Bounty Placed')
-			.setDescription(`${ctx.actorMention} placed a bounty on ${ctx.targetMention}. Whoever steals or bombs them next collects it.`)
-			.addFields({ name: 'Bounty', value: fmtXp(ctx.result?.xp), inline: true }),
-	disguise: (ctx) => {
-		const untilRel = discordRelative(ctx.result?.expiresAt);
-		return ctx.embed
+			.setTitle(`🎯 ${ctx.tr('items.bounty.title')}`)
+			.setDescription(ctx.tr('items.bounty.description', { actor: ctx.actorMention, target: ctx.targetMention }))
+			.addFields({ name: ctx.tr('items.fields.bounty'), value: fmtXp(ctx.result?.xp), inline: true }),
+	disguise: (ctx) =>
+		ctx.embed
 			.setColor(effectAccentInt('disguise'))
-			.setTitle('🎭 A Member Vanished into the Crowd')
+			.setTitle(`🎭 ${ctx.tr('items.disguise.title')}`)
+			.setDescription(ctx.tr('items.disguise.description', { until: untilNote(ctx.tr, ctx.result?.expiresAt) })),
+	shield: (ctx) => buffEmbed(ctx, '🛡️', 'shield'),
+	reflect: (ctx) => buffEmbed(ctx, '🪞', 'reflect'),
+	insurance: (ctx) => buffEmbed(ctx, '💵', 'insurance', { percent: ctx.result?.refundPercent ?? 100, luck: luckNote(ctx.tr, ctx.result?.luckPercent) }),
+	boost: (ctx) =>
+		ctx.embed
+			.setTitle(`⚡ ${ctx.tr('items.boost.title')}`)
 			.setDescription(
-				`Someone slipped on a **Disguise**${untilRel ? ` (until ${untilRel})` : ''}. Their attacks now hide their name and they've dropped off the leaderboard.`
-			);
-	},
-	shield: (ctx) => buffEmbed(ctx, '🛡️', 'Shield Activated', 'is now protected, so incoming steals, bombs and leeches will be blocked'),
-	reflect: (ctx) => buffEmbed(ctx, '🪞', 'Reflect Activated', 'will bounce the next attack back at the attacker'),
-	insurance: (ctx) => {
-		const luckNote = ctx.result?.luckPercent > 0 ? ` (+${ctx.result.luckPercent}% luck 🍀)` : '';
-		return buffEmbed(
-			ctx,
-			'💵',
-			'Insurance Activated',
-			`will be refunded ${ctx.result?.refundPercent ?? 100}%${luckNote} of their loss the next time they are robbed or bombed`
-		);
-	},
-	boost: (ctx) => {
-		const untilRel = discordRelative(ctx.result?.expiresAt);
-		return ctx.embed
-			.setTitle('⚡ Boost Activated')
-			.setDescription(`${ctx.actorMention} activated a boost${untilRel ? ` (active until ${untilRel})` : ''}. Earnings are multiplied while it lasts.`);
-	},
-	luck: (ctx) =>
-		buffEmbed(
-			ctx,
-			'🍀',
-			'Luck Activated',
-			`is now running +${ctx.result?.luckPercent ?? 0}% luck across steal, bomb, minigames, spy, leech, gift tax, insurance, friend boost and shop prices`
-		)
+				ctx.tr('items.boost.description', { actor: ctx.actorMention, until: untilNote(ctx.tr, ctx.result?.expiresAt, 'items.common.activeUntil') })
+			),
+	luck: (ctx) => buffEmbed(ctx, '🍀', 'luck', { percent: ctx.result?.luckPercent ?? 0 })
 };
 
 function attackEmbed(ctx: EmbedCtx) {
-	const { embed, effectType, result, outcome, item, actorMention, targetMention, immuneRel } = ctx;
+	const { tr, embed, effectType, result, outcome, item, actorMention, targetMention, immuneRel } = ctx;
 	const isSteal = effectType === 'steal';
 	const noun = isSteal ? 'steal' : 'bomb';
 
@@ -1191,47 +1198,71 @@ function attackEmbed(ctx: EmbedCtx) {
 	if (outcome === 'reflected') {
 		return embed
 			.setColor(effectAccentInt('reflect'))
-			.setTitle('🪞 Attack Reflected')
-			.setDescription(`${targetMention} reflected the attack back at ${actorMention}!`)
-			.addFields({ name: 'XP lost by attacker', value: fmtXp(result?.xp), inline: true });
+			.setTitle(`🪞 ${tr('items.attack.reflectedTitle')}`)
+			.setDescription(tr('items.attack.reflectedDescription', { actor: actorMention, target: targetMention }))
+			.addFields({ name: tr('items.fields.xpLostByAttacker'), value: fmtXp(result?.xp), inline: true });
 	}
 
-	const verbPast = isSteal ? 'Robbed' : 'Bombed';
 	const emoji = isSteal ? '💰' : '💥';
 	const fields: any[] = [
-		{ name: 'Attacker', value: actorMention, inline: true },
-		{ name: 'Victim', value: targetMention, inline: true },
-		{ name: isSteal ? 'XP stolen' : 'XP destroyed', value: `${fmtXp(result?.xp)}${result?.percent ? ` (${result.percent}%)` : ''}`, inline: true }
+		{ name: tr('items.fields.attacker'), value: actorMention, inline: true },
+		{ name: tr('items.fields.victim'), value: targetMention, inline: true },
+		{
+			name: tr(isSteal ? 'items.fields.xpStolen' : 'items.fields.xpDestroyed'),
+			value: `${fmtXp(result?.xp)}${result?.percent ? ` (${result.percent}%)` : ''}`,
+			inline: true
+		}
 	];
-	if (result?.refunded) fields.push({ name: '💵 Insurance refund', value: `${targetMention} was refunded ${fmtXp(result.refunded)}`, inline: false });
+	if (result?.refunded)
+		fields.push({
+			name: `💵 ${tr('items.fields.insuranceRefund')}`,
+			value: tr('items.attack.refundedValue', { target: targetMention, xp: fmtXp(result.refunded) }),
+			inline: false
+		});
 	if (result?.bountyCollected)
-		fields.push({ name: '🎯 Bounty collected', value: `${actorMention} also claimed ${fmtXp(result.bountyCollected)}`, inline: false });
-	if (immuneRel) fields.push({ name: '🛡️ Immunity', value: `${targetMention} is immune until ${immuneRel}`, inline: false });
+		fields.push({
+			name: `🎯 ${tr('items.fields.bountyCollected')}`,
+			value: tr('items.attack.bountyValue', { actor: actorMention, xp: fmtXp(result.bountyCollected) }),
+			inline: false
+		});
+	if (immuneRel)
+		fields.push({
+			name: `🛡️ ${tr('items.fields.immunity')}`,
+			value: tr('items.attack.immuneValue', { target: targetMention, time: immuneRel }),
+			inline: false
+		});
 
 	return embed
-		.setTitle(`${emoji} Member ${verbPast}!`)
-		.setDescription(`${actorMention} ${isSteal ? 'robbed' : 'bombed'} ${targetMention}${item?.name ? ` with **${item.name}**` : ''}!`)
+		.setTitle(`${emoji} ${tr(`items.attack.${noun}.title`)}`)
+		.setDescription(
+			tr(`items.attack.${noun}.description`, {
+				actor: actorMention,
+				target: targetMention,
+				withItem: item?.name ? tr('items.attack.withItem', { item: item.name }) : ''
+			})
+		)
 		.addFields(fields);
 }
 
 function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
-	const { effectType, result, actor, target, item } = ctx;
+	const { tr, effectType, result, actor, target, item } = ctx;
 	const builder = ITEM_EMBEDS[effectType];
 	if (!builder) return null;
 
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(effectType))
-		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setFooter({ text: itemsFooter(tr, embedConfig) })
 		.setTimestamp();
 
 	return builder({
+		tr,
 		embed,
 		effectType,
 		result,
 		outcome: result?.outcome,
 		item,
-		actorMention: result?.actorDisguised ? DISGUISED_MENTION : actor ? `${actor}` : 'A member',
-		targetMention: target ? `${target}` : 'a member',
+		actorMention: result?.actorDisguised ? tr('items.common.disguisedMember') : actor ? `${actor}` : tr('items.common.aMemberActor'),
+		targetMention: target ? `${target}` : tr('items.common.aMemberTarget'),
 		immuneRel: discordRelative(result?.immuneUntil)
 	});
 }
@@ -1251,12 +1282,13 @@ async function announceItemUse(client: any, ctx: any) {
 	if (!channel || !channel.isTextBased()) return;
 
 	const { EmbedBuilder } = await import('discord.js');
-	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
+	const tr = await serverTranslator(guildId);
 
 	const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 	const target = targetDiscordId ? await guild.members.fetch(String(targetDiscordId)).catch(() => null) : null;
 
-	const embed = buildItemUseEmbed(EmbedBuilder, embedConfig, { effectType, result, actor, target, item });
+	const embed = buildItemUseEmbed(EmbedBuilder, embedConfig, { tr, effectType, result, actor, target, item });
 	if (!embed) return;
 
 	const hideActor = result?.actorDisguised || effectType === 'disguise';
@@ -1277,17 +1309,18 @@ async function announceSpyCaught(client: any, ctx: any) {
 	if (!channel || !channel.isTextBased()) return;
 
 	const { EmbedBuilder } = await import('discord.js');
-	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
+	const tr = await serverTranslator(guildId);
 	const spy = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 	const target = targetDiscordId ? await guild.members.fetch(String(targetDiscordId)).catch(() => null) : null;
 
-	const spyMention = spy ? `${spy}` : 'Someone';
-	const targetMention = target ? `${target}` : 'a member';
+	const spyMention = spy ? `${spy}` : tr('items.common.someone');
+	const targetMention = target ? `${target}` : tr('items.common.aMemberTarget');
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt('spy'))
-		.setTitle('🔍 Spy Caught')
-		.setDescription(`${targetMention} caught ${spyMention} trying to spy on them. No intel was gathered.`)
-		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setTitle(`🔍 ${tr('items.spyCaught.title')}`)
+		.setDescription(tr('items.spyCaught.description', { spy: spyMention, target: targetMention }))
+		.setFooter({ text: itemsFooter(tr, embedConfig) })
 		.setTimestamp();
 
 	const mentions = [spy, target].filter(Boolean).map((m: any) => `${m}`);
@@ -1311,14 +1344,15 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 	if (!member) return { ok: true, announced: false };
 
 	const { EmbedBuilder } = await import('discord.js');
-	const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
+	const tr = await serverTranslator(guild_id);
 	const qty = Math.max(1, Number(quantity) || 1);
 
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(effect_type))
-		.setTitle('🎁 A Gift Has Arrived')
-		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin. Check your items!`)
-		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setTitle(`🎁 ${tr('items.adminGift.title')}`)
+		.setDescription(tr('items.adminGift.description', { member: `${member}`, quantity: qty, item: item_name || tr('items.common.anItem') }))
+		.setFooter({ text: itemsFooter(tr, embedConfig) })
 		.setTimestamp();
 
 	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
@@ -1330,7 +1364,7 @@ let expirySweepTimer: any = null;
 
 async function embedConfigFor(guildId: any) {
 	const { getEmbedConfig } = await import('../../../config.js');
-	return getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	return getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
 }
 
 async function getProgressChannel(guild: any) {
@@ -1360,12 +1394,15 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 			const member = guild ? await guild.members.fetch(String(row.discord_member_id)).catch(() => null) : null;
 			if (guild) {
 				const embedConfig = await embedConfigFor(guild.id);
+				const tr = await serverTranslator(guild.id);
 				const mag = Number(row.effect_value) || 0;
-				let text = meta.buffExpiredText(mag);
+				let text = trOr(tr, `items.expired.${row.effect_type}.text`, meta.buffExpiredText(mag), { value: row.effect_type === 'boost' ? mag || 2 : mag });
 				if (row.effect_type === 'leech' && row.target_discord_member_id) {
 					const targetMember = await guild.members.fetch(String(row.target_discord_member_id)).catch(() => null);
-					const targetName = targetMember ? `${targetMember}` : row.target_server_display_name || row.target_display_name || row.target_username || 'them';
-					text = `Your **${mag || 0}% Leech** on ${targetName} has ended.`;
+					const targetName = targetMember
+						? `${targetMember}`
+						: row.target_server_display_name || row.target_display_name || row.target_username || tr('items.common.them');
+					text = tr('items.expired.leech.textWithTarget', { value: mag || 0, target: targetName });
 				}
 				const disguisedNow = row.member_id ? await isDisguised(row.member_id).catch(() => false) : false;
 				const disguisedAtActivation = Number(row.disguised_at_activation) === 1;
@@ -1374,12 +1411,17 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					handledIds.push(Number(row.id));
 					continue;
 				}
-				const description = row.effect_type === 'disguise' ? 'A member stepped out of disguise. They are visible again.' : member ? `${member}, ${text}` : text;
+				const description =
+					row.effect_type === 'disguise'
+						? tr('items.expired.disguise.announcement')
+						: member
+							? tr('items.common.addressed', { member: `${member}`, text })
+							: text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
-					.setTitle(`${meta.emoji} ${meta.label} Ended`)
+					.setTitle(`${meta.emoji} ${trOr(tr, `items.expired.${row.effect_type}.title`, `${meta.label} Ended`)}`)
 					.setDescription(description)
-					.setFooter({ text: embedConfig.FOOTER || 'Items' })
+					.setFooter({ text: itemsFooter(tr, embedConfig) })
 					.setTimestamp();
 				await deliverToMemberAndChannel(guild, embed, row.effect_type === 'disguise' ? undefined : member ? `${member}` : undefined);
 			}
@@ -1420,11 +1462,12 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		if (!guild) continue;
 		const member = await guild.members.fetch(String(hit.discord_member_id)).catch(() => null);
 		const embedConfig = await embedConfigFor(guild.id);
+		const tr = await serverTranslator(guild.id);
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('shield'))
-			.setTitle('🛡️ Immunity Ended')
-			.setDescription(member ? `${member} is no longer immune. Fair game again!` : `A member is no longer immune.`)
-			.setFooter({ text: embedConfig.FOOTER || 'Items' })
+			.setTitle(`🛡️ ${tr('items.immunityEnded.title')}`)
+			.setDescription(member ? tr('items.immunityEnded.description', { member: `${member}` }) : tr('items.immunityEnded.anonymous'))
+			.setFooter({ text: itemsFooter(tr, embedConfig) })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
@@ -1446,14 +1489,13 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		if (atk.member_id && (await isDisguised(atk.member_id).catch(() => false))) continue;
 		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
 		const embedConfig = await embedConfigFor(guild.id);
-		const label = action === 'bomb' ? 'Bomb' : 'Steal';
-		const verb = action === 'bomb' ? 'bomb' : 'steal';
-		const text = `Your ${verb} cooldown is up. You can ${verb} again!`;
+		const tr = await serverTranslator(guild.id);
+		const text = tr(`items.cooldownReady.${action}.text`);
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt(action))
-			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${label} Cooldown Ready`)
-			.setDescription(member ? `${member}, ${text}` : text)
-			.setFooter({ text: embedConfig.FOOTER || 'Items' })
+			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${tr(`items.cooldownReady.${action}.title`)}`)
+			.setDescription(member ? tr('items.common.addressed', { member: `${member}`, text }) : text)
+			.setFooter({ text: itemsFooter(tr, embedConfig) })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
@@ -1474,12 +1516,13 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		if (act.member_id && (await isDisguised(act.member_id).catch(() => false))) continue;
 		const member = await guild.members.fetch(String(act.discord_member_id)).catch(() => null);
 		const embedConfig = await embedConfigFor(guild.id);
-		const text = `Your insurance cooldown is up. You can activate insurance again!`;
+		const tr = await serverTranslator(guild.id);
+		const text = tr('items.cooldownReady.insurance.text');
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('insurance'))
-			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} Insurance Cooldown Ready`)
-			.setDescription(member ? `${member}, ${text}` : text)
-			.setFooter({ text: embedConfig.FOOTER || 'Items' })
+			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} ${tr('items.cooldownReady.insurance.title')}`)
+			.setDescription(member ? tr('items.common.addressed', { member: `${member}`, text }) : text)
+			.setFooter({ text: itemsFooter(tr, embedConfig) })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}

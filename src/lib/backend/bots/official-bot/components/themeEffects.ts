@@ -4,6 +4,7 @@ import { EFFECT_FAMILIES, EFFECT_SPIN_COST, EFFECT_SPIN_GAME, effectMeta, normal
 import { MAINTAINER_DISCORD_ID } from '../../../../url.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
+import { serverTranslator } from '../i18n.js';
 
 const ANNOUNCE_DELAY_MS = 7000;
 
@@ -106,21 +107,22 @@ async function announceEffectSpin(client: any, ctx: any) {
 		if (!channel || !channel.isTextBased()) return;
 
 		const { EmbedBuilder } = await import('discord.js');
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: 'Minigames' }));
+		const tr = await serverTranslator(guildId);
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
-		const actorMention = actor ? `${actor}` : 'A member';
+		const actorMention = actor ? `${actor}` : tr('minigames.someone');
 
 		const embed = new EmbedBuilder()
 			.setColor(0xc8911a)
-			.setTitle('✨ Theme Effect Spin')
-			.setDescription(`${actorMention} spun for ${fmtXp(result.cost)} and landed **${result.label}**!`)
+			.setTitle(tr('themeEffects.spin.title'))
+			.setDescription(tr('themeEffects.spin.description', { member: actorMention, cost: fmtXp(result.cost), effect: result.label }))
 			.addFields(
-				{ name: 'Effect', value: result.label, inline: true },
-				{ name: 'XP spent', value: fmtXp(result.cost), inline: true },
-				{ name: 'Variant', value: `#${result.seed}`, inline: true }
+				{ name: tr('themeEffects.fields.effect'), value: result.label, inline: true },
+				{ name: tr('themeEffects.fields.xpSpent'), value: fmtXp(result.cost), inline: true },
+				{ name: tr('themeEffects.fields.variant'), value: `#${result.seed}`, inline: true }
 			)
-			.setFooter({ text: embedConfig.FOOTER || 'Minigames' })
+			.setFooter({ text: embedConfig.FOOTER || tr('minigames.footer') })
 			.setTimestamp();
 
 		const content = actor ? `${actor}` : undefined;

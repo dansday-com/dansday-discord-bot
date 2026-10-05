@@ -13,6 +13,7 @@ import customSupporterRole from './components/interface/customsupporterrole.js';
 import afk from './components/interface/afk.js';
 import giveaway from './components/interface/giveaway.js';
 import sync from './components/sync.js';
+import { syncAllServerMenus } from './components/commands/admin/setup.js';
 import leveling from './components/leveling.js';
 import invites, { stopInviteRewards } from './components/invites.js';
 import ai from './components/ai.js';
@@ -101,6 +102,7 @@ client.on('clientReady', async () => {
 	}
 
 	await sync.init(client, BOT_TOKEN);
+	syncAllServerMenus(client).catch(() => {});
 	const officialBotId = sync.getBotId();
 	const presenceBotId = officialBotId ?? (process.env.BOT_ID ? Number(process.env.BOT_ID) : NaN);
 	if (Number.isFinite(presenceBotId)) {

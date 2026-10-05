@@ -3,6 +3,7 @@ import { STAFF_RATING, NOTIFICATIONS, getEmbedConfig } from '../../../config.js'
 import { logger } from '../../../../utils/index.js';
 import { resolveStaffRatingAnchor } from './roleAnchor.js';
 import db from '../../../../database.js';
+import { serverTranslator, translate } from '../i18n.js';
 
 function getRatingColor(rating) {
 	const clamped = Math.max(1.0, Math.min(5.0, rating));
@@ -49,25 +50,25 @@ function truncateFeedback(text) {
 	return text;
 }
 
-function buildRatingChannelEmbed(staffDiscordId, ratingValue, totalReports, embedConfig, channelContext = {}) {
+function buildRatingChannelEmbed(tr, staffDiscordId, ratingValue, totalReports, embedConfig, channelContext = {}) {
 	const categoryValue = channelContext.category ?? '—';
 	const feedbackValue = truncateFeedback(channelContext.feedback);
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig?.COLOR)
-		.setTitle('⭐ Staff Rating Update')
-		.setDescription(`<@${staffDiscordId}> received a new rating.`)
+		.setTitle(tr('staffRating.ratingUpdate.title'))
+		.setDescription(tr('staffRating.ratingUpdate.description', { staff: `<@${staffDiscordId}>` }))
 		.addFields(
 			{
-				name: 'Rating',
-				value: `**${ratingValue.toFixed(1)}/5.0** (${totalReports} reports)`
+				name: tr('staffRating.channelEmbed.fieldRating'),
+				value: tr('staffRating.ratingUpdate.ratingValue', { rating: ratingValue.toFixed(1), totalReports })
 			},
 			{
-				name: 'Category',
+				name: tr('staffRating.channelEmbed.fieldCategory'),
 				value: categoryValue
 			},
 			{
-				name: 'Feedback',
+				name: tr('staffRating.ratingUpdate.fieldFeedback'),
 				value: feedbackValue
 			}
 		)
@@ -163,7 +164,8 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 		if (ratingChannelId) {
 			const channel = guild.channels.cache.get(ratingChannelId) || (await guild.channels.fetch(ratingChannelId).catch(() => null));
 			if (channel && channel.isTextBased()) {
-				const ratingEmbed = buildRatingChannelEmbed(staffDiscordId, clamped, totalReports, embedConfig, options.channelContext);
+				const tr = await serverTranslator(guild.id);
+				const ratingEmbed = buildRatingChannelEmbed(tr, staffDiscordId, clamped, totalReports, embedConfig, options.channelContext);
 				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, ratingChannelId).catch(() => null);
 				const content = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
 				await channel.send({ content, embeds: [ratingEmbed] }).catch(() => null);
@@ -175,11 +177,12 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 				}
 			}
 		}
-		await member
-			.send({
-				content: `⭐ Your staff rating in **${guild.name}** is now **${clamped.toFixed(1)}/5.0** (${totalReports} reports).`
-			})
-			.catch(() => null);
+		const ratingDm = await translate('staffRating.ratingUpdate.dm', guild.id, staffDiscordId, {
+			server: guild.name,
+			rating: clamped.toFixed(1),
+			totalReports
+		});
+		await member.send({ content: ratingDm }).catch(() => null);
 		return {
 			updated: true,
 			rating: clamped,

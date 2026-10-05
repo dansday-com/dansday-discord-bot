@@ -16,7 +16,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'disc
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
-import { translate } from '../i18n.js';
+import { serverTranslator } from '../i18n.js';
 import { syncGuildLevelRewards, syncMemberLevelRewards } from './levelRewards.js';
 
 const recentMessages = new Map();
@@ -366,6 +366,7 @@ export async function sendLevelProgressNotification({
 
 		const slug = await computePublicServerSlugForServerId(Number(server.id));
 		const leaderboardUrl = slug ? publicServerUrl(slug, 'leaderboard') : null;
+		const tr = await serverTranslator(guildId);
 
 		const totalXp = Number(levelStats.xp ?? 0) || 0;
 		const shownLevel = normalizeLevelValue(newLevel ?? memberWithRank.level ?? levelStats.level ?? 1);
@@ -378,14 +379,14 @@ export async function sendLevelProgressNotification({
 			const ratio = Math.max(0, Math.min(1, (totalXp - floorXp) / span));
 			const filled = Math.round(ratio * 10);
 			progressField = {
-				name: `⚡ Progress to Level ${shownLevel + 1}`,
-				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, Math.ceil(nextXp - totalXp)).toLocaleString()}** XP to go`,
+				name: tr('leveling.fields.progress', { level: shownLevel + 1 }),
+				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n${tr('leveling.xpToGo', { xp: Math.max(0, Math.ceil(nextXp - totalXp)).toLocaleString() })}`,
 				inline: false
 			};
 		} catch (_) {}
 
 		const rankDelta = previousRankValue && currentRank && currentRank < previousRankValue ? previousRankValue - currentRank : 0;
-		const rankValue = currentRank ? `#${currentRank}${rankDelta > 0 ? ` (▲${rankDelta})` : ''}` : 'Unranked';
+		const rankValue = currentRank ? `#${currentRank}${rankDelta > 0 ? ` (▲${rankDelta})` : ''}` : tr('leveling.unranked');
 
 		const embedConfig = await getEmbedConfig(guildId);
 		const embed = new EmbedBuilder()
@@ -398,21 +399,24 @@ export async function sendLevelProgressNotification({
 			const medal = getRankMedal(currentRank);
 			const titlePrefix = medal ? `${medal} ` : '';
 			embed
-				.setTitle(`${titlePrefix}Rank Update!`)
-				.setDescription(medal ? `${member} just secured a top spot!` : `${member} climbed the leaderboard!`)
+				.setTitle(`${titlePrefix}${tr('leveling.rankUp.title')}`)
+				.setDescription(tr(medal ? 'leveling.rankUp.topSpot' : 'leveling.rankUp.climbed', { member: `${member}` }))
 				.addFields(
-					{ name: 'Previous Rank', value: previousRankValue ? `#${previousRankValue}` : 'Unranked', inline: true },
-					{ name: 'New Rank', value: rankValue, inline: true },
-					{ name: '📊 Total XP', value: totalXp.toLocaleString(), inline: true }
+					{ name: tr('leveling.fields.previousRank'), value: previousRankValue ? `#${previousRankValue}` : tr('leveling.unranked'), inline: true },
+					{ name: tr('leveling.fields.newRank'), value: rankValue, inline: true },
+					{ name: tr('leveling.fields.totalXp'), value: totalXp.toLocaleString(), inline: true }
 				);
 			if (progressField) embed.addFields(progressField);
 		} else {
 			embed
-				.setTitle('🎉 Level Up!')
-				.setDescription(`${member} has reached **Level ${shownLevel}**!`)
-				.addFields({ name: '📊 Total XP', value: totalXp.toLocaleString(), inline: true }, { name: '🏆 Rank', value: rankValue, inline: true });
+				.setTitle(tr('leveling.levelUp.title'))
+				.setDescription(tr('leveling.levelUp.description', { member: `${member}`, level: shownLevel }))
+				.addFields(
+					{ name: tr('leveling.fields.totalXp'), value: totalXp.toLocaleString(), inline: true },
+					{ name: tr('leveling.fields.rank'), value: rankValue, inline: true }
+				);
 			if (rewardRoleIds.length > 0) {
-				embed.addFields({ name: '🎁 Reward unlocked', value: rewardRoleIds.map((id) => `<@&${id}>`).join(' '), inline: false });
+				embed.addFields({ name: tr('leveling.fields.reward'), value: rewardRoleIds.map((id) => `<@&${id}>`).join(' '), inline: false });
 			}
 			if (progressField) embed.addFields(progressField);
 		}
@@ -422,11 +426,10 @@ export async function sendLevelProgressNotification({
 
 		const progressButtons: ButtonBuilder[] = [];
 		if (slug) {
-			const accountLabel = await translate('menu.account', guildId, discordMemberId).catch(() => '👤 Account');
-			progressButtons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('level_my_account').setLabel(accountLabel));
+			progressButtons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('level_my_account').setLabel(tr('menu.account')));
 		}
 		if (leaderboardUrl) {
-			progressButtons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel('Leaderboard').setEmoji('🌐'));
+			progressButtons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel(tr('leveling.leaderboardButton')).setEmoji('🌐'));
 		}
 		const progressRow = progressButtons.length > 0 ? new ActionRowBuilder<ButtonBuilder>().addComponents(...progressButtons) : null;
 
@@ -578,6 +581,15 @@ const XP_LOG_EMOJI = {
 	Invite: '📨'
 };
 
+const XP_LOG_TYPE_KEY: Record<string, string> = {
+	Chat: 'chat',
+	Voice: 'voice',
+	'AFK Voice': 'afkVoice',
+	Video: 'video',
+	Streaming: 'streaming',
+	Invite: 'invite'
+};
+
 const XP_LOG_SOURCE: Record<string, string> = {
 	Chat: 'chat',
 	Voice: 'voice',
@@ -643,18 +655,25 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
-		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
+		const tr = await serverTranslator(guild.id);
+		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || tr('leveling.log.unknownMember');
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
-		const boostSuffix = award?.staff ? ` (${award.multiplier}× Staff 🛡️)` : award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
+		const typeKey = XP_LOG_TYPE_KEY[xpType];
+		const typeLabel = typeKey ? tr(`leveling.log.types.${typeKey}`) : String(xpType);
+		const boostSuffix = award?.staff
+			? ` ${tr('leveling.log.staff', { multiplier: award.multiplier })}`
+			: award?.boosted
+				? ` ${tr('leveling.log.boost', { multiplier: award.multiplier })}`
+				: '';
 		const noteSuffix = award?.note ? ` ${award.note}` : '';
 		const share = award?.inviteShare;
 		const shareSuffix =
 			share?.amount > 0 && share.inviterName
-				? ` · 📨 +${share.amount} to ${share.inviterName} (${share.percent}% invite share${share.staff ? ' 🛡️' : ''})`
+				? ` · ${tr('leveling.log.share', { amount: share.amount, name: share.inviterName, percent: share.percent, staff: share.staff ? ' 🛡️' : '' })}`
 				: '';
-		const friendSuffix = award?.friendBoosted ? ` (+${luckRateLabel(award.friendPercent, award.luckPercent)} Friend boost 🤝)` : '';
-		const leechSuffix = award?.leeched ? ` (−${luckRateLabel(award.skimPercent, 0)} Leech 🩸)` : '';
-		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${noteSuffix}${boostSuffix}${friendSuffix}${leechSuffix}${shareSuffix}`;
+		const friendSuffix = award?.friendBoosted ? ` ${tr('leveling.log.friend', { rate: luckRateLabel(award.friendPercent, award.luckPercent) })}` : '';
+		const leechSuffix = award?.leeched ? ` ${tr('leveling.log.leech', { rate: luckRateLabel(award.skimPercent, 0) })}` : '';
+		const logMessage = `${tr('leveling.log.gain', { emoji, type: typeLabel, name: memberName, xp: xpGained })}${noteSuffix}${boostSuffix}${friendSuffix}${leechSuffix}${shareSuffix}`;
 
 		await channel.send(logMessage);
 	} catch (error) {
@@ -766,10 +785,11 @@ export async function awardInviteXp(guild, guildMember, xp: number, meta: { mult
 	}
 
 	try {
+		const tr = await serverTranslator(guild.id);
 		const award = {
 			staff: meta.multiplier > 1,
 			multiplier: meta.multiplier,
-			note: meta.inviteeName ? `for inviting ${meta.inviteeName}` : null
+			note: meta.inviteeName ? tr('leveling.log.inviteNote', { name: meta.inviteeName }) : null
 		};
 		await sendXPLogToChannel(guild, dbMember, xp, 'Invite', award, stats);
 		await handleLevelEvaluation(server, dbMember, stats, guild.id, {
@@ -794,15 +814,16 @@ async function announceLeechCredits(guild, victim, credits) {
 
 		if (await isMemberDisguised(guild, victim?.id)) return;
 
-		const victimName = victim?.server_display_name || victim?.display_name || victim?.username || 'a member';
+		const tr = await serverTranslator(guild.id);
+		const victimName = victim?.server_display_name || victim?.display_name || victim?.username || tr('leveling.log.someMember');
 		for (const credit of credits) {
 			if (!credit?.amount || credit.amount <= 0) continue;
 			const b = credit.beneficiary;
 			if (await isMemberDisguised(guild, b?.id)) continue;
-			const attackerName = b?.server_display_name || b?.display_name || b?.username || 'A leecher';
+			const attackerName = b?.server_display_name || b?.display_name || b?.username || tr('leveling.log.someLeecher');
 			const attackerLuck = await getActiveLuckPercent(credit.beneficiaryMemberId).catch(() => 0);
 			const pct = credit.percent != null ? ` (${luckRateLabel(credit.percent, attackerLuck)})` : '';
-			await channel.send(`🩸 Leech: ${attackerName} siphoned +${credit.amount} XP from ${victimName}${pct}`).catch(() => null);
+			await channel.send(tr('leveling.log.leechCredit', { attacker: attackerName, amount: credit.amount, victim: victimName, pct })).catch(() => null);
 		}
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);

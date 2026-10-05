@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
-	import { BOT_BIO_MAX_LENGTH, DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '$lib/utils/mainConfigSettings.js';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
+	import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGES } from '$lib/languages.js';
+	import { BOT_BIO_MAX_LENGTH, DEFAULT_MAIN_EMBED_COLOR } from '$lib/utils/mainConfigSettings.js';
 	import {
 		BOT_PROFILE_IMAGE,
 		BOT_PROFILE_IMAGE_ACCEPT,
@@ -19,12 +22,20 @@
 
 	let saving = $state(false);
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
-	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
+	let defaultFooter = $state(data.settings?.footer ?? '');
 	let botUpdatesChannel = $state(data.settings?.bot_updates_channel_id ?? '');
 	let moderationLogChannel = $state(data.settings?.moderation_log_channel_id ?? '');
 	let botNickname = $state(data.settings?.bot_nickname ?? '');
 	let botBio = $state(data.settings?.bot_bio ?? '');
 	let staffRoles = $state<string[]>(data.settings?.staff_roles ?? []);
+	let language = $state<string>(data.settings?.language ?? DEFAULT_SERVER_LANGUAGE);
+
+	$effect(() => {
+		const next = data.defaultFooters[language as keyof typeof data.defaultFooters];
+		if (next && untrack(() => Object.values(data.defaultFooters).includes(defaultFooter.trim()))) defaultFooter = next;
+	});
+
+	const languageOptions = SERVER_LANGUAGES.map((l) => ({ value: l.code, label: l.code === 'en' ? l.name : `${l.name} (${l.englishName})` }));
 
 	let pending = $state<Record<BotProfileImageKind, string | null | undefined>>({ avatar: undefined, banner: undefined });
 	let preparing = $state<BotProfileImageKind | null>(null);
@@ -72,7 +83,8 @@
 					bot_bio: botBio,
 					...(pending.avatar !== undefined && { bot_avatar: pending.avatar }),
 					...(pending.banner !== undefined && { bot_banner: pending.banner }),
-					staff_roles: staffRoles
+					staff_roles: staffRoles,
+					language
 				})
 			});
 			const d = await res.json();
@@ -131,7 +143,18 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gear text-emerald-400"></i>Main
 	</h3>
-	<p class="text-ash-400 text-xs">Set how the bot looks in this server and the embed style used across it.</p>
+	<p class="text-ash-400 text-xs">Set how the bot looks and speaks in this server, and the embed style used across it.</p>
+
+	<div>
+		<label for="main-server-language" class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-language mr-1.5 text-emerald-400"></i>Server Language
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">
+			Used for the channels /setup creates, the menu, approval posts, every public bot message, and the AI's chat and voice. Members who pick their own language
+			in the menu still get their private replies and DMs in it. Changing this renames the setup channels and refreshes the menu.
+		</p>
+		<LabeledSelect id="main-server-language" appearance="field" options={languageOptions} bind:value={language} ariaLabel="Server language" />
+	</div>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
@@ -207,11 +230,11 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-align-left mr-1.5 text-emerald-400"></i>Default Footer</label>
-		<p class="text-ash-500 mb-2 text-xs">Footer text shown on most bot embeds.</p>
+		<p class="text-ash-500 mb-2 text-xs">Footer text shown on most bot embeds. The default follows the server language.</p>
 		<input
 			type="text"
 			bind:value={defaultFooter}
-			placeholder={DEFAULT_MAIN_EMBED_FOOTER}
+			placeholder={data.defaultFooters[language as keyof typeof data.defaultFooters]}
 			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 		/>
 		<div class="bg-ash-900 border-ash-600 mt-2 rounded-lg border p-3">

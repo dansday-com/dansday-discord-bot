@@ -4,7 +4,8 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
-import { translate } from '../../i18n.js';
+import { getUserLanguage, memberTranslator, translate } from '../../i18n.js';
+import { parseColorName } from '../../localizedInput.js';
 import { menuBackButton } from './menuBack.js';
 
 const supporterRoles = new Map();
@@ -131,7 +132,7 @@ function isValidImageUrl(url) {
 	return true;
 }
 
-function parseColor(colorInput) {
+function parseColor(colorInput, lang?: string) {
 	if (!colorInput || colorInput.trim() === '') {
 		return null;
 	}
@@ -152,41 +153,36 @@ function parseColor(colorInput) {
 		return decimal;
 	}
 
-	const colorNames = {
-		red: 0xff0000,
-		green: 0x00ff00,
-		blue: 0x0000ff,
-		yellow: 0xffff00,
-		orange: 0xffa500,
-		purple: 0x800080,
-		pink: 0xffc0cb,
-		cyan: 0x00ffff,
-		black: 0x000000,
-		white: 0xffffff,
-		gray: 0x808080,
-		grey: 0x808080
-	};
-
-	if (colorNames[trimmed.toLowerCase()]) {
-		return colorNames[trimmed.toLowerCase()];
-	}
-
-	return null;
+	return parseColorName(trimmed, lang);
 }
 
-class AnchorError extends Error {}
+class AnchorError extends Error {
+	key: string;
+	params: Record<string, any>;
+
+	constructor(message: string, key: string, params: Record<string, any> = {}) {
+		super(message);
+		this.key = key;
+		this.params = params;
+	}
+}
 
 async function getRolePosition(guild) {
 	const anchor = resolveSupporterAnchor(guild);
 
 	if (!anchor.ok) {
 		if (anchor.reason === 'no_booster_role') {
-			throw new AnchorError('This server has no Server Booster role yet. It appears once someone boosts the server.');
+			throw new AnchorError(
+				'This server has no Server Booster role yet. It appears once someone boosts the server.',
+				'customSupporterRole.anchor.noBoosterRole'
+			);
 		}
 		if (anchor.reason === 'bot_too_low') {
-			throw new AnchorError(`The bot's own role must be above ${anchor.anchorRole.name} to create supporter roles.`);
+			throw new AnchorError(`The bot's own role must be above ${anchor.anchorRole.name} to create supporter roles.`, 'customSupporterRole.anchor.botTooLow', {
+				role: anchor.anchorRole.name
+			});
 		}
-		throw new AnchorError('Could not determine where to place the supporter role.');
+		throw new AnchorError('Could not determine where to place the supporter role.', 'customSupporterRole.anchor.unknown');
 	}
 
 	return anchor.basePosition;
@@ -351,11 +347,12 @@ export async function handleEditCustomSupporterRole(interaction) {
 			currentIcon = existingRole.iconURL({ extension: 'png', size: 256 }) || '';
 		}
 
+		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 		const nameInput = new TextInputBuilder()
 			.setCustomId('role_name')
-			.setLabel('Role Name')
+			.setLabel(tr('customSupporterRole.create.nameLabel'))
 			.setStyle(TextInputStyle.Short)
-			.setPlaceholder('Enter your custom role name...')
+			.setPlaceholder(tr('customSupporterRole.create.namePlaceholder'))
 			.setRequired(true)
 			.setMaxLength(100);
 
@@ -363,9 +360,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 
 		const colorInput = new TextInputBuilder()
 			.setCustomId('role_color')
-			.setLabel('Role Color (Hex/Decimal/Name)')
+			.setLabel(tr('customSupporterRole.create.colorLabel'))
 			.setStyle(TextInputStyle.Short)
-			.setPlaceholder('#FF5733 or 16729395 or red (optional)')
+			.setPlaceholder(tr('customSupporterRole.create.colorPlaceholder'))
 			.setRequired(false)
 			.setMaxLength(20);
 
@@ -373,9 +370,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 
 		const iconInput = new TextInputBuilder()
 			.setCustomId('role_icon')
-			.setLabel('Role Icon (Emoji or Image URL)')
+			.setLabel(tr('customSupporterRole.create.iconLabel'))
 			.setStyle(TextInputStyle.Short)
-			.setPlaceholder('🔥 or https://example.com/icon.png (optional)')
+			.setPlaceholder(tr('customSupporterRole.create.iconPlaceholder'))
 			.setRequired(false)
 			.setMaxLength(500);
 
@@ -507,7 +504,8 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 				return;
 			}
 
-			const roleColor = parseColor(colorInput);
+			const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
+			const roleColor = parseColor(colorInput, tr.lang);
 			const updateData: any = {
 				name: roleName,
 				reason: `Custom supporter role updated for ${member.user.tag} (${member.user.id})`
@@ -531,7 +529,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 						const premiumTier = interaction.guild.premiumTier;
 						if (premiumTier < 2) {
 							iconStatus = 'failed';
-							iconError = 'This server needs Level 2 Server Boost to use custom role icons. You can use an emoji instead!';
+							iconError = tr('customSupporterRole.iconErrors.boost');
 							await logger.log(`⚠️ Cannot set custom icon: Server needs Level 2 boost (current: ${premiumTier})`);
 						} else if (isValidImageUrl(trimmedIconInput)) {
 							await existingRole.setIcon(trimmedIconInput, { reason: updateData.reason });
@@ -540,7 +538,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 						} else {
 							await logger.log(`⚠️ Invalid image URL format. Must be JPG/PNG image URL (http:// or https://).`);
 							iconStatus = 'invalid';
-							iconError = 'Invalid URL format or file type';
+							iconError = tr('customSupporterRole.iconErrors.invalidFormat');
 						}
 					} else {
 						await existingRole.edit({
@@ -554,7 +552,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 					await logger.log(`⚠️ Could not set role icon: ${err.message}`);
 
 					if (err.message && err.message.includes('boost')) {
-						iconError = 'This server needs Level 2 Server Boost to use custom role icons. You can use an emoji instead!';
+						iconError = tr('customSupporterRole.iconErrors.boost');
 					} else {
 						iconError = err.message;
 					}
@@ -581,8 +579,8 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			});
 
 			if (iconStatus === 'failed' || iconStatus === 'invalid') {
-				const warnMsg = iconError || 'Failed to set the icon. The role was updated but without the custom icon.';
-				successDesc += `\n\n⚠️ **Note about icon:** ${warnMsg}`;
+				const warnMsg = iconError || tr('customSupporterRole.updated.iconFailedFallback');
+				successDesc += `\n\n${tr('customSupporterRole.updated.iconNote', { message: warnMsg })}`;
 			}
 
 			const successEmbed = new EmbedBuilder()
@@ -594,7 +592,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 						name: await translate('customSupporterRole.updated.roleDetails', interaction.guild.id, interaction.user.id),
 						value: await translate('customSupporterRole.updated.roleDetailsValue', interaction.guild.id, interaction.user.id, {
 							name: roleName,
-							color: colorInput || 'Default',
+							color: colorInput || tr('customSupporterRole.colorDefault'),
 							icon: await translate(
 								`customSupporterRole.updated.iconStatus${iconStatus.charAt(0).toUpperCase() + iconStatus.slice(1)}`,
 								interaction.guild.id,
@@ -678,7 +676,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			return;
 		}
 
-		const roleColor = parseColor(colorInput);
+		const roleColor = parseColor(colorInput, await getUserLanguage(interaction.guild.id, interaction.user.id));
 
 		const trimmedIconInput = iconInput?.trim() || '';
 		let iconStatus = 'none';
@@ -801,7 +799,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		const roleDetailsLabel = await translate('customSupporterRole.created.roleDetails', interaction.guild.id, interaction.user.id);
 		const roleDetailsValue = await translate('customSupporterRole.created.roleDetailsValue', interaction.guild.id, interaction.user.id, {
 			name: roleName,
-			color: colorInput || 'Default',
+			color: colorInput || (await translate('customSupporterRole.colorDefault', interaction.guild.id, interaction.user.id)),
 			icon: iconStatusText
 		});
 		const roleLabel = await translate('customSupporterRole.created.role', interaction.guild.id, interaction.user.id);
@@ -835,26 +833,15 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		await logger.log(`❌ Stack: ${error.stack}`);
 
 		try {
+			const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 			let errorMessage = '';
 
 			if (error instanceof AnchorError) {
-				errorMessage = `❌ **Failed to Create Role**\n\n${error.message}`;
+				errorMessage = tr('customSupporterRole.errors.createFailedReason', { reason: tr(error.key, error.params) });
 			} else if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
-				errorMessage =
-					`❌ **Server Boost Required**\n\n` +
-					`This server needs **Level 2 Server Boost** to create custom supporter roles with certain features.\n\n` +
-					`💡 **What you can do:**\n` +
-					`- Ask server administrators to boost the server to Level 2\n` +
-					`- Or contact server staff for assistance\n\n` +
-					`**Error details:** ${error.message}`;
+				errorMessage = tr('customSupporterRole.errors.boostRequiredCreate', { error: error.message });
 			} else {
-				errorMessage =
-					`❌ **Failed to Create Role**\n\n` +
-					`Error: ${error.message}\n\n` +
-					`Please make sure:\n` +
-					`- The bot has permission to create roles\n` +
-					`- The bot has permission to manage roles\n` +
-					`- Role position constraints are valid`;
+				errorMessage = tr('customSupporterRole.errors.createFailed', { error: error.message });
 			}
 
 			await interaction.editReply({

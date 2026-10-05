@@ -32,7 +32,7 @@ import {
 	type CreatorProfile,
 	type CreatorRef
 } from '../../../config.js';
-import { translate } from '../i18n.js';
+import { serverTranslator, translate, type Translator } from '../i18n.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 export const CREATOR_NOTIFICATIONS_MENU_BUTTON_ID = 'notifications_creators';
@@ -71,24 +71,13 @@ const TYPE_EMOJI: Record<CreatorContentType, string> = {
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
-const PLATFORM_LABEL: Record<CreatorPlatform, string> = {
-	youtube: 'YouTube',
-	twitch: 'Twitch',
-	tiktok: 'TikTok'
-};
-
-const TYPE_LABEL: Record<CreatorContent['type'], string> = {
-	video: '🎬 New video',
-	live: '🔴 Live stream',
-	post: '📝 New post'
-};
-
 type CreatorRow = Awaited<ReturnType<typeof db.listNotifiedCreatorsForBot>>[number];
 
 type ServerTarget = {
 	serverId: number;
 	guildId: string;
 	embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>;
+	tr: Translator;
 	channel: any | null;
 };
 
@@ -128,11 +117,12 @@ async function resolveServerTarget(client: Client, server: { id: number; discord
 	const channelId = await readTargetChannelId(server.id);
 
 	const embedConfig = await getEmbedConfig(guildId);
-	if (!channelId) return { serverId: server.id, guildId, embedConfig, channel: null };
+	const tr = await serverTranslator(guildId);
+	if (!channelId) return { serverId: server.id, guildId, embedConfig, tr, channel: null };
 
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	const channel = guild ? await guild.channels.fetch(channelId).catch(() => null) : null;
-	return { serverId: server.id, guildId, embedConfig, channel: channel && channel.isTextBased() ? channel : null };
+	return { serverId: server.id, guildId, embedConfig, tr, channel: channel && channel.isTextBased() ? channel : null };
 }
 
 async function sendContentEmbed(
@@ -144,16 +134,19 @@ async function sendContentEmbed(
 	const creatorName = creator.name?.trim() || creator.handle || creator.accountId;
 	const watcherDiscordIds = await db.listServerCreatorNotificationDiscordIds(target.serverId, creator.id).catch(() => [] as string[]);
 	const notificationDiscordIds = await db.listServerCreatorNotificationDiscordIds(target.serverId, creator.id, [content.type]).catch(() => [] as string[]);
+	const { tr } = target;
+	const platformName = tr(`creatorAlerts.platforms.${creator.platform}`);
+	const typeLabel = `${TYPE_EMOJI[content.type]} ${tr(`creatorAlerts.types.${content.type}.label`)}`;
 
 	const embed = new EmbedBuilder()
 		.setColor(creatorAlertsEmbedColors[creator.platform])
 		.setAuthor({ name: creatorName.slice(0, 256), url: profileUrl, ...(creator.thumbnailUrl ? { iconURL: creator.thumbnailUrl } : {}) })
-		.setTitle((content.title?.split('\n')[0]?.trim() || TYPE_LABEL[content.type]).slice(0, 256))
+		.setTitle((content.title?.split('\n')[0]?.trim() || typeLabel).slice(0, 256))
 		.setURL(content.url)
 		.addFields(
-			{ name: 'Platform', value: PLATFORM_LABEL[creator.platform], inline: true },
-			{ name: 'Type', value: TYPE_LABEL[content.type], inline: true },
-			...(watcherDiscordIds.length > 0 ? [{ name: 'Notifications', value: `🔔 ${watcherDiscordIds.length}`, inline: true }] : [])
+			{ name: tr('creatorAlerts.post.platform'), value: platformName, inline: true },
+			{ name: tr('creatorAlerts.post.type'), value: typeLabel, inline: true },
+			...(watcherDiscordIds.length > 0 ? [{ name: tr('creatorAlerts.post.notifications'), value: `🔔 ${watcherDiscordIds.length}`, inline: true }] : [])
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });
 
@@ -162,8 +155,15 @@ async function sendContentEmbed(
 	if (content.publishedAt) embed.setTimestamp(new Date(content.publishedAt));
 
 	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(content.url).setLabel(`Open on ${PLATFORM_LABEL[creator.platform]}`),
-		new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId(`${CREATOR_FOLLOW_BUTTON_PREFIX}${creator.id}`).setLabel('Notify me').setEmoji('🔔')
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Link)
+			.setURL(content.url)
+			.setLabel(tr('creatorAlerts.post.openOn', { platform: platformName }).slice(0, 80)),
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Secondary)
+			.setCustomId(`${CREATOR_FOLLOW_BUTTON_PREFIX}${creator.id}`)
+			.setLabel(tr('creatorAlerts.post.notifyMe').slice(0, 80))
+			.setEmoji('🔔')
 	);
 
 	const channelMentions = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null)) ?? [];

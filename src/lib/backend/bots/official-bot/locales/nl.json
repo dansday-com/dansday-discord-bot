@@ -1,0 +1,1388 @@
+{
+	"menu": {
+		"title": "📋 Botmenu van {botName}",
+		"description": "Kies een functie met de knoppen hieronder:",
+		"website": "🌐 Serverpagina: {url}",
+		"join": "📨 Uitnodigingslink: {url}",
+		"noAccess": "❌ Je hebt geen toegang tot functies.",
+		"button": "📋 Menu",
+		"account": "👤 Account",
+		"stats": {
+			"members": "👥 Leden",
+			"totalXp": "📊 Totale XP",
+			"topLevel": "⭐ Hoogste level"
+		},
+		"back": "⬅️ Terug",
+		"categories": {
+			"me": {
+				"button": "👤 Ik",
+				"description": "Je eigen status en meldingen."
+			},
+			"community": {
+				"button": "🎉 Community",
+				"description": "Giveaways, feedback en staffbeoordelingen."
+			},
+			"perks": {
+				"button": "💎 Voordelen",
+				"description": "Voordelen voor supporters en creators."
+			},
+			"staff": {
+				"button": "🔨 Staff",
+				"description": "Tools voor staff en admins."
+			}
+		},
+		"items": {
+			"afk": "Stel je AFK-status in of haal hem weg.",
+			"notifications": "Kies van welke kanalen je meldingen krijgt.",
+			"invites": "Bekijk je uitnodigingen en haal je uitnodigingslink op.",
+			"quest": "Claim actieve Discord-quests.",
+			"giveaway": "Start een giveaway op deze server.",
+			"feedback": "Stuur feedback naar het serverteam.",
+			"staffRating": "Beoordeel of meld een staflid.",
+			"customSupporterRole": "Maak of bewerk je eigen rol.",
+			"contentCreator": "Bekijk creators of meld je aan.",
+			"moderation": "Leden waarschuwen, een time-out geven, kicken of verbannen."
+		}
+	},
+	"interface": {
+		"panel": {
+			"title": "Botpaneel van {botName}",
+			"description": "Klik op **Menu** om botfuncties te openen op basis van de rechten van je rol.",
+			"sent": "✅ Botinterface verstuurd naar {channel}!",
+			"setupHasOwnerAccount": "✅ Botinterface verstuurd naar {channel}. Deze server heeft al een eigenaarsaccount — log in op het webpaneel. Er is geen nieuwe uitnodiging aangemaakt.",
+			"setupSignInLinkLine": "[**Klik hier om het paneel te openen**]({url})",
+			"setupOpenPanelButton": "Paneel openen",
+			"setupOwnerInviteReady": "✅ Botinterface verstuurd naar {channel}.\n\nAlleen jij kunt dit zien. Ongebruikte uitnodigingslinks voor eigenaren verlopen **24 uur** nadat ze zijn aangemaakt.\n\n[**Klik hier om je als eigenaar te registreren**]({url})",
+			"setupOwnerInviteButton": "Registratie openen",
+			"setupOwnerInviteEmbedTitle": "Registratie eigenaar",
+			"setupNotOwnerTitle": "Geen toestemming",
+			"setupNotOwnerBody": "Alleen de **servereigenaar** kan `/setup` gebruiken.",
+			"setupNotTextChannelTitle": "Ongeldig kanaal",
+			"setupNotTextChannelBody": "Kies een **tekstkanaal**.",
+			"joinTitle": "Bedankt voor het toevoegen van {botName}!",
+			"joinBody": "Voer `/setup` uit om de kanalen aan te maken en de installatie af te ronden.",
+			"joinAskAi": "Weet je niet waar je moet beginnen? Tag {botMention} en stel gewoon je vraag — de bot leest de documentatie en helpt je stap voor stap met de installatie.",
+			"joinDocsButton": "Documentatie",
+			"joinSupportButton": "Supportserver",
+			"setupChannelsCreated": "**{count}** nieuwe kanaal/kanalen aangemaakt.",
+			"setupChannelsAllPresent": "Alle kanalen bestaan al — er hoeft niets nieuws te worden aangemaakt.",
+			"setupWarnNoBotConfig": "⚠️ Interface verstuurd, maar de botconfiguratie is niet beschikbaar.",
+			"setupWarnNoServer": "⚠️ Interface verstuurd, maar de servergegevens om een uitnodiging te maken zijn niet gevonden.",
+			"error": "❌ Kon de interface niet versturen: {error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ Deze functie staat uit op deze server. Een beheerder kan hem aanzetten in het configuratiepaneel van de bot.",
+			"memberNotFound": "❌ Kon de gegevens van het lid niet ophalen.",
+			"unknownButton": "❌ Onbekende knopinteractie.",
+			"buttonError": "❌ **Knopfout**: er ging iets mis bij het verwerken van je klik.\\n\\nProbeer het opnieuw of neem contact op met een beheerder.",
+			"modalError": "❌ **Formulierfout**: er ging iets mis bij het versturen van je formulier.\\n\\nProbeer het opnieuw of neem contact op met een beheerder.",
+			"selectionError": "❌ **Selectiefout**: er ging iets mis bij het verwerken van je keuze.\\n\\nProbeer het opnieuw of neem contact op met een beheerder."
+		},
+		"timeUnits": {
+			"hour": "uur",
+			"hours": "uur",
+			"day": "dag",
+			"days": "dagen"
+		},
+		"defaultFooter": "Mogelijk gemaakt door {domain} {year}"
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Supportervoordeel**",
+			"description": "Een eigen rol met je eigen naam en kleur is een supportervoordeel. Boost deze server of heb een van deze rollen:\\n{roles}",
+			"footer": "Boost de server om dit te ontgrendelen."
+		},
+		"denied": {
+			"title": "❌ **Geen toestemming**",
+			"description": "Je hebt een van de volgende rollen nodig om **{action}** te gebruiken:\\n{roles}",
+			"footer": "Neem contact op met een serverbeheerder als je denkt dat dit niet klopt."
+		},
+		"ownerRequired": {
+			"title": "❌ **Registratie eigenaar vereist**",
+			"description": "De servereigenaar moet eerst een account registreren op het webpaneel voordat iemand de functie **{action}** kan gebruiken."
+		},
+		"notConfigured": {
+			"title": "❌ **Rechten niet ingesteld**",
+			"description": "De servereigenaar of een beheerder moet eerst de rolrechten instellen voordat iemand de functie **{action}** kan gebruiken."
+		},
+		"requiredRoleFallback": "de vereiste rol"
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 Taalinstellingen",
+			"description": "Kies je voorkeurstaal:",
+			"current": "Huidige taal",
+			"select": "Taal kiezen",
+			"updated": "✅ Taal bijgewerkt!",
+			"failed": "❌ Kon de taal niet bijwerken: {error}",
+			"serverDefault": "Servertaal ({language})",
+			"serverDefaultDescription": "Volg de taal van de server",
+			"currentOption": "Huidige taal"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 Je accountpagina: {url}",
+			"noMember": "⚠️ Je wordt nog niet bijgehouden op deze server. Stuur eerst een bericht of ga in een spraakkanaal.",
+			"unavailable": "⚠️ Openbare pagina's zijn niet beschikbaar voor deze server."
+		},
+		"errors": {
+			"notRegistered": "⚠️ Deze server is niet geregistreerd bij de bot. Voer eerst een synchronisatie uit.",
+			"createRecordFailed": "❌ Kon de ledengegevens niet aanmaken. Probeer het opnieuw."
+		},
+		"fields": {
+			"level": "⭐ Level",
+			"totalXp": "📊 Totale XP",
+			"rank": "🏆 Rang",
+			"previousRank": "Vorige rang",
+			"newRank": "Nieuwe rang",
+			"progress": "⚡ Voortgang naar level {level}",
+			"reward": "🎁 Beloning ontgrendeld",
+			"activity": "💬 Activiteit"
+		},
+		"xpToGo": "Nog **{xp}** XP te gaan",
+		"unranked": "Geen rang",
+		"leaderboardButton": "Ranglijst",
+		"levelUp": {
+			"title": "🎉 Level omhoog!",
+			"description": "{member} heeft **level {level}** bereikt!"
+		},
+		"rankUp": {
+			"title": "Ranglijst bijgewerkt!",
+			"topSpot": "{member} heeft net een topplek veroverd!",
+			"climbed": "{member} klimt op de ranglijst!"
+		},
+		"activity": {
+			"messages": "{count} berichten",
+			"voice": "{hours} u spraak",
+			"streaming": "{hours} u streamen"
+		},
+		"log": {
+			"types": {
+				"chat": "Chat",
+				"voice": "Spraak",
+				"afkVoice": "AFK-spraak",
+				"video": "Video",
+				"streaming": "Stream",
+				"invite": "Uitnodigings"
+			},
+			"gain": "{emoji} {type}-XP: {name} kreeg +{xp} XP",
+			"staff": "({multiplier}× Staff 🛡️)",
+			"boost": "({multiplier}× Boost ⚡)",
+			"friend": "(+{rate} vriendenboost 🤝)",
+			"leech": "(−{rate} Bloedzuiger 🩸)",
+			"share": "📨 +{amount} voor {name} ({percent}% uitnodigingsaandeel{staff})",
+			"inviteNote": "voor het uitnodigen van {name}",
+			"leechCredit": "🩸 Bloedzuiger: {attacker} heeft +{amount} XP afgetapt van {victim}{pct}",
+			"unknownMember": "Onbekend",
+			"someMember": "een lid",
+			"someLeecher": "Een bloedzuiger"
+		}
+	},
+	"invites": {
+		"button": "📨 Uitnodigingen",
+		"title": "📨 Jouw uitnodigingen",
+		"reward": "Verdien **{xp} XP** voor elk nieuw lid dat via jouw link binnenkomt{hold}.",
+		"hold": " en {hours} uur blijft",
+		"staffNote": "🛡️ Staff verdient {multiplier}× uitnodigings-XP.",
+		"share": "📈 Je krijgt ook **{percent}%** van de chat- en spraak-XP die je uitgenodigde leden verdienen, zolang ze blijven.",
+		"link": "🔗 Je persoonlijke uitnodigingslink: {url}",
+		"noLink": "⚠️ Ik kon hier geen uitnodigingslink maken. Vraag de staff om me de toestemming Uitnodiging aanmaken te geven.",
+		"copyButton": "Uitnodigingslink openen",
+		"customizeButton": "✏️ Link aanpassen",
+		"slugTitle": "Pas je uitnodigingslink aan",
+		"slugLabel": "Linknaam ({min}–{max} letters, cijfers, streepjes)",
+		"slugInvalid": "❌ Gebruik {min}–{max} letters, cijfers of streepjes.",
+		"slugTaken": "❌ **{slug}** is al bezet. Probeer een andere naam.",
+		"slugSaved": "✅ Je uitnodigingslink is nu {url}",
+		"fields": {
+			"total": "📨 Totaal",
+			"active": "✅ Nog hier",
+			"left": "🚪 Vertrokken",
+			"fake": "🕵️ Nep",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP verdiend",
+			"pending": "⏳ In afwachting",
+			"invitedBy": "👤 Uitgenodigd door",
+			"shareXp": "🤝 Uit XP-aandeel"
+		},
+		"error": "❌ Kon je uitnodigingen niet laden. Probeer het zo meteen opnieuw."
+	},
+	"afk": {
+		"title": "⏸️ AFK-status instellen",
+		"current": {
+			"title": "⏸️ Je bent momenteel AFK",
+			"description": "**Status:** {message}\\n**Duur:** {duration}",
+			"howToRemove": "💡 Zo zet je het uit",
+			"howToRemoveValue": "• Klik op de knop hieronder om AFK uit te zetten\\n• Stuur een willekeurig bericht (zet AFK automatisch uit en heft je demping op)\\n• Als de bot je had gedempt, wordt dat automatisch opgeheven zodra je AFK uitzet"
+		},
+		"set": {
+			"title": "✅ AFK-status ingesteld!",
+			"description": "Je staat nu op AFK: **{message}**{voiceInfo}",
+			"howToRemove": "💡 Zo zet je het uit",
+			"howToRemoveValue": "• Stuur een willekeurig bericht (zet AFK automatisch uit en heft je demping op)\\n• Klik op de AFK-knop en zet het uit (heft je demping op als de bot je had gedempt)\\n• Als de bot je had gedempt, wordt dat automatisch opgeheven zodra je AFK uitzet",
+			"voiceMutedDeafened": "\\n\\nJe wordt in spraakkanalen gedempt en je geluid wordt uitgezet.",
+			"voiceMutedOnly": "\\n\\nJe wordt in spraakkanalen gedempt (je geluid blijft aan)."
+		},
+		"removed": {
+			"title": "✅ AFK-status verwijderd!",
+			"description": "Welkom terug! Je AFK-status is verwijderd."
+		},
+		"modal": {
+			"messageLabel": "AFK-bericht (optioneel)",
+			"messagePlaceholder": "bijv. Even pauze, Aan het studeren, enz.",
+			"deafenLabel": "Geluid uitzetten? (ja/nee, standaard: ja)",
+			"deafenPlaceholder": "ja of nee (laat leeg voor ja)"
+		},
+		"buttons": {
+			"remove": "🔄 AFK uitzetten"
+		},
+		"errors": {
+			"disabledOnServer": "❌ AFK staat uit op deze server. Een beheerder kan het aanzetten in het configuratiepaneel van de bot.",
+			"notAFK": "❌ Je bent momenteel niet AFK.",
+			"failed": "❌ Kon het AFK-formulier niet openen: {error}",
+			"setFailed": "❌ **AFK instellen mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw.",
+			"removeFailed": "❌ **AFK uitzetten mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw."
+		},
+		"messages": {
+			"welcomeBack": "✅ Welkom terug, {member}! Je AFK-status is verwijderd.",
+			"dmEmbedTitle": "📬 Je bent getagd",
+			"dmMentioned": "{sender} heeft je getagd in **{server}** · #{channel}\\n\\n**Bericht:** {message}",
+			"away": "Afwezig",
+			"isAfk": "⏸️ {member} is momenteel AFK (al {duration})",
+			"isAfkWithMessage": "⏸️ {member} is momenteel AFK: **{message}** (al {duration})"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 Giveaway maken",
+			"step1Title": "**Stap 1 van 2: rollen kiezen (optioneel)**",
+			"step1Description": "Kies in het menu hieronder welke rollen aan deze giveaway mogen meedoen. Laat het leeg of klik op \"Door naar formulier\" om alle rollen toe te laten.",
+			"roleSelectPlaceholder": "Kies welke rollen mogen meedoen (optioneel)...",
+			"continueButton": "Door naar formulier"
+		},
+		"active": {
+			"title": "🎉 Actieve giveaway gevonden",
+			"description": "Je hebt al een actieve giveaway:\\n\\n**{title}**\\n**Prijs:** {prize}\\n\\nWat wil je doen?",
+			"ends": "⏰ Eindigt"
+		},
+		"modal": {
+			"titleLabel": "Titel",
+			"titlePlaceholder": "Voer de titel van de giveaway in...",
+			"prizeLabel": "Prijs",
+			"prizePlaceholder": "Wat is de prijs?",
+			"durationLabel": "Duur (minuten)",
+			"durationPlaceholder": "bijv. 60 voor 1 uur, 1440 voor 1 dag",
+			"winnerCountLabel": "Aantal winnaars",
+			"winnerCountPlaceholder": "Hoeveel winnaars? (standaard: 1)",
+			"multipleEntriesLabel": "Meerdere deelnames toegestaan? (ja/nee)",
+			"multipleEntriesPlaceholder": "ja of nee (standaard: nee)"
+		},
+		"created": {
+			"title": "✅ Giveaway aangemaakt!",
+			"description": "Je giveaway is aangemaakt en geplaatst in {channel}!"
+		},
+		"entered": {
+			"title": "✅ Je doet mee!",
+			"description": "Je doet nu mee aan de giveaway! Veel succes! 🍀"
+		},
+		"buttons": {
+			"finish": "🏁 Giveaway beëindigen"
+		},
+		"errors": {
+			"memberNotFound": "❌ Kon de gegevens van het lid niet ophalen.",
+			"activeExists": "❌ Je hebt al een actieve giveaway. Rond die eerst af.",
+			"invalidTitle": "❌ **Ongeldige giveaway**\\n\\nDe titel mag niet leeg zijn.",
+			"invalidPrize": "❌ **Ongeldige giveaway**\\n\\nDe prijs mag niet leeg zijn.",
+			"invalidDuration": "❌ **Ongeldige giveaway**\\n\\nDe duur moet een positief getal zijn (in minuten).",
+			"invalidWinnerCount": "❌ **Ongeldige giveaway**\\n\\nHet aantal winnaars moet een positief getal zijn.",
+			"channelNotConfigured": "❌ Kon de giveaway niet aanmaken: het giveawaykanaal is niet ingesteld. Stel het in via het paneel.",
+			"channelNotFound": "❌ Kon de giveaway niet aanmaken: giveawaykanaal niet gevonden.",
+			"channelError": "❌ Kon de giveaway niet aanmaken: fout bij het ophalen van de instellingen van het giveawaykanaal.",
+			"createFailed": "❌ **Giveaway aanmaken mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw.",
+			"invalidMessage": "❌ Ongeldig giveawaybericht.",
+			"invalidId": "❌ Ongeldige giveaway-ID.",
+			"notFound": "❌ Giveaway niet gevonden of al afgelopen.",
+			"ended": "❌ Deze giveaway is al afgelopen.",
+			"roleRestriction": "❌ **Rolbeperking**\\n\\nDeze giveaway is alleen voor de volgende rollen:\\n{roles}\\n\\nJe hebt al deze rollen nodig om mee te doen.",
+			"memberNotFoundDB": "❌ Lid niet gevonden in de database. Probeer het later opnieuw.",
+			"cannotEnterOwn": "❌ Je kunt niet meedoen aan je eigen giveaway!",
+			"alreadyEntered": "❌ Je doet al mee aan deze giveaway!",
+			"finishOwnOnly": "❌ Je kunt alleen je eigen giveaways beëindigen.",
+			"finishNotActive": "❌ Deze giveaway is niet actief.",
+			"finishChannelError": "❌ Kon het giveawaykanaal niet ophalen.",
+			"finishChannelNotConfigured": "❌ Giveawaykanaal niet ingesteld.",
+			"finishChannelNotFound": "❌ Giveawaykanaal niet gevonden.",
+			"failed": "❌ Kon het giveawayformulier niet openen: {error}",
+			"notEnoughInvites": "❌ Je hebt **{needed}** uitnodigingen nodig om mee te doen aan deze giveaway. Je hebt er **{have}**.",
+			"roleSelectFailed": "❌ Kon de rolkeuze niet verwerken: {error}",
+			"enterFailed": "❌ **Meedoen aan giveaway mislukt**\\n\\nFout: {error}",
+			"finishFailed": "❌ Kon de giveaway niet beëindigen: {error}"
+		},
+		"unknownRole": "Rol {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "Geen rolbeperkingen",
+			"multipleEntries": "Meerdere deelnames toegestaan",
+			"singleEntry": "Eén deelname per lid",
+			"prizeLine": "**Prijs:** {prize}",
+			"winnerLine": "**Winnaar:** {count}",
+			"winnersLine": "**Winnaars:** {count}",
+			"entriesLine": "**Deelnames:** {entries}",
+			"rolesLine": "**Rolbeperkingen:** {roles}",
+			"invitesLine": "**Benodigde uitnodigingen:** {count}",
+			"hostedBy": "👤 Georganiseerd door",
+			"enterButton": "🎉 Meedoen"
+		},
+		"results": {
+			"endedTitle": "🎉 Giveaway afgelopen",
+			"endedWinnersTitle": "🎉 Giveaway afgelopen!",
+			"noEntries": "**{title}**\\n\\n❌ Geen deelnames! De giveaway is afgelopen zonder deelnemers.",
+			"noWinners": "**{title}**\\n\\n❌ Kon geen winnaars kiezen.",
+			"winnerLine": "🎊 **Winnaar:** {winners}",
+			"winnersLine": "🎊 **Winnaars:** {winners}",
+			"limitedEntriesOne": "⚠️ *Maar {count} winnaar gekozen ({requested} gevraagd) door te weinig deelnames.*",
+			"limitedEntriesMany": "⚠️ *Maar {count} winnaars gekozen ({requested} gevraagd) door te weinig deelnames.*",
+			"congrats": "Gefeliciteerd! 🎉"
+		},
+		"finished": {
+			"title": "✅ Giveaway beëindigd",
+			"noEntries": "Je giveaway **\"{title}\"** is vroegtijdig beëindigd.\\n\\nNiemand heeft meegedaan.",
+			"noWinners": "Je giveaway **\"{title}\"** is vroegtijdig beëindigd.\\n\\nEr konden geen winnaars worden gekozen.",
+			"winners": "Je giveaway **\"{title}\"** is vroegtijdig beëindigd.\\n\\n**Winnaars:** {winners}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 Feedback versturen",
+			"label": "Jouw feedback",
+			"placeholder": "Deel je feedback, suggesties of zorgen...",
+			"maxLength": 2000,
+			"anonymousLabel": "Anoniem versturen? (ja/nee)",
+			"anonymousPlaceholder": "ja of nee (standaard: nee)"
+		},
+		"submitted": {
+			"title": "✅ Feedback verstuurd!",
+			"description": "Bedankt voor je feedback! Hij is goed verstuurd.",
+			"anonymous": "\\n\\n🔒 Je feedback is anoniem verstuurd."
+		},
+		"errors": {
+			"invalid": "❌ **Ongeldige feedback**\\n\\nHet feedbackbericht mag niet leeg zijn.",
+			"channelError": "❌ Kon feedback niet versturen: fout bij het ophalen van de instellingen van het feedbackkanaal.",
+			"channelNotConfigured": "❌ Kon feedback niet versturen: feedbackkanaal niet ingesteld.",
+			"channelNotFound": "❌ Kon feedback niet versturen: feedbackkanaal niet gevonden.",
+			"failed": "❌ Kon het feedbackformulier niet openen: {error}",
+			"submitFailed": "❌ **Feedback versturen mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw."
+		},
+		"channelEmbed": {
+			"title": "💬 Nieuwe feedback",
+			"fieldFrom": "👤 Van",
+			"fieldSubmitted": "🕐 Verstuurd",
+			"anonymous": "Anoniem",
+			"footerSuffix": "• Feedback-ID: #{feedbackId}"
+		}
+	},
+	"staffRating": {
+		"title": "📋 Staflid melden",
+		"selectStaff": "Kies een staflid",
+		"selectStaffPlaceholder": "Kies een staflid om te melden...",
+		"button": "🛡️ Staffbeoordeling",
+		"selectRatingPrompt": "Kies een beoordeling",
+		"selectCategoryPrompt": "Kies een categorie",
+		"status": {
+			"staff": "Staflid: {staff}",
+			"ratingPending": "Beoordeling: niet gekozen",
+			"ratingSelected": "Beoordeling: {rating}/5",
+			"categoryPending": "Categorie: niet gekozen",
+			"categorySelected": "Categorie: {category}"
+		},
+		"buttons": {
+			"continue": "Doorgaan"
+		},
+		"reviewModal": {
+			"titleApprove": "Staffmelding goedkeuren",
+			"titleReject": "Staffmelding afwijzen",
+			"reasonLabel": "Reden (verplicht)",
+			"reasonPlaceholder": "Leg je beslissing uit aan de melder…"
+		},
+		"embed": {
+			"staffDecision": "Beslissing van de staff",
+			"reviewedBy": "Beoordeeld door",
+			"statusApproved": "Goedgekeurd",
+			"statusRejected": "Afgewezen"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Staflid",
+			"fieldRating": "Beoordeling",
+			"fieldCategory": "Categorie",
+			"fieldReporter": "Melder",
+			"fieldStatus": "Status",
+			"fieldDescription": "Beschrijving",
+			"anonymousReporter": "Anoniem",
+			"pendingTitle": "🕒 Staffmelding in afwachting",
+			"pendingStatus": "Wacht op goedkeuring door een admin",
+			"approveButton": "Melding goedkeuren",
+			"rejectButton": "Melding afwijzen",
+			"titleApproved": "✅ Staffmelding goedgekeurd",
+			"titleRejected": "❌ Staffmelding afgewezen",
+			"footerReportSuffix": "• Meldings-ID: #{reportId}"
+		},
+		"modal": {
+			"title": "Staflid melden",
+			"ratingLabel": "Beoordeling (1-5 sterren)",
+			"ratingPlaceholder": "1 = Heel slecht, 5 = Uitstekend",
+			"categoryLabel": "Categorie",
+			"descriptionLabel": "Beschrijving",
+			"descriptionPlaceholder": "Beschrijf je ervaring met dit staflid...",
+			"anonymousLabel": "Anoniem versturen? (ja/nee)",
+			"anonymousPlaceholder": "ja of nee (standaard: nee)"
+		},
+		"submitted": {
+			"title": "✅ Melding verstuurd",
+			"description": "Je melding is verstuurd en wacht nu op goedkeuring door een admin. We laten het je weten zodra hij is beoordeeld.",
+			"anonymous": "\\n\\n🔒 Je melding is anoniem verstuurd.",
+			"roleUpdated": "\\n\\n⭐ **Staffbeoordeling bijgewerkt**\\n{roleName}\\nBeoordeling: {rating}/5.00 ({totalReports} meldingen)"
+		},
+		"dm": {
+			"approved": "Je melding over {staff} in **{server}** is goedgekeurd.\\n\\n**Beoordeling:** {rating}/5\\n**Categorie:** {category}\\n**Feedback:** {description}\\n\\n**Opmerking van de staff:** {reason}\\n\\nBedankt dat je ons helpt het team scherp te houden.",
+			"rejected": "Je melding over {staff} in **{server}** is niet goedgekeurd.\\n\\n**Reden:** {reason}\\n\\nJe kunt contact opnemen met het adminteam als je meer context wilt delen.",
+			"embedTitleApproved": "✅ Melding goedgekeurd",
+			"embedTitleRejected": "❌ Melding niet goedgekeurd"
+		},
+		"categories": {
+			"helpful": "👍 Behulpzaam",
+			"unhelpful": "👎 Niet behulpzaam",
+			"abuse": "⚠️ Machtsmisbruik",
+			"slow_response": "⏰ Trage reactie",
+			"excellent": "⭐ Uitstekende service",
+			"rude": "😠 Onbeleefd gedrag"
+		},
+		"errors": {
+			"noStaffSelected": "❌ Kies een staflid om te melden.",
+			"invalidRating": "❌ **Ongeldige beoordeling**\\n\\nDe beoordeling moet een getal tussen 1 en 5 zijn.",
+			"invalidCategory": "❌ **Ongeldige categorie**\\n\\nKies een categorie uit de lijst.",
+			"emptyDescription": "❌ **Beschrijving verplicht**\\n\\nBeschrijf je ervaring.",
+			"cannotReportSelf": "❌ Je kunt jezelf niet melden!",
+			"notStaff": "❌ Het gekozen lid is geen staflid.",
+			"onCooldown": "❌ **Wachttijd voor beoordelen**\\n\\nJe moet {time} {unit} wachten voordat je dit staflid opnieuw kunt beoordelen.\\n\\nLaatst beoordeeld: {lastRated}",
+			"submitFailed": "❌ **Melding versturen mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw.",
+			"notConfigured": "❌ Het staffbeoordelingssysteem is niet ingesteld voor deze server.",
+			"noStaffConfigured": "❌ Er zijn geen staffrollen ingesteld voor deze server. Vraag een admin om eerst de staffrechten in te stellen.",
+			"noStaffAvailable": "❌ Er zijn nu geen stafleden gevonden. Probeer het later opnieuw of neem contact op met een serveradmin.",
+			"missingRating": "❌ Kies een beoordeling voordat je verdergaat.",
+			"missingCategory": "❌ Kies een categorie voordat je verdergaat.",
+			"permissionDenied": "❌ **Geen toestemming**\\n\\nJe hebt adminrechten nodig om staffmeldingen goed te keuren of af te wijzen.",
+			"reviewReasonRequired": "❌ Geef een reden voor je beslissing."
+		},
+		"ratingUpdate": {
+			"title": "⭐ Staffbeoordeling bijgewerkt",
+			"description": "{staff} heeft een nieuwe beoordeling gekregen.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} meldingen)",
+			"fieldFeedback": "Feedback",
+			"dm": "⭐ Je staffbeoordeling in **{server}** is nu **{rating}/5.0** ({totalReports} meldingen)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ Deze melding is al afgehandeld.",
+			"approvedReply": "✅ Melding #{reportId} goedgekeurd.",
+			"rejectedReply": "❌ Melding #{reportId} afgewezen."
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 Contentcreator",
+		"list": {
+			"title": "🎬 Contentcreators",
+			"description": "Goedgekeurde contentcreators op deze server:",
+			"none": "Nog geen goedgekeurde contentcreators.",
+			"applyButton": "Aanmelden"
+		},
+		"dismiss": {
+			"button": "Stoppen als contentcreator",
+			"confirmTitle": "⚠️ Rol Contentcreator verwijderen?",
+			"confirmDescription": "Je verliest de rol Contentcreator op deze server. Je kunt je later opnieuw aanmelden als de staff dat toestaat.\n\n**Weet je het zeker?**",
+			"yes": "Ja, rol verwijderen",
+			"no": "Nee, annuleren",
+			"removed": "✅ Je rol Contentcreator is verwijderd."
+		},
+		"reviewModal": {
+			"titleApprove": "Aanmelding goedkeuren",
+			"titleReject": "Aanmelding afwijzen",
+			"reasonLabel": "Reden (verplicht)",
+			"reasonPlaceholder": "Leg je beslissing uit aan de aanmelder…"
+		},
+		"embed": {
+			"staffDecision": "Beslissing van de staff",
+			"reviewedBy": "Beoordeeld door",
+			"reviewedBySystem": "Automatisch (dubbele TikTok)",
+			"statusApproved": "Goedgekeurd",
+			"statusRejected": "Afgewezen"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Aanmelding contentcreator in afwachting",
+			"pendingDescription": "{user} heeft toegang als contentcreator aangevraagd.",
+			"pendingStatus": "Wacht op goedkeuring door een admin",
+			"fieldTiktok": "TikTok-gebruikersnaam",
+			"fieldStatus": "Status",
+			"fieldApplicantReason": "Motivatie",
+			"buttonApprove": "Goedkeuren",
+			"buttonReject": "Afwijzen",
+			"titleApproved": "✅ Aanmelding contentcreator goedgekeurd",
+			"titleRejected": "❌ Aanmelding contentcreator afgewezen",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• Aanmeldings-ID: #{appId}",
+			"liveTitle": "🔴 Contentcreator is LIVE",
+			"liveDescription": "{mention} is nu live op TikTok!",
+			"liveWatchButton": "Kijk LIVE op TikTok",
+			"autoRejectReviewReason": "Dubbel account of imitatie: deze TikTok-gebruikersnaam is al gekoppeld aan een ander Discord-account.",
+			"autoRejectConflictPending": "Dat account heeft een aanmelding **in afwachting** voor deze TikTok-naam.",
+			"autoRejectConflictApproved": "Dat account is een **goedgekeurde** contentcreator met deze TikTok-naam."
+		},
+		"modal": {
+			"title": "Aanmelden als contentcreator",
+			"usernameLabel": "TikTok-gebruikersnaam",
+			"usernamePlaceholder": "voorbeeld: dansday",
+			"reasonLabel": "Waarom wil je contentcreator worden?",
+			"reasonPlaceholder": "Vertel ons kort waarom we je zouden moeten accepteren..."
+		},
+		"submitted": "✅ Je aanmelding als contentcreator voor **{username}** is verstuurd en wacht op goedkeuring door de staff.",
+		"dm": {
+			"approved": "Je aanmelding in **{server}** is goedgekeurd.\\n\\nTikTok: **{username}**\\nJe hebt de rol Contentcreator gekregen.",
+			"rejected": "Je aanmelding in **{server}** is deze keer niet goedgekeurd.\\n\\nTikTok: **{username}**\\n\\n**Reden:** {reason}\\n\\nJe kunt je opnieuw aanmelden na de wachttijd (als je server die gebruikt).",
+			"embedTitleApproved": "✅ Contentcreator goedgekeurd",
+			"embedTitleRejected": "❌ Contentcreator niet goedgekeurd"
+		},
+		"autoRejectApplicantReason": "Dubbel account of imitatie: deze TikTok-gebruikersnaam is al gekoppeld aan een ander Discord-account.",
+		"errors": {
+			"notConfigured": "❌ Aanmeldingen voor contentcreators zijn niet ingesteld voor deze server.",
+			"alreadyCreator": "✅ Je hebt de rol Contentcreator al op deze server.",
+			"invalidUsername": "❌ Ongeldige TikTok-gebruikersnaam. Gebruik alleen letters, cijfers, punten en underscores.",
+			"reasonRequired": "❌ Geef aan waarom je contentcreator wilt worden.",
+			"pendingExists": "❌ Je hebt al een aanmelding als contentcreator in afwachting.",
+			"cooldown": "❌ Je moet **{days} dag(en)** wachten voordat je een nieuwe aanmelding als contentcreator kunt versturen.",
+			"submitFailed": "❌ Kon je aanmelding als contentcreator niet versturen: {error}",
+			"permissionDenied": "❌ Je hebt adminrechten nodig om aanmeldingen van contentcreators goed te keuren of af te wijzen.",
+			"reviewReasonRequired": "❌ Geef een reden voor je beslissing."
+		},
+		"live": {
+			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "Stream #{streamId}",
+			"endedTitle": "⚫ Live afgelopen",
+			"errorTitle": "⚠️ Verbindingsfout met live",
+			"sessionLine": "Streamsessie **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ Ongeldige aanmeldings-ID.",
+			"applicationNotFound": "❌ Aanmelding niet gevonden.",
+			"alreadyProcessed": "⚠️ Deze aanmelding is al afgehandeld.",
+			"approvedReply": "✅ Aanmelding #{appId} goedgekeurd.",
+			"rejectedReply": "❌ Aanmelding #{appId} afgewezen."
+		}
+	},
+	"notifications": {
+		"button": "🔔 Meldingen",
+		"title": "🔔 Meldingsvoorkeuren",
+		"description": "Kies voor welke kanalen je meldingen wilt krijgen. Je wordt persoonlijk getagd zodra er een melding is.",
+		"selectPlaceholder": "Kies meldingskanalen...",
+		"updated": "✅ Je meldingsvoorkeuren zijn bijgewerkt.",
+		"errors": {
+			"notConfigured": "❌ Meldingen zijn niet ingesteld voor deze server.",
+			"noRoles": "❌ Er zijn nog geen meldingskanalen ingesteld. Vraag een admin om meldingen in te stellen in het dashboard.",
+			"noneEnabled": "❌ Er staat geen enkele meldingsfunctie aan op deze server."
+		},
+		"hub": {
+			"title": "🔔 Meldingsvoorkeuren",
+			"description": "Kies welk soort meldingen je wilt beheren.",
+			"channels": "📢 Kanaalmeldingen",
+			"roblox": "🛍️ Meldingen voor Roblox-items",
+			"creators": "📡 Creatormeldingen"
+		},
+		"active": "**Actief:** {channels}",
+		"none": "**Actief:** nog niets."
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 Eigen supporterrol maken",
+			"editTitle": "💎 Eigen supporterrol bewerken",
+			"nameLabel": "Rolnaam",
+			"namePlaceholder": "Voer de naam van je eigen rol in...",
+			"colorLabel": "Rolkleur (hex/decimaal/naam)",
+			"colorPlaceholder": "#FF5733 of 16729395 of rood (optioneel)",
+			"iconLabel": "Rolicoon (emoji of afbeeldings-URL)",
+			"iconPlaceholder": "🔥 of https://example.com/icon.png (optioneel)"
+		},
+		"existing": {
+			"title": "💎 Eigen supporterrol",
+			"description": "Je hebt al een eigen rol: **{roleName}**\\n\\nKies een actie:",
+			"currentRole": "📋 Huidige rol"
+		},
+		"created": {
+			"title": "✅ Eigen supporterrol aangemaakt!",
+			"description": "Je eigen rol **{roleName}** is aangemaakt en aan je toegewezen!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Eigen icoon niet beschikbaar:** deze server heeft Server Boost-niveau 2 nodig voor eigen rolicoontjes (afbeeldingen). Je kunt in plaats daarvan een emoji gebruiken!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Let op:** het icoon kon niet worden ingesteld, maar de rol is wel aangemaakt.",
+			"roleDetails": "🎨 Rolgegevens",
+			"roleDetailsValue": "**Naam:** {name}\\n**Kleur:** {color}\\n**Icoon:** {icon}",
+			"role": "💎 Rol",
+			"iconStatusSet": "Ingesteld",
+			"iconStatusNone": "Geen",
+			"iconStatusFailed": "Mislukt (rol aangemaakt zonder icoon)",
+			"iconStatusInvalid": "Ongeldig formaat (rol aangemaakt zonder icoon)"
+		},
+		"updated": {
+			"title": "✅ Eigen supporterrol bijgewerkt!",
+			"description": "Je eigen rol **{roleName}** is bijgewerkt!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Eigen icoon niet beschikbaar:** deze server heeft Server Boost-niveau 2 nodig voor eigen rolicoontjes (afbeeldingen). Je kunt in plaats daarvan een emoji gebruiken!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Let op:** het icoon kon niet worden ingesteld, maar de rol is wel bijgewerkt.",
+			"roleDetails": "🎨 Rolgegevens",
+			"roleDetailsValue": "**Naam:** {name}\\n**Kleur:** {color}\\n**Icoon:** {icon}",
+			"role": "💎 Rol",
+			"iconStatusUnchanged": "Ongewijzigd",
+			"iconStatusUpdated": "Bijgewerkt",
+			"iconStatusRemoved": "Verwijderd",
+			"iconStatusFailed": "Mislukt (rol bijgewerkt zonder icoon)",
+			"iconStatusInvalid": "Ongeldig formaat (rol bijgewerkt zonder icoon)",
+			"iconFailedFallback": "Kon het icoon niet instellen. De rol is bijgewerkt, maar zonder eigen icoon.",
+			"iconNote": "⚠️ **Opmerking over het icoon:** {message}"
+		},
+		"deleted": {
+			"title": "✅ Eigen supporterrol verwijderd",
+			"description": "Je eigen rol **{roleName}** is verwijderd."
+		},
+		"buttons": {
+			"edit": "✏️ Rol bewerken",
+			"delete": "🗑️ Rol verwijderen"
+		},
+		"errors": {
+			"noRole": "❌ Je hebt geen eigen rol om te bewerken.",
+			"noRoleDelete": "❌ Je hebt geen eigen rol om te verwijderen.",
+			"alreadyHasRole": "❌ **Je hebt al een eigen rol**\\n\\nJe kunt maar één eigen supporterrol tegelijk hebben.\\n\\n💡 Gebruik **✏️ Rol bewerken** om hem te wijzigen, of eerst **🗑️ Rol verwijderen** als je een nieuwe wilt.",
+			"invalidName": "❌ **Ongeldige rolnaam**\\n\\nDe rolnaam moet tussen 1 en 100 tekens lang zijn.",
+			"boostRequired": "❌ **Eigen icoon niet beschikbaar**\\n\\nDeze server heeft **Server Boost-niveau 2** nodig voor eigen rolicoontjes (afbeeldingen).\\n\\n💡 **Tip:** je kunt in plaats daarvan een **emoji** gebruiken (zoals 🔥, ⭐ of een eigen server-emoji), daar zijn geen serverboosts voor nodig.",
+			"boostRequiredCreate": "❌ **Server Boost vereist**\\n\\nDeze server heeft **Server Boost-niveau 2** nodig om eigen supporterrollen met bepaalde functies te maken.\\n\\n💡 **Wat je kunt doen:**\\n- Vraag de serverbeheerders om de server naar niveau 2 te boosten\\n- Of vraag de staff van de server om hulp\\n\\n**Foutdetails:** {error}",
+			"createFailed": "❌ **Rol aanmaken mislukt**\\n\\nFout: {error}\\n\\nControleer of:\\n- de bot rollen mag aanmaken\\n- de bot rollen mag beheren\\n- de positie van de rol geldig is",
+			"updateFailed": "❌ **Rol bijwerken mislukt**\\n\\nFout: {error}\\n\\nControleer of:\\n- de bot rollen mag beheren\\n- de rolinstellingen geldig zijn",
+			"deleteFailed": "❌ Kon de rol niet verwijderen: {error}",
+			"failed": "❌ Kon het formulier voor een nieuwe rol niet openen: {error}",
+			"editFailed": "❌ Kon het bewerkformulier niet openen: {error}",
+			"createFailedReason": "❌ **Rol aanmaken mislukt**\n\n{reason}"
+		},
+		"colorDefault": "Standaard",
+		"anchor": {
+			"noBoosterRole": "Deze server heeft nog geen Server Booster-rol. Die verschijnt zodra iemand de server boost.",
+			"botTooLow": "De eigen rol van de bot moet boven {role} staan om supporterrollen te kunnen maken.",
+			"unknown": "Kon niet bepalen waar de supporterrol moet komen."
+		},
+		"iconErrors": {
+			"boost": "Deze server heeft Server Boost-niveau 2 nodig voor eigen rolicoontjes. Je kunt in plaats daarvan een emoji gebruiken!",
+			"invalidFormat": "Ongeldig URL-formaat of bestandstype"
+		}
+	},
+	"questEnroll": {
+		"menuButton": "🔮 Discord-quest",
+		"listTitle": "🔮 Discord-quests",
+		"listEmpty": "Er is nu geen actieve Discord-quest.",
+		"listAllClaimed": "✅ Je hebt alle actieve Discord-quests geclaimd.",
+		"listClaimedTag": "geclaimd",
+		"claimAllButton": "Alles claimen",
+		"alreadyClaimed": "Al geclaimd",
+		"alreadyClaimedDescription": "Je hebt je eerder ingeschreven voor **{questName}** en je beloning is al geclaimd. Elke quest kan maar één keer per lid worden geclaimd.",
+		"pendingTitle": "⏳ Bezig op de achtergrond",
+		"pendingDescription": "Je token wordt **niet** opgeslagen in onze database.\n\n**Risico:** Discord kan het **gebruikersaccount** dat bij dat token hoort beperken of verbannen; in sommige gevallen kan ook de **bot of server** worden getroffen. Dit is geen officieel gedrag van Discord — je hebt er zelf voor gekozen om door te gaan.",
+		"precheckNotFoundTitle": "Quest niet op dit account",
+		"precheckNotFoundDescription": "Deze quest staat niet in de lijst voor het Discord-account van je token. Open **Discord → Quests**, accepteer de quest als dat nodig is en probeer het opnieuw.",
+		"precheckExpiredTitle": "Quest verlopen",
+		"precheckExpiredDescription": "Deze quest is verlopen voor dat Discord-account.",
+		"precheckRewardClaimedTitle": "Beloning al geclaimd",
+		"precheckRewardClaimedDescription": "De beloning voor deze quest is al geclaimd op dit **Discord-account** (bijvoorbeeld nadat je hem in een andere server of in de Discord-app had afgerond). Automatisch inschrijven kan hem niet nog een keer claimen.",
+		"precheckCompletedTitle": "Quest al afgerond",
+		"precheckCompletedDescription": "De doelen van de quest zijn al voltooid op dit **Discord-account**. Claim een eventuele resterende beloning onder **Discord → Quests** als je dat nog niet hebt gedaan — automatisch inschrijven kan geen extra voortgang toevoegen.",
+		"claimAllPendingTitle": "⏳ Alle quests claimen",
+		"claimAllPendingDescription": "Inschrijven voor **{count}** quest(s), één voor één.\n\nJe token wordt **niet** opgeslagen in onze database.\n\n**Risico:** Discord kan het **gebruikersaccount** dat bij dat token hoort beperken of verbannen; in sommige gevallen kan ook de **bot of server** worden getroffen. Dit is geen officieel gedrag van Discord — je hebt er zelf voor gekozen om door te gaan.",
+		"claimAllNothingTitle": "Niets te claimen",
+		"claimAllNothingDescription": "Er is nu geen actieve quest waarvoor dit Discord-account kan worden ingeschreven.",
+		"autoQuestDisabled": "Automatisch inschrijven voor quests staat momenteel uit. Neem contact op met een serverbeheerder.",
+		"alreadyRunning": "Er loopt al een automatische quest van je. Wacht tot die klaar is voordat je een nieuwe start.",
+		"announceInChannel": "Elk resultaat wordt geplaatst in {channel}.",
+		"announceDisabled": "Er is geen questkanaal ingesteld, dus er wordt niets aangekondigd — geclaimde quests worden alleen gemarkeerd in de questlijst.",
+		"result": {
+			"reward": "Beloning",
+			"openInDiscord": "Openen in Discord",
+			"errorTitle": "Fout bij inschrijven voor quest",
+			"errorDescription": "{member} ({tag})\nQuest `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Discord-gebruikerstoken (niet opgeslagen)",
+			"placeholder": "ToS-risico: je account kan verbannen worden, bot/server ook. Plak één keer, nooit openbaar.",
+			"claimAllTitle": "Alles claimen (token — hoog risico)",
+			"enrollTitle": "Inschrijven (token — hoog risico)"
+		},
+		"tokenTooShort": "Token te kort.",
+		"invalidTokenTitle": "Ongeldig token",
+		"invalidTokenDescription": "Het token dat je hebt opgegeven lijkt ongeldig of verlopen.\n`{error}`",
+		"invalidQuestId": "Ongeldige quest-ID.",
+		"missingQuestOrToken": "Quest-ID ontbreekt of token is te kort.",
+		"taskTypes": {
+			"default": "Quest",
+			"WATCH_VIDEO": "Video kijken",
+			"WATCH_VIDEO_ON_MOBILE": "Video kijken (mobiel)",
+			"PLAY_ON_DESKTOP": "Spelen op computer",
+			"PLAY_ON_DESKTOP_V2": "Spelen op computer",
+			"PLAY_ON_XBOX": "Spelen op Xbox",
+			"PLAY_ON_PLAYSTATION": "Spelen op PlayStation",
+			"STREAM_ON_DESKTOP": "Streamen op computer",
+			"PLAY_ACTIVITY": "Activiteit",
+			"ACHIEVEMENT_IN_ACTIVITY": "Prestatie in activiteit",
+			"ACHIEVEMENT_IN_GAME": "Prestatie in game"
+		},
+		"task": {
+			"forMinute": "{task} gedurende {count} minuut",
+			"forMinutes": "{task} gedurende {count} minuten",
+			"forSeconds": "{task} gedurende {count} seconden",
+			"secondsTarget": "{task} · {count} seconden",
+			"target": "{task} · doel {count}"
+		},
+		"reward": {
+			"fallback": "Questbeloning",
+			"currency": "{count}× Discord-questvaluta"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Quest-inschrijving",
+				"description": "Deze quest is niet teruggegeven voor dat account. Open **Quests** in Discord, accepteer hem als dat nodig is en controleer of het token bij die gebruiker hoort."
+			},
+			"expired": {
+				"title": "Quest-inschrijving",
+				"description": "Die quest is verlopen."
+			},
+			"alreadyComplete": {
+				"title": "✅ Quest al voltooid",
+				"description": "**Beloning:** {reward}\nClaim hem in de Discord-app onder **Quests** als je dat nog niet hebt gedaan."
+			},
+			"enrollFailed": {
+				"title": "Inschrijven voor quest mislukt",
+				"description": "Discord gaf HTTP {status} terug bij het inschrijven. Misschien moet je de quest eerst in de app accepteren, of je token is ongeldig."
+			},
+			"complete": {
+				"title": "✅ Quest voltooid",
+				"description": "**Beloning:** {reward}\nOpen **Discord → Quests**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Alleen ingeschreven",
+				"description": "Ingeschreven voor **{quest}**. Er is geen uitvoerbare taak gevonden in de questconfiguratie — rond hem zo nodig af in de **Discord**-app.\n\n**Beloning:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Prestatiequest",
+				"description": "Applicatie-ID of prestatiedoel ontbreekt in de questconfiguratie. Rond **{task}** af in de Discord-app.\n\n**Beloning:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Prestatiequest afgerond",
+				"description": "**{quest}**\n**Beloning:** {reward}\nClaim hem in **Discord → Quests**"
+			},
+			"achievementIncomplete": {
+				"title": "Prestatiequest — onvolledig",
+				"description": "{error}\n\n**Beloning:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Activiteitsquest",
+				"description": "Kon je gebruikers-ID niet uit het token halen. Gebruik een normaal token van een **gebruiker** (geen bottoken).\n\n**Beloning:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Activiteitsquest afgerond",
+				"description": "**{quest}**\n**Beloning:** {reward}\nClaim hem in **Discord → Quests**"
+			},
+			"activityIncomplete": {
+				"title": "Activiteitsquest — onvolledig",
+				"description": "De voortgang werd niet op tijd afgerond{detail}.\n\n**Beloning:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Alleen ingeschreven",
+				"description": "Ingeschreven voor **{quest}**. **{task}** heeft een **applicatie-ID** nodig in de questconfiguratie voor API-heartbeats — rond hem af in de Discord-app (computer / console).\n\n**Beloning:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Quest afgerond",
+				"description": "**{quest}** ({task})\n**Beloning:** {reward}\nClaim hem in **Discord → Quests**"
+			},
+			"platformIncomplete": {
+				"title": "Quest — onvolledig",
+				"description": "De voortgang werd niet op tijd afgerond{detail}. Houd bij quests voor **stream** of **console** de echte app actief, of probeer het later opnieuw.\n\n**Beloning:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Alleen ingeschreven",
+				"description": "Ingeschreven voor **{quest}**. Niet-ondersteund taaktype (**{task}**) — rond hem af in de Discord-app.\n\n**Beloning:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Quest-inschrijving",
+				"description": "Kon de videoduur van deze quest niet lezen."
+			},
+			"videoDone": {
+				"title": "✅ Videoquest afgerond",
+				"description": "**{quest}**\n**Beloning:** {reward}\nClaim hem in **Discord → Quests**"
+			},
+			"videoIncomplete": {
+				"title": "Quest-inschrijving — onvolledig",
+				"description": "De voortgang heeft het doel niet op tijd bereikt{detail}. Kijk de video af in de Discord-app of probeer het opnieuw."
+			}
+		}
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"removed": "🔕 Je wordt niet meer getagd voor **{item}**.",
+			"saved": "🔔 Opgeslagen. Je wordt getagd voor **{item}** bij: {types}. {count} volgen dit.",
+			"noTypes": "niets",
+			"types": {
+				"price": {
+					"label": "Prijs",
+					"description": "De prijs die de verkoper vraagt verandert."
+				},
+				"lowest_resale_price": {
+					"label": "Doorverkoopprijs",
+					"description": "De laagste doorverkoopprijs verandert."
+				},
+				"units_available": {
+					"label": "Resterende voorraad",
+					"description": "Het aantal stuks dat nog te koop is verandert."
+				},
+				"total_quantity": {
+					"label": "Totale oplage",
+					"description": "Het totale aantal exemplaren verandert."
+				}
+			},
+			"item": {
+				"title": "🔔 Itemmeldingen",
+				"description": "Kies waarvoor je getagd wilt worden bij [{item}]({url}). Deselecteer alles om de meldingen voor dit item te stoppen.",
+				"active": "**Meldingen bij:** {types}",
+				"placeholder": "Kies waarover je een melding wilt krijgen..."
+			},
+			"menu": {
+				"title": "🛍️ Meldingen voor Roblox-items",
+				"description": "Je volgt {count} item(s). Kies er een om aan te passen waarvoor je meldingen krijgt.",
+				"empty": "Je volgt nog geen Roblox-items. Druk op 🔔 {button} onder een catalogusbericht om te beginnen.",
+				"placeholder": "Kies een item om te bewerken...",
+				"disableAll": "🔕 Alles uitzetten",
+				"disabledAll": "🔕 Meldingen uitgezet voor {count} item(s)."
+			},
+			"errors": {
+				"invalidItem": "❌ Dat catalogusitem kon niet uit deze knop worden gelezen.",
+				"memberNotFound": "❌ Je ledenprofiel is nog niet gesynchroniseerd. Probeer het zo meteen opnieuw."
+			}
+		},
+		"itemFallback": "Item #{id}",
+		"post": {
+			"free": "GRATIS",
+			"updatedTitle": "[Bijgewerkt] {name}",
+			"openOnRoblox": "Openen op Roblox",
+			"notifyMe": "Meld mij",
+			"fields": {
+				"category": "Categorie",
+				"price": "Prijs",
+				"creator": "Maker",
+				"quantity": "Aantal",
+				"favorites": "Favorieten",
+				"created": "Aangemaakt",
+				"notifications": "Meldingen",
+				"resalePrice": "Doorverkoopprijs",
+				"saleEnds": "Verkoop eindigt"
+			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "Nieuwe video",
+				"description": "Er verschijnt een nieuwe video, short of VOD."
+			},
+			"live": {
+				"label": "Livestream",
+				"description": "De creator gaat live."
+			},
+			"post": {
+				"label": "Nieuwe post",
+				"description": "Er verschijnt een nieuwe YouTube-communitypost of TikTok-post."
+			}
+		},
+		"saved": "🔔 Opgeslagen. Je wordt getagd voor **{creator}** bij: {types}. {count} volgen dit.",
+		"removed": "🔕 Je wordt niet meer getagd voor **{creator}**.",
+		"noTypes": "niets",
+		"creator": {
+			"title": "🔔 Creatormeldingen",
+			"description": "Kies waarvoor je getagd wilt worden bij [{creator}]({url}) op {platform}. Deselecteer alles om te ontvolgen.",
+			"active": "**Meldingen bij:** {types}",
+			"placeholder": "Kies waarover je een melding wilt krijgen..."
+		},
+		"menu": {
+			"title": "📡 Creatormeldingen",
+			"description": "Je volgt {count} creator(s). Kies er een om aan te passen waarvoor je meldingen krijgt.",
+			"empty": "Je volgt nog geen creators. Druk op ➕ Volg een creator om te beginnen.",
+			"placeholder": "Kies een creator om te bewerken...",
+			"follow": "➕ Volg een creator",
+			"recent": "🕘 Recente meldingen",
+			"disableAll": "🔕 Alles ontvolgen",
+			"disabledAll": "🔕 {count} creator(s) ontvolgd."
+		},
+		"follow": {
+			"title": "➕ Volg een creator",
+			"description": "Kies het platform en plak daarna de profiellink of gebruikersnaam van de creator.",
+			"modalTitle": "Volgen op {platform}",
+			"inputLabel": "{platform}-link of gebruikersnaam"
+		},
+		"recent": {
+			"title": "🕘 Recente creatormeldingen",
+			"empty": "Nog geen creatormeldingen. Ze verschijnen hier zodra een gevolgde creator iets plaatst."
+		},
+		"errors": {
+			"invalidCreator": "❌ Die creatorlink of gebruikersnaam kon niet worden gelezen.",
+			"memberNotFound": "❌ Je ledenprofiel is nog niet gesynchroniseerd. Probeer het zo meteen opnieuw.",
+			"notFound": "❌ Geen creator gevonden met die link of gebruikersnaam.",
+			"tiktokCooling": "⏳ TikTok beperkt zoekopdrachten op dit moment. Probeer het over een paar minuten opnieuw.",
+			"lookupFailed": "❌ Kon die creator nu niet opzoeken. Probeer het later opnieuw."
+		},
+		"post": {
+			"platform": "Platform",
+			"type": "Type",
+			"notifications": "Meldingen",
+			"openOn": "Openen op {platform}",
+			"notifyMe": "Meld mij"
+		}
+	},
+	"moderation": {
+		"button": "🔨 Moderatie",
+		"selectUser": "Kies het lid dat je wilt modereren.",
+		"selectUserPlaceholder": "Kies een lid",
+		"selectAction": "Kies een actie voor {member}.",
+		"selectActionPlaceholder": "Kies een actie",
+		"actions": {
+			"warn": "Waarschuwen",
+			"timeout": "Time-out",
+			"untimeout": "Time-out opheffen",
+			"kick": "Kicken",
+			"ban": "Verbannen",
+			"tempban": "Tijdelijk verbannen",
+			"clearwarns": "Waarschuwingen wissen"
+		},
+		"modal": {
+			"reason": "Reden",
+			"duration": "Duur (bijv. 10 min, 2 uur, 7 dagen)"
+		},
+		"done": "✅ Actie \"{action}\" toegepast op {member}. Zaak #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ Voer een duur in zoals 10 min, 2 uur of 7 dagen.",
+		"notAllowed": "❌ De servereigenaar en bots kunnen niet worden gemodereerd.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ Lid gewaarschuwd",
+				"timeout": "🔇 Lid in time-out",
+				"untimeout": "🔊 Time-out opgeheven",
+				"kick": "👢 Lid gekickt",
+				"ban": "🔨 Lid verbannen",
+				"tempban": "⏳ Lid tijdelijk verbannen",
+				"unban": "🕊️ Ban opgeheven",
+				"unwarn": "🧹 Waarschuwing verwijderd",
+				"clearwarns": "🧹 Waarschuwingen gewist",
+				"tempban_expired": "⌛ Tijdelijke ban verlopen"
+			},
+			"bulkTitles": {
+				"role_add": "➕ Rol in bulk toegevoegd",
+				"role_remove": "➖ Rol in bulk verwijderd"
+			},
+			"title": "{action} · Zaak #{case}",
+			"description": "Zaak **#{case}** vastgelegd voor {member}.",
+			"fields": {
+				"member": "👤 Lid",
+				"staff": "🛡️ Staff",
+				"source": "📍 Bron",
+				"reason": "📝 Reden",
+				"duration": "⏱️ Duur",
+				"activeWarnings": "📊 Actieve waarschuwingen",
+				"role": "🎭 Rol"
+			},
+			"durationValue": "{duration} (eindigt {ends})",
+			"noReason": "Geen reden opgegeven",
+			"unknown": "Onbekend",
+			"automatic": "Automatisch",
+			"staffFallback": "staff",
+			"sources": {
+				"panel": "paneel",
+				"menu": "menu",
+				"discord": "discord",
+				"auto": "auto"
+			},
+			"bulkSummary": "**{done}** gelukt · {failed} mislukt",
+			"reasons": {
+				"unwarn": "Waarschuwing #{case} verwijderd",
+				"clearwarns": "{count} waarschuwing(en) gewist",
+				"escalation": "{count} actieve waarschuwingen bereikt",
+				"tempbanExpired": "Tijdelijke ban van zaak #{case} verlopen"
+			}
+		},
+		"memberDm": {
+			"server": "**Server:** {server}",
+			"reason": "**Reden:** {reason}",
+			"duration": "**Duur:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} d",
+			"h": "{n} u",
+			"m": "{n} min",
+			"s": "{n} s"
+		}
+	},
+	"setup": {
+		"categoryName": "{botName}-menu",
+		"channels": {
+			"menu": "「💻」menu",
+			"bot_updates": "「⚙️」bot-updates",
+			"welcomer": "「🚪」welkom",
+			"booster": "「🚀」boosters",
+			"moderation": "「🔨」moderatie",
+			"leveling": "「🆙」levels",
+			"giveaway": "「🎁」giveaways",
+			"staff_rating": "「⭐」staff-beoordelingen",
+			"discord_quest_notifier": "「📜」discord-quests",
+			"content_creator": "「📽️」contentcreators",
+			"roblox_catalog_notifier": "「👗」roblox-catalogus",
+			"items": "「🛍️」items",
+			"minigames": "「🎲」minigames"
+		},
+		"language": {
+			"title": "🌐 Kies de servertaal",
+			"description": "Kies de taal voor deze server. Daarin krijgen de kanalen die `/setup` aanmaakt hun naam, en de taal wordt gebruikt voor het menu, goedkeuringsberichten, elk openbaar botbericht en de chat en spraak van de AI.\n\nLeden kunnen in het menu nog steeds hun eigen taal kiezen voor hun privéantwoorden en DM's. Je kunt dit later wijzigen in het webpaneel onder **Configuration → Main**.",
+			"placeholder": "Kies de servertaal",
+			"working": "⏳ Bezig met instellen in **{language}**…",
+			"applied": "🌐 Servertaal: **{language}**"
+		},
+		"commandDescription": "Stel de bot in: kies de servertaal en maak dan het menu en de kanalen aan. Alleen admins."
+	},
+	"items": {
+		"common": {
+			"footer": "Items",
+			"aMemberActor": "Een lid",
+			"aMemberTarget": "een lid",
+			"disguisedMember": "Een mysterieus lid 🎭",
+			"someone": "Iemand",
+			"item": "item",
+			"anItem": "een item",
+			"them": "je doelwit",
+			"until": " (eindigt {time})",
+			"activeUntil": " (actief, eindigt {time})",
+			"luckBonus": " (+{percent}% geluk 🍀)",
+			"luckTaxDiscount": " (−{percent}% belasting dankzij geluk 🍀)",
+			"addressed": "{member}, {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "Diefstal geblokkeerd",
+				"blockedDescription": "Het **Schild** van {target} blokkeerde de diefstal van {actor}!",
+				"immuneTitle": "Diefstal opgevangen door immuniteit",
+				"immuneDescription": "{target} is nog immuun. De diefstal van {actor} deed niets en **{item}** is verloren gegaan."
+			},
+			"bomb": {
+				"blockedTitle": "Bom geblokkeerd",
+				"blockedDescription": "Het **Schild** van {target} blokkeerde de bom van {actor}!",
+				"immuneTitle": "Bom opgevangen door immuniteit",
+				"immuneDescription": "{target} is nog immuun. De bom van {actor} deed niets en **{item}** is verloren gegaan."
+			},
+			"leech": {
+				"blockedTitle": "Bloedzuiger geblokkeerd",
+				"blockedDescription": "Het **Schild** van {target} blokkeerde de bloedzuiger van {actor}!",
+				"immuneTitle": "Bloedzuiger opgevangen door immuniteit",
+				"immuneDescription": "{target} is nog immuun. De bloedzuiger van {actor} deed niets en **{item}** is verloren gegaan."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "Aanval teruggekaatst",
+			"reflectedDescription": "{target} kaatste de aanval terug naar {actor}!",
+			"withItem": " met **{item}**",
+			"refundedValue": "{target} kreeg {xp} terug",
+			"bountyValue": "{actor} streek ook {xp} op",
+			"immuneValue": "De immuniteit van {target} eindigt {time}",
+			"steal": {
+				"title": "Lid beroofd!",
+				"description": "{actor} heeft {target} beroofd{withItem}!"
+			},
+			"bomb": {
+				"title": "Lid gebombardeerd!",
+				"description": "{actor} heeft {target} gebombardeerd{withItem}!"
+			}
+		},
+		"fields": {
+			"skimRate": "Aftappercentage",
+			"received": "Ontvangen",
+			"tax": "Belasting",
+			"bounty": "Premie",
+			"xpLostByAttacker": "XP verloren door aanvaller",
+			"attacker": "Aanvaller",
+			"victim": "Slachtoffer",
+			"xpStolen": "XP gestolen",
+			"xpDestroyed": "XP vernietigd",
+			"insuranceRefund": "Uitkering verzekering",
+			"bountyCollected": "Premie opgestreken",
+			"immunity": "Immuniteit"
+		},
+		"leech": {
+			"title": "Bloedzuiger vastgezet",
+			"description": "{actor} zette een bloedzuiger op {target}: zolang die actief is, wordt een deel van de verdiende XP afgetapt."
+		},
+		"gift": {
+			"title": "Cadeau verstuurd",
+			"description": "{actor} heeft {target} een cadeau gestuurd!"
+		},
+		"bounty": {
+			"title": "Premie uitgezet",
+			"description": "{actor} zette een premie op het hoofd van {target}. Wie die als volgende besteelt of bombardeert, strijkt de premie op."
+		},
+		"disguise": {
+			"title": "Een lid is opgegaan in de menigte",
+			"description": "Iemand heeft een **Vermomming** aangetrokken{until}. Hun aanvallen tonen nu geen naam meer en ze zijn van de ranglijst verdwenen."
+		},
+		"boost": {
+			"title": "Boost geactiveerd",
+			"description": "{actor} heeft een boost geactiveerd{until}. Verdiensten worden vermenigvuldigd zolang hij duurt."
+		},
+		"shield": {
+			"title": "Schild geactiveerd",
+			"description": "{actor} is nu beschermd: inkomende diefstallen, bommen en bloedzuigers worden geblokkeerd{until}."
+		},
+		"reflect": {
+			"title": "Weerkaatsing geactiveerd",
+			"description": "{actor} kaatst de volgende aanval terug naar de aanvaller{until}."
+		},
+		"insurance": {
+			"title": "Verzekering geactiveerd",
+			"description": "{actor} krijgt {percent}%{luck} van het verlies terug bij de volgende diefstal of bom{until}."
+		},
+		"luck": {
+			"title": "Geluk geactiveerd",
+			"description": "{actor} heeft nu +{percent}% geluk op stelen, bommen, minigames, spioneren, bloedzuigers, cadeaubelasting, verzekering, vriendenboost en winkelprijzen{until}."
+		},
+		"spyCaught": {
+			"title": "Spion betrapt",
+			"description": "{target} betrapte {spy} op spioneren. Er is geen info buitgemaakt."
+		},
+		"adminGift": {
+			"title": "Er is een cadeau aangekomen",
+			"description": "{member} heeft **{quantity}× {item}** van de admin gekregen. Bekijk je items!"
+		},
+		"expired": {
+			"boost": {
+				"title": "Boost afgelopen",
+				"text": "Je **{value}× Boost** is uitgewerkt."
+			},
+			"shield": {
+				"title": "Schild afgelopen",
+				"text": "Je **Schild** is uitgewerkt. Je kunt weer aangevallen worden."
+			},
+			"leech": {
+				"title": "Bloedzuiger afgelopen",
+				"text": "Je **Bloedzuiger van {value}%** is afgelopen.",
+				"textWithTarget": "Je **Bloedzuiger van {value}%** op {target} is afgelopen."
+			},
+			"reflect": {
+				"title": "Weerkaatsing afgelopen",
+				"text": "Je **Weerkaatsing** is uitgewerkt."
+			},
+			"insurance": {
+				"title": "Verzekering afgelopen",
+				"text": "Je **Verzekering** is verlopen."
+			},
+			"disguise": {
+				"title": "Vermomming afgelopen",
+				"announcement": "Een lid heeft de vermomming afgezet en is weer zichtbaar."
+			},
+			"luck": {
+				"title": "Geluk afgelopen",
+				"text": "Je **+{value}% Geluk** is uitgewerkt."
+			}
+		},
+		"immunityEnded": {
+			"title": "Immuniteit afgelopen",
+			"description": "{member} is niet langer immuun. Weer vogelvrij!",
+			"anonymous": "Een lid is niet langer immuun."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "Stelen weer beschikbaar",
+				"text": "Je cooldown voor stelen is voorbij. Je kunt weer stelen!"
+			},
+			"bomb": {
+				"title": "Bom weer beschikbaar",
+				"text": "Je cooldown voor bommen is voorbij. Je kunt weer een bom gooien!"
+			},
+			"insurance": {
+				"title": "Verzekering weer beschikbaar",
+				"text": "Je cooldown voor verzekeringen is voorbij. Je kunt weer een verzekering activeren!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "Een lid",
+		"footer": "Minigames",
+		"win": {
+			"title": "🎲 Minigame gewonnen!",
+			"description": "{member} zette {wager} in op {multiplier}× en **won**!"
+		},
+		"lose": {
+			"title": "🎲 Minigame verloren",
+			"description": "{member} zette {wager} in op {multiplier}× en **verloor alles**."
+		},
+		"fields": {
+			"payout": "Uitbetaling",
+			"netGain": "Nettowinst",
+			"winChance": "Winkans",
+			"xpLost": "XP verloren"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ Spin voor een thema-effect",
+			"description": "{member} draaide voor {cost} en kreeg **{effect}**!"
+		},
+		"fields": {
+			"effect": "Effect",
+			"xpSpent": "XP uitgegeven",
+			"variant": "Variant"
+		}
+	},
+	"tasks": {
+		"footer": "Taken",
+		"rarity": {
+			"common": "Gewoon",
+			"uncommon": "Ongewoon",
+			"rare": "Zeldzaam",
+			"epic": "Episch",
+			"legendary": "Legendarisch",
+			"mythic": "Mythisch"
+		},
+		"milestones": {
+			"7": "Eén week",
+			"30": "Eén maand",
+			"100": "Honderd dagen",
+			"365": "Eén jaar"
+		},
+		"login": {
+			"jackpotTitle": "🎁 Jackpot van dag {day} — {rarity}!",
+			"dropTitle": "✨ Drop: {rarity}!",
+			"description": "{member} kreeg op dag {day} een **{rarity}** item!",
+			"fields": {
+				"item": "Item",
+				"rarity": "Zeldzaamheid",
+				"worth": "Waarde"
+			}
+		},
+		"streak": {
+			"day": "{count} dag",
+			"days": "{count} dagen",
+			"reset": {
+				"title": "💔 Streak verloren",
+				"description": "{member} heeft **{days}** gemist en een streak van **{previous} dagen** verloren. Terug naar dag 1.",
+				"descriptionBurned": "{member} heeft **{days}** gemist en een streak van **{previous} dagen** verloren. {burned} Terug naar dag 1.",
+				"burnedOne": "Er is 1 freeze verbruikt om hem te redden.",
+				"burnedMany": "Er zijn {count} freezes verbruikt om hem te redden."
+			},
+			"frozen": {
+				"title": "🧊 Streak bevroren",
+				"description": "{member} heeft **{days}** gemist — dankzij {freezes} blijft de streak van **{streak} dagen** in leven.",
+				"one": "een streak-freeze",
+				"many": "{count} streak-freezes"
+			},
+			"fields": {
+				"longest": "Langste ooit",
+				"freezesUsed": "Freezes gebruikt",
+				"freezesLeft": "Freezes over"
+			},
+			"milestone": {
+				"title": "{emoji} Streak: {label}",
+				"description": "{member} heeft net een streak van **{streak} dagen** bereikt!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 Welkom op de server!",
+		"fields": {
+			"accountCreated": "📅 Account aangemaakt",
+			"memberCount": "👥 Aantal leden",
+			"invitedBy": "📨 Uitgenodigd door"
+		},
+		"memberNumber": "Lid #{count}",
+		"inviterCount": "{inviter} ({count} uitnodigingen)",
+		"inviter": {
+			"vanity": "de aangepaste uitnodigingslink",
+			"server": "de uitnodigingslink van de server",
+			"someone": "iemand"
+		},
+		"inviteSources": {
+			"invite": "Discord-link",
+			"personal": "Persoonlijke link",
+			"vanity": "Aangepaste link",
+			"server": "Serverlink",
+			"manual": "Ingesteld door staff",
+			"unknown": "Onbekend"
+		},
+		"accountAge": {
+			"today": "vandaag",
+			"oneDay": "1 dag geleden",
+			"days": "{days} dagen geleden"
+		},
+		"unknownServer": "Onbekende server",
+		"defaultMessages": [
+			"👋 Welkom {user} op {server}! Je bent lid #{memberCount} (account aangemaakt: {accountAge}).",
+			"🎉 {user} is lid geworden van {server}! Lid #{memberCount} | Account aangemaakt: {accountAge}.",
+			"🌟 Welkom {user}! Je hoort nu bij {server} (lid #{memberCount}, account aangemaakt: {accountAge}).",
+			"🚀 {user} is net bij {server} gekomen! Lid #{memberCount} | Account aangemaakt: {accountAge}.",
+			"🎊 Hoi {user}! Welkom op {server}! Je bent lid #{memberCount} (account aangemaakt: {accountAge})."
+		]
+	},
+	"booster": {
+		"title": "💎 Bedankt voor je boost!",
+		"fields": {
+			"boostLevel": "🚀 Boostniveau",
+			"totalBoosts": "✨ Totaal aantal boosts",
+			"boostedSince": "📅 Boost sinds"
+		},
+		"level": "Niveau {level}",
+		"justNow": "Zojuist",
+		"unknownServer": "Onbekende server",
+		"defaultMessages": [
+			"🎉 {user} heeft {server} net geboost! Huidig niveau: {boostLevel} | Totaal aantal boosts: {totalBoosts}.",
+			"💎 Bedankt {user} voor het boosten van {server}! We zitten nu op niveau {boostLevel} met {totalBoosts} boosts.",
+			"🚀 {user} heeft {server} geboost! Serverniveau: {boostLevel} | Boosts: {totalBoosts}.",
+			"🔥 Enorm bedankt, {user}, voor het boosten van {server}! Totaal aantal boosts: {totalBoosts} (niveau {boostLevel}).",
+			"⭐ {user} gaf {server} net een boost! Niveau {boostLevel} met {totalBoosts} boosts."
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "Beloningen",
+			"tasks": "Taken",
+			"game": "🎮 Game",
+			"publisher": "🏢 Uitgever",
+			"expires": "⏳ Verloopt"
+		},
+		"test": "_Testmelding — quest-meldingen werken._",
+		"openInDiscord": "Openen in Discord"
+	},
+	"forwarder": {
+		"title": "Bericht uit {channel}",
+		"additionalAttachments": "Extra bijlagen"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "Ik kon nu geen antwoord genereren. Probeer het opnieuw.",
+			"keyRejected": "De API-sleutel van de AI is geweigerd. Controleer de instellingen in het botpaneel.",
+			"rateLimited": "De AI-dienst krijgt nu te veel verzoeken. Probeer het zo meteen opnieuw.",
+			"failed": "Er ging iets mis bij het verbinden met de AI-dienst."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Onbekend commando**: `/{command}`\n\nDit commando bestaat niet. Alleen `/setup` is beschikbaar.",
+			"failed": "❌ **Commandofout**: `/{command}`\n\nHet commando kon niet goed worden uitgevoerd.\n**Fout**: {error}\n\nProbeer het opnieuw of neem contact op met een beheerder als het probleem blijft.",
+			"unexpected": "❌ **Onverwachte fout**: `/{command}`\n\nEr is een onverwachte fout opgetreden. Probeer het opnieuw.",
+			"critical": "❌ **Kritieke fout**: er is een onverwachte fout opgetreden bij het verwerken van je commando.\n\nProbeer het later opnieuw of neem contact op met een beheerder."
+		}
+	}
+}

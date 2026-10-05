@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../home.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { serverLanguageList } from '$lib/languages.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, publicSiteOrigin, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
@@ -248,8 +249,8 @@
 		{
 			icon: 'fa-terminal',
 			title: 'One-command setup',
-			desc: '/setup creates every channel and wires it to the module that uses it.',
-			more: 'Nothing to name or pick by hand.',
+			desc: '/setup creates every channel in your server language and wires it to the module that uses it.',
+			more: 'Pick the language once. Nothing else to name or pick by hand.',
 			stat: (s: Totals): Live[] => [{ label: 'Channels wired', value: fmt(s.channels_total) }]
 		},
 		{
@@ -310,8 +311,8 @@
 		{
 			icon: 'fa-language',
 			title: 'Multi-language',
-			desc: 'English, Indonesian, German, Spanish, Arabic, Malay and Simplified Chinese across Discord flows.',
-			more: 'Buttons, selects and labels all follow the choice.'
+			desc: `Each server picks its language: ${serverLanguageList('or')}.`,
+			more: 'Channel names, the menu, every public post and the AI follow it. Members can still pick their own language for private replies.'
 		},
 		{
 			icon: 'fa-hand',

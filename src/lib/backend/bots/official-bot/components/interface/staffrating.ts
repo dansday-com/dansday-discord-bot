@@ -10,7 +10,8 @@ import {
 } from 'discord.js';
 import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate, t } from '../../i18n.js';
+import { translate, serverTranslator, type Translator } from '../../i18n.js';
+import { parseYesNo } from '../../localizedInput.js';
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
@@ -23,9 +24,9 @@ async function getCategoryLabel(guildId, userId, category) {
 	return await translate(key, guildId, userId);
 }
 
-function getCategoryLabelEnglish(category) {
+function getCategoryLabelFor(tr: Translator, category) {
 	const key = `staffRating.categories.${category}`;
-	return t(key, 'en') || category;
+	return tr(key) || category;
 }
 
 async function buildStaffRatingComponents(guild, userId, staffUserId, selectedRating, selectedCategory) {
@@ -184,6 +185,7 @@ function truncateDescription(text) {
 }
 
 function buildReportLogEmbed({
+	tr,
 	embedConfig,
 	title,
 	staffUserId,
@@ -199,6 +201,7 @@ function buildReportLogEmbed({
 	reviewedByUserId = undefined,
 	reviewedByFieldLabel = undefined
 }: {
+	tr: Translator;
 	embedConfig: { COLOR: number; FOOTER: string };
 	title: string;
 	staffUserId: string;
@@ -216,46 +219,46 @@ function buildReportLogEmbed({
 }) {
 	const fields = [
 		{
-			name: t('staffRating.channelEmbed.fieldStaffMember', 'en'),
+			name: tr('staffRating.channelEmbed.fieldStaffMember'),
 			value: `<@${staffUserId}>`,
 			inline: true
 		},
 		{
-			name: t('staffRating.channelEmbed.fieldRating', 'en'),
+			name: tr('staffRating.channelEmbed.fieldRating'),
 			value: `${rating}/5`,
 			inline: true
 		},
 		{
-			name: t('staffRating.channelEmbed.fieldCategory', 'en'),
+			name: tr('staffRating.channelEmbed.fieldCategory'),
 			value: categoryLabel,
 			inline: true
 		},
 		{
-			name: t('staffRating.channelEmbed.fieldReporter', 'en'),
+			name: tr('staffRating.channelEmbed.fieldReporter'),
 			value: reporterDisplay,
 			inline: true
 		},
 		{
-			name: t('staffRating.channelEmbed.fieldStatus', 'en'),
+			name: tr('staffRating.channelEmbed.fieldStatus'),
 			value: statusText,
 			inline: true
 		}
 	];
 	if (reviewedByUserId) {
 		fields.push({
-			name: reviewedByFieldLabel || t('staffRating.embed.reviewedBy', 'en'),
+			name: reviewedByFieldLabel || tr('staffRating.embed.reviewedBy'),
 			value: `<@${reviewedByUserId}>`,
 			inline: true
 		});
 	}
 	fields.push({
-		name: t('staffRating.channelEmbed.fieldDescription', 'en'),
+		name: tr('staffRating.channelEmbed.fieldDescription'),
 		value: truncateDescription(description),
 		inline: false
 	});
 	if (staffReviewReason) {
 		fields.push({
-			name: staffReviewFieldLabel || t('staffRating.embed.staffDecision', 'en'),
+			name: staffReviewFieldLabel || tr('staffRating.embed.staffDecision'),
 			value: truncateDescription(staffReviewReason),
 			inline: false
 		});
@@ -265,7 +268,7 @@ function buildReportLogEmbed({
 		.setTitle(title)
 		.addFields(fields)
 		.setFooter({
-			text: `${embedConfig.FOOTER} ${t('staffRating.channelEmbed.footerReportSuffix', 'en', { reportId })}`
+			text: `${embedConfig.FOOTER} ${tr('staffRating.channelEmbed.footerReportSuffix', { reportId })}`
 		})
 		.setTimestamp();
 	return embed;
@@ -585,8 +588,7 @@ export async function handleStaffRatingModal(interaction) {
 			return;
 		}
 
-		const anonymousValue = interaction.fields.getTextInputValue('anonymous')?.trim().toLowerCase() || 'no';
-		const isAnonymous = anonymousValue === 'yes' || anonymousValue === 'ya';
+		const isAnonymous = parseYesNo(interaction.fields.getTextInputValue('anonymous')) === true;
 
 		const botConfig = getBotConfig();
 		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
@@ -670,17 +672,19 @@ export async function handleStaffRatingModal(interaction) {
 		});
 
 		const reportChannelId = await STAFF_RATING.getReviewChannel(guild.id);
-		const categoryLabel = getCategoryLabelEnglish(category);
 		if (reportChannelId) {
 			const reportChannel = guild.channels.cache.get(reportChannelId) || (await guild.channels.fetch(reportChannelId).catch(() => null));
 			if (reportChannel && reportChannel.isTextBased()) {
-				const reporterDisplay = isAnonymous ? t('staffRating.channelEmbed.anonymousReporter', 'en') : `<@${interaction.user.id}>`;
-				const pendingTitle = t('staffRating.channelEmbed.pendingTitle', 'en');
-				const pendingStatus = t('staffRating.channelEmbed.pendingStatus', 'en');
-				const approveLabel = t('staffRating.channelEmbed.approveButton', 'en');
-				const rejectLabel = t('staffRating.channelEmbed.rejectButton', 'en');
+				const tr = await serverTranslator(guild.id);
+				const categoryLabel = getCategoryLabelFor(tr, category);
+				const reporterDisplay = isAnonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${interaction.user.id}>`;
+				const pendingTitle = tr('staffRating.channelEmbed.pendingTitle');
+				const pendingStatus = tr('staffRating.channelEmbed.pendingStatus');
+				const approveLabel = tr('staffRating.channelEmbed.approveButton');
+				const rejectLabel = tr('staffRating.channelEmbed.rejectButton');
 
 				const logEmbed = buildReportLogEmbed({
+					tr,
 					embedConfig,
 					title: pendingTitle,
 					staffUserId,
@@ -844,7 +848,7 @@ export async function handleStaffRatingDecisionModal(interaction) {
 		}
 
 		if (report.status !== 'pending') {
-			await interaction.editReply({ content: '⚠️ This report has already been processed.' }).catch(() => null);
+			await interaction.editReply({ content: await translate('staffRating.review.alreadyProcessed', guild.id, interaction.user.id) }).catch(() => null);
 			if (sourceMessage) {
 				await sourceMessage.edit({ components: [] }).catch(() => null);
 			}
@@ -852,10 +856,11 @@ export async function handleStaffRatingDecisionModal(interaction) {
 		}
 
 		const embedConfig = await getEmbedConfig(guild.id);
-		const categoryLabelEnglish = getCategoryLabelEnglish(report.category);
-		const reporterDisplay = report.is_anonymous ? t('staffRating.channelEmbed.anonymousReporter', 'en') : `<@${report.reporter_discord_id}>`;
-		const staffDecisionLabel = t('staffRating.embed.staffDecision', 'en');
-		const reviewedByLabel = t('staffRating.embed.reviewedBy', 'en');
+		const tr = await serverTranslator(guild.id);
+		const categoryLabelServer = getCategoryLabelFor(tr, report.category);
+		const reporterDisplay = report.is_anonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${report.reporter_discord_id}>`;
+		const staffDecisionLabel = tr('staffRating.embed.staffDecision');
+		const reviewedByLabel = tr('staffRating.embed.reviewedBy');
 
 		let statusText;
 		let title;
@@ -877,33 +882,34 @@ export async function handleStaffRatingDecisionModal(interaction) {
 				},
 				{
 					channelContext: {
-						category: categoryLabelEnglish,
+						category: categoryLabelServer,
 						feedback: report.description
 					}
 				}
 			);
 			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
 			await notifyReporterOfDecision(guild, report, 'staffRating.dm.approved', categoryLabelForDM, reviewReason);
-			statusText = t('staffRating.embed.statusApproved', 'en');
-			title = t('staffRating.channelEmbed.titleApproved', 'en');
-			replyMessage = `✅ Report #${report.id} approved.`;
+			statusText = tr('staffRating.embed.statusApproved');
+			title = tr('staffRating.channelEmbed.titleApproved');
+			replyMessage = await translate('staffRating.review.approvedReply', guild.id, interaction.user.id, { reportId: report.id });
 			color = 0x22c55e;
 		} else {
 			await db.updateStaffReportStatus(report.id, 'rejected', moderatorDbMember.id, reviewReason);
 			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
 			await notifyReporterOfDecision(guild, report, 'staffRating.dm.rejected', categoryLabelForDM, reviewReason);
-			statusText = t('staffRating.embed.statusRejected', 'en');
-			title = t('staffRating.channelEmbed.titleRejected', 'en');
-			replyMessage = `❌ Report #${report.id} rejected.`;
+			statusText = tr('staffRating.embed.statusRejected');
+			title = tr('staffRating.channelEmbed.titleRejected');
+			replyMessage = await translate('staffRating.review.rejectedReply', guild.id, interaction.user.id, { reportId: report.id });
 			color = embedConfig.COLOR;
 		}
 
 		const updatedEmbed = buildReportLogEmbed({
+			tr,
 			embedConfig,
 			title,
 			staffUserId: report.staff_discord_id,
 			rating: report.rating,
-			categoryLabel: categoryLabelEnglish,
+			categoryLabel: categoryLabelServer,
 			description: report.description,
 			reporterDisplay,
 			statusText,

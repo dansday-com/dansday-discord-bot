@@ -12,6 +12,7 @@ import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
 import { buildKnowledgeTools, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
+import { aiLanguageInstruction, translateServer } from '../i18n.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
@@ -417,10 +418,11 @@ async function handleMessageCreate(message) {
 			const speakerNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>.`;
 			const userContent = `${speakerNote}\n\n${quotedNote}${ownText}`;
 
-			const [conversation, wikis, toolFeatures] = await Promise.all([
+			const [conversation, wikis, toolFeatures, languageNote] = await Promise.all([
 				readAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT),
 				getEnabledWikis(botConfig.id).catch(() => []),
-				resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null)
+				resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null),
+				aiLanguageInstruction(message.guild.id, 'chat').catch(() => '')
 			]);
 
 			const serverTools = buildServerTools(toolFeatures);
@@ -428,7 +430,9 @@ async function handleMessageCreate(message) {
 
 			const today = new Date().toISOString().slice(0, 10);
 			const serverDataNote = serverTools.length || accountTools.length ? SERVER_DATA_NOTE : '';
-			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', PING_NOTE, serverDataNote].filter(Boolean).join('\n\n');
+			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', languageNote, PING_NOTE, serverDataNote]
+				.filter(Boolean)
+				.join('\n\n');
 
 			const userMessage = attachmentParts.length
 				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
@@ -490,7 +494,7 @@ async function handleMessageCreate(message) {
 					await message.reply({ files: imageFiles, allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
 					return;
 				}
-				await message.reply({ content: 'I could not generate a response right now. Please try again.' }).catch(() => {});
+				await message.reply({ content: await translateServer('ai.errors.noResponse', message.guild.id) }).catch(() => {});
 				return;
 			}
 
@@ -527,13 +531,9 @@ async function handleMessageCreate(message) {
 		const status = error instanceof OpenAI.APIError ? error.status : null;
 		await logger.log(`❌ AI chat error${status ? ` (${status})` : ''}: ${error.message}`);
 
-		const notice =
-			status === 401 || status === 403
-				? 'The AI API key was rejected. Please check the bot panel settings.'
-				: status === 429
-					? 'The AI service is rate limited right now. Please try again in a moment.'
-					: 'Something went wrong while contacting the AI service.';
-		await message.reply({ content: notice }).catch(() => {});
+		const noticeKey = status === 401 || status === 403 ? 'ai.errors.keyRejected' : status === 429 ? 'ai.errors.rateLimited' : 'ai.errors.failed';
+		const notice = await translateServer(noticeKey, message.guild?.id ?? '').catch(() => '');
+		if (notice) await message.reply({ content: notice }).catch(() => {});
 	}
 }
 

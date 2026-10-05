@@ -6,9 +6,12 @@ const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { logger } from '../utils/index.js';
-import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
+import { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
+import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
 import { levelRewardsFromSettings, type LevelRewardRules } from '../level-rewards.js';
+import { normalizeServerLanguage } from '../languages.js';
+import { defaultGreetingMessages, greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
 
 interface BotConfig {
 	id: number;
@@ -397,6 +400,9 @@ export {
 	fetchQuestsMe,
 	precheckQuestPayloadForEnrollment,
 	runQuestUserAutomation,
+	parseQuestRewardLine,
+	parseQuestTaskLine,
+	questTaskLabel,
 	type DiscordQuestSummary,
 	type QuestAutomationResult
 } from './api/discord-quest-api.js';
@@ -547,6 +553,11 @@ export async function getEmbedConfig(guildId: string) {
 	return { COLOR: color, FOOTER: footerText, NICKNAME: bot_nickname || DEFAULT_BOT_NICKNAME };
 }
 
+async function getServerLanguageById(serverId: any) {
+	const row = await getServerSettingsRow(serverId, serverSettingsComponent.main).catch(() => null);
+	return normalizeServerLanguage(row?.settings?.language);
+}
+
 export const WELCOMER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
@@ -561,18 +572,16 @@ export const WELCOMER = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer messages');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
-		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
-		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
-		return DEFAULT_WELCOMER_MESSAGES;
+		const serverId = (await getOfficialBotServer(guildId)).id;
+		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.welcomer);
+		return greetingMessagesFor('welcomer', settings?.settings?.messages, await getServerLanguageById(serverId));
 	},
 
 	async hasCustomMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'checking welcomer messages');
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
-		const messages = settings?.settings?.messages;
-		if (!Array.isArray(messages) || messages.length === 0) return false;
-		return !messages.every((m: string) => DEFAULT_WELCOMER_MESSAGES.includes(m));
+		return !isDefaultGreetingSet('welcomer', settings?.settings?.messages);
 	}
 };
 
@@ -595,18 +604,16 @@ export const BOOSTER = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster messages');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
-		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
-		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
-		return DEFAULT_BOOSTER_MESSAGES;
+		const serverId = (await getOfficialBotServer(guildId)).id;
+		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.booster);
+		return greetingMessagesFor('booster', settings?.settings?.messages, await getServerLanguageById(serverId));
 	},
 
 	async hasCustomMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'checking booster messages');
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
-		const messages = settings?.settings?.messages;
-		if (!Array.isArray(messages) || messages.length === 0) return false;
-		return !messages.every((m: string) => DEFAULT_BOOSTER_MESSAGES.includes(m));
+		return !isDefaultGreetingSet('booster', settings?.settings?.messages);
 	}
 };
 
@@ -1092,18 +1099,6 @@ export const DEFAULT_LEVELING_SETTINGS = {
 	INVITE: { XP: 1000, MIN_ACCOUNT_AGE_DAYS: 7, HOLD_HOURS: 24, SHARE_PERCENT: 25 }
 };
 
-export const DEFAULT_WELCOMER_MESSAGES = [
-	'👋 Welcome {user} to {server}! You are member #{memberCount} (Account age: {accountAge}).',
-	'🎉 {user} joined {server}! Member #{memberCount} | Account age: {accountAge}.',
-	"🌟 Welcome {user}! You're now part of {server} (Member #{memberCount}, Account age: {accountAge}).",
-	'🚀 {user} just joined {server}! Member #{memberCount} | Account age: {accountAge}.',
-	"🎊 Hello {user}! Welcome to {server}! You're member #{memberCount} (Account age: {accountAge})."
-];
+export const DEFAULT_WELCOMER_MESSAGES = defaultGreetingMessages('welcomer');
 
-export const DEFAULT_BOOSTER_MESSAGES = [
-	'🎉 {user} just boosted {server}! Current level: {boostLevel} | Total boosts: {totalBoosts}.',
-	"💎 Thanks {user} for boosting {server}! We're now Level {boostLevel} with {totalBoosts} boosts.",
-	'🚀 {user} boosted {server}! Server Level: {boostLevel} | Boosts: {totalBoosts}.',
-	'🔥 Huge thanks to {user} for boosting {server}! Total boosts: {totalBoosts} (Level {boostLevel}).',
-	'⭐ {user} just gave {server} a boost! Level {boostLevel} with {totalBoosts} boosts.'
-];
+export const DEFAULT_BOOSTER_MESSAGES = defaultGreetingMessages('booster');

@@ -6,7 +6,7 @@
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import EmbedForm from '$lib/frontend/components/EmbedForm.svelte';
 	import { resolveEmbedFooterPlaceholders } from '$lib/utils/embedFooter.js';
-	import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '$lib/utils/mainConfigSettings.js';
+	import { DEFAULT_MAIN_EMBED_COLOR } from '$lib/utils/mainConfigSettings.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -22,7 +22,7 @@
 
 	let title = $state('');
 	let description = $state('');
-	let footer = $state(data.mainConfig?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
+	let footer = $state(data.mainConfig?.footer ?? '');
 	let color = $state(data.mainConfig?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let imageMode = $state<'url' | 'upload'>('url');
 	let imageUrl = $state('');
@@ -170,7 +170,7 @@
 	bind:imageUrl
 	bind:uploadedImagePath
 	bind:imagePreview
-	defaultFooter={data.mainConfig?.footer ?? DEFAULT_MAIN_EMBED_FOOTER}
+	defaultFooter={data.mainConfig?.footer ?? ''}
 	defaultColor={data.mainConfig?.color ?? DEFAULT_MAIN_EMBED_COLOR}
 	{footerPreview}
 	uploadEndpoint={`/api/servers/${data.serverId ?? ''}/upload-embed-image`}

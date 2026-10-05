@@ -5,10 +5,12 @@ import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
 import { validateServerAiSettings } from '$lib/server-ai-settings.js';
 import { normalizeForwarderKeywords } from '$lib/forwarder-settings.js';
-import { BOT_BIO_MAX_LENGTH, normalizeMainConfigForPanel } from '$lib/utils/mainConfigSettings.js';
+import { BOT_BIO_MAX_LENGTH } from '$lib/utils/mainConfigSettings.js';
+import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { BOT_PROFILE_IMAGE, BOT_PROFILE_IMAGE_FORMATS_LABEL, sniffBotProfileImage, tooLargeMessage, type BotProfileImageKind } from '$lib/images.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
+import { isServerLanguage } from '$lib/languages.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -205,6 +207,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (bio.length > BOT_BIO_MAX_LENGTH) {
 				return json({ error: `Bot bio must be ${BOT_BIO_MAX_LENGTH} characters or fewer` }, { status: 400 });
 			}
+			if (rest.language !== undefined && !isServerLanguage(rest.language)) {
+				return json({ error: 'Unsupported server language' }, { status: 400 });
+			}
 
 			const existing = await db.getServerSettings(targetServerId, component).catch(() => null);
 			const existingRaw = existing?.settings && typeof existing.settings === 'object' ? (existing.settings as Record<string, unknown>) : {};
@@ -251,6 +256,21 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				.catch((err: any) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
 		}
 
+		let menuError = '';
+		if (
+			component === SERVER_SETTINGS.component.main &&
+			panelServer?.discord_server_id &&
+			diffSettings(previous, settings as Record<string, unknown>).length > 0
+		) {
+			const synced = await callOfficialBotWebhook(bot, {
+				type: 'sync_server_menu',
+				guild_id: panelServer.discord_server_id,
+				language: normalizeMainConfigForPanel(settings).language
+			});
+			const reply = (synced.body ?? {}) as { success?: boolean };
+			if (synced.status !== 200 || reply.success !== true) menuError = messageFromBotWebhookPayload(synced.body);
+		}
+
 		if (component === SERVER_SETTINGS.component.notifications) {
 			try {
 				const notifServer = await db.getServer(targetServerId);
@@ -279,6 +299,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		if (profileError) {
 			return json({ success: false, saved: true, error: `Settings saved, but the bot profile was not updated: ${profileError}` });
+		}
+		if (menuError) {
+			return json({
+				success: false,
+				saved: true,
+				error: `Settings saved, but the menu in Discord was not updated yet: ${menuError}.`
+			});
 		}
 		return json({ success: true, data: result });
 	} catch (error: any) {

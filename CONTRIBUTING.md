@@ -34,15 +34,15 @@ Enable the **Server Members** and **Message Content** privileged intents in the 
 
 ## Project layout
 
-| Path                       | What lives there                                                              |
-| -------------------------- | ----------------------------------------------------------------------------- |
-| `src/routes`               | Panel pages, public server pages and API routes                               |
-| `src/lib/frontend`         | Shared Svelte components, stores and panel helpers                            |
-| `src/lib/backend`          | Bot runtime — gateway handlers, modules, tasks, AI and voice                  |
-| `.../official-bot/locales` | `en.json` and `id.json`, the bot's message translations                       |
-| `src/lib/schema.ts`        | Drizzle schema; `src/lib/migrations` holds the migrations                     |
-| `bots/`                    | Build output only — `tsc -p tsconfig.bots.json` compiles `src/lib` to JS here |
-| `static`                   | Icons, images and other assets served as-is                                   |
+| Path                       | What lives there                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/routes`               | Panel pages, public server pages and API routes                                          |
+| `src/lib/frontend`         | Shared Svelte components, stores and panel helpers                                       |
+| `src/lib/backend`          | Bot runtime — gateway handlers, modules, tasks, AI and voice                             |
+| `.../official-bot/locales` | One file per language (`en.json`, `id.json`, `fr.json`…), the bot's message translations |
+| `src/lib/schema.ts`        | Drizzle schema; `src/lib/migrations` holds the migrations                                |
+| `bots/`                    | Build output only — `tsc -p tsconfig.bots.json` compiles `src/lib` to JS here            |
+| `static`                   | Icons, images and other assets served as-is                                              |
 
 Never edit `bots/` by hand. It is generated and gitignored; change the TypeScript in `src/lib` instead. Bot processes are spawned with their working directory set to the bot directory, so resolve asset paths from the module, not from `process.cwd()`.
 
@@ -51,7 +51,7 @@ Never edit `bots/` by hand. It is generated and gitignored; change the TypeScrip
 1. Branch off `master`: `git checkout -b my-change`.
 2. Keep the change focused. One concern per pull request.
 3. Match the surrounding code — same naming, same idiom, same structure. The codebase avoids inline comments; make the code and the UI copy explain themselves.
-4. Touching bot-facing strings? Update **both** locale files — `src/lib/backend/bots/official-bot/locales/en.json` and `id.json` — so no key is left orphaned, and delete the keys for any feature you remove.
+4. Touching bot-facing strings? Update **every** locale file in `src/lib/backend/bots/official-bot/locales/` so no key is left orphaned, and delete the keys for any feature you remove. Messages other members can see use the server language (`translateServer` / `serverTranslator`); ephemeral replies and DMs use the member's (`translate` / `memberTranslator`). Adding a language means a new locale file, an entry in `SERVER_LANGUAGES` (`src/lib/languages.ts`) and its default messages in `src/lib/greetingDefaults.ts`.
 5. Changing the schema? Add a migration under `src/lib/migrations` rather than editing an existing one.
 6. Format and verify before pushing:
 

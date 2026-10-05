@@ -3,22 +3,22 @@ import { getEmbedConfig, getBotConfig, MODERATION_CONFIG, NOTIFICATIONS } from '
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { escalationStepFor } from '../../../../moderation-rules.js';
+import { memberTranslator, serverTranslator, type Translator } from '../i18n.js';
+import { parseLocalizedDuration } from '../localizedInput.js';
 
 export const MODERATION_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'] as const;
 export const BULK_MODERATION_ACTIONS = ['role_add', 'role_remove'] as const;
 
-const ACTION_TITLES: Record<string, string> = {
-	warn: '⚠️ Member Warned',
-	timeout: '🔇 Member Timed Out',
-	untimeout: '🔊 Timeout Removed',
-	kick: '👢 Member Kicked',
-	ban: '🔨 Member Banned',
-	tempban: '⏳ Member Temporarily Banned',
-	unban: '🕊️ Member Unbanned',
-	unwarn: '🧹 Warning Removed',
-	clearwarns: '🧹 Warnings Cleared',
-	tempban_expired: '⌛ Tempban Expired'
-};
+const ACTION_TITLE_KEYS = new Set(['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns', 'tempban_expired']);
+const LOG_SOURCE_KEYS = new Set(['panel', 'menu', 'discord', 'auto']);
+
+function actionTitle(tr: Translator, action: string) {
+	return ACTION_TITLE_KEYS.has(action) ? tr(`moderation.caseLog.titles.${action}`) : action;
+}
+
+function sourceLabel(tr: Translator, source: string) {
+	return LOG_SOURCE_KEYS.has(source) ? tr(`moderation.caseLog.sources.${source}`) : source;
+}
 
 const BULK_TITLES: Record<string, string> = {
 	role_add: '➕ Bulk Role Add',
@@ -37,7 +37,7 @@ function clip(text: string, max = 1024) {
 	return text.length > max ? text.substring(0, max - 3) + '...' : text;
 }
 
-export function formatDuration(seconds: number | null | undefined) {
+export function formatDuration(tr: Translator, seconds: number | null | undefined) {
 	if (!seconds || seconds <= 0) return null;
 	const units: [number, string][] = [
 		[86400, 'd'],
@@ -46,30 +46,19 @@ export function formatDuration(seconds: number | null | undefined) {
 	];
 	const parts: string[] = [];
 	let rest = Math.floor(seconds);
-	for (const [size, label] of units) {
+	for (const [size, unit] of units) {
 		const n = Math.floor(rest / size);
 		if (n > 0) {
-			parts.push(`${n}${label}`);
+			parts.push(tr(`moderation.durationUnits.${unit}`, { n }));
 			rest -= n * size;
 		}
 	}
-	if (parts.length === 0) parts.push(`${rest}s`);
+	if (parts.length === 0) parts.push(tr('moderation.durationUnits.s', { n: rest }));
 	return parts.join(' ');
 }
 
 export function parseDuration(input: string | null | undefined) {
-	if (!input) return null;
-	let total = 0;
-	const re = /(\d+)\s*([smhdw]?)/gi;
-	let match;
-	let found = false;
-	while ((match = re.exec(String(input))) !== null) {
-		found = true;
-		const n = Number(match[1]);
-		const unit = (match[2] || 'm').toLowerCase();
-		total += n * ({ s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] ?? 60);
-	}
-	return found && total > 0 ? total : null;
+	return parseLocalizedDuration(input);
 }
 
 async function memberLabel(serverId: number, discordId: string | null | undefined) {
@@ -122,29 +111,35 @@ async function recordCase(
 		source: opts.source
 	});
 
+	const tr = await serverTranslator(guild.id);
 	const memberName = memberRow.server_display_name || memberRow.display_name || memberRow.username || opts.targetId;
-	const staffName = (staffRow && (staffRow.server_display_name || staffRow.display_name || staffRow.username)) || opts.staffName || 'Unknown';
+	const staffName =
+		(staffRow && (staffRow.server_display_name || staffRow.display_name || staffRow.username)) || opts.staffName || tr('moderation.caseLog.unknown');
 	const fields = [
-		{ name: '👤 Member', value: `<@${opts.targetId}> (${memberName})`, inline: true },
-		{ name: '🛡️ Staff', value: staffRow ? `<@${opts.staffId}> (${staffName})` : staffName, inline: true },
-		{ name: '📍 Source', value: opts.source, inline: true },
-		{ name: '📝 Reason', value: clip(opts.reason || 'No reason provided'), inline: false }
+		{ name: tr('moderation.caseLog.fields.member'), value: `<@${opts.targetId}> (${memberName})`, inline: true },
+		{ name: tr('moderation.caseLog.fields.staff'), value: staffRow ? `<@${opts.staffId}> (${staffName})` : staffName, inline: true },
+		{ name: tr('moderation.caseLog.fields.source'), value: sourceLabel(tr, opts.source), inline: true },
+		{ name: tr('moderation.caseLog.fields.reason'), value: clip(opts.reason || tr('moderation.caseLog.noReason')), inline: false }
 	];
-	const duration = formatDuration(opts.durationSeconds);
+	const duration = formatDuration(tr, opts.durationSeconds);
 	if (duration && expiresAt) {
-		fields.push({ name: '⏱️ Duration', value: `${duration} (ends <t:${Math.floor(expiresAt.getTime() / 1000)}:R>)`, inline: false });
+		fields.push({
+			name: tr('moderation.caseLog.fields.duration'),
+			value: tr('moderation.caseLog.durationValue', { duration, ends: `<t:${Math.floor(expiresAt.getTime() / 1000)}:R>` }),
+			inline: false
+		});
 	}
 	if (opts.action === 'warn' || opts.action === 'unwarn' || opts.action === 'clearwarns') {
 		const active = await db.countActiveWarnings(Number(memberRow.id)).catch(() => 0);
-		fields.push({ name: '📊 Active Warnings', value: String(active), inline: true });
+		fields.push({ name: tr('moderation.caseLog.fields.activeWarnings'), value: String(active), inline: true });
 	}
 	if (opts.extraFields) fields.push(...opts.extraFields);
 
 	await sendModerationLog(
 		client,
 		{
-			title: `${ACTION_TITLES[opts.logAction ?? opts.action] ?? opts.action} · Case #${caseNumber}`,
-			description: `Case **#${caseNumber}** recorded for <@${opts.targetId}>.`,
+			title: tr('moderation.caseLog.title', { action: actionTitle(tr, opts.logAction ?? opts.action), case: caseNumber }),
+			description: tr('moderation.caseLog.description', { case: caseNumber, member: `<@${opts.targetId}>` }),
 			thumbnail: memberRow.avatar || null,
 			userTag: memberName,
 			mentionId: opts.targetId,
@@ -157,13 +152,17 @@ async function recordCase(
 
 async function notifyMember(user: any, guild: any, action: string, reason: string | null, durationSeconds: number | null) {
 	if (!user || user.bot) return;
-	const lines = [`**Server:** ${guild.name}`, `**Reason:** ${reason || 'No reason provided'}`];
-	const duration = formatDuration(durationSeconds);
-	if (duration) lines.push(`**Duration:** ${duration}`);
+	const tr = await memberTranslator(guild.id, user.id);
+	const lines = [
+		tr('moderation.memberDm.server', { server: guild.name }),
+		tr('moderation.memberDm.reason', { reason: reason || tr('moderation.caseLog.noReason') })
+	];
+	const duration = formatDuration(tr, durationSeconds);
+	if (duration) lines.push(tr('moderation.memberDm.duration', { duration }));
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig?.COLOR ?? 0xc0392b)
-		.setTitle(ACTION_TITLES[action] ?? action)
+		.setTitle(actionTitle(tr, action))
 		.setDescription(lines.join('\n'))
 		.setTimestamp();
 	await user.send({ embeds: [embed] }).catch(() => null);
@@ -193,6 +192,7 @@ export async function performModerationAction(
 	const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
 	if (!server) return { ok: false, error: 'Server not found' };
 	const serverId = Number(server.id);
+	const tr = await serverTranslator(guild.id);
 	const source = payload.source || 'panel';
 	const reason = payload.reason ? String(payload.reason).trim().slice(0, 1000) : null;
 	const staffId = payload.staff_id ? String(payload.staff_id) : null;
@@ -206,7 +206,7 @@ export async function performModerationAction(
 			targetId: row.discord_member_id,
 			staffId,
 			staffName: payload.staff_name,
-			reason: reason || `Removed warning #${row.case_number}`,
+			reason: reason || tr('moderation.caseLog.reasons.unwarn', { case: row.case_number }),
 			source,
 			active: false
 		});
@@ -228,7 +228,7 @@ export async function performModerationAction(
 			targetId,
 			staffId,
 			staffName: payload.staff_name,
-			reason: reason || `Cleared ${cleared} warning(s)`,
+			reason: reason || tr('moderation.caseLog.reasons.clearwarns', { count: cleared }),
 			source,
 			active: false
 		});
@@ -323,12 +323,13 @@ async function escalate(client: any, guild: any, serverId: number, targetId: str
 	const active = await db.countActiveWarnings(memberId).catch(() => 0);
 	const step = escalationStepFor(rules, active);
 	if (!step) return null;
+	const tr = await serverTranslator(guild.id);
 	const result: any = await performModerationAction(client, {
 		guild_id: guild.id,
 		action: step.action,
 		target_id: targetId,
-		staff_name: 'Automatic',
-		reason: `Reached ${active} active warnings`,
+		staff_name: tr('moderation.caseLog.automatic'),
+		reason: tr('moderation.caseLog.reasons.escalation', { count: active }),
 		duration_seconds: step.duration_seconds,
 		source: 'auto'
 	});
@@ -404,16 +405,17 @@ export async function startBulkModeration(
 			}
 		}
 		await logger.log(`🛡️ Bulk ${action} ${role.id} in ${guild.id} via ${source}: ${done} done, ${failed} failed`);
+		const tr = await serverTranslator(guild.id);
 		await sendModerationLog(
 			client,
 			{
-				title: BULK_TITLES[action],
-				description: `**${done.toLocaleString()}** done · ${failed.toLocaleString()} failed`,
+				title: tr(`moderation.caseLog.bulkTitles.${action}`),
+				description: tr('moderation.caseLog.bulkSummary', { done: done.toLocaleString(), failed: failed.toLocaleString() }),
 				userTag: staffName,
 				fields: [
-					{ name: '🎭 Role', value: `<@&${role.id}>`, inline: true },
-					{ name: '🛡️ Staff', value: staffName, inline: true },
-					{ name: '📍 Source', value: source, inline: true }
+					{ name: tr('moderation.caseLog.fields.role'), value: `<@&${role.id}>`, inline: true },
+					{ name: tr('moderation.caseLog.fields.staff'), value: payload.staff_name || tr('moderation.caseLog.staffFallback'), inline: true },
+					{ name: tr('moderation.caseLog.fields.source'), value: sourceLabel(tr, source), inline: true }
 				]
 			},
 			guild.id
@@ -434,12 +436,13 @@ async function sweepModeration(client: any) {
 		if (!guild) continue;
 		await guild.members.unban(String(row.discord_member_id), `Tempban case #${row.case_number} expired`).catch(() => null);
 		await db.revokeModerationCase(row.id).catch(() => null);
+		const tr = await serverTranslator(guild.id);
 		await recordCase(client, guild, Number(row.server_id), {
 			action: 'unban',
 			logAction: 'tempban_expired',
 			targetId: String(row.discord_member_id),
-			staffName: 'Automatic',
-			reason: `Tempban case #${row.case_number} expired`,
+			staffName: tr('moderation.caseLog.automatic'),
+			reason: tr('moderation.caseLog.reasons.tempbanExpired', { case: row.case_number }),
 			source: 'auto',
 			active: false
 		}).catch(() => null);
@@ -483,7 +486,7 @@ async function recordNativeCase(
 		action,
 		targetId,
 		staffId: executorId,
-		staffName: (await memberLabel(serverId, executorId)) || 'Unknown',
+		staffName: await memberLabel(serverId, executorId),
 		reason,
 		durationSeconds,
 		source: 'discord'

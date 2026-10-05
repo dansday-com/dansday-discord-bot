@@ -38,6 +38,7 @@
 	--animate-tower-burst: tower-burst 0.85s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 	--animate-tower-flash: tower-flash 0.7s ease-out forwards;
 	--animate-tower-pop: tower-pop 0.28s cubic-bezier(0.23, 1, 0.32, 1) both;
+	--animate-tower-climb: tower-climb 0.45s cubic-bezier(0.23, 1, 0.32, 1) both;
 
 	@keyframes blob-drift {
 		0% {
@@ -211,6 +212,17 @@
 		to {
 			opacity: 1;
 			transform: translateY(0) scale(1);
+		}
+	}
+
+	@keyframes tower-climb {
+		from {
+			opacity: 0.4;
+			transform: translateY(-44px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 

@@ -249,8 +249,8 @@
 		{
 			icon: 'fa-terminal',
 			title: 'One-command setup',
-			desc: '/setup creates every channel and wires it to the module that uses it.',
-			more: 'Nothing to name or pick by hand.',
+			desc: '/setup creates every channel in your server language and wires it to the module that uses it.',
+			more: 'Pick the language once. Nothing else to name or pick by hand.',
 			stat: (s: Totals): Live[] => [{ label: 'Channels wired', value: fmt(s.channels_total) }]
 		},
 		{
@@ -311,8 +311,8 @@
 		{
 			icon: 'fa-language',
 			title: 'Multi-language',
-			desc: `${serverLanguageList('and')} across Discord flows.`,
-			more: 'Buttons, selects and labels all follow the choice.'
+			desc: `Each server picks its language: ${serverLanguageList('or')}.`,
+			more: 'Channel names, the menu, every public post and the AI follow it. Members can still pick their own language for private replies.'
 		},
 		{
 			icon: 'fa-hand',

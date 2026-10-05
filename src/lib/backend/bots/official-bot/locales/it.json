@@ -1,0 +1,1388 @@
+{
+	"menu": {
+		"title": "📋 Menu del bot {botName}",
+		"description": "Seleziona una funzione con i pulsanti qui sotto:",
+		"website": "🌐 Pagina del server: {url}",
+		"join": "📨 Link di invito: {url}",
+		"noAccess": "❌ Non hai accesso a nessuna funzione.",
+		"button": "📋 Menu",
+		"account": "👤 Account",
+		"stats": {
+			"members": "👥 Membri",
+			"totalXp": "📊 XP totali",
+			"topLevel": "⭐ Livello più alto"
+		},
+		"back": "⬅️ Indietro",
+		"categories": {
+			"me": {
+				"button": "👤 Io",
+				"description": "Il tuo stato e le tue notifiche."
+			},
+			"community": {
+				"button": "🎉 Community",
+				"description": "Giveaway, feedback e valutazioni dello staff."
+			},
+			"perks": {
+				"button": "💎 Vantaggi",
+				"description": "Vantaggi per supporter e creator."
+			},
+			"staff": {
+				"button": "🔨 Staff",
+				"description": "Strumenti per staff e admin."
+			}
+		},
+		"items": {
+			"afk": "Imposta o rimuovi il tuo stato AFK.",
+			"notifications": "Scegli i canali da cui ricevere notifiche.",
+			"invites": "Guarda i tuoi inviti e ottieni il tuo link di invito.",
+			"quest": "Riscatta le missioni Discord attive.",
+			"giveaway": "Avvia un giveaway in questo server.",
+			"feedback": "Invia un feedback al team del server.",
+			"staffRating": "Valuta o segnala un membro dello staff.",
+			"customSupporterRole": "Crea o modifica il tuo ruolo personale.",
+			"contentCreator": "Guarda i creator o candidati per entrare.",
+			"moderation": "Avvisa, metti in timeout, espelli o banna i membri."
+		}
+	},
+	"interface": {
+		"panel": {
+			"title": "Pannello del bot {botName}",
+			"description": "Clicca su **Menu** per accedere alle funzioni del bot in base ai permessi del tuo ruolo.",
+			"sent": "✅ Interfaccia del bot inviata in {channel}!",
+			"setupHasOwnerAccount": "✅ Interfaccia del bot inviata in {channel}. Questo server ha già un account proprietario: accedi dal pannello web. Non è stato creato nessun nuovo invito.",
+			"setupSignInLinkLine": "[**Clicca qui per aprire il pannello**]({url})",
+			"setupOpenPanelButton": "Apri pannello",
+			"setupOwnerInviteReady": "✅ Interfaccia del bot inviata in {channel}.\n\nSolo tu puoi vedere questo messaggio. I link di invito per il proprietario non usati scadono **24 ore** dopo la creazione.\n\n[**Clicca qui per registrarti come proprietario**]({url})",
+			"setupOwnerInviteButton": "Apri registrazione",
+			"setupOwnerInviteEmbedTitle": "Registrazione proprietario",
+			"setupNotOwnerTitle": "Permesso negato",
+			"setupNotOwnerBody": "Solo il **proprietario del server** può usare `/setup`.",
+			"setupNotTextChannelTitle": "Canale non valido",
+			"setupNotTextChannelBody": "Seleziona un **canale testuale**.",
+			"joinTitle": "Grazie per aver aggiunto {botName}!",
+			"joinBody": "Usa `/setup` per creare i canali e completare la configurazione.",
+			"joinAskAi": "Non sai da dove iniziare? Menziona {botMention} e chiedi pure: legge la documentazione e può guidarti passo passo nella configurazione.",
+			"joinDocsButton": "Documentazione",
+			"joinSupportButton": "Server di supporto",
+			"setupChannelsCreated": "Nuovi canali creati: **{count}**.",
+			"setupChannelsAllPresent": "Tutti i canali esistono già: non c'è niente di nuovo da creare.",
+			"setupWarnNoBotConfig": "⚠️ Interfaccia inviata, ma la configurazione del bot non è disponibile.",
+			"setupWarnNoServer": "⚠️ Interfaccia inviata, ma non ho trovato il record del server per generare l'invito.",
+			"error": "❌ Impossibile inviare l'interfaccia: {error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ Questa funzione è disattivata in questo server. Un amministratore può attivarla nel pannello di configurazione del bot.",
+			"memberNotFound": "❌ Impossibile recuperare le informazioni del membro.",
+			"unknownButton": "❌ Interazione con un pulsante sconosciuto.",
+			"buttonError": "❌ **Errore del pulsante**: si è verificato un errore durante l'elaborazione del tuo clic.\\n\\nRiprova o contatta un amministratore.",
+			"modalError": "❌ **Errore del modulo**: si è verificato un errore durante l'invio del tuo modulo.\\n\\nRiprova o contatta un amministratore.",
+			"selectionError": "❌ **Errore di selezione**: si è verificato un errore durante l'elaborazione della tua selezione.\\n\\nRiprova o contatta un amministratore."
+		},
+		"timeUnits": {
+			"hour": "ora",
+			"hours": "ore",
+			"day": "giorno",
+			"days": "giorni"
+		},
+		"defaultFooter": "Offerto da {domain} {year}"
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Vantaggio Supporter**",
+			"description": "Un ruolo personale con nome e colore a tua scelta è un vantaggio per i supporter. Potenzia questo server oppure ottieni uno di questi ruoli:\\n{roles}",
+			"footer": "Potenzia il server per sbloccarlo."
+		},
+		"denied": {
+			"title": "❌ **Permesso negato**",
+			"description": "Ti serve uno dei seguenti ruoli per usare **{action}**:\\n{roles}",
+			"footer": "Se pensi che si tratti di un errore, contatta un amministratore del server."
+		},
+		"ownerRequired": {
+			"title": "❌ **Registrazione del proprietario richiesta**",
+			"description": "Il proprietario del server deve registrare un account sul pannello web prima che qualcuno possa usare la funzione **{action}**."
+		},
+		"notConfigured": {
+			"title": "❌ **Permessi non configurati**",
+			"description": "Il proprietario o un amministratore del server deve configurare i permessi dei ruoli prima che qualcuno possa usare la funzione **{action}**."
+		},
+		"requiredRoleFallback": "il ruolo richiesto"
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 Impostazioni lingua",
+			"description": "Seleziona la tua lingua preferita:",
+			"current": "Lingua attuale",
+			"select": "Seleziona lingua",
+			"updated": "✅ Lingua aggiornata!",
+			"failed": "❌ Impossibile aggiornare la lingua: {error}",
+			"serverDefault": "Predefinita del server ({language})",
+			"serverDefaultDescription": "Segui la lingua del server",
+			"currentOption": "Lingua attuale"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 La pagina del tuo account: {url}",
+			"noMember": "⚠️ Non risulti ancora in questo server. Invia prima un messaggio o entra in un canale vocale.",
+			"unavailable": "⚠️ Le pagine pubbliche non sono disponibili per questo server."
+		},
+		"errors": {
+			"notRegistered": "⚠️ Questo server non è registrato con il bot. Esegui prima una sincronizzazione.",
+			"createRecordFailed": "❌ Impossibile creare il record del membro. Riprova."
+		},
+		"fields": {
+			"level": "⭐ Livello",
+			"totalXp": "📊 XP totali",
+			"rank": "🏆 Posizione",
+			"previousRank": "Posizione precedente",
+			"newRank": "Nuova posizione",
+			"progress": "⚡ Progressi verso il livello {level}",
+			"reward": "🎁 Ricompensa sbloccata",
+			"activity": "💬 Attività"
+		},
+		"xpToGo": "Mancano **{xp}** XP",
+		"unranked": "Non classificato",
+		"leaderboardButton": "Classifica",
+		"levelUp": {
+			"title": "🎉 Nuovo livello!",
+			"description": "{member} ha raggiunto il **livello {level}**!"
+		},
+		"rankUp": {
+			"title": "Classifica aggiornata!",
+			"topSpot": "{member} si è appena preso un posto in vetta!",
+			"climbed": "{member} ha scalato la classifica!"
+		},
+		"activity": {
+			"messages": "{count} messaggi",
+			"voice": "{hours} h in vocale",
+			"streaming": "{hours} h in streaming"
+		},
+		"log": {
+			"types": {
+				"chat": "Chat",
+				"voice": "Vocale",
+				"afkVoice": "Vocale AFK",
+				"video": "Video",
+				"streaming": "Streaming",
+				"invite": "Invito"
+			},
+			"gain": "{emoji} XP {type}: {name} ha guadagnato +{xp} XP",
+			"staff": "({multiplier}× Staff 🛡️)",
+			"boost": "({multiplier}× Boost ⚡)",
+			"friend": "(+{rate} boost amicizia 🤝)",
+			"leech": "(−{rate} Sanguisuga 🩸)",
+			"share": "📨 +{amount} a {name} ({percent}% di quota inviti{staff})",
+			"inviteNote": "per aver invitato {name}",
+			"leechCredit": "🩸 Sanguisuga: {attacker} ha prosciugato +{amount} XP da {victim}{pct}",
+			"unknownMember": "Sconosciuto",
+			"someMember": "un membro",
+			"someLeecher": "Una sanguisuga"
+		}
+	},
+	"invites": {
+		"button": "📨 Inviti",
+		"title": "📨 I tuoi inviti",
+		"reward": "Guadagna **{xp} XP** per ogni nuovo membro che entra con il tuo link{hold}.",
+		"hold": " e resta per {hours} h",
+		"staffNote": "🛡️ Lo staff guadagna {multiplier}× XP dagli inviti.",
+		"share": "📈 Ricevi anche il **{percent}%** degli XP di chat e vocale guadagnati dai membri che hai invitato, finché restano nel server.",
+		"link": "🔗 Il tuo link di invito personale: {url}",
+		"noLink": "⚠️ Non sono riuscito a creare un link di invito qui. Chiedi allo staff di darmi il permesso Crea invito.",
+		"copyButton": "Apri link di invito",
+		"customizeButton": "✏️ Personalizza link",
+		"slugTitle": "Personalizza il tuo link di invito",
+		"slugLabel": "Nome link ({min}–{max} lettere, numeri, trattini)",
+		"slugInvalid": "❌ Usa {min}–{max} lettere, numeri o trattini.",
+		"slugTaken": "❌ **{slug}** è già in uso. Prova un altro nome.",
+		"slugSaved": "✅ Il tuo link di invito ora è {url}",
+		"fields": {
+			"total": "📨 Totali",
+			"active": "✅ Ancora qui",
+			"left": "🚪 Usciti",
+			"fake": "🕵️ Falsi",
+			"bonus": "➕ Bonus",
+			"xp": "⭐ XP guadagnati",
+			"pending": "⏳ In attesa",
+			"invitedBy": "👤 Invitato da",
+			"shareXp": "🤝 Dalle quote"
+		},
+		"error": "❌ Impossibile caricare i tuoi inviti. Riprova tra un attimo."
+	},
+	"afk": {
+		"title": "⏸️ Imposta stato AFK",
+		"current": {
+			"title": "⏸️ Sei attualmente AFK",
+			"description": "**Stato:** {message}\\n**Durata:** {duration}",
+			"howToRemove": "💡 Come rimuoverlo",
+			"howToRemoveValue": "• Clicca il pulsante qui sotto per rimuovere l'AFK\\n• Invia un messaggio qualsiasi (rimuove l'AFK e riattiva il microfono)\\n• Se il bot ti ha silenziato, rimuovere l'AFK ti riattiva automaticamente"
+		},
+		"set": {
+			"title": "✅ Stato AFK impostato!",
+			"description": "Ora risulti AFK: **{message}**{voiceInfo}",
+			"howToRemove": "💡 Come rimuoverlo",
+			"howToRemoveValue": "• Invia un messaggio qualsiasi (rimuove l'AFK e riattiva il microfono)\\n• Clicca il pulsante AFK e rimuovilo (ti riattiva se il bot ti ha silenziato)\\n• Rimuovere l'AFK ti riattiva automaticamente se eri stato silenziato dal bot",
+			"voiceMutedDeafened": "\\n\\nIn vocale verrai silenziato e il tuo audio verrà disattivato.",
+			"voiceMutedOnly": "\\n\\nIn vocale verrai solo silenziato (audio non disattivato)."
+		},
+		"removed": {
+			"title": "✅ Stato AFK rimosso!",
+			"description": "Bentornato! Il tuo stato AFK è stato rimosso."
+		},
+		"modal": {
+			"messageLabel": "Messaggio AFK (facoltativo)",
+			"messagePlaceholder": "es. Faccio una pausa, Sto studiando, ecc.",
+			"deafenLabel": "Disattivare l'audio in vocale? (sì/no)",
+			"deafenPlaceholder": "sì o no (lascia vuoto per sì)"
+		},
+		"buttons": {
+			"remove": "🔄 Rimuovi AFK"
+		},
+		"errors": {
+			"disabledOnServer": "❌ L'AFK è disattivato in questo server. Un amministratore può attivarlo nel pannello di configurazione del bot.",
+			"notAFK": "❌ Al momento non sei AFK.",
+			"failed": "❌ Impossibile aprire il modulo AFK: {error}",
+			"setFailed": "❌ **Impossibile impostare l'AFK**\\n\\nErrore: {error}\\n\\nRiprova più tardi.",
+			"removeFailed": "❌ **Impossibile rimuovere l'AFK**\\n\\nErrore: {error}\\n\\nRiprova più tardi."
+		},
+		"messages": {
+			"welcomeBack": "✅ Bentornato, {member}! Il tuo stato AFK è stato rimosso.",
+			"dmEmbedTitle": "📬 Sei stato menzionato",
+			"dmMentioned": "{sender} ti ha menzionato in **{server}** · #{channel}\\n\\n**Messaggio:** {message}",
+			"away": "Assente",
+			"isAfk": "⏸️ {member} è AFK al momento (da {duration})",
+			"isAfkWithMessage": "⏸️ {member} è AFK al momento: **{message}** (da {duration})"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 Crea giveaway",
+			"step1Title": "**Passo 1 di 2: seleziona i ruoli (facoltativo)**",
+			"step1Description": "Seleziona dal menu a tendina qui sotto i ruoli che possono partecipare a questo giveaway. Lascia vuoto o clicca \"Continua al modulo\" per consentire tutti i ruoli.",
+			"roleSelectPlaceholder": "Seleziona i ruoli che possono partecipare (facoltativo)...",
+			"continueButton": "Continua al modulo"
+		},
+		"active": {
+			"title": "🎉 Giveaway attivo trovato",
+			"description": "Hai già un giveaway attivo:\\n\\n**{title}**\\n**Premio:** {prize}\\n\\nCosa vuoi fare?",
+			"ends": "⏰ Termina"
+		},
+		"modal": {
+			"titleLabel": "Titolo",
+			"titlePlaceholder": "Inserisci il titolo del giveaway...",
+			"prizeLabel": "Premio",
+			"prizePlaceholder": "Qual è il premio?",
+			"durationLabel": "Durata (minuti)",
+			"durationPlaceholder": "es. 60 per 1 ora, 1440 per 1 giorno",
+			"winnerCountLabel": "Numero di vincitori",
+			"winnerCountPlaceholder": "Quanti vincitori? (predefinito: 1)",
+			"multipleEntriesLabel": "Partecipazioni multiple? (sì/no)",
+			"multipleEntriesPlaceholder": "sì o no (predefinito: no)"
+		},
+		"created": {
+			"title": "✅ Giveaway creato!",
+			"description": "Il tuo giveaway è stato creato e pubblicato in {channel}!"
+		},
+		"entered": {
+			"title": "✅ Partecipazione registrata!",
+			"description": "Ora partecipi al giveaway! In bocca al lupo! 🍀"
+		},
+		"buttons": {
+			"finish": "🏁 Termina giveaway"
+		},
+		"errors": {
+			"memberNotFound": "❌ Impossibile recuperare le informazioni del membro.",
+			"activeExists": "❌ Hai già un giveaway attivo. Prima terminalo.",
+			"invalidTitle": "❌ **Giveaway non valido**\\n\\nIl titolo non può essere vuoto.",
+			"invalidPrize": "❌ **Giveaway non valido**\\n\\nIl premio non può essere vuoto.",
+			"invalidDuration": "❌ **Giveaway non valido**\\n\\nLa durata deve essere un numero positivo (in minuti).",
+			"invalidWinnerCount": "❌ **Giveaway non valido**\\n\\nIl numero di vincitori deve essere un numero positivo.",
+			"channelNotConfigured": "❌ Impossibile creare il giveaway: il canale dei giveaway non è configurato. Configuralo nel pannello.",
+			"channelNotFound": "❌ Impossibile creare il giveaway: canale dei giveaway non trovato.",
+			"channelError": "❌ Impossibile creare il giveaway: errore nel recupero della configurazione del canale dei giveaway.",
+			"createFailed": "❌ **Impossibile creare il giveaway**\\n\\nErrore: {error}\\n\\nRiprova più tardi.",
+			"invalidMessage": "❌ Messaggio del giveaway non valido.",
+			"invalidId": "❌ ID del giveaway non valido.",
+			"notFound": "❌ Giveaway non trovato o già terminato.",
+			"ended": "❌ Questo giveaway è già terminato.",
+			"roleRestriction": "❌ **Restrizione di ruolo**\\n\\nQuesto giveaway è riservato ai seguenti ruoli:\\n{roles}\\n\\nTi servono tutti questi ruoli per partecipare.",
+			"memberNotFoundDB": "❌ Membro non trovato nel database. Riprova più tardi.",
+			"cannotEnterOwn": "❌ Non puoi partecipare al tuo stesso giveaway!",
+			"alreadyEntered": "❌ Stai già partecipando a questo giveaway!",
+			"finishOwnOnly": "❌ Puoi terminare solo i tuoi giveaway.",
+			"finishNotActive": "❌ Questo giveaway non è attivo.",
+			"finishChannelError": "❌ Impossibile recuperare il canale dei giveaway.",
+			"finishChannelNotConfigured": "❌ Canale dei giveaway non configurato.",
+			"finishChannelNotFound": "❌ Canale dei giveaway non trovato.",
+			"failed": "❌ Impossibile aprire il modulo del giveaway: {error}",
+			"notEnoughInvites": "❌ Ti servono **{needed}** inviti per partecipare a questo giveaway. Ne hai **{have}**.",
+			"roleSelectFailed": "❌ Impossibile elaborare la selezione dei ruoli: {error}",
+			"enterFailed": "❌ **Impossibile partecipare al giveaway**\\n\\nErrore: {error}",
+			"finishFailed": "❌ Impossibile terminare il giveaway: {error}"
+		},
+		"unknownRole": "Ruolo {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "Nessuna restrizione di ruolo",
+			"multipleEntries": "Partecipazioni multiple consentite",
+			"singleEntry": "Una sola partecipazione per membro",
+			"prizeLine": "**Premio:** {prize}",
+			"winnerLine": "**Vincitore:** {count}",
+			"winnersLine": "**Vincitori:** {count}",
+			"entriesLine": "**Partecipazioni:** {entries}",
+			"rolesLine": "**Restrizioni di ruolo:** {roles}",
+			"invitesLine": "**Inviti richiesti:** {count}",
+			"hostedBy": "👤 Organizzato da",
+			"enterButton": "🎉 Partecipa al giveaway"
+		},
+		"results": {
+			"endedTitle": "🎉 Giveaway terminato",
+			"endedWinnersTitle": "🎉 Giveaway terminato!",
+			"noEntries": "**{title}**\\n\\n❌ Nessuna partecipazione! Il giveaway è terminato senza partecipanti.",
+			"noWinners": "**{title}**\\n\\n❌ Impossibile selezionare i vincitori.",
+			"winnerLine": "🎊 **Vincitore:** {winners}",
+			"winnersLine": "🎊 **Vincitori:** {winners}",
+			"limitedEntriesOne": "⚠️ *Selezionato solo {count} vincitore ({requested} richiesti) a causa delle poche partecipazioni.*",
+			"limitedEntriesMany": "⚠️ *Selezionati solo {count} vincitori ({requested} richiesti) a causa delle poche partecipazioni.*",
+			"congrats": "Congratulazioni! 🎉"
+		},
+		"finished": {
+			"title": "✅ Giveaway terminato",
+			"noEntries": "Il tuo giveaway **\"{title}\"** è stato terminato in anticipo.\\n\\nNon ha partecipato nessuno.",
+			"noWinners": "Il tuo giveaway **\"{title}\"** è stato terminato in anticipo.\\n\\nImpossibile selezionare i vincitori.",
+			"winners": "Il tuo giveaway **\"{title}\"** è stato terminato in anticipo.\\n\\n**Vincitori:** {winners}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 Invia feedback",
+			"label": "Il tuo feedback",
+			"placeholder": "Condividi il tuo feedback, i tuoi suggerimenti o i tuoi dubbi...",
+			"maxLength": 2000,
+			"anonymousLabel": "Inviare in forma anonima? (sì/no)",
+			"anonymousPlaceholder": "sì o no (predefinito: no)"
+		},
+		"submitted": {
+			"title": "✅ Feedback inviato!",
+			"description": "Grazie per il tuo feedback! È stato inviato correttamente.",
+			"anonymous": "\\n\\n🔒 Il tuo feedback è stato inviato in forma anonima."
+		},
+		"errors": {
+			"invalid": "❌ **Feedback non valido**\\n\\nIl messaggio di feedback non può essere vuoto.",
+			"channelError": "❌ Impossibile inviare il feedback: errore nel recupero della configurazione del canale dei feedback.",
+			"channelNotConfigured": "❌ Impossibile inviare il feedback: canale dei feedback non configurato.",
+			"channelNotFound": "❌ Impossibile inviare il feedback: canale dei feedback non trovato.",
+			"failed": "❌ Impossibile aprire il modulo di feedback: {error}",
+			"submitFailed": "❌ **Impossibile inviare il feedback**\\n\\nErrore: {error}\\n\\nRiprova più tardi."
+		},
+		"channelEmbed": {
+			"title": "💬 Nuovo feedback",
+			"fieldFrom": "👤 Da",
+			"fieldSubmitted": "🕐 Inviato",
+			"anonymous": "Anonimo",
+			"footerSuffix": "• ID feedback: #{feedbackId}"
+		}
+	},
+	"staffRating": {
+		"title": "📋 Segnala un membro dello staff",
+		"selectStaff": "Seleziona un membro dello staff",
+		"selectStaffPlaceholder": "Scegli un membro dello staff da segnalare...",
+		"button": "🛡️ Valutazione staff",
+		"selectRatingPrompt": "Seleziona un voto",
+		"selectCategoryPrompt": "Seleziona una categoria",
+		"status": {
+			"staff": "Staff: {staff}",
+			"ratingPending": "Voto: non selezionato",
+			"ratingSelected": "Voto: {rating}/5",
+			"categoryPending": "Categoria: non selezionata",
+			"categorySelected": "Categoria: {category}"
+		},
+		"buttons": {
+			"continue": "Continua"
+		},
+		"reviewModal": {
+			"titleApprove": "Approva segnalazione sullo staff",
+			"titleReject": "Rifiuta segnalazione sullo staff",
+			"reasonLabel": "Motivo (obbligatorio)",
+			"reasonPlaceholder": "Spiega la tua decisione a chi ha inviato la segnalazione…"
+		},
+		"embed": {
+			"staffDecision": "Decisione dello staff",
+			"reviewedBy": "Esaminata da",
+			"statusApproved": "Approvata",
+			"statusRejected": "Rifiutata"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Membro dello staff",
+			"fieldRating": "Voto",
+			"fieldCategory": "Categoria",
+			"fieldReporter": "Segnalato da",
+			"fieldStatus": "Stato",
+			"fieldDescription": "Descrizione",
+			"anonymousReporter": "Anonimo",
+			"pendingTitle": "🕒 Segnalazione sullo staff in attesa",
+			"pendingStatus": "In attesa di approvazione da un admin",
+			"approveButton": "Approva segnalazione",
+			"rejectButton": "Rifiuta segnalazione",
+			"titleApproved": "✅ Segnalazione sullo staff approvata",
+			"titleRejected": "❌ Segnalazione sullo staff rifiutata",
+			"footerReportSuffix": "• ID segnalazione: #{reportId}"
+		},
+		"modal": {
+			"title": "Segnala un membro dello staff",
+			"ratingLabel": "Voto (1-5 stelle)",
+			"ratingPlaceholder": "1 = Pessimo, 5 = Eccellente",
+			"categoryLabel": "Categoria",
+			"descriptionLabel": "Descrizione",
+			"descriptionPlaceholder": "Descrivi la tua esperienza con questo membro dello staff...",
+			"anonymousLabel": "Inviare in forma anonima? (sì/no)",
+			"anonymousPlaceholder": "sì o no (predefinito: no)"
+		},
+		"submitted": {
+			"title": "✅ Segnalazione inviata",
+			"description": "La tua segnalazione è stata inviata ed è in attesa di approvazione da parte di un admin. Ti avviseremo appena sarà esaminata.",
+			"anonymous": "\\n\\n🔒 La tua segnalazione è stata inviata in forma anonima.",
+			"roleUpdated": "\\n\\n⭐ **Valutazione staff aggiornata**\\n{roleName}\\nVoto: {rating}/5.00 ({totalReports} segnalazioni)"
+		},
+		"dm": {
+			"approved": "La tua segnalazione su {staff} in **{server}** è stata approvata.\\n\\n**Voto:** {rating}/5\\n**Categoria:** {category}\\n**Feedback:** {description}\\n\\n**Nota dello staff:** {reason}\\n\\nGrazie per aiutarci a far sì che il team risponda del proprio operato.",
+			"rejected": "La tua segnalazione su {staff} in **{server}** non è stata approvata.\\n\\n**Motivo:** {reason}\\n\\nSe hai altri dettagli da condividere, puoi contattare il team degli admin.",
+			"embedTitleApproved": "✅ Segnalazione approvata",
+			"embedTitleRejected": "❌ Segnalazione non approvata"
+		},
+		"categories": {
+			"helpful": "👍 Disponibile",
+			"unhelpful": "👎 Poco disponibile",
+			"abuse": "⚠️ Abuso di potere",
+			"slow_response": "⏰ Risposta lenta",
+			"excellent": "⭐ Servizio eccellente",
+			"rude": "😠 Comportamento scortese"
+		},
+		"errors": {
+			"noStaffSelected": "❌ Seleziona un membro dello staff da segnalare.",
+			"invalidRating": "❌ **Voto non valido**\\n\\nIl voto deve essere un numero da 1 a 5.",
+			"invalidCategory": "❌ **Categoria non valida**\\n\\nScegli una categoria dall'elenco.",
+			"emptyDescription": "❌ **Descrizione obbligatoria**\\n\\nDescrivi la tua esperienza.",
+			"cannotReportSelf": "❌ Non puoi segnalare te stesso!",
+			"notStaff": "❌ Il membro selezionato non fa parte dello staff.",
+			"onCooldown": "❌ **Cooldown della valutazione**\\n\\nDevi aspettare {time} {unit} prima di valutare di nuovo questo membro dello staff.\\n\\nUltima valutazione: {lastRated}",
+			"submitFailed": "❌ **Impossibile inviare la segnalazione**\\n\\nErrore: {error}\\n\\nRiprova più tardi.",
+			"notConfigured": "❌ Il sistema di valutazione dello staff non è configurato per questo server.",
+			"noStaffConfigured": "❌ I ruoli dello staff non sono configurati per questo server. Chiedi prima a un admin di configurare i permessi dello staff.",
+			"noStaffAvailable": "❌ Al momento non ho trovato nessun membro dello staff. Riprova più tardi o contatta un admin del server.",
+			"missingRating": "❌ Seleziona un voto prima di continuare.",
+			"missingCategory": "❌ Seleziona una categoria prima di continuare.",
+			"permissionDenied": "❌ **Permesso negato**\\n\\nTi servono i permessi da admin per approvare o rifiutare le segnalazioni sullo staff.",
+			"reviewReasonRequired": "❌ Inserisci un motivo per la tua decisione."
+		},
+		"ratingUpdate": {
+			"title": "⭐ Aggiornamento valutazione staff",
+			"description": "{staff} ha ricevuto una nuova valutazione.",
+			"ratingValue": "**{rating}/5.0** ({totalReports} segnalazioni)",
+			"fieldFeedback": "Feedback",
+			"dm": "⭐ La tua valutazione come staff in **{server}** ora è **{rating}/5.0** ({totalReports} segnalazioni)."
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ Questa segnalazione è già stata gestita.",
+			"approvedReply": "✅ Segnalazione #{reportId} approvata.",
+			"rejectedReply": "❌ Segnalazione #{reportId} rifiutata."
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 Content Creator",
+		"list": {
+			"title": "🎬 Content creator",
+			"description": "Content creator approvati in questo server:",
+			"none": "Ancora nessun content creator approvato.",
+			"applyButton": "Candidati"
+		},
+		"dismiss": {
+			"button": "Lascia il ruolo Content Creator",
+			"confirmTitle": "⚠️ Rimuovere il ruolo Content Creator?",
+			"confirmDescription": "Perderai il ruolo Content Creator in questo server. Potrai candidarti di nuovo più avanti, se lo staff lo consente.\n\n**Sei sicuro?**",
+			"yes": "Sì, rimuovi il ruolo",
+			"no": "No, annulla",
+			"removed": "✅ Il tuo ruolo Content Creator è stato rimosso."
+		},
+		"reviewModal": {
+			"titleApprove": "Approva candidatura",
+			"titleReject": "Rifiuta candidatura",
+			"reasonLabel": "Motivo (obbligatorio)",
+			"reasonPlaceholder": "Spiega la tua decisione a chi si è candidato…"
+		},
+		"embed": {
+			"staffDecision": "Decisione dello staff",
+			"reviewedBy": "Esaminata da",
+			"reviewedBySystem": "Automatico (TikTok duplicato)",
+			"statusApproved": "Approvata",
+			"statusRejected": "Rifiutata"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Candidatura Content Creator in attesa",
+			"pendingDescription": "{user} ha richiesto l'accesso come Content Creator.",
+			"pendingStatus": "In attesa di approvazione da un admin",
+			"fieldTiktok": "Nome utente TikTok",
+			"fieldStatus": "Stato",
+			"fieldApplicantReason": "Motivo",
+			"buttonApprove": "Approva",
+			"buttonReject": "Rifiuta",
+			"titleApproved": "✅ Candidatura Content Creator approvata",
+			"titleRejected": "❌ Candidatura Content Creator rifiutata",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• ID candidatura: #{appId}",
+			"liveTitle": "🔴 Content Creator in LIVE",
+			"liveDescription": "{mention} è ora in live su TikTok!",
+			"liveWatchButton": "Guarda la LIVE su TikTok",
+			"autoRejectReviewReason": "Duplicato o furto d'identità: questo nome utente TikTok è già collegato a un altro account Discord.",
+			"autoRejectConflictPending": "Quell'account ha una candidatura **in attesa** per questo nome utente TikTok.",
+			"autoRejectConflictApproved": "Quell'account è un content creator **approvato** che usa questo nome utente TikTok."
+		},
+		"modal": {
+			"title": "Candidati come Content Creator",
+			"usernameLabel": "Nome utente TikTok",
+			"usernamePlaceholder": "esempio: dansday",
+			"reasonLabel": "Perché vuoi diventare content creator?",
+			"reasonPlaceholder": "Spiegaci in breve perché dovremmo accettarti..."
+		},
+		"submitted": "✅ La tua candidatura come content creator per **{username}** è stata inviata ed è in attesa di approvazione dello staff.",
+		"dm": {
+			"approved": "La tua candidatura in **{server}** è stata approvata.\\n\\nTikTok: **{username}**\\nTi è stato assegnato il ruolo Content Creator.",
+			"rejected": "Questa volta la tua candidatura in **{server}** non è stata approvata.\\n\\nTikTok: **{username}**\\n\\n**Motivo:** {reason}\\n\\nPotrai candidarti di nuovo al termine del periodo di attesa (se il tuo server ne prevede uno).",
+			"embedTitleApproved": "✅ Content creator approvato",
+			"embedTitleRejected": "❌ Content creator non approvato"
+		},
+		"autoRejectApplicantReason": "Duplicato o furto d'identità: questo nome utente TikTok è già collegato a un altro account Discord.",
+		"errors": {
+			"notConfigured": "❌ Le candidature per content creator non sono configurate in questo server.",
+			"alreadyCreator": "✅ Hai già il ruolo Content Creator in questo server.",
+			"invalidUsername": "❌ Nome utente TikTok non valido. Usa solo lettere, numeri, punti e trattini bassi.",
+			"reasonRequired": "❌ Indica il motivo per cui vuoi diventare content creator.",
+			"pendingExists": "❌ Hai già una candidatura come content creator in attesa.",
+			"cooldown": "❌ Devi aspettare **{days} giorno/i** prima di inviare un'altra candidatura come content creator.",
+			"submitFailed": "❌ Impossibile inviare la candidatura come content creator: {error}",
+			"permissionDenied": "❌ Ti servono i permessi da admin per approvare o rifiutare le candidature dei content creator.",
+			"reviewReasonRequired": "❌ Inserisci un motivo per la tua decisione."
+		},
+		"live": {
+			"digest": "📊 **Live** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "Stream #{streamId}",
+			"endedTitle": "⚫ Live terminata",
+			"errorTitle": "⚠️ Errore di connessione alla live",
+			"sessionLine": "Sessione di stream **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ ID candidatura non valido.",
+			"applicationNotFound": "❌ Candidatura non trovata.",
+			"alreadyProcessed": "⚠️ Questa candidatura è già stata gestita.",
+			"approvedReply": "✅ Candidatura #{appId} approvata.",
+			"rejectedReply": "❌ Candidatura #{appId} rifiutata."
+		}
+	},
+	"notifications": {
+		"button": "🔔 Notifiche",
+		"title": "🔔 Preferenze notifiche",
+		"description": "Seleziona i canali per cui vuoi ricevere notifiche. Verrai taggato personalmente quando arriva una notifica.",
+		"selectPlaceholder": "Seleziona i canali per le notifiche...",
+		"updated": "✅ Le tue preferenze di notifica sono state aggiornate.",
+		"errors": {
+			"notConfigured": "❌ Le notifiche non sono configurate per questo server.",
+			"noRoles": "❌ Non è ancora stato impostato nessun canale di notifica. Chiedi a un admin di configurare le notifiche nella dashboard.",
+			"noneEnabled": "❌ In questo server non è attiva nessuna funzione di notifica."
+		},
+		"hub": {
+			"title": "🔔 Preferenze notifiche",
+			"description": "Scegli quale tipo di notifiche vuoi gestire.",
+			"channels": "📢 Notifiche dei canali",
+			"roblox": "🛍️ Notifiche oggetti Roblox",
+			"creators": "📡 Avvisi creator"
+		},
+		"active": "**Attive:** {channels}",
+		"none": "**Attive:** ancora nessuna."
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 Crea ruolo Supporter personalizzato",
+			"editTitle": "💎 Modifica ruolo Supporter personalizzato",
+			"nameLabel": "Nome del ruolo",
+			"namePlaceholder": "Inserisci il nome del tuo ruolo personalizzato...",
+			"colorLabel": "Colore del ruolo (hex/decimale/nome)",
+			"colorPlaceholder": "#FF5733 o 16729395 o rosso (facoltativo)",
+			"iconLabel": "Icona del ruolo (emoji o URL immagine)",
+			"iconPlaceholder": "🔥 o https://example.com/icon.png (facoltativo)"
+		},
+		"existing": {
+			"title": "💎 Ruolo Supporter personalizzato",
+			"description": "Hai già un ruolo personalizzato: **{roleName}**\\n\\nScegli un'azione:",
+			"currentRole": "📋 Ruolo attuale"
+		},
+		"created": {
+			"title": "✅ Ruolo Supporter personalizzato creato!",
+			"description": "Il tuo ruolo personalizzato **{roleName}** è stato creato e assegnato a te!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Icona personalizzata non disponibile:** questo server deve avere il potenziamento di livello 2 per usare icone personalizzate per i ruoli (immagini). Puoi usare un'emoji al suo posto!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Nota:** non è stato possibile impostare l'icona, ma il ruolo è stato creato correttamente.",
+			"roleDetails": "🎨 Dettagli del ruolo",
+			"roleDetailsValue": "**Nome:** {name}\\n**Colore:** {color}\\n**Icona:** {icon}",
+			"role": "💎 Ruolo",
+			"iconStatusSet": "Impostata",
+			"iconStatusNone": "Nessuna",
+			"iconStatusFailed": "Non riuscita (ruolo creato senza icona)",
+			"iconStatusInvalid": "Formato non valido (ruolo creato senza icona)"
+		},
+		"updated": {
+			"title": "✅ Ruolo Supporter personalizzato aggiornato!",
+			"description": "Il tuo ruolo personalizzato **{roleName}** è stato aggiornato!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Icona personalizzata non disponibile:** questo server deve avere il potenziamento di livello 2 per usare icone personalizzate per i ruoli (immagini). Puoi usare un'emoji al suo posto!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Nota:** non è stato possibile impostare l'icona, ma il ruolo è stato aggiornato correttamente.",
+			"roleDetails": "🎨 Dettagli del ruolo",
+			"roleDetailsValue": "**Nome:** {name}\\n**Colore:** {color}\\n**Icona:** {icon}",
+			"role": "💎 Ruolo",
+			"iconStatusUnchanged": "Invariata",
+			"iconStatusUpdated": "Aggiornata",
+			"iconStatusRemoved": "Rimossa",
+			"iconStatusFailed": "Non riuscita (ruolo aggiornato senza icona)",
+			"iconStatusInvalid": "Formato non valido (ruolo aggiornato senza icona)",
+			"iconFailedFallback": "Impossibile impostare l'icona. Il ruolo è stato aggiornato, ma senza l'icona personalizzata.",
+			"iconNote": "⚠️ **Nota sull'icona:** {message}"
+		},
+		"deleted": {
+			"title": "✅ Ruolo Supporter personalizzato eliminato",
+			"description": "Il tuo ruolo personalizzato **{roleName}** è stato eliminato."
+		},
+		"buttons": {
+			"edit": "✏️ Modifica ruolo",
+			"delete": "🗑️ Elimina ruolo"
+		},
+		"errors": {
+			"noRole": "❌ Non hai un ruolo personalizzato da modificare.",
+			"noRoleDelete": "❌ Non hai un ruolo personalizzato da eliminare.",
+			"alreadyHasRole": "❌ **Hai già un ruolo personalizzato**\\n\\nPuoi avere un solo ruolo Supporter personalizzato alla volta.\\n\\n💡 Usa **✏️ Modifica ruolo** per cambiarlo, oppure prima **🗑️ Elimina ruolo** se ne vuoi uno nuovo.",
+			"invalidName": "❌ **Nome del ruolo non valido**\\n\\nIl nome del ruolo deve avere tra 1 e 100 caratteri.",
+			"boostRequired": "❌ **Icona personalizzata non disponibile**\\n\\nQuesto server deve avere il **potenziamento di livello 2** per usare icone personalizzate per i ruoli (immagini).\\n\\n💡 **Consiglio:** puoi usare un'**emoji** al suo posto (come 🔥, ⭐ o qualsiasi emoji personalizzata), che non richiede potenziamenti del server.",
+			"boostRequiredCreate": "❌ **Potenziamento del server richiesto**\\n\\nQuesto server deve avere il **potenziamento di livello 2** per creare ruoli Supporter personalizzati con alcune funzioni.\\n\\n💡 **Cosa puoi fare:**\\n- Chiedi agli amministratori del server di potenziarlo al livello 2\\n- Oppure contatta lo staff del server per ricevere assistenza\\n\\n**Dettagli dell'errore:** {error}",
+			"createFailed": "❌ **Impossibile creare il ruolo**\\n\\nErrore: {error}\\n\\nAssicurati che:\\n- Il bot abbia il permesso di creare ruoli\\n- Il bot abbia il permesso di gestire i ruoli\\n- I vincoli di posizione dei ruoli siano validi",
+			"updateFailed": "❌ **Impossibile aggiornare il ruolo**\\n\\nErrore: {error}\\n\\nAssicurati che:\\n- Il bot abbia il permesso di gestire i ruoli\\n- I vincoli dei ruoli siano validi",
+			"deleteFailed": "❌ Impossibile eliminare il ruolo: {error}",
+			"failed": "❌ Impossibile aprire il modulo di creazione del ruolo: {error}",
+			"editFailed": "❌ Impossibile aprire il modulo di modifica: {error}",
+			"createFailedReason": "❌ **Impossibile creare il ruolo**\n\n{reason}"
+		},
+		"colorDefault": "Predefinito",
+		"anchor": {
+			"noBoosterRole": "Questo server non ha ancora il ruolo Server Booster. Comparirà quando qualcuno potenzierà il server.",
+			"botTooLow": "Il ruolo del bot deve stare sopra {role} per poter creare i ruoli Supporter.",
+			"unknown": "Impossibile determinare dove posizionare il ruolo Supporter."
+		},
+		"iconErrors": {
+			"boost": "Questo server deve avere il potenziamento di livello 2 per usare icone personalizzate per i ruoli. Puoi usare un'emoji al suo posto!",
+			"invalidFormat": "Formato URL o tipo di file non valido"
+		}
+	},
+	"questEnroll": {
+		"menuButton": "🔮 Missioni Discord",
+		"listTitle": "🔮 Missioni Discord",
+		"listEmpty": "Al momento non ci sono missioni Discord attive.",
+		"listAllClaimed": "✅ Hai riscattato tutte le missioni Discord attive.",
+		"listClaimedTag": "riscattata",
+		"claimAllButton": "Riscatta tutte",
+		"alreadyClaimed": "Già riscattata",
+		"alreadyClaimedDescription": "Ti sei già iscritto a **{questName}** e la ricompensa è già stata riscattata. Ogni missione può essere riscattata una sola volta per membro.",
+		"pendingTitle": "⏳ In esecuzione in background",
+		"pendingDescription": "Il tuo token **non** viene salvato nel nostro database.\n\n**Rischio:** Discord potrebbe limitare o bannare l'**account utente** collegato a quel token; in alcuni casi potrebbero subirne le conseguenze anche il **bot o il server**. Non è un comportamento ufficiale di Discord: hai scelto tu di procedere.",
+		"precheckNotFoundTitle": "Missione non presente su questo account",
+		"precheckNotFoundDescription": "Questa missione non risulta disponibile per l'account Discord collegato al tuo token. Apri **Discord → Missioni**, accetta la missione se serve, poi riprova.",
+		"precheckExpiredTitle": "Missione scaduta",
+		"precheckExpiredDescription": "Questa missione è scaduta per quell'account Discord.",
+		"precheckRewardClaimedTitle": "Ricompensa già riscattata",
+		"precheckRewardClaimedDescription": "La ricompensa di questa missione è già stata riscattata su questo **account Discord** (ad esempio dopo averla completata in un altro server o nel client di Discord). L'iscrizione automatica non può riscattarla di nuovo.",
+		"precheckCompletedTitle": "Missione già completata",
+		"precheckCompletedDescription": "Gli obiettivi della missione sono già completati su questo **account Discord**. Se non l'hai ancora fatto, riscatta l'eventuale ricompensa in **Discord → Missioni**: l'iscrizione automatica non può aggiungere altri progressi.",
+		"claimAllPendingTitle": "⏳ Riscatto di tutte le missioni",
+		"claimAllPendingDescription": "Iscrizione a **{count}** missioni, una alla volta.\n\nIl tuo token **non** viene salvato nel nostro database.\n\n**Rischio:** Discord potrebbe limitare o bannare l'**account utente** collegato a quel token; in alcuni casi potrebbero subirne le conseguenze anche il **bot o il server**. Non è un comportamento ufficiale di Discord: hai scelto tu di procedere.",
+		"claimAllNothingTitle": "Niente da riscattare",
+		"claimAllNothingDescription": "Al momento non ci sono missioni attive a cui iscrivere questo account Discord.",
+		"autoQuestDisabled": "L'iscrizione automatica alle missioni è attualmente disattivata. Contatta un amministratore del server.",
+		"alreadyRunning": "Hai già una missione automatica in corso. Aspetta che finisca prima di avviarne un'altra.",
+		"announceInChannel": "Ogni risultato viene pubblicato in {channel}.",
+		"announceDisabled": "Non è impostato nessun canale per le missioni, quindi non verrà annunciato nulla: le missioni riscattate vengono solo segnate nell'elenco.",
+		"result": {
+			"reward": "Ricompensa",
+			"openInDiscord": "Apri in Discord",
+			"errorTitle": "Errore di iscrizione alla missione",
+			"errorDescription": "{member} ({tag})\nMissione `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Token utente Discord (non salvato)",
+			"placeholder": "Rischio ToS: account bannabile, forse anche bot/server. Incollalo una volta, mai in pubblico.",
+			"claimAllTitle": "Riscatta tutte (token — rischio alto)",
+			"enrollTitle": "Iscriviti (token — rischio alto)"
+		},
+		"tokenTooShort": "Token troppo corto.",
+		"invalidTokenTitle": "Token non valido",
+		"invalidTokenDescription": "Il token che hai fornito sembra non valido o scaduto.\n`{error}`",
+		"invalidQuestId": "ID missione non valido.",
+		"missingQuestOrToken": "ID missione mancante o token troppo corto.",
+		"taskTypes": {
+			"default": "Missione",
+			"WATCH_VIDEO": "Guarda il video",
+			"WATCH_VIDEO_ON_MOBILE": "Guarda il video (mobile)",
+			"PLAY_ON_DESKTOP": "Gioca su desktop",
+			"PLAY_ON_DESKTOP_V2": "Gioca su desktop",
+			"PLAY_ON_XBOX": "Gioca su Xbox",
+			"PLAY_ON_PLAYSTATION": "Gioca su PlayStation",
+			"STREAM_ON_DESKTOP": "Trasmetti da desktop",
+			"PLAY_ACTIVITY": "Attività",
+			"ACHIEVEMENT_IN_ACTIVITY": "Obiettivo in un'attività",
+			"ACHIEVEMENT_IN_GAME": "Obiettivo in gioco"
+		},
+		"task": {
+			"forMinute": "{task} per {count} minuto",
+			"forMinutes": "{task} per {count} minuti",
+			"forSeconds": "{task} per {count} secondi",
+			"secondsTarget": "{task} · {count} secondi",
+			"target": "{task} · obiettivo {count}"
+		},
+		"reward": {
+			"fallback": "Ricompensa della missione",
+			"currency": "{count}× valuta delle missioni Discord"
+		},
+		"auto": {
+			"notFound": {
+				"title": "Iscrizione alla missione",
+				"description": "Questa missione non è stata restituita per quell'account. Apri **Missioni** in Discord, accettala se serve e assicurati che il token appartenga a quell'utente."
+			},
+			"expired": {
+				"title": "Iscrizione alla missione",
+				"description": "Quella missione è scaduta."
+			},
+			"alreadyComplete": {
+				"title": "✅ Missione già completata",
+				"description": "**Ricompensa:** {reward}\nSe non l'hai ancora fatto, riscattala nel client di Discord in **Missioni**."
+			},
+			"enrollFailed": {
+				"title": "Iscrizione alla missione non riuscita",
+				"description": "Discord ha restituito HTTP {status} durante l'iscrizione. Potresti dover prima accettare la missione nel client, oppure il tuo token potrebbe non essere valido."
+			},
+			"complete": {
+				"title": "✅ Missione completata",
+				"description": "**Ricompensa:** {reward}\nApri **Discord → Missioni**"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ Solo iscrizione",
+				"description": "Iscrizione a **{quest}** completata. Nella configurazione della missione non è stata trovata nessuna attività eseguibile: se serve, completala nel client di **Discord**.\n\n**Ricompensa:** {reward}"
+			},
+			"achievementMissing": {
+				"title": "Missione obiettivo",
+				"description": "Nella configurazione della missione mancano l'ID applicazione o il target dell'obiettivo. Completa **{task}** nel client di Discord.\n\n**Ricompensa:** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ Missione obiettivo completata",
+				"description": "**{quest}**\n**Ricompensa:** {reward}\nRiscattala in **Discord → Missioni**"
+			},
+			"achievementIncomplete": {
+				"title": "Missione obiettivo — incompleta",
+				"description": "{error}\n\n**Ricompensa:** {reward}"
+			},
+			"activityNoUser": {
+				"title": "Missione attività",
+				"description": "Impossibile ricavare il tuo ID utente dal token. Usa un normale token **utente** (non un token bot).\n\n**Ricompensa:** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ Missione attività completata",
+				"description": "**{quest}**\n**Ricompensa:** {reward}\nRiscattala in **Discord → Missioni**"
+			},
+			"activityIncomplete": {
+				"title": "Missione attività — incompleta",
+				"description": "I progressi non si sono completati in tempo{detail}.\n\n**Ricompensa:** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ Solo iscrizione",
+				"description": "Iscrizione a **{quest}** completata. **{task}** richiede un **ID applicazione** nella configurazione della missione per gli heartbeat API: completala nel client di Discord (desktop / console).\n\n**Ricompensa:** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ Missione completata",
+				"description": "**{quest}** ({task})\n**Ricompensa:** {reward}\nRiscattala in **Discord → Missioni**"
+			},
+			"platformIncomplete": {
+				"title": "Missione — incompleta",
+				"description": "I progressi non si sono completati in tempo{detail}. Per le missioni di **stream** o su **console**, tieni attivo il client vero o riprova più tardi.\n\n**Ricompensa:** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ Solo iscrizione",
+				"description": "Iscrizione a **{quest}** completata. Tipo di attività non supportato (**{task}**): completala nel client di Discord.\n\n**Ricompensa:** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "Iscrizione alla missione",
+				"description": "Impossibile leggere la durata del video per questa missione."
+			},
+			"videoDone": {
+				"title": "✅ Missione video completata",
+				"description": "**{quest}**\n**Ricompensa:** {reward}\nRiscattala in **Discord → Missioni**"
+			},
+			"videoIncomplete": {
+				"title": "Iscrizione alla missione — incompleta",
+				"description": "I progressi non hanno raggiunto l'obiettivo in tempo{detail}. Finisci di guardare il video nel client di Discord o riprova."
+			}
+		}
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"removed": "🔕 Non verrai più taggato per **{item}**.",
+			"saved": "🔔 Salvato. Verrai taggato per **{item}** su: {types}. Utenti che lo seguono: {count}.",
+			"noTypes": "niente",
+			"types": {
+				"price": {
+					"label": "Prezzo",
+					"description": "Cambia il prezzo impostato dal venditore."
+				},
+				"lowest_resale_price": {
+					"label": "Prezzo di rivendita",
+					"description": "Cambia il prezzo più basso tra i rivenditori."
+				},
+				"units_available": {
+					"label": "Scorte rimaste",
+					"description": "Cambiano le unità ancora disponibili per l'acquisto."
+				},
+				"total_quantity": {
+					"label": "Disponibilità totale",
+					"description": "Cambia il numero totale di copie."
+				}
+			},
+			"item": {
+				"title": "🔔 Notifiche oggetto",
+				"description": "Scegli per cosa vuoi essere taggato riguardo a [{item}]({url}). Deseleziona tutto per disattivare le notifiche di questo oggetto.",
+				"active": "**Notifiche per:** {types}",
+				"placeholder": "Seleziona per cosa ricevere notifiche..."
+			},
+			"menu": {
+				"title": "🛍️ Notifiche oggetti Roblox",
+				"description": "Oggetti che segui: {count}. Selezionane uno per cambiare le notifiche che ricevi.",
+				"empty": "Non stai ancora seguendo nessun oggetto Roblox. Premi 🔔 {button} sotto un post del catalogo per iniziare.",
+				"placeholder": "Seleziona un oggetto da modificare...",
+				"disableAll": "🔕 Disattiva tutto",
+				"disabledAll": "🔕 Notifiche disattivate (oggetti: {count})."
+			},
+			"errors": {
+				"invalidItem": "❌ Impossibile leggere l'oggetto del catalogo da questo pulsante.",
+				"memberNotFound": "❌ Il tuo profilo membro non è ancora sincronizzato. Riprova tra un attimo."
+			}
+		},
+		"itemFallback": "Oggetto #{id}",
+		"post": {
+			"free": "GRATIS",
+			"updatedTitle": "[Aggiornato] {name}",
+			"openOnRoblox": "Apri su Roblox",
+			"notifyMe": "Avvisami",
+			"fields": {
+				"category": "Categoria",
+				"price": "Prezzo",
+				"creator": "Creatore",
+				"quantity": "Quantità",
+				"favorites": "Preferiti",
+				"created": "Creato",
+				"notifications": "Notifiche",
+				"resalePrice": "Prezzo di rivendita",
+				"saleEnds": "Fine vendita"
+			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "Nuovo video",
+				"description": "Viene pubblicato un nuovo video, short o VOD."
+			},
+			"live": {
+				"label": "Live",
+				"description": "Il creator va in live."
+			},
+			"post": {
+				"label": "Nuovo post",
+				"description": "Viene pubblicato un nuovo post nella community di YouTube o su TikTok."
+			}
+		},
+		"saved": "🔔 Salvato. Verrai taggato per **{creator}** su: {types}. Utenti che lo seguono: {count}.",
+		"removed": "🔕 Non verrai più taggato per **{creator}**.",
+		"noTypes": "niente",
+		"creator": {
+			"title": "🔔 Avvisi creator",
+			"description": "Scegli per cosa vuoi essere taggato riguardo a [{creator}]({url}) su {platform}. Deseleziona tutto per smettere di seguirlo.",
+			"active": "**Notifiche per:** {types}",
+			"placeholder": "Seleziona per cosa ricevere notifiche..."
+		},
+		"menu": {
+			"title": "📡 Avvisi creator",
+			"description": "Creator che segui: {count}. Selezionane uno per cambiare le notifiche che ricevi.",
+			"empty": "Non segui ancora nessun creator. Premi ➕ Segui un creator per iniziare.",
+			"placeholder": "Seleziona un creator da modificare...",
+			"follow": "➕ Segui un creator",
+			"recent": "🕘 Avvisi recenti",
+			"disableAll": "🔕 Smetti di seguire tutti",
+			"disabledAll": "🔕 Hai smesso di seguire {count} creator."
+		},
+		"follow": {
+			"title": "➕ Segui un creator",
+			"description": "Scegli la piattaforma, poi incolla il link al profilo o il nome utente del creator.",
+			"modalTitle": "Segui su {platform}",
+			"inputLabel": "Link o nome utente su {platform}"
+		},
+		"recent": {
+			"title": "🕘 Avvisi creator recenti",
+			"empty": "Ancora nessun avviso dai creator. Appariranno qui quando un creator che segui pubblica qualcosa."
+		},
+		"errors": {
+			"invalidCreator": "❌ Impossibile leggere quel link o nome utente del creator.",
+			"memberNotFound": "❌ Il tuo profilo membro non è ancora sincronizzato. Riprova tra un attimo.",
+			"notFound": "❌ Nessun creator trovato con quel link o nome utente.",
+			"tiktokCooling": "⏳ TikTok sta limitando le ricerche in questo momento. Riprova tra qualche minuto.",
+			"lookupFailed": "❌ Impossibile cercare quel creator in questo momento. Riprova più tardi."
+		},
+		"post": {
+			"platform": "Piattaforma",
+			"type": "Tipo",
+			"notifications": "Notifiche",
+			"openOn": "Apri su {platform}",
+			"notifyMe": "Avvisami"
+		}
+	},
+	"moderation": {
+		"button": "🔨 Moderazione",
+		"selectUser": "Scegli il membro da moderare.",
+		"selectUserPlaceholder": "Seleziona un membro",
+		"selectAction": "Scegli un'azione per {member}.",
+		"selectActionPlaceholder": "Seleziona un'azione",
+		"actions": {
+			"warn": "Avvertimento",
+			"timeout": "Timeout",
+			"untimeout": "Rimozione timeout",
+			"kick": "Espulsione",
+			"ban": "Ban",
+			"tempban": "Ban temporaneo",
+			"clearwarns": "Cancellazione avvertimenti"
+		},
+		"modal": {
+			"reason": "Motivo",
+			"duration": "Durata (es. 10 min, 2 ore, 7 giorni)"
+		},
+		"done": "✅ Azione applicata a {member}: {action}. Caso #{case}.",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ Inserisci una durata come 10 min, 2 ore o 7 giorni.",
+		"notAllowed": "❌ Il proprietario del server e i bot non possono essere moderati.",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ Membro avvertito",
+				"timeout": "🔇 Membro in timeout",
+				"untimeout": "🔊 Timeout rimosso",
+				"kick": "👢 Membro espulso",
+				"ban": "🔨 Membro bannato",
+				"tempban": "⏳ Membro bannato temporaneamente",
+				"unban": "🕊️ Ban revocato",
+				"unwarn": "🧹 Avvertimento rimosso",
+				"clearwarns": "🧹 Avvertimenti cancellati",
+				"tempban_expired": "⌛ Ban temporaneo scaduto"
+			},
+			"bulkTitles": {
+				"role_add": "➕ Aggiunta ruolo di massa",
+				"role_remove": "➖ Rimozione ruolo di massa"
+			},
+			"title": "{action} · Caso #{case}",
+			"description": "Caso **#{case}** registrato per {member}.",
+			"fields": {
+				"member": "👤 Membro",
+				"staff": "🛡️ Staff",
+				"source": "📍 Origine",
+				"reason": "📝 Motivo",
+				"duration": "⏱️ Durata",
+				"activeWarnings": "📊 Avvertimenti attivi",
+				"role": "🎭 Ruolo"
+			},
+			"durationValue": "{duration} (termina {ends})",
+			"noReason": "Nessun motivo indicato",
+			"unknown": "Sconosciuto",
+			"automatic": "Automatico",
+			"staffFallback": "staff",
+			"sources": {
+				"panel": "pannello",
+				"menu": "menu",
+				"discord": "discord",
+				"auto": "auto"
+			},
+			"bulkSummary": "**{done}** completati · {failed} non riusciti",
+			"reasons": {
+				"unwarn": "Rimosso l'avvertimento #{case}",
+				"clearwarns": "Avvertimenti cancellati: {count}",
+				"escalation": "Raggiunti {count} avvertimenti attivi",
+				"tempbanExpired": "Ban temporaneo del caso #{case} scaduto"
+			}
+		},
+		"memberDm": {
+			"server": "**Server:** {server}",
+			"reason": "**Motivo:** {reason}",
+			"duration": "**Durata:** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n} g",
+			"h": "{n} h",
+			"m": "{n} min",
+			"s": "{n} s"
+		}
+	},
+	"setup": {
+		"categoryName": "Menu {botName}",
+		"channels": {
+			"menu": "「💻」menu",
+			"bot_updates": "「⚙️」aggiornamenti-bot",
+			"welcomer": "「🚪」benvenuto",
+			"booster": "「🚀」booster",
+			"moderation": "「🔨」moderazione",
+			"leveling": "「🆙」livelli",
+			"giveaway": "「🎁」giveaway",
+			"staff_rating": "「⭐」valutazione-staff",
+			"discord_quest_notifier": "「📜」missioni-discord",
+			"content_creator": "「📽️」content-creator",
+			"roblox_catalog_notifier": "「👗」catalogo-roblox",
+			"items": "「🛍️」oggetti",
+			"minigames": "「🎲」minigiochi"
+		},
+		"language": {
+			"title": "🌐 Scegli la lingua del server",
+			"description": "Scegli la lingua di questo server. Viene usata per i nomi dei canali creati da `/setup`, per il menu, i post di approvazione, tutti i messaggi pubblici del bot e per la chat e la voce dell'IA.\n\nI membri possono comunque scegliere la propria lingua nel menu per le risposte private e i DM. Potrai cambiarla in seguito nel pannello web, in **Configuration → Main**.",
+			"placeholder": "Seleziona la lingua del server",
+			"working": "⏳ Configurazione in **{language}**…",
+			"applied": "🌐 Lingua del server: **{language}**"
+		},
+		"commandDescription": "Configura il bot: scegli la lingua del server, poi crea il menu e i canali. Solo admin."
+	},
+	"items": {
+		"common": {
+			"footer": "Oggetti",
+			"aMemberActor": "Un membro",
+			"aMemberTarget": "un membro",
+			"disguisedMember": "Un membro misterioso 🎭",
+			"someone": "Qualcuno",
+			"item": "oggetto",
+			"anItem": "un oggetto",
+			"them": "questo membro",
+			"until": " (termina {time})",
+			"activeUntil": " (attivo, termina {time})",
+			"luckBonus": " (+{percent}% fortuna 🍀)",
+			"luckTaxDiscount": " (−{percent}% di tassa grazie alla fortuna 🍀)",
+			"addressed": "{member}, {text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "Furto bloccato",
+				"blockedDescription": "Lo **Scudo** di {target} ha bloccato il furto di {actor}!",
+				"immuneTitle": "Furto assorbito dall'immunità",
+				"immuneDescription": "{target} è ancora immune. Il furto di {actor} non ha avuto effetto e l'oggetto **{item}** è andato perso."
+			},
+			"bomb": {
+				"blockedTitle": "Bomba bloccata",
+				"blockedDescription": "Lo **Scudo** di {target} ha bloccato la bomba di {actor}!",
+				"immuneTitle": "Bomba assorbita dall'immunità",
+				"immuneDescription": "{target} è ancora immune. La bomba di {actor} non ha avuto effetto e l'oggetto **{item}** è andato perso."
+			},
+			"leech": {
+				"blockedTitle": "Sanguisuga bloccata",
+				"blockedDescription": "Lo **Scudo** di {target} ha bloccato la sanguisuga di {actor}!",
+				"immuneTitle": "Sanguisuga assorbita dall'immunità",
+				"immuneDescription": "{target} è ancora immune. La sanguisuga di {actor} non ha avuto effetto e l'oggetto **{item}** è andato perso."
+			}
+		},
+		"attack": {
+			"reflectedTitle": "Attacco riflesso",
+			"reflectedDescription": "{target} ha rispedito l'attacco a {actor}!",
+			"withItem": " con **{item}**",
+			"refundedValue": "{target} ha ricevuto un rimborso di {xp}",
+			"bountyValue": "{actor} ha riscosso anche {xp}",
+			"immuneValue": "L'immunità di {target} termina {time}",
+			"steal": {
+				"title": "Membro derubato!",
+				"description": "{actor} ha derubato {target}{withItem}!"
+			},
+			"bomb": {
+				"title": "Membro bombardato!",
+				"description": "{actor} ha bombardato {target}{withItem}!"
+			}
+		},
+		"fields": {
+			"skimRate": "Percentuale sottratta",
+			"received": "Ricevuti",
+			"tax": "Tassa",
+			"bounty": "Taglia",
+			"xpLostByAttacker": "XP persi dall'attaccante",
+			"attacker": "Attaccante",
+			"victim": "Vittima",
+			"xpStolen": "XP rubati",
+			"xpDestroyed": "XP distrutti",
+			"insuranceRefund": "Rimborso assicurazione",
+			"bountyCollected": "Taglia riscossa",
+			"immunity": "Immunità"
+		},
+		"leech": {
+			"title": "Sanguisuga attaccata",
+			"description": "{actor} ha attaccato una sanguisuga a {target}: finché resta attiva, gli sottrae una parte dei suoi XP."
+		},
+		"gift": {
+			"title": "Regalo inviato",
+			"description": "{actor} ha inviato un regalo a {target}!"
+		},
+		"bounty": {
+			"title": "Taglia piazzata",
+			"description": "{actor} ha messo una taglia su {target}. Il prossimo che lo deruba o lo bombarda la riscuote."
+		},
+		"disguise": {
+			"title": "Un membro è sparito tra la folla",
+			"description": "Qualcuno ha indossato un **Travestimento**{until}. Ora i suoi attacchi nascondono il suo nome ed è sparito dalla classifica."
+		},
+		"boost": {
+			"title": "Boost attivato",
+			"description": "{actor} ha attivato un boost{until}. I guadagni vengono moltiplicati finché dura."
+		},
+		"shield": {
+			"title": "Scudo attivato",
+			"description": "{actor} ora è protetto: furti, bombe e sanguisughe in arrivo verranno bloccati{until}."
+		},
+		"reflect": {
+			"title": "Riflesso attivato",
+			"description": "{actor} rispedirà il prossimo attacco all'attaccante{until}."
+		},
+		"insurance": {
+			"title": "Assicurazione attivata",
+			"description": "{actor} riceverà un rimborso del {percent}%{luck} di quanto perso la prossima volta che verrà derubato o bombardato{until}."
+		},
+		"luck": {
+			"title": "Fortuna attivata",
+			"description": "{actor} ora ha +{percent}% di fortuna su furto, bomba, minigiochi, spia, sanguisuga, tassa sui regali, assicurazione, boost amicizia e prezzi del negozio{until}."
+		},
+		"spyCaught": {
+			"title": "Spia scoperta",
+			"description": "{target} ha scoperto {spy} mentre cercava di spiarlo. Nessuna informazione raccolta."
+		},
+		"adminGift": {
+			"title": "È arrivato un regalo",
+			"description": "{member} ha ricevuto **{quantity}× {item}** dall'admin. Controlla i tuoi oggetti!"
+		},
+		"expired": {
+			"boost": {
+				"title": "Boost terminato",
+				"text": "Il tuo **Boost {value}×** è terminato."
+			},
+			"shield": {
+				"title": "Scudo terminato",
+				"text": "Il tuo **Scudo** è terminato. Puoi essere attaccato di nuovo."
+			},
+			"leech": {
+				"title": "Sanguisuga terminata",
+				"text": "La tua **Sanguisuga al {value}%** è terminata.",
+				"textWithTarget": "La tua **Sanguisuga al {value}%** su {target} è terminata."
+			},
+			"reflect": {
+				"title": "Riflesso terminato",
+				"text": "Il tuo **Riflesso** è terminato."
+			},
+			"insurance": {
+				"title": "Assicurazione terminata",
+				"text": "La tua **Assicurazione** è scaduta."
+			},
+			"disguise": {
+				"title": "Travestimento terminato",
+				"announcement": "Un membro si è tolto il travestimento. Ora è di nuovo visibile."
+			},
+			"luck": {
+				"title": "Fortuna terminata",
+				"text": "La tua **Fortuna +{value}%** è terminata."
+			}
+		},
+		"immunityEnded": {
+			"title": "Immunità terminata",
+			"description": "{member} non è più immune. Di nuovo attaccabile!",
+			"anonymous": "Un membro non è più immune."
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "Cooldown del furto terminato",
+				"text": "Il cooldown del furto è finito. Puoi rubare di nuovo!"
+			},
+			"bomb": {
+				"title": "Cooldown della bomba terminato",
+				"text": "Il cooldown della bomba è finito. Puoi bombardare di nuovo!"
+			},
+			"insurance": {
+				"title": "Cooldown dell'assicurazione terminato",
+				"text": "Il cooldown dell'assicurazione è finito. Puoi attivare di nuovo l'assicurazione!"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "Un membro",
+		"footer": "Minigiochi",
+		"win": {
+			"title": "🎲 Vittoria al minigioco!",
+			"description": "{member} ha puntato {wager} a {multiplier}× e ha **vinto**!"
+		},
+		"lose": {
+			"title": "🎲 Minigioco perso",
+			"description": "{member} ha puntato {wager} a {multiplier}× e ha **perso tutto**."
+		},
+		"fields": {
+			"payout": "Vincita",
+			"netGain": "Guadagno netto",
+			"winChance": "Probabilità di vincita",
+			"xpLost": "XP persi"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ Giro effetto tema",
+			"description": "{member} ha speso {cost} per un giro e ha ottenuto **{effect}**!"
+		},
+		"fields": {
+			"effect": "Effetto",
+			"xpSpent": "XP spesi",
+			"variant": "Variante"
+		}
+	},
+	"tasks": {
+		"footer": "Attività",
+		"rarity": {
+			"common": "Comune",
+			"uncommon": "Non comune",
+			"rare": "Raro",
+			"epic": "Epico",
+			"legendary": "Leggendario",
+			"mythic": "Mitico"
+		},
+		"milestones": {
+			"7": "Una settimana",
+			"30": "Un mese",
+			"100": "Cento giorni",
+			"365": "Un anno"
+		},
+		"login": {
+			"jackpotTitle": "🎁 Jackpot del giorno {day} — {rarity}!",
+			"dropTitle": "✨ Drop {rarity}!",
+			"description": "{member} ha ottenuto un oggetto **{rarity}** al giorno {day}!",
+			"fields": {
+				"item": "Oggetto",
+				"rarity": "Rarità",
+				"worth": "Valore"
+			}
+		},
+		"streak": {
+			"day": "{count} giorno",
+			"days": "{count} giorni",
+			"reset": {
+				"title": "💔 Serie azzerata",
+				"description": "{member} ha saltato **{days}** e ha perso una serie di **{previous} giorni**. Si riparte dal giorno 1.",
+				"descriptionBurned": "{member} ha saltato **{days}** e ha perso una serie di **{previous} giorni**. {burned} Si riparte dal giorno 1.",
+				"burnedOne": "Ha consumato 1 congelamento cercando di salvarla.",
+				"burnedMany": "Ha consumato {count} congelamenti cercando di salvarla."
+			},
+			"frozen": {
+				"title": "🧊 Serie congelata",
+				"description": "{member} ha saltato **{days}** — la serie di **{streak} giorni** è salva grazie a {freezes}.",
+				"one": "un congelamento serie",
+				"many": "{count} congelamenti serie"
+			},
+			"fields": {
+				"longest": "Record assoluto",
+				"freezesUsed": "Congelamenti usati",
+				"freezesLeft": "Congelamenti rimasti"
+			},
+			"milestone": {
+				"title": "{emoji} Serie: {label}",
+				"description": "{member} ha appena raggiunto una serie di **{streak} giorni**!"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 Benvenuto nel server!",
+		"fields": {
+			"accountCreated": "📅 Account creato",
+			"memberCount": "👥 Numero di membri",
+			"invitedBy": "📨 Invitato da"
+		},
+		"memberNumber": "Membro #{count}",
+		"inviterCount": "{inviter} ({count} inviti)",
+		"inviter": {
+			"vanity": "l'URL personalizzato",
+			"server": "il link di invito del server",
+			"someone": "qualcuno"
+		},
+		"inviteSources": {
+			"invite": "Link Discord",
+			"personal": "Link personale",
+			"vanity": "URL personalizzato",
+			"server": "Link del server",
+			"manual": "Impostato dallo staff",
+			"unknown": "Sconosciuto"
+		},
+		"accountAge": {
+			"today": "oggi",
+			"oneDay": "1 giorno fa",
+			"days": "{days} giorni fa"
+		},
+		"unknownServer": "Server sconosciuto",
+		"defaultMessages": [
+			"👋 Benvenuto {user} su {server}! Sei il membro #{memberCount} (account creato: {accountAge}).",
+			"🎉 {user} è entrato in {server}! Membro #{memberCount} | Account creato: {accountAge}.",
+			"🌟 Benvenuto {user}! Ora fai parte di {server} (membro #{memberCount}, account creato: {accountAge}).",
+			"🚀 {user} è appena entrato in {server}! Membro #{memberCount} | Account creato: {accountAge}.",
+			"🎊 Ciao {user}! Benvenuto su {server}! Sei il membro #{memberCount} (account creato: {accountAge})."
+		]
+	},
+	"booster": {
+		"title": "💎 Grazie per il potenziamento!",
+		"fields": {
+			"boostLevel": "🚀 Livello potenziamento",
+			"totalBoosts": "✨ Potenziamenti totali",
+			"boostedSince": "📅 Booster dal"
+		},
+		"level": "Livello {level}",
+		"justNow": "Proprio ora",
+		"unknownServer": "Server sconosciuto",
+		"defaultMessages": [
+			"🎉 {user} ha appena potenziato {server}! Livello attuale: {boostLevel} | Potenziamenti totali: {totalBoosts}.",
+			"💎 Grazie {user} per aver potenziato {server}! Ora siamo al livello {boostLevel} con {totalBoosts} potenziamenti.",
+			"🚀 {user} ha potenziato {server}! Livello del server: {boostLevel} | Potenziamenti: {totalBoosts}.",
+			"🔥 Un grazie enorme a {user} per aver potenziato {server}! Potenziamenti totali: {totalBoosts} (livello {boostLevel}).",
+			"⭐ {user} ha appena dato un potenziamento a {server}! Livello {boostLevel} con {totalBoosts} potenziamenti."
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "Ricompense",
+			"tasks": "Attività",
+			"game": "🎮 Gioco",
+			"publisher": "🏢 Editore",
+			"expires": "⏳ Scadenza"
+		},
+		"test": "_Notifica di prova — il notificatore funziona._",
+		"openInDiscord": "Apri in Discord"
+	},
+	"forwarder": {
+		"title": "Messaggio da {channel}",
+		"additionalAttachments": "Allegati aggiuntivi"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "Al momento non riesco a generare una risposta. Riprova.",
+			"keyRejected": "La chiave API dell'IA è stata rifiutata. Controlla le impostazioni nel pannello del bot.",
+			"rateLimited": "Il servizio di IA è momentaneamente limitato. Riprova tra un attimo.",
+			"failed": "Qualcosa è andato storto durante il contatto con il servizio di IA."
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **Comando sconosciuto**: `/{command}`\n\nQuesto comando non esiste. È disponibile solo `/setup`.",
+			"failed": "❌ **Errore del comando**: `/{command}`\n\nIl comando non è stato eseguito correttamente.\n**Errore**: {error}\n\nRiprova o, se il problema persiste, contatta un amministratore.",
+			"unexpected": "❌ **Errore imprevisto**: `/{command}`\n\nSi è verificato un errore imprevisto. Riprova.",
+			"critical": "❌ **Errore critico**: si è verificato un errore imprevisto durante l'elaborazione del tuo comando.\n\nRiprova più tardi o contatta un amministratore."
+		}
+	}
+}

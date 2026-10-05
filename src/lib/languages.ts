@@ -4,9 +4,12 @@ export const SERVER_LANGUAGES = [
 	{ code: 'de', name: 'Deutsch', englishName: 'German', discordLocales: ['de'] },
 	{ code: 'es', name: 'Español', englishName: 'Spanish', discordLocales: ['es-ES', 'es-419'] },
 	{ code: 'fr', name: 'Français', englishName: 'French', discordLocales: ['fr'] },
+	{ code: 'it', name: 'Italiano', englishName: 'Italian', discordLocales: ['it'] },
+	{ code: 'nl', name: 'Nederlands', englishName: 'Dutch', discordLocales: ['nl'] },
 	{ code: 'ar', name: 'العربية', englishName: 'Arabic', discordLocales: [] },
 	{ code: 'ms', name: 'Bahasa Melayu', englishName: 'Malay', discordLocales: [] },
-	{ code: 'zh', name: '简体中文', englishName: 'Simplified Chinese', discordLocales: ['zh-CN', 'zh-TW'] }
+	{ code: 'zh', name: '简体中文', englishName: 'Simplified Chinese', discordLocales: ['zh-CN', 'zh-TW'] },
+	{ code: 'ja', name: '日本語', englishName: 'Japanese', discordLocales: ['ja'] }
 ] as const;
 
 export type ServerLanguage = (typeof SERVER_LANGUAGES)[number]['code'];

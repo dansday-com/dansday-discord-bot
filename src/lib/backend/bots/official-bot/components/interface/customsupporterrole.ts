@@ -4,7 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
-import { memberTranslator, translate } from '../../i18n.js';
+import { getUserLanguage, memberTranslator, translate } from '../../i18n.js';
 import { parseColorName } from '../../localizedInput.js';
 import { menuBackButton } from './menuBack.js';
 
@@ -132,7 +132,7 @@ function isValidImageUrl(url) {
 	return true;
 }
 
-function parseColor(colorInput) {
+function parseColor(colorInput, lang?: string) {
 	if (!colorInput || colorInput.trim() === '') {
 		return null;
 	}
@@ -153,7 +153,7 @@ function parseColor(colorInput) {
 		return decimal;
 	}
 
-	return parseColorName(trimmed);
+	return parseColorName(trimmed, lang);
 }
 
 class AnchorError extends Error {
@@ -505,7 +505,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			}
 
 			const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
-			const roleColor = parseColor(colorInput);
+			const roleColor = parseColor(colorInput, tr.lang);
 			const updateData: any = {
 				name: roleName,
 				reason: `Custom supporter role updated for ${member.user.tag} (${member.user.id})`
@@ -676,7 +676,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			return;
 		}
 
-		const roleColor = parseColor(colorInput);
+		const roleColor = parseColor(colorInput, await getUserLanguage(interaction.guild.id, interaction.user.id));
 
 		const trimmedIconInput = iconInput?.trim() || '';
 		let iconStatus = 'none';

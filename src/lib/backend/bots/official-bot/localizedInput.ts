@@ -15,6 +15,12 @@ function wordSet(words: string[]) {
 }
 
 const YES_WORDS = wordSet([
+	'sì',
+	'certo',
+	'jazeker',
+	'はい',
+	'うん',
+	'ええ',
 	'yes',
 	'y',
 	'yeah',
@@ -49,6 +55,9 @@ const YES_WORDS = wordSet([
 ]);
 
 const NO_WORDS = wordSet([
+	'いいえ',
+	'いや',
+	'ううん',
 	'no',
 	'n',
 	'nope',
@@ -104,6 +113,10 @@ const DURATION_UNITS: [number, string[]][] = [
 			'segundos',
 			'seconde',
 			'secondes',
+			'secondo',
+			'secondi',
+			'seconden',
+			'秒間',
 			'ثانية',
 			'ثواني',
 			'ث',
@@ -111,7 +124,32 @@ const DURATION_UNITS: [number, string[]][] = [
 			'秒钟'
 		]
 	],
-	[60, ['m', 'min', 'mins', 'minute', 'minutes', 'menit', 'mnt', 'minit', 'minuten', 'minuto', 'minutos', 'دقيقة', 'دقائق', 'د', '分', '分钟', '分鐘']],
+	[
+		60,
+		[
+			'm',
+			'min',
+			'mins',
+			'minute',
+			'minutes',
+			'menit',
+			'mnt',
+			'minit',
+			'minuten',
+			'minuto',
+			'minutos',
+			'minuti',
+			'minuut',
+			'minuten',
+			'分間',
+			'دقيقة',
+			'دقائق',
+			'د',
+			'分',
+			'分钟',
+			'分鐘'
+		]
+	],
 	[
 		3600,
 		[
@@ -128,6 +166,12 @@ const DURATION_UNITS: [number, string[]][] = [
 			'horas',
 			'heure',
 			'heures',
+			'ora',
+			'ore',
+			'uur',
+			'uren',
+			'u',
+			'時間',
 			'ساعة',
 			'ساعات',
 			'س',
@@ -138,7 +182,35 @@ const DURATION_UNITS: [number, string[]][] = [
 			'钟头'
 		]
 	],
-	[86400, ['d', 'day', 'days', 'hari', 't', 'tag', 'tage', 'tagen', 'dia', 'dias', 'j', 'jour', 'jours', 'يوم', 'ايام', 'ي', '天', '日']],
+	[
+		86400,
+		[
+			'd',
+			'day',
+			'days',
+			'hari',
+			't',
+			'tag',
+			'tage',
+			'tagen',
+			'dia',
+			'dias',
+			'j',
+			'jour',
+			'jours',
+			'g',
+			'giorno',
+			'giorni',
+			'dag',
+			'dagen',
+			'日間',
+			'يوم',
+			'ايام',
+			'ي',
+			'天',
+			'日'
+		]
+	],
 	[
 		604800,
 		[
@@ -156,6 +228,11 @@ const DURATION_UNITS: [number, string[]][] = [
 			'sem',
 			'semaine',
 			'semaines',
+			'settimana',
+			'settimane',
+			'sett',
+			'weken',
+			'週間',
 			'اسبوع',
 			'اسابيع',
 			'周',
@@ -188,21 +265,26 @@ export function parseLocalizedDuration(input: unknown): number | null {
 }
 
 const COLOR_NAMES: [number, string[]][] = [
-	[0xff0000, ['red', 'merah', 'rot', 'rojo', 'roja', 'rouge', 'احمر', '红', '红色', '紅', '紅色']],
-	[0x00ff00, ['green', 'hijau', 'grun', 'gruen', 'verde', 'vert', 'verte', 'اخضر', '绿', '绿色', '綠', '綠色']],
-	[0x0000ff, ['blue', 'biru', 'blau', 'azul', 'bleu', 'bleue', 'ازرق', '蓝', '蓝色', '藍', '藍色']],
-	[0xffff00, ['yellow', 'kuning', 'gelb', 'amarillo', 'amarilla', 'jaune', 'اصفر', '黄', '黄色', '黃', '黃色']],
-	[0xffa500, ['orange', 'oranye', 'oren', 'jingga', 'naranja', 'برتقالي', '橙', '橙色']],
-	[0x800080, ['purple', 'ungu', 'lila', 'violett', 'morado', 'morada', 'purpura', 'violet', 'violette', 'بنفسجي', '紫', '紫色']],
-	[0xffc0cb, ['pink', 'merah muda', 'merah jambu', 'rosa', 'rose', 'وردي', '粉', '粉色', '粉红', '粉红色', '粉紅', '粉紅色']],
-	[0x00ffff, ['cyan', 'sian', 'cian', 'سماوي', '青', '青色']],
-	[0x000000, ['black', 'hitam', 'schwarz', 'negro', 'negra', 'noir', 'noire', 'اسود', '黑', '黑色']],
-	[0xffffff, ['white', 'putih', 'weiss', 'weiß', 'blanco', 'blanca', 'blanc', 'blanche', 'ابيض', '白', '白色']],
-	[0x808080, ['gray', 'grey', 'abu-abu', 'abu abu', 'abu', 'kelabu', 'grau', 'gris', 'grise', 'رمادي', '灰', '灰色']]
+	[0xff0000, ['red', 'merah', 'rot', 'rojo', 'roja', 'rouge', 'rosso', 'rossa', 'rood', '赤', '赤色', 'احمر', '红', '红色', '紅', '紅色']],
+	[0x00ff00, ['green', 'hijau', 'grun', 'gruen', 'verde', 'vert', 'verte', 'groen', '緑', '緑色', 'اخضر', '绿', '绿色', '綠', '綠色']],
+	[0x0000ff, ['blue', 'biru', 'blau', 'azul', 'bleu', 'bleue', 'blu', 'blauw', 'ازرق', '蓝', '蓝色', '藍', '藍色']],
+	[0xffff00, ['yellow', 'kuning', 'gelb', 'amarillo', 'amarilla', 'jaune', 'giallo', 'gialla', 'geel', 'اصفر', '黄', '黄色', '黃', '黃色']],
+	[0xffa500, ['orange', 'oranye', 'oren', 'jingga', 'naranja', 'arancione', 'oranje', 'オレンジ', 'برتقالي', '橙', '橙色']],
+	[0x800080, ['purple', 'ungu', 'lila', 'violett', 'morado', 'morada', 'purpura', 'violet', 'violette', 'viola', 'paars', 'بنفسجي', '紫', '紫色']],
+	[0xffc0cb, ['pink', 'merah muda', 'merah jambu', 'rosa', 'rose', 'roze', 'ピンク', 'وردي', '粉', '粉色', '粉红', '粉红色', '粉紅', '粉紅色']],
+	[0x00ffff, ['cyan', 'sian', 'cian', 'ciano', 'cyaan', '水色', 'سماوي', '青', '青色']],
+	[0x000000, ['black', 'hitam', 'schwarz', 'negro', 'negra', 'noir', 'noire', 'nero', 'nera', 'zwart', '黒', '黒色', 'اسود', '黑', '黑色']],
+	[0xffffff, ['white', 'putih', 'weiss', 'weiß', 'blanco', 'blanca', 'blanc', 'blanche', 'bianco', 'bianca', 'wit', 'ابيض', '白', '白色']],
+	[0x808080, ['gray', 'grey', 'abu-abu', 'abu abu', 'abu', 'kelabu', 'grau', 'gris', 'grise', 'grigio', 'grigia', 'grijs', 'グレー', 'رمادي', '灰', '灰色']]
 ];
 
 const COLOR_BY_NAME = new Map<string, number>(COLOR_NAMES.flatMap(([value, words]) => words.map((w) => [normalizeWord(w), value] as [string, number])));
 
-export function parseColorName(input: unknown): number | null {
-	return COLOR_BY_NAME.get(normalizeWord(input).replace(/\s+/g, ' ')) ?? null;
+const COLOR_BY_LANGUAGE: Record<string, Map<string, number>> = {
+	ja: new Map(['青', '青色'].map((w) => [normalizeWord(w), 0x0000ff]))
+};
+
+export function parseColorName(input: unknown, lang?: string): number | null {
+	const word = normalizeWord(input).replace(/\s+/g, ' ');
+	return (lang ? COLOR_BY_LANGUAGE[lang]?.get(word) : undefined) ?? COLOR_BY_NAME.get(word) ?? null;
 }

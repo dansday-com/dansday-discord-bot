@@ -1,0 +1,1388 @@
+{
+	"menu": {
+		"title": "📋 {botName} Botメニュー",
+		"description": "下のボタンから機能を選んでください：",
+		"website": "🌐 サーバーページ：{url}",
+		"join": "📨 招待リンク：{url}",
+		"noAccess": "❌ 利用できる機能がありません。",
+		"button": "📋 メニュー",
+		"account": "👤 アカウント",
+		"stats": {
+			"members": "👥 メンバー",
+			"totalXp": "📊 合計XP",
+			"topLevel": "⭐ 最高レベル"
+		},
+		"back": "⬅️ 戻る",
+		"categories": {
+			"me": {
+				"button": "👤 自分",
+				"description": "自分のステータスと通知。"
+			},
+			"community": {
+				"button": "🎉 コミュニティ",
+				"description": "ギブアウェイ、フィードバック、スタッフ評価。"
+			},
+			"perks": {
+				"button": "💎 特典",
+				"description": "サポーター特典とクリエイター特典。"
+			},
+			"staff": {
+				"button": "🔨 スタッフ",
+				"description": "スタッフと管理者向けのツール。"
+			}
+		},
+		"items": {
+			"afk": "AFKステータスを設定・解除します。",
+			"notifications": "通知を受け取るチャンネルを選びます。",
+			"invites": "招待状況の確認と招待リンクの取得。",
+			"quest": "開催中のDiscordクエストを受け取ります。",
+			"giveaway": "このサーバーでギブアウェイを開催します。",
+			"feedback": "サーバー運営にフィードバックを送ります。",
+			"staffRating": "スタッフを評価・報告します。",
+			"customSupporterRole": "自分だけのロールを作成・編集します。",
+			"contentCreator": "クリエイター一覧の確認や参加申請ができます。",
+			"moderation": "メンバーの警告、タイムアウト、キック、BANを行います。"
+		}
+	},
+	"interface": {
+		"panel": {
+			"title": "{botName} Botパネル",
+			"description": "**メニュー**をクリックすると、ロールの権限に応じたBotの機能を使えます。",
+			"sent": "✅ Botインターフェースを{channel}に送信しました！",
+			"setupHasOwnerAccount": "✅ Botインターフェースを{channel}に送信しました。このサーバーにはすでにオーナーアカウントがあります — Webパネルにサインインしてください。新しい招待は作成されていません。",
+			"setupSignInLinkLine": "[**ここをクリックしてパネルを開く**]({url})",
+			"setupOpenPanelButton": "パネルを開く",
+			"setupOwnerInviteReady": "✅ Botインターフェースを{channel}に送信しました。\n\nこのメッセージはあなたにだけ表示されています。未使用のオーナー招待リンクは、作成から**24時間**で期限切れになります。\n\n[**ここをクリックしてオーナーとして登録**]({url})",
+			"setupOwnerInviteButton": "登録ページを開く",
+			"setupOwnerInviteEmbedTitle": "オーナー登録",
+			"setupNotOwnerTitle": "権限がありません",
+			"setupNotOwnerBody": "`/setup`を使えるのは**サーバーオーナー**だけです。",
+			"setupNotTextChannelTitle": "無効なチャンネル",
+			"setupNotTextChannelBody": "**テキストチャンネル**を選んでください。",
+			"joinTitle": "{botName}を追加してくれてありがとう！",
+			"joinBody": "`/setup`を実行して、チャンネルを作成しセットアップを完了してください。",
+			"joinAskAi": "何から始めればいいか迷ったら、{botMention}をメンションして聞いてみてください — ドキュメントを読んで、セットアップを案内してくれます。",
+			"joinDocsButton": "ドキュメント",
+			"joinSupportButton": "サポートサーバー",
+			"setupChannelsCreated": "新しいチャンネルを**{count}**個作成しました。",
+			"setupChannelsAllPresent": "すべてのチャンネルがすでに存在します — 新しく作成するものはありません。",
+			"setupWarnNoBotConfig": "⚠️ インターフェースは送信しましたが、Botの設定を取得できませんでした。",
+			"setupWarnNoServer": "⚠️ インターフェースは送信しましたが、招待を作成するためのサーバー情報が見つかりませんでした。",
+			"error": "❌ インターフェースの送信に失敗しました：{error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ この機能はこのサーバーではオフになっています。管理者がBot設定パネルで有効にできます。",
+			"memberNotFound": "❌ メンバー情報の取得に失敗しました。",
+			"unknownButton": "❌ 不明なボタン操作です。",
+			"buttonError": "❌ **ボタンエラー**：ボタンの処理中にエラーが発生しました。\\n\\nもう一度試すか、管理者に連絡してください。",
+			"modalError": "❌ **フォームエラー**：フォームの送信処理中にエラーが発生しました。\\n\\nもう一度試すか、管理者に連絡してください。",
+			"selectionError": "❌ **選択エラー**：選択の処理中にエラーが発生しました。\\n\\nもう一度試すか、管理者に連絡してください。"
+		},
+		"timeUnits": {
+			"hour": "時間",
+			"hours": "時間",
+			"day": "日",
+			"days": "日"
+		},
+		"defaultFooter": "提供：{domain} {year}"
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **サポーター特典**",
+			"description": "名前と色を自由に決められる専用ロールはサポーター特典です。このサーバーをブーストするか、次のいずれかのロールを持っている必要があります：\\n{roles}",
+			"footer": "サーバーをブーストすると解放されます。"
+		},
+		"denied": {
+			"title": "❌ **権限がありません**",
+			"description": "**{action}**を使うには、次のいずれかのロールが必要です：\\n{roles}",
+			"footer": "これが誤りだと思う場合は、サーバー管理者に連絡してください。"
+		},
+		"ownerRequired": {
+			"title": "❌ **オーナー登録が必要です**",
+			"description": "**{action}**機能を誰かが使えるようにするには、まずサーバーオーナーがWebパネルでアカウントを登録する必要があります。"
+		},
+		"notConfigured": {
+			"title": "❌ **権限が設定されていません**",
+			"description": "**{action}**機能を誰かが使えるようにするには、まずサーバーオーナーまたは管理者がロール権限を設定する必要があります。"
+		},
+		"requiredRoleFallback": "必要なロール"
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 言語設定",
+			"description": "使いたい言語を選んでください：",
+			"current": "現在の言語",
+			"select": "言語を選択",
+			"updated": "✅ 言語を変更しました！",
+			"failed": "❌ 言語の変更に失敗しました：{error}",
+			"serverDefault": "サーバーのデフォルト（{language}）",
+			"serverDefaultDescription": "サーバーの言語に合わせる",
+			"currentOption": "現在の言語"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 あなたのアカウントページ：{url}",
+			"noMember": "⚠️ このサーバーではまだ記録されていません。先にメッセージを送るか、ボイスチャンネルに参加してください。",
+			"unavailable": "⚠️ このサーバーでは公開ページを利用できません。"
+		},
+		"errors": {
+			"notRegistered": "⚠️ このサーバーはBotに登録されていません。先に同期を実行してください。",
+			"createRecordFailed": "❌ メンバー記録の作成に失敗しました。もう一度試してください。"
+		},
+		"fields": {
+			"level": "⭐ レベル",
+			"totalXp": "📊 合計XP",
+			"rank": "🏆 順位",
+			"previousRank": "前回の順位",
+			"newRank": "新しい順位",
+			"progress": "⚡ レベル{level}までの進捗",
+			"reward": "🎁 報酬を獲得",
+			"activity": "💬 アクティビティ"
+		},
+		"xpToGo": "あと**{xp}** XP",
+		"unranked": "ランク外",
+		"leaderboardButton": "ランキング",
+		"levelUp": {
+			"title": "🎉 レベルアップ！",
+			"description": "{member}が**レベル{level}**に到達しました！"
+		},
+		"rankUp": {
+			"title": "順位更新！",
+			"topSpot": "{member}がトップの座をつかみました！",
+			"climbed": "{member}がランキングを駆け上がりました！"
+		},
+		"activity": {
+			"messages": "メッセージ{count}件",
+			"voice": "ボイス{hours}時間",
+			"streaming": "配信{hours}時間"
+		},
+		"log": {
+			"types": {
+				"chat": "チャット",
+				"voice": "ボイス",
+				"afkVoice": "AFKボイス",
+				"video": "ビデオ",
+				"streaming": "配信",
+				"invite": "招待"
+			},
+			"gain": "{emoji} {type} XP：{name}が+{xp} XPを獲得",
+			"staff": "({multiplier}× スタッフ 🛡️)",
+			"boost": "({multiplier}× ブースト ⚡)",
+			"friend": "(+{rate} フレンドブースト 🤝)",
+			"leech": "(−{rate} ドレイン 🩸)",
+			"share": "📨 {name}に+{amount}（招待シェア{percent}%{staff}）",
+			"inviteNote": "{name}を招待した報酬",
+			"leechCredit": "🩸 ドレイン：{attacker}が{victim}から+{amount} XPを吸い取りました{pct}",
+			"unknownMember": "不明",
+			"someMember": "あるメンバー",
+			"someLeecher": "あるドレイン使い"
+		}
+	},
+	"invites": {
+		"button": "📨 招待",
+		"title": "📨 あなたの招待",
+		"reward": "あなたのリンクから新しいメンバーが参加{hold}するたびに**{xp} XP**がもらえます。",
+		"hold": "し、{hours}時間在籍",
+		"staffNote": "🛡️ スタッフは招待XPが{multiplier}倍になります。",
+		"share": "📈 招待したメンバーがサーバーにいる間は、その人が獲得したチャットとボイスのXPの**{percent}%**もあなたに入ります。",
+		"link": "🔗 あなた専用の招待リンク：{url}",
+		"noLink": "⚠️ ここでは招待リンクを作成できませんでした。スタッフに「招待を作成」権限をもらってください。",
+		"copyButton": "招待リンクを開く",
+		"customizeButton": "✏️ リンクをカスタマイズ",
+		"slugTitle": "招待リンクをカスタマイズ",
+		"slugLabel": "リンク名（英数字・ハイフンで{min}〜{max}文字）",
+		"slugInvalid": "❌ 英数字とハイフンで{min}〜{max}文字にしてください。",
+		"slugTaken": "❌ **{slug}**はすでに使われています。別の名前を試してください。",
+		"slugSaved": "✅ あなたの招待リンクは{url}になりました",
+		"fields": {
+			"total": "📨 合計",
+			"active": "✅ 在籍中",
+			"left": "🚪 退出",
+			"fake": "🕵️ フェイク",
+			"bonus": "➕ ボーナス",
+			"xp": "⭐ 獲得XP",
+			"pending": "⏳ 保留中",
+			"invitedBy": "👤 招待者",
+			"shareXp": "🤝 シェア分"
+		},
+		"error": "❌ 招待情報を読み込めませんでした。少し待ってからもう一度試してください。"
+	},
+	"afk": {
+		"title": "⏸️ AFKステータスを設定",
+		"current": {
+			"title": "⏸️ 現在AFK中です",
+			"description": "**ステータス：** {message}\\n**経過時間：** {duration}",
+			"howToRemove": "💡 解除方法",
+			"howToRemoveValue": "• 下のボタンをクリックしてAFKを解除\\n• 何かメッセージを送信（AFKが自動で解除され、ミュートも解除されます）\\n• Botがミュートした場合、AFKを解除すると自動でミュートも解除されます"
+		},
+		"set": {
+			"title": "✅ AFKステータスを設定しました！",
+			"description": "AFKに設定されました：**{message}**{voiceInfo}",
+			"howToRemove": "💡 解除方法",
+			"howToRemoveValue": "• 何かメッセージを送信（AFKが自動で解除され、ミュートも解除されます）\\n• AFKボタンから解除（Botがミュートした場合はミュートも解除されます）\\n• Botにミュートされていた場合、AFKを解除すると自動でミュートも解除されます",
+			"voiceMutedDeafened": "\\n\\nボイスチャンネルではミュートとスピーカーミュートが適用されます。",
+			"voiceMutedOnly": "\\n\\nボイスチャンネルではミュートのみ適用されます（スピーカーミュートはなし）。"
+		},
+		"removed": {
+			"title": "✅ AFKステータスを解除しました！",
+			"description": "おかえりなさい！AFKステータスを解除しました。"
+		},
+		"modal": {
+			"messageLabel": "AFKメッセージ（任意）",
+			"messagePlaceholder": "例：休憩中、勉強中 など",
+			"deafenLabel": "ボイスでスピーカーミュートする？（はい/いいえ、既定：はい）",
+			"deafenPlaceholder": "はい または いいえ（空欄ならはい）"
+		},
+		"buttons": {
+			"remove": "🔄 AFKを解除"
+		},
+		"errors": {
+			"disabledOnServer": "❌ このサーバーではAFKがオフになっています。管理者がBot設定パネルで有効にできます。",
+			"notAFK": "❌ 現在AFKではありません。",
+			"failed": "❌ AFKフォームを開けませんでした：{error}",
+			"setFailed": "❌ **AFKの設定に失敗しました**\\n\\nエラー：{error}\\n\\n時間をおいてもう一度試してください。",
+			"removeFailed": "❌ **AFKの解除に失敗しました**\\n\\nエラー：{error}\\n\\n時間をおいてもう一度試してください。"
+		},
+		"messages": {
+			"welcomeBack": "✅ おかえりなさい、{member}！AFKステータスを解除しました。",
+			"dmEmbedTitle": "📬 メンションされました",
+			"dmMentioned": "{sender}が**{server}** · #{channel}であなたをメンションしました\\n\\n**メッセージ：** {message}",
+			"away": "離席中",
+			"isAfk": "⏸️ {member}は現在AFK中です（{duration}経過）",
+			"isAfkWithMessage": "⏸️ {member}は現在AFK中です：**{message}**（{duration}経過）"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 ギブアウェイを作成",
+			"step1Title": "**ステップ1/2：ロールを選択（任意）**",
+			"step1Description": "下のドロップダウンから、このギブアウェイに参加できるロールを選んでください。空のままにするか「フォームへ進む」をクリックすると、すべてのロールが参加できます。",
+			"roleSelectPlaceholder": "参加できるロールを選択（任意）...",
+			"continueButton": "フォームへ進む"
+		},
+		"active": {
+			"title": "🎉 開催中のギブアウェイがあります",
+			"description": "すでに開催中のギブアウェイがあります：\\n\\n**{title}**\\n**賞品：** {prize}\\n\\nどうしますか？",
+			"ends": "⏰ 終了"
+		},
+		"modal": {
+			"titleLabel": "タイトル",
+			"titlePlaceholder": "ギブアウェイのタイトルを入力...",
+			"prizeLabel": "賞品",
+			"prizePlaceholder": "賞品は何ですか？",
+			"durationLabel": "期間（分）",
+			"durationPlaceholder": "例：1時間なら60、1日なら1440",
+			"winnerCountLabel": "当選者数",
+			"winnerCountPlaceholder": "当選者は何人？（既定：1）",
+			"multipleEntriesLabel": "複数回の参加を許可する？（はい/いいえ）",
+			"multipleEntriesPlaceholder": "はい または いいえ（既定：いいえ）"
+		},
+		"created": {
+			"title": "✅ ギブアウェイを作成しました！",
+			"description": "ギブアウェイを作成して、{channel}に投稿しました！"
+		},
+		"entered": {
+			"title": "✅ ギブアウェイに参加しました！",
+			"description": "ギブアウェイへの参加が完了しました！幸運を祈ります！🍀"
+		},
+		"buttons": {
+			"finish": "🏁 ギブアウェイを終了"
+		},
+		"errors": {
+			"memberNotFound": "❌ メンバー情報の取得に失敗しました。",
+			"activeExists": "❌ すでに開催中のギブアウェイがあります。先にそちらを終了してください。",
+			"invalidTitle": "❌ **無効なギブアウェイ**\\n\\nタイトルを入力してください。",
+			"invalidPrize": "❌ **無効なギブアウェイ**\\n\\n賞品を入力してください。",
+			"invalidDuration": "❌ **無効なギブアウェイ**\\n\\n期間は正の数（分単位）で入力してください。",
+			"invalidWinnerCount": "❌ **無効なギブアウェイ**\\n\\n当選者数は正の数で入力してください。",
+			"channelNotConfigured": "❌ ギブアウェイを作成できませんでした：ギブアウェイチャンネルが設定されていません。パネルで設定してください。",
+			"channelNotFound": "❌ ギブアウェイを作成できませんでした：ギブアウェイチャンネルが見つかりません。",
+			"channelError": "❌ ギブアウェイを作成できませんでした：ギブアウェイチャンネルの設定取得中にエラーが発生しました。",
+			"createFailed": "❌ **ギブアウェイの作成に失敗しました**\\n\\nエラー：{error}\\n\\n時間をおいてもう一度試してください。",
+			"invalidMessage": "❌ 無効なギブアウェイメッセージです。",
+			"invalidId": "❌ 無効なギブアウェイIDです。",
+			"notFound": "❌ ギブアウェイが見つからないか、すでに終了しています。",
+			"ended": "❌ このギブアウェイはすでに終了しています。",
+			"roleRestriction": "❌ **ロール制限**\\n\\nこのギブアウェイに参加できるのは、次のロールを持つメンバーだけです：\\n{roles}\\n\\n参加するには、これらすべてのロールが必要です。",
+			"memberNotFoundDB": "❌ データベースにメンバーが見つかりません。時間をおいてもう一度試してください。",
+			"cannotEnterOwn": "❌ 自分のギブアウェイには参加できません！",
+			"alreadyEntered": "❌ このギブアウェイにはすでに参加しています！",
+			"finishOwnOnly": "❌ 終了できるのは自分のギブアウェイだけです。",
+			"finishNotActive": "❌ このギブアウェイは開催中ではありません。",
+			"finishChannelError": "❌ ギブアウェイチャンネルの取得に失敗しました。",
+			"finishChannelNotConfigured": "❌ ギブアウェイチャンネルが設定されていません。",
+			"finishChannelNotFound": "❌ ギブアウェイチャンネルが見つかりません。",
+			"failed": "❌ ギブアウェイフォームを開けませんでした：{error}",
+			"notEnoughInvites": "❌ このギブアウェイに参加するには**{needed}**人の招待が必要です。現在は**{have}**人です。",
+			"roleSelectFailed": "❌ ロール選択の処理に失敗しました：{error}",
+			"enterFailed": "❌ **ギブアウェイへの参加に失敗しました**\\n\\nエラー：{error}",
+			"finishFailed": "❌ ギブアウェイの終了に失敗しました：{error}"
+		},
+		"unknownRole": "ロール {roleId}",
+		"announcement": {
+			"noRoleRestrictions": "ロール制限なし",
+			"multipleEntries": "複数回の参加OK",
+			"singleEntry": "参加は1人1回まで",
+			"prizeLine": "**賞品：** {prize}",
+			"winnerLine": "**当選者数：** {count}",
+			"winnersLine": "**当選者数：** {count}",
+			"entriesLine": "**参加数：** {entries}",
+			"rolesLine": "**ロール制限：** {roles}",
+			"invitesLine": "**必要な招待数：** {count}",
+			"hostedBy": "👤 主催者",
+			"enterButton": "🎉 参加する"
+		},
+		"results": {
+			"endedTitle": "🎉 ギブアウェイ終了",
+			"endedWinnersTitle": "🎉 ギブアウェイ終了！",
+			"noEntries": "**{title}**\\n\\n❌ 参加者がいませんでした！参加者なしでギブアウェイが終了しました。",
+			"noWinners": "**{title}**\\n\\n❌ 当選者を選べませんでした。",
+			"winnerLine": "🎊 **当選者：** {winners}",
+			"winnersLine": "🎊 **当選者：** {winners}",
+			"limitedEntriesOne": "⚠️ *参加者が少ないため、当選者は{count}名のみです（予定：{requested}名）。*",
+			"limitedEntriesMany": "⚠️ *参加者が少ないため、当選者は{count}名のみです（予定：{requested}名）。*",
+			"congrats": "おめでとうございます！🎉"
+		},
+		"finished": {
+			"title": "✅ ギブアウェイを終了しました",
+			"noEntries": "ギブアウェイ**「{title}」**を早めに終了しました。\\n\\n参加者はいませんでした。",
+			"noWinners": "ギブアウェイ**「{title}」**を早めに終了しました。\\n\\n当選者を選べませんでした。",
+			"winners": "ギブアウェイ**「{title}」**を早めに終了しました。\\n\\n**当選者：** {winners}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 フィードバックを送信",
+			"label": "あなたのフィードバック",
+			"placeholder": "ご意見、ご提案、気になる点などを教えてください...",
+			"maxLength": 2000,
+			"anonymousLabel": "匿名で送信する？（はい/いいえ）",
+			"anonymousPlaceholder": "はい または いいえ（既定：いいえ）"
+		},
+		"submitted": {
+			"title": "✅ フィードバックを送信しました！",
+			"description": "フィードバックありがとうございます！正常に送信されました。",
+			"anonymous": "\\n\\n🔒 フィードバックは匿名で送信されました。"
+		},
+		"errors": {
+			"invalid": "❌ **無効なフィードバック**\\n\\nフィードバックの内容を入力してください。",
+			"channelError": "❌ フィードバックを送信できませんでした：フィードバックチャンネルの設定取得中にエラーが発生しました。",
+			"channelNotConfigured": "❌ フィードバックを送信できませんでした：フィードバックチャンネルが設定されていません。",
+			"channelNotFound": "❌ フィードバックを送信できませんでした：フィードバックチャンネルが見つかりません。",
+			"failed": "❌ フィードバックフォームを開けませんでした：{error}",
+			"submitFailed": "❌ **フィードバックの送信に失敗しました**\\n\\nエラー：{error}\\n\\n時間をおいてもう一度試してください。"
+		},
+		"channelEmbed": {
+			"title": "💬 フィードバック",
+			"fieldFrom": "👤 送信者",
+			"fieldSubmitted": "🕐 送信日時",
+			"anonymous": "匿名",
+			"footerSuffix": "• フィードバックID：#{feedbackId}"
+		}
+	},
+	"staffRating": {
+		"title": "📋 スタッフを報告",
+		"selectStaff": "スタッフを選択",
+		"selectStaffPlaceholder": "報告するスタッフを選んでください...",
+		"button": "🛡️ スタッフ評価",
+		"selectRatingPrompt": "評価を選択",
+		"selectCategoryPrompt": "カテゴリーを選択",
+		"status": {
+			"staff": "スタッフ：{staff}",
+			"ratingPending": "評価：未選択",
+			"ratingSelected": "評価：{rating}/5",
+			"categoryPending": "カテゴリー：未選択",
+			"categorySelected": "カテゴリー：{category}"
+		},
+		"buttons": {
+			"continue": "続ける"
+		},
+		"reviewModal": {
+			"titleApprove": "スタッフ報告を承認",
+			"titleReject": "スタッフ報告を却下",
+			"reasonLabel": "理由（必須）",
+			"reasonPlaceholder": "報告者に判断の理由を説明してください…"
+		},
+		"embed": {
+			"staffDecision": "スタッフの判断",
+			"reviewedBy": "審査者",
+			"statusApproved": "承認済み",
+			"statusRejected": "却下"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "スタッフ",
+			"fieldRating": "評価",
+			"fieldCategory": "カテゴリー",
+			"fieldReporter": "報告者",
+			"fieldStatus": "ステータス",
+			"fieldDescription": "内容",
+			"anonymousReporter": "匿名",
+			"pendingTitle": "🕒 審査待ちのスタッフ報告",
+			"pendingStatus": "管理者の承認待ち",
+			"approveButton": "報告を承認",
+			"rejectButton": "報告を却下",
+			"titleApproved": "✅ スタッフ報告が承認されました",
+			"titleRejected": "❌ スタッフ報告が却下されました",
+			"footerReportSuffix": "• 報告ID：#{reportId}"
+		},
+		"modal": {
+			"title": "スタッフを報告",
+			"ratingLabel": "評価（星1〜5）",
+			"ratingPlaceholder": "1 = とても悪い、5 = とても良い",
+			"categoryLabel": "カテゴリー",
+			"descriptionLabel": "内容",
+			"descriptionPlaceholder": "このスタッフとのやり取りについて教えてください...",
+			"anonymousLabel": "匿名で送信する？（はい/いいえ）",
+			"anonymousPlaceholder": "はい または いいえ（既定：いいえ）"
+		},
+		"submitted": {
+			"title": "✅ 報告を送信しました",
+			"description": "報告は正常に送信され、管理者の承認待ちになっています。審査が終わったらお知らせします。",
+			"anonymous": "\\n\\n🔒 報告は匿名で送信されました。",
+			"roleUpdated": "\\n\\n⭐ **スタッフ評価が更新されました**\\n{roleName}\\n評価：{rating}/5.00（報告{totalReports}件）"
+		},
+		"dm": {
+			"approved": "**{server}**での{staff}に関するあなたの報告が承認されました。\\n\\n**評価：** {rating}/5\\n**カテゴリー：** {category}\\n**フィードバック：** {description}\\n\\n**スタッフからのメモ：** {reason}\\n\\nチームの健全さを保つためのご協力、ありがとうございます。",
+			"rejected": "**{server}**での{staff}に関するあなたの報告は承認されませんでした。\\n\\n**理由：** {reason}\\n\\n補足したい情報があれば、管理者チームに連絡してください。",
+			"embedTitleApproved": "✅ 報告が承認されました",
+			"embedTitleRejected": "❌ 報告は承認されませんでした"
+		},
+		"categories": {
+			"helpful": "👍 助かった",
+			"unhelpful": "👎 助けにならなかった",
+			"abuse": "⚠️ 権限の乱用",
+			"slow_response": "⏰ 対応が遅い",
+			"excellent": "⭐ 素晴らしい対応",
+			"rude": "😠 失礼な態度"
+		},
+		"errors": {
+			"noStaffSelected": "❌ 報告するスタッフを選んでください。",
+			"invalidRating": "❌ **無効な評価**\\n\\n評価は1〜5の数字で入力してください。",
+			"invalidCategory": "❌ **無効なカテゴリー**\\n\\nリストからカテゴリーを選んでください。",
+			"emptyDescription": "❌ **内容の入力が必要です**\\n\\nやり取りの内容を記入してください。",
+			"cannotReportSelf": "❌ 自分自身を報告することはできません！",
+			"notStaff": "❌ 選択されたメンバーはスタッフではありません。",
+			"onCooldown": "❌ **評価のクールダウン中**\\n\\nこのスタッフをもう一度評価するには、あと{time}{unit}待つ必要があります。\\n\\n前回の評価：{lastRated}",
+			"submitFailed": "❌ **報告の送信に失敗しました**\\n\\nエラー：{error}\\n\\n時間をおいてもう一度試してください。",
+			"notConfigured": "❌ このサーバーではスタッフ評価システムが設定されていません。",
+			"noStaffConfigured": "❌ このサーバーではスタッフロールが設定されていません。先に管理者にスタッフ権限を設定してもらってください。",
+			"noStaffAvailable": "❌ 現在スタッフが見つかりません。時間をおいて試すか、サーバー管理者に連絡してください。",
+			"missingRating": "❌ 続ける前に評価を選んでください。",
+			"missingCategory": "❌ 続ける前にカテゴリーを選んでください。",
+			"permissionDenied": "❌ **権限がありません**\\n\\nスタッフ報告を承認・却下するには管理者権限が必要です。",
+			"reviewReasonRequired": "❌ 判断の理由を入力してください。"
+		},
+		"ratingUpdate": {
+			"title": "⭐ スタッフ評価の更新",
+			"description": "{staff}に新しい評価が付きました。",
+			"ratingValue": "**{rating}/5.0**（報告{totalReports}件）",
+			"fieldFeedback": "フィードバック",
+			"dm": "⭐ **{server}**でのあなたのスタッフ評価は**{rating}/5.0**になりました（報告{totalReports}件）。"
+		},
+		"review": {
+			"alreadyProcessed": "⚠️ この報告はすでに処理されています。",
+			"approvedReply": "✅ 報告 #{reportId} を承認しました。",
+			"rejectedReply": "❌ 報告 #{reportId} を却下しました。"
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 コンテンツクリエイター",
+		"list": {
+			"title": "🎬 コンテンツクリエイター",
+			"description": "このサーバーで承認されたコンテンツクリエイター：",
+			"none": "承認されたコンテンツクリエイターはまだいません。",
+			"applyButton": "申請する"
+		},
+		"dismiss": {
+			"button": "コンテンツクリエイターをやめる",
+			"confirmTitle": "⚠️ コンテンツクリエイターロールを外しますか？",
+			"confirmDescription": "このサーバーのコンテンツクリエイターロールがなくなります。スタッフが許可していれば、あとで再申請できます。\n\n**本当によろしいですか？**",
+			"yes": "はい、ロールを外す",
+			"no": "いいえ、キャンセル",
+			"removed": "✅ コンテンツクリエイターロールを外しました。"
+		},
+		"reviewModal": {
+			"titleApprove": "申請を承認",
+			"titleReject": "申請を却下",
+			"reasonLabel": "理由（必須）",
+			"reasonPlaceholder": "申請者に判断の理由を説明してください…"
+		},
+		"embed": {
+			"staffDecision": "スタッフの判断",
+			"reviewedBy": "審査者",
+			"reviewedBySystem": "自動（TikTokの重複）",
+			"statusApproved": "承認済み",
+			"statusRejected": "却下"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 コンテンツクリエイター申請（審査待ち）",
+			"pendingDescription": "{user}がコンテンツクリエイター権限を申請しました。",
+			"pendingStatus": "管理者の承認待ち",
+			"fieldTiktok": "TikTokユーザー名",
+			"fieldStatus": "ステータス",
+			"fieldApplicantReason": "理由",
+			"buttonApprove": "承認",
+			"buttonReject": "却下",
+			"titleApproved": "✅ コンテンツクリエイター申請が承認されました",
+			"titleRejected": "❌ コンテンツクリエイター申請が却下されました",
+			"descriptionReviewed": "{mention} • TikTok：@{tiktok}",
+			"footerAppSuffix": "• 申請ID：#{appId}",
+			"liveTitle": "🔴 コンテンツクリエイターがライブ配信中",
+			"liveDescription": "{mention}がTikTokでライブ配信を始めました！",
+			"liveWatchButton": "TikTokでライブを見る",
+			"autoRejectReviewReason": "重複またはなりすまし：このTikTokユーザー名は、すでに別のDiscordアカウントと紐づいています。",
+			"autoRejectConflictPending": "そのアカウントには、このTikTokハンドルで**審査待ち**の申請があります。",
+			"autoRejectConflictApproved": "そのアカウントは、このTikTokハンドルを使う**承認済み**のコンテンツクリエイターです。"
+		},
+		"modal": {
+			"title": "コンテンツクリエイターに申請",
+			"usernameLabel": "TikTokユーザー名",
+			"usernamePlaceholder": "例：dansday",
+			"reasonLabel": "コンテンツクリエイターになりたい理由は？",
+			"reasonPlaceholder": "承認すべき理由を簡単に教えてください..."
+		},
+		"submitted": "✅ **{username}**でのコンテンツクリエイター申請を送信しました。スタッフの承認をお待ちください。",
+		"dm": {
+			"approved": "**{server}**でのあなたの申請が承認されました。\\n\\nTikTok：**{username}**\\nコンテンツクリエイターロールが付与されました。",
+			"rejected": "**{server}**でのあなたの申請は、今回は承認されませんでした。\\n\\nTikTok：**{username}**\\n\\n**理由：** {reason}\\n\\nクールダウン期間が過ぎれば再申請できます（サーバーで設定されている場合）。",
+			"embedTitleApproved": "✅ コンテンツクリエイター承認",
+			"embedTitleRejected": "❌ コンテンツクリエイター不承認"
+		},
+		"autoRejectApplicantReason": "重複またはなりすまし：このTikTokユーザー名は、すでに別のDiscordアカウントと紐づいています。",
+		"errors": {
+			"notConfigured": "❌ このサーバーではコンテンツクリエイターの受付が設定されていません。",
+			"alreadyCreator": "✅ このサーバーではすでにコンテンツクリエイターロールを持っています。",
+			"invalidUsername": "❌ TikTokユーザー名が無効です。英数字、ピリオド、アンダースコアのみ使えます。",
+			"reasonRequired": "❌ コンテンツクリエイターになりたい理由を入力してください。",
+			"pendingExists": "❌ 審査待ちのコンテンツクリエイター申請がすでにあります。",
+			"cooldown": "❌ 次のコンテンツクリエイター申請まで**{days}日**待つ必要があります。",
+			"submitFailed": "❌ コンテンツクリエイター申請の送信に失敗しました：{error}",
+			"permissionDenied": "❌ コンテンツクリエイター申請を承認・却下するには管理者権限が必要です。",
+			"reviewReasonRequired": "❌ 判断の理由を入力してください。"
+		},
+		"live": {
+			"digest": "📊 **ライブ** · {mention} · @{tiktok} · #{streamId}",
+			"streamFooter": "配信 #{streamId}",
+			"endedTitle": "⚫ ライブ終了",
+			"errorTitle": "⚠️ ライブ接続エラー",
+			"sessionLine": "配信セッション **#{streamId}**"
+		},
+		"review": {
+			"invalidApplicationId": "❌ 無効な申請IDです。",
+			"applicationNotFound": "❌ 申請が見つかりません。",
+			"alreadyProcessed": "⚠️ この申請はすでに処理されています。",
+			"approvedReply": "✅ 申請 #{appId} を承認しました。",
+			"rejectedReply": "❌ 申請 #{appId} を却下しました。"
+		}
+	},
+	"notifications": {
+		"button": "🔔 通知",
+		"title": "🔔 通知設定",
+		"description": "通知を受け取りたいチャンネルを選んでください。通知があると、あなた個人がメンションされます。",
+		"selectPlaceholder": "通知チャンネルを選択...",
+		"updated": "✅ 通知設定を更新しました。",
+		"errors": {
+			"notConfigured": "❌ このサーバーでは通知が設定されていません。",
+			"noRoles": "❌ 通知チャンネルがまだ設定されていません。管理者にダッシュボードで通知を設定してもらってください。",
+			"noneEnabled": "❌ このサーバーで有効になっている通知機能はありません。"
+		},
+		"hub": {
+			"title": "🔔 通知設定",
+			"description": "管理したい通知の種類を選んでください。",
+			"channels": "📢 チャンネル通知",
+			"roblox": "🛍️ Robloxアイテム通知",
+			"creators": "📡 クリエイター通知"
+		},
+		"active": "**有効：** {channels}",
+		"none": "**有効：** まだありません。"
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 サポーター専用ロールを作成",
+			"editTitle": "💎 サポーター専用ロールを編集",
+			"nameLabel": "ロール名",
+			"namePlaceholder": "ロール名を入力...",
+			"colorLabel": "ロールの色（16進数/10進数/色名）",
+			"colorPlaceholder": "#FF5733 または 16729395 または 赤（任意）",
+			"iconLabel": "ロールアイコン（絵文字または画像URL）",
+			"iconPlaceholder": "🔥 または https://example.com/icon.png（任意）"
+		},
+		"existing": {
+			"title": "💎 サポーター専用ロール",
+			"description": "すでに専用ロールを持っています：**{roleName}**\\n\\n操作を選んでください：",
+			"currentRole": "📋 現在のロール"
+		},
+		"created": {
+			"title": "✅ サポーター専用ロールを作成しました！",
+			"description": "専用ロール**{roleName}**を作成して、あなたに付与しました！{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **カスタムアイコンは使えません：** ロールアイコン（画像）を使うには、このサーバーがブーストレベル2である必要があります。代わりに絵文字なら使えます！",
+			"iconWarningGeneric": "\\n\\n⚠️ **注意：** アイコンは設定できませんでしたが、ロールは正常に作成されました。",
+			"roleDetails": "🎨 ロールの詳細",
+			"roleDetailsValue": "**名前：** {name}\\n**色：** {color}\\n**アイコン：** {icon}",
+			"role": "💎 ロール",
+			"iconStatusSet": "設定済み",
+			"iconStatusNone": "なし",
+			"iconStatusFailed": "失敗（アイコンなしでロールを作成）",
+			"iconStatusInvalid": "形式が無効（アイコンなしでロールを作成）"
+		},
+		"updated": {
+			"title": "✅ サポーター専用ロールを更新しました！",
+			"description": "専用ロール**{roleName}**を更新しました！{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **カスタムアイコンは使えません：** ロールアイコン（画像）を使うには、このサーバーがブーストレベル2である必要があります。代わりに絵文字なら使えます！",
+			"iconWarningGeneric": "\\n\\n⚠️ **注意：** アイコンは設定できませんでしたが、ロールは正常に更新されました。",
+			"roleDetails": "🎨 ロールの詳細",
+			"roleDetailsValue": "**名前：** {name}\\n**色：** {color}\\n**アイコン：** {icon}",
+			"role": "💎 ロール",
+			"iconStatusUnchanged": "変更なし",
+			"iconStatusUpdated": "更新済み",
+			"iconStatusRemoved": "削除済み",
+			"iconStatusFailed": "失敗（アイコンなしでロールを更新）",
+			"iconStatusInvalid": "形式が無効（アイコンなしでロールを更新）",
+			"iconFailedFallback": "アイコンを設定できませんでした。ロールは更新されましたが、カスタムアイコンは付いていません。",
+			"iconNote": "⚠️ **アイコンについて：** {message}"
+		},
+		"deleted": {
+			"title": "✅ サポーター専用ロールを削除しました",
+			"description": "専用ロール**{roleName}**を削除しました。"
+		},
+		"buttons": {
+			"edit": "✏️ ロールを編集",
+			"delete": "🗑️ ロールを削除"
+		},
+		"errors": {
+			"noRole": "❌ 編集できる専用ロールがありません。",
+			"noRoleDelete": "❌ 削除できる専用ロールがありません。",
+			"alreadyHasRole": "❌ **すでに専用ロールを持っています**\\n\\nサポーター専用ロールは一度に1つまでです。\\n\\n💡 変更するなら**✏️ ロールを編集**を、新しく作り直したいなら先に**🗑️ ロールを削除**を使ってください。",
+			"invalidName": "❌ **無効なロール名**\\n\\nロール名は1〜100文字にしてください。",
+			"boostRequired": "❌ **カスタムアイコンは使えません**\\n\\nロールアイコン（画像）を使うには、このサーバーが**ブーストレベル2**である必要があります。\\n\\n💡 **ヒント：** 代わりに**絵文字**（🔥、⭐、カスタム絵文字など）なら、サーバーブーストなしで使えます。",
+			"boostRequiredCreate": "❌ **サーバーブーストが必要です**\\n\\n一部の機能を使ったサポーター専用ロールを作成するには、このサーバーが**ブーストレベル2**である必要があります。\\n\\n💡 **できること：**\\n- サーバー管理者にレベル2までブーストしてもらう\\n- またはサーバースタッフに相談する\\n\\n**エラーの詳細：** {error}",
+			"createFailed": "❌ **ロールの作成に失敗しました**\\n\\nエラー：{error}\\n\\n次の点を確認してください：\\n- Botにロールを作成する権限がある\\n- Botにロールを管理する権限がある\\n- ロールの位置の制約が正しい",
+			"updateFailed": "❌ **ロールの更新に失敗しました**\\n\\nエラー：{error}\\n\\n次の点を確認してください：\\n- Botにロールを管理する権限がある\\n- ロールの制約が正しい",
+			"deleteFailed": "❌ ロールの削除に失敗しました：{error}",
+			"failed": "❌ ロール作成フォームを開けませんでした：{error}",
+			"editFailed": "❌ 編集フォームを開けませんでした：{error}",
+			"createFailedReason": "❌ **ロールの作成に失敗しました**\n\n{reason}"
+		},
+		"colorDefault": "デフォルト",
+		"anchor": {
+			"noBoosterRole": "このサーバーにはまだサーバーブースターロールがありません。誰かがサーバーをブーストすると作成されます。",
+			"botTooLow": "サポーターロールを作成するには、Bot自身のロールが{role}より上にある必要があります。",
+			"unknown": "サポーターロールの配置位置を特定できませんでした。"
+		},
+		"iconErrors": {
+			"boost": "ロールアイコンを使うには、このサーバーがブーストレベル2である必要があります。代わりに絵文字なら使えます！",
+			"invalidFormat": "URLの形式またはファイル形式が無効です"
+		}
+	},
+	"questEnroll": {
+		"menuButton": "🔮 Discordクエスト",
+		"listTitle": "🔮 Discordクエスト",
+		"listEmpty": "現在開催中のDiscordクエストはありません。",
+		"listAllClaimed": "✅ 開催中のDiscordクエストをすべて受け取りました。",
+		"listClaimedTag": "受け取り済み",
+		"claimAllButton": "すべて受け取る",
+		"alreadyClaimed": "受け取り済み",
+		"alreadyClaimedDescription": "**{questName}**には以前登録済みで、報酬もすでに受け取られています。各クエストはメンバー1人につき1回だけ受け取れます。",
+		"pendingTitle": "⏳ バックグラウンドで実行中",
+		"pendingDescription": "あなたのトークンはデータベースに**保存されません**。\n\n**リスク：** Discordがそのトークンに紐づく**ユーザーアカウント**を制限またはBANする可能性があります。場合によっては**Botやサーバー**にも影響が出ることがあります。これはDiscord公式の動作ではありません — 続行を選んだのはあなたです。",
+		"precheckNotFoundTitle": "このアカウントにはないクエストです",
+		"precheckNotFoundDescription": "このクエストは、あなたのトークンに紐づくDiscordアカウントには表示されていません。**Discord → クエスト**を開き、必要ならクエストを受けてから、もう一度試してください。",
+		"precheckExpiredTitle": "クエストの期限切れ",
+		"precheckExpiredDescription": "このDiscordアカウントでは、このクエストの期限が切れています。",
+		"precheckRewardClaimedTitle": "報酬は受け取り済みです",
+		"precheckRewardClaimedDescription": "このクエストの報酬は、この**Discordアカウント**ですでに受け取られています（別のサーバーやDiscordクライアントで完了した場合など）。自動登録では再度受け取れません。",
+		"precheckCompletedTitle": "クエストは完了済みです",
+		"precheckCompletedDescription": "この**Discordアカウント**では、クエストの目標がすでに達成されています。まだ受け取っていない報酬があれば**Discord → クエスト**で受け取ってください — 自動登録ではこれ以上進捗を追加できません。",
+		"claimAllPendingTitle": "⏳ すべてのクエストを受け取り中",
+		"claimAllPendingDescription": "**{count}**件のクエストを1つずつ登録しています。\n\nあなたのトークンはデータベースに**保存されません**。\n\n**リスク：** Discordがそのトークンに紐づく**ユーザーアカウント**を制限またはBANする可能性があります。場合によっては**Botやサーバー**にも影響が出ることがあります。これはDiscord公式の動作ではありません — 続行を選んだのはあなたです。",
+		"claimAllNothingTitle": "受け取れるものはありません",
+		"claimAllNothingDescription": "現在このDiscordアカウントで登録できる開催中のクエストはありません。",
+		"autoQuestDisabled": "クエストの自動登録は現在無効になっています。サーバー管理者に連絡してください。",
+		"alreadyRunning": "すでに自動クエストが実行中です。終わるまで待ってから次を始めてください。",
+		"announceInChannel": "各結果は{channel}に投稿されます。",
+		"announceDisabled": "クエストチャンネルが設定されていないため、お知らせは投稿されません — 受け取ったクエストはクエスト一覧でマークされるだけです。",
+		"result": {
+			"reward": "報酬",
+			"openInDiscord": "Discordで開く",
+			"errorTitle": "クエスト登録エラー",
+			"errorDescription": "{member} ({tag})\nクエスト `{quest}`\n{error}"
+		},
+		"tokenModal": {
+			"label": "Discordユーザートークン（保存されません）",
+			"placeholder": "規約違反のリスク：アカウントがBANされる可能性あり（Bot/サーバーも）。貼り付けは一度だけ、公開の場では絶対NG。",
+			"claimAllTitle": "すべて受け取る（トークン — 高リスク）",
+			"enrollTitle": "登録（トークン — 高リスク）"
+		},
+		"tokenTooShort": "トークンが短すぎます。",
+		"invalidTokenTitle": "無効なトークン",
+		"invalidTokenDescription": "入力されたトークンは無効か、期限切れのようです。\n`{error}`",
+		"invalidQuestId": "無効なクエストIDです。",
+		"missingQuestOrToken": "クエストIDがないか、トークンが短すぎます。",
+		"taskTypes": {
+			"default": "クエスト",
+			"WATCH_VIDEO": "動画を視聴",
+			"WATCH_VIDEO_ON_MOBILE": "動画を視聴（モバイル）",
+			"PLAY_ON_DESKTOP": "デスクトップでプレイ",
+			"PLAY_ON_DESKTOP_V2": "デスクトップでプレイ",
+			"PLAY_ON_XBOX": "Xboxでプレイ",
+			"PLAY_ON_PLAYSTATION": "PlayStationでプレイ",
+			"STREAM_ON_DESKTOP": "デスクトップで配信",
+			"PLAY_ACTIVITY": "アクティビティ",
+			"ACHIEVEMENT_IN_ACTIVITY": "アクティビティで実績解除",
+			"ACHIEVEMENT_IN_GAME": "ゲームで実績解除"
+		},
+		"task": {
+			"forMinute": "{task}（{count}分）",
+			"forMinutes": "{task}（{count}分）",
+			"forSeconds": "{task}（{count}秒）",
+			"secondsTarget": "{task} · {count}秒",
+			"target": "{task} · 目標 {count}"
+		},
+		"reward": {
+			"fallback": "クエスト報酬",
+			"currency": "Discordクエスト通貨 ×{count}"
+		},
+		"auto": {
+			"notFound": {
+				"title": "クエスト登録",
+				"description": "このアカウントではこのクエストが見つかりませんでした。Discordで**クエスト**を開いて必要なら受けてから、トークンがそのユーザーのものか確認してください。"
+			},
+			"expired": {
+				"title": "クエスト登録",
+				"description": "このクエストは期限切れです。"
+			},
+			"alreadyComplete": {
+				"title": "✅ クエストは完了済み",
+				"description": "**報酬：** {reward}\nまだ受け取っていなければ、Discordクライアントの**クエスト**で受け取ってください。"
+			},
+			"enrollFailed": {
+				"title": "クエスト登録に失敗",
+				"description": "登録時にDiscordがHTTP {status}を返しました。先にクライアントでクエストを受ける必要があるか、トークンが無効な可能性があります。"
+			},
+			"complete": {
+				"title": "✅ クエスト完了",
+				"description": "**報酬：** {reward}\n**Discord → クエスト**を開いてください"
+			},
+			"enrolledNoTask": {
+				"title": "⚠️ 登録のみ完了",
+				"description": "**{quest}**に登録しました。クエスト設定に実行できるタスクが見つかりませんでした — 必要なら**Discord**クライアントで完了してください。\n\n**報酬：** {reward}"
+			},
+			"achievementMissing": {
+				"title": "実績クエスト",
+				"description": "クエスト設定にアプリケーションIDか実績の目標がありません。Discordクライアントで**{task}**を完了してください。\n\n**報酬：** {reward}"
+			},
+			"achievementDone": {
+				"title": "✅ 実績クエスト完了",
+				"description": "**{quest}**\n**報酬：** {reward}\n**Discord → クエスト**で受け取ってください"
+			},
+			"achievementIncomplete": {
+				"title": "実績クエスト — 未完了",
+				"description": "{error}\n\n**報酬：** {reward}"
+			},
+			"activityNoUser": {
+				"title": "アクティビティクエスト",
+				"description": "トークンからユーザーIDを取得できませんでした。通常の**ユーザー**トークンを使ってください（Botトークンは不可）。\n\n**報酬：** {reward}"
+			},
+			"activityDone": {
+				"title": "✅ アクティビティクエスト完了",
+				"description": "**{quest}**\n**報酬：** {reward}\n**Discord → クエスト**で受け取ってください"
+			},
+			"activityIncomplete": {
+				"title": "アクティビティクエスト — 未完了",
+				"description": "時間内に進捗が完了しませんでした{detail}。\n\n**報酬：** {reward}"
+			},
+			"enrolledNeedsAppId": {
+				"title": "⚠️ 登録のみ完了",
+				"description": "**{quest}**に登録しました。**{task}**はAPIハートビートのため、クエスト設定に**アプリケーションID**が必要です — Discordクライアント（デスクトップ/コンソール）で完了してください。\n\n**報酬：** {reward}"
+			},
+			"platformDone": {
+				"title": "✅ クエスト完了",
+				"description": "**{quest}**（{task}）\n**報酬：** {reward}\n**Discord → クエスト**で受け取ってください"
+			},
+			"platformIncomplete": {
+				"title": "クエスト — 未完了",
+				"description": "時間内に進捗が完了しませんでした{detail}。**配信**や**コンソール**のクエストは、実際のクライアントを起動したままにするか、あとで再試行してください。\n\n**報酬：** {reward}"
+			},
+			"unsupportedTask": {
+				"title": "⚠️ 登録のみ完了",
+				"description": "**{quest}**に登録しました。未対応のタスクタイプです（**{task}**） — Discordクライアントで完了してください。\n\n**報酬：** {reward}"
+			},
+			"videoNoDuration": {
+				"title": "クエスト登録",
+				"description": "このクエストの動画の長さを取得できませんでした。"
+			},
+			"videoDone": {
+				"title": "✅ 動画クエスト完了",
+				"description": "**{quest}**\n**報酬：** {reward}\n**Discord → クエスト**で受け取ってください"
+			},
+			"videoIncomplete": {
+				"title": "クエスト登録 — 未完了",
+				"description": "時間内に目標まで進みませんでした{detail}。Discordクライアントで視聴を完了するか、もう一度試してください。"
+			}
+		}
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"removed": "🔕 今後**{item}**の通知でメンションされることはありません。",
+			"saved": "🔔 保存しました。**{item}**の次の変化でメンションされます：{types}。{count}人がウォッチ中。",
+			"noTypes": "なし",
+			"types": {
+				"price": {
+					"label": "価格",
+					"description": "出品者が設定した価格が変わったとき。"
+				},
+				"lowest_resale_price": {
+					"label": "再販価格",
+					"description": "最安の再販価格が変わったとき。"
+				},
+				"units_available": {
+					"label": "残り在庫",
+					"description": "購入できる残り数が変わったとき。"
+				},
+				"total_quantity": {
+					"label": "総供給数",
+					"description": "総数が変わったとき。"
+				}
+			},
+			"item": {
+				"title": "🔔 アイテム通知",
+				"description": "[{item}]({url})で何が起きたらメンションするか選んでください。すべての選択を外すと、このアイテムの通知は停止します。",
+				"active": "**通知対象：** {types}",
+				"placeholder": "通知を受け取る内容を選択..."
+			},
+			"menu": {
+				"title": "🛍️ Robloxアイテム通知",
+				"description": "{count}個のアイテムをウォッチ中です。通知内容を変えたいアイテムを選んでください。",
+				"empty": "まだRobloxアイテムをウォッチしていません。カタログ投稿の下にある🔔 {button}を押して始めましょう。",
+				"placeholder": "編集するアイテムを選択...",
+				"disableAll": "🔕 すべて無効にする",
+				"disabledAll": "🔕 {count}個のアイテムの通知を無効にしました。"
+			},
+			"errors": {
+				"invalidItem": "❌ このボタンからカタログアイテムを読み取れませんでした。",
+				"memberNotFound": "❌ メンバープロフィールがまだ同期されていません。少し待ってからもう一度試してください。"
+			}
+		},
+		"itemFallback": "アイテム #{id}",
+		"post": {
+			"free": "無料",
+			"updatedTitle": "[更新] {name}",
+			"openOnRoblox": "Robloxで開く",
+			"notifyMe": "通知を受け取る",
+			"fields": {
+				"category": "カテゴリー",
+				"price": "価格",
+				"creator": "クリエイター",
+				"quantity": "数量",
+				"favorites": "お気に入り",
+				"created": "作成日",
+				"notifications": "通知",
+				"resalePrice": "再販価格",
+				"saleEnds": "販売終了"
+			}
+		}
+	},
+	"creatorAlerts": {
+		"platforms": {
+			"youtube": "YouTube",
+			"twitch": "Twitch",
+			"tiktok": "TikTok"
+		},
+		"types": {
+			"video": {
+				"label": "新しい動画",
+				"description": "新しい動画、ショート、アーカイブが公開されたとき。"
+			},
+			"live": {
+				"label": "ライブ配信",
+				"description": "クリエイターがライブ配信を始めたとき。"
+			},
+			"post": {
+				"label": "新しい投稿",
+				"description": "YouTubeのコミュニティ投稿やTikTokの投稿が公開されたとき。"
+			}
+		},
+		"saved": "🔔 保存しました。**{creator}**の次の更新でメンションされます：{types}。{count}人がウォッチ中。",
+		"removed": "🔕 今後**{creator}**の通知でメンションされることはありません。",
+		"noTypes": "なし",
+		"creator": {
+			"title": "🔔 クリエイター通知",
+			"description": "{platform}の[{creator}]({url})で何が起きたらメンションするか選んでください。すべての選択を外すとフォロー解除になります。",
+			"active": "**通知対象：** {types}",
+			"placeholder": "通知を受け取る内容を選択..."
+		},
+		"menu": {
+			"title": "📡 クリエイター通知",
+			"description": "{count}人のクリエイターをフォロー中です。通知内容を変えたいクリエイターを選んでください。",
+			"empty": "まだクリエイターをフォローしていません。「➕ クリエイターをフォロー」を押して始めましょう。",
+			"placeholder": "編集するクリエイターを選択...",
+			"follow": "➕ クリエイターをフォロー",
+			"recent": "🕘 最近の通知",
+			"disableAll": "🔕 すべてフォロー解除",
+			"disabledAll": "🔕 {count}人のクリエイターのフォローを解除しました。"
+		},
+		"follow": {
+			"title": "➕ クリエイターをフォロー",
+			"description": "プラットフォームを選んでから、クリエイターのプロフィールリンクかハンドルを貼り付けてください。",
+			"modalTitle": "{platform}でフォロー",
+			"inputLabel": "{platform}のリンクまたはハンドル"
+		},
+		"recent": {
+			"title": "🕘 最近のクリエイター通知",
+			"empty": "クリエイター通知はまだありません。フォロー中のクリエイターが投稿すると、ここに表示されます。"
+		},
+		"errors": {
+			"invalidCreator": "❌ そのクリエイターのリンクまたはハンドルを読み取れませんでした。",
+			"memberNotFound": "❌ メンバープロフィールがまだ同期されていません。少し待ってからもう一度試してください。",
+			"notFound": "❌ そのリンクまたはハンドルのクリエイターが見つかりません。",
+			"tiktokCooling": "⏳ 現在TikTokが検索を制限しています。数分後にもう一度試してください。",
+			"lookupFailed": "❌ 現在そのクリエイターを検索できません。あとでもう一度試してください。"
+		},
+		"post": {
+			"platform": "プラットフォーム",
+			"type": "種類",
+			"notifications": "通知",
+			"openOn": "{platform}で開く",
+			"notifyMe": "通知を受け取る"
+		}
+	},
+	"moderation": {
+		"button": "🔨 モデレーション",
+		"selectUser": "モデレートするメンバーを選んでください。",
+		"selectUserPlaceholder": "メンバーを選択",
+		"selectAction": "{member}に対する操作を選んでください。",
+		"selectActionPlaceholder": "操作を選択",
+		"actions": {
+			"warn": "警告",
+			"timeout": "タイムアウト",
+			"untimeout": "タイムアウト解除",
+			"kick": "キック",
+			"ban": "BAN",
+			"tempban": "一時BAN",
+			"clearwarns": "警告をクリア"
+		},
+		"modal": {
+			"reason": "理由",
+			"duration": "期間（例：10分、2時間、7日）"
+		},
+		"done": "✅ {member}に{action}を適用しました。ケース #{case}。",
+		"failed": "❌ {error}",
+		"invalidDuration": "❌ 10分、2時間、7日のように期間を入力してください。",
+		"notAllowed": "❌ サーバーオーナーとBotはモデレートできません。",
+		"caseLog": {
+			"titles": {
+				"warn": "⚠️ メンバーに警告",
+				"timeout": "🔇 メンバーをタイムアウト",
+				"untimeout": "🔊 タイムアウト解除",
+				"kick": "👢 メンバーをキック",
+				"ban": "🔨 メンバーをBAN",
+				"tempban": "⏳ メンバーを一時BAN",
+				"unban": "🕊️ メンバーのBANを解除",
+				"unwarn": "🧹 警告を削除",
+				"clearwarns": "🧹 警告をクリア",
+				"tempban_expired": "⌛ 一時BANの期限切れ"
+			},
+			"bulkTitles": {
+				"role_add": "➕ ロールの一括付与",
+				"role_remove": "➖ ロールの一括削除"
+			},
+			"title": "{action} · ケース #{case}",
+			"description": "{member}のケース **#{case}** を記録しました。",
+			"fields": {
+				"member": "👤 メンバー",
+				"staff": "🛡️ スタッフ",
+				"source": "📍 実行元",
+				"reason": "📝 理由",
+				"duration": "⏱️ 期間",
+				"activeWarnings": "📊 有効な警告",
+				"role": "🎭 ロール"
+			},
+			"durationValue": "{duration}（{ends}に終了）",
+			"noReason": "理由の記載なし",
+			"unknown": "不明",
+			"automatic": "自動",
+			"staffFallback": "スタッフ",
+			"sources": {
+				"panel": "パネル",
+				"menu": "メニュー",
+				"discord": "Discord",
+				"auto": "自動"
+			},
+			"bulkSummary": "**{done}**件完了 · {failed}件失敗",
+			"reasons": {
+				"unwarn": "警告 #{case} を削除",
+				"clearwarns": "警告を{count}件クリア",
+				"escalation": "有効な警告が{count}件に到達",
+				"tempbanExpired": "一時BANのケース #{case} が期限切れ"
+			}
+		},
+		"memberDm": {
+			"server": "**サーバー：** {server}",
+			"reason": "**理由：** {reason}",
+			"duration": "**期間：** {duration}"
+		},
+		"durationUnits": {
+			"d": "{n}日",
+			"h": "{n}時間",
+			"m": "{n}分",
+			"s": "{n}秒"
+		}
+	},
+	"setup": {
+		"categoryName": "{botName}メニュー",
+		"channels": {
+			"menu": "「💻」メニュー",
+			"bot_updates": "「⚙️」bot更新情報",
+			"welcomer": "「🚪」ようこそ",
+			"booster": "「🚀」ブースター",
+			"moderation": "「🔨」モデレーション",
+			"leveling": "「🆙」レベル",
+			"giveaway": "「🎁」ギブアウェイ",
+			"staff_rating": "「⭐」スタッフ評価",
+			"discord_quest_notifier": "「📜」discordクエスト",
+			"content_creator": "「📽️」コンテンツクリエイター",
+			"roblox_catalog_notifier": "「👗」robloxカタログ",
+			"items": "「🛍️」アイテム",
+			"minigames": "「🎲」ミニゲーム"
+		},
+		"language": {
+			"title": "🌐 サーバーの言語を選択",
+			"description": "このサーバーの言語を選んでください。`/setup`で作成するチャンネルの名前に使われるほか、メニュー、承認の投稿、Botの公開メッセージすべて、AIのチャットとボイスにも使われます。\n\nメンバーは、自分だけに表示される返信やDMの言語をメニューから個別に選べます。この設定はあとからWebパネルの**Configuration → Main**で変更できます。",
+			"placeholder": "サーバーの言語を選択",
+			"working": "⏳ **{language}**でセットアップ中…",
+			"applied": "🌐 サーバーの言語：**{language}**"
+		},
+		"commandDescription": "Botをセットアップ：サーバーの言語を選んで、メニューとチャンネルを作成します。管理者専用。"
+	},
+	"items": {
+		"common": {
+			"footer": "アイテム",
+			"aMemberActor": "あるメンバー",
+			"aMemberTarget": "あるメンバー",
+			"disguisedMember": "謎のメンバー 🎭",
+			"someone": "誰か",
+			"item": "アイテム",
+			"anItem": "アイテム",
+			"them": "相手",
+			"until": "（{time}まで）",
+			"activeUntil": "（{time}まで有効）",
+			"luckBonus": "（幸運 +{percent}% 🍀）",
+			"luckTaxDiscount": "（幸運で税 −{percent}% 🍀）",
+			"addressed": "{member}、{text}"
+		},
+		"defended": {
+			"steal": {
+				"blockedTitle": "強奪をブロック",
+				"blockedDescription": "{target}の**シールド**が{actor}の強奪をブロックしました！",
+				"immuneTitle": "強奪は無敵状態で無効に",
+				"immuneDescription": "{target}はまだ無敵状態です。{actor}の強奪は効果がなく、**{item}**は失われました。"
+			},
+			"bomb": {
+				"blockedTitle": "爆弾をブロック",
+				"blockedDescription": "{target}の**シールド**が{actor}の爆弾をブロックしました！",
+				"immuneTitle": "爆弾は無敵状態で無効に",
+				"immuneDescription": "{target}はまだ無敵状態です。{actor}の爆弾は効果がなく、**{item}**は失われました。"
+			},
+			"leech": {
+				"blockedTitle": "ドレインをブロック",
+				"blockedDescription": "{target}の**シールド**が{actor}のドレインをブロックしました！",
+				"immuneTitle": "ドレインは無敵状態で無効に",
+				"immuneDescription": "{target}はまだ無敵状態です。{actor}のドレインは効果がなく、**{item}**は失われました。"
+			}
+		},
+		"attack": {
+			"reflectedTitle": "攻撃を反射",
+			"reflectedDescription": "{target}が攻撃を{actor}に跳ね返しました！",
+			"withItem": "**{item}**で",
+			"refundedValue": "{target}に{xp}が払い戻されました",
+			"bountyValue": "{actor}は{xp}も獲得しました",
+			"immuneValue": "{target}は{time}まで無敵です",
+			"steal": {
+				"title": "メンバーが強奪された！",
+				"description": "{actor}が{withItem}{target}から強奪しました！"
+			},
+			"bomb": {
+				"title": "メンバーが爆撃された！",
+				"description": "{actor}が{withItem}{target}を爆撃しました！"
+			}
+		},
+		"fields": {
+			"skimRate": "吸い取り率",
+			"received": "受け取り",
+			"tax": "税",
+			"bounty": "懸賞金",
+			"xpLostByAttacker": "攻撃者が失ったXP",
+			"attacker": "攻撃者",
+			"victim": "被害者",
+			"xpStolen": "奪われたXP",
+			"xpDestroyed": "消滅したXP",
+			"insuranceRefund": "保険の払い戻し",
+			"bountyCollected": "獲得した懸賞金",
+			"immunity": "無敵"
+		},
+		"leech": {
+			"title": "ドレイン発動",
+			"description": "{actor}が{target}にドレインを仕掛けました。効果が続く間、相手のXPの一部を吸い取ります。"
+		},
+		"gift": {
+			"title": "ギフト送信",
+			"description": "{actor}が{target}にギフトを贈りました！"
+		},
+		"bounty": {
+			"title": "懸賞金がかけられた",
+			"description": "{actor}が{target}に懸賞金をかけました。次にこのメンバーを強奪または爆撃した人が獲得できます。"
+		},
+		"disguise": {
+			"title": "メンバーが人ごみに消えた",
+			"description": "誰かが**変装**しました{until}。攻撃しても名前が隠れ、ランキングからも姿を消しています。"
+		},
+		"boost": {
+			"title": "ブースト発動",
+			"description": "{actor}がブーストを発動しました{until}。効果が続く間、獲得量がアップします。"
+		},
+		"shield": {
+			"title": "シールド発動",
+			"description": "{actor}は守られています。強奪、爆弾、ドレインはすべてブロックされます{until}。"
+		},
+		"reflect": {
+			"title": "リフレクト発動",
+			"description": "{actor}は次の攻撃を攻撃者に跳ね返します{until}。"
+		},
+		"insurance": {
+			"title": "保険発動",
+			"description": "{actor}は次に強奪または爆撃されたとき、損失の{percent}%{luck}が払い戻されます{until}。"
+		},
+		"luck": {
+			"title": "幸運発動",
+			"description": "{actor}には今、強奪、爆弾、ミニゲーム、スパイ、ドレイン、ギフト税、保険、フレンドブースト、ショップ価格に幸運 +{percent}% が適用されています{until}。"
+		},
+		"spyCaught": {
+			"title": "スパイ発覚",
+			"description": "{target}は{spy}のスパイ行為を見破りました。情報は何も得られませんでした。"
+		},
+		"adminGift": {
+			"title": "ギフトが届きました",
+			"description": "{member}が管理者から**{item} ×{quantity}**を受け取りました。アイテムを確認してみてください！"
+		},
+		"expired": {
+			"boost": {
+				"title": "ブースト終了",
+				"text": "**{value}× ブースト**の効果が切れました。"
+			},
+			"shield": {
+				"title": "シールド終了",
+				"text": "**シールド**の効果が切れました。再び攻撃を受けるようになります。"
+			},
+			"leech": {
+				"title": "ドレイン終了",
+				"text": "**{value}% ドレイン**が終了しました。",
+				"textWithTarget": "{target}への**{value}% ドレイン**が終了しました。"
+			},
+			"reflect": {
+				"title": "リフレクト終了",
+				"text": "**リフレクト**の効果が切れました。"
+			},
+			"insurance": {
+				"title": "保険終了",
+				"text": "**保険**の期限が切れました。"
+			},
+			"disguise": {
+				"title": "変装終了",
+				"announcement": "あるメンバーが変装を解きました。再び姿が見えるようになります。"
+			},
+			"luck": {
+				"title": "幸運終了",
+				"text": "**幸運 +{value}%**の効果が切れました。"
+			}
+		},
+		"immunityEnded": {
+			"title": "無敵終了",
+			"description": "{member}の無敵状態が終わりました。また狙えます！",
+			"anonymous": "あるメンバーの無敵状態が終わりました。"
+		},
+		"cooldownReady": {
+			"steal": {
+				"title": "強奪のクールダウン完了",
+				"text": "強奪のクールダウンが終わりました。また強奪できます！"
+			},
+			"bomb": {
+				"title": "爆弾のクールダウン完了",
+				"text": "爆弾のクールダウンが終わりました。また爆弾を使えます！"
+			},
+			"insurance": {
+				"title": "保険のクールダウン完了",
+				"text": "保険のクールダウンが終わりました。また保険を発動できます！"
+			}
+		}
+	},
+	"minigames": {
+		"someone": "あるメンバー",
+		"footer": "ミニゲーム",
+		"win": {
+			"title": "🎲 ミニゲームで勝利！",
+			"description": "{member}が{wager}を{multiplier}倍に賭けて**勝ちました**！"
+		},
+		"lose": {
+			"title": "🎲 ミニゲームで敗北",
+			"description": "{member}が{wager}を{multiplier}倍に賭けて**すべて失いました**。"
+		},
+		"fields": {
+			"payout": "配当",
+			"netGain": "純利益",
+			"winChance": "勝率",
+			"xpLost": "失ったXP"
+		}
+	},
+	"themeEffects": {
+		"spin": {
+			"title": "✨ テーマエフェクトのスピン",
+			"description": "{member}が{cost}でスピンして**{effect}**を引き当てました！"
+		},
+		"fields": {
+			"effect": "エフェクト",
+			"xpSpent": "消費XP",
+			"variant": "バリエーション"
+		}
+	},
+	"tasks": {
+		"footer": "タスク",
+		"rarity": {
+			"common": "コモン",
+			"uncommon": "アンコモン",
+			"rare": "レア",
+			"epic": "エピック",
+			"legendary": "レジェンダリー",
+			"mythic": "ミシック"
+		},
+		"milestones": {
+			"7": "1週間",
+			"30": "1か月",
+			"100": "100日",
+			"365": "1年"
+		},
+		"login": {
+			"jackpotTitle": "🎁 {day}日目のジャックポット — {rarity}！",
+			"dropTitle": "✨ {rarity}ドロップ！",
+			"description": "{member}が{day}日目に**{rarity}**アイテムを引き当てました！",
+			"fields": {
+				"item": "アイテム",
+				"rarity": "レアリティ",
+				"worth": "価値"
+			}
+		},
+		"streak": {
+			"day": "{count}日",
+			"days": "{count}日",
+			"reset": {
+				"title": "💔 連続記録リセット",
+				"description": "{member}は**{days}**のログインを逃し、**{previous}日**の連続記録が途切れました。1日目からやり直しです。",
+				"descriptionBurned": "{member}は**{days}**のログインを逃し、**{previous}日**の連続記録が途切れました。{burned}1日目からやり直しです。",
+				"burnedOne": "記録を守ろうとしてフリーズを1個消費しました。",
+				"burnedMany": "記録を守ろうとしてフリーズを{count}個消費しました。"
+			},
+			"frozen": {
+				"title": "🧊 連続記録をフリーズ",
+				"description": "{member}は**{days}**のログインを逃しましたが、{freezes}で**{streak}日**の連続記録を守りました。",
+				"one": "連続記録フリーズ1個",
+				"many": "連続記録フリーズ{count}個"
+			},
+			"fields": {
+				"longest": "最長記録",
+				"freezesUsed": "使用したフリーズ",
+				"freezesLeft": "残りのフリーズ"
+			},
+			"milestone": {
+				"title": "{emoji} {label}の連続記録",
+				"description": "{member}が**{streak}日**の連続記録を達成しました！"
+			}
+		}
+	},
+	"welcomer": {
+		"title": "🎉 サーバーへようこそ！",
+		"fields": {
+			"accountCreated": "📅 アカウント作成日",
+			"memberCount": "👥 メンバー数",
+			"invitedBy": "📨 招待者"
+		},
+		"memberNumber": "{count}人目のメンバー",
+		"inviterCount": "{inviter}（招待{count}人）",
+		"inviter": {
+			"vanity": "バニティURL",
+			"server": "サーバーの招待リンク",
+			"someone": "誰か"
+		},
+		"inviteSources": {
+			"invite": "Discordリンク",
+			"personal": "個人リンク",
+			"vanity": "バニティURL",
+			"server": "サーバーリンク",
+			"manual": "スタッフが設定",
+			"unknown": "不明"
+		},
+		"accountAge": {
+			"today": "今日",
+			"oneDay": "1日前",
+			"days": "{days}日前"
+		},
+		"unknownServer": "不明なサーバー",
+		"defaultMessages": [
+			"👋 {user}さん、{server}へようこそ！あなたは{memberCount}人目のメンバーです（アカウント作成：{accountAge}）。",
+			"🎉 {user}さんが{server}に参加しました！メンバー #{memberCount} | アカウント作成：{accountAge}。",
+			"🌟 ようこそ、{user}さん！{server}の仲間入りです（{memberCount}人目のメンバー、アカウント作成：{accountAge}）。",
+			"🚀 {user}さんが{server}にやってきました！メンバー #{memberCount} | アカウント作成：{accountAge}。",
+			"🎊 こんにちは、{user}さん！{server}へようこそ！あなたは{memberCount}人目のメンバーです（アカウント作成：{accountAge}）。"
+		]
+	},
+	"booster": {
+		"title": "💎 ブーストありがとうございます！",
+		"fields": {
+			"boostLevel": "🚀 ブーストレベル",
+			"totalBoosts": "✨ 合計ブースト数",
+			"boostedSince": "📅 ブースト開始日"
+		},
+		"level": "レベル{level}",
+		"justNow": "たった今",
+		"unknownServer": "不明なサーバー",
+		"defaultMessages": [
+			"🎉 {user}さんが{server}をブーストしてくれました！現在のレベル：{boostLevel} | 合計ブースト数：{totalBoosts}。",
+			"💎 {user}さん、{server}をブーストしてくれてありがとう！これでレベル{boostLevel}、ブースト数は{totalBoosts}になりました。",
+			"🚀 {user}さんが{server}をブーストしました！サーバーレベル：{boostLevel} | ブースト数：{totalBoosts}。",
+			"🔥 {server}をブーストしてくれた{user}さんに大感謝！合計ブースト数：{totalBoosts}（レベル{boostLevel}）。",
+			"⭐ {user}さんが{server}にブーストを贈ってくれました！レベル{boostLevel}、ブースト数{totalBoosts}。"
+		]
+	},
+	"questNotifier": {
+		"fields": {
+			"rewards": "報酬",
+			"tasks": "タスク",
+			"game": "🎮 ゲーム",
+			"publisher": "🏢 パブリッシャー",
+			"expires": "⏳ 期限"
+		},
+		"test": "_テスト通知 — 通知は正常に動作しています。_",
+		"openInDiscord": "Discordで開く"
+	},
+	"forwarder": {
+		"title": "{channel}からのメッセージ",
+		"additionalAttachments": "その他の添付ファイル"
+	},
+	"ai": {
+		"errors": {
+			"noResponse": "今は返答を生成できませんでした。もう一度試してください。",
+			"keyRejected": "AIのAPIキーが拒否されました。Botパネルの設定を確認してください。",
+			"rateLimited": "AIサービスが現在レート制限中です。少し待ってからもう一度試してください。",
+			"failed": "AIサービスへの接続中に問題が発生しました。"
+		}
+	},
+	"commands": {
+		"errors": {
+			"unknown": "❌ **不明なコマンド**：`/{command}`\n\nこのコマンドは存在しません。使えるのは`/setup`だけです。",
+			"failed": "❌ **コマンドエラー**：`/{command}`\n\nコマンドを正しく実行できませんでした。\n**エラー**：{error}\n\nもう一度試すか、問題が続く場合は管理者に連絡してください。",
+			"unexpected": "❌ **予期しないエラー**：`/{command}`\n\n予期しないエラーが発生しました。もう一度試してください。",
+			"critical": "❌ **重大なエラー**：コマンドの処理中に予期しないエラーが発生しました。\n\n時間をおいてもう一度試すか、管理者に連絡してください。"
+		}
+	}
+}

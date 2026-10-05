@@ -775,6 +775,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'minigame_play failed', details: shopErr.message }));
 					}
+				} else if (payload.type === 'minigame_tower') {
+					try {
+						const { handleTowerAction } = await import('./minigames.js');
+						const result = await handleTowerAction(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (towerErr: any) {
+						await logger.log(`❌ minigame_tower failed: ${towerErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'minigame_tower failed', details: towerErr.message }));
+					}
 				} else if (payload.type === 'theme_effect_spin') {
 					try {
 						const { handleThemeEffectSpin } = await import('./themeEffects.js');

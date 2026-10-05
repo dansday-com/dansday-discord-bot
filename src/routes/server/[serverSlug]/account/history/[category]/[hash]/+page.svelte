@@ -4,6 +4,7 @@
 	import { publicServerPath } from '$lib/url.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { EmptyState } from '$lib/frontend/components/public';
+	import { TOWER_BASE_SAFE_CHANCE, TOWER_FLOORS, TOWER_GAME, towerPrize } from '$lib/tower';
 	import type { PageProps } from './$types';
 
 	const TONE: Record<string, string> = {
@@ -94,6 +95,27 @@
 				tone: 'win',
 				deltaLabel: `−${fmt(Math.abs(Number(h.wager) || 0))} XP`,
 				badges: [{ icon: 'fa-dice', text: 'Theme effect' }]
+			};
+		}
+		if (h.game === TOWER_GAME) {
+			const floor = Math.round(Number(h.multiplier) || 0);
+			const payout = Number(h.payout) || 0;
+			const badges: Badge[] = [{ icon: 'fa-stairs', text: `Floor ${floor} of ${TOWER_FLOORS}` }];
+			const dropped = payout > 0 ? 0 : towerPrize(floor - 1);
+			if (dropped > 0) badges.push({ icon: 'fa-arrow-down', text: `Dropped ${fmt(dropped)} XP` });
+			if (h.chance != null) {
+				const total = Number(h.chance) || 0;
+				const luck = Number(h.luckPercent) || 0;
+				const boost = Math.round((total - TOWER_BASE_SAFE_CHANCE) * 10) / 10;
+				const val = luck > 0 ? `${fmtRate(total)}% (${fmtRate(TOWER_BASE_SAFE_CHANCE)} +${fmtRate(boost)} 🍀) safe` : `${fmtRate(total)}% safe`;
+				badges.push({ icon: luck > 0 ? 'fa-clover' : 'fa-percent', text: val });
+			}
+			return {
+				icon: payout > 0 ? 'fa-tower-observation' : 'fa-skull',
+				title: payout <= 0 ? 'Tower — Trapped' : floor >= TOWER_FLOORS ? 'Tower — Cleared' : 'Tower — Cashed out',
+				tone: payout > 0 ? 'win' : 'lose',
+				deltaLabel: `+${fmt(payout)} XP`,
+				badges
 			};
 		}
 		const won = h.outcome === 'win';

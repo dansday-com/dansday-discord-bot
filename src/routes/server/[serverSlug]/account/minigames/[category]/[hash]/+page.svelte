@@ -4,7 +4,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { luckBoostLabel } from '$lib/items';
-	import { EmptyState, GameModal, ReelStrip, WagerPicker } from '$lib/frontend/components/public';
+	import { EmptyState, GameModal, ReelStrip, TowerGame, WagerPicker } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -21,7 +21,19 @@
 			icon: 'fa-dice',
 			name: 'Gamble',
 			desc: 'Set your multiplier, take the odds.',
-			accent: '#c8911a'
+			accent: '#c8911a',
+			tag: 'Wager',
+			tagIcon: 'fa-dice'
+		},
+		{
+			id: 'tower',
+			category: 'tower',
+			icon: 'fa-tower-observation',
+			name: 'Tower',
+			desc: 'Free to climb. Dodge the trap on every floor, then cash out or push for the top.',
+			accent: '#1f9e8f',
+			tag: 'Free',
+			tagIcon: 'fa-gift'
 		}
 	];
 	const games = $derived(data.category === 'all' ? ALL_GAMES : ALL_GAMES.filter((g) => g.category === data.category));
@@ -49,6 +61,7 @@
 	function openPlay(gameId: string) {
 		if (ctx.readOnly) return;
 		playing = gameId;
+		if (gameId !== 'gamble') return;
 		multiplier = 2;
 		gamblePercent = 25;
 		gambleCustom = null;
@@ -174,7 +187,7 @@
 
 					<div class="border-base-300 mt-1 flex items-center justify-between gap-2 border-t border-dashed pt-3">
 						<span class="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.03em] uppercase" style="color: var(--cat);">
-							<i class="fas fa-dice"></i>Wager
+							<i class="fas {game.tagIcon}"></i>{game.tag}
 						</span>
 						{#if ctx.readOnly}
 							<button class="btn btn-sm" disabled title="Open your card to play"><i class="fas fa-eye"></i>View only</button>
@@ -184,7 +197,7 @@
 								title="Play"
 								onclick={() => openPlay(game.id)}
 							>
-								<i class="fas fa-dice"></i>Play
+								<i class="fas {game.icon}"></i>Play
 							</button>
 						{/if}
 					</div>
@@ -194,7 +207,18 @@
 	</div>
 {/if}
 
-{#if playing}
+{#if playing === 'tower'}
+	<TowerGame
+		endpoint={`/api/minigames/${encodeURIComponent(ctx.serverSlug)}/tower`}
+		card={ctx.hash}
+		{fmt}
+		onpayout={(xp) => {
+			ctx.setLiveXp(ctx.liveXp + xp);
+			ctx.invalidateAll();
+		}}
+		onclose={() => (playing = null)}
+	/>
+{:else if playing}
 	<GameModal
 		icon="fa-dice"
 		title="Gamble"

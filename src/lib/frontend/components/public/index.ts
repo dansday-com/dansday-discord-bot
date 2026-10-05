@@ -5,6 +5,7 @@ export { default as OutcomeModal } from './OutcomeModal.svelte';
 export { default as TargetPicker } from './TargetPicker.svelte';
 export { default as WagerPicker } from './WagerPicker.svelte';
 export { default as ReelStrip } from './ReelStrip.svelte';
+export { default as TowerGame } from './TowerGame.svelte';
 export { default as MetricTabs } from './MetricTabs.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as LevelRewards } from './LevelRewards.svelte';

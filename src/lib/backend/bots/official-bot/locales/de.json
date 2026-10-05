@@ -1235,6 +1235,28 @@
 			"netGain": "Nettogewinn",
 			"winChance": "Gewinnchance",
 			"xpLost": "Verlorene XP"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 Turm: Auszahlung",
+				"description": "{member} ist bis Etage {floor} von {floors} geklettert und hat sich **{payout} auszahlen lassen**."
+			},
+			"cleared": {
+				"title": "🗼 Turm bezwungen!",
+				"description": "{member} hat alle {floors} Etagen geschafft und den **Jackpot von {payout}** geholt!"
+			},
+			"bust": {
+				"title": "🗼 Falle im Turm",
+				"description": "{member} ist auf Etage {floor} in eine Falle getappt und hat **die gesammelten {lost} verloren**."
+			},
+			"bustEmpty": {
+				"description": "{member} ist auf Etage {floor} in eine Falle getappt und geht leer aus."
+			},
+			"fields": {
+				"floor": "Etage",
+				"safeChance": "Überlebenschance",
+				"dropped": "Verlorener Gewinn"
+			}
 		}
 	},
 	"themeEffects": {

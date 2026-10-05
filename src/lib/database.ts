@@ -13,6 +13,7 @@ import { defaultGreetingMessages, defaultMainEmbedFooter } from './localizedDefa
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
+import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -2299,9 +2300,9 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 	await initializeDatabase();
 	const existing = await ensureMemberStreak(memberId);
 	const last = existing?.last_claim_day_key == null ? null : Number(existing.last_claim_day_key);
-	if (last === dayKey) return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
+	if (last != null && dayKey <= last) return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
 
-	const gap = last == null ? null : dayKey - last;
+	const gap = last == null ? null : Math.floor((dayKey - last) / DAY_MINUTES);
 	const previousStreak = Number(existing?.current_streak) || 0;
 	let streak = previousStreak;
 	let freezes = Number(existing?.freezes_available) || 0;
@@ -2309,7 +2310,7 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 	let daysMissed = 0;
 	let reset = false;
 
-	if (gap == null || gap === 1 || previousStreak === 0) {
+	if (gap == null || gap <= 1 || previousStreak === 0) {
 		streak += 1;
 	} else {
 		const missed = (gap ?? 1) - 1;
@@ -2355,6 +2356,15 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 		reset,
 		row: await getMemberStreak(memberId)
 	};
+}
+
+export async function getLatestTaskKey(memberId: any, period = 'daily') {
+	await initializeDatabase();
+	const rows: any = await db.execute(
+		sql`SELECT MAX(day_key) AS k FROM server_member_tasks WHERE member_id = ${Number(memberId)} AND period = ${String(period)}`
+	);
+	const key = rows?.[0]?.[0]?.k ?? rows?.[0]?.k ?? null;
+	return key == null ? null : Number(key);
 }
 
 export async function getMemberTasks(memberId: any, dayKey: number, period = 'daily') {
@@ -2432,17 +2442,19 @@ export async function ensureMemberClaim(memberId: any) {
 export async function applyMemberClaim(memberId: any, dayKey: number, cycleDays: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
+	const readyBefore = Number(dayKey) - DAY_MINUTES;
+	const brokenBefore = Number(dayKey) - 2 * DAY_MINUTES;
 	const result: any = await db.execute(
 		sql`UPDATE server_member_claims
 			SET cycle_day = CASE
-					WHEN last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)} - 1 THEN 1
+					WHEN last_claim_day_key IS NULL OR last_claim_day_key <= ${brokenBefore} THEN 1
 					WHEN cycle_day >= ${cycleDays} THEN 1
 					ELSE cycle_day + 1
 				END,
-				cycles_completed = cycles_completed + IF(cycle_day >= ${cycleDays} AND last_claim_day_key = ${Number(dayKey)} - 1, 1, 0),
+				cycles_completed = cycles_completed + IF(cycle_day >= ${cycleDays} AND last_claim_day_key > ${brokenBefore}, 1, 0),
 				last_claim_day_key = ${Number(dayKey)},
 				updated_at = ${now}
-			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)})`
+			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key <= ${readyBefore})`
 	);
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	if (affected === 0) return { changed: false, row: await getMemberClaim(memberId) };
@@ -2453,6 +2465,8 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 	await initializeDatabase();
 	const since = toMySQLDateTime(new Date(sinceMs));
 	const id = Number(memberId);
+
+	const notTower = sql` AND game <> 'tower'`;
 
 	const GAMBLE_FILTERS: Record<string, any> = {
 		gamble_played: sql``,
@@ -2468,7 +2482,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 
 	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
 		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${GAMBLE_FILTERS[String(metric)]}`
+			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${GAMBLE_FILTERS[String(metric)]}`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
@@ -2483,7 +2497,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 	if (metric === 'gamble_wagered' || metric === 'gamble_wagered_lost') {
 		const lostOnly = metric === 'gamble_wagered_lost' ? sql` AND outcome = 'lose'` : sql``;
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${lostOnly}`
+			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${lostOnly}`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
@@ -3022,7 +3036,7 @@ export async function listStaleStreaks(limit = 500) {
 		INNER JOIN servers sv ON sv.id = m.server_id
 		WHERE s.current_streak > 0
 		  AND s.last_claim_day_key IS NOT NULL
-		  AND s.last_claim_day_key < FLOOR((UNIX_TIMESTAMP() - (COALESCE(s.tz_offset_min, 0) * 60)) / 86400)
+		  AND s.last_claim_day_key <= ${minuteKeyFor(Date.now()) - 2 * DAY_MINUTES}
 		ORDER BY s.updated_at ASC
 		LIMIT ${Number(limit) || 500}
 	`);
@@ -3307,6 +3321,44 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 	return true;
 }
 
+export async function getActiveTowerRun(memberId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(
+		sql`SELECT id, floor FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
+	);
+	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+}
+
+export async function getLastTowerRun(memberId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT slot, created_at FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} ORDER BY id DESC LIMIT 1`);
+	const row = ((rows[0] as unknown as any[]) || [])[0];
+	const at = row ? parseMySQLDateTimeUtc(row.created_at) : null;
+	return at ? { slot: Number(row.slot) || 1, at } : null;
+}
+
+export async function createTowerRun(memberId: any, slot: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.insert(schema.serverMemberTowerRuns).values({
+		member_id: Number(memberId),
+		slot: Number(slot),
+		created_at: now as any,
+		updated_at: now as any
+	});
+	return true;
+}
+
+export async function stepTowerRun(runId: any, fromFloor: number, next: { floor: number; status: string; payout?: number }) {
+	await initializeDatabase();
+	const result: any = await db.execute(
+		sql`UPDATE server_member_tower_runs
+			SET floor = ${Number(next.floor)}, status = ${String(next.status)}, payout = ${Number(next.payout ?? 0)}, updated_at = ${toMySQLDateTime()}
+			WHERE id = ${Number(runId)} AND status = 'active' AND floor = ${Number(fromFloor)}`
+	);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
 export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
@@ -3381,7 +3433,7 @@ export async function getMemberMinigameHistory(memberId: any, limit = 600) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
-export async function getMinigamesLeaderboard(serverId: any, since: Date | null) {
+export async function getMinigamesLeaderboard(serverId: any, since: Date | null, game = 'gamble') {
 	await initializeDatabase();
 	if (!serverId) return [] as any[];
 
@@ -3399,14 +3451,15 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null)
 			minigame_net: sql<number>`COALESCE(SUM(${schema.serverMemberMinigameLogs.xp}), 0)`,
 			minigame_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
 			minigame_total: sql<number>`COUNT(${schema.serverMemberMinigameLogs.id})`,
-			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp}), 0)`
+			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp}), 0)`,
+			minigame_best_floor: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN ${schema.serverMemberMinigameLogs.multiplier} ELSE 0 END), 0)`
 		})
 		.from(schema.serverMembers)
 		.leftJoin(
 			schema.serverMemberMinigameLogs,
 			and(
 				eq(schema.serverMemberMinigameLogs.member_id, schema.serverMembers.id),
-				ne(schema.serverMemberMinigameLogs.game, 'effect_spin'),
+				eq(schema.serverMemberMinigameLogs.game, String(game)),
 				...(since ? [sql`${schema.serverMemberMinigameLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
 			)
 		)
@@ -8256,6 +8309,7 @@ export default {
 	ensureMemberStreak,
 	applyStreakDay,
 	triggerStreakWatch,
+	getLatestTaskKey,
 	getMemberTasks,
 	persistMemberTasks,
 	claimMemberTask,
@@ -8297,6 +8351,10 @@ export default {
 	endMemberItemActiveNow,
 	logMemberItemAction,
 	logMinigameAction,
+	getActiveTowerRun,
+	getLastTowerRun,
+	createTowerRun,
+	stepTowerRun,
 	getMemberMinigameHistory,
 	getMinigamesLeaderboard,
 	getMemberItemHistory,

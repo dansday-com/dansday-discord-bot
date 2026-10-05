@@ -1235,6 +1235,28 @@
 			"netGain": "Guadagno netto",
 			"winChance": "Probabilità di vincita",
 			"xpLost": "XP persi"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 Torre: incasso",
+				"description": "{member} ha raggiunto il piano {floor} di {floors} e ha **incassato {payout}**."
+			},
+			"cleared": {
+				"title": "🗼 Torre completata!",
+				"description": "{member} ha superato tutti gli {floors} piani e ha conquistato il **jackpot da {payout}**!"
+			},
+			"bust": {
+				"title": "🗼 Trappola nella torre",
+				"description": "{member} ha trovato una trappola al piano {floor} e ha **perso i {lost} accumulati**."
+			},
+			"bustEmpty": {
+				"description": "{member} ha trovato una trappola al piano {floor} e resta a mani vuote."
+			},
+			"fields": {
+				"floor": "Piano",
+				"safeChance": "Probabilità di salvarsi",
+				"dropped": "Premio perso"
+			}
 		}
 	},
 	"themeEffects": {

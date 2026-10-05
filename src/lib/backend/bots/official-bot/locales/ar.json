@@ -1235,6 +1235,28 @@
 			"netGain": "صافي الربح",
 			"winChance": "فرصة الفوز",
 			"xpLost": "الخبرة المفقودة"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 صرف جائزة البرج",
+				"description": "صعد {member} إلى الطابق {floor} من {floors} و**صرف {payout}**."
+			},
+			"cleared": {
+				"title": "🗼 تم اجتياز البرج!",
+				"description": "اجتاز {member} جميع الطوابق الـ{floors} وفاز بـ**الجائزة الكبرى {payout}**!"
+			},
+			"bust": {
+				"title": "🗼 فخ في البرج",
+				"description": "وقع {member} في فخ في الطابق {floor} و**خسر {lost} التي كان يحملها**."
+			},
+			"bustEmpty": {
+				"description": "وقع {member} في فخ في الطابق {floor} وخرج خالي الوفاض."
+			},
+			"fields": {
+				"floor": "الطابق",
+				"safeChance": "فرصة النجاة",
+				"dropped": "الجائزة المفقودة"
+			}
 		}
 	},
 	"themeEffects": {

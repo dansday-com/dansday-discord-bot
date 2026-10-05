@@ -1235,6 +1235,28 @@
 			"netGain": "純利益",
 			"winChance": "勝率",
 			"xpLost": "失ったXP"
+		},
+		"tower": {
+			"cashout": {
+				"title": "🗼 タワーで換金",
+				"description": "{member}が{floors}階中{floor}階まで登り、**{payout}を獲得しました**。"
+			},
+			"cleared": {
+				"title": "🗼 タワー制覇！",
+				"description": "{member}が全{floors}階を制覇し、**ジャックポット{payout}**を獲得しました！"
+			},
+			"bust": {
+				"title": "🗼 タワーの罠",
+				"description": "{member}が{floor}階で罠にかかり、**持っていた{lost}を失いました**。"
+			},
+			"bustEmpty": {
+				"description": "{member}が{floor}階で罠にかかり、何も得られませんでした。"
+			},
+			"fields": {
+				"floor": "階層",
+				"safeChance": "安全確率",
+				"dropped": "失った賞金"
+			}
 		}
 	},
 	"themeEffects": {

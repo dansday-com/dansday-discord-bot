@@ -73,7 +73,8 @@
 
 	const minigameTabs = [
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
-		{ id: 'gamble', label: 'Gamble', icon: 'fa-dice' }
+		{ id: 'gamble', label: 'Gamble', icon: 'fa-dice' },
+		{ id: 'tower', label: 'Tower', icon: 'fa-tower-observation' }
 	];
 
 	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);

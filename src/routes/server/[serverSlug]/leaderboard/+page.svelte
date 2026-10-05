@@ -170,8 +170,7 @@
 	function itemsSub(r: any, m: string) {
 		if (m.startsWith('minigames_')) {
 			const wins = `${Number(r.minigame_wins || 0)}/${Number(r.minigame_total || 0)} wins`;
-			const bestFloor = Number(r.minigame_best_floor || 0);
-			return bestFloor > 0 ? `${wins} · floor ${bestFloor}` : wins;
+			return r.minigame_best_floor == null ? wins : `${wins} · floor ${Number(r.minigame_best_floor) || 0}`;
 		}
 		if (m === 'items_bounty_claimer') return 'claimed';
 		if (m === 'items_bounty_give') return 'placed';

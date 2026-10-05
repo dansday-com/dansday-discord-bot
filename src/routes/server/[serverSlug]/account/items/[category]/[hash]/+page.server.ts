@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { loadItemsShared, computeCardToken, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
 function safeParse(raw: any) {
 	try {
@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');
-	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/overview/${params.hash}`);
+	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/overview/information/${params.hash}`);
 	if ('guest' in shared) redirect(303, serverBasePath || '/');
 
 	const category = String(params.category || 'all');
@@ -41,7 +41,6 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		targets = (list as any[])
 			.filter((m) => m.discord_member_id && Number(m.id) !== Number(shared.member.id))
 			.map((m) => ({
-				hash: computeCardToken(m.discord_member_id),
 				name: m.server_display_name || m.display_name || m.username,
 				avatar: m.avatar ?? null,
 				discord_member_id: String(m.discord_member_id),

@@ -15,7 +15,7 @@
 			stored = '';
 		}
 		if (stored) {
-			goto(`${base}/account/overview/${stored}`, { replaceState: true });
+			goto(`${base}/account/overview/information/${stored}`, { replaceState: true });
 		} else {
 			goto(base || '/', { replaceState: true });
 		}

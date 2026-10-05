@@ -27,6 +27,7 @@
 
 	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_xp ?? 0) / s.members_with_levels).toLocaleString() : '0');
 	const minigamesWinRate = $derived((s.minigames_plays ?? 0) > 0 ? Math.round((Number(s.minigames_wins) / Number(s.minigames_plays)) * 100) : 0);
+	const towerCashRate = $derived((s.tower_climbs ?? 0) > 0 ? Math.round((Number(s.tower_cashed) / Number(s.tower_climbs)) * 100) : 0);
 
 	const avgVoiceMinutes = $derived(
 		(s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_voice_minutes ?? 0) / s.members_with_levels).toLocaleString() : '0'
@@ -128,7 +129,7 @@
 			]
 		},
 		{
-			title: 'Minigames',
+			title: 'Gamble',
 			icon: 'fa-dice',
 			tone: 'pink',
 			rows: [
@@ -137,6 +138,19 @@
 				{ icon: 'fa-percent', label: 'Win rate', value: `${minigamesWinRate}%` },
 				{ icon: 'fa-trophy', label: 'Biggest win', value: fmt(s.minigames_biggest_win) },
 				{ icon: 'fa-hand-holding-dollar', label: 'XP paid out', value: fmt(s.minigames_paid_out) }
+			]
+		},
+		{
+			title: 'Tower',
+			icon: 'fa-tower-observation',
+			tone: 'amber',
+			rows: [
+				{ icon: 'fa-stairs', label: 'Climbs', value: fmt(s.tower_climbs) },
+				{ icon: 'fa-users', label: 'Climbers', value: fmt(s.tower_climbers) },
+				{ icon: 'fa-percent', label: 'Cash-out rate', value: `${towerCashRate}%` },
+				{ icon: 'fa-hand-holding-dollar', label: 'XP won', value: fmt(s.tower_paid_out) },
+				{ icon: 'fa-tower-observation', label: 'Highest floor', value: fmt(s.tower_best_floor) },
+				{ icon: 'fa-trophy', label: 'Biggest win', value: fmt(s.tower_biggest_win) }
 			]
 		},
 		{

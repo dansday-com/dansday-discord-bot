@@ -280,7 +280,7 @@ async function handleMenuButton(interaction) {
 	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id, { botName: embedConfig.NICKNAME });
 	const menuDesc = await translate('menu.description', interaction.guild.id, interaction.user.id);
 
-	let publicServer: { base: string; subdomain: string | null; stats: PublicPageStats | null; joinUrl: string | null } | null = null;
+	let publicServer: { serverId: number; base: string; subdomain: string | null; stats: PublicPageStats | null; joinUrl: string | null } | null = null;
 	try {
 		const server = await getServerForCurrentBot(interaction.guild.id);
 		const slug = await computePublicServerSlugForServerId(Number(server.id));
@@ -292,7 +292,7 @@ async function handleMenuButton(interaction) {
 			]);
 			const inviteOn = await isPublicSubFeatureEnabled(interaction.guild.id, 'invite').catch(() => false);
 			const joinUrl = inviteOn && (serverRow?.vanity_url_code || serverRow?.invite_code) ? `${publicSiteOrigin()}${inviteJoinPath(slug)}` : null;
-			publicServer = { base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null, joinUrl };
+			publicServer = { serverId: Number(server.id), base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null, joinUrl };
 		}
 	} catch (_) {}
 
@@ -364,9 +364,9 @@ async function handleMenuButton(interaction) {
 			}
 		};
 
-		const cardHash = computeCardToken(String(interaction.user.id));
+		const cardHash = computeCardToken(publicServer.serverId, String(interaction.user.id));
 		const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
-		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/${cardHash}`).setStyle(ButtonStyle.Link));
+		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/information/${cardHash}`).setStyle(ButtonStyle.Link));
 	}
 
 	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
@@ -430,8 +430,8 @@ async function handleMyAccountLinkButton(interaction) {
 		return;
 	}
 
-	const hash = computeCardToken(String(dbMember.discord_member_id));
-	const url = `${base}/account/overview/${hash}`;
+	const hash = computeCardToken(server.id, String(dbMember.discord_member_id));
+	const url = `${base}/account/overview/information/${hash}`;
 	let linkText = url;
 	try {
 		linkText = `[${new URL(url).host}](${url})`;

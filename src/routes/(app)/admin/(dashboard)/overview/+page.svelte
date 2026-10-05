@@ -188,7 +188,7 @@
 			]
 		},
 		{
-			title: 'Minigames',
+			title: 'Gamble',
 			icon: 'fa-dice',
 			tone: 'violet',
 			rows: [
@@ -197,6 +197,19 @@
 				{ icon: 'fa-hand-holding-dollar', label: 'Paid Out', value: fmt(g.minigames_paid_out) },
 				{ icon: 'fa-scale-balanced', label: 'House Net', value: signed(minigamesNet) },
 				{ icon: 'fa-trophy', label: 'Biggest Win', value: fmt(g.minigames_biggest_win) }
+			]
+		},
+		{
+			title: 'Tower',
+			icon: 'fa-tower-observation',
+			tone: 'amber',
+			rows: [
+				{ icon: 'fa-stairs', label: 'Climbs', value: fmt(g.tower_climbs) },
+				{ icon: 'fa-users', label: 'Climbers', value: fmt(g.tower_climbers) },
+				{ icon: 'fa-sack-dollar', label: 'Cash-outs', value: fmt(g.tower_cashed) },
+				{ icon: 'fa-hand-holding-dollar', label: 'XP Won', value: fmt(g.tower_paid_out) },
+				{ icon: 'fa-tower-observation', label: 'Highest Floor', value: fmt(g.tower_best_floor) },
+				{ icon: 'fa-trophy', label: 'Biggest Win', value: fmt(g.tower_biggest_win) }
 			]
 		},
 		{

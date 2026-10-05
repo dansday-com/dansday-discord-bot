@@ -4,10 +4,12 @@ import db from '../../../database.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
 import { resolveMemberThemeForClient } from '../../../backend/storage/memberThemes.js';
 
-export function computeCardToken(discordMemberId: string): string {
+export function computeCardToken(serverId: any, discordMemberId: string): string {
 	const secret = process.env.SECRET;
 	if (!secret) throw new Error('SECRET is not configured; account card links cannot be signed.');
-	return createHmac('sha256', secret).update(`card:${discordMemberId}`).digest('hex');
+	return createHmac('sha256', secret)
+		.update(`card:${Number(serverId)}:${discordMemberId}`)
+		.digest('hex');
 }
 
 export async function resolveMemberByCardToken(serverId: number, token: string): Promise<any | null> {
@@ -16,7 +18,7 @@ export async function resolveMemberByCardToken(serverId: number, token: string):
 	const members = await db.getServerMembersList(serverId).catch(() => []);
 	for (const m of members as any[]) {
 		if (!m.discord_member_id) continue;
-		const expected = Buffer.from(computeCardToken(m.discord_member_id), 'utf8');
+		const expected = Buffer.from(computeCardToken(serverId, m.discord_member_id), 'utf8');
 		if (expected.length === supplied.length && timingSafeEqual(expected, supplied)) return m;
 	}
 	return null;

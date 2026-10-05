@@ -20,16 +20,16 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const body = await request.json().catch(() => null);
 	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
-	const { card, target_card, member_item_id } = body;
+	const { card, target_discord_id, member_item_id } = body;
 	if (!card || !member_item_id) return json({ success: false, error: 'Missing fields' }, { status: 400 });
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
 	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
 
 	let targetDiscordId: string | undefined;
-	if (target_card) {
-		const target = await resolveMemberByCardToken(server.id, String(target_card));
-		if (!target) return json({ success: false, error: 'Target not found' }, { status: 404 });
+	if (target_discord_id) {
+		const target = await db.getMemberByDiscordId(server.id, String(target_discord_id)).catch(() => null);
+		if (!target || target.is_bot) return json({ success: false, error: 'Target not found' }, { status: 404 });
 		targetDiscordId = target.discord_member_id;
 	}
 

@@ -142,13 +142,13 @@
 		immunity: 'Immune to attacks'
 	};
 
-	async function useItem(item: any, targetHash?: string) {
+	async function useItem(item: any, targetDiscordId?: string) {
 		ctx.setBusy(item.member_item_id);
 		try {
 			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/use`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, target_card: targetHash, member_item_id: item.member_item_id })
+				body: JSON.stringify({ card: ctx.hash, target_discord_id: targetDiscordId, member_item_id: item.member_item_id })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -175,8 +175,8 @@
 		} else useItem(item);
 	}
 
-	async function pickTarget(item: any, targetHash: string) {
-		await useItem(item, targetHash);
+	async function pickTarget(item: any, targetDiscordId: string) {
+		await useItem(item, targetDiscordId);
 		pickingTargetFor = null;
 	}
 
@@ -431,12 +431,12 @@
 			Pick a target for <strong>{pickingTargetFor.name}</strong>:
 		{/snippet}
 
-		{#each visibleTargets as t (t.hash)}
+		{#each visibleTargets as t (t.discord_member_id)}
 			<li>
 				<button
 					class="border-base-300 bg-base-100 text-base-content hover:border-primary/40 flex w-full items-center gap-[11px] rounded-xl border px-3 py-2.5 text-left transition-colors"
 					disabled={ctx.busy === pickingTargetFor.member_item_id}
-					onclick={() => pickTarget(pickingTargetFor, t.hash)}
+					onclick={() => pickTarget(pickingTargetFor, t.discord_member_id)}
 				>
 					<span class="text-base-content/60 min-w-[30px] shrink-0 text-center text-xs font-bold">{t.rank != null ? `#${t.rank}` : '—'}</span>
 					<img

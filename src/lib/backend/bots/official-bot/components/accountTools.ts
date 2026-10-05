@@ -19,7 +19,7 @@ async function callerAccount(botId, guildId, callerDiscordId) {
 	const member = await memberByDiscordId(ctx.server.id, callerDiscordId);
 	if (!member) return { error: fail('you_are_not_registered_in_this_server') };
 
-	return { ctx, member, hash: computeCardToken(String(member.discord_member_id)) };
+	return { ctx, member, hash: computeCardToken(ctx.server.id, String(member.discord_member_id)) };
 }
 
 async function sharedFor(ctx, hash) {

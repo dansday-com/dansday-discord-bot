@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadMinigamesShared(server, hash);
-	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/overview/${params.hash}`);
+	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/overview/information/${params.hash}`);
 	if ('guest' in shared) redirect(303, serverBasePath || '/');
 
 	const category = MINIGAME_CATEGORIES.includes(String(params.category)) ? String(params.category) : 'all';

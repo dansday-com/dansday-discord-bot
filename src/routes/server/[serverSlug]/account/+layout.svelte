@@ -23,14 +23,14 @@
 	const readOnly = false;
 	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isOverview = $derived(/\/account\/overview\//.test(pathNorm));
+	const isOverview = $derived(/\/account\/overview\/information\//.test(pathNorm));
 	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
 	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
 	const isTask = $derived(/\/account\/task\//.test(pathNorm));
-	const isRewards = $derived(/\/account\/rewards\//.test(pathNorm));
-	const isThemes = $derived(/\/account\/themes\//.test(pathNorm));
+	const isRewards = $derived(/\/account\/overview\/rewards\//.test(pathNorm));
+	const isThemes = $derived(/\/account\/overview\/themes\//.test(pathNorm));
 	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask && !isRewards && !isThemes);
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
@@ -212,10 +212,8 @@
 	});
 
 	const sectionTabs: NavTab[] = $derived([
-		{ label: 'Overview', icon: 'fa-gauge-high', href: `${accountBase}/overview/${navHash}`, active: isOverview },
-		{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/themes/${navHash}`, active: isThemes },
+		{ label: 'Overview', icon: 'fa-gauge-high', href: `${accountBase}/overview/information/${navHash}`, active: isOverview || isThemes || isRewards },
 		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
-		{ label: 'Rewards', icon: 'fa-trophy', href: `${accountBase}/rewards/${navHash}`, active: isRewards },
 		{
 			id: 'items',
 			label: 'Items',
@@ -238,6 +236,12 @@
 		if (isItems) return build('items', typeTabs, activeCat);
 		if (isAssets) return build('assets', assetTabs, activeCat);
 		if (isMinigames) return build('minigames', minigameTabs, activeCat);
+		if (isOverview || isThemes || isRewards)
+			return [
+				{ label: 'Information', icon: 'fa-circle-info', href: `${accountBase}/overview/information/${navHash}`, active: isOverview },
+				{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/overview/themes/${navHash}`, active: isThemes },
+				{ label: 'Rewards', icon: 'fa-trophy', href: `${accountBase}/overview/rewards/${navHash}`, active: isRewards }
+			];
 		return null;
 	});
 

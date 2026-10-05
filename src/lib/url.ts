@@ -95,6 +95,38 @@ function subdomainRootHost(): string {
 	return APP_DOMAIN.toLowerCase().replace(/:\d+$/, '');
 }
 
+function punycodeDecode(input: string): string | null {
+	const cut = input.lastIndexOf('-');
+	const out = cut > 0 ? Array.from(input.slice(0, cut), (c) => c.charCodeAt(0)) : [];
+	let n = 128;
+	let bias = 72;
+	let i = 0;
+	for (let pos = cut > 0 ? cut + 1 : 0; pos < input.length; ) {
+		const start = i;
+		for (let w = 1, k = 36; ; k += 36) {
+			if (pos >= input.length) return null;
+			const c = input.charCodeAt(pos++);
+			const digit = c >= 48 && c <= 57 ? c - 22 : c >= 97 && c <= 122 ? c - 97 : -1;
+			if (digit < 0) return null;
+			i += digit * w;
+			const t = k <= bias ? 1 : k >= bias + 26 ? 26 : k - bias;
+			if (digit < t) break;
+			w *= 36 - t;
+		}
+		const len = out.length + 1;
+		let delta = Math.floor((i - start) / (start === 0 ? 700 : 2));
+		delta += Math.floor(delta / len);
+		let k = 0;
+		for (; delta > 455; k += 36) delta = Math.floor(delta / 35);
+		bias = k + Math.floor((36 * delta) / (delta + 38));
+		n += Math.floor(i / len);
+		i %= len;
+		if (n > 0x10ffff) return null;
+		out.splice(i++, 0, n);
+	}
+	return String.fromCodePoint(...out);
+}
+
 export function publicServerSlugFromHost(hostname: string | null | undefined): string | null {
 	const host = String(hostname ?? '')
 		.trim()
@@ -105,15 +137,22 @@ export function publicServerSlugFromHost(hostname: string | null | undefined): s
 	if (!host || !root || !host.endsWith(`.${root}`)) return null;
 	const label = host.slice(0, -(root.length + 1));
 	if (!label || label.includes('.')) return null;
-	if (!/^[a-z0-9]+(?:-[0-9]+)?$/.test(label)) return null;
+	const decoded = label.startsWith('xn--') ? punycodeDecode(label.slice(4)) : label;
+	if (!decoded || !/^[\p{L}\p{M}\p{Nd}]+(?:-[0-9]+)?$/u.test(decoded)) return null;
 	if (RESERVED_SUBDOMAIN_LABELS.has(label)) return null;
-	return subdomainLabelToServerSlug(label);
+	return subdomainLabelToServerSlug(decoded);
 }
 
 export function publicServerSubdomainOrigin(slug: string): string | null {
 	const label = serverSlugToSubdomainLabel(slug);
 	if (!label || !APP_DOMAIN) return null;
-	return `${APP_PROTOCOL}//${label}.${APP_DOMAIN}`;
+	try {
+		const url = new URL(`${APP_PROTOCOL}//${label}.${APP_DOMAIN}`);
+		if (url.hostname.split('.')[0].length > 63 || publicServerSlugFromHost(url.hostname) !== slug) return null;
+		return url.origin;
+	} catch {
+		return null;
+	}
 }
 
 export function publicServerSubdomainUrl(slug: string, page?: 'leaderboard' | 'members' | 'account'): string | null {

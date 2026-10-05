@@ -39,11 +39,14 @@ const LETTERFORM_FOLD: Record<string, string> = {
 	þ: 'th'
 };
 
+const CYRILLIC_LOOKALIKES = new Set(['ѕ', 'х']);
+
 function foldLetterforms(input: string): string {
+	const cyrillicText = /[\u0400-\u04ff]/.test(input.replace(/[ѕх]/g, ''));
 	let out = '';
 	for (const ch of input) {
 		const mapped = LETTERFORM_FOLD[ch];
-		if (mapped !== undefined) {
+		if (mapped !== undefined && !(cyrillicText && CYRILLIC_LOOKALIKES.has(ch))) {
 			out += mapped;
 			continue;
 		}
@@ -95,13 +98,16 @@ function foldMathAlphanumeric(code: number): string | null {
 	return null;
 }
 
+const SLUG_UNIT = /[a-z]|\p{Nd}|(?![\p{Script=Latin}\u02b0-\u02ff])[\p{Ll}\p{Lm}\p{Lo}]\p{M}*/gu;
+
 export function slugifyDisplayName(input: string, emptyFallback = 'item'): string {
-	const s = foldLetterforms(String(input ?? ''))
+	const units = foldLetterforms(String(input ?? ''))
 		.toLowerCase()
 		.normalize('NFKD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/[^a-z0-9]+/g, '')
-		.trim();
+		.replace(/\p{Default_Ignorable_Code_Point}/gu, '')
+		.replace(/(\p{Script=Latin})\p{M}+/gu, '$1')
+		.match(SLUG_UNIT);
+	const s = (units ?? []).join('').normalize('NFC');
 	return s || emptyFallback;
 }
 
@@ -116,7 +122,8 @@ export function slugifyBotName(input: string): string {
 export function parseIndexedSlug(slug: string): { base: string; index: number } {
 	const s = String(slug ?? '')
 		.trim()
-		.toLowerCase();
+		.toLowerCase()
+		.normalize('NFC');
 	if (!s) return { base: '', index: 1 };
 	const m = s.match(/^(.*?)(?:_(\d+))$/);
 	if (!m) return { base: s, index: 1 };

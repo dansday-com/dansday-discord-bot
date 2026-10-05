@@ -103,11 +103,20 @@ function setupChannelNames(def: (typeof SETUP_CHANNEL_DEFS)[number]) {
 	return new Set([def.name, ...SERVER_LANGUAGE_CODES.map((l) => t(`setup.channels.${def.settingsKey}`, l))].map(channelNameKey));
 }
 
-async function renameIfNeeded(channel: any, name: string) {
+const pendingRenames = new Map<string, string>();
+
+function renameIfNeeded(channel: any, name: string) {
 	if (!channel) return;
-	const same = channel.type === ChannelType.GuildText ? channelNameKey(channel.name) === channelNameKey(name) : channel.name === name;
+	const current = pendingRenames.get(channel.id) ?? channel.name;
+	const same = channel.type === ChannelType.GuildText ? channelNameKey(current) === channelNameKey(name) : current === name;
 	if (same) return;
-	await channel.setName(name).catch((err: any) => logger.log(`⚠️ Could not rename #${channel.name} to ${name}: ${err.message}`));
+	pendingRenames.set(channel.id, name);
+	channel
+		.setName(name)
+		.catch((err: any) => logger.log(`⚠️ Could not rename #${channel.name} to ${name}: ${err.message}`))
+		.finally(() => {
+			if (pendingRenames.get(channel.id) === name) pendingRenames.delete(channel.id);
+		});
 }
 
 async function syncSetupChannels(guild: any, serverId: number, lang: ServerLanguage, botName: string, create: boolean) {
@@ -148,7 +157,7 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 			]
 		});
 	} else {
-		await renameIfNeeded(menuCategory, categoryName);
+		renameIfNeeded(menuCategory, categoryName);
 	}
 
 	const storedCategoryRowId = storedCategories.find((c: { discord_category_id: string }) => c.discord_category_id === menuCategory.id)?.id;
@@ -175,7 +184,7 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 		}
 
 		if (ch) {
-			await renameIfNeeded(ch, name);
+			renameIfNeeded(ch, name);
 		} else if (create) {
 			ch = await guild.channels.create({
 				name,

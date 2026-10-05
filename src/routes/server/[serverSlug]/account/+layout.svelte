@@ -25,7 +25,7 @@
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isOverview = $derived(/\/account\/overview\/information\//.test(pathNorm));
 	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
-	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
+	const isGuide = $derived(/\/account\/overview\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
 	const isTask = $derived(/\/account\/task\//.test(pathNorm));
@@ -33,7 +33,7 @@
 	const isThemes = $derived(/\/account\/overview\/themes\//.test(pathNorm));
 	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask && !isRewards && !isThemes);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:items|assets|minigames|overview)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 	const historyCat = $derived.by(() => {
@@ -70,6 +70,13 @@
 		{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' },
 		{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }
 	]);
+
+	const overviewTabs = [
+		{ id: 'information', label: 'Information', icon: 'fa-circle-info' },
+		{ id: 'themes', label: 'Themes', icon: 'fa-palette' },
+		{ id: 'rewards', label: 'Rewards', icon: 'fa-trophy' },
+		{ id: 'guide', label: 'Guide', icon: 'fa-circle-question' }
+	];
 
 	const minigameTabs = [
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
@@ -212,7 +219,12 @@
 	});
 
 	const sectionTabs: NavTab[] = $derived([
-		{ label: 'Overview', icon: 'fa-gauge-high', href: `${accountBase}/overview/information/${navHash}`, active: isOverview || isThemes || isRewards },
+		{
+			label: 'Overview',
+			icon: 'fa-gauge-high',
+			href: `${accountBase}/overview/information/${navHash}`,
+			active: isOverview || isThemes || isRewards || isGuide
+		},
 		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
 		{
 			id: 'items',
@@ -225,8 +237,7 @@
 		},
 		{ label: 'Minigames', icon: 'fa-dice', href: `${accountBase}/minigames/all/${navHash}`, active: isMinigames },
 		{ label: 'Assets', icon: 'fa-chart-line', href: `${accountBase}/assets/top/${navHash}`, active: isAssets },
-		{ label: 'History', icon: 'fa-clock-rotate-left', href: `${accountBase}/history/all/${navHash}`, active: isHistory },
-		{ label: 'Guide', icon: 'fa-circle-question', href: `${accountBase}/guide/${navHash}`, active: isGuide }
+		{ label: 'History', icon: 'fa-clock-rotate-left', href: `${accountBase}/history/all/${navHash}`, active: isHistory }
 	]);
 
 	const catTabs: NavTab[] | null = $derived.by(() => {
@@ -236,12 +247,7 @@
 		if (isItems) return build('items', typeTabs, activeCat);
 		if (isAssets) return build('assets', assetTabs, activeCat);
 		if (isMinigames) return build('minigames', minigameTabs, activeCat);
-		if (isOverview || isThemes || isRewards)
-			return [
-				{ label: 'Information', icon: 'fa-circle-info', href: `${accountBase}/overview/information/${navHash}`, active: isOverview },
-				{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/overview/themes/${navHash}`, active: isThemes },
-				{ label: 'Rewards', icon: 'fa-trophy', href: `${accountBase}/overview/rewards/${navHash}`, active: isRewards }
-			];
+		if (isOverview || isThemes || isRewards || isGuide) return build('overview', overviewTabs, activeCat);
 		return null;
 	});
 

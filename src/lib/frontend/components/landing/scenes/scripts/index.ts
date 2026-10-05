@@ -4,6 +4,5 @@ import { leveling } from './leveling.js';
 import { member, setup, staff } from './menu.js';
 import { account, dashboard, voice } from './web.js';
 
-export const ESSENTIAL_SCENES = [leveling, dashboard, welcome, moderation, giveaways, alerts];
-export const BEYOND_SCENES = [voice, account, steal, roblox];
-export const MENU_SCENES = [setup, member, staff];
+export const ESSENTIAL_SCENES = [setup, member, staff, leveling, dashboard, welcome, moderation, giveaways, alerts];
+export const BEYOND_SCENES = [steal, voice, account, roblox];

@@ -560,13 +560,11 @@
 		{/if}
 	{/snippet}
 
+	{@render walletHero()}
+
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 		<NavTabs variant="segment" tabs={sectionTabs} />
 	</div>
-
-	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask || isRewards || isThemes}
-		{@render walletHero()}
-	{/if}
 
 	{#if disabledFeature}
 		{''}

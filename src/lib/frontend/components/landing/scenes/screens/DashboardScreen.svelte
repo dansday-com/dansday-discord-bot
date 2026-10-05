@@ -2,6 +2,7 @@
 	import { BRAND_PRIMARY } from '$lib/brand.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
+	import DiscordComponents from '../DiscordComponents.svelte';
 	import DiscordEmbed from '../DiscordEmbed.svelte';
 	import DiscordMessage from '../DiscordMessage.svelte';
 	import { BOT } from '../scripts/common.js';
@@ -68,16 +69,15 @@
 	const discordOpen = $derived(t >= DISCORD.open);
 	const pressed = (at: number) => t >= at && t < at + 200;
 
-	const menuEmbed = $derived({
-		color: BRAND_PRIMARY,
-		title: '👤 Me',
-		description: 'Your own status and alerts.',
-		buttons: [
+	const menuEmbed = { color: BRAND_PRIMARY, title: '👤 Me', description: 'Your own status and alerts.' };
+
+	const menuRows = [
+		[
 			{ label: '⏸️ Set AFK Status', tone: 'green' as const, pressAt: DISCORD.press },
 			{ label: '🔔 Notifications', tone: 'green' as const },
 			{ label: '⬅️ Back' }
 		]
-	});
+	];
 </script>
 
 <div class="bg-ash-900 @container relative h-full overflow-hidden p-3 @[560px]:p-4">
@@ -172,7 +172,8 @@
 		</div>
 		<div class="@container flex min-h-0 flex-col justify-end overflow-hidden pb-3">
 			<DiscordMessage name={APP_NAME} avatar={BOT.avatar} app ephemeral time="Today at 21:20">
-				<DiscordEmbed embed={menuEmbed} {t} />
+				<DiscordEmbed embed={menuEmbed} />
+				<DiscordComponents rows={menuRows} {t} />
 			</DiscordMessage>
 			{#if t >= DISCORD.reply}
 				<DiscordMessage name={APP_NAME} avatar={BOT.avatar} app ephemeral time="Today at 21:20">

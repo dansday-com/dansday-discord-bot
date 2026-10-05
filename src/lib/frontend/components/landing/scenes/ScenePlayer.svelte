@@ -4,19 +4,21 @@
 	import { quintOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { SceneClock, playWhenVisible } from './clock.svelte.js';
+	import { SceneClock, playWhenVisible, typed } from './clock.svelte.js';
 	import BrowserFrame from './BrowserFrame.svelte';
+	import DiscordComponents from './DiscordComponents.svelte';
 	import DiscordEmbed from './DiscordEmbed.svelte';
 	import DiscordMessage from './DiscordMessage.svelte';
 	import DiscordMobileChat from './DiscordMobileChat.svelte';
+	import DiscordModal from './DiscordModal.svelte';
 	import DiscordWindow from './DiscordWindow.svelte';
 	import PhoneFrame from './PhoneFrame.svelte';
 	import Rich from './Rich.svelte';
+	import SlashPicker from './SlashPicker.svelte';
 	import type { Scene, SceneEvent } from './types.js';
 
 	let { scenes, label, variant = 'desktop' }: { scenes: Scene[]; label: string; variant?: 'desktop' | 'phone' } = $props();
 
-	const TYPE_MS = 40;
 	const POP_TONES = { gold: '#efb11d', red: '#f23f43', green: '#23a55a' } as const;
 
 	let index = $state(0);
@@ -53,6 +55,11 @@
 		return target && person ? { name: person.name, avatar: person.avatar, text: plain(target.text ?? '') } : null;
 	}
 
+	function usedOf(sc: Scene, event: SceneEvent) {
+		const person = event.used ? sc.people?.[event.used.who] : null;
+		return event.used && person ? { name: person.name, avatar: person.avatar, command: event.used.command } : null;
+	}
+
 	function build(sc: Scene, count: number) {
 		const list = [...(sc.context ?? []), ...(sc.events ?? []).slice(0, count)];
 		return list.map((event, i) => {
@@ -63,7 +70,8 @@
 				person: sc.people?.[event.who] ?? { name: '', avatar: '' },
 				system: event.who === 'system',
 				reply: replyOf(sc, event),
-				continued: !!prev && prev.who === event.who && !event.newGroup && !event.ephemeral && !prev.ephemeral && !event.replyTo
+				used: usedOf(sc, event),
+				continued: !!prev && prev.who === event.who && !event.newGroup && !event.ephemeral && !prev.ephemeral && !event.replyTo && !event.used
 			};
 		});
 	}
@@ -76,12 +84,14 @@
 	function view(e: SceneEvent, now: number) {
 		let text = e.text;
 		let embed = e.embed;
+		let rows = e.rows;
 		for (const p of scene.patches ?? []) {
 			if (p.id !== e.id || now < p.at) continue;
 			if (p.text !== undefined) text = p.text;
-			if (p.embed && embed) embed = { ...embed, ...p.embed };
+			if (p.embed !== undefined) embed = p.embed ?? undefined;
+			if (p.rows !== undefined) rows = p.rows;
 		}
-		return { text, embed };
+		return { text, embed, rows };
 	}
 
 	function nameColor(who: string, now: number) {
@@ -90,13 +100,16 @@
 		return color;
 	}
 
+	const composing = $derived((scene.events ?? []).find((e) => e.typeFrom !== undefined && t >= e.typeFrom && t < e.at));
+
 	const draft = $derived.by(() => {
-		const typing = (scene.events ?? []).find((e) => e.typeFrom !== undefined && t >= e.typeFrom && t < e.at);
-		if (!typing?.text || typing.typeFrom === undefined) return '';
-		return Array.from(plain(typing.text))
-			.slice(0, Math.floor((t - typing.typeFrom) / TYPE_MS))
-			.join('');
+		const text = composing?.used?.command ?? composing?.text;
+		return text ? typed(plain(text), t, composing?.typeFrom) : '';
 	});
+
+	const commands = $derived(draft.startsWith('/') ? (scene.commands ?? []).filter((c) => `/${c.name}`.startsWith(draft)) : []);
+
+	const modal = $derived((scene.modals ?? []).find((m) => t >= m.at && t < m.submitAt + 260) ?? null);
 
 	const typingWho = $derived.by(() => {
 		const run = scene.typing?.find((r) => t >= r.from && t < r.to);
@@ -128,10 +141,12 @@
 					continued={line.continued}
 					ephemeral={line.event.ephemeral}
 					reply={line.reply}
+					used={line.used}
 					nameColor={nameColor(line.event.who, t)}
 				>
 					{#if v.text}<Rich text={v.text} roles={scene.roles} />{/if}
-					{#if v.embed}<DiscordEmbed embed={v.embed} roles={scene.roles} {t} />{/if}
+					{#if v.embed}<DiscordEmbed embed={v.embed} roles={scene.roles} />{/if}
+					{#if v.rows?.length}<DiscordComponents rows={v.rows} {t} still={clock.still} />{/if}
 					{#snippet aside()}
 						{@const pop = line.event.pop}
 						{#if pop && t >= line.event.at + 120 && t < line.event.at + 1220}
@@ -147,6 +162,16 @@
 			{/if}
 		</div>
 	{/each}
+{/snippet}
+
+{#snippet picker()}
+	{#if commands.length > 0}
+		<SlashPicker {commands} {draft} {t} tapAt={composing ? composing.at - 120 : undefined} still={clock.still} />
+	{/if}
+{/snippet}
+
+{#snippet overlay()}
+	<DiscordModal {modal} {t} sheet={variant === 'phone'} still={clock.still} />
 {/snippet}
 
 {#snippet stepList(sc: Scene, live: boolean, compact: boolean)}
@@ -197,7 +222,7 @@
 					<div class="h-full" style="opacity: {fade}"><Screen {t} still={clock.still} /></div>
 				</BrowserFrame>
 			{:else}
-				<DiscordWindow server={scene.server ?? 'Night Owls'} channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade}>
+				<DiscordWindow server={scene.server ?? 'Night Owls'} channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade} {picker} {overlay}>
 					{@render feed()}
 				</DiscordWindow>
 			{/if}
@@ -213,7 +238,7 @@
 					{@const Screen = scene.screen}
 					<div class="flex min-h-0 flex-1 flex-col" style="opacity: {fade}"><Screen {t} still={clock.still} /></div>
 				{:else}
-					<DiscordMobileChat channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade}>
+					<DiscordMobileChat channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade} {picker} {overlay}>
 						{@render feed()}
 					</DiscordMobileChat>
 				{/if}

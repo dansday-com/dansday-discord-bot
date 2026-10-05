@@ -68,9 +68,9 @@ export const leveling = defineScene({
 						value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${(nextXp - endXp).toLocaleString('en-US')}** XP to go`
 					}
 				],
-				footer: FOOTER,
-				buttons: [{ label: '👤 Account' }, { label: '🌐 Leaderboard', link: true }]
-			}
+				footer: FOOTER
+			},
+			rows: [[{ label: '👤 Account' }, { label: '🌐 Leaderboard', link: true }]]
 		},
 		{ id: 'm3', at: 9900, typeFrom: 8800, who: 'mira', time: at('21:05'), text: 'finally made Regular 🎉' }
 	],

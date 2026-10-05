@@ -502,6 +502,12 @@
 		{ title: 'Mobile ready', desc: 'Phone, tablet or desktop. The same panel.' }
 	];
 
+	const SIMPLE = [
+		{ value: '1', label: 'Slash command' },
+		{ value: '0', label: 'Options to learn' },
+		{ value: '1', label: 'Menu button' }
+	];
+
 	const META = ['No premium tier', 'Open source, AGPL-3.0', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
 
 	const TITLE = `Free MEE6 Alternative — Open-Source Discord Leveling Bot | ${APP_NAME}`;
@@ -680,8 +686,8 @@
 
 				<div class="grid grid-cols-1 items-end gap-6 sm:grid-cols-3">
 					<a
-						href="#essentials"
-						aria-label="Scroll to the essentials"
+						href="#no-commands"
+						aria-label="Scroll to explore"
 						class="text-primary hover:text-accent flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:text-[14px] {scrolled
 							? 'pointer-events-none translate-y-1 opacity-0'
 							: 'opacity-100'}"
@@ -721,9 +727,31 @@
 			</div>
 		</section>
 
+		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="no-commands">
+			<div class="mb-6">
+				<p class={EYEBROW}>01 — No commands</p>
+				<h2 class={H2}>Tap, don't type</h2>
+				<p class={LEAD}>
+					Most bots hand your members a list of slash commands and options to learn. This one has a single command, /setup, that an admin runs once. Everything
+					after that is a button: tap Menu, pick a feature, fill in a form.
+				</p>
+			</div>
+			<div class="mb-8 sm:mb-10">
+				<LazyScenePlayer set="menu" label="See it work without commands" variant="phone" />
+			</div>
+			<div class="border-base-300 grid grid-cols-3 gap-x-6 border-t pt-5">
+				{#each SIMPLE as item, i}
+					<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
+						<p class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{item.value}</p>
+						<p class="text-base-content/70 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">{item.label}</p>
+					</div>
+				{/each}
+			</div>
+		</section>
+
 		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="essentials">
 			<div class="mb-6">
-				<p class={EYEBROW}>01 — The essentials</p>
+				<p class={EYEBROW}>02 — The essentials</p>
 				<h2 class={H2}>Free, no premium</h2>
 				<p class={LEAD}>The features servers usually add MEE6 for, with no paid tier on any of them. The code is open source, so it stays that way.</p>
 			</div>
@@ -746,7 +774,7 @@
 
 		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="different">
 			<div class="mb-6">
-				<p class={EYEBROW}>02 — Beyond MEE6</p>
+				<p class={EYEBROW}>03 — Beyond MEE6</p>
 				<h2 class={H2}>Members play it</h2>
 				<p class={LEAD}>
 					On most leveling bots, XP only ever goes up. Here members take it from each other and fight to keep it, and that gives them a reason to come back
@@ -772,7 +800,7 @@
 
 		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="features">
 			<div class="mb-7">
-				<p class={EYEBROW}>03 — Modules</p>
+				<p class={EYEBROW}>04 — Modules</p>
 				<h2 class={H2}>Everything your server needs</h2>
 				<p class={LEAD}>
 					All {features.length} of them, drifting past on their own.
@@ -842,7 +870,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>04 — Communities</p>
+						<p class={EYEBROW}>05 — Communities</p>
 						<h2 class={H2}>Top servers by XP</h2>
 						<p class={LEAD}>The five busiest communities running it right now. Each has its own live public pages, no login needed.</p>
 					</div>
@@ -890,7 +918,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>05 — Forwarder sources</p>
+						<p class={EYEBROW}>06 — Forwarder sources</p>
 						<h2 class={H2}>Forward from here</h2>
 						<p class={LEAD}>
 							Pull drops, jobs and announcements out of {data.forwarderSourceCount} servers reaching {fmt(data.forwarderSourceMembers)} members, straight into your
@@ -939,7 +967,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>06 — Discord Quests</p>
+						<p class={EYEBROW}>07 — Discord Quests</p>
 						<h2 class={H2}>Quests worth running</h2>
 						<p class={LEAD}>{data.liveQuestCount} live of {data.questCount} tracked, with the game, the task and the reward.</p>
 					</div>
@@ -1002,7 +1030,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>07 — Roblox catalog</p>
+						<p class={EYEBROW}>08 — Roblox catalog</p>
 						<h2 class={H2}>Items under watch</h2>
 						<p class={LEAD}>
 							The most notified, then the most favourited, of {data.robloxCount} catalog items the notifier tracks for price and stock changes.
@@ -1072,7 +1100,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>08 — Wiki knowledge</p>
+						<p class={EYEBROW}>09 — Wiki knowledge</p>
 						<h2 class={H2}>What it can look up</h2>
 						<p class={LEAD}>
 							{data.activeWikiCount} of {data.wikiCount} connected wikis answer questions right now. Every server the bot is in can ask about all of them.
@@ -1119,7 +1147,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>09 — Tasks</p>
+						<p class={EYEBROW}>10 — Tasks</p>
 						<h2 class={H2}>A pool of {data.taskCount} tasks</h2>
 						<p class={LEAD}>Daily and weekly cards deal from this pool. Goals scale to each member, so nobody gets the same card.</p>
 					</div>
@@ -1151,7 +1179,7 @@
 			<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 				<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>10 — Items</p>
+						<p class={EYEBROW}>11 — Items</p>
 						<h2 class={H2}>The shop catalog</h2>
 						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once they are in a bag.</p>
 					</div>
@@ -1184,7 +1212,7 @@
 
 		<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>11 — The panel</p>
+				<p class={EYEBROW}>12 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
 				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
 			</div>
@@ -1200,7 +1228,7 @@
 
 		<section class="border-base-300 border-t py-10 [contain-intrinsic-size:auto_640px] [content-visibility:auto] sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>12 — Questions</p>
+				<p class={EYEBROW}>13 — Questions</p>
 				<h2 class={H2}>Before you add it</h2>
 			</div>
 			<dl class="border-base-300 border-t">
@@ -1218,7 +1246,7 @@
 		</section>
 
 		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
-			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">13 — Start</p>
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">14 — Start</p>
 			<p class="font-black">
 				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
 			</p>

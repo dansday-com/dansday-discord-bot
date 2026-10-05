@@ -188,9 +188,9 @@ export const giveaways = defineScene({
 					{ name: '👤 Hosted By', value: '<@Kai>', inline: true },
 					{ name: '⏰ Ends', value: 'in 10 minutes', inline: true }
 				],
-				footer: FOOTER,
-				buttons: [{ label: '🎉 Enter Giveaway', tone: 'green', pressAt: 3700 }]
-			}
+				footer: FOOTER
+			},
+			rows: [[{ label: '🎉 Enter Giveaway', tone: 'green', pressAt: 3700 }]]
 		},
 		{
 			id: 'entered',
@@ -215,7 +215,7 @@ export const giveaways = defineScene({
 		},
 		{ id: 'won', at: 10600, typeFrom: 9700, who: 'mira', time: at('21:10'), text: 'NO WAY 😭 ty kai' }
 	],
-	patches: [{ at: 8600, id: 'post', embed: { buttons: [] } }],
+	patches: [{ at: 8600, id: 'post', rows: [] }],
 	steps: [
 		{
 			from: 0,
@@ -268,12 +268,14 @@ export const alerts = defineScene({
 					{ name: 'Notifications', value: '🔔 2', inline: true }
 				],
 				image: { background: 'linear-gradient(135deg, #3b1d78, #9146ff 55%, #1f1147)', icon: 'fa-gamepad', badge: 'LIVE' },
-				footer: FOOTER,
-				buttons: [
+				footer: FOOTER
+			},
+			rows: [
+				[
 					{ label: 'Open on Twitch', link: true },
 					{ label: '🔔 Notify me', pressAt: 4300 }
 				]
-			}
+			]
 		},
 		{
 			id: 'saved',
@@ -300,9 +302,9 @@ export const alerts = defineScene({
 					{ name: 'Notifications', value: '🔔 3', inline: true }
 				],
 				image: { background: 'linear-gradient(135deg, #2a0b0b, #c4302b 60%, #170606)', icon: 'fa-play' },
-				footer: FOOTER,
-				buttons: [{ label: 'Open on YouTube', link: true }, { label: '🔔 Notify me' }]
-			}
+				footer: FOOTER
+			},
+			rows: [[{ label: 'Open on YouTube', link: true }, { label: '🔔 Notify me' }]]
 		}
 	],
 	steps: [

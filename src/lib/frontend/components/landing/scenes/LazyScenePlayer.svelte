@@ -3,7 +3,7 @@
 	import type { Scene } from './types.js';
 
 	type Player = typeof import('./ScenePlayer.svelte').default;
-	type Props = { set: 'essentials' | 'beyond'; label: string; variant?: 'desktop' | 'phone' };
+	type Props = { set: 'menu' | 'essentials' | 'beyond'; label: string; variant?: 'desktop' | 'phone' };
 
 	let { set, label, variant = 'desktop' }: Props = $props();
 
@@ -11,7 +11,8 @@
 
 	async function load() {
 		const [{ default: Player }, scripts] = await Promise.all([import('./ScenePlayer.svelte'), import('./scripts/index.js')]);
-		loaded = { Player, scenes: set === 'essentials' ? scripts.ESSENTIAL_SCENES : scripts.BEYOND_SCENES };
+		const sets = { menu: scripts.MENU_SCENES, essentials: scripts.ESSENTIAL_SCENES, beyond: scripts.BEYOND_SCENES };
+		loaded = { Player, scenes: sets[set] };
 	}
 </script>
 

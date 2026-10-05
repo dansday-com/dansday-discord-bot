@@ -4,17 +4,7 @@ import { evaluateMemberLevelAndRank, determineLevel } from './leveling.js';
 import { getSpendableXp, spendXp, reevaluateLevel } from './xp-economy.js';
 import { getActiveLuckPercent } from './items.js';
 import { luckBoostLabel } from '../../../../items.js';
-import {
-	TOWER_DOORS,
-	TOWER_FLOORS,
-	TOWER_GAME,
-	TOWER_RESET_HOURS,
-	towerBaseChance,
-	towerLuckBonus,
-	towerPrize,
-	towerSafeChance,
-	towerTrapCount
-} from '../../../../tower.js';
+import { TOWER_DOORS, TOWER_FLOORS, TOWER_GAME, TOWER_RESET_HOURS, towerBaseChance, towerPrize, towerSafeChance, towerTrapCount } from '../../../../tower.js';
 import { serverTranslator } from '../i18n.js';
 
 const MIN_MULTIPLIER = 1.01;
@@ -282,7 +272,6 @@ export async function handleTowerAction(client: any, payload: any) {
 async function finishTower(client: any, ctx: any, state: any, step: any) {
 	const { guildId, actorDiscordId, memberId } = ctx;
 	const base = towerBaseChance(step.floor, state.climb);
-	const bonus = towerLuckBonus(step.floor, state.climb, state.luckPercent);
 	const chance = towerSafeChance(step.floor, state.climb, state.luckPercent);
 
 	if (step.payout > 0) {
@@ -300,13 +289,13 @@ async function finishTower(client: any, ctx: any, state: any, step: any) {
 			xp: step.payout,
 			outcome: step.payout > 0 ? 'win' : 'lose',
 			chance,
-			luck_percent: bonus > 0 ? bonus : null
+			luck_percent: state.luckPercent || null
 		})
 		.catch(() => null);
 
 	if (step.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
 
-	const result = { ...step, base, bonus };
+	const result = { ...step, base, luckPercent: state.luckPercent };
 	setTimeout(() => {
 		announceTower(client, { guildId, actorDiscordId, result }).catch(() => null);
 	}, TOWER_ANNOUNCE_DELAY_MS);
@@ -352,7 +341,7 @@ async function announceTower(client: any, ctx: any) {
 			.setDescription(tr(`minigames.tower.${storyKey}.description`, story))
 			.addFields(
 				{ name: tr('minigames.tower.fields.floor'), value: `${result.floor} / ${TOWER_FLOORS}`, inline: true },
-				{ name: tr('minigames.tower.fields.safeChance'), value: luckBoostLabel(result.base, result.bonus, { max: 100 }), inline: true },
+				{ name: tr('minigames.tower.fields.safeChance'), value: luckBoostLabel(result.base, result.luckPercent, { max: 100 }), inline: true },
 				{ name: tr('minigames.tower.fields.prize'), value: prize, inline: true }
 			)
 			.setFooter({ text: embedConfig.FOOTER || tr('minigames.footer') })

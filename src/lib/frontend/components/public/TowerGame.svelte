@@ -4,7 +4,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { luckBoostLabel } from '$lib/items';
-	import { TOWER_DOORS, TOWER_FLOORS, TOWER_PRIZES, towerBaseChance, towerLuckBonus, towerOddsDropPercent, towerPrize, towerSafeChance } from '$lib/tower';
+	import { TOWER_DOORS, TOWER_FLOORS, TOWER_PRIZES, towerBaseChance, towerOddsDropPercent, towerPrize, towerSafeChance } from '$lib/tower';
 	import GameModal from './GameModal.svelte';
 
 	let {
@@ -125,7 +125,7 @@
 	}
 
 	function oddsLabel(floor: number, c: number): string {
-		return luckBoostLabel(towerBaseChance(floor, c), towerLuckBonus(floor, c, luck), { max: 100 });
+		return luckBoostLabel(towerBaseChance(floor, c), luck, { max: 100 });
 	}
 
 	function oddsTone(chance: number): string {

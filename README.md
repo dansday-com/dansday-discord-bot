@@ -166,7 +166,7 @@ Each member signs in to their own account on those same pages.
 </tr>
 <tr>
 <td><strong>Assets</strong> — live CoinGecko prices, no real money.</td>
-<td><strong>Minigames</strong> — wager XP above your current level.</td>
+<td><strong>Minigames</strong> — wager XP in Gamble or climb the free Tower.</td>
 <td><strong>History</strong> — every XP event, filterable by source.</td>
 </tr>
 </table>
@@ -214,16 +214,16 @@ Each member signs in to their own account on those same pages.
 - **Items & XP economy** - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
   - 🍀 **Luck** raises steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.
 - **Assets market** - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
-- **Minigames** - Wager XP. 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level.
+- **Minigames** - 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level. 🗼 **Tower**: free, unlimited climbs up 10 floors to 50,000 XP. Odds start at 75%, drop each floor and each climb, and reset 24 hours after the first climb. A trap only drops the unbanked prize.
 
 ### Tasks, streaks & check-in
 
 - **No admin setup** - Goals, difficulty and rewards generate per member.
-  - 18 daily tasks (6 easy, 6 medium, 6 hard from a 96-goal catalog) and 18 weekly, on the member's local clock. No two members get the same list.
+  - 18 daily tasks (6 easy, 6 medium, 6 hard from a 96-goal catalog) and 18 weekly. A fresh set comes 24 hours (daily) or 7 days (weekly) after the current one started. No two members get the same list.
   - Goals are sized from that member's own last 7 days of the exact metric, capped by what the period physically allows, and graded as real effort rather than by rank.
   - Rewards are XP or a shop item at a 30% item chance. Tasks that cost XP always pay back more than they cost.
   - 🔥 **Streaks** - Clear all 18 daily for +2% reward XP per day up to +100%, milestones at 7 / 30 / 100 / 365. Two ❄️ freezes cover missed days, one back every 10 claims.
-  - 📆 **Check-in** - 7-day cycle, one claim per local day, 1,000 → 50,000 XP, identical on every server. 50% chance of a shop item instead, rolled by rarity tier.
+  - 📆 **Check-in** - 7-day cycle, one claim every 24 hours, restarting after 48 hours away, 1,000 → 50,000 XP, identical on every server. 50% chance of a shop item instead, rolled by rarity tier.
 
 ### AI
 

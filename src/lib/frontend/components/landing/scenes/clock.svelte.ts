@@ -1,3 +1,14 @@
+export const TYPE_MS = 40;
+
+export const tapping = (t: number, at: number | undefined) => at !== undefined && t >= at - 380 && t < at + 260;
+
+export const typed = (text: string, t: number, from: number | undefined) =>
+	from === undefined
+		? text
+		: Array.from(text)
+				.slice(0, Math.max(0, Math.floor((t - from) / TYPE_MS)))
+				.join('');
+
 export class SceneClock {
 	t = $state(0);
 	still = $state(false);

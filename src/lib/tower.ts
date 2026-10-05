@@ -28,13 +28,9 @@ export function towerBaseChance(floor: any, climb: any = 1): number {
 }
 
 export function towerSafeChance(floor: any, climb: any = 1, luckPercent: any = 0): number {
+	const base = towerBaseChance(floor, climb);
 	const luck = Math.max(0, Number(luckPercent) || 0);
-	if (luck <= 0) return towerBaseChance(floor, climb);
-	return Math.max(TOWER_MIN_CHANCE, round1(Math.min(100, TOWER_FLOOR_CHANCES[towerFloorIndex(floor)] + luck) * towerFatigue(climb)));
-}
-
-export function towerLuckBonus(floor: any, climb: any = 1, luckPercent: any = 0): number {
-	return round1(towerSafeChance(floor, climb, luckPercent) - towerBaseChance(floor, climb));
+	return luck > 0 ? Math.min(100, round1(base + luck)) : base;
 }
 
 export function towerTrapCount(chance: any): number {

@@ -8,8 +8,18 @@
 		draft = '',
 		typing = null,
 		fade = 1,
-		children
-	}: { channel: string; draft?: string; typing?: string | null; fade?: number; children: Snippet } = $props();
+		children,
+		picker,
+		overlay
+	}: {
+		channel: string;
+		draft?: string;
+		typing?: string | null;
+		fade?: number;
+		children: Snippet;
+		picker?: Snippet;
+		overlay?: Snippet;
+	} = $props();
 </script>
 
 <div class="border-ash-950 flex h-12 shrink-0 items-center gap-3 border-b px-4">
@@ -28,7 +38,8 @@
 	<TypingIndicator who={typing} />
 </div>
 
-<div class="flex shrink-0 items-center gap-2 px-3 pb-1">
+<div class="relative flex shrink-0 items-center gap-2 px-3 pb-1">
+	<div class="absolute inset-x-3 bottom-full z-20 mb-2">{@render picker?.()}</div>
 	<span class="bg-ash-700 text-ash-200 grid size-9 shrink-0 place-items-center rounded-full"><i class="fas fa-plus"></i></span>
 	<span class="bg-ash-700 text-ash-200 grid size-9 shrink-0 place-items-center rounded-full"><i class="fas fa-gift"></i></span>
 	<div class="bg-ash-700 flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full px-4 text-[14px]">
@@ -37,6 +48,8 @@
 	</div>
 	<span class="bg-ash-700 text-ash-200 grid size-9 shrink-0 place-items-center rounded-full"><i class="fas fa-microphone"></i></span>
 </div>
+
+{@render overlay?.()}
 
 <style>
 	.scene-feed {

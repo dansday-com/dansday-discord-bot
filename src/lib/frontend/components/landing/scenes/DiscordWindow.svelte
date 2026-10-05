@@ -9,11 +9,22 @@
 		draft = '',
 		typing = null,
 		fade = 1,
-		children
-	}: { server: string; channel: string; draft?: string; typing?: string | null; fade?: number; children: Snippet } = $props();
+		children,
+		picker,
+		overlay
+	}: {
+		server: string;
+		channel: string;
+		draft?: string;
+		typing?: string | null;
+		fade?: number;
+		children: Snippet;
+		picker?: Snippet;
+		overlay?: Snippet;
+	} = $props();
 </script>
 
-<div class="bg-ash-900 border-ash-950 flex overflow-hidden rounded-xl border shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)]" aria-hidden="true">
+<div class="bg-ash-900 border-ash-950 relative flex overflow-hidden rounded-xl border shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)]" aria-hidden="true">
 	<div class="bg-ash-950 hidden w-[60px] shrink-0 flex-col items-center gap-2 py-3 sm:flex">
 		<span class="relative">
 			<span class="absolute top-1/2 -left-2.5 h-8 w-1 -translate-y-1/2 rounded-r-full bg-white"></span>
@@ -40,13 +51,15 @@
 			<TypingIndicator who={typing} />
 		</div>
 
-		<div class="shrink-0 px-4 pb-4">
+		<div class="relative shrink-0 px-4 pb-4">
+			<div class="absolute inset-x-4 bottom-full z-20 pb-2">{@render picker?.()}</div>
 			<div class="bg-ash-700 flex h-11 items-center gap-3 rounded-lg px-4 text-[14px]">
 				<i class="fas fa-circle-plus text-ash-200 text-[17px]"></i>
 				<Draft {draft} {channel} />
 			</div>
 		</div>
 	</div>
+	{@render overlay?.()}
 </div>
 
 <style>

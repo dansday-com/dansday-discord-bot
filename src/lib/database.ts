@@ -3028,6 +3028,7 @@ export async function backfillItemLogItemIds() {
 
 export async function listStaleStreaks(limit = 500) {
 	await initializeDatabase();
+	const nowKey = minuteKeyFor(Date.now());
 	const rows: any = await db.execute(sql`
 		SELECT s.member_id, s.current_streak, s.longest_streak, s.freezes_available, s.last_claim_day_key, s.tz_offset_min,
 		       m.server_id, m.discord_member_id, sv.discord_server_id
@@ -3036,7 +3037,15 @@ export async function listStaleStreaks(limit = 500) {
 		INNER JOIN servers sv ON sv.id = m.server_id
 		WHERE s.current_streak > 0
 		  AND s.last_claim_day_key IS NOT NULL
-		  AND s.last_claim_day_key <= ${minuteKeyFor(Date.now()) - 2 * DAY_MINUTES}
+		  AND s.last_claim_day_key <= ${nowKey - 2 * DAY_MINUTES}
+		  AND NOT EXISTS (
+			SELECT 1 FROM server_member_tasks t
+			WHERE t.member_id = s.member_id
+			  AND t.period = 'daily'
+			  AND t.day_key > s.last_claim_day_key
+			  AND t.day_key < s.last_claim_day_key + ${2 * DAY_MINUTES}
+			  AND t.day_key > ${nowKey - DAY_MINUTES}
+		  )
 		ORDER BY s.updated_at ASC
 		LIMIT ${Number(limit) || 500}
 	`);

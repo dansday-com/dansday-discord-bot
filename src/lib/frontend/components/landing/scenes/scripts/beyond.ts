@@ -138,12 +138,14 @@ export const roblox = defineScene({
 				description: 'A crown that only shows up after dark.',
 				thumbnailArt: CROWN,
 				fields: itemFields('1.500 Robux', '1.842/2.000', '🔔 41'),
-				footer: FOOTER,
-				buttons: [
+				footer: FOOTER
+			},
+			rows: [
+				[
 					{ label: '🛍️ Open on Roblox', link: true },
 					{ label: '🔔 Notify me', pressAt: 4200 }
 				]
-			}
+			]
 		},
 		{
 			id: 'saved',
@@ -166,9 +168,9 @@ export const roblox = defineScene({
 				description: '**Price**: 1.500 Robux → 1.200 Robux\n**Stock left**: 1.842 → 312',
 				thumbnailArt: CROWN,
 				fields: itemFields('1.200 Robux', '312/2.000', '🔔 42'),
-				footer: FOOTER,
-				buttons: [{ label: '🛍️ Open on Roblox', link: true }, { label: '🔔 Notify me' }]
-			}
+				footer: FOOTER
+			},
+			rows: [[{ label: '🛍️ Open on Roblox', link: true }, { label: '🔔 Notify me' }]]
 		}
 	],
 	steps: [

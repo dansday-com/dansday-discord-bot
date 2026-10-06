@@ -42,6 +42,17 @@ export type SceneField = { label: string; value: string; placeholder?: string; t
 
 export type SceneModal = { at: number; submitAt: number; title: string; fields: SceneField[] };
 
+export type SceneCallMember = { who: string; joinAt?: number; talk?: [number, number][] };
+
+export type SceneCall = {
+	channel: string;
+	me: string;
+	cameraAt: number;
+	liveAt: number;
+	members: SceneCallMember[];
+	ticks: { at: number; gains: string[] }[];
+};
+
 export type SceneStep = { from: number; to: number; title: string; desc: string };
 
 export type SceneScreenProps = { t: number; still: boolean };
@@ -62,6 +73,7 @@ export type Scene = {
 	patches?: ScenePatch[];
 	commands?: { name: string; desc: string }[];
 	modals?: SceneModal[];
+	call?: SceneCall;
 	typing?: { from: number; to: number; who: string }[];
 	steps: SceneStep[];
 };

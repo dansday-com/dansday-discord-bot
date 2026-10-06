@@ -1257,6 +1257,15 @@
 				"safeChance": "Overlevingskans",
 				"prize": "Prijs"
 			}
+		},
+		"color": {
+			"title": "🎨 Kleur · Getroffen",
+			"description": "{member} bouwde {rounds} kleuren na uit het hoofd en **bracht {payout} binnen**.",
+			"fields": {
+				"score": "Score",
+				"bestRound": "Beste ronde",
+				"prize": "Prijs"
+			}
 		}
 	},
 	"themeEffects": {

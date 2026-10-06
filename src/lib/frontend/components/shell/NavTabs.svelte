@@ -1,16 +1,19 @@
 <script lang="ts">
+	import { sfx } from '../../sfx';
 	import type { NavTab } from './types';
 
 	let {
 		tabs,
 		variant = 'pill',
 		arrows = false,
-		pulse = false
+		pulse = false,
+		sound = false
 	}: {
 		tabs: NavTab[];
 		variant?: 'pill' | 'segment';
 		arrows?: boolean;
 		pulse?: boolean;
+		sound?: boolean;
 	} = $props();
 
 	let strip: HTMLDivElement | undefined = $state();
@@ -60,11 +63,13 @@
 			? 'border-base-300 bg-base-200 min-w-0 flex-auto gap-[3px] rounded-xl border p-[3px]'
 			: 'gap-2'}"
 	>
-		{#each tabs as tab}
+		{#each tabs as tab, i}
 			<a
 				href={tab.href}
 				data-tab-id={tab.id}
 				data-sveltekit-preload-data="hover"
+				onpointerenter={(e) => sound && !tab.active && e.pointerType === 'mouse' && sfx.detent(i, variant !== 'segment')}
+				onclick={() => sound && !tab.active && sfx.select()}
 				class="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap {variant === 'segment'
 					? 'flex-[1_0_auto] justify-center rounded-lg px-3 py-2 text-[13px] font-semibold'
 					: 'border-base-300 rounded-[10px] border px-3.5 py-2 text-[13px] font-semibold'} {tab.active

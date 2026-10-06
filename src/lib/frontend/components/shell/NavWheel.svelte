@@ -2,6 +2,7 @@
 	import { fade } from 'svelte/transition';
 	import { afterNavigate, goto, preloadData } from '$app/navigation';
 	import { scrollLocked } from '../../scrollLock.js';
+	import { sfx } from '../../sfx';
 	import type { NavTab } from './types';
 
 	let { tabs, label = 'Menu' }: { tabs: NavTab[]; label?: string } = $props();
@@ -41,6 +42,16 @@
 
 	afterNavigate(close);
 
+	function dismiss() {
+		if (open) sfx.close();
+		close();
+	}
+
+	function unfold() {
+		open = true;
+		sfx.open();
+	}
+
 	function keyOf(el: EventTarget | null): string | null {
 		return (el as Element | null)?.closest?.<HTMLElement>('[data-wheel]')?.dataset.wheel ?? null;
 	}
@@ -56,6 +67,7 @@
 	function track(x: number, y: number) {
 		const key = keyOf(document.elementFromPoint(x, y));
 		if (key === hover && Math.hypot(x - restX, y - restY) <= REST_RADIUS) return;
+		if (key !== hover && key && key !== 'orb') sfx.detent(Number(key.slice(1)), key[0] === 'c');
 		hover = key;
 		restX = x;
 		restY = y;
@@ -73,7 +85,7 @@
 		if (e.pointerType === 'mouse' && e.button !== 0) return;
 		pointer = e.pointerId;
 		wasOpen = open;
-		open = true;
+		if (!open) unfold();
 		track(e.clientX, e.clientY);
 	}
 
@@ -89,12 +101,13 @@
 		const key = keyOf(document.elementFromPoint(e.clientX, e.clientY));
 		const href = hrefOf(key);
 		if (href) {
+			sfx.select();
 			close();
 			goto(href);
 		} else if (key === 'orb' && !wasOpen) {
 			hover = null;
 		} else {
-			close();
+			dismiss();
 		}
 	}
 
@@ -139,7 +152,7 @@
 </script>
 
 <svelte:window
-	onkeydown={(e) => open && e.key === 'Escape' && close()}
+	onkeydown={(e) => open && e.key === 'Escape' && dismiss()}
 	onpointerdown={press}
 	onpointermove={move}
 	onpointerup={release}
@@ -150,7 +163,7 @@
 <div class="sm:hidden">
 	{#if open}
 		<div use:scrollLocked transition:fade={{ duration: 140 }} class="fixed inset-0 z-50">
-			<button type="button" class="bg-base-content/45 absolute inset-0 size-full touch-none backdrop-blur-[4px]" aria-label="Close menu" onclick={close}
+			<button type="button" class="bg-base-content/45 absolute inset-0 size-full touch-none backdrop-blur-[4px]" aria-label="Close menu" onclick={dismiss}
 			></button>
 
 			<nav
@@ -174,7 +187,7 @@
 										: tab.active
 											? `border-base-300 ${ACTIVE}`
 											: 'border-base-300 text-base-content/70 bg-base-200'}"
-									onclick={(e) => handled(e) && e.preventDefault()}
+									onclick={(e) => (handled(e) ? e.preventDefault() : sfx.select())}
 								>
 									{#if tab.icon}<i class="fas {tab.icon}"></i>{/if}{tab.label}
 								</a>
@@ -200,7 +213,7 @@
 									? 'bg-base-100 text-primary'
 									: 'text-base-content/80 bg-base-200'}"
 							style="clip-path: {wedge.clip}"
-							onclick={(e) => handled(e) && e.preventDefault()}
+							onclick={(e) => (handled(e) ? e.preventDefault() : sfx.select())}
 						>
 							<span
 								class="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-[0.5em] leading-none font-bold whitespace-nowrap"
@@ -233,7 +246,7 @@
 		aria-expanded={open}
 		aria-controls="nav-wheel"
 		class="ring-canvas fixed bottom-4 left-1/2 z-50 grid size-14 -translate-x-1/2 place-items-center rounded-full shadow-[0_10px_24px_-6px_color-mix(in_srgb,var(--color-primary)_75%,transparent)] ring-4 transition-transform active:scale-95 {TOUCH} {ACTIVE}"
-		onclick={(e) => !handled(e) && (open ? close() : (open = true))}
+		onclick={(e) => !handled(e) && (open ? dismiss() : unfold())}
 	>
 		{#if open}
 			<i class="fas fa-xmark text-xl"></i>

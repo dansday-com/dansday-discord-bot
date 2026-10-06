@@ -2,9 +2,10 @@
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { sfx } from '$lib/frontend/sfx';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { luckBoostLabel } from '$lib/items';
-	import { EmptyState, GameModal, ReelStrip, TowerGame, WagerPicker } from '$lib/frontend/components/public';
+	import { ColorGame, EmptyState, GameModal, REEL_CURVE, REEL_SECONDS, ReelStrip, TowerGame, WagerPicker } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -34,6 +35,16 @@
 			accent: '#1f9e8f',
 			tag: 'Free',
 			tagIcon: 'fa-gift'
+		},
+		{
+			id: 'color',
+			category: 'color',
+			icon: 'fa-eye-dropper',
+			name: 'Color',
+			desc: 'Memorize a color, rebuild it, bank XP.',
+			accent: '#c0457a',
+			tag: 'Free',
+			tagIcon: 'fa-gift'
 		}
 	];
 	const games = $derived(data.category === 'all' ? ALL_GAMES : ALL_GAMES.filter((g) => g.category === data.category));
@@ -60,6 +71,7 @@
 
 	function openPlay(gameId: string) {
 		if (ctx.readOnly) return;
+		sfx.press();
 		playing = gameId;
 		if (gameId !== 'gamble') return;
 		multiplier = 2;
@@ -69,6 +81,7 @@
 	}
 
 	function resetGamble() {
+		sfx.press();
 		gamblePercent = 25;
 		gambleCustom = null;
 		initReel();
@@ -112,6 +125,7 @@
 	async function play() {
 		const bet = wagerXp;
 		if (busy || bet <= 0 || bet > spendable) return;
+		sfx.press();
 		busy = true;
 		reelResult = null;
 		try {
@@ -141,14 +155,17 @@
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			reelAnimating = true;
 			centerCell(landIndex);
+			sfx.reel(landIndex - 2, REEL_SECONDS, REEL_CURVE);
 
 			setTimeout(() => {
 				reelResult = won ? 'win' : 'lose';
 				ctx.setLiveXp(Math.max(0, ctx.liveXp + net));
 				if (won) {
 					winAmt = payout;
+					sfx.payout((multiplier - 1) / (MAX_MULT - 1));
 				} else {
 					lostAmt = bet;
+					sfx.bust();
 					shake = true;
 					setTimeout(() => (shake = false), 500);
 				}
@@ -218,6 +235,17 @@
 		}}
 		onclose={() => (playing = null)}
 	/>
+{:else if playing === 'color'}
+	<ColorGame
+		endpoint={`/api/minigames/${encodeURIComponent(ctx.serverSlug)}/color`}
+		card={ctx.hash}
+		{fmt}
+		onpayout={(xp) => {
+			ctx.setLiveXp(ctx.liveXp + xp);
+			ctx.invalidateAll();
+		}}
+		onclose={() => (playing = null)}
+	/>
 {:else if playing}
 	<GameModal
 		icon="fa-dice"
@@ -278,6 +306,7 @@
 					max={MAX_MULT}
 					step="0.05"
 					bind:value={multiplier}
+					oninput={(e) => sfx.notch((Number(e.currentTarget.value) - MIN_MULT) / (MAX_MULT - MIN_MULT))}
 					disabled={busy}
 					aria-label="Multiplier"
 				/>

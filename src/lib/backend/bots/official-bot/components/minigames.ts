@@ -5,6 +5,20 @@ import { getSpendableXp, spendXp, reevaluateLevel } from './xp-economy.js';
 import { getActiveLuckPercent } from './items.js';
 import { luckBoostLabel } from '../../../../items.js';
 import { TOWER_DOORS, TOWER_FLOORS, TOWER_GAME, TOWER_RESET_HOURS, towerBaseChance, towerPrize, towerSafeChance, towerTrapCount } from '../../../../tower.js';
+import {
+	COLOR_GAME,
+	COLOR_MAX_TOTAL,
+	COLOR_ROUNDS,
+	colorGuess,
+	colorRounds,
+	colorSeed,
+	colorTargets,
+	colorTotal,
+	colorXp,
+	decodeColorGuesses,
+	encodeColorGuesses,
+	hsbToHex
+} from '../../../../color.js';
 import { serverTranslator } from '../i18n.js';
 
 const MIN_MULTIPLIER = 1.01;
@@ -13,6 +27,7 @@ const MIN_WAGER = 1;
 const ANNOUNCE_DELAY_MS = 7000;
 const TOWER_ANNOUNCE_DELAY_MS = 1500;
 const TOWER_RESET_MS = TOWER_RESET_HOURS * 3600000;
+const COLOR_ANNOUNCE_DELAY_MS = 4000;
 
 function clampMultiplier(raw: any): number {
 	const m = Number(raw);
@@ -161,13 +176,14 @@ async function announceMinigame(client: any, ctx: any) {
 }
 
 const towerQueues = new Map<number, Promise<any>>();
+const colorQueues = new Map<number, Promise<any>>();
 
-function queueTower<T>(memberId: number, task: () => Promise<T>): Promise<T> {
-	const run = (towerQueues.get(memberId) ?? Promise.resolve()).then(task, task);
+function queueMember<T>(queues: Map<number, Promise<any>>, memberId: number, task: () => Promise<T>): Promise<T> {
+	const run = (queues.get(memberId) ?? Promise.resolve()).then(task, task);
 	const tail = run.catch(() => null);
-	towerQueues.set(memberId, tail);
+	queues.set(memberId, tail);
 	tail.then(() => {
-		if (towerQueues.get(memberId) === tail) towerQueues.delete(memberId);
+		if (queues.get(memberId) === tail) queues.delete(memberId);
 	});
 	return run;
 }
@@ -219,7 +235,7 @@ export async function handleTowerAction(client: any, payload: any) {
 
 	const ctx = { guildId: guild_id, actorDiscordId: actor_discord_id, memberId: Number(actorMemberId) };
 
-	return queueTower(ctx.memberId, async () => {
+	return queueMember(towerQueues, ctx.memberId, async () => {
 		const { run, used, state } = await loadTower(ctx.memberId);
 
 		if (action === 'state') return { ok: true, state };
@@ -350,5 +366,149 @@ async function announceTower(client: any, ctx: any) {
 		await channel.send({ content, embeds: [embed] }).catch(() => null);
 	} catch (err: any) {
 		await logger.log(`⚠️ Tower announce failed: ${err?.message || String(err)}`);
+	}
+}
+
+async function loadColor(memberId: number) {
+	const run = await db.getActiveColorRun(memberId);
+	const guesses = run ? decodeColorGuesses(run.guesses) : [];
+	const state = {
+		active: !!run,
+		round: guesses.length,
+		rounds: run ? colorRounds(run.seed, guesses) : [],
+		target: run ? (colorTargets(run.seed)[guesses.length] ?? null) : null
+	};
+	return { run, guesses, state };
+}
+
+export async function handleColorAction(client: any, payload: any) {
+	const { guild_id, actor_discord_id, action } = payload || {};
+	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
+
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(guild_id);
+	} catch (_) {
+		return { ok: false, error: 'server_not_found' };
+	}
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'minigames'))) {
+		return { ok: false, error: 'minigames_disabled' };
+	}
+
+	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
+	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+
+	const ctx = { guildId: guild_id, actorDiscordId: actor_discord_id, memberId: Number(actorMemberId) };
+
+	return queueMember(colorQueues, ctx.memberId, async () => {
+		const { run, guesses, state } = await loadColor(ctx.memberId);
+
+		if (action === 'state') return { ok: true, state };
+
+		if (action === 'start') {
+			if (run) return { ok: true, state };
+			const seed = colorSeed();
+			await db.createColorRun(ctx.memberId, seed);
+			return { ok: true, state: { ...state, active: true, target: colorTargets(seed)[0] } };
+		}
+
+		if (!run) return { ok: false, error: 'no_active_run', state };
+		if (action !== 'guess') return { ok: false, error: 'invalid_action', state };
+
+		const guess = colorGuess(payload);
+		if (!guess) return { ok: false, error: 'invalid_guess', state };
+
+		const played = state.round;
+		const rounds = colorRounds(run.seed, [...guesses, guess]);
+		const step = { ...rounds[played], round: played + 1 };
+		const encoded = encodeColorGuesses(rounds.map((r) => r.guess));
+
+		if (rounds.length >= COLOR_ROUNDS) {
+			const total = colorTotal(rounds.map((r) => r.score));
+			const payout = colorXp(total);
+			if (!(await db.stepColorRun(run.id, played, { round: rounds.length, guesses: encoded, status: 'done', payout }))) {
+				return { ok: false, error: 'run_changed', state };
+			}
+			return finishColor(client, ctx, state, { ...step, done: true, total, payout }, rounds);
+		}
+
+		if (!(await db.stepColorRun(run.id, played, { round: rounds.length, guesses: encoded, status: 'active' }))) {
+			return { ok: false, error: 'run_changed', state };
+		}
+		return { ok: true, step: { ...step, done: false }, state: { ...state, round: rounds.length, rounds, target: colorTargets(run.seed)[rounds.length] } };
+	});
+}
+
+async function finishColor(client: any, ctx: any, state: any, step: any, rounds: any[]) {
+	const { guildId, actorDiscordId, memberId } = ctx;
+
+	if (step.payout > 0) {
+		await db.ensureMemberLevel(memberId);
+		const after = await db.updateMemberLevelStats(memberId, { xpIncrement: step.payout });
+		await reevaluateLevel(memberId, after, guildId);
+	}
+
+	await db
+		.logMinigameAction(memberId, {
+			game: COLOR_GAME,
+			multiplier: step.total,
+			wager: 0,
+			payout: step.payout,
+			xp: step.payout,
+			outcome: step.payout > 0 ? 'win' : 'lose',
+			chance: null,
+			luck_percent: null
+		})
+		.catch(() => null);
+
+	if (step.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
+
+	const best = rounds.reduce((top, r) => (r.score > top.score ? r : top), rounds[0]);
+	setTimeout(() => {
+		announceColor(client, { guildId, actorDiscordId, result: { total: step.total, payout: step.payout, best } }).catch(() => null);
+	}, COLOR_ANNOUNCE_DELAY_MS);
+
+	return { ok: true, step, state: { ...state, active: false, round: 0, rounds: [], target: null } };
+}
+
+async function announceColor(client: any, ctx: any) {
+	const { guildId, actorDiscordId, result } = ctx;
+	if (!result) return;
+
+	try {
+		const { getMinigamesChannelId, getEmbedConfig } = await import('../../../config.js');
+		const channelId = await getMinigamesChannelId(guildId);
+		if (!channelId) return;
+
+		const guild = client?.guilds?.cache?.get(guildId);
+		if (!guild) return;
+		const channel = await guild.channels.fetch(channelId).catch(() => null);
+		if (!channel || !channel.isTextBased()) return;
+
+		const { EmbedBuilder } = await import('discord.js');
+		const tr = await serverTranslator(guildId);
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
+
+		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
+		const story = { member: actor ? `${actor}` : tr('minigames.someone'), rounds: COLOR_ROUNDS, payout: fmtXp(result.payout) };
+
+		const embed = new EmbedBuilder()
+			.setColor(hsbToHex(result.best.target))
+			.setTitle(tr('minigames.color.title'))
+			.setDescription(tr('minigames.color.description', story))
+			.addFields(
+				{ name: tr('minigames.color.fields.score'), value: `${result.total.toFixed(2)} / ${COLOR_MAX_TOTAL}`, inline: true },
+				{ name: tr('minigames.color.fields.bestRound'), value: `${result.best.score.toFixed(2)}`, inline: true },
+				{ name: tr('minigames.color.fields.prize'), value: `+${fmtXp(result.payout)}`, inline: true }
+			)
+			.setFooter({ text: embedConfig.FOOTER || tr('minigames.footer') })
+			.setTimestamp();
+
+		const content = actor ? `${actor}` : undefined;
+		await channel.send({ content, embeds: [embed] }).catch(() => null);
+	} catch (err: any) {
+		await logger.log(`⚠️ Color announce failed: ${err?.message || String(err)}`);
 	}
 }

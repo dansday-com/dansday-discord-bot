@@ -10,6 +10,7 @@
 		typing = null,
 		fade = 1,
 		children,
+		stage,
 		picker,
 		overlay
 	}: {
@@ -19,6 +20,7 @@
 		typing?: string | null;
 		fade?: number;
 		children: Snippet;
+		stage?: Snippet;
 		picker?: Snippet;
 		overlay?: Snippet;
 	} = $props();
@@ -43,8 +45,11 @@
 			<span class="text-ash-200 ml-auto hidden truncate text-[12px] sm:block">{server}</span>
 		</div>
 
-		<div class="scene-feed @container flex h-[360px] flex-col justify-end overflow-hidden pb-1 sm:h-[400px]" style="opacity: {fade}">
-			{@render children()}
+		<div class="flex h-[360px] flex-col sm:h-[400px]" style="opacity: {fade}">
+			{@render stage?.()}
+			<div class="scene-feed @container flex min-h-0 flex-1 flex-col justify-end overflow-hidden pb-1">
+				{@render children()}
+			</div>
 		</div>
 
 		<div class="text-ash-200 flex h-6 shrink-0 items-center gap-1.5 px-4 text-[11.5px]">

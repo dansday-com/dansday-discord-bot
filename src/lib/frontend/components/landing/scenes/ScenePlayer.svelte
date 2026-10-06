@@ -5,6 +5,7 @@
 	import { fly } from 'svelte/transition';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { SceneClock, playWhenVisible, typed } from './clock.svelte.js';
+	import DiscordCall from './DiscordCall.svelte';
 	import DiscordComponents from './DiscordComponents.svelte';
 	import DiscordEmbed from './DiscordEmbed.svelte';
 	import DiscordMessage from './DiscordMessage.svelte';
@@ -137,6 +138,12 @@
 	{/each}
 {/snippet}
 
+{#snippet stage()}
+	{#if scene.call}
+		<DiscordCall call={scene.call} people={scene.people ?? {}} {t} still={clock.still} />
+	{/if}
+{/snippet}
+
 {#snippet picker()}
 	{#if commands.length > 0}
 		<SlashPicker {commands} {draft} {t} tapAt={composing ? composing.at - 120 : undefined} still={clock.still} />
@@ -189,7 +196,7 @@
 		</div>
 
 		<div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-10">
-			<DiscordWindow server="Night Owls" channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade} {picker} {overlay}>
+			<DiscordWindow server="Night Owls" channel={scene.channel ?? 'general'} {draft} typing={typingWho} {fade} {stage} {picker} {overlay}>
 				{@render feed()}
 			</DiscordWindow>
 			{@render stepList(scene, true, false)}

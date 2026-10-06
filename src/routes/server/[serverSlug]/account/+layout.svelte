@@ -81,7 +81,8 @@
 	const minigameTabs = [
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
 		{ id: 'gamble', label: 'Gamble', icon: 'fa-dice' },
-		{ id: 'tower', label: 'Tower', icon: 'fa-tower-observation' }
+		{ id: 'tower', label: 'Tower', icon: 'fa-tower-observation' },
+		{ id: 'color', label: 'Color', icon: 'fa-eye-dropper' }
 	];
 
 	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
@@ -580,14 +581,14 @@
 	{@render walletHero()}
 
 	<div class="mb-4 hidden flex-wrap items-center justify-between gap-3 sm:flex">
-		<NavTabs variant="segment" tabs={sectionTabs} />
+		<NavTabs variant="segment" tabs={sectionTabs} sound />
 	</div>
 
 	{#if disabledFeature}
 		{''}
 	{:else if catTabs}
 		<div class="mb-4 hidden sm:block">
-			<NavTabs tabs={catTabs} arrows />
+			<NavTabs tabs={catTabs} arrows sound />
 		</div>
 	{/if}
 

@@ -1,5 +1,6 @@
 import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectSummary } from './items.js';
 import { TOWER_RESET_HOURS } from './tower.js';
+import { COLOR_MAX_SCORE, COLOR_ROUNDS } from './color.js';
 
 export const GUIDE_TITLE = 'How the XP Game Works';
 export const GUIDE_SUBTITLE = 'Earn XP, clear tasks, shop for items, and outplay everyone.';
@@ -157,7 +158,7 @@ export const FEATURES: GuideFeature[] = [
 		id: 'minigames',
 		icon: 'fa-dice',
 		title: 'Minigames',
-		lead: 'Games on the Minigames tab. Gamble wagers XP for a shot at more, Tower is free. New games get added over time.',
+		lead: 'Games on the Minigames tab. Gamble wagers XP for a shot at more, Tower and Color are free. New games get added over time.',
 		steps: [
 			{ icon: 'fa-dice', title: 'Open Minigames', desc: 'Pick a game from the Minigames tab. No item or ticket needed.' },
 			{ icon: 'fa-percent', title: 'Set your odds', desc: 'In Gamble you pick the multiplier up to 10×; win chance is 100 ÷ it.' },
@@ -170,6 +171,12 @@ export const FEATURES: GuideFeature[] = [
 				accent: '#1f9e8f',
 				title: 'Tower',
 				desc: `Free. Odds drop each floor and each climb, reset after ${TOWER_RESET_HOURS}h.`
+			},
+			{
+				icon: 'fa-eye-dropper',
+				accent: '#c0457a',
+				title: 'Color',
+				desc: `Free, unlimited. Rebuild ${COLOR_ROUNDS} colors from memory, up to ${COLOR_MAX_SCORE} XP each.`
 			}
 		],
 		note: {

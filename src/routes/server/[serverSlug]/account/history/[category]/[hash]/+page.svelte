@@ -5,6 +5,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { EmptyState } from '$lib/frontend/components/public';
 	import { TOWER_FLOORS, TOWER_GAME, towerPrize } from '$lib/tower';
+	import { COLOR_GAME, COLOR_MAX_TOTAL } from '$lib/color';
 	import type { PageProps } from './$types';
 
 	const TONE: Record<string, string> = {
@@ -115,6 +116,16 @@
 				tone: payout > 0 ? 'win' : 'lose',
 				deltaLabel: `+${fmt(payout)} XP`,
 				badges
+			};
+		}
+		if (h.game === COLOR_GAME) {
+			const payout = Number(h.payout) || 0;
+			return {
+				icon: 'fa-eye-dropper',
+				title: 'Color — Matched',
+				tone: payout > 0 ? 'win' : 'lose',
+				deltaLabel: `+${fmt(payout)} XP`,
+				badges: [{ icon: 'fa-bullseye', text: `Score ${(Number(h.multiplier) || 0).toFixed(2)} / ${COLOR_MAX_TOTAL}` }]
 			};
 		}
 		const won = h.outcome === 'win';

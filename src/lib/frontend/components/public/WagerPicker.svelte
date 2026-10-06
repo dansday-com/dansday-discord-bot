@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { sfx } from '../../sfx';
+
 	let {
 		percents,
 		selected = $bindable(),
@@ -16,6 +18,11 @@
 	} = $props();
 
 	const ACTIVE = 'border-transparent bg-linear-to-br from-[#e0a52a] to-[#b8860b] text-white shadow-[0_4px_12px_-5px_rgba(184,134,11,0.8)]';
+
+	function pick(value: number | 'custom') {
+		if (selected !== value) sfx.press();
+		selected = value;
+	}
 </script>
 
 <div class="mb-2.5 grid grid-cols-5 gap-1.5">
@@ -24,7 +31,7 @@
 			type="button"
 			class="btn btn-sm border-base-300 bg-base-200 text-base-content h-9 px-0 text-[13.5px] font-bold {selected === p ? ACTIVE : ''}"
 			{disabled}
-			onclick={() => (selected = p)}
+			onclick={() => pick(p)}
 		>
 			{p}%
 		</button>
@@ -33,7 +40,7 @@
 		type="button"
 		class="btn btn-sm border-base-300 bg-base-200 text-base-content h-9 px-0 text-[13.5px] font-bold {selected === 'custom' ? ACTIVE : ''}"
 		{disabled}
-		onclick={() => (selected = 'custom')}
+		onclick={() => pick('custom')}
 	>
 		Custom
 	</button>

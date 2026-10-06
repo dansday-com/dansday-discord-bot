@@ -15,8 +15,11 @@ import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
 import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
+import { COLOR_GAME } from './color.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
+
+const WAGER_FREE_GAMES = sql`(${TOWER_GAME}, ${COLOR_GAME})`;
 
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -2467,7 +2470,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 	const since = toMySQLDateTime(new Date(sinceMs));
 	const id = Number(memberId);
 
-	const notTower = sql` AND game <> 'tower'`;
+	const notTower = sql` AND game NOT IN ${WAGER_FREE_GAMES}`;
 
 	const GAMBLE_FILTERS: Record<string, any> = {
 		gamble_played: sql``,
@@ -3389,6 +3392,36 @@ export async function stepTowerRun(runId: any, fromFloor: number, next: { floor:
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
+export async function getActiveColorRun(memberId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(
+		sql`SELECT id, round, seed, guesses FROM server_member_color_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
+	);
+	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+}
+
+export async function createColorRun(memberId: any, seed: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.insert(schema.serverMemberColorRuns).values({
+		member_id: Number(memberId),
+		seed: Number(seed),
+		created_at: now as any,
+		updated_at: now as any
+	});
+	return true;
+}
+
+export async function stepColorRun(runId: any, fromRound: number, next: { round: number; guesses: string; status: string; payout?: number }) {
+	await initializeDatabase();
+	const result: any = await db.execute(
+		sql`UPDATE server_member_color_runs
+			SET round = ${Number(next.round)}, guesses = ${String(next.guesses)}, status = ${String(next.status)}, payout = ${Number(next.payout ?? 0)}, updated_at = ${toMySQLDateTime()}
+			WHERE id = ${Number(runId)} AND status = 'active' AND round = ${Number(fromRound)}`
+	);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
 export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
@@ -3810,12 +3843,12 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		`),
 		db.execute(sql`
 			SELECT
-				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN ml.wager ELSE 0 END), 0) AS wagered,
-				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN ml.payout ELSE 0 END), 0) AS paid_out,
-				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN ml.xp ELSE 0 END), 0) AS net,
-				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} AND ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
-				COALESCE(SUM(CASE WHEN ml.game <> ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS plays,
-				COALESCE(MAX(CASE WHEN ml.game <> ${TOWER_GAME} AND ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win,
+				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.wager ELSE 0 END), 0) AS wagered,
+				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.payout ELSE 0 END), 0) AS paid_out,
+				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.xp ELSE 0 END), 0) AS net,
+				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} AND ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN 1 ELSE 0 END), 0) AS plays,
+				COALESCE(MAX(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} AND ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win,
 				COALESCE(SUM(CASE WHEN ml.game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
 				COALESCE(SUM(CASE WHEN ml.game = ${TOWER_GAME} AND ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
 				COALESCE(SUM(CASE WHEN ml.game = ${TOWER_GAME} THEN ml.payout ELSE 0 END), 0) AS tower_paid_out,
@@ -4124,11 +4157,11 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 			`),
 		db.execute(sql`
 				SELECT
-					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} THEN wager ELSE 0 END), 0) AS wagered,
-					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} THEN xp ELSE 0 END), 0) AS net,
-					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
-					COALESCE(SUM(CASE WHEN game <> ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS plays,
-					COALESCE(MAX(CASE WHEN game <> ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
+					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN wager ELSE 0 END), 0) AS wagered,
+					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN xp ELSE 0 END), 0) AS net,
+					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN 1 ELSE 0 END), 0) AS plays,
+					COALESCE(MAX(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
 					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
 					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
 					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN payout ELSE 0 END), 0) AS tower_won,
@@ -8428,6 +8461,9 @@ export default {
 	getTowerWindow,
 	createTowerRun,
 	stepTowerRun,
+	getActiveColorRun,
+	createColorRun,
+	stepColorRun,
 	getMemberMinigameHistory,
 	getMinigamesLeaderboard,
 	getMemberItemHistory,

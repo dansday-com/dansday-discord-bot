@@ -1257,6 +1257,15 @@
 				"safeChance": "Chance de survie",
 				"prize": "Gain"
 			}
+		},
+		"color": {
+			"title": "🎨 Couleur · Reproduite",
+			"description": "{member} a recréé {rounds} couleurs de mémoire et **empoche {payout}**.",
+			"fields": {
+				"score": "Score",
+				"bestRound": "Meilleure manche",
+				"prize": "Gain"
+			}
 		}
 	},
 	"themeEffects": {

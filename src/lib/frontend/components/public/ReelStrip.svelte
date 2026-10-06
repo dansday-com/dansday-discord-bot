@@ -1,3 +1,8 @@
+<script lang="ts" module>
+	export const REEL_SECONDS = 6.8;
+	export const REEL_CURVE: [number, number, number, number] = [0.06, 0.72, 0.06, 1];
+</script>
+
 <script lang="ts" generics="T">
 	import type { Snippet } from 'svelte';
 
@@ -57,7 +62,7 @@
 	<div
 		class="flex gap-2 pl-(--pl) will-change-transform min-[600px]:pl-(--pl-lg)"
 		style="--pl: {padLeft}; --pl-lg: {padLeftLg ?? padLeft}; transform: translateX({offset}px); transition: {animating
-			? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)'
+			? `transform ${REEL_SECONDS}s cubic-bezier(${REEL_CURVE.join(', ')})`
 			: 'none'};"
 	>
 		{#each items as item, i (i)}

@@ -1257,6 +1257,15 @@
 				"safeChance": "فرصة النجاة",
 				"prize": "الجائزة"
 			}
+		},
+		"color": {
+			"title": "🎨 الألوان · مطابقة",
+			"description": "أعاد {member} تكوين {rounds} ألوان من الذاكرة و**حصد {payout}**.",
+			"fields": {
+				"score": "النتيجة",
+				"bestRound": "أفضل جولة",
+				"prize": "الجائزة"
+			}
 		}
 	},
 	"themeEffects": {

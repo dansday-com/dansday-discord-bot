@@ -1257,6 +1257,15 @@
 				"safeChance": "Überlebenschance",
 				"prize": "Gewinn"
 			}
+		},
+		"color": {
+			"title": "🎨 Farbe · Getroffen",
+			"description": "{member} hat {rounds} Farben aus dem Gedächtnis nachgebaut und **{payout} gesichert**.",
+			"fields": {
+				"score": "Punktzahl",
+				"bestRound": "Beste Runde",
+				"prize": "Gewinn"
+			}
 		}
 	},
 	"themeEffects": {

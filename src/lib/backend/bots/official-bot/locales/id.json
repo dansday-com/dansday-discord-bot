@@ -1257,6 +1257,15 @@
 				"safeChance": "Peluang aman",
 				"prize": "Hadiah"
 			}
+		},
+		"color": {
+			"title": "🎨 Color · Cocok",
+			"description": "{member} membuat ulang {rounds} warna dari ingatan dan **mengamankan {payout}**.",
+			"fields": {
+				"score": "Skor",
+				"bestRound": "Ronde terbaik",
+				"prize": "Hadiah"
+			}
 		}
 	},
 	"themeEffects": {

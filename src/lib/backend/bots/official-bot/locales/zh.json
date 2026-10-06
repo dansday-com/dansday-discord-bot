@@ -1257,6 +1257,15 @@
 				"safeChance": "安全概率",
 				"prize": "奖励"
 			}
+		},
+		"color": {
+			"title": "🎨 色彩・配对",
+			"description": "{member} 凭记忆重现了 {rounds} 种颜色，**带走了 {payout}**。",
+			"fields": {
+				"score": "分数",
+				"bestRound": "最佳回合",
+				"prize": "奖励"
+			}
 		}
 	},
 	"themeEffects": {

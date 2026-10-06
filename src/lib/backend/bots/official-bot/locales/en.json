@@ -1257,6 +1257,15 @@
 				"safeChance": "Safe chance",
 				"prize": "Prize"
 			}
+		},
+		"color": {
+			"title": "🎨 Color · Matched",
+			"description": "{member} rebuilt {rounds} colors from memory and **banked {payout}**.",
+			"fields": {
+				"score": "Score",
+				"bestRound": "Best round",
+				"prize": "Prize"
+			}
 		}
 	},
 	"themeEffects": {

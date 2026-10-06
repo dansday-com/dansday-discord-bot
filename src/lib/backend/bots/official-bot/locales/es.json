@@ -1257,6 +1257,15 @@
 				"safeChance": "Probabilidad de salvarse",
 				"prize": "Premio"
 			}
+		},
+		"color": {
+			"title": "🎨 Color · Acertado",
+			"description": "{member} recreó {rounds} colores de memoria y **aseguró {payout}**.",
+			"fields": {
+				"score": "Puntuación",
+				"bestRound": "Mejor ronda",
+				"prize": "Premio"
+			}
 		}
 	},
 	"themeEffects": {

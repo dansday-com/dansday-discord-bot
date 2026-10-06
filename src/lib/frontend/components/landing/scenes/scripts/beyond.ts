@@ -102,6 +102,94 @@ export const steal = defineScene({
 	]
 });
 
+const FRIEND_BOOST = ' (+20% Friend boost 🤝)';
+
+export const xpCall = defineScene({
+	id: 'xp-call',
+	label: 'XP on call',
+	icon: 'fa-headset',
+	tagline: 'Voice, camera and streams all pay XP, not only chat.',
+	channel: 'xp-log',
+	duration: 16000,
+	rest: 14800,
+	people: {
+		bot: BOT,
+		mira: { name: 'Mira', avatar: avatar(2) },
+		kai: { name: 'Kai', avatar: avatar(0) },
+		rin: { name: 'Rin', avatar: avatar(3) }
+	},
+	call: {
+		channel: 'Lounge',
+		me: 'mira',
+		cameraAt: 7000,
+		liveAt: 10300,
+		members: [
+			{
+				who: 'mira',
+				talk: [
+					[300, 1300],
+					[4400, 5200],
+					[9200, 10000],
+					[13200, 14000]
+				]
+			},
+			{
+				who: 'kai',
+				joinAt: 2900,
+				talk: [
+					[3200, 3800],
+					[5900, 6800],
+					[11000, 11900]
+				]
+			},
+			{
+				who: 'rin',
+				joinAt: 3900,
+				talk: [
+					[7700, 8500],
+					[12600, 13100]
+				]
+			}
+		],
+		ticks: [
+			{ at: 1500, gains: ['🎤 +50'] },
+			{ at: 5300, gains: ['🎤 +60'] },
+			{ at: 8700, gains: ['🎤 +60', '📹 +60'] },
+			{ at: 12100, gains: ['🎤 +60', '📹 +60', '📡 +60'] }
+		]
+	},
+	context: [{ id: 'chat', at: -1, who: 'bot', time: at('21:30'), text: '💬 Chat XP: Mira gained +15 XP' }],
+	events: [
+		{ id: 'm1-voice', at: 1500, who: 'bot', time: at('21:31'), text: '🎤 Voice XP: Mira gained +50 XP' },
+		{ id: 'm2-voice', at: 5300, who: 'bot', time: at('21:32'), text: `🎤 Voice XP: Mira gained +60 XP${FRIEND_BOOST}` },
+		{ id: 'm3-voice', at: 8700, who: 'bot', time: at('21:33'), text: `🎤 Voice XP: Mira gained +60 XP${FRIEND_BOOST}` },
+		{ id: 'm3-video', at: 8870, who: 'bot', time: at('21:33'), text: `📹 Video XP: Mira gained +60 XP${FRIEND_BOOST}` },
+		{ id: 'm4-voice', at: 12100, who: 'bot', time: at('21:34'), text: `🎤 Voice XP: Mira gained +60 XP${FRIEND_BOOST}` },
+		{ id: 'm4-video', at: 12270, who: 'bot', time: at('21:34'), text: `📹 Video XP: Mira gained +60 XP${FRIEND_BOOST}` },
+		{ id: 'm4-stream', at: 12440, who: 'bot', time: at('21:34'), text: `📡 Streaming XP: Mira gained +60 XP${FRIEND_BOOST}` }
+	],
+	steps: [
+		{
+			from: 0,
+			to: 2700,
+			title: 'Talking pays too',
+			desc: 'Every active minute in a voice channel earns XP, not only messages. Muted or AFK, it earns less.'
+		},
+		{
+			from: 2700,
+			to: 6700,
+			title: 'Friends boost it',
+			desc: 'Every other member in your voice channel adds +10% to your voice XP. Five friends is +50%.'
+		},
+		{
+			from: 6700,
+			to: 16000,
+			title: 'Camera and streams stack',
+			desc: 'Camera on and going live each add their own XP per minute, on top of voice. You set every rate in the panel.'
+		}
+	]
+});
+
 export const inviteShare = defineScene({
 	id: 'invite-share',
 	label: 'Invite XP share',

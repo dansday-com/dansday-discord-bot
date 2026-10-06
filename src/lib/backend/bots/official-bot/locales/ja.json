@@ -1257,6 +1257,15 @@
 				"safeChance": "安全確率",
 				"prize": "賞金"
 			}
+		},
+		"color": {
+			"title": "🎨 カラー・一致",
+			"description": "{member}が記憶を頼りに{rounds}色を再現し、**{payout}を獲得しました**。",
+			"fields": {
+				"score": "スコア",
+				"bestRound": "ベストラウンド",
+				"prize": "賞金"
+			}
 		}
 	},
 	"themeEffects": {

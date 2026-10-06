@@ -4,6 +4,7 @@
 	import { blur } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { sfx } from '$lib/frontend/sfx';
 	import { TOWER_DOORS, TOWER_FLOORS, TOWER_PRIZES, towerBaseChance, towerOddsDropPercent, towerPrize, towerSafeChance } from '$lib/tower';
 	import GameModal from './GameModal.svelte';
 
@@ -204,9 +205,11 @@
 		apply(d.state);
 		if (d.step.payout > 0) {
 			burst += 1;
+			sfx.payout(d.step.outcome === 'cleared' ? 1 : d.step.floor / TOWER_FLOORS);
 			onpayout(d.step.payout);
 		} else {
 			flash += 1;
+			sfx.bust();
 			shake = true;
 			setTimeout(() => (shake = false), 500);
 		}
@@ -221,6 +224,7 @@
 
 	async function start() {
 		if (busy) return;
+		sfx.press();
 		busy = true;
 		const d = await send('start');
 		if (d) {
@@ -236,6 +240,7 @@
 		if (busy || !tower?.active || verdict) return;
 		busy = true;
 		pending = door;
+		sfx.knock();
 		const floor = cleared + 1;
 		const d = await send('pick', door);
 		pending = null;
@@ -245,8 +250,10 @@
 			return;
 		}
 		path = { ...path, [floor]: { door: step.door ?? door, trapDoors: step.trapDoors ?? [] } };
+		DOORS.forEach((other) => sfx.flip(flipDelay(floor, other) / 1000, other !== path[floor].door));
 		setTimeout(() => {
 			if (step.outcome === 'safe') {
+				sfx.gem(step.floor);
 				apply(d.state);
 				lift += 1;
 				gain = { id: (gain?.id ?? 0) + 1, xp: towerPrize(step.floor) - towerPrize(step.floor - 1) };
@@ -259,6 +266,7 @@
 
 	async function cashout() {
 		if (busy || !tower?.active || cleared < 1 || verdict) return;
+		sfx.press();
 		busy = true;
 		const d = await send('cashout');
 		if (d) settle(d);

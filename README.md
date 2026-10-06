@@ -166,7 +166,7 @@ Each member signs in to their own account on those same pages.
 </tr>
 <tr>
 <td><strong>Assets</strong> — live CoinGecko prices, no real money.</td>
-<td><strong>Minigames</strong> — wager XP in Gamble or climb the free Tower.</td>
+<td><strong>Minigames</strong> — wager XP in Gamble, climb the free Tower or rebuild colors from memory.</td>
 <td><strong>History</strong> — every XP event, filterable by source.</td>
 </tr>
 </table>
@@ -214,7 +214,7 @@ Each member signs in to their own account on those same pages.
 - **Items & XP economy** - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
   - 🍀 **Luck** raises steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.
 - **Assets market** - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
-- **Minigames** - 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level. 🗼 **Tower**: free, unlimited climbs up a tower of unknown height. Odds start at 75%, drop each floor and each climb, and reset 24 hours after the first climb. A trap only drops the unbanked prize.
+- **Minigames** - 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level. 🗼 **Tower**: free, unlimited climbs up a tower of unknown height. Odds start at 75%, drop each floor and each climb, and reset 24 hours after the first climb. A trap only drops the unbanked prize. 🎨 **Color**: free, unlimited games of five rounds. A color shows for 5 seconds, then you rebuild it from memory on hue, saturation and brightness sliders. Each round is scored out of 10 by how close the match is and pays that much XP, up to 50 a game.
 
 ### Tasks, streaks & check-in
 

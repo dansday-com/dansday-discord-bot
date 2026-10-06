@@ -1257,6 +1257,15 @@
 				"safeChance": "Peluang selamat",
 				"prize": "Ganjaran"
 			}
+		},
+		"color": {
+			"title": "🎨 Color · Padan",
+			"description": "{member} membina semula {rounds} warna daripada ingatan dan **menyimpan {payout}**.",
+			"fields": {
+				"score": "Skor",
+				"bestRound": "Pusingan terbaik",
+				"prize": "Ganjaran"
+			}
 		}
 	},
 	"themeEffects": {

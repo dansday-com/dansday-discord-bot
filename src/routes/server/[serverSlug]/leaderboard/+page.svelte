@@ -5,6 +5,7 @@
 	import '../../../../server.css';
 	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
 	import { normalizeAccent } from '$lib/themes.js';
+	import { COLOR_MAX_TOTAL } from '$lib/color';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PageProps } from './$types';
@@ -16,7 +17,8 @@
 
 	const GAMBLE_METRICS: Metric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big'];
 	const TOWER_METRICS: Metric[] = ['minigames_tower_net', 'minigames_tower_ratio', 'minigames_tower_big'];
-	const MINIGAMES_METRICS: Metric[] = [...GAMBLE_METRICS, ...TOWER_METRICS];
+	const COLOR_METRICS: Metric[] = ['minigames_color_net', 'minigames_color_avg', 'minigames_color_best'];
+	const MINIGAMES_METRICS: Metric[] = [...GAMBLE_METRICS, ...TOWER_METRICS, ...COLOR_METRICS];
 	const BOUNTY_METRICS: Metric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
 	const STEAL_METRICS: Metric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
 	const BOMB_METRICS: Metric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
@@ -43,6 +45,7 @@
 	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
 	const isMinigamesGroup = $derived(MINIGAMES_METRICS.includes(metric));
 	const isTowerGroup = $derived(TOWER_METRICS.includes(metric));
+	const isColorGroup = $derived(COLOR_METRICS.includes(metric));
 	const isBountyGroup = $derived(BOUNTY_METRICS.includes(metric));
 	const isStealGroup = $derived(STEAL_METRICS.includes(metric));
 	const isBombGroup = $derived(BOMB_METRICS.includes(metric));
@@ -87,6 +90,9 @@
 		if (m === 'minigames_tower_net') return 'Minigames — Tower — XP won';
 		if (m === 'minigames_tower_ratio') return 'Minigames — Tower — Win ratio';
 		if (m === 'minigames_tower_big') return 'Minigames — Tower — Big win';
+		if (m === 'minigames_color_net') return 'Minigames — Color — XP won';
+		if (m === 'minigames_color_avg') return 'Minigames — Color — Average score';
+		if (m === 'minigames_color_best') return 'Minigames — Color — Best score';
 		if (m === 'items_bounty_total') return 'Bounties — Total bounties';
 		if (m === 'items_bounty_claimer') return 'Bounties — Claimer';
 		if (m === 'items_bounty_give') return 'Bounties — Giver';
@@ -114,9 +120,11 @@
 		if (m === 'voice_afk') return Number(r.voice_minutes_afk || 0);
 		if (m === 'video') return Number(r.voice_minutes_video || 0);
 		if (m === 'streaming') return Number(r.voice_minutes_streaming || 0);
-		if (m === 'minigames_gamble_net' || m === 'minigames_tower_net') return Number(r.minigame_net || 0);
+		if (m === 'minigames_gamble_net' || m === 'minigames_tower_net' || m === 'minigames_color_net') return Number(r.minigame_net || 0);
 		if (m === 'minigames_gamble_ratio' || m === 'minigames_tower_ratio') return Number(r.minigame_ratio || 0);
 		if (m === 'minigames_gamble_big' || m === 'minigames_tower_big') return Number(r.minigame_big_win || 0);
+		if (m === 'minigames_color_avg') return Number(r.minigame_avg_score || 0);
+		if (m === 'minigames_color_best') return Number(r.minigame_best_score || 0);
 		if (m === 'items_bounty_total') return Number(r.bounty_on_them || 0);
 		if (m === 'items_bounty_claimer') return Number(r.bounty_collected || 0);
 		if (m === 'items_bounty_give') return Number(r.bounty_given || 0);
@@ -133,8 +141,13 @@
 		return m === 'minigames_gamble_ratio' || m === 'minigames_tower_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate';
 	}
 
+	function isScoreMetric(m: string) {
+		return m === 'minigames_color_avg' || m === 'minigames_color_best';
+	}
+
 	function formatMetric(n: number, m: string) {
 		const safe = Number.isFinite(n) ? n : 0;
+		if (isScoreMetric(m)) return safe.toFixed(2);
 		if (isRateMetric(m)) return (Math.round(safe * 10) / 10).toLocaleString();
 		return Math.round(safe).toLocaleString();
 	}
@@ -153,6 +166,7 @@
 
 	function metricUnit(m: string) {
 		if (isRateMetric(m)) return '%';
+		if (isScoreMetric(m)) return `/ ${COLOR_MAX_TOTAL}`;
 		if (m.startsWith('minigames_')) return 'xp';
 		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
 		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) return 'xp';
@@ -168,6 +182,11 @@
 	}
 
 	function itemsSub(r: any, m: string) {
+		if (m.startsWith('minigames_color_')) {
+			const total = Number(r.minigame_total || 0);
+			const games = `${total} game${total === 1 ? '' : 's'}`;
+			return m === 'minigames_color_best' ? games : `${games} · best ${Number(r.minigame_best_score || 0).toFixed(2)}`;
+		}
 		if (m.startsWith('minigames_')) {
 			const wins = `${Number(r.minigame_wins || 0)}/${Number(r.minigame_total || 0)} wins`;
 			return r.minigame_best_floor == null ? wins : `${wins} · floor ${Number(r.minigame_best_floor) || 0}`;
@@ -360,11 +379,18 @@
 	});
 
 	const minigamesGroupTabs = $derived([
-		{ id: 'minigames_gamble_net', label: 'Gamble', icon: 'fa-dice', active: !isTowerGroup },
-		{ id: 'minigames_tower_net', label: 'Tower', icon: 'fa-tower-observation', active: isTowerGroup }
+		{ id: 'minigames_gamble_net', label: 'Gamble', icon: 'fa-dice', active: !isTowerGroup && !isColorGroup },
+		{ id: 'minigames_tower_net', label: 'Tower', icon: 'fa-tower-observation', active: isTowerGroup },
+		{ id: 'minigames_color_net', label: 'Color', icon: 'fa-eye-dropper', active: isColorGroup }
 	]);
 
 	const minigamesLeafTabs = $derived.by(() => {
+		if (isColorGroup)
+			return [
+				{ id: 'minigames_color_net', label: 'XP won', icon: 'fa-coins', active: metric === 'minigames_color_net' },
+				{ id: 'minigames_color_avg', label: 'Avg score', icon: 'fa-bullseye', active: metric === 'minigames_color_avg' },
+				{ id: 'minigames_color_best', label: 'Best score', icon: 'fa-trophy', active: metric === 'minigames_color_best' }
+			];
 		if (isTowerGroup)
 			return [
 				{ id: 'minigames_tower_net', label: 'XP won', icon: 'fa-coins', active: metric === 'minigames_tower_net' },

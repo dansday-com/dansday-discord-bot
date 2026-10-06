@@ -16,6 +16,9 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'minigames_tower_net') return 'minigames_tower_net';
 	if (v === 'minigames_tower_ratio') return 'minigames_tower_ratio';
 	if (v === 'minigames_tower_big') return 'minigames_tower_big';
+	if (v === 'minigames_color_net') return 'minigames_color_net';
+	if (v === 'minigames_color_avg') return 'minigames_color_avg';
+	if (v === 'minigames_color_best') return 'minigames_color_best';
 	if (v === 'items_bounty_total') return 'items_bounty_total';
 	if (v === 'items_bounty_claimer') return 'items_bounty_claimer';
 	if (v === 'items_bounty_give') return 'items_bounty_give';

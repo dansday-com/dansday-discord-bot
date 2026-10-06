@@ -126,7 +126,8 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 }
 
 const TOWER_METRICS: LeaderboardMetric[] = ['minigames_tower_net', 'minigames_tower_ratio', 'minigames_tower_big'];
-const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big', ...TOWER_METRICS];
+const COLOR_METRICS: LeaderboardMetric[] = ['minigames_color_net', 'minigames_color_avg', 'minigames_color_best'];
+const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big', ...TOWER_METRICS, ...COLOR_METRICS];
 
 function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
@@ -143,12 +144,17 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 			case 'minigames_gamble_big':
 			case 'minigames_tower_big':
 				return Number(e.minigame_big_win ?? 0);
+			case 'minigames_color_avg':
+				return Number(e.minigame_avg_score ?? 0);
+			case 'minigames_color_best':
+				return Number(e.minigame_best_floor ?? 0);
 			default:
 				return Number(e.minigame_net ?? 0);
 		}
 	};
 	const tower = TOWER_METRICS.includes(metric);
-	const tieBreak = (e: any): number => (tower ? Number(e.minigame_net ?? 0) : 0);
+	const color = COLOR_METRICS.includes(metric);
+	const tieBreak = (e: any): number => (tower || color ? Number(e.minigame_net ?? 0) : 0);
 
 	const pool = entries;
 
@@ -182,6 +188,12 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 		minigame_big_win: Number(e.minigame_big_win ?? 0),
 		minigame_ratio: Math.round(ratio(e) * 10) / 10,
 		...(tower ? { minigame_best_floor: Math.round(Number(e.minigame_best_floor ?? 0)) } : {}),
+		...(color
+			? {
+					minigame_avg_score: Math.round(Number(e.minigame_avg_score ?? 0) * 100) / 100,
+					minigame_best_score: Math.round(Number(e.minigame_best_floor ?? 0) * 100) / 100
+				}
+			: {}),
 		rank: null
 	}));
 }
@@ -362,7 +374,9 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 	let rows: LeaderboardRow[];
 	const since = periodSince(period);
 	if (MINIGAMES_METRICS.includes(metric)) {
-		const entries = await db.getMinigamesLeaderboard(serverId, since, TOWER_METRICS.includes(metric) ? 'tower' : 'gamble').catch(() => []);
+		const entries = await db
+			.getMinigamesLeaderboard(serverId, since, TOWER_METRICS.includes(metric) ? 'tower' : COLOR_METRICS.includes(metric) ? 'color' : 'gamble')
+			.catch(() => []);
 		rows = buildMinigamesRows(entries, metric, limit);
 	} else if (BOUNTY_METRICS.includes(metric)) {
 		const entries = await db.getItemsBountyLeaderboard(serverId, since).catch(() => []);

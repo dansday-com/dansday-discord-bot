@@ -14,6 +14,9 @@ export type LeaderboardMetric =
 	| 'minigames_tower_net'
 	| 'minigames_tower_ratio'
 	| 'minigames_tower_big'
+	| 'minigames_color_net'
+	| 'minigames_color_avg'
+	| 'minigames_color_best'
 	| 'items_bounty_total'
 	| 'items_bounty_claimer'
 	| 'items_bounty_give'
@@ -49,6 +52,8 @@ export type LeaderboardRow = {
 	minigame_big_win?: number | null;
 	minigame_ratio?: number | null;
 	minigame_best_floor?: number | null;
+	minigame_avg_score?: number | null;
+	minigame_best_score?: number | null;
 	bounty_on_them?: number | null;
 	bounty_collected?: number | null;
 	bounty_given?: number | null;

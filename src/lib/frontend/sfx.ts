@@ -10,7 +10,7 @@ const PRESSABLE =
 	'a[href], button, summary, select, [role="tab"], [role="button"], [role="option"], input[type="checkbox"], input[type="radio"], input[type="file"], input[type="color"], input[type="range"]';
 const TYPED =
 	'textarea, input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="url"], input[type="tel"], input[type="password"]';
-const UNLOCK_EVENTS = ['pointerup', 'keydown', 'click'];
+const UNLOCK_EVENTS = ['pointerup', 'touchend', 'keydown', 'click'];
 const TICKS: Record<TickAxis, { freq: number; dur: number; gain: number }> = {
 	h: { freq: 1500, dur: 0.009, gain: 0.075 },
 	s: { freq: 2300, dur: 0.008, gain: 0.068 },
@@ -228,10 +228,12 @@ export const sfx = {
 		tone(freq * 1.5, { gain: 0.05, dur: 0.32, delay: 0.05 });
 		tone(freq * 2, { gain: 0.04, dur: 0.4, delay: 0.1 });
 	},
-	open() {
+	open(): boolean {
+		if (!audio()) return false;
 		tone(392, { gain: 0.05, dur: 0.12 });
 		tone(587.33, { gain: 0.05, dur: 0.14, delay: 0.045 });
 		tone(783.99, { gain: 0.045, dur: 0.24, delay: 0.09 });
+		return true;
 	},
 	close() {
 		tone(587.33, { gain: 0.05, dur: 0.13, glide: 370 });

@@ -13,6 +13,7 @@
 
 	let pointer: number | null = null;
 	let wasOpen = false;
+	let chimed = true;
 	let releasedAt = -Infinity;
 	let restTimer: ReturnType<typeof setTimeout> | undefined;
 	let restX = 0;
@@ -49,7 +50,7 @@
 
 	function unfold() {
 		open = true;
-		sfx.open();
+		chimed = sfx.open();
 	}
 
 	function keyOf(el: EventTarget | null): string | null {
@@ -106,6 +107,7 @@
 			goto(href);
 		} else if (key === 'orb' && !wasOpen) {
 			hover = null;
+			if (!chimed) chimed = sfx.open();
 		} else {
 			dismiss();
 		}

@@ -3515,7 +3515,8 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null,
 			minigame_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
 			minigame_total: sql<number>`COUNT(${schema.serverMemberMinigameLogs.id})`,
 			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp}), 0)`,
-			minigame_best_floor: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN ${schema.serverMemberMinigameLogs.multiplier} ELSE 0 END), 0)`
+			minigame_best_floor: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN ${schema.serverMemberMinigameLogs.multiplier} ELSE 0 END), 0)`,
+			minigame_avg_score: sql<number>`COALESCE(AVG(${schema.serverMemberMinigameLogs.multiplier}), 0)`
 		})
 		.from(schema.serverMembers)
 		.leftJoin(

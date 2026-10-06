@@ -3,6 +3,7 @@
 
 @source './app.html';
 @source './lib/brand.ts';
+@source './lib/color.ts';
 @source './lib/effects.ts';
 @source './lib/frontend/ToastHost.svelte';
 @source './lib/frontend/components/EffectName.svelte';
@@ -62,6 +63,7 @@
 @source './lib/frontend/firstInteraction.ts';
 @source './lib/frontend/panelServer.ts';
 @source './lib/frontend/scrollLock.ts';
+@source './lib/frontend/sfx.ts';
 @source './lib/frontend/toast.svelte.ts';
 @source './lib/invites.ts';
 @source './lib/items.ts';

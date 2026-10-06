@@ -51,7 +51,6 @@
 	const isBombGroup = $derived(BOMB_METRICS.includes(metric));
 	const isGiftGroup = $derived(GIFT_METRICS.includes(metric));
 	const isInvites = $derived(metric === 'invites');
-	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
 	const rest = $derived(rows.slice(3));
@@ -75,37 +74,6 @@
 
 	function rowAccent(r: any): string | null {
 		return normalizeAccent(r.theme_accent);
-	}
-
-	function metricLabel(m: string) {
-		if (m === 'chat') return 'Messages';
-		if (m === 'voice_total') return 'Voice (Total)';
-		if (m === 'voice_active') return 'Voice (Active)';
-		if (m === 'voice_afk') return 'Voice (AFK)';
-		if (m === 'video') return 'Video';
-		if (m === 'streaming') return 'Streaming';
-		if (m === 'minigames_gamble_net') return 'Minigames — Gamble — Net XP';
-		if (m === 'minigames_gamble_ratio') return 'Minigames — Gamble — Win ratio';
-		if (m === 'minigames_gamble_big') return 'Minigames — Gamble — Big win';
-		if (m === 'minigames_tower_net') return 'Minigames — Tower — XP won';
-		if (m === 'minigames_tower_ratio') return 'Minigames — Tower — Win ratio';
-		if (m === 'minigames_tower_big') return 'Minigames — Tower — Big win';
-		if (m === 'minigames_color_net') return 'Minigames — Color — XP won';
-		if (m === 'minigames_color_avg') return 'Minigames — Color — Average score';
-		if (m === 'minigames_color_best') return 'Minigames — Color — Best score';
-		if (m === 'items_bounty_total') return 'Bounties — Total bounties';
-		if (m === 'items_bounty_claimer') return 'Bounties — Claimer';
-		if (m === 'items_bounty_give') return 'Bounties — Giver';
-		if (m === 'items_steal_total') return 'Stealer — XP stolen';
-		if (m === 'items_steal_rate') return 'Stealer — Success rate';
-		if (m === 'items_steal_big') return 'Stealer — Big steal';
-		if (m === 'items_bomb_total') return 'Bomber — XP destroyed';
-		if (m === 'items_bomb_rate') return 'Bomber — Success rate';
-		if (m === 'items_bomb_big') return 'Bomber — Big bomb';
-		if (m === 'items_gift_give') return 'Gifts — Given';
-		if (m === 'items_gift_receive') return 'Gifts — Received';
-		if (m === 'invites') return 'Invites';
-		return 'XP';
 	}
 
 	function metricValueNumber(r: any, m: string) {
@@ -167,15 +135,7 @@
 	function metricUnit(m: string) {
 		if (isRateMetric(m)) return '%';
 		if (isScoreMetric(m)) return `/ ${COLOR_MAX_TOTAL}`;
-		if (m.startsWith('minigames_')) return 'xp';
-		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
-		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) return 'xp';
-		if (m.startsWith('items_gift_')) return 'xp';
 		if (m === 'invites') return 'invites';
-		if (isPeriod) {
-			if (m === 'xp') return 'xp';
-			return 'times';
-		}
 		if (m === 'chat') return 'msgs';
 		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') return 'min';
 		return 'xp';
@@ -253,6 +213,9 @@
 		es?.close();
 		const myEs = new EventSource(`/api/public-statistics/${data.server.slug}/stream?metric=${metric}&period=${period}&limit=${data.limit}`);
 		es = myEs;
+		myEs.onopen = () => {
+			if (es === myEs) streamConnected = true;
+		};
 		myEs.onmessage = (e) => {
 			if (es !== myEs) return;
 			try {
@@ -342,7 +305,7 @@
 		{ id: 'video', label: 'Video', icon: 'fa-video', active: metric === 'video' },
 		{ id: 'streaming', label: 'Streaming', icon: 'fa-tv', active: metric === 'streaming' },
 		{ id: 'invites', label: 'Invites', icon: 'fa-user-plus', active: isInvites },
-		{ id: 'items_bounty_total', label: 'Items', icon: 'fa-store', active: isItemsGroup },
+		{ id: 'items_steal_total', label: 'Items', icon: 'fa-store', active: isItemsGroup },
 		{ id: 'minigames_gamble_net', label: 'Minigames', icon: 'fa-dice', active: isMinigamesGroup }
 	]);
 
@@ -394,12 +357,12 @@
 		if (isTowerGroup)
 			return [
 				{ id: 'minigames_tower_net', label: 'XP won', icon: 'fa-coins', active: metric === 'minigames_tower_net' },
-				{ id: 'minigames_tower_ratio', label: 'Win ratio', icon: 'fa-percent', active: metric === 'minigames_tower_ratio' },
+				{ id: 'minigames_tower_ratio', label: 'Win rate', icon: 'fa-percent', active: metric === 'minigames_tower_ratio' },
 				{ id: 'minigames_tower_big', label: 'Big win', icon: 'fa-trophy', active: metric === 'minigames_tower_big' }
 			];
 		return [
 			{ id: 'minigames_gamble_net', label: 'Net XP', icon: 'fa-coins', active: metric === 'minigames_gamble_net' },
-			{ id: 'minigames_gamble_ratio', label: 'Win ratio', icon: 'fa-percent', active: metric === 'minigames_gamble_ratio' },
+			{ id: 'minigames_gamble_ratio', label: 'Win rate', icon: 'fa-percent', active: metric === 'minigames_gamble_ratio' },
 			{ id: 'minigames_gamble_big', label: 'Big win', icon: 'fa-trophy', active: metric === 'minigames_gamble_big' }
 		];
 	});
@@ -409,6 +372,17 @@
 		{ id: 'voice_active', label: 'Active', icon: 'fa-microphone-lines', active: metric === 'voice_active' },
 		{ id: 'voice_afk', label: 'AFK', icon: 'fa-moon', active: metric === 'voice_afk' }
 	]);
+
+	const metricPath = $derived(
+		[
+			metricTabs,
+			isItemsGroup ? itemsGroupTabs : isMinigamesGroup ? minigamesGroupTabs : isVoiceGroup ? voiceTabs : [],
+			isItemsGroup ? itemsLeafTabs : isMinigamesGroup ? minigamesLeafTabs : []
+		]
+			.map((tabs) => tabs.find((t) => t.active)?.label)
+			.filter(Boolean)
+			.join(' — ')
+	);
 
 	const podiumOrder = $derived(
 		top3.length >= 3
@@ -432,7 +406,7 @@
 <div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
 	<p class="m-0 flex flex-wrap items-center gap-1.5">
 		Leaderboard
-		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">{metricLabel(metric)}</span>
+		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">{metricPath}</span>
 		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">
 			{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}
 		</span>
@@ -541,7 +515,7 @@
 	<section class="card border-base-300 bg-base-100/85 overflow-hidden border shadow-sm">
 		<div class="border-base-300 text-base-content flex items-center justify-between border-b px-4 py-3 text-[13px] font-bold sm:px-5">
 			<span>Rankings</span>
-			<span class="text-base-content/45 text-[11px] font-medium">{rows.length.toLocaleString()} members</span>
+			<span class="text-base-content/45 text-[11px] font-medium">Top {rows.length.toLocaleString()}</span>
 		</div>
 		<ul class="list">
 			{#each rest as r, i (r.discord_member_id)}

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { attachSfx } from '$lib/frontend/sfx';
 	import { PageMeta, PageShell } from '$lib/frontend/components/shell';
 	import { inviteJoinPath } from '$lib/invites.js';
 	import { publicServerPath } from '$lib/url.js';
@@ -7,6 +9,8 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	onMount(attachSfx);
 
 	const initials = (n: string) =>
 		n

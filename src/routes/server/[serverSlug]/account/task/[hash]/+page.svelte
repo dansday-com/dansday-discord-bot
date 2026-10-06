@@ -90,6 +90,12 @@
 		}, 7000);
 	}
 
+	function closeRoll() {
+		if (!reelSettled) return;
+		sfx.close();
+		itemRoll = null;
+	}
+
 	let synced = $state(false);
 
 	$effect(() => {
@@ -125,7 +131,7 @@
 		}
 	}
 
-	function applyState(next: any) {
+	function applyState(next: any, quiet = false): boolean {
 		live = next;
 		synced = true;
 		resetAt = at(next.resetsInMs);
@@ -133,10 +139,11 @@
 		loginReadyAt = at(next.login?.readyInMs);
 		ctx.setTaskSummary?.(next.streak ?? null);
 
-		if (next.streakEarned && next.streakMilestone) {
-			celebrate = { streak: next.streak.current, emoji: next.streakMilestone.emoji, label: next.streakMilestone.label };
-			setTimeout(() => (celebrate = null), 6000);
-		}
+		if (!next.streakEarned || !next.streakMilestone) return false;
+		celebrate = { streak: next.streak.current, emoji: next.streakMilestone.emoji, label: next.streakMilestone.label };
+		setTimeout(() => (celebrate = null), 6000);
+		if (!quiet) sfx.payout(1);
+		return !quiet;
 	}
 
 	const dailyTasks = $derived((live?.daily ?? []) as any[]);
@@ -210,7 +217,7 @@
 				return;
 			}
 
-			if (body.tasks) applyState(body.tasks);
+			const celebrated = body.tasks ? applyState(body.tasks) : false;
 
 			const g = body.granted;
 			const item = g?.kind === 'item';
@@ -219,7 +226,7 @@
 				text: item ? g.name : `+${fmt(g?.xp ?? 0)} XP`,
 				item
 			};
-			sfx.payout(body.milestone ? 1 : t.period === 'weekly' ? 0.6 : 0.35);
+			if (!celebrated) sfx.payout(body.milestone && body.streak ? 1 : t.period === 'weekly' ? 0.6 : 0.35);
 			setTimeout(() => (taskWin = null), 3500);
 
 			if (body.milestone && body.streak) {
@@ -252,9 +259,8 @@
 				return;
 			}
 
-			if (body.tasks) applyState(body.tasks);
-
 			const g = body.granted;
+			const celebrated = body.tasks ? applyState(body.tasks, g?.kind === 'item') : false;
 			const text = g?.kind === 'item' ? g.name : `+${fmt(g?.xp ?? 0)} XP`;
 
 			if (g?.kind === 'item') {
@@ -269,7 +275,7 @@
 				});
 			} else {
 				loginWin = { day: body.day, jackpot: !!body.jackpot, text };
-				sfx.payout(body.jackpot ? 1 : 0.5);
+				if (!celebrated) sfx.payout(body.jackpot ? 1 : 0.5);
 				setTimeout(() => (loginWin = null), body.jackpot ? 6000 : 3500);
 			}
 
@@ -318,7 +324,14 @@
 				<h3 class="text-base-content text-lg font-extrabold">{title}</h3>
 				<p class="text-base-content/60 mt-1 text-sm">{body}</p>
 			</div>
-			<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={close}>close</button>
+			<button
+				type="button"
+				class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]"
+				onclick={() => {
+					sfx.close();
+					close();
+				}}>close</button
+			>
 		</div>
 	{/snippet}
 
@@ -554,9 +567,7 @@
 					</div>
 				{/if}
 			</div>
-			<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={() => (reelSettled ? (itemRoll = null) : null)}>
-				close
-			</button>
+			<button type="button" data-sfx-off class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={closeRoll}> close </button>
 		</div>
 	{:else if celebrate}
 		{@render celebrationModal(celebrate.emoji, `${celebrate.label} streak!`, `${celebrate.streak} days in a row. Keep it burning.`, () => (celebrate = null))}

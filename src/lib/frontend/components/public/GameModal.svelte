@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
+	import { sfx } from '../../sfx';
+	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -23,6 +25,13 @@
 	} = $props();
 
 	const aura = $derived(state === 'win' ? 'from-success/25' : state === 'lose' ? 'from-error/25' : 'from-warning/16');
+
+	onMount(() => sfx.pop());
+
+	function close() {
+		sfx.close();
+		onclose();
+	}
 </script>
 
 <div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
@@ -38,7 +47,7 @@
 				{/if}{title}
 			</span>
 			{#if closable}
-				<button type="button" class="btn btn-ghost btn-sm btn-circle text-base-content/60" aria-label="Close" onclick={onclose}>
+				<button type="button" class="btn btn-ghost btn-sm btn-circle text-base-content/60" aria-label="Close" onclick={close}>
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			{/if}
@@ -46,5 +55,5 @@
 
 		{@render children()}
 	</div>
-	<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={() => closable && onclose()}>close</button>
+	<button type="button" data-sfx-off class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={() => closable && close()}>close</button>
 </div>

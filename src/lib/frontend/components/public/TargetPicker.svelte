@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
+	import { sfx } from '../../sfx';
+	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -19,11 +21,18 @@
 		onback: () => void;
 		children: Snippet;
 	} = $props();
+
+	onMount(() => sfx.pop());
+
+	function back() {
+		sfx.close();
+		onback();
+	}
 </script>
 
 <div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label="Pick a target">
 	<div class="modal-box border-base-300 max-h-[85vh] max-w-[440px] border">
-		<button type="button" class="btn btn-ghost btn-sm text-base-content/60 mb-2 -ml-2 gap-1.5 px-2" onclick={onback}>
+		<button type="button" class="btn btn-ghost btn-sm text-base-content/60 mb-2 -ml-2 gap-1.5 px-2" onclick={back}>
 			<i class="fas fa-arrow-left"></i>Back
 		</button>
 
@@ -46,5 +55,5 @@
 			{/if}
 		{/if}
 	</div>
-	<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={onback}>close</button>
+	<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={back}>close</button>
 </div>

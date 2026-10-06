@@ -91,6 +91,16 @@
 		if (fileInput) fileInput.value = '';
 	}
 
+	function dropPending() {
+		sfx.trash();
+		discardPending();
+	}
+
+	function closeSpin() {
+		sfx.close();
+		playing = false;
+	}
+
 	async function save() {
 		if (busy || !dirty) return;
 		busy = true;
@@ -124,6 +134,7 @@
 
 			discardPending();
 			await invalidateAll();
+			sfx.done();
 			showToast('Theme saved', 'success');
 		} catch {
 			showToast('Could not save your theme.', 'error');
@@ -150,6 +161,7 @@
 
 			discardPending();
 			await invalidateAll();
+			sfx.trash();
 			showToast('Background removed', 'success');
 		} catch {
 			showToast('Could not remove the image.', 'error');
@@ -174,6 +186,8 @@
 				return;
 			}
 			await invalidateAll();
+			if (next) sfx.on();
+			else sfx.off();
 			showToast(next ? 'Effect turned on' : 'Effect turned off', 'success');
 		} catch {
 			showToast('Could not change the effect.', 'error');
@@ -200,6 +214,7 @@
 
 			discardPending();
 			await invalidateAll();
+			sfx.trash();
 			showToast('Theme reset', 'success');
 		} catch {
 			showToast('Could not reset your theme.', 'error');
@@ -213,6 +228,7 @@
 		if (!pendingFile) return;
 		colorDraft = null;
 		pendingAccent = await extractAccentFromFile(pendingFile);
+		sfx.done();
 	}
 
 	const savedLabel = $derived.by(() => {
@@ -223,7 +239,6 @@
 	});
 
 	function openSpin() {
-		sfx.press();
 		playing = true;
 		initReel();
 	}
@@ -275,6 +290,7 @@
 				return;
 			}
 			ownerSeed = String(body.result.seed);
+			sfx.done();
 			showToast(`${body.result.label} · seed ${body.result.seed}`, 'success');
 			await invalidateAll();
 		} catch {
@@ -372,7 +388,7 @@
 						: 'Choose image'}
 				</button>
 				{#if pendingFile}
-					<button class="btn btn-ghost btn-sm" onclick={discardPending} disabled={busy}>Discard</button>
+					<button class="btn btn-ghost btn-sm" onclick={dropPending} disabled={busy}>Discard</button>
 				{:else if savedImage}
 					<button class="btn btn-ghost btn-sm text-error" onclick={removeImage} disabled={busy}>
 						<i class="fas fa-trash-can"></i>Remove image
@@ -559,7 +575,7 @@
 		</div>
 
 		{#if reelResult}
-			<button class="btn btn-sm w-full" onclick={() => (playing = false)}>Done</button>
+			<button class="btn btn-sm w-full" onclick={closeSpin}>Done</button>
 		{:else}
 			<button
 				class="btn animate-game-charge w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white"

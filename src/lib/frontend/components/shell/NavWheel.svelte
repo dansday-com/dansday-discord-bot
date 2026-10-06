@@ -160,7 +160,7 @@
 	oncontextmenu={(e) => keyOf(e.target) && e.preventDefault()}
 />
 
-<div class="sm:hidden">
+<div class="sm:hidden" data-sfx-off>
 	{#if open}
 		<div use:scrollLocked transition:fade={{ duration: 140 }} class="fixed inset-0 z-50">
 			<button type="button" class="bg-base-content/45 absolute inset-0 size-full touch-none backdrop-blur-[4px]" aria-label="Close menu" onclick={dismiss}

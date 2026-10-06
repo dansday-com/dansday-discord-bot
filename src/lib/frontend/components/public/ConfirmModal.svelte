@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
+	import { sfx } from '../../sfx';
+	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -29,8 +31,16 @@
 	const halo = $derived(dangerous ? 'bg-error/14 border-error/35 text-error' : 'bg-primary/14 border-primary/35 text-primary');
 	const accept = $derived(dangerous ? 'btn-error' : 'btn-primary');
 
+	onMount(() => sfx.alert());
+
+	function cancel() {
+		if (loading) return;
+		sfx.close();
+		oncancel();
+	}
+
 	function onkeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && !loading) oncancel();
+		if (event.key === 'Escape') cancel();
 	}
 </script>
 
@@ -48,7 +58,7 @@
 		{#if children}{@render children()}{/if}
 
 		<div class="modal-action mt-5 flex-col-reverse gap-2 min-[400px]:flex-row">
-			<button type="button" class="btn btn-ghost btn-sm flex-1" onclick={oncancel} disabled={loading}>
+			<button type="button" class="btn btn-ghost btn-sm flex-1" onclick={cancel} disabled={loading}>
 				{cancelLabel}
 			</button>
 			<button type="button" class="btn btn-sm flex-1 font-bold {accept}" onclick={onconfirm} disabled={loading}>
@@ -56,5 +66,5 @@
 			</button>
 		</div>
 	</div>
-	<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={() => !loading && oncancel()}>close</button>
+	<button type="button" data-sfx-off class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={cancel}>close</button>
 </div>

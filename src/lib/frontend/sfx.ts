@@ -5,6 +5,11 @@ type Curve = [number, number, number, number];
 
 const TICK_GAP_MS = 14;
 const DETENT_GAP_MS = 28;
+const KEY_GAP_MS = 22;
+const PRESSABLE =
+	'a[href], button, summary, select, [role="tab"], [role="button"], [role="option"], input[type="checkbox"], input[type="radio"], input[type="file"], input[type="color"], input[type="range"]';
+const TYPED =
+	'textarea, input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="url"], input[type="tel"], input[type="password"]';
 const UNLOCK_EVENTS = ['pointerup', 'keydown', 'click'];
 const TICKS: Record<TickAxis, { freq: number; dur: number; gain: number }> = {
 	h: { freq: 1500, dur: 0.009, gain: 0.075 },
@@ -14,14 +19,17 @@ const TICKS: Record<TickAxis, { freq: number; dur: number; gain: number }> = {
 const SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
 
 let primed = false;
+let live = false;
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
 let hiss: AudioBuffer | null = null;
 let lastTick = 0;
 let lastDetent = 0;
+let lastKey = 0;
+let cues = 0;
 
 function audio(): AudioContext | null {
-	if (typeof window === 'undefined' || !primed) return null;
+	if (typeof window === 'undefined' || !primed || !live) return null;
 	if (!context) {
 		const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
 		if (!Ctor) return null;
@@ -52,6 +60,7 @@ function unit(n: number): number {
 }
 
 function tone(freq: number, { type = 'sine', gain = 0.08, dur = 0.1, delay = 0, glide = 0 }: ToneOptions = {}) {
+	cues++;
 	const ctx = audio();
 	if (!ctx || !master) return;
 	const at = ctx.currentTime + delay;
@@ -74,6 +83,7 @@ function tone(freq: number, { type = 'sine', gain = 0.08, dur = 0.1, delay = 0, 
 }
 
 function noise(freq: number, { gain = 0.06, dur = 0.01, q = 2.6, delay = 0 }: NoiseOptions = {}) {
+	cues++;
 	const ctx = audio();
 	if (!ctx || !master) return;
 	if (!hiss) {
@@ -235,5 +245,76 @@ export const sfx = {
 	select() {
 		tone(783.99, { type: 'triangle', gain: 0.09, dur: 0.1 });
 		tone(1174.66, { gain: 0.07, dur: 0.14, delay: 0.05 });
+	},
+	pop() {
+		tone(440, { gain: 0.05, dur: 0.08, glide: 660 });
+		tone(880, { gain: 0.035, dur: 0.13, delay: 0.05 });
+	},
+	alert() {
+		tone(622.25, { type: 'triangle', gain: 0.06, dur: 0.11 });
+		tone(622.25, { type: 'triangle', gain: 0.06, dur: 0.17, delay: 0.15 });
+	},
+	done() {
+		tone(659.25, { gain: 0.06, dur: 0.1 });
+		tone(987.77, { gain: 0.06, dur: 0.22, delay: 0.07 });
+	},
+	nope() {
+		tone(196, { type: 'triangle', gain: 0.09, dur: 0.1 });
+		tone(146.83, { type: 'triangle', gain: 0.09, dur: 0.17, delay: 0.1 });
+	},
+	on() {
+		tone(523.25, { gain: 0.06, dur: 0.07 });
+		tone(783.99, { gain: 0.06, dur: 0.15, delay: 0.06 });
+	},
+	off() {
+		tone(783.99, { gain: 0.06, dur: 0.07 });
+		tone(523.25, { gain: 0.05, dur: 0.15, delay: 0.06 });
+	},
+	key() {
+		const now = performance.now();
+		if (now - lastKey < KEY_GAP_MS) return;
+		lastKey = now;
+		noise(2400 * Math.pow(2, (Math.random() - 0.5) / 4), { gain: 0.022, dur: 0.006 });
 	}
 };
+
+function unlessCued(play: () => void) {
+	const before = cues;
+	setTimeout(() => cues === before && play(), 0);
+}
+
+function onClick(e: Event) {
+	const el = (e.target as Element | null)?.closest?.(PRESSABLE);
+	if (!el || el.closest('[data-sfx-off]')) return;
+	unlessCued(sfx.press);
+}
+
+function onInput(e: Event) {
+	const el = e.target as HTMLInputElement | null;
+	if (!el?.matches || el.closest('[data-sfx-off]')) return;
+	if (el.matches('input[type="range"]')) {
+		const min = Number(el.min) || 0;
+		const span = (Number(el.max) || 100) - min || 1;
+		unlessCued(() => sfx.notch((Number(el.value) - min) / span));
+	} else if (el.matches('input[type="color"]')) unlessCued(() => sfx.notch(0.5));
+	else if (el.matches(TYPED)) unlessCued(sfx.key);
+}
+
+function onChange(e: Event) {
+	const el = e.target as Element | null;
+	if (!el?.matches?.('select, input[type="file"]') || el.closest('[data-sfx-off]')) return;
+	unlessCued(sfx.select);
+}
+
+export function attachSfx(): () => void {
+	live = true;
+	window.addEventListener('click', onClick, true);
+	window.addEventListener('input', onInput, true);
+	window.addEventListener('change', onChange, true);
+	return () => {
+		live = false;
+		window.removeEventListener('click', onClick, true);
+		window.removeEventListener('input', onInput, true);
+		window.removeEventListener('change', onChange, true);
+	};
+}

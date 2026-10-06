@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
+	import { sfx } from '../../sfx';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -29,6 +30,18 @@
 	} = $props();
 
 	const topBorder = $derived(tone === 'win' ? 'border-t-success' : tone === 'lose' ? 'border-t-error' : 'border-t-primary');
+
+	$effect(() => {
+		title;
+		if (tone === 'win') sfx.payout(0.6);
+		else if (tone === 'lose') sfx.bust();
+		else sfx.buy();
+	});
+
+	function close() {
+		sfx.close();
+		onclose();
+	}
 </script>
 
 <div use:scrollLocked class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
@@ -63,11 +76,11 @@
 
 		{#if showClose}
 			<div class="modal-action justify-center">
-				<button type="button" class="btn btn-primary rounded-full px-6 font-bold" onclick={onclose}>
+				<button type="button" class="btn btn-primary rounded-full px-6 font-bold" onclick={close}>
 					<i class="fas fa-check"></i>Done
 				</button>
 			</div>
 		{/if}
 	</div>
-	<button type="button" class="modal-backdrop bg-base-content/45 backdrop-blur-[4px]" onclick={onclose}>close</button>
+	<button type="button" class="modal-backdrop bg-base-content/45 backdrop-blur-[4px]" onclick={close}>close</button>
 </div>

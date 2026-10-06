@@ -71,7 +71,6 @@
 
 	function openPlay(gameId: string) {
 		if (ctx.readOnly) return;
-		sfx.press();
 		playing = gameId;
 		if (gameId !== 'gamble') return;
 		multiplier = 2;

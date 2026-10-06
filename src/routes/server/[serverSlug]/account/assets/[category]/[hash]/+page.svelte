@@ -2,6 +2,7 @@
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { sfx } from '$lib/frontend/sfx';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { EmptyState, GameModal, OutcomeModal } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
@@ -181,6 +182,7 @@
 			});
 			const d = await res.json();
 			if (d.success) {
+				sfx.buy();
 				ctx.setLiveXp(Math.max(0, ctx.liveXp - amount));
 				buyAsset = null;
 				showOutcome({

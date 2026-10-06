@@ -66,6 +66,6 @@
 
 {#if tabs.length > 1}
 	<div class="mb-4">
-		<NavTabs variant="segment" {tabs} />
+		<NavTabs variant="segment" {tabs} sound />
 	</div>
 {/if}

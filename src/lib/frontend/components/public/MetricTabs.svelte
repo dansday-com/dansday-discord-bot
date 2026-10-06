@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { sfx } from '../../sfx';
+
 	type Tab = { id: string; label: string; icon?: string; count?: string; active: boolean };
 
 	let {
@@ -20,6 +22,11 @@
 	} = $props();
 
 	const DEPTH_BG = ['bg-base-100/55', 'bg-base-100/35', 'bg-base-100/25'] as const;
+
+	function select(tab: Tab) {
+		if (!tab.active) sfx.select();
+		onselect(tab.id);
+	}
 </script>
 
 <div
@@ -30,14 +37,15 @@
 		? 'tabs-sm'
 		: ''} {margin ? 'mb-3' : ''} {fit ? 'w-fit' : ''}"
 >
-	{#each tabs as tab}
+	{#each tabs as tab, i}
 		<button
 			role="tab"
 			class="tab flex-[1_0_auto] gap-1.5 font-semibold whitespace-nowrap {tab.active
 				? 'tab-active from-secondary to-primary text-primary-content bg-linear-to-br shadow-sm'
 				: 'text-base-content/45'}"
 			aria-selected={tab.active}
-			onclick={() => onselect(tab.id)}
+			onpointerenter={(e) => !tab.active && e.pointerType === 'mouse' && sfx.detent(i, depth > 0)}
+			onclick={() => select(tab)}
 		>
 			{#if tab.icon}<i class="fas {tab.icon}"></i>{/if}
 			{tab.label}

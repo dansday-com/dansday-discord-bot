@@ -2,10 +2,11 @@
 	import { lockScroll, scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { sfx } from '$lib/frontend/sfx';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
 	import { rarityTierFor, rarityMeta, type RarityTier } from '$lib/tasks.js';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
-	import { EmptyState, MetricTabs, ReelStrip } from '$lib/frontend/components/public';
+	import { EmptyState, MetricTabs, REEL_CURVE, REEL_SECONDS, ReelStrip } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -62,6 +63,7 @@
 		const cells = decoyCells(40);
 		if (cells.length === 0) {
 			loginWin = { day, jackpot, text: won.name };
+			sfx.payout(jackpot ? 1 : 0.6);
 			setTimeout(() => (loginWin = null), jackpot ? 6000 : 3500);
 			return;
 		}
@@ -80,8 +82,12 @@
 		await new Promise((r) => requestAnimationFrame(() => r(null)));
 		reelAnimating = true;
 		centerCell(landIndex);
+		sfx.reel(landIndex - 2, REEL_SECONDS, REEL_CURVE);
 
-		setTimeout(() => (reelSettled = true), 7000);
+		setTimeout(() => {
+			reelSettled = true;
+			sfx.payout(jackpot ? 1 : 0.6);
+		}, 7000);
 	}
 
 	let synced = $state(false);
@@ -189,6 +195,7 @@
 	async function claim(t: any) {
 		const key = `${t.period}:${t.slot}`;
 		if (ctx.readOnly || busySlot != null || !t.complete || t.claimed) return;
+		sfx.press();
 		busySlot = key;
 		try {
 			const res = await fetch(`/api/tasks/${data.server.slug}/claim`, {
@@ -212,6 +219,7 @@
 				text: item ? g.name : `+${fmt(g?.xp ?? 0)} XP`,
 				item
 			};
+			sfx.payout(body.milestone ? 1 : t.period === 'weekly' ? 0.6 : 0.35);
 			setTimeout(() => (taskWin = null), 3500);
 
 			if (body.milestone && body.streak) {
@@ -229,6 +237,7 @@
 
 	async function claimLogin() {
 		if (ctx.readOnly || claimingLogin || !login.canClaim) return;
+		sfx.press();
 		claimingLogin = true;
 		try {
 			const res = await fetch(`/api/tasks/${data.server.slug}/login`, {
@@ -260,6 +269,7 @@
 				});
 			} else {
 				loginWin = { day: body.day, jackpot: !!body.jackpot, text };
+				sfx.payout(body.jackpot ? 1 : 0.5);
 				setTimeout(() => (loginWin = null), body.jackpot ? 6000 : 3500);
 			}
 

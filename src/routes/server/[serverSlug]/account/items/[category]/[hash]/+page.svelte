@@ -3,6 +3,7 @@
 	import { getContext } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { sfx } from '$lib/frontend/sfx';
 	import {
 		effectSummary,
 		effectIcon,
@@ -77,6 +78,7 @@
 			});
 			const d = await res.json();
 			if (d.success) {
+				sfx.buy();
 				ctx.setBurst(item.id);
 				setTimeout(() => ctx.setBurst(null), 600);
 				ctx.setLiveXp(optimistic);
@@ -215,6 +217,7 @@
 			});
 			const d = await res.json();
 			if (d.success) {
+				sfx.trash();
 				poof(medallion, effectIcon(item.effect_type));
 				showToast(`Removed one ${item.name}`, 'success');
 				await ctx.invalidateAll();

@@ -181,6 +181,15 @@ export const sfx = {
 		tone(SCALE[notes - 1] * 2, { gain: 0.06, dur: 0.6, delay: notes * 0.07 });
 		if (quality >= 0.8) noise(7000, { gain: 0.03, dur: 0.4, q: 0.6, delay: notes * 0.07 });
 	},
+	buy() {
+		tone(1318.51, { gain: 0.08, dur: 0.07 });
+		tone(1760, { gain: 0.08, dur: 0.26, delay: 0.07 });
+		tone(880, { type: 'triangle', gain: 0.04, dur: 0.09 });
+	},
+	trash() {
+		tone(520, { gain: 0.08, dur: 0.3, glide: 170 });
+		tone(390, { type: 'triangle', gain: 0.04, dur: 0.26, delay: 0.04, glide: 130 });
+	},
 	bust() {
 		tone(300, { gain: 0.12, dur: 0.36, glide: 140 });
 		tone(226, { type: 'triangle', gain: 0.06, dur: 0.32, delay: 0.05, glide: 105 });
@@ -210,8 +219,9 @@ export const sfx = {
 		tone(freq * 2, { gain: 0.04, dur: 0.4, delay: 0.1 });
 	},
 	open() {
-		noise(700, { gain: 0.04, dur: 0.16, q: 0.7 });
-		tone(392, { gain: 0.06, dur: 0.14, glide: 587.33 });
+		tone(392, { gain: 0.05, dur: 0.12 });
+		tone(587.33, { gain: 0.05, dur: 0.14, delay: 0.045 });
+		tone(783.99, { gain: 0.045, dur: 0.24, delay: 0.09 });
 	},
 	close() {
 		tone(587.33, { gain: 0.05, dur: 0.13, glide: 370 });

@@ -4,9 +4,10 @@
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SEED_RANGE, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
-	import { ConfirmModal, GameModal, ReelStrip } from '$lib/frontend/components/public';
+	import { ConfirmModal, GameModal, REEL_CURVE, REEL_SECONDS, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { sfx } from '$lib/frontend/sfx';
 	import { getContext } from 'svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
@@ -222,6 +223,7 @@
 	});
 
 	function openSpin() {
+		sfx.press();
 		playing = true;
 		initReel();
 	}
@@ -284,6 +286,7 @@
 
 	async function spin() {
 		if (spinning || busy || !canSpin) return;
+		sfx.press();
 		spinning = true;
 		reelResult = null;
 
@@ -315,9 +318,11 @@
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			reelAnimating = true;
 			centerCell(landIndex);
+			sfx.reel(landIndex - 2, REEL_SECONDS, REEL_CURVE);
 
 			setTimeout(async () => {
 				reelResult = won;
+				sfx.payout(0.7);
 				ctx?.setLiveXp?.(Math.max(0, (ctx?.liveXp ?? 0) - EFFECT_SPIN_COST));
 				spinning = false;
 				await invalidateAll();

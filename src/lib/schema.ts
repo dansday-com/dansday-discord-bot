@@ -1414,3 +1414,37 @@ export const serverMessagePosts = mysqlTable(
 	},
 	(t) => [uniqueIndex('unique_message_post').on(t.discord_message_id), index('idx_server_message_posts_message').on(t.message_id)]
 );
+
+export const messages = mysqlTable(
+	'messages',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		panel_id: int('panel_id')
+			.notNull()
+			.references(() => panels.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 100 }).notNull(),
+		content: json('content').notNull(),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_messages_panel').on(t.panel_id)]
+);
+
+export const messagePosts = mysqlTable(
+	'message_posts',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		message_id: int('message_id')
+			.notNull()
+			.references(() => messages.id, { onDelete: 'cascade' }),
+		channel_id: int('channel_id')
+			.notNull()
+			.references(() => serverChannels.id, { onDelete: 'cascade' }),
+		discord_message_id: varchar('discord_message_id', { length: 150 }).notNull(),
+		language: varchar('language', { length: 10 }).notNull(),
+		mentions: text('mentions'),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_global_message_post').on(t.discord_message_id), index('idx_message_posts_message').on(t.message_id)]
+);

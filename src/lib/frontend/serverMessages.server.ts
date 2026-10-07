@@ -4,7 +4,7 @@ import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { postBotWebhook, resolveActiveBotForServer } from '$lib/frontend/public/items/index.js';
 import { messageUploadKeys } from '$lib/messages.js';
-import { pruneServerMessageFiles } from '$lib/backend/storage/serverMessages.js';
+import { pruneMessageFiles as pruneStoredFiles } from '$lib/backend/storage/messageFiles.js';
 
 export const BOT_OFFLINE = 'The bot is offline. Start it, then try again.';
 
@@ -49,5 +49,5 @@ export async function syncMessagePosts(server: any, messageId: number, interacti
 export async function pruneMessageFiles(serverId: number, messages?: ServerMessage[]) {
 	const all = messages ?? (await db.getServerMessages(serverId).catch(() => null));
 	if (!all) return;
-	await pruneServerMessageFiles(serverId, new Set(all.flatMap((message) => messageUploadKeys(message.content)))).catch(() => null);
+	await pruneStoredFiles({ scope: 'server', id: serverId }, new Set(all.flatMap((message) => messageUploadKeys(message.content)))).catch(() => null);
 }

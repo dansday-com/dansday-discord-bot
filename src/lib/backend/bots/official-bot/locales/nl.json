@@ -1432,7 +1432,7 @@
 			"failed": "Er ging iets mis bij het contact met de AI-dienst. Probeer het zo meteen opnieuw."
 		}
 	},
-	"serverMessages": {
+	"messages": {
 		"unavailable": "❌ Dit is niet meer beschikbaar. Vraag een serverbeheerder om het opnieuw in te stellen in het configuratiepaneel van de bot.",
 		"notSetUp": "❌ Dit doet nog niets. Vraag een serverbeheerder om het af te maken in het configuratiepaneel van de bot.",
 		"roleAdded": "✅ Je hebt nu {role}.",

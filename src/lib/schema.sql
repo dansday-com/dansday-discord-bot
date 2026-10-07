@@ -847,6 +847,30 @@ CREATE TABLE IF NOT EXISTS server_message_posts (
     FOREIGN KEY (channel_id) REFERENCES server_channels(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    panel_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    content JSON NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS message_posts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    message_id INT NOT NULL,
+    channel_id INT NOT NULL,
+    discord_message_id VARCHAR(150) NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    mentions TEXT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY unique_global_message_post (discord_message_id),
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (channel_id) REFERENCES server_channels(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
@@ -932,3 +956,5 @@ CREATE INDEX IF NOT EXISTS idx_level_friends_a ON server_member_level_friends(me
 CREATE INDEX IF NOT EXISTS idx_level_friends_b ON server_member_level_friends(member_b_id, ticks);
 CREATE INDEX IF NOT EXISTS idx_server_messages_server ON server_messages(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_message_posts_message ON server_message_posts(message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_panel ON messages(panel_id);
+CREATE INDEX IF NOT EXISTS idx_message_posts_message ON message_posts(message_id);

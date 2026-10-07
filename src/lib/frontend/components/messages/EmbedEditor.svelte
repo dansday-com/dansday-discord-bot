@@ -3,10 +3,12 @@
 	import { MESSAGE_LIMITS, newMessagePartId, type MessageEmbed } from '$lib/messages.js';
 	import LocalizedField from './LocalizedField.svelte';
 	import MediaField from './MediaField.svelte';
-	import { moveItem } from './editorContext.js';
+	import { messageEditor, moveItem } from './editorContext.js';
 	import { FIELD, GHOST_BUTTON, ICON_BUTTON, LABEL } from './styles.js';
 
 	let { embed = $bindable() }: { embed: MessageEmbed } = $props();
+
+	const editor = messageEditor();
 
 	const GROUP = 'border-ash-700 border-t pt-3';
 	const SUMMARY = 'text-ash-200 flex cursor-pointer items-center gap-2 text-xs font-semibold select-none';
@@ -54,6 +56,9 @@
 			<input type="url" bind:value={embed.url} maxlength={MESSAGE_LIMITS.url} placeholder="https:// (optional)" aria-label="Title link" class={FIELD} />
 		</div>
 	</div>
+	{#if editor.colorNote}
+		<p class="text-ash-500 -mt-1 text-[11px]">{editor.colorNote}</p>
+	{/if}
 
 	<details class={GROUP} open={embed.fields.length > 0}>
 		<summary class={SUMMARY}

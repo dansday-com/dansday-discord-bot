@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { MAX_SERVER_MESSAGES, messageButtons, messageSelects, messageSummary } from '$lib/messages.js';
+import { MAX_SAVED_MESSAGES, messageButtons, messageSelects, messageSummary } from '$lib/messages.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	return {
 		serverId,
-		limit: MAX_SERVER_MESSAGES,
+		limit: MAX_SAVED_MESSAGES,
 		messages: messages.map((message) => ({
 			id: message.id,
 			name: message.name,
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			interactive: messageButtons(message.content).some((button) => button.style !== 'link') || messageSelects(message.content).length > 0,
 			attachments: message.content.attachments.length,
 			updated_at: message.updated_at,
-			channels: [...new Set(posts.filter((post) => post.message_id === message.id).map((post) => post.channel_name))]
+			posted: [...new Set(posts.filter((post) => post.message_id === message.id).map((post) => `#${post.channel_name}`))].join(', ')
 		}))
 	};
 };

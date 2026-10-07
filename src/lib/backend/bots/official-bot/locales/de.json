@@ -1432,7 +1432,7 @@
 			"failed": "Beim Kontaktieren des KI-Dienstes ist etwas schiefgelaufen. Versuche es gleich erneut."
 		}
 	},
-	"serverMessages": {
+	"messages": {
 		"unavailable": "❌ Das ist nicht mehr verfügbar. Bitte einen Server-Admin, es im Bot-Konfigurationspanel neu einzurichten.",
 		"notSetUp": "❌ Das macht noch nichts. Bitte einen Server-Admin, die Einrichtung im Bot-Konfigurationspanel abzuschließen.",
 		"roleAdded": "✅ Du hast jetzt {role}.",

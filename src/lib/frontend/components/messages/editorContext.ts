@@ -8,8 +8,11 @@ export type EditorMessage = { id: number; name: string };
 export type MessageEditorContext = {
 	lang: ServerLanguage;
 	base: ServerLanguage;
-	serverId: number;
+	uploadUrl: string;
 	uploadLimit: number;
+	uploadLimitNote: string;
+	colorNote: string;
+	roleActions: boolean;
 	selfId: number | null;
 	emojis: EditorEmoji[];
 	roles: EditorRole[];

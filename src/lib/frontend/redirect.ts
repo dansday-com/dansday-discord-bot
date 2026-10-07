@@ -8,7 +8,7 @@ export const ADMIN_TAB_PATHS = {
 	overview: DASHBOARD_PATH,
 	bots: BOTS_ROOT,
 	selfbots: `${ADMIN_BASE}/selfbots`,
-	globalEmbed: `${ADMIN_BASE}/global-embed`,
+	globalMessages: `${ADMIN_BASE}/global-messages`,
 	items: `${ADMIN_BASE}/items`,
 	settings: `${ADMIN_BASE}/settings`
 } as const;

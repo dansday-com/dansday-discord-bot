@@ -59,9 +59,11 @@
 					<i class="fas fa-eye text-sky-300"></i>Show a message
 				</button>
 			{/if}
-			<button type="button" class={GHOST_BUTTON} onclick={() => actions.push({ type: 'role', mode: 'toggle', role_id: '' })}>
-				<i class="fas fa-user-tag text-emerald-300"></i>Give or take a role
-			</button>
+			{#if editor.roleActions}
+				<button type="button" class={GHOST_BUTTON} onclick={() => actions.push({ type: 'role', mode: 'toggle', role_id: '' })}>
+					<i class="fas fa-user-tag text-emerald-300"></i>Give or take a role
+				</button>
+			{/if}
 		</div>
 	{/if}
 	{#if actions.some((action) => action.type === 'show') && editor.messages.length === 0}

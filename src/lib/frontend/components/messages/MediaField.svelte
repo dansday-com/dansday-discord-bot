@@ -41,14 +41,14 @@
 		if (!supported) return showToast(`Use a ${kinds} file.`, 'error');
 		if (file.size > editor.uploadLimit) {
 			return showToast(
-				`That file is ${imageSizeLabel(file.size)}. This server's Discord upload limit is ${imageSizeLabel(editor.uploadLimit)}; server boosts raise it.`,
+				`That file is ${imageSizeLabel(file.size)}. The limit is ${imageSizeLabel(editor.uploadLimit)}. ${editor.uploadLimitNote}`,
 				'error',
 				7000
 			);
 		}
 		progress = 0;
 		try {
-			const result = await uploadMessageFile(editor.serverId, file, (fraction) => (progress = fraction));
+			const result = await uploadMessageFile(editor.uploadUrl, file, (fraction) => (progress = fraction));
 			if (!result.ok) return showToast(result.error, 'error', 7000);
 			value = result.key;
 		} finally {

@@ -744,6 +744,10 @@ export const modules = [
 				desc: `Images (PNG, JPG, GIF, WEBP) and videos (${MESSAGE_VIDEO_FORMATS_LABEL}) up to Discord's limit for the server: ${imageSizeLabel(messageUploadLimit(0))}, ${imageSizeLabel(messageUploadLimit(2))} at boost level 2 and ${imageSizeLabel(messageUploadLimit(3))} at level 3.`
 			},
 			{ label: 'Placeholders', desc: '{server} becomes the server name and {year} the current year, in any text.' },
+			{
+				label: 'Global messages',
+				desc: "For the panel admin. The same builder under Global Messages sends one message to every server on all bots, into each server's Bot Updates Channel and in that server's language. Saving edits every copy, and a copy can be deleted from one server or all. Buttons can open another global message; role buttons are left out because roles differ per server. Each server's Change Log shows which admin sent it."
+			},
 			{ label: 'Change Log', desc: 'Creating, editing, sending and deleting a message, and removing a posted copy, are recorded with who did it.' }
 		]
 	},

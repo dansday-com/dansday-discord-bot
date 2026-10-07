@@ -34,8 +34,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 
 	return {
 		key: current ? `message-${current.id}` : `new-${copy?.id ?? ''}`,
-		serverId,
-		guildId,
+		scope: 'server' as const,
+		apiBase: `/api/servers/${serverId}/messages`,
 		listPath,
 		serverName: String((overview as any).name ?? 'Server'),
 		uploadLimit: messageUploadLimit((overview as any).boost_level),
@@ -44,6 +44,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 		messages: messages.map((message) => ({ id: message.id, name: message.name, content: message.content })),
 		posts: posts.map((post) => ({
 			id: post.id,
+			guild_id: guildId,
+			server_name: null,
 			channel_id: post.discord_channel_id,
 			channel_name: post.channel_name,
 			discord_message_id: post.discord_message_id,

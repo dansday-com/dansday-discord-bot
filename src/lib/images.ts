@@ -6,7 +6,6 @@ export const IMAGE_FILENAME_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'] a
 export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
 export const IMAGE_FORMATS_LABEL = 'PNG, JPG, GIF, WEBP';
 
-export const EMBED_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const MEMBER_THEME_MAX_BYTES = 10 * 1024 * 1024;
 
 const CONTENT_TYPES: Record<string, string> = {

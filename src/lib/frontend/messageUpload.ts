@@ -2,7 +2,7 @@ import { MESSAGE_UPLOAD_CHUNK_BYTES } from '$lib/messages.js';
 
 export type MessageUploadResult = { ok: true; key: string } | { ok: false; error: string };
 
-export async function uploadMessageFile(serverId: number | string, file: File, onProgress?: (fraction: number) => void): Promise<MessageUploadResult> {
+export async function uploadMessageFile(url: string, file: File, onProgress?: (fraction: number) => void): Promise<MessageUploadResult> {
 	const total = Math.max(1, Math.ceil(file.size / MESSAGE_UPLOAD_CHUNK_BYTES));
 	const uploadId = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join('') + Date.now().toString(36);
 
@@ -10,7 +10,7 @@ export async function uploadMessageFile(serverId: number | string, file: File, o
 		const chunk = file.slice(index * MESSAGE_UPLOAD_CHUNK_BYTES, (index + 1) * MESSAGE_UPLOAD_CHUNK_BYTES);
 		let out: any = null;
 		try {
-			const res = await fetch(`/api/servers/${serverId}/messages/file`, {
+			const res = await fetch(url, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/octet-stream',

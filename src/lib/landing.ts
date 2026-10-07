@@ -236,9 +236,9 @@ export const features: Feature[] = [
 	},
 	{
 		icon: 'fa-tower-broadcast',
-		title: 'Global embed',
-		desc: 'Write one embed and send it to every server at once.',
-		more: 'For announcements and downtime notices.'
+		title: 'Global messages',
+		desc: "Write one message and send it to every server at once, in each server's own language.",
+		more: 'For announcements and downtime notices. Edit it everywhere at once, or pull it back from one server or all.'
 	},
 	{
 		icon: 'fa-language',

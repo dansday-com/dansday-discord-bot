@@ -1432,7 +1432,7 @@
 			"failed": "Un problème est survenu en contactant le service d'IA. Réessaie dans un instant."
 		}
 	},
-	"serverMessages": {
+	"messages": {
 		"unavailable": "❌ Ce n'est plus disponible. Demande à un administrateur du serveur de le reconfigurer dans le panel de configuration du bot.",
 		"notSetUp": "❌ Ça ne fait encore rien. Demande à un administrateur du serveur de terminer la configuration dans le panel de configuration du bot.",
 		"roleAdded": "✅ Tu as maintenant {role}.",

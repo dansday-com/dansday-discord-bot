@@ -1432,7 +1432,7 @@
 			"failed": "Something went wrong while contacting the AI service. Try again in a moment."
 		}
 	},
-	"serverMessages": {
+	"messages": {
 		"unavailable": "❌ This is no longer available. Ask a server admin to set it up again in the bot configuration panel.",
 		"notSetUp": "❌ This doesn't do anything yet. Ask a server admin to finish setting it up in the bot configuration panel.",
 		"roleAdded": "✅ You now have {role}.",

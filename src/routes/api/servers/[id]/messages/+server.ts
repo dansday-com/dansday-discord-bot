@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { MAX_SERVER_MESSAGES, MESSAGE_LIMITS, messageDocProblems, messageRoleIds, messageShownIds, normalizeMessageDoc } from '$lib/messages.js';
-import { serverMessageFileBelongsTo } from '$lib/backend/storage/serverMessages.js';
+import { MAX_SAVED_MESSAGES, MESSAGE_LIMITS, messageDocProblems, messageRoleIds, messageShownIds, normalizeMessageDoc } from '$lib/messages.js';
+import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
 import { logMessageAction, messagePanelAccess, pruneMessageFiles, syncMessagePosts } from '$lib/frontend/serverMessages.server.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const messageId = body?.id == null ? null : Math.trunc(Number(body.id));
 	if (messageId !== null && !(messageId > 0)) return json({ ok: false, error: 'Invalid message ID' }, { status: 400 });
 
-	const content = normalizeMessageDoc(body?.content, (key) => serverMessageFileBelongsTo(key, serverId));
+	const content = normalizeMessageDoc(body?.content, (key) => messageFileBelongsTo(key, { scope: 'server', id: serverId }));
 	const problems = messageDocProblems(content);
 	if (problems.length > 0) return json({ ok: false, error: problems[0], problems }, { status: 400 });
 
@@ -28,8 +28,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const existing = await db.getServerMessages(serverId);
 		const previous = messageId === null ? null : (existing.find((m) => m.id === messageId) ?? null);
 		if (messageId !== null && !previous) return json({ ok: false, error: 'That message no longer exists. It may have been deleted.' }, { status: 404 });
-		if (messageId === null && existing.length >= MAX_SERVER_MESSAGES) {
-			return json({ ok: false, error: `A server can keep ${MAX_SERVER_MESSAGES} messages. Delete one you no longer use first.` }, { status: 400 });
+		if (messageId === null && existing.length >= MAX_SAVED_MESSAGES) {
+			return json({ ok: false, error: `A server can keep ${MAX_SAVED_MESSAGES} messages. Delete one you no longer use first.` }, { status: 400 });
 		}
 
 		const known = new Set(existing.map((m) => m.id));

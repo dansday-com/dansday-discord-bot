@@ -16,7 +16,7 @@ import { DEFAULT_REWARD_SETTINGS, sortRewards, type Reward, type RewardDraft, ty
 import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import { COLOR_GAME } from './color.js';
-import { normalizeMessageDoc, type MessageDoc } from './messages.js';
+import { normalizeMessageDoc, type MessageDoc, type MessageScope } from './messages.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -7874,7 +7874,7 @@ export type ServerMessagePost = {
 	created_at: string;
 };
 
-function messageFromRow(r: any): ServerMessage {
+function messageFromRow(r: any, scope: MessageScope = 'server'): ServerMessage {
 	let content = r.content;
 	if (typeof content === 'string') {
 		try {
@@ -7883,7 +7883,7 @@ function messageFromRow(r: any): ServerMessage {
 			content = {};
 		}
 	}
-	return { id: Number(r.id), name: String(r.name ?? ''), content: normalizeMessageDoc(content), updated_at: String(r.updated_at ?? '') };
+	return { id: Number(r.id), name: String(r.name ?? ''), content: normalizeMessageDoc(content, undefined, scope), updated_at: String(r.updated_at ?? '') };
 }
 
 export async function getServerMessages(serverId: any): Promise<ServerMessage[]> {
@@ -7972,6 +7972,107 @@ export async function deleteServerMessagePost(serverId: any, postId: any): Promi
 		DELETE p FROM server_message_posts p
 		INNER JOIN server_messages e ON e.id = p.message_id
 		WHERE p.id = ${Number(postId)} AND e.server_id = ${Number(serverId)}
+	`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
+export type GlobalMessagePost = ServerMessagePost & { server_id: number; server_name: string; discord_server_id: string; bot_id: number | null };
+
+export async function getGlobalMessages(panelId: any): Promise<ServerMessage[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT id, name, content, updated_at FROM messages WHERE panel_id = ${Number(panelId)} ORDER BY name, id`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => messageFromRow(r, 'global'));
+}
+
+export async function getGlobalMessage(panelId: any, messageId: any): Promise<ServerMessage | null> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT id, name, content, updated_at FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)} LIMIT 1
+	`);
+	const row = (rows[0] as unknown as any[])?.[0];
+	return row ? messageFromRow(row, 'global') : null;
+}
+
+export async function saveGlobalMessage(panelId: any, messageId: number | null, name: string, content: MessageDoc): Promise<number | null> {
+	await initializeDatabase();
+	const pid = Number(panelId);
+	const now = toMySQLDateTime();
+	const body = JSON.stringify(content);
+	if (messageId === null) {
+		const result: any = await db.execute(sql`
+			INSERT INTO messages (panel_id, name, content, created_at, updated_at) VALUES (${pid}, ${name}, ${body}, ${now}, ${now})
+		`);
+		const id = Number(result?.[0]?.insertId ?? result?.insertId);
+		return Number.isFinite(id) && id > 0 ? id : null;
+	}
+	const result: any = await db.execute(sql`
+		UPDATE messages SET name = ${name}, content = ${body}, updated_at = ${now} WHERE id = ${Number(messageId)} AND panel_id = ${pid}
+	`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0 ? Number(messageId) : null;
+}
+
+export async function deleteGlobalMessage(panelId: any, messageId: any): Promise<boolean> {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`DELETE FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)}`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
+export async function getGlobalMessagePosts(panelId: any, messageId: number | null = null, botId: number | null = null): Promise<GlobalMessagePost[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.created_at,
+		       c.discord_channel_id, c.name AS channel_name, s.id AS server_id, s.name AS server_name, s.discord_server_id, s.bot_id
+		FROM message_posts p
+		INNER JOIN messages m ON m.id = p.message_id
+		INNER JOIN server_channels c ON c.id = p.channel_id
+		INNER JOIN servers s ON s.id = c.server_id
+		WHERE m.panel_id = ${Number(panelId)}
+		  AND ${messageId === null ? sql`1 = 1` : sql`p.message_id = ${Number(messageId)}`}
+		  AND ${botId === null ? sql`1 = 1` : sql`s.bot_id = ${Number(botId)}`}
+		ORDER BY s.name, p.id DESC
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({
+		id: Number(r.id),
+		message_id: Number(r.message_id),
+		discord_channel_id: String(r.discord_channel_id),
+		channel_name: String(r.channel_name ?? r.discord_channel_id),
+		discord_message_id: String(r.discord_message_id),
+		language: String(r.language),
+		mentions: r.mentions != null ? String(r.mentions) : null,
+		created_at: String(r.created_at ?? ''),
+		server_id: Number(r.server_id),
+		server_name: String(r.server_name ?? 'Server'),
+		discord_server_id: String(r.discord_server_id),
+		bot_id: r.bot_id != null ? Number(r.bot_id) : null
+	}));
+}
+
+export async function addGlobalMessagePost(
+	panelId: any,
+	messageId: any,
+	serverId: any,
+	discordChannelId: string,
+	discordMessageId: string,
+	language: string,
+	mentions: string | null
+): Promise<void> {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT IGNORE INTO message_posts (message_id, channel_id, discord_message_id, language, mentions, created_at, updated_at)
+		SELECT m.id, c.id, ${String(discordMessageId)}, ${language}, ${mentions}, ${now}, ${now}
+		FROM messages m
+		INNER JOIN server_channels c ON c.server_id = ${Number(serverId)} AND c.discord_channel_id = ${String(discordChannelId)}
+		WHERE m.id = ${Number(messageId)} AND m.panel_id = ${Number(panelId)}
+	`);
+}
+
+export async function deleteGlobalMessagePost(panelId: any, postId: any): Promise<boolean> {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`
+		DELETE p FROM message_posts p
+		INNER JOIN messages m ON m.id = p.message_id
+		WHERE p.id = ${Number(postId)} AND m.panel_id = ${Number(panelId)}
 	`);
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
@@ -8912,6 +9013,13 @@ export default {
 	getServerMessagePosts,
 	addServerMessagePost,
 	deleteServerMessagePost,
+	getGlobalMessages,
+	getGlobalMessage,
+	saveGlobalMessage,
+	deleteGlobalMessage,
+	getGlobalMessagePosts,
+	addGlobalMessagePost,
+	deleteGlobalMessagePost,
 	getRewards,
 	saveRewards,
 	getMemberRewardEarnings,

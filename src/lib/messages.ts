@@ -1,8 +1,9 @@
 import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES, isServerLanguage, serverLanguageLabel, type ServerLanguage } from './languages.js';
 
-export const MESSAGE_UPLOAD_ROOT = 'server-messages';
-export const MESSAGE_CUSTOM_ID_PREFIX = 'msg';
-export const MAX_SERVER_MESSAGES = 100;
+export const MESSAGE_UPLOAD_ROOTS = { server: 'server-messages', global: 'global-messages' } as const;
+export const MESSAGE_CUSTOM_ID_PREFIXES = { server: 'msg', global: 'gmsg' } as const;
+export const MESSAGE_SCOPES = ['server', 'global'] as const;
+export const MAX_SAVED_MESSAGES = 100;
 
 export const MESSAGE_LIMITS = {
 	name: 100,
@@ -83,6 +84,8 @@ export const MESSAGE_BLOCK_TYPES = [
 	{ id: 'select', label: 'Dropdown', icon: 'fa-list', hint: 'A menu with up to 25 choices' }
 ] as const;
 
+export type MessageScope = (typeof MESSAGE_SCOPES)[number];
+export type MessageOwner = { scope: MessageScope; id: number | string };
 export type Localized = Partial<Record<ServerLanguage, string>>;
 export type MessageLayout = 'standard' | 'components';
 export type MessageButtonStyle = (typeof MESSAGE_BUTTON_STYLES)[number]['id'];
@@ -143,6 +146,8 @@ export type MessageComponent = { kind: 'button'; button: MessageButton } | { kin
 export type MessagePayload = { v2: boolean; content: string | null; embeds: any[]; components: any[]; files: MessageFile[]; empty: boolean };
 
 export type MessageRenderOptions = {
+	scope?: MessageScope;
+	defaultColor?: number | null;
 	messageId: number;
 	lang: ServerLanguage;
 	server: string;
@@ -155,19 +160,19 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const HTTP_URL = /^https?:\/\/\S+$/i;
 const ROLE_ID = /^\d{5,25}$/;
 const CUSTOM_EMOJI = /^<?(a)?:?([A-Za-z0-9_]{2,32}):(\d{5,25})>?$/;
-const UNICODE_EMOJI = /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator}{2}|[#*0-9]️?⃣)/u;
+const UNICODE_EMOJI = /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3)/u;
 const UPLOAD_KEY = new RegExp(
-	`^${MESSAGE_UPLOAD_ROOT}/([1-9]\\d*)/\\d+-[a-z0-9]+\\.(?:${[...MESSAGE_IMAGE_EXTENSIONS, ...MESSAGE_VIDEO_EXTENSIONS].join('|')})$`
+	`^(${Object.values(MESSAGE_UPLOAD_ROOTS).join('|')})/([1-9]\\d*)/\\d+-[a-z0-9]+\\.(?:${[...MESSAGE_IMAGE_EXTENSIONS, ...MESSAGE_VIDEO_EXTENSIONS].join('|')})$`
 );
 
 export function newMessagePartId(): string {
 	return Math.random().toString(36).slice(2, 10).padEnd(8, '0');
 }
 
-export function isMessageUploadKey(value: unknown, serverId?: number | string): boolean {
+export function isMessageUploadKey(value: unknown, owner?: MessageOwner): boolean {
 	const match = String(value ?? '').match(UPLOAD_KEY);
 	if (!match) return false;
-	return serverId == null || match[1] === String(serverId);
+	return !owner || (match[1] === MESSAGE_UPLOAD_ROOTS[owner.scope] && match[2] === String(owner.id));
 }
 
 export function isMessageVideo(value: unknown): boolean {
@@ -206,16 +211,17 @@ export function parseMessageEmoji(value: string): { id?: string; name: string; a
 	return UNICODE_EMOJI.test(raw) ? { name: raw } : null;
 }
 
-export function messageCustomId(messageId: number, partId: string, lang: ServerLanguage): string {
-	return `${MESSAGE_CUSTOM_ID_PREFIX}|${messageId}|${partId}|${lang}`;
+export function messageCustomId(scope: MessageScope, messageId: number, partId: string, lang: ServerLanguage): string {
+	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}`;
 }
 
-export function parseMessageCustomId(customId: unknown): { messageId: number; partId: string; lang: ServerLanguage } | null {
+export function parseMessageCustomId(customId: unknown): { scope: MessageScope; messageId: number; partId: string; lang: ServerLanguage } | null {
 	const parts = String(customId ?? '').split('|');
-	if (parts.length !== 4 || parts[0] !== MESSAGE_CUSTOM_ID_PREFIX) return null;
+	const scope = MESSAGE_SCOPES.find((candidate) => MESSAGE_CUSTOM_ID_PREFIXES[candidate] === parts[0]);
+	if (parts.length !== 4 || !scope) return null;
 	const messageId = Number(parts[1]);
 	if (!Number.isInteger(messageId) || messageId <= 0 || !parts[2]) return null;
-	return { messageId, partId: parts[2], lang: isServerLanguage(parts[3]) ? parts[3] : DEFAULT_SERVER_LANGUAGE };
+	return { scope, messageId, partId: parts[2], lang: isServerLanguage(parts[3]) ? parts[3] : DEFAULT_SERVER_LANGUAGE };
 }
 
 export function newMessageButton(): MessageButton {
@@ -283,7 +289,7 @@ function localized(value: unknown, max: number, languages: ServerLanguage[]): Lo
 	return out;
 }
 
-type NormalizeContext = { languages: ServerLanguage[]; ownsUpload: (key: string) => boolean; ids: Set<string> };
+type NormalizeContext = { languages: ServerLanguage[]; ownsUpload: (key: string) => boolean; ids: Set<string>; roles: boolean };
 
 function partId(value: unknown, ctx: NormalizeContext): string {
 	let id = typeof value === 'string' && /^[a-z0-9]{4,16}$/.test(value) ? value : newMessagePartId();
@@ -323,7 +329,7 @@ function list(value: unknown, max: number): any[] {
 	return Array.isArray(value) ? value.slice(0, max).filter((item) => item && typeof item === 'object') : [];
 }
 
-function normalizeActions(value: unknown): MessageAction[] {
+function normalizeActions(value: unknown, ctx: NormalizeContext): MessageAction[] {
 	const out: MessageAction[] = [];
 	const seen = new Set<string>();
 	for (const raw of list(value, MESSAGE_LIMITS.actions)) {
@@ -331,7 +337,7 @@ function normalizeActions(value: unknown): MessageAction[] {
 		if (raw.type === 'show') {
 			const messageId = Math.trunc(Number(raw.message_id));
 			action = { type: 'show', message_id: Number.isFinite(messageId) && messageId > 0 ? messageId : 0 };
-		} else if (raw.type === 'role') {
+		} else if (raw.type === 'role' && ctx.roles) {
 			const mode = MESSAGE_ROLE_MODES.some((m) => m.id === raw.mode) ? (raw.mode as MessageRoleMode) : 'toggle';
 			const roleId = text(raw.role_id, 25);
 			action = { type: 'role', mode, role_id: ROLE_ID.test(roleId) ? roleId : '' };
@@ -353,7 +359,7 @@ function normalizeButton(raw: any, ctx: NormalizeContext): MessageButton {
 		label: localized(raw?.label, MESSAGE_LIMITS.label, ctx.languages),
 		emoji: text(raw?.emoji, MESSAGE_LIMITS.emoji).trim(),
 		url: style === 'link' ? linkValue(raw?.url) : '',
-		actions: style === 'link' ? [] : normalizeActions(raw?.actions)
+		actions: style === 'link' ? [] : normalizeActions(raw?.actions, ctx)
 	};
 }
 
@@ -372,7 +378,7 @@ function normalizeRow(raw: any, ctx: NormalizeContext): RowBlock | null {
 				label: localized(o.label, MESSAGE_LIMITS.optionLabel, ctx.languages),
 				description: localized(o.description, MESSAGE_LIMITS.optionDescription, ctx.languages),
 				emoji: text(o.emoji, MESSAGE_LIMITS.emoji).trim(),
-				actions: normalizeActions(o.actions)
+				actions: normalizeActions(o.actions, ctx)
 			}))
 		};
 	}
@@ -442,12 +448,12 @@ function normalizeEmbed(raw: any, ctx: NormalizeContext): MessageEmbed {
 	};
 }
 
-export function normalizeMessageDoc(raw: unknown, ownsUpload: (key: string) => boolean = () => true): MessageDoc {
+export function normalizeMessageDoc(raw: unknown, ownsUpload: (key: string) => boolean = () => true, scope: MessageScope = 'server'): MessageDoc {
 	const source = raw && typeof raw === 'object' ? (raw as Record<string, any>) : {};
 	const language = isServerLanguage(source.language) ? source.language : DEFAULT_SERVER_LANGUAGE;
 	const extra = Array.isArray(source.languages) ? source.languages.filter((l: unknown): l is ServerLanguage => isServerLanguage(l) && l !== language) : [];
 	const languages = [language, ...SERVER_LANGUAGE_CODES.filter((code) => extra.includes(code))];
-	const ctx: NormalizeContext = { languages, ownsUpload, ids: new Set() };
+	const ctx: NormalizeContext = { languages, ownsUpload, ids: new Set(), roles: scope === 'server' };
 	const layout: MessageLayout = source.layout === 'components' ? 'components' : 'standard';
 
 	if (layout === 'components') {
@@ -526,9 +532,9 @@ export function messageUploadKeys(doc: MessageDoc): string[] {
 	return [...new Set(values.filter((value) => isMessageUploadKey(value)))];
 }
 
-export function removeMessageLanguage(doc: MessageDoc, lang: ServerLanguage): MessageDoc {
+export function removeMessageLanguage(doc: MessageDoc, lang: ServerLanguage, scope: MessageScope = 'server'): MessageDoc {
 	if (lang === doc.language) return doc;
-	return normalizeMessageDoc({ ...doc, languages: doc.languages.filter((l) => l !== lang) });
+	return normalizeMessageDoc({ ...doc, languages: doc.languages.filter((l) => l !== lang) }, undefined, scope);
 }
 
 function embedHasContent(embed: MessageEmbed, lang: ServerLanguage, base: ServerLanguage): boolean {
@@ -546,7 +552,7 @@ function renderButton(button: MessageButton, opts: MessageRenderOptions, base: S
 	if (button.style === 'link') return button.url ? { ...shared, style: 5, url: button.url } : null;
 	if (opts.interactive === false) return null;
 	const style = button.style === 'primary' ? 1 : button.style === 'success' ? 3 : button.style === 'danger' ? 4 : 2;
-	return { ...shared, style, custom_id: messageCustomId(opts.messageId, button.id, opts.lang) };
+	return { ...shared, style, custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, button.id, opts.lang) };
 }
 
 function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLanguage): any | null {
@@ -577,7 +583,7 @@ function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLang
 		components: [
 			{
 				type: 3,
-				custom_id: messageCustomId(opts.messageId, block.id, opts.lang),
+				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, block.id, opts.lang),
 				min_values: 1,
 				max_values: block.multiple ? options.length : 1,
 				options,
@@ -631,7 +637,7 @@ function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: Serv
 		}))
 		.filter((field) => field.name && field.value.trim());
 	return {
-		...(embed.color ? { color: parseInt(embed.color.slice(1), 16) } : {}),
+		...(embed.color ? { color: parseInt(embed.color.slice(1), 16) } : opts.defaultColor != null ? { color: opts.defaultColor } : {}),
 		...(title ? { title } : {}),
 		...(title && embed.url ? { url: embed.url } : {}),
 		...(description.trim() ? { description } : {}),

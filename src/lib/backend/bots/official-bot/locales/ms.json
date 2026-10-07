@@ -1432,7 +1432,7 @@
 			"failed": "Berlaku masalah semasa menghubungi perkhidmatan AI. Cuba lagi sebentar."
 		}
 	},
-	"serverMessages": {
+	"messages": {
 		"unavailable": "❌ Ini sudah tidak tersedia. Minta pentadbir server sediakannya semula dalam panel konfigurasi bot.",
 		"notSetUp": "❌ Ini belum melakukan apa-apa. Minta pentadbir server siapkan tetapannya dalam panel konfigurasi bot.",
 		"roleAdded": "✅ Anda kini ada {role}.",

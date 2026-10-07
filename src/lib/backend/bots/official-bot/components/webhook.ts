@@ -1,6 +1,5 @@
-import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
-import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder, PermissionFlagsBits, RateLimitError } from 'discord.js';
+import { COMMUNICATION, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, RateLimitError } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 
@@ -48,169 +47,6 @@ function drainForwardQueue() {
 	}
 }
 
-function parseColor(colorInput) {
-	if (!colorInput || colorInput.trim() === '') {
-		return null;
-	}
-
-	const trimmed = colorInput.trim();
-
-	if (trimmed.startsWith('#')) {
-		const hex = trimmed.substring(1);
-		if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
-			return parseInt(hex, 16);
-		}
-	} else if (/^[0-9A-Fa-f]{6}$/.test(trimmed)) {
-		return parseInt(trimmed, 16);
-	}
-
-	const decimal = parseInt(trimmed, 10);
-	if (!isNaN(decimal) && decimal >= 0 && decimal <= 0xffffff) {
-		return decimal;
-	}
-
-	const colorNames = {
-		red: 0xff0000,
-		green: 0x00ff00,
-		blue: 0x0000ff,
-		yellow: 0xffff00,
-		orange: 0xffa500,
-		purple: 0x800080,
-		pink: 0xffc0cb,
-		cyan: 0x00ffff,
-		black: 0x000000,
-		white: 0xffffff,
-		gray: 0x808080,
-		grey: 0x808080
-	};
-
-	if (colorNames[trimmed.toLowerCase()]) {
-		return colorNames[trimmed.toLowerCase()];
-	}
-
-	return null;
-}
-
-async function resolveCategoryRoleMentions(serverId: any, guild: any, categories: string[]): Promise<string> {
-	if (!Array.isArray(categories) || categories.length === 0) return '';
-	const mentions: string[] = [];
-	if (categories.includes('everyone')) mentions.push('@everyone');
-	if (categories.includes('here')) mentions.push('@here');
-
-	const roleIds = new Set<string>();
-
-	if (categories.includes('admin') && guild) {
-		for (const role of guild.roles.cache.values()) {
-			if (role.id === guild.id || role.managed) continue;
-			if (role.permissions?.has?.(PermissionFlagsBits.Administrator)) roleIds.add(String(role.id));
-		}
-	}
-
-	if (categories.includes('staff')) {
-		const mainRow = await db.getServerSettings(serverId, 'main').catch(() => null);
-		const mainSettings = mainRow && Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow?.settings;
-		for (const id of mainSettings?.staff_roles || []) {
-			if (id) roleIds.add(String(id));
-		}
-	}
-
-	mentions.push(...[...roleIds].map((id) => `<@&${id}>`));
-	return mentions.join(' ');
-}
-
-async function handleSendGlobalEmbed(payload) {
-	try {
-		const { title, description, image_url, color, footer, image_attachment, mention_categories } = payload;
-
-		if (!title) {
-			throw new Error('Title is required');
-		}
-
-		if (!currentBotId) {
-			throw new Error('Current bot id not set');
-		}
-
-		const servers = await db.getServersForBot(currentBotId);
-		let successCount = 0;
-		let failCount = 0;
-
-		for (const server of servers) {
-			const guild_id = server.discord_server_id;
-			if (!guild_id) continue;
-
-			try {
-				const mainRow = await db.getServerSettings(server.id, 'main');
-				const mainSettings = mainRow && Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow?.settings;
-				const channelId = mainSettings?.bot_updates_channel_id;
-
-				if (!channelId) continue;
-
-				let guild = client.guilds.cache.get(guild_id);
-				if (!guild) guild = await client.guilds.fetch(guild_id).catch(() => null);
-				if (!guild) continue;
-
-				const channel = guild.channels.cache.get(channelId) || (await guild.channels.fetch(channelId).catch(() => null));
-				if (!channel || !channel.isTextBased()) continue;
-
-				const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0, FOOTER: '' }));
-				let embedColor = embedConfig.COLOR;
-
-				if (color && color.trim()) {
-					const parsedColor = parseColor(color.trim());
-					if (parsedColor !== null) embedColor = parsedColor;
-				}
-
-				const serverNameForFooter = server.name || guild.name;
-				const rawFooter = footer && footer.trim() ? footer.trim() : embedConfig.FOOTER;
-				const footerText = resolveEmbedFooterPlaceholders(rawFooter, serverNameForFooter);
-
-				const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
-
-				embed.setTitle(title);
-				if (description) embed.setDescription(description);
-
-				let files = [];
-				if (image_url) {
-					embed.setImage(image_url);
-				} else if (image_attachment && image_attachment.data) {
-					const buffer = Buffer.from(image_attachment.data, 'base64');
-					const attachment = new AttachmentBuilder(buffer, { name: image_attachment.filename || 'image.png' });
-					embed.setImage(`attachment://${image_attachment.filename || 'image.png'}`);
-					files.push(attachment);
-				}
-
-				const messageOptions: any = { embeds: [embed] };
-				if (files.length > 0) messageOptions.files = files;
-
-				const roleMentions = await resolveCategoryRoleMentions(server.id, guild, mention_categories).catch(() => '');
-
-				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channel.id).catch(() => null);
-				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
-				const content = [roleMentions, firstMentionChunk].filter(Boolean).join(' ');
-				if (content) messageOptions.content = content;
-
-				await channel.send(messageOptions);
-
-				if (notificationMentions && notificationMentions.length > 1) {
-					for (let i = 1; i < notificationMentions.length; i++) {
-						await channel.send({ content: notificationMentions[i] }).catch(() => null);
-					}
-				}
-				successCount++;
-			} catch (err: any) {
-				await logger.log(`❌ Failed to send global embed to guild ${guild_id}: ${err.message}`);
-				failCount++;
-			}
-		}
-
-		await logger.log(`✅ Global embed sent: ${successCount} succeeded, ${failCount} failed`);
-		return { success: true, successCount, failCount };
-	} catch (err: any) {
-		await logger.log(`❌ handleSendGlobalEmbed error: ${err.message}`);
-		return { success: false, error: err.message };
-	}
-}
-
 function getClientIp(req) {
 	const address = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
 	return address.startsWith('::ffff:') ? address.slice(7) : address || 'unknown';
@@ -253,25 +89,17 @@ async function handleWebhookRequest(req, res) {
 					res.end(JSON.stringify({ success: true, message: 'Message accepted' }));
 
 					enqueueForwardDelivery(payload.data, client);
-				} else if (payload.type === 'send_global_embed') {
+				} else if (typeof payload.type === 'string' && /^(server|global)_message_/.test(payload.type)) {
 					try {
-						await logger.log(`📥 Received send_global_embed webhook`);
-						const result = await handleSendGlobalEmbed(payload);
-						res.writeHead(result.success ? 200 : 500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify(result));
-					} catch (embedErr) {
-						await logger.log(`❌ Failed to send global embed: ${embedErr.message}`);
-						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to send global embed', details: embedErr.message }));
-					}
-				} else if (typeof payload.type === 'string' && payload.type.startsWith('server_message_')) {
-					try {
-						const serverMessages = await import('./serverMessages.js');
+						const messages = await import('./messages.js');
 						const handlers = {
-							server_message_send: serverMessages.sendServerMessage,
-							server_message_sync: serverMessages.syncServerMessagePosts,
-							server_message_remove_post: serverMessages.removeServerMessagePost,
-							server_message_emojis: serverMessages.listGuildEmojis
+							server_message_send: messages.sendServerMessage,
+							server_message_sync: messages.syncServerMessagePosts,
+							server_message_remove_post: messages.removeServerMessagePost,
+							server_message_emojis: messages.listGuildEmojis,
+							global_message_send: messages.sendGlobalMessage,
+							global_message_sync: messages.syncGlobalMessagePosts,
+							global_message_remove_posts: messages.removeGlobalMessagePosts
 						};
 						const handler = handlers[payload.type];
 						const result = handler ? await handler(client, payload) : { ok: false, error: 'Unknown message action' };

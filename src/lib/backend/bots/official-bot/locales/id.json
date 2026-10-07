@@ -1432,7 +1432,7 @@
 			"failed": "Terjadi kesalahan saat menghubungi layanan AI. Coba lagi sebentar."
 		}
 	},
-	"serverMessages": {
+	"messages": {
 		"unavailable": "❌ Ini sudah tidak tersedia. Minta admin server mengaturnya lagi di panel konfigurasi bot.",
 		"notSetUp": "❌ Ini belum melakukan apa-apa. Minta admin server menyelesaikan pengaturannya di panel konfigurasi bot.",
 		"roleAdded": "✅ Kamu sekarang punya {role}.",

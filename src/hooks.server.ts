@@ -5,7 +5,6 @@ import db from '$lib/database.js';
 import { resumeAutoStartBots, shutdownAllBots, verifyBotStatuses } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
 import { guardApiRoute } from '$lib/frontend/panelServer.js';
-import { pruneExpiredEmbedImages } from '$lib/backend/storage/embedImages.js';
 import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 
 export const init = async () => {
@@ -16,8 +15,6 @@ export const init = async () => {
 		process.on(signal, () => void shutdownAllBots().finally(() => process.exit(0)));
 	}
 	await startDemoSessionExpiryListener();
-	await pruneExpiredEmbedImages();
-	setInterval(() => void pruneExpiredEmbedImages(), 5 * 60 * 1000);
 };
 
 function detectDevice(ua: string): string {

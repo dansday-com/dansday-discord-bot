@@ -7,6 +7,7 @@
 	import MessageBody from './MessageBody.svelte';
 	import { clickOutside, messageEditor } from './editorContext.js';
 	import { discordMarkdown, type MarkdownContext } from './discordMarkdown.js';
+	import TagPicker from './TagPicker.svelte';
 
 	type Reply = { key: number; doc: MessageDoc | null; lines: string[]; lang: ServerLanguage | null };
 	type AddType = 'embed' | 'file' | MessageBlockType;
@@ -411,7 +412,7 @@
 		{/each}
 	</div>
 
-	<div class="dc-composer">
+	<div class="dc-composer relative">
 		<div class="relative" use:clickOutside={() => (menuOpen = false)}>
 			<button type="button" class="dc-plus" aria-label="Add to the message" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
 				<i class="fas fa-plus"></i>
@@ -446,8 +447,8 @@
 				rows={Math.min(8, Math.max(1, messageText.split('\n').length))}
 				aria-label="What the bot says"
 				placeholder={translating && doc.text[doc.language] ? doc.text[doc.language] : `Write what the bot says in #${channel}`}
-				class="dc-input"
-			></textarea>
+				class="dc-input"></textarea>
+			<TagPicker target={textInput} max={MESSAGE_LIMITS.text} placement="above" onchange={setText} />
 			<span class="dc-count {messageText.length >= MESSAGE_LIMITS.text * 0.9 ? 'dc-count-near' : ''}">{messageText.length}/{MESSAGE_LIMITS.text}</span>
 			<div class="relative" use:clickOutside={() => (emojiOpen = false)}>
 				<button type="button" class="dc-emoji-button" aria-label="Add an emoji" aria-expanded={emojiOpen} onclick={() => (emojiOpen = !emojiOpen)}>

@@ -1,6 +1,7 @@
 export type MarkdownContext = {
 	roles: Map<string, { name: string; color: string | null }>;
 	channels: Map<string, string>;
+	members: Map<string, string>;
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -41,7 +42,7 @@ export function discordMarkdown(source: string, ctx: MarkdownContext): string {
 		const color = role?.color && HEX.test(role.color) && role.color !== '#000000' ? role.color : null;
 		return keep(`<span class="dc-mention"${color ? ` style="color:${color};background:${color}26"` : ''}>@${escapeHtml(role?.name ?? 'deleted-role')}</span>`);
 	});
-	text = text.replace(/<@!?(\d{5,25})>/g, () => keep('<span class="dc-mention">@member</span>'));
+	text = text.replace(/<@!?(\d{5,25})>/g, (_, id) => keep(`<span class="dc-mention">@${escapeHtml(ctx.members.get(id) ?? 'member')}</span>`));
 	text = text.replace(/<#(\d{5,25})>/g, (_, id) => keep(`<span class="dc-mention">#${escapeHtml(ctx.channels.get(id) ?? 'deleted-channel')}</span>`));
 	text = text.replace(/<t:(\d{1,13})(?::[tTdDfFR])?>/g, (_, unix) =>
 		keep(`<span class="dc-time">${escapeHtml(new Date(Number(unix) * 1000).toLocaleString())}</span>`)

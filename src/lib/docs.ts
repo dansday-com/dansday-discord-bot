@@ -780,6 +780,10 @@ export const modules = [
 			},
 			{ label: 'Placeholders', desc: '{server} becomes the server name and {year} the current year, in any text.' },
 			{
+				label: 'Tags',
+				desc: 'Type @ in the message text or a text block to pick a role or a member. A tag in the message text notifies them. A tag inside an embed only shows the name.'
+			},
+			{
 				label: 'Global messages',
 				desc: "For the panel admin. The same builder under Global Messages sends one message to every server on all bots, into each server's Bot Updates Channel and in that server's language. Saving edits every copy, and a copy can be deleted from one server or all. Buttons can open another global message; role buttons are left out because roles differ per server. Each server's Change Log shows which admin sent it."
 			},

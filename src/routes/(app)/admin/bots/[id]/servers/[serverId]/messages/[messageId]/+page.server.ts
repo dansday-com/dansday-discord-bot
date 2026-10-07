@@ -32,6 +32,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 	const bot = (overview as any).bot_id != null ? await db.getBot((overview as any).bot_id).catch(() => null) : null;
 	const emojis = server ? await callMessageBot(server, 'server_message_emojis', {}).catch(() => null) : null;
 	const main = normalizeMainConfigForPanel(mainRow?.settings ?? {});
+	const tagged = [...new Set([...JSON.stringify((current ?? copy)?.content ?? {}).matchAll(/<@!?(\d{5,25})>/g)].map((match) => match[1]))];
+	const members = await db.getMemberNamesByDiscordIds(serverId, tagged).catch(() => []);
 
 	return {
 		key: current ? `message-${current.id}` : `new-${copy?.id ?? ''}`,
@@ -69,6 +71,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 			name: main.bot_nickname || String(bot?.name ?? 'Bot'),
 			avatar: main.bot_avatar_url || (bot?.bot_icon ? String(bot.bot_icon) : null)
 		},
-		emojis: (Array.isArray(emojis?.body?.emojis) ? emojis.body.emojis : []) as { id: string; name: string; animated: boolean }[]
+		emojis: (Array.isArray(emojis?.body?.emojis) ? emojis.body.emojis : []) as { id: string; name: string; animated: boolean }[],
+		members: (members as any[]).map((member) => ({ id: String(member.discord_member_id), name: String(member.name ?? member.username ?? 'member') })),
+		membersUrl: `/api/servers/${serverId}/members`
 	};
 };

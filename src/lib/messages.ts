@@ -188,6 +188,7 @@ export type MessageRenderOptions = {
 	interactive?: boolean;
 	pinned?: boolean;
 	prefix?: string;
+	media?: boolean;
 };
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -590,9 +591,10 @@ export function removeMessageLanguage(doc: MessageDoc, lang: ServerLanguage, sco
 	return normalizeMessageDoc({ ...doc, languages: doc.languages.filter((l) => l !== lang) }, undefined, scope);
 }
 
-function embedHasContent(embed: MessageEmbed, lang: ServerLanguage, base: ServerLanguage): boolean {
+function embedHasContent(embed: MessageEmbed, lang: ServerLanguage, base: ServerLanguage, media = true): boolean {
 	const has = (value: Localized) => pickText(value, lang, base).trim() !== '';
-	return has(embed.title) || has(embed.description) || has(embed.author) || has(embed.footer) || embed.fields.length > 0 || !!embed.image || !!embed.thumbnail;
+	const pictured = media && (!!embed.image || !!embed.thumbnail);
+	return has(embed.title) || has(embed.description) || has(embed.author) || has(embed.footer) || embed.fields.length > 0 || pictured;
 }
 
 function renderButton(button: MessageButton, opts: MessageRenderOptions, base: ServerLanguage): any | null {
@@ -656,11 +658,12 @@ function renderInner(block: InnerBlock, opts: MessageRenderOptions, base: Server
 		const content = resolve(block.text);
 		if (!content.trim()) return null;
 		const display = { type: 10, content };
-		const accessory =
-			block.accessory === 'button' ? renderButton(block.button, opts, base) : block.image ? { type: 11, media: { url: opts.image(block.image) } } : null;
+		const thumbnail = block.image && opts.media !== false ? { type: 11, media: { url: opts.image(block.image) } } : null;
+		const accessory = block.accessory === 'button' ? renderButton(block.button, opts, base) : thumbnail;
 		return accessory ? { type: 9, components: [display], accessory } : display;
 	}
 	if (block.type === 'gallery') {
+		if (opts.media === false) return null;
 		const items = block.items
 			.filter((item) => item.media)
 			.map((item) => {
@@ -676,7 +679,8 @@ function renderInner(block: InnerBlock, opts: MessageRenderOptions, base: Server
 }
 
 function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: ServerLanguage): any | null {
-	if (!embedHasContent(embed, opts.lang, base)) return null;
+	const media = opts.media !== false;
+	if (!embedHasContent(embed, opts.lang, base, media)) return null;
 	const resolve = (value: Localized) => applyMessagePlaceholders(pickText(value, opts.lang, base), opts.server);
 	const title = resolve(embed.title).trim().slice(0, MESSAGE_LIMITS.title);
 	const description = resolve(embed.description).slice(0, MESSAGE_LIMITS.description);
@@ -704,8 +708,8 @@ function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: Serv
 				}
 			: {}),
 		...(fields.length > 0 ? { fields } : {}),
-		...(embed.thumbnail ? { thumbnail: { url: opts.image(embed.thumbnail) } } : {}),
-		...(embed.image ? { image: { url: opts.image(embed.image) } } : {}),
+		...(media && embed.thumbnail ? { thumbnail: { url: opts.image(embed.thumbnail) } } : {}),
+		...(media && embed.image ? { image: { url: opts.image(embed.image) } } : {}),
 		...(footer ? { footer: { text: footer, ...(embed.footer_icon ? { icon_url: opts.image(embed.footer_icon) } : {}) } } : {}),
 		...(embed.timestamp ? { timestamp: new Date().toISOString() } : {})
 	};
@@ -764,7 +768,8 @@ export function renderMessagePayload(doc: MessageDoc, opts: MessageRenderOptions
 	const body = applyMessagePlaceholders(pickText(doc.text, opts.lang, base), opts.server).slice(0, MESSAGE_LIMITS.text);
 	const embeds = doc.embeds.map((embed) => renderEmbed(embed, opts, base)).filter(Boolean);
 	const components = doc.rows.map((row) => renderRow(row, opts, base)).filter(Boolean);
-	const files = doc.attachments.map((attachment) => ({ key: attachment.file, name: uploadName(attachment.file, attachment.spoiler) }));
+	const files =
+		opts.media === false ? [] : doc.attachments.map((attachment) => ({ key: attachment.file, name: uploadName(attachment.file, attachment.spoiler) }));
 	const content = [prefix, body.trim() ? body : ''].filter(Boolean).join('\n');
 	const empty = !body.trim() && embeds.length === 0 && components.length === 0 && files.length === 0;
 	return {

@@ -10,7 +10,7 @@
 	let tab = $state(editor.emojis.length > 0 ? 'server' : EMOJI_GROUPS[0].id);
 
 	const query = $derived(search.trim().toLowerCase());
-	const serverMatches = $derived(query || tab === 'server' ? editor.emojis.filter((emoji) => emoji.name.toLowerCase().includes(query)).slice(0, 160) : []);
+	const serverMatches = $derived(query || tab === 'server' ? editor.emojis.filter((emoji) => emoji.name.toLowerCase().includes(query)) : []);
 	const standardMatches = $derived(
 		query
 			? EMOJI_GROUPS.flatMap((group) => group.items).filter((item) => item.name.includes(query))

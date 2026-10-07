@@ -39,6 +39,7 @@
 			label="Description"
 			max={MESSAGE_LIMITS.description}
 			multiline
+			quiet
 			rows={5}
 			placeholder="Markdown works here: **bold**, *italic*, [links](https://), lists and # headings."
 		/>
@@ -91,7 +92,7 @@
 			{#each embed.fields as field, i (field.id)}
 				<div class="bg-ash-700/50 border-ash-600 flex flex-col gap-2 rounded-lg border p-2.5">
 					<LocalizedField bind:value={field.name} label="Name" max={MESSAGE_LIMITS.fieldName} placeholder="Field name" />
-					<LocalizedField bind:value={field.value} label="Value" max={MESSAGE_LIMITS.fieldValue} multiline rows={2} placeholder="Field text" />
+					<LocalizedField bind:value={field.value} label="Value" max={MESSAGE_LIMITS.fieldValue} multiline quiet rows={2} placeholder="Field text" />
 					<div class="flex items-center gap-1">
 						<label class="text-ash-300 mr-auto flex cursor-pointer items-center gap-2 text-xs">
 							<input type="checkbox" bind:checked={field.inline} class="accent-ash-300 size-3.5" />Side by side with other fields

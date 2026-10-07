@@ -17,6 +17,8 @@ export type MessageEditorContext = {
 	emojis: EditorEmoji[];
 	roles: EditorRole[];
 	messages: EditorMessage[];
+	membersUrl: string | null;
+	rememberMember: (id: string, name: string) => void;
 };
 
 const KEY = Symbol('message-editor');

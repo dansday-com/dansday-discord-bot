@@ -2,6 +2,7 @@
 	import type { Localized } from '$lib/messages.js';
 	import { serverLanguageLabel } from '$lib/languages.js';
 	import { messageEditor } from './editorContext.js';
+	import TagPicker from './TagPicker.svelte';
 	import { FIELD, LABEL } from './styles.js';
 
 	let {
@@ -10,7 +11,8 @@
 		max,
 		placeholder = '',
 		multiline = false,
-		rows = 3
+		rows = 3,
+		quiet = false
 	}: {
 		value: Localized;
 		label?: string;
@@ -18,7 +20,10 @@
 		placeholder?: string;
 		multiline?: boolean;
 		rows?: number;
+		quiet?: boolean;
 	} = $props();
+
+	let area = $state<HTMLTextAreaElement>();
 
 	const editor = messageEditor();
 	const translating = $derived(editor.lang !== editor.base);
@@ -38,15 +43,18 @@
 		<span class="shrink-0 text-[11px] tabular-nums {tone}">{current.length}/{max}</span>
 	</div>
 	{#if multiline}
-		<textarea
-			value={current}
-			oninput={(e) => set(e.currentTarget.value)}
-			maxlength={max}
-			{rows}
-			aria-label={label}
-			placeholder={original || placeholder}
-			class="{FIELD} resize-y"
-		></textarea>
+		<div class="relative">
+			<textarea
+				bind:this={area}
+				value={current}
+				oninput={(e) => set(e.currentTarget.value)}
+				maxlength={max}
+				{rows}
+				aria-label={label}
+				placeholder={original || placeholder}
+				class="{FIELD} block resize-y"></textarea>
+			<TagPicker target={area} {max} {quiet} onchange={set} />
+		</div>
 	{:else}
 		<input
 			type="text"

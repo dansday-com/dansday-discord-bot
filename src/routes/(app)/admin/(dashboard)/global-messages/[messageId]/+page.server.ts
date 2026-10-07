@@ -49,6 +49,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		roles: [],
 		defaults: { language: DEFAULT_SERVER_LANGUAGE, color: '', footer: `Powered by ${APP_DOMAIN} {year}` },
 		bot: { name: String(bot?.name ?? APP_NAME), avatar: bot?.bot_icon ? String(bot.bot_icon) : null },
-		emojis: []
+		emojis: [],
+		members: [],
+		membersUrl: null
 	};
 };

@@ -50,6 +50,8 @@
 			defaults: { language: ServerLanguage; color: string; footer: string };
 			bot: { name: string; avatar: string | null };
 			emojis: EditorEmoji[];
+			members: { id: string; name: string }[];
+			membersUrl: string | null;
 		};
 	} = $props();
 
@@ -58,6 +60,7 @@
 		scope: data.scope,
 		name: data.message?.name ?? data.draft?.name ?? '',
 		send: page.url.searchParams.get('send') === '1',
+		members: data.members.map((member) => [member.id, member.name] as const),
 		doc: normalizeMessageDoc($state.snapshot(data.message?.content ?? data.draft?.content ?? newMessageDoc(data.defaults.language)), undefined, data.scope)
 	});
 	const serialize = (messageName: string, content: MessageDoc) => JSON.stringify([messageName.trim(), content]);
@@ -87,6 +90,7 @@
 	let leaveTo = $state<URL | null>(null);
 	let leaving = false;
 	let beforeAgent: { name: string; doc: MessageDoc } | null = null;
+	let memberNames = $state<Record<string, string>>(Object.fromEntries(initial().members));
 
 	const EVERYONE_MENTIONS = [
 		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: Number.MAX_SAFE_INTEGER },
@@ -120,7 +124,8 @@
 	const flagged = $derived(new Set(issues.flatMap((issue) => (issue.part ? [issue.part] : []))));
 	const markdownContext = $derived<MarkdownContext>({
 		roles: new Map(data.roles.map((role) => [role.id, { name: role.name, color: role.color }])),
-		channels: new Map(data.channels.map((channel: any) => [String(channel.discord_channel_id), String(channel.name ?? '')]))
+		channels: new Map(data.channels.map((channel: any) => [String(channel.discord_channel_id), String(channel.name ?? '')])),
+		members: new Map(Object.entries(memberNames))
 	});
 	const servers = $derived(new Set(data.posts.map((post) => post.guild_id)).size);
 	const copies = $derived(
@@ -164,6 +169,12 @@
 		},
 		get messages() {
 			return data.messages;
+		},
+		get membersUrl() {
+			return data.membersUrl;
+		},
+		rememberMember(id, name) {
+			memberNames[id] = name;
 		}
 	};
 	setMessageEditor(editorContext);

@@ -24,7 +24,7 @@ type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
 type RoleBlock = 'deleted' | 'managed' | 'unsafe' | 'no_permission' | 'above_bot';
 type LoadedFile = { attachment: Buffer; name: string };
-type RenderExtra = { prefix?: string; interactive?: boolean; pinned?: boolean; defaultColor?: number | null };
+type RenderExtra = { prefix?: string; interactive?: boolean; pinned?: boolean; defaultColor?: number | null; media?: boolean };
 type Renderer = (lang: ServerLanguage, extra?: RenderExtra) => MessagePayload;
 type SyncResult = { post_id: number; channel_id: string; channel_name: string; ok: boolean; gone?: boolean; error?: string };
 
@@ -90,6 +90,12 @@ function editBody(payload: MessagePayload, wasV2: boolean): any {
 function sameFiles(message: any, payload: MessagePayload): boolean {
 	const current = [...message.attachments.values()].map((attachment: any) => String(attachment.name));
 	return current.length === payload.files.length && payload.files.every((file, i) => file.name === current[i]);
+}
+
+function showsMedia(message: any): boolean {
+	if (message.attachments.size > 0) return true;
+	if (message.embeds.some((embed: any) => embed.image || embed.thumbnail)) return true;
+	return /"type":1[12][,}]/.test(JSON.stringify(message.components));
 }
 
 function prefixFits(payload: MessagePayload, prefix: string): boolean {
@@ -350,9 +356,10 @@ export async function removeGlobalMessagePosts(client: any, payload: any) {
 export async function listGuildEmojis(client: any, payload: any) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
 	if (!guild) return { ok: false, emojis: [] };
+	const emojis = (await guild.emojis.fetch().catch(() => null)) ?? guild.emojis.cache;
 	return {
 		ok: true,
-		emojis: [...guild.emojis.cache.values()]
+		emojis: [...emojis.values()]
 			.filter((emoji: any) => emoji.available !== false && emoji.name)
 			.map((emoji: any) => ({ id: String(emoji.id), name: String(emoji.name), animated: emoji.animated === true }))
 	};
@@ -466,10 +473,14 @@ export async function handleMessageComponent(interaction: any) {
 	}
 
 	const target = switching ? message : show ? await load(show.message_id) : null;
-	const rendered = target ? renderer(ref.scope, target, guild.name, defaults)(switching ? postLanguage(target.content, lang) : lang, { pinned }) : null;
-	const shown = rendered && !rendered.empty ? rendered : null;
 	const source = interaction.message;
 	const sourceV2 = source.flags.has(MessageFlags.IsComponentsV2);
+	const render = target ? renderer(ref.scope, target, guild.name, defaults) : null;
+	const shownLanguage = switching && target ? postLanguage(target.content, lang) : lang;
+	const withoutMedia = switching && (!source.flags.has(MessageFlags.Ephemeral) || !showsMedia(source));
+	const lean = render && withoutMedia ? render(shownLanguage, { pinned, media: false }) : null;
+	const rendered = lean && !lean.empty ? lean : render ? render(shownLanguage, { pinned }) : null;
+	const shown = rendered && !rendered.empty ? rendered : null;
 	const inPlace = !!shown && source.flags.has(MessageFlags.Ephemeral) && (shown.v2 || !sourceV2);
 	const lines: string[] = [];
 	let acknowledged = false;

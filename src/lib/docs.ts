@@ -1,6 +1,8 @@
 import { EFFECTS, EFFECT_SPIN_COST } from './effects.js';
 import { APP_URL } from './frontend/panelServer.js';
+import { imageSizeLabel } from './images.js';
 import { serverLanguageList } from './languages.js';
+import { MESSAGE_LIMITS, MESSAGE_VIDEO_FORMATS_LABEL, messageUploadLimit } from './messages.js';
 
 export const DOCS_TITLE = 'Bot documentation';
 export const DOCS_URL = `${APP_URL}/docs`;
@@ -688,6 +690,61 @@ export const modules = [
 			{ label: 'Warning expiry', desc: 'Warnings older than this stop counting; the record stays.' },
 			{ label: 'Reason presets', desc: 'Saved reasons staff pick from; any case reason can be edited later.' },
 			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Each case pings the member; cases are always kept in the panel.' }
+		]
+	},
+	{
+		id: 'messages',
+		icon: 'fa-envelope-open-text',
+		accent: '#b5179e',
+		title: 'Messages',
+		what: 'Always on. Post as the bot from the Messages tab: plain posts, embeds, rules panels, reaction roles and dropdown roles, with a live preview.',
+		fields: [
+			{
+				label: 'Standard message',
+				desc: `Text, up to ${MESSAGE_LIMITS.attachments} photos or videos, up to ${MESSAGE_LIMITS.embeds} embeds and up to ${MESSAGE_LIMITS.rows} rows of buttons or dropdowns. Photos and videos are sent as real attachments, like a member uploading them.`
+			},
+			{
+				label: 'Components V2',
+				desc: 'A free layout instead: containers with a colored edge, text, sections with a small image or button beside them, image and video galleries, dividers, buttons and dropdowns.'
+			},
+			{
+				label: 'Buttons and dropdowns',
+				desc: `Each button or dropdown choice shows another saved message privately, changes a role, or both. Link buttons open a website. A row holds up to ${MESSAGE_LIMITS.buttons} buttons and a dropdown up to ${MESSAGE_LIMITS.options} choices.`
+			},
+			{
+				label: 'Reaction roles',
+				desc: 'Set a button to give or take a role: the first click gives it, the next takes it away. It can also only give or only take. The member gets a private confirmation.'
+			},
+			{
+				label: 'Dropdown roles',
+				desc: 'Give each dropdown choice its own role. Turn on picking several and a member applies many choices at once.'
+			},
+			{
+				label: 'Role requirements',
+				desc: "The bot needs Manage Roles and its own role must sit above every role it hands out. Roles owned by an integration can't be given. A member who clicks is told what to ask an admin to fix."
+			},
+			{
+				label: 'Languages',
+				desc: 'Add a language and translate any text; anything left empty uses the main text. A member who clicks gets the reply in the language they picked in the bot menu. When sending, pick which language the post itself uses.'
+			},
+			{
+				label: 'Preview',
+				desc: 'Shows the message as Discord draws it. Click a button or dropdown to see the private reply or role result a member would get.'
+			},
+			{
+				label: 'Send and edit',
+				desc: 'Pick one or more channels and, if you want, roles to ping. Saving a message later edits every copy already posted. Each posted copy can be opened in Discord or deleted from it.'
+			},
+			{
+				label: 'Deleting a message',
+				desc: 'Posted copies stay in Discord, but their buttons and dropdowns are taken off because they would stop working. A message that another one shows has to be unlinked first.'
+			},
+			{
+				label: 'Upload limit',
+				desc: `Images (PNG, JPG, GIF, WEBP) and videos (${MESSAGE_VIDEO_FORMATS_LABEL}) up to Discord's limit for the server: ${imageSizeLabel(messageUploadLimit(0))}, ${imageSizeLabel(messageUploadLimit(2))} at boost level 2 and ${imageSizeLabel(messageUploadLimit(3))} at level 3.`
+			},
+			{ label: 'Placeholders', desc: '{server} becomes the server name and {year} the current year, in any text.' },
+			{ label: 'Change Log', desc: 'Creating, editing, sending and deleting a message, and removing a posted copy, are recorded with who did it.' }
 		]
 	},
 	{

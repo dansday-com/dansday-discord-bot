@@ -218,9 +218,21 @@ export const features: Feature[] = [
 	},
 	{
 		icon: 'fa-palette',
-		title: 'Messages',
-		desc: 'Post as the bot: text, photos, videos, embeds or a Components V2 layout, with a live preview.',
-		more: 'Buttons and dropdowns open another message privately or hand out roles. Edit once and every posted copy updates.'
+		title: 'Message & embed builder',
+		desc: 'Post as the bot from the browser: text, photos, videos, embeds or a Components V2 layout, with a live preview.',
+		more: 'Buttons and dropdowns open another message privately. Translate it per language, edit once and every posted copy updates.'
+	},
+	{
+		icon: 'fa-user-tag',
+		title: 'Reaction roles',
+		desc: 'Role buttons members click to give themselves a role, and click again to drop it.',
+		more: 'Built in the Messages tab with a private confirmation for the member. No second bot.'
+	},
+	{
+		icon: 'fa-list-check',
+		title: 'Dropdown roles',
+		desc: 'A dropdown menu where every choice hands out its own role.',
+		more: 'Members can tick several at once, and the menu sits on any message or rules panel you build.'
 	},
 	{
 		icon: 'fa-tower-broadcast',
@@ -417,6 +429,10 @@ export const faq = [
 	{
 		q: `How is ${APP_NAME} Bot different from MEE6?`,
 		a: "Nothing costs extra, the code is open, and members get more to do: they steal and defend each other's XP, clear daily tasks made for them, and get their own account page."
+	},
+	{
+		q: `Does ${APP_NAME} Bot have reaction roles and an embed builder?`,
+		a: 'Yes, both free. The Messages tab builds embeds, plain posts with photos and videos, and Components V2 layouts with a live preview, then posts them as the bot. Any button or dropdown can give or take a role, so reaction roles and dropdown roles need no second bot.'
 	},
 	{
 		q: 'Is there a web dashboard?',

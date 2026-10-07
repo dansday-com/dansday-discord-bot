@@ -2,7 +2,6 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/frontend/toast.svelte';
 	import { ADMIN_TAB_PATHS } from '$lib/frontend/redirect.js';
 	import AddSelfbotModal from '$lib/frontend/components/AddSelfbotModal.svelte';
 	import type { PageProps } from './$types';
@@ -79,23 +78,6 @@
 		for (const es of Object.values(streams)) es.close();
 		for (const id of Object.keys(intervals)) clearInterval(intervals[Number(id)]);
 	});
-
-	async function deleteBot(selfbotId: number, name: string) {
-		if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-		const res = await fetch('/api/panel/selfbots', {
-			method: 'DELETE',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ selfbot_id: selfbotId })
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast('Selfbot deleted', 'success');
-			invalidateAll();
-		} else {
-			showToast(d.error || 'Failed to delete', 'error');
-		}
-	}
 
 	function getDisplayUptime(id: number): number {
 		return (liveData[id]?.uptime_ms ?? 0) + (uptimeTicks[id] ?? 0);

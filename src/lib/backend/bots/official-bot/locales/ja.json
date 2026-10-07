@@ -362,6 +362,7 @@
 			"label": "あなたのフィードバック",
 			"placeholder": "ご意見、ご提案、気になる点などを教えてください...",
 			"maxLength": 2000,
+			"screenshotsLabel": "スクリーンショット（任意）",
 			"anonymousLabel": "匿名で送信する？"
 		},
 		"submitted": {

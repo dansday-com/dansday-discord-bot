@@ -4,9 +4,6 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import EmbedForm from '$lib/frontend/components/EmbedForm.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
-	import type { PageProps } from './$types';
-
-	let { data }: PageProps = $props();
 
 	const MENTION_CATEGORIES = [
 		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: 4 },

@@ -362,6 +362,7 @@
 			"label": "你的反馈",
 			"placeholder": "欢迎分享你的反馈、建议或问题……",
 			"maxLength": 2000,
+			"screenshotsLabel": "截图（可选）",
 			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {

@@ -10,7 +10,6 @@
 	import type { MemberTheme } from '$lib/themes.js';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
-	import { effectVariant } from '$lib/effects.js';
 	import { xpForLevel as levelThreshold } from '$lib/rewards.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
@@ -563,7 +562,7 @@
 		</div>
 
 		{#if activeChips.length > 0}
-			<div class="-mt-1.5 mb-4 flex [scrollbar-width:none] flex-nowrap gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+			<div class="-mt-1.5 mb-4 flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 				{#each activeChips as chip (chip.key)}
 					<span
 						class="inline-flex shrink-0 items-center gap-[7px] rounded-full border px-2.75 py-1.5 text-xs font-bold whitespace-nowrap text-(--chip)"

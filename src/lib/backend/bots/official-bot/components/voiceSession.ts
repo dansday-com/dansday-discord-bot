@@ -13,7 +13,7 @@ import {
 import { AttachmentBuilder } from 'discord.js';
 import prism from 'prism-media';
 import { Readable } from 'node:stream';
-import db, { botAiVoiceEndpoint } from '../../../../database.js';
+import { botAiVoiceEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
@@ -398,19 +398,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		framesNoise: 0,
 		framesOffTurn: 0
 	};
-
-	async function say(text) {
-		if (!session || goodbyePending) return;
-		closeTurn();
-		goodbyePending = true;
-		setSelfMute(false);
-		try {
-			session.sendRealtimeInput({ text });
-			setTimeout(() => stop('goodbye_finished'), GOODBYE_GRACE_MS);
-		} catch {
-			await stop('goodbye_failed');
-		}
-	}
 
 	function clearTimers() {
 		for (const t of [turnTimer, muteTimer, muteRetryTimer]) if (t) clearTimeout(t);

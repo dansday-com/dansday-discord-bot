@@ -452,7 +452,6 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 		await interaction.deferReply({ flags: 64 });
 
 		const member = interaction.member;
-		const guild = interaction.guild;
 
 		if (!(await hasPermission(member, 'custom_supporter_role'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'custom_supporter_role', interaction.user.id);

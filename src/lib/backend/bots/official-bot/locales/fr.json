@@ -362,6 +362,7 @@
 			"label": "Ton avis",
 			"placeholder": "Partage ton avis, tes suggestions ou tes préoccupations...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Captures d'écran (facultatif)",
 			"anonymousLabel": "Envoyer anonymement ?"
 		},
 		"submitted": {

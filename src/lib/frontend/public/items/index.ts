@@ -26,10 +26,6 @@ export async function resolveMemberByCardToken(serverId: number, token: string):
 
 export const SENTINEL_GUEST = 'guest';
 
-export function isGuestHash(hash: any): boolean {
-	return !hash || String(hash) === SENTINEL_GUEST;
-}
-
 export function itemsCardTokenFromUrl(urlHash: any): string {
 	const raw = urlHash != null ? String(urlHash) : '';
 	return raw && raw !== SENTINEL_GUEST ? raw : '';

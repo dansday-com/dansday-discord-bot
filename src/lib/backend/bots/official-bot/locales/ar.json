@@ -362,6 +362,7 @@
 			"label": "ملاحظاتك",
 			"placeholder": "شاركنا ملاحظاتك أو اقتراحاتك أو ما يشغلك...",
 			"maxLength": 2000,
+			"screenshotsLabel": "لقطات الشاشة (اختياري)",
 			"anonymousLabel": "إرسال بشكل مجهول؟"
 		},
 		"submitted": {

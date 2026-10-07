@@ -1,3 +1,4 @@
+import { BRAND_TAGLINE } from './brand.js';
 import { APP_NAME, APP_NAME_PLAIN, APP_URL } from './frontend/panelServer.js';
 import { COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from './url.js';
 
@@ -8,15 +9,16 @@ const WEBSITE_ID = `${APP_URL}/#website`;
 const SOFTWARE_ID = `${APP_URL}/#software`;
 const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
-const alternateNames = (suffix = ''): string[] | undefined => (APP_NAME_PLAIN === APP_NAME ? undefined : [`${APP_NAME_PLAIN}${suffix}`]);
+const alternateNames = (suffix = ''): string[] | undefined => (APP_NAME_PLAIN === APP_NAME ? undefined : [`${APP_NAME}${suffix}`]);
 
 export function siteNodes(): LdNode[] {
 	return [
 		{
 			'@type': 'Organization',
 			'@id': ORGANIZATION_ID,
-			name: APP_NAME,
+			name: APP_NAME_PLAIN,
 			alternateName: alternateNames(),
+			slogan: BRAND_TAGLINE,
 			url: `${APP_URL}/`,
 			logo: `${APP_URL}/web-app-manifest-512x512.png`,
 			sameAs: [SOURCE_REPO_URL, DISCORD_APP_DIRECTORY_URL, COMMUNITY_DISCORD_URL]
@@ -24,8 +26,8 @@ export function siteNodes(): LdNode[] {
 		{
 			'@type': 'WebSite',
 			'@id': WEBSITE_ID,
-			name: `${APP_NAME} Discord Bot`,
-			alternateName: alternateNames(' Discord Bot'),
+			name: APP_NAME_PLAIN,
+			alternateName: [...(alternateNames() ?? []), `${APP_NAME_PLAIN} Discord Bot`],
 			url: `${APP_URL}/`,
 			inLanguage: 'en',
 			publisher: { '@id': ORGANIZATION_ID }
@@ -50,13 +52,13 @@ export function softwareNodes(description: string, featureList: string[]): LdNod
 		{
 			'@type': 'SoftwareApplication',
 			'@id': SOFTWARE_ID,
-			name: `${APP_NAME} Discord Bot`,
+			name: `${APP_NAME_PLAIN} Discord Bot`,
 			alternateName: alternateNames(' Discord Bot'),
 			applicationCategory: 'CommunicationApplication',
 			applicationSubCategory: 'Discord bot',
 			operatingSystem: 'Discord',
 			url: `${APP_URL}/`,
-			image: `${APP_URL}/og.png`,
+			image: `${APP_URL}/og.png?v=3`,
 			description,
 			featureList,
 			isAccessibleForFree: true,
@@ -69,7 +71,7 @@ export function softwareNodes(description: string, featureList: string[]): LdNod
 		},
 		{
 			'@type': 'SoftwareSourceCode',
-			name: `${APP_NAME} Discord Bot source code`,
+			name: `${APP_NAME_PLAIN} Discord Bot source code`,
 			codeRepository: SOURCE_REPO_URL,
 			programmingLanguage: 'TypeScript',
 			runtimePlatform: 'Node.js',

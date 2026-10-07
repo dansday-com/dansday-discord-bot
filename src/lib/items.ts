@@ -1,7 +1,19 @@
 import { BRAND_PRIMARY } from './brand.js';
 
 export type ItemEffectId =
-	'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier' | 'luck';
+	| 'steal'
+	| 'bomb'
+	| 'boost'
+	| 'shield'
+	| 'leech'
+	| 'reflect'
+	| 'insurance'
+	| 'gift'
+	| 'bounty'
+	| 'spy'
+	| 'disguise'
+	| 'purifier'
+	| 'luck';
 
 export const BAG_CAPACITY = 50;
 
@@ -321,8 +333,6 @@ export function effectIcon(type: string): string {
 
 export const EFFECT_ACCENT_DEFAULT = BRAND_PRIMARY;
 
-export const EFFECT_ACCENT_HEX: Record<string, string> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, e.accent]));
-
 export function effectAccentHex(type: string): string {
 	return EFFECT_BY_ID[type]?.accent ?? EFFECT_ACCENT_DEFAULT;
 }
@@ -334,10 +344,6 @@ export function effectAccentInt(type: string): number {
 export function effectAccentCssVars(): string {
 	const lines = [`--effect-default: ${EFFECT_ACCENT_DEFAULT};`, ...ITEM_EFFECTS.map((e) => `--effect-${e.id}: ${e.accent};`)];
 	return `:root{${lines.join('')}}`;
-}
-
-export function effectDefaultConfig(type: string): Record<string, any> {
-	return { ...(EFFECT_BY_ID[type]?.defaultConfig ?? {}) };
 }
 
 export function effectDefaultCost(type: string): number {
@@ -418,10 +424,6 @@ export function isTargetedEffect(type: string): boolean {
 }
 
 export const DISGUISED_MENTION = 'A mysterious member 🎭';
-
-export function disguisedText(text: string): string {
-	return text.replace(/^Your\b/, `${DISGUISED_MENTION}'s`);
-}
 
 export type EffectGuide = { what: string; how: string; tip: string };
 

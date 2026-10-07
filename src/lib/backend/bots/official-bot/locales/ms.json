@@ -362,6 +362,7 @@
 			"label": "Maklum Balas Anda",
 			"placeholder": "Sila kongsi maklum balas, cadangan atau kebimbangan anda...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Tangkapan skrin (pilihan)",
 			"anonymousLabel": "Hantar Tanpa Nama?"
 		},
 		"submitted": {

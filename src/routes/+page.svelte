@@ -2,7 +2,7 @@
 	import '../home.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { publicServerPath, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
+	import { publicServerPath, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import { DiscordIcon, PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
 	import LazyScenePlayer from '$lib/frontend/components/landing/scenes/LazyScenePlayer.svelte';
@@ -134,14 +134,15 @@
 			<GlobeScene gains={feed.gains} avoid={[heroText, heroFoot]} />
 
 			<div bind:this={heroText}>
-				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">Free MEE6</p>
+				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 11; --rise-delay: 80ms">From dev to</p>
 				<span class="animate-rise block" style="--rise-delay: 200ms">
-					<p class="display-line display-fill text-primary block whitespace-nowrap uppercase" style="--ch: 11; --sweep-delay: 720ms">Alternative</p>
+					<p class="display-line display-fill text-primary block whitespace-nowrap uppercase" style="--ch: 9; --sweep-delay: 720ms">Community</p>
 				</span>
 				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
-					<strong class="text-base-content font-extrabold">The free, open-source MEE6 alternative for Discord.</strong>
-					Members steal each other's XP, shield it and spend it: the part MEE6 doesn't have. Leveling, role rewards, moderation, giveaways and creator alerts are
-					free too, with no premium tier.
+					<strong class="text-base-content font-extrabold"
+						>{APP_NAME} is a free, open-source Discord bot, built by developers and shaped by the communities that use it.</strong
+					>
+					Members steal each other's XP, shield it and spend it, on top of leveling, role rewards, moderation, giveaways and creator alerts, with no premium tier.
 				</h1>
 			</div>
 

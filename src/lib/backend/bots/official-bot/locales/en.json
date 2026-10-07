@@ -362,6 +362,7 @@
 			"label": "Your Feedback",
 			"placeholder": "Please share your feedback, suggestions, or concerns...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Screenshots (optional)",
 			"anonymousLabel": "Submit Anonymously?"
 		},
 		"submitted": {

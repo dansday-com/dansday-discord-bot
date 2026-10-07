@@ -194,32 +194,6 @@ export function makeMaw(rows: number): FxProgram {
 	};
 }
 
-export function makeFoil(rows: number): FxProgram {
-	return {
-		rows,
-		stride: 0,
-		init() {},
-		frame(s) {
-			clear(s);
-			const t = s.t * 0.015 * s.v.speed * s.v.dir;
-			for (let y = 0; y < s.h; y++) {
-				for (let x = 0; x < s.w; x++) {
-					const u = (x / s.w + (y / s.h) * 0.4 + t) % 1;
-					const [r, g, b] = hsl(u * 360 + s.v.hue, 88, 62);
-					plot(s, x, y, r, g, b, 0.2);
-				}
-			}
-			const [gr, gg, gb] = hsl(0, 0, 100);
-			for (let x = 0; x < s.w; x += 6) for (let y = 0; y < s.h; y++) plot(s, x, y, gr, gg, gb, 0.07);
-			for (let y = 0; y < s.h; y += 6) for (let x = 0; x < s.w; x++) plot(s, x, y, gr, gg, gb, 0.07);
-			const bar = ((s.t * 0.9 * s.v.speed) % (s.w + 40)) - 20;
-			for (let x = bar - 6; x < bar + 6; x++)
-				for (let y = 0; y < s.h; y++) plot(s, x + (y - s.h / 2) * 0.3, y, 255, 255, 255, (1 - Math.abs(x - bar) / 6) * 0.35);
-			blit(s);
-		}
-	};
-}
-
 export function makeWeave(rows: number): FxProgram {
 	return {
 		rows,

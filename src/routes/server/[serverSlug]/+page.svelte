@@ -6,6 +6,7 @@
 	import { DashGrid, FILL, MeterBar, MiniGrid, MiniStat, SegBar, StatCard, StatHero, StatStrip, TrendChip } from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
 	import type { PublicPageStats } from '$lib/frontend/public/statistics/index.js';
+	import { compact, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
 
 	let { data }: PageProps = $props();
 
@@ -41,6 +42,19 @@
 		if (!facts.length) return `${lead}, tracked by ${APP_NAME} Bot.`;
 		const list = facts.length > 1 ? `${facts.slice(0, -1).join(', ')} and ${facts[facts.length - 1]}` : facts[0];
 		return `${lead}: ${list}. Tracked by ${APP_NAME} Bot.`;
+	});
+
+	const linkEmbed = $derived.by(() => {
+		const facts = [
+			{ n: data.stats.members_total, label: 'members' },
+			{ n: data.stats.leveling_total_xp, label: 'XP earned' },
+			{ n: data.stats.leveling_total_chat, label: 'messages' },
+			{ n: Number(data.stats.leveling_total_voice_minutes ?? 0) / 60, label: 'voice hours' }
+		]
+			.filter((f) => Number(f.n ?? 0) >= 1)
+			.map((f) => `**${compact(f.n)}** ${f.label}`);
+		const lines = [facts.slice(0, 2).join(' · '), facts.slice(2).join(' · ')].filter(Boolean);
+		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl, 'Live server statistics', lines);
 	});
 
 	const membersWithoutLevels = $derived(Math.max(0, (liveStats.members_total ?? 0) - (liveStats.members_with_levels ?? 0)));
@@ -188,6 +202,7 @@
 	<meta property="og:title" content="{serverName} Statistics | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content={metaDescription} />
 	<link rel="canonical" href={data.canonicalUrl} />
+	{@html linkEmbed}
 </svelte:head>
 
 <div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">

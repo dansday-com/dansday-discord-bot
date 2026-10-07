@@ -28,7 +28,7 @@ export function adminServerSectionPath(botId: string | number, serverId: string 
 
 const BOT_SECTION_RE = new RegExp(`^${BOTS_ROOT}/[^/]+(?:/(?:presence|ai|wikis))?/?$`);
 const BOT_SERVERS_ROOT_RE = new RegExp(`^${BOTS_ROOT}/[^/]+/servers$`);
-const GUILD_CONFIG_RE = new RegExp(`^(${BOTS_ROOT}/[^/]+/servers/[^/]+)/config(?:/|$)`);
+
 const BOT_ID_RE = new RegExp(`^${BOTS_ROOT}/([^/]+)`);
 
 export function isBotSectionPath(pathname: string): boolean {
@@ -51,12 +51,6 @@ export function webRouteUp(pathname: string): string {
 		up = parentPathname(up);
 	}
 	return up;
-}
-
-export function exitConfigToGuildOverview(pathname: string): string {
-	const p = pathname.replace(/\/+$/, '') || '/';
-	const m = p.match(GUILD_CONFIG_RE);
-	return m ? m[1] : webRouteUp(p);
 }
 
 export function webBotHome(pathname: string): string {

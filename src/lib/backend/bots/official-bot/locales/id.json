@@ -362,6 +362,7 @@
 			"label": "Feedback Kamu",
 			"placeholder": "Silakan bagikan feedback, saran, atau kekhawatiran kamu...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Screenshot (opsional)",
 			"anonymousLabel": "Kirim Secara Anonim?"
 		},
 		"submitted": {

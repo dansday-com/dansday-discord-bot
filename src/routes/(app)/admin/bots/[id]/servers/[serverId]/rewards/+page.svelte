@@ -3,9 +3,19 @@
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL } from '$lib/images.js';
+	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, imageExtension, imageSizeLabel } from '$lib/images.js';
+	import { prepareThemeUpload } from '$lib/themes.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { MAX_REWARDS, MAX_REWARD_NAME, REWARD_GOALS, REWARD_KINDS, rewardGoalLabel, rewardGoalMeta, xpForLevel } from '$lib/rewards.js';
+	import {
+		MAX_REWARDS,
+		MAX_REWARD_NAME,
+		REWARD_GOALS,
+		REWARD_IMAGE_MAX_BYTES,
+		REWARD_KINDS,
+		rewardGoalLabel,
+		rewardGoalMeta,
+		xpForLevel
+	} from '$lib/rewards.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -31,21 +41,26 @@
 		name: string;
 		image: string | null;
 		image_url: string | null;
+		file: File | null;
+		preview: string | null;
+		original: number | null;
 		winner_limit: number | null | '';
 		winners: number;
 		reached: number | null;
 	};
 
+	const IMAGE_LIMIT = imageSizeLabel(REWARD_IMAGE_MAX_BYTES);
+
 	let rows = $state<Draft[]>([]);
 	let keep = $state(true);
 	let stack = $state(true);
 	let busy = $state(false);
-	let uploading = $state<number | null>(null);
+	let preparing = $state<number | null>(null);
 	let delivering = $state<string | null>(null);
 	let blocked = $state<{ role_id: string; reason: string }[]>([]);
 
 	$effect(() => {
-		rows = data.rewards.map((r) => ({ ...r }));
+		rows = data.rewards.map((r) => ({ ...r, file: null, preview: null, original: null }));
 		keep = data.rules.keep;
 		stack = data.rules.stack;
 	});
@@ -87,6 +102,9 @@
 				name: '',
 				image: null,
 				image_url: null,
+				file: null,
+				preview: null,
+				original: null,
 				winner_limit: '',
 				winners: 0,
 				reached: null
@@ -94,40 +112,84 @@
 		];
 	}
 
-	async function upload(row: Draft, index: number, input: HTMLInputElement) {
-		const file = input.files?.[0];
+	function imageLabel(row: Draft): string {
+		if (!row.file) return '';
+		const now = imageSizeLabel(row.file.size);
+		if (row.original != null && row.original > row.file.size) return `${row.file.name} · ${imageSizeLabel(row.original)} → ${now}`;
+		return `${row.file.name} · ${now}`;
+	}
+
+	function discardImage(row: Draft) {
+		if (row.preview) URL.revokeObjectURL(row.preview);
+		row.file = null;
+		row.preview = null;
+		row.original = null;
+	}
+
+	function removeImage(row: Draft) {
+		discardImage(row);
+		row.image = null;
+		row.image_url = null;
+	}
+
+	async function pickImage(row: Draft, index: number, input: HTMLInputElement) {
+		const picked = input.files?.[0];
 		input.value = '';
-		if (!file) return;
-		const form = new FormData();
-		form.append('image', file);
-		uploading = index;
+		if (!picked) return;
+		if (!imageExtension(picked.type)) return showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
+		preparing = index;
 		try {
-			const res = await fetch(`/api/servers/${data.serverId}/rewards/image`, { method: 'POST', body: form });
-			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not upload the image', 'error');
-			row.image = out.key;
-			row.image_url = out.url;
+			const prepared = await prepareThemeUpload(picked);
+			if (prepared.file.size > REWARD_IMAGE_MAX_BYTES) {
+				return showToast(
+					prepared.file === picked
+						? `That image is ${imageSizeLabel(picked.size)}. Pick one under ${IMAGE_LIMIT}.`
+						: `Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${IMAGE_LIMIT}.`,
+					'error'
+				);
+			}
+			discardImage(row);
+			row.file = prepared.file;
+			row.preview = URL.createObjectURL(prepared.file);
+			row.original = picked.size;
 		} finally {
-			uploading = null;
+			preparing = null;
 		}
+	}
+
+	async function uploadImage(row: Draft): Promise<boolean> {
+		if (!row.file) return true;
+		const form = new FormData();
+		form.append('image', row.file);
+		const res = await fetch(`/api/servers/${data.serverId}/rewards/image`, { method: 'POST', body: form });
+		const out = await res.json().catch(() => ({}));
+		if (!res.ok || !out.ok) {
+			showToast(out.error || 'Could not upload the image', 'error');
+			return false;
+		}
+		row.image = out.key;
+		row.image_url = out.url;
+		discardImage(row);
+		return true;
 	}
 
 	async function save() {
 		if (rows.some((r) => r.kind === 'role' && !r.role_id)) return showToast('Pick a role for every role reward', 'error');
 		if (rows.some((r) => r.kind === 'custom' && !r.name.trim())) return showToast('Name every custom reward', 'error');
-		const rewards = rows.map((r) => ({
-			id: r.id,
-			goal_type: r.goal_type,
-			units: Math.trunc(Number(r.units)),
-			kind: r.kind,
-			role_id: r.role_id,
-			xp: Math.trunc(Number(r.xp)),
-			name: r.name,
-			image: r.image,
-			winner_limit: r.winner_limit === '' || r.winner_limit === null ? null : Math.trunc(Number(r.winner_limit))
-		}));
 		busy = true;
 		try {
+			for (const row of rows) if (row.kind === 'custom' && !(await uploadImage(row))) return;
+			const rewards = rows.map((r) => ({
+				id: r.id,
+				goal_type: r.goal_type,
+				units: Math.trunc(Number(r.units)),
+				kind: r.kind,
+				role_id: r.role_id,
+				xp: Math.trunc(Number(r.xp)),
+				name: r.name,
+				image: r.image,
+				winner_limit: r.winner_limit === '' || r.winner_limit === null ? null : Math.trunc(Number(r.winner_limit))
+			}));
 			const res = await fetch(`/api/servers/${data.serverId}/rewards`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -280,27 +342,78 @@
 								aria-label="Reward name"
 								class="{FIELD} min-w-0 flex-2 basis-40"
 							/>
-							{#if row.image_url}
-								<img src={row.image_url} alt="" class="size-8 shrink-0 rounded-lg object-cover" />
-							{/if}
-							{#if data.canEdit}
-								<label class="text-ash-200 border-ash-600 hover:bg-ash-600 cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs" title={IMAGE_FORMATS_LABEL}>
-									<i class="fas {uploading === i ? 'fa-spinner fa-spin' : 'fa-image'} mr-1"></i>{row.image_url ? 'Change' : 'Image'}
-									<input type="file" accept={IMAGE_ACCEPT} class="hidden" onchange={(e) => upload(row, i, e.currentTarget)} />
-								</label>
-								{#if row.image_url}
-									<button
-										type="button"
-										onclick={() => ((row.image = null), (row.image_url = null))}
-										aria-label="Remove image"
-										class="text-ash-400 px-1 hover:text-red-400"
-									>
-										<i class="fas fa-xmark"></i>
-									</button>
-								{/if}
-							{/if}
 						{/if}
 					</div>
+
+					{#if row.kind === 'custom'}
+						{@const shown = row.preview ?? row.image_url}
+						<div class="flex items-center gap-2">
+							<span class="text-ash-300 w-10 shrink-0 self-start pt-1 text-xs">Image</span>
+							<label
+								for="reward-image-{i}"
+								class="border-ash-500 bg-ash-800 relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border {shown
+									? ''
+									: 'border-dashed'} {data.canEdit ? 'hover:border-ash-400 group cursor-pointer transition-colors' : ''}"
+							>
+								{#if shown}
+									<img src={shown} alt="" class="size-full object-cover" />
+								{:else}
+									<i class="fas fa-image text-ash-400 text-lg"></i>
+								{/if}
+								{#if preparing === i}
+									<span class="absolute inset-0 grid place-items-center bg-black/55"><i class="fas fa-spinner fa-spin text-white"></i></span>
+								{:else if data.canEdit && shown}
+									<span class="absolute inset-0 grid place-items-center bg-black/55 opacity-0 transition-opacity group-hover:opacity-100">
+										<i class="fas fa-upload text-white"></i>
+									</span>
+								{/if}
+							</label>
+							<div class="min-w-0 flex-1">
+								<p class="text-ash-500 text-xs">
+									{#if row.file}
+										<span class="text-ash-300">{imageLabel(row)}</span> · uploads when you save
+									{:else}
+										Shown on members' Rewards tab. {IMAGE_FORMATS_LABEL} · max {IMAGE_LIMIT}.
+									{/if}
+								</p>
+								{#if data.canEdit}
+									<div class="mt-1.5 flex flex-wrap gap-2">
+										<label
+											for="reward-image-{i}"
+											class="bg-ash-600 hover:bg-ash-500 text-ash-100 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+										>
+											<i class="fas fa-upload mr-1"></i>{shown ? 'Replace' : 'Upload image'}
+										</label>
+										{#if row.file}
+											<button
+												type="button"
+												onclick={() => discardImage(row)}
+												class="bg-ash-800 hover:bg-ash-600 text-ash-200 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+											>
+												<i class="fas fa-rotate-left mr-1"></i>Discard
+											</button>
+										{:else if row.image_url}
+											<button
+												type="button"
+												onclick={() => removeImage(row)}
+												class="bg-ash-800 hover:bg-ash-600 text-ash-200 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+											>
+												<i class="fas fa-trash mr-1 text-red-300"></i>Remove
+											</button>
+										{/if}
+									</div>
+									<input
+										id="reward-image-{i}"
+										type="file"
+										accept={IMAGE_ACCEPT}
+										class="hidden"
+										disabled={preparing !== null || busy}
+										onchange={(e) => pickImage(row, i, e.currentTarget)}
+									/>
+								{/if}
+							</div>
+						</div>
+					{/if}
 
 					<div class="flex flex-wrap items-center gap-2">
 						<span class="text-ash-300 w-10 shrink-0 text-xs">First</span>

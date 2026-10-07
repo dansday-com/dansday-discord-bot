@@ -2,7 +2,7 @@ import db from '../../../../database.js';
 import { formatDuration } from '../../../../items.js';
 import { SERVER_SETTINGS, publicSubfeatureEnabled } from '../../../../frontend/panelServer.js';
 import { isComponentFeatureEnabled } from '../../../config.js';
-import { cachedLookup, invalidateCached } from './aiCache.js';
+import { cachedLookup } from './aiCache.js';
 
 const TOOL_FEATURES_TTL_SEC = 30;
 
@@ -80,10 +80,6 @@ export async function resolveToolFeatures(botId, guildId) {
 	if (!botId || !guildId) return off;
 
 	return cachedLookup(`botai:toolfeatures:${botId}:${guildId}`, TOOL_FEATURES_TTL_SEC, () => loadToolFeatures(botId, guildId, off));
-}
-
-export async function invalidateToolFeatures(botId, guildId) {
-	await invalidateCached(`botai:toolfeatures:${botId}:${guildId}`);
 }
 
 async function loadToolFeatures(botId, guildId, off) {

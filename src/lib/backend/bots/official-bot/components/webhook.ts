@@ -444,7 +444,7 @@ async function handleWebhookRequest(req, res) {
 					try {
 						const channelIds = payload.channel_ids || (payload.channel_id ? [payload.channel_id] : []);
 						await logger.log(`📥 Received send_embed webhook: ${channelIds.length} channel(s) in guild ${payload.guild_id}`);
-						const result = await handleSendEmbed(payload);
+						await handleSendEmbed(payload);
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true, message: 'Embed sent successfully' }));
 					} catch (embedErr) {

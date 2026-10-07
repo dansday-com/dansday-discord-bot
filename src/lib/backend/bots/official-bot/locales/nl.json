@@ -362,6 +362,7 @@
 			"label": "Jouw feedback",
 			"placeholder": "Deel je feedback, suggesties of zorgen...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Screenshots (optioneel)",
 			"anonymousLabel": "Anoniem versturen?"
 		},
 		"submitted": {

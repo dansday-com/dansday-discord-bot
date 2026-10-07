@@ -97,22 +97,6 @@ export async function deleteSessionsWithDemoPanelSlug(panelSlug: string): Promis
 	} catch (_) {}
 }
 
-export async function destroySessionsForAccount(accountId: number): Promise<void> {
-	const redis = await getRedis();
-	if (!redis) return;
-	try {
-		const keys = await redis.keys('dansday:sess:*');
-		for (const key of keys) {
-			const raw = await redis.get(key);
-			if (!raw) continue;
-			const data = JSON.parse(raw) as SessionData;
-			if (data.account_id === accountId) {
-				await redis.del(key);
-			}
-		}
-	} catch (_) {}
-}
-
 export function newSessionId(): string {
 	return randomBytes(32).toString('hex');
 }

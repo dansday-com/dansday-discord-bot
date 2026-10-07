@@ -362,6 +362,7 @@
 			"label": "你的意見回饋",
 			"placeholder": "歡迎分享你的意見、建議或疑慮……",
 			"maxLength": 2000,
+			"screenshotsLabel": "截圖（選填）",
 			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {

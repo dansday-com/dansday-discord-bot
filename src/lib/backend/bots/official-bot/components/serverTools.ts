@@ -9,7 +9,7 @@ import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
 import { rewardGoalLabel } from '../../../../rewards.js';
 import { COLOR_MAX_TOTAL } from '../../../../color.js';
 import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
-import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, resolveToolFeatures } from './aiToolShared.js';
+import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer } from './aiToolShared.js';
 
 const MAX_LEADERBOARD_ROWS = 25;
 const MAX_MEMBER_MATCHES = 8;

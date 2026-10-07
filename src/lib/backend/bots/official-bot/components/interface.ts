@@ -121,7 +121,12 @@ async function replyIfFeatureDisabled(interaction: any, component: string): Prom
 	return true;
 }
 
-const MENU_CATEGORIES: { id: string; style: ButtonStyle; items: { customId: string; label: string; desc: string; style?: ButtonStyle }[] }[] = [
+const MENU_CATEGORIES: {
+	id: string;
+	style: ButtonStyle;
+	permission?: string;
+	items: { customId: string; label: string; desc: string; style?: ButtonStyle }[];
+}[] = [
 	{
 		id: 'me',
 		style: ButtonStyle.Primary,
@@ -152,6 +157,7 @@ const MENU_CATEGORIES: { id: string; style: ButtonStyle; items: { customId: stri
 	{
 		id: 'staff',
 		style: ButtonStyle.Danger,
+		permission: 'staff_only',
 		items: [{ customId: 'bot_moderation', label: 'moderation.button', desc: 'moderation', style: ButtonStyle.Danger }]
 	}
 ];
@@ -161,6 +167,12 @@ async function handleMenuCategory(interaction, categoryId: string) {
 	if (!category) return;
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
+
+	if (category.permission && !(await hasPermission(interaction.member, category.permission))) {
+		const content = await getPermissionDeniedMessage(interaction.guild, category.permission, u);
+		await interaction.reply({ content, flags: 64 }).catch(() => null);
+		return;
+	}
 
 	const lines: string[] = [];
 	const buttons = [];
@@ -251,6 +263,7 @@ async function handleMenuButton(interaction) {
 
 	const buttons = [];
 	for (const category of MENU_CATEGORIES) {
+		if (category.permission && !(await hasPermission(member, category.permission))) continue;
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(`menu_cat|${category.id}`)
@@ -731,13 +744,6 @@ export async function refreshInterfaceInChannel(targetChannel, client, { sendIfM
 		await targetChannel.send(payload);
 		await logger.log(`🎮 Bot interface sent to ${targetChannel.name}`);
 	}
-}
-
-async function createMenuRow(guildId = null, userId = null) {
-	const menuLabel = await translate('menu.button', guildId, userId);
-	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Secondary);
-
-	return new ActionRowBuilder().addComponents(menuButton);
 }
 
 function init(client) {

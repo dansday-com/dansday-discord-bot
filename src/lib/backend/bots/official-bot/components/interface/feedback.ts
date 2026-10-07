@@ -1,9 +1,9 @@
-import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
 import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { memberTranslator, translate, serverTranslator } from '../../i18n.js';
-import { textField, yesNoField, yesNoValue } from './formFields.js';
+import { textField, checkboxField, checkboxValue, imageUploadField, uploadedFiles } from './formFields.js';
 import db from '../../../../../database.js';
 
 export async function handleFeedbackButton(interaction) {
@@ -32,7 +32,11 @@ export async function handleFeedbackButton(interaction) {
 			.setRequired(true)
 			.setMaxLength(2000);
 
-		modal.addLabelComponents(textField(tr('feedback.modal.label'), feedbackInput), yesNoField(tr, tr('feedback.modal.anonymousLabel'), 'anonymous', false));
+		modal.addLabelComponents(
+			textField(tr('feedback.modal.label'), feedbackInput),
+			imageUploadField(tr('feedback.modal.screenshotsLabel'), 'feedback_screenshots', 3),
+			checkboxField(tr('feedback.modal.anonymousLabel'), 'anonymous', false)
+		);
 
 		await interaction.showModal(modal);
 		await logger.log(`💬 Feedback modal shown to ${member.user.tag} (${member.user.id})`);
@@ -74,7 +78,8 @@ export async function handleFeedbackModal(interaction) {
 			return;
 		}
 
-		const isAnonymous = yesNoValue(interaction.fields, 'anonymous', false);
+		const isAnonymous = checkboxValue(interaction.fields, 'anonymous', false);
+		const screenshots = uploadedFiles(interaction.fields, 'feedback_screenshots');
 
 		let feedbackChannelId;
 		try {
@@ -150,9 +155,11 @@ export async function handleFeedbackModal(interaction) {
 			await logger.log(`⚠️  Error getting feedback role: ${err.message}`);
 		}
 
-		await feedbackChannel.send({
-			content: staffMentions || undefined,
-			embeds: [feedbackEmbed]
+		const feedbackPost = { content: staffMentions || undefined, embeds: [feedbackEmbed] };
+		await feedbackChannel.send({ ...feedbackPost, files: screenshots }).catch(async (err) => {
+			if (screenshots.length === 0) throw err;
+			await logger.log(`⚠️  Feedback screenshots could not be attached: ${err.message}`);
+			await feedbackChannel.send(feedbackPost);
 		});
 
 		const successTitle = await translate('feedback.submitted.title', interaction.guild.id, interaction.user.id);

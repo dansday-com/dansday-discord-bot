@@ -4,7 +4,7 @@
 
 # &lt;/DANSDAY&gt;
 
-**The free, open-source MEE6 alternative for Discord — where members can also steal each other's XP.**
+**From dev to community.** A free, open-source Discord bot, built by developers and shaped by the communities that use it — where members steal, shield and spend each other's XP.
 
 Leveling, role rewards, welcome messages, moderation, giveaways and YouTube, Twitch and TikTok alerts, with no premium tier. On top of that: XP that members steal and defend, per-member Roblox price alerts, AI chat and voice that answer from your server's own numbers, personal daily tasks and 70 animated card themes. Configured in a browser. Self-host it or add the hosted bot.
 

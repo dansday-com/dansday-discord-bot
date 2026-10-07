@@ -11,7 +11,7 @@ import {
 import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { memberTranslator, translate, serverTranslator, type Translator } from '../../i18n.js';
-import { textField, yesNoField, yesNoValue } from './formFields.js';
+import { textField, checkboxField, checkboxValue } from './formFields.js';
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
@@ -516,7 +516,7 @@ export async function handleStaffRatingContinue(interaction) {
 
 		modal.addLabelComponents(
 			textField(tr('staffRating.modal.descriptionLabel'), descriptionInput),
-			yesNoField(tr, tr('staffRating.modal.anonymousLabel'), 'anonymous', false)
+			checkboxField(tr('staffRating.modal.anonymousLabel'), 'anonymous', false)
 		);
 
 		await interaction.showModal(modal);
@@ -579,7 +579,7 @@ export async function handleStaffRatingModal(interaction) {
 			return;
 		}
 
-		const isAnonymous = yesNoValue(interaction.fields, 'anonymous', false);
+		const isAnonymous = checkboxValue(interaction.fields, 'anonymous', false);
 
 		const botConfig = getBotConfig();
 		const server = await db.getServerByDiscordId(botConfig.id, guild.id);

@@ -362,6 +362,7 @@
 			"label": "Tus comentarios",
 			"placeholder": "Comparte tus comentarios, sugerencias o inquietudes...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Capturas de pantalla (opcional)",
 			"anonymousLabel": "¿Enviar de forma anónima?"
 		},
 		"submitted": {

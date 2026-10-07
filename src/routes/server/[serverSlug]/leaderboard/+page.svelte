@@ -9,6 +9,7 @@
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PageProps } from './$types';
+	import { md, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
 
 	let { data }: PageProps = $props();
 
@@ -398,6 +399,17 @@
 				]
 			: top3.map((r: any, i: number) => ({ r, rank: i + 1 }))
 	);
+
+	const linkEmbed = $derived.by(() => {
+		const medals = ['🥇', '🥈', '🥉'];
+		const lines = top3.map((r: any, i: number) => {
+			const sub = rowSub(r);
+			return `${medals[i]} **${md(displayName(r))}** · ${formatMetric(metricValueNumber(r, metric), metric)} ${metricUnit(metric)}${sub ? ` · ${md(sub)}` : ''}`;
+		});
+		const query = metric !== 'xp' || period !== 'all' ? `?metric=${metric}&period=${period}` : '';
+		const periodLabel = PERIODS.find((p) => p.id === period)?.label ?? '';
+		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl + query, `Leaderboard · ${periodLabel}`, lines);
+	});
 </script>
 
 <svelte:head>
@@ -409,6 +421,7 @@
 	<meta property="og:title" content="{serverName} Leaderboard | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content={metaDescription} />
 	<link rel="canonical" href={data.canonicalUrl} />
+	{@html linkEmbed}
 </svelte:head>
 
 <div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">

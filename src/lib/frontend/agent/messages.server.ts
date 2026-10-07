@@ -2,10 +2,11 @@ import db from '$lib/database.js';
 import { messagePack, type MessageAgentContext, type MessageAgentResult } from '$lib/backend/agent/messagePack.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
 import { APP_DOMAIN, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { ADMIN_TAB_PATHS, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import { MESSAGE_LIMITS, isSelfAssignableRole, normalizeMessageDoc, type MessageOwner, type MessageScope } from '$lib/messages.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
-import type { AgentAnswer, AgentPack, AgentReach } from './runtime.server.js';
+import type { AgentAnswer, AgentPack, AgentReach, AgentSession } from './runtime.server.js';
 
 export type MessageRequest = { scope: MessageScope; id: unknown; name: unknown; content: unknown };
 
@@ -56,6 +57,87 @@ export function messageRequest(raw: any): MessageRequest | null {
 export function canBuildMessage(reach: AgentReach, request: MessageRequest | null): boolean {
 	if (!request) return false;
 	return request.scope === 'global' ? reach.all : reach.server != null;
+}
+
+export function canOpenBuilder(reach: AgentReach, request: MessageRequest | null): boolean {
+	return !request && (reach.all || reach.server != null);
+}
+
+function listed(messages: { id: number; name: string }[]): string {
+	return messages.length > 0 ? messages.map((message) => `- ${message.id}: ${JSON.stringify(message.name)}`).join('\n') : 'None yet.';
+}
+
+export async function builderDoorPack(reach: AgentReach, session: AgentSession): Promise<AgentPack> {
+	const [serverMessages, globalMessages] = await Promise.all([
+		reach.server ? db.getServerMessages(Number(reach.server.id)).catch(() => []) : [],
+		reach.all ? db.getGlobalMessages(reach.panelId).catch(() => []) : []
+	]);
+	const opening = {
+		ok: true,
+		opening: true,
+		note: 'The builder is opening. The request reaches you again there, so only say that you are opening the builder.'
+	};
+
+	const instructions = [
+		'# Messages',
+		'You build and change messages inside the message builder, and it is not open right now. When the admin asks you to write, build, change or translate a message, call open_message_builder. It opens the builder for them and their request reaches you again there, so reply only that you are opening the builder. Never write the message itself in the chat. When they only ask whether you can make messages, say yes and ask what it should say.',
+		...(reach.all ? ['A server message belongs to one server. A global message is sent to every server on this panel.'] : []),
+		...(reach.server ? [`Saved messages of "${reach.server.name ?? 'this server'}" (id: name):`, listed(serverMessages)] : []),
+		...(reach.all ? ['Saved global messages (id: name):', listed(globalMessages)] : [])
+	].join('\n');
+
+	return {
+		instructions,
+		tools: [
+			{
+				name: 'open_message_builder',
+				description:
+					'Open the message builder for the admin so a message can be built or changed there. Opens a new message unless message_id names a saved one.',
+				parameters: {
+					type: 'object',
+					properties: {
+						message_id: { type: 'integer', description: 'A saved message to open, from the lists you were given. Leave out for a new message.' },
+						...(reach.all
+							? {
+									kind: {
+										type: 'string',
+										enum: ['server', 'global'],
+										description: reach.server ? 'Leave out for a message of the server the admin has open.' : 'Leave out for a global message.'
+									},
+									server_id: {
+										type: 'integer',
+										description: 'For kind "server": which server, as a server_id from list_servers. Leave out for the server the admin has open.'
+									}
+								}
+							: {})
+					}
+				},
+				run: async (args) => {
+					const messageId = Number(args.message_id);
+					if (reach.all && (args.kind === 'global' || (args.kind !== 'server' && args.server_id == null && !reach.server))) {
+						session.navigate = `${ADMIN_TAB_PATHS.globalMessages}/${globalMessages.some((message) => message.id === messageId) ? messageId : 'new'}`;
+						return opening;
+					}
+
+					let server = reach.server;
+					let messages = serverMessages;
+					if (reach.all && args.server_id != null && Number(args.server_id) !== Number(reach.server?.id)) {
+						const other = await db.getServer(Number(args.server_id)).catch(() => null);
+						server = other && (await db.getServerPanelId(Number(other.id)).catch(() => null)) === reach.panelId ? other : null;
+						messages = server ? await db.getServerMessages(Number(server.id)).catch(() => []) : [];
+					}
+					if (!server) return { ok: false, reason: 'unknown_server', hint: 'Use a server_id from list_servers, or kind "global".' };
+
+					session.navigate = adminServerSectionPath(
+						server.bot_id,
+						server.id,
+						`messages/${messages.some((message) => message.id === messageId) ? messageId : 'new'}`
+					);
+					return opening;
+				}
+			}
+		]
+	};
 }
 
 export async function messageBuilderPack(reach: AgentReach, request: MessageRequest): Promise<AgentPack> {

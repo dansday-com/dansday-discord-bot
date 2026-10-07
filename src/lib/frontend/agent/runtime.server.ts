@@ -9,7 +9,7 @@ const MAX_HISTORY_TURNS = 8;
 
 export type AgentReach = { panelId: number; all: boolean; server: any | null };
 
-export type AgentSession = { actor: string; changed: Set<string> };
+export type AgentSession = { actor: string; changed: Set<string>; navigate: string | null };
 
 export type AgentAnswer = { reply: string; message?: { name: string | null; content: MessageDoc | null } };
 
@@ -22,7 +22,7 @@ export type AgentPack = {
 export type AgentReply<T> = { ok: true; result: T } | { ok: false; status: number; error: string };
 
 export function agentSession(locals: App.Locals): AgentSession {
-	return { actor: locals.user.authenticated ? locals.user.username : 'Someone', changed: new Set() };
+	return { actor: locals.user.authenticated ? locals.user.username : 'Someone', changed: new Set(), navigate: null };
 }
 
 export async function agentReach(locals: App.Locals, server: any | null = null): Promise<AgentReach | null> {

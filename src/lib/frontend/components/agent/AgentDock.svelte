@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { quintOut } from 'svelte/easing';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { AGENT_OFF, AGENT_PROMPT_LIMIT } from '$lib/agent.js';
 	import { agentDock, announceAgentChanges, type AgentMessageEditor } from '$lib/frontend/agent.svelte';
@@ -134,23 +134,40 @@
 		await invalidateAll();
 	}
 
+	async function exchange(text: string, showPrompt: boolean): Promise<any | null> {
+		const target = agentDock.editor;
+		const out = await call({
+			prompt: text,
+			history: turns.map((turn) => ({ role: turn.role, text: turn.text })),
+			message: target ? { scope: target.scope, ...target.read() } : null
+		});
+		if (!out) return null;
+		if (showPrompt) turns.push({ role: 'user', text });
+		turns.push({ role: 'assistant', text: String(out.reply ?? '') });
+		if (!open) unread = true;
+		if (out.message && target?.apply(out.message)) undoable = { turn: turns.length - 1, editor: target };
+		scrollDown();
+		await settle(out);
+		return out;
+	}
+
+	async function editorOpened(): Promise<boolean> {
+		for (let i = 0; i < 100 && !agentDock.editor; i++) await new Promise((resolve) => setTimeout(resolve, 50));
+		return agentDock.editor !== null;
+	}
+
 	async function ask() {
 		const text = prompt.trim();
 		if (!text || busy || !ready) return;
 		busy = true;
 		scrollDown();
 		try {
-			const out = await call({
-				prompt: text,
-				history: turns.map((turn) => ({ role: turn.role, text: turn.text })),
-				message: editor ? { scope: editor.scope, ...editor.read() } : null
-			});
+			const out = await exchange(text, true);
 			if (!out) return;
-			turns.push({ role: 'user', text }, { role: 'assistant', text: String(out.reply ?? '') });
-			if (!open) unread = true;
-			if (out.message && editor?.apply(out.message)) undoable = { turn: turns.length - 1, editor };
 			prompt = '';
-			await settle(out);
+			if (typeof out.navigate !== 'string' || !out.navigate.startsWith('/admin/')) return;
+			await goto(out.navigate);
+			if (await editorOpened()) await exchange(text, false);
 		} finally {
 			busy = false;
 			scrollDown();

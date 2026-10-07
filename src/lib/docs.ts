@@ -308,7 +308,7 @@ export const aiServerTopics = [
 ];
 
 export const aiAssistantTopics = [
-	{ icon: 'fa-palette', title: 'Messages', desc: 'Describe a message in the builder and it fills in text, embeds, buttons, role actions and translations.' },
+	{ icon: 'fa-palette', title: 'Messages', desc: 'Ask from any page. It opens the builder and fills in text, embeds, buttons, role actions and translations.' },
 	{ icon: 'fa-database', title: 'Live server data', desc: 'Leaderboards, statistics, leveling rules, giveaways and the shop, read live.' },
 	{ icon: 'fa-book', title: 'Wikis', desc: 'Adds a wiki from its address, edits it or switches it off. Panel admin only.' },
 	{ icon: 'fa-store', title: 'Shop items', desc: 'Creates, reprices, schedules or switches off items. Panel admin only.' },
@@ -759,7 +759,7 @@ export const modules = [
 			},
 			{
 				label: 'Build with AI',
-				desc: "Press Ask AI in the bottom right corner and describe the message. It fills the editor for you: text, embeds, buttons, dropdowns and translations, using the server's live data when you ask for it. Nothing is saved or posted until you press Save or Send."
+				desc: "Press Ask AI in the bottom right corner on any page and describe the message. It opens the builder and fills the editor for you: text, embeds, buttons, dropdowns and translations, using the server's live data when you ask for it. Nothing is saved or posted until you press Save or Send."
 			},
 			{
 				label: 'Try it',

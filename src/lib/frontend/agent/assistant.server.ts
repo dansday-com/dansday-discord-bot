@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import type { AgentTask } from '$lib/backend/agent/core.js';
 import { itemsPack } from './items.server.js';
-import { canBuildMessage, messageBuilderPack, messageRequest, type MessageRequest } from './messages.server.js';
+import { builderDoorPack, canBuildMessage, canOpenBuilder, messageBuilderPack, messageRequest, type MessageRequest } from './messages.server.js';
 import {
 	agentReach,
 	agentReady,
@@ -33,6 +33,11 @@ const CAPABILITIES: Capability[] = [
 		can: () => 'Build or change the message open in the editor, translations included',
 		available: ({ reach, message }) => canBuildMessage(reach, message),
 		pack: ({ reach, message }) => messageBuilderPack(reach, message as MessageRequest)
+	},
+	{
+		can: () => 'Build a message for you: I open the builder and fill it in, translations included',
+		available: ({ reach, message }) => canOpenBuilder(reach, message),
+		pack: ({ reach, session }) => builderDoorPack(reach, session)
 	},
 	{
 		can: ({ reach }) =>
@@ -103,10 +108,14 @@ export async function answerAssistant(locals: App.Locals, body: any): Promise<Re
 	const turns = agentTurns(body?.history, body?.prompt);
 	if (!turns) return json({ ok: false, error: 'Tell the assistant what you need.' }, { status: 400 });
 
-	const packs = await Promise.all(CAPABILITIES.filter((capability) => capability.available(scope)).map((capability) => capability.pack(scope)));
+	const capabilities = CAPABILITIES.filter((capability) => capability.available(scope));
+	const packs = await Promise.all(capabilities.map((capability) => capability.pack(scope)));
 	const structured = packs.find((pack) => pack.finish);
+	const abilities = `# What you can do here\n${capabilities.map((capability) => `- ${capability.can(scope)}`).join('\n')}\nWhen the admin asks what you can do, answer from this list and nothing else.`;
 	const task: AgentTask<AgentAnswer> = {
-		system: [introduction(locals, scope.reach), RULES, ...packs.map((pack) => pack.instructions), ...(structured ? [] : [PLAIN_ANSWER])].join('\n\n'),
+		system: [introduction(locals, scope.reach), RULES, abilities, ...packs.map((pack) => pack.instructions), ...(structured ? [] : [PLAIN_ANSWER])].join(
+			'\n\n'
+		),
 		tools: packs.flatMap((pack) => pack.tools),
 		finish:
 			structured?.finish ??
@@ -118,15 +127,15 @@ export async function answerAssistant(locals: App.Locals, body: any): Promise<Re
 
 	const where = scope.reach.server ? ` on server "${scope.reach.server.name || scope.reach.server.id}"` : '';
 	const reply = await runPanelAgent(scope.reach, task, turns, `${scope.session.actor} asked the assistant${where}`);
-	const changed = [...scope.session.changed];
+	const effects = { changed: [...scope.session.changed], navigate: scope.session.navigate };
 
-	if (reply.ok) return json({ ok: true, reply: reply.result.reply, message: reply.result.message ?? null, changed });
-	if (changed.length > 0) {
+	if (reply.ok) return json({ ok: true, reply: reply.result.reply, message: reply.result.message ?? null, ...effects });
+	if (effects.changed.length > 0 || effects.navigate) {
 		return json({
 			ok: true,
 			reply: 'I got part of the way and then ran out of time. Check what changed, then tell me what is left.',
 			message: null,
-			changed
+			...effects
 		});
 	}
 	return json({ ok: false, error: reply.error }, { status: reply.status });

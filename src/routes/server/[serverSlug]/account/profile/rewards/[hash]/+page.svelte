@@ -14,11 +14,11 @@
 {#if !data.levelingEnabled}
 	<FeatureDisabled
 		title="Leveling is turned off"
-		message="This server has not enabled leveling, so no roles are given for levels. An administrator can turn it on in the bot configuration panel."
+		message="This server has not enabled leveling, so no rewards are given. An administrator can turn it on in the bot configuration panel."
 		icon="fa-trophy"
 	/>
 {:else if !data.rewards || data.rewards.items.length === 0}
-	<EmptyState icon="fa-trophy" message="No rewards yet" hint="This server has not set any roles for reaching a level." boxed />
+	<EmptyState icon="fa-trophy" message="No rewards yet" hint="This server has not set any rewards yet." boxed />
 {:else}
 	<Rewards rewards={data.rewards} xp={ctx?.liveXp ?? data.balance.xp} levelReq={data.levelReq} />
 {/if}

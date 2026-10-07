@@ -9,7 +9,7 @@ import { logger } from '../utils/index.js';
 import { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
-import { rewardsFromSettings, type RewardRules } from '../rewards.js';
+import { rewardRuleFlags, type RewardRules } from '../rewards.js';
 import { normalizeServerLanguage } from '../languages.js';
 import { defaultGreetingMessages, greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
 
@@ -765,8 +765,9 @@ export const REWARDS_CONFIG = {
 	async getRules(guildId: string): Promise<RewardRules> {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting rewards');
-		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.main);
-		return rewardsFromSettings(settings?.settings);
+		const server = await getOfficialBotServer(guildId);
+		const settings = await getServerSettingsRow(server.id, serverSettingsComponent.main);
+		return { rewards: await db.getRewards(server.id), ...rewardRuleFlags(settings?.settings) };
 	}
 };
 

@@ -17,7 +17,7 @@ import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
 import { serverTranslator } from '../i18n.js';
-import { syncGuildRewards, syncMemberRewards } from './rewards.js';
+import { checkRewardProgress, syncGuildRewards, syncMemberRewards } from './rewards.js';
 
 const recentMessages = new Map();
 
@@ -509,7 +509,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		await logger.log(`⭐ Level stored update (${reason}): ${memberName} -> level ${expectedLevel} in ${server.name}`);
 		const guild = clientInstance?.guilds.cache.get(guildId);
 		if (guild && dbMember.discord_member_id) {
-			rewardRoleIds = await syncMemberRewards(guild, String(dbMember.discord_member_id), expectedLevel);
+			rewardRoleIds = await syncMemberRewards(guild, String(dbMember.discord_member_id), { level: baselineLevel });
 		}
 	}
 
@@ -896,6 +896,7 @@ async function handleMessageCreate(message) {
 			xpIncrement: memberXp,
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
+		void checkRewardProgress(message.guild, String(dbMember.discord_member_id), previousStats, stats);
 		const leechApplied = await creditLeechers(leechCredits, guildId);
 		(award as any).inviteShare = await creditInviteShare(message.guild, server, dbMember, memberXp);
 
@@ -969,6 +970,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	const leechApplied = await creditLeechers(leechCredits, guildId);
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
+	void checkRewardProgress(discordGuild, String(dbMember.discord_member_id), oldStats, stats);
 	if (discordGuild) {
 		let inviteShare = await creditInviteShare(discordGuild, server, dbMember, xpGained);
 		const rate = rawXpGained > 0 ? xpGained / rawXpGained : 1;
@@ -1406,10 +1408,7 @@ async function resumeVoiceSessions(client) {
 async function handleRewardRejoin(member: any) {
 	if (member.user?.bot) return;
 	try {
-		const server = await getServerForCurrentBot(member.guild.id);
-		const stats = await db.getMemberLevelByDiscordId(server.id, member.id);
-		const level = Number(stats?.level) || 1;
-		if (level > 1) await syncMemberRewards(member.guild, member.id, level);
+		await syncMemberRewards(member.guild, member.id);
 	} catch (_) {}
 }
 

@@ -166,6 +166,7 @@ const configNavTabs: {
 	href: e.hrefSuffix,
 	featureComponent: e.featureSwitch ? e.id : null
 }));
+configNavTabs.splice(1, 0, { label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: '/moderation', featureComponent: null });
 
 function featureLabel(componentId: string): string {
 	return REGISTRY.find((e) => e.id === componentId)?.label ?? componentId;

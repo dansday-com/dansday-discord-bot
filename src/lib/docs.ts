@@ -554,10 +554,13 @@ export const modules = [
 			},
 			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
 			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
-			{ label: 'Invites tab', desc: 'Every inviter, join and link, and whether each member used a personal or Discord link.' },
+			{
+				label: 'Members tab',
+				desc: "Each member's page shows who invited them, who they invited and their bonus invites. Joins and Links list every join and invite link, and whether a personal or Discord link was used."
+			},
 			{
 				label: 'Rewards tab',
-				desc: 'Roles the bot gives at the levels you set, also to members who already qualify. Choose whether a level lost to a steal takes the role back, and whether a new reward replaces the last. Members see the list on their Rewards tab.'
+				desc: 'Each reward is a goal and what reaching it gives. Goals are a level, messages, or voice, video and streaming hours. A reward is a role, an XP amount, or a custom reward with your own name and image that staff hand over and mark delivered. A reward can be limited to the first members who reach it. Choose whether a level lost to a steal takes a reward back, and whether a higher reward replaces the lower one. Members see the list on their Rewards tab.'
 			},
 			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications. A level-up that unlocks a reward names the role.' }
 		]
@@ -666,9 +669,9 @@ export const modules = [
 		title: 'Moderation',
 		what: 'Always on. Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
 		fields: [
-			{ label: 'Members list', desc: 'Tick any members, then warn, time out, kick, ban or change roles in one go.' },
-			{ label: 'Warned, timed out, banned', desc: 'Tabs for who is under an active action; click anyone for their full record.' },
-			{ label: 'Auto-escalation', desc: 'Steps like 3 warnings = 1 hour timeout; the bot applies them itself.' },
+			{ label: 'Members tab', desc: 'Tick any members, then warn, time out, kick, ban or change roles in one go. Open a member for their full record.' },
+			{ label: 'Warned, timed out, banned', desc: 'Filters on the Members tab for who is under an active action.' },
+			{ label: 'Auto-escalation', desc: 'Set under Configuration, Moderation. Steps like 3 warnings = 1 hour timeout; the bot applies them itself.' },
 			{ label: 'Warning expiry', desc: 'Warnings older than this stop counting; the record stays.' },
 			{ label: 'Reason presets', desc: 'Saved reasons staff pick from; any case reason can be edited later.' },
 			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Each case pings the member; cases are always kept in the panel.' }

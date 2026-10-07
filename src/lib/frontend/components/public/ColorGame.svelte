@@ -40,10 +40,10 @@
 		active: boolean;
 		round: number;
 		rounds: ColorRound[];
-		target: Hsb | null;
 	};
 	type ColorStep = ColorRound & { round: number; done: boolean; total?: number; payout?: number };
-	type ColorReply = { state: ColorState; step?: ColorStep };
+	type ColorEnded = { total: number; payout: number; rounds: ColorRound[] };
+	type ColorReply = { state: ColorState; step?: ColorStep; target?: Hsb; ended?: ColorEnded | null };
 	type Phase = 'idle' | 'memorize' | 'dial' | 'reveal' | 'summary';
 
 	const THUMB = 14;
@@ -185,7 +185,7 @@
 		phase = 'idle';
 		rounds = game?.rounds ?? [];
 		landed = rounds.length;
-		target = game?.target ?? null;
+		target = null;
 		last = null;
 		result = null;
 		settled = false;
@@ -211,11 +211,38 @@
 		}
 	}
 
-	async function refresh() {
-		const d = await send('state');
-		if (!d) return;
+	function showResult(ended: ColorEnded) {
+		cancelAnimationFrame(countdown);
+		rounds = ended.rounds;
+		landed = rounds.length;
+		target = null;
+		last = null;
+		result = { total: ended.total, payout: ended.payout };
+		if (ended.payout > 0) onpayout(ended.payout);
+		settled = false;
+		phase = 'summary';
+		countTo(ended.total, COLOR_MAX_TOTAL, () => {
+			settled = true;
+			burst += 1;
+			sfx.payout(ended.total / COLOR_MAX_TOTAL);
+		});
+	}
+
+	async function settle(): Promise<boolean> {
+		const d = await send('end');
+		if (!d) return false;
 		game = d.state;
-		if (phase === 'idle') resync();
+		if (d.ended) showResult(d.ended);
+		return !!d.ended;
+	}
+
+	async function quit() {
+		if (busy) return;
+		if (!game?.active) return onclose();
+		busy = true;
+		const shown = await settle();
+		busy = false;
+		if (!shown) onclose();
 	}
 
 	function countTo(value: number, max: number, onLand: () => void) {
@@ -278,14 +305,13 @@
 	async function begin() {
 		if (busy || !game) return;
 		sfx.press();
-		if (!game.active) {
-			busy = true;
-			const d = await send('start');
-			busy = false;
-			if (!d) return;
-			game = d.state;
-		}
+		busy = true;
+		const d = await send('start');
+		busy = false;
+		if (!d?.target) return;
+		game = d.state;
 		resync();
+		target = d.target;
 		startRound();
 	}
 
@@ -305,7 +331,7 @@
 		last = step;
 		guess = step.guess;
 		rounds = [...rounds, { target: step.target, guess: step.guess, score: step.score }];
-		upcoming = d.state.target;
+		upcoming = d.target ?? null;
 		game = d.state;
 		if (step.done) {
 			result = { total: step.total ?? colorTotal(rounds.map((r) => r.score)), payout: step.payout ?? 0 };
@@ -339,7 +365,7 @@
 
 	onMount(() => {
 		busy = true;
-		refresh().finally(() => (busy = false));
+		settle().finally(() => (busy = false));
 		return () => {
 			cancelAnimationFrame(countdown);
 			cancelAnimationFrame(counter);
@@ -351,7 +377,7 @@
 	<span class="inline-flex gap-1.5 tabular-nums"><span>H{c.h}</span><span>S{c.s}</span><span>B{c.b}</span></span>
 {/snippet}
 
-<GameModal icon="fa-eye-dropper" title="Color" state={won ? 'win' : 'idle'} closable={!busy} {onclose}>
+<GameModal icon="fa-eye-dropper" title="Color" state={won ? 'win' : 'idle'} closable={!busy} onclose={quit}>
 	{#if !game}
 		<div class="text-base-content/50 grid h-[410px] place-items-center text-2xl">
 			{#if busy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-triangle-exclamation"></i>{/if}
@@ -541,7 +567,7 @@
 				disabled={busy || (phase === 'summary' && !settled)}
 				onclick={begin}
 			>
-				<i class="fas {game.active ? 'fa-play' : 'fa-eye-dropper'}"></i>{game.active ? 'Resume' : phase === 'summary' ? 'Play again' : 'Play'}
+				<i class="fas fa-eye-dropper"></i>{phase === 'summary' ? 'Play again' : 'Play'}
 			</button>
 		{/if}
 	{/if}

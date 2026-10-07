@@ -61,7 +61,7 @@ export const BASICS: GuideCard[] = [
 		icon: 'fa-trophy',
 		accent: '#c8911a',
 		title: 'Rewards',
-		desc: 'Some servers give a role at set levels. Your Rewards tab lists each one and the XP it still needs.'
+		desc: 'Servers can reward levels, messages and voice time. Your Rewards tab lists each one and how far you are.'
 	},
 	{
 		icon: 'fa-clock-rotate-left',

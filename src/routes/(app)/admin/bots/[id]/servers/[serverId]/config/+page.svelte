@@ -264,7 +264,7 @@
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-gavel mr-1.5 text-emerald-400"></i>Moderation Logs Channel
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Optional. Where moderation case embeds post. Every case is always in the panel's Moderation tab.</p>
+		<p class="text-ash-500 mb-2 text-xs">Optional. Where moderation case embeds post. Every case is always on the member's page in the Members tab.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={moderationLogChannel} onchange={(id) => (moderationLogChannel = id)} />
 	</div>
 

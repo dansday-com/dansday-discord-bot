@@ -24,9 +24,7 @@
 			: []),
 		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/embed` },
 		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` },
-		{ label: 'Invites', icon: 'fa-user-plus', iconClass: 'text-cyan-400', href: `${base}/invites` },
 		{ label: 'Rewards', icon: 'fa-trophy', iconClass: 'text-yellow-400', href: `${base}/rewards` },
-		{ label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: `${base}/moderation` },
 		{ label: 'Change Log', icon: 'fa-clock-rotate-left', iconClass: 'text-sky-400', href: `${base}/changes` }
 	]);
 

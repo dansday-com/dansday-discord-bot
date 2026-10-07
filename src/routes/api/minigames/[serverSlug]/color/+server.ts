@@ -9,7 +9,7 @@ import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 
 const RATE_WINDOW_MS = 60 * 1000;
 const MAX_ACTIONS = 60;
-const ACTIONS = ['state', 'start', 'guess'];
+const ACTIONS = ['start', 'guess', 'end'];
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
@@ -54,7 +54,6 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const code = webhookResult.body?.error;
 		const friendly: Record<string, string> = {
 			no_active_run: 'That game is already over.',
-			run_changed: 'That round already moved on.',
 			invalid_guess: 'That color did not go through.',
 			minigames_disabled: 'Minigames are disabled for this server.'
 		};
@@ -62,5 +61,11 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: err, state: webhookResult.body?.state }, { status: webhookResult.status === 502 ? 502 : 400 });
 	}
 
-	return json({ success: true, state: webhookResult.body.state, step: webhookResult.body.step });
+	return json({
+		success: true,
+		state: webhookResult.body.state,
+		step: webhookResult.body.step,
+		target: webhookResult.body.target,
+		ended: webhookResult.body.ended
+	});
 };

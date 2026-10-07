@@ -614,17 +614,32 @@ CREATE TABLE IF NOT EXISTS server_member_tower_runs (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_member_color_runs (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    member_id INT NOT NULL,
-    round INT NOT NULL DEFAULT 0,
-    seed INT NOT NULL DEFAULT 0,
-    guesses VARCHAR(96) NOT NULL DEFAULT '',
-    status VARCHAR(16) NOT NULL DEFAULT 'active',
-    payout INT NOT NULL DEFAULT 0,
+CREATE TABLE IF NOT EXISTS server_rewards (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    goal_type VARCHAR(16) NOT NULL DEFAULT 'level',
+    goal INT NOT NULL,
+    kind VARCHAR(8) NOT NULL DEFAULT 'role',
+    role_id INT NULL,
+    xp INT NOT NULL DEFAULT 0,
+    name VARCHAR(64) NULL,
+    image VARCHAR(255) NULL,
+    winner_limit INT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_member_rewards (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    reward_id INT NOT NULL,
+    delivered_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (reward_id) REFERENCES server_rewards(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_server_member_reward (member_id, reward_id)
 );
 
 CREATE TABLE IF NOT EXISTS server_member_tasks (
@@ -873,7 +888,8 @@ CREATE INDEX IF NOT EXISTS idx_server_member_streaks_member ON server_member_str
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_member ON server_member_minigame_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_created ON server_member_minigame_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_tower_runs_member ON server_member_tower_runs(member_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_server_member_color_runs_member ON server_member_color_runs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_rewards_server ON server_rewards(server_id, goal_type, goal);
+CREATE INDEX IF NOT EXISTS idx_server_member_rewards_reward ON server_member_rewards(reward_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_placed ON server_member_item_bounties(placed_by_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_created ON server_member_item_bounties(created_at);

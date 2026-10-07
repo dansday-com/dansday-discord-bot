@@ -7,17 +7,16 @@ import { luckBoostLabel } from '../../../../items.js';
 import { TOWER_DOORS, TOWER_FLOORS, TOWER_GAME, TOWER_RESET_HOURS, towerBaseChance, towerPrize, towerSafeChance, towerTrapCount } from '../../../../tower.js';
 import {
 	COLOR_GAME,
-	COLOR_MAX_TOTAL,
+	COLOR_MAX_SCORE,
 	COLOR_ROUNDS,
 	colorGuess,
-	colorRounds,
-	colorSeed,
-	colorTargets,
+	colorScore,
+	colorTarget,
 	colorTotal,
 	colorXp,
-	decodeColorGuesses,
-	encodeColorGuesses,
-	hsbToHex
+	hsbToHex,
+	type ColorRound,
+	type Hsb
 } from '../../../../color.js';
 import { serverTranslator } from '../i18n.js';
 
@@ -28,6 +27,7 @@ const ANNOUNCE_DELAY_MS = 7000;
 const TOWER_ANNOUNCE_DELAY_MS = 1500;
 const TOWER_RESET_MS = TOWER_RESET_HOURS * 3600000;
 const COLOR_ANNOUNCE_DELAY_MS = 4000;
+const COLOR_IDLE_MS = 10 * 60000;
 
 function clampMultiplier(raw: any): number {
 	const m = Number(raw);
@@ -177,6 +177,9 @@ async function announceMinigame(client: any, ctx: any) {
 
 const towerQueues = new Map<number, Promise<any>>();
 const colorQueues = new Map<number, Promise<any>>();
+
+type ColorRun = { ctx: any; rounds: ColorRound[]; target: Hsb; timer: ReturnType<typeof setTimeout> | null };
+const colorRuns = new Map<number, ColorRun>();
 
 function queueMember<T>(queues: Map<number, Promise<any>>, memberId: number, task: () => Promise<T>): Promise<T> {
 	const run = (queues.get(memberId) ?? Promise.resolve()).then(task, task);
@@ -369,16 +372,27 @@ async function announceTower(client: any, ctx: any) {
 	}
 }
 
-async function loadColor(memberId: number) {
-	const run = await db.getActiveColorRun(memberId);
-	const guesses = run ? decodeColorGuesses(run.guesses) : [];
-	const state = {
-		active: !!run,
-		round: guesses.length,
-		rounds: run ? colorRounds(run.seed, guesses) : [],
-		target: run ? (colorTargets(run.seed)[guesses.length] ?? null) : null
-	};
-	return { run, guesses, state };
+function colorState(run?: ColorRun) {
+	return { active: !!run, round: run?.rounds.length ?? 0, rounds: run?.rounds ?? [] };
+}
+
+function armColorRun(client: any, memberId: number, run: ColorRun) {
+	if (run.timer) clearTimeout(run.timer);
+	run.timer = setTimeout(() => {
+		void queueMember(colorQueues, memberId, async () => {
+			if (colorRuns.get(memberId) === run) await endColor(client, memberId, run);
+		}).catch(() => null);
+	}, COLOR_IDLE_MS);
+}
+
+async function endColor(client: any, memberId: number, run: ColorRun) {
+	if (run.timer) clearTimeout(run.timer);
+	colorRuns.delete(memberId);
+	if (run.rounds.length === 0) return null;
+	const total = colorTotal(run.rounds.map((r) => r.score));
+	const payout = colorXp(total);
+	await finishColor(client, run.ctx, { total, payout }, run.rounds);
+	return { total, payout, rounds: run.rounds };
 }
 
 export async function handleColorAction(client: any, payload: any) {
@@ -403,74 +417,67 @@ export async function handleColorAction(client: any, payload: any) {
 	const ctx = { guildId: guild_id, actorDiscordId: actor_discord_id, memberId: Number(actorMemberId) };
 
 	return queueMember(colorQueues, ctx.memberId, async () => {
-		const { run, guesses, state } = await loadColor(ctx.memberId);
+		const run = colorRuns.get(ctx.memberId);
 
-		if (action === 'state') return { ok: true, state };
+		if (action === 'end') return { ok: true, state: colorState(), ended: run ? await endColor(client, ctx.memberId, run) : null };
 
 		if (action === 'start') {
-			if (run) return { ok: true, state };
-			const seed = colorSeed();
-			await db.createColorRun(ctx.memberId, seed);
-			return { ok: true, state: { ...state, active: true, target: colorTargets(seed)[0] } };
+			if (run) await endColor(client, ctx.memberId, run);
+			const fresh: ColorRun = { ctx, rounds: [], target: colorTarget(), timer: null };
+			colorRuns.set(ctx.memberId, fresh);
+			armColorRun(client, ctx.memberId, fresh);
+			return { ok: true, state: colorState(fresh), target: fresh.target };
 		}
 
-		if (!run) return { ok: false, error: 'no_active_run', state };
-		if (action !== 'guess') return { ok: false, error: 'invalid_action', state };
+		if (!run) return { ok: false, error: 'no_active_run', state: colorState() };
+		if (action !== 'guess') return { ok: false, error: 'invalid_action', state: colorState(run) };
 
 		const guess = colorGuess(payload);
-		if (!guess) return { ok: false, error: 'invalid_guess', state };
+		if (!guess) return { ok: false, error: 'invalid_guess', state: colorState(run) };
 
-		const played = state.round;
-		const rounds = colorRounds(run.seed, [...guesses, guess]);
-		const step = { ...rounds[played], round: played + 1 };
-		const encoded = encodeColorGuesses(rounds.map((r) => r.guess));
+		const round = { target: run.target, guess, score: colorScore(run.target, guess) };
+		run.rounds.push(round);
+		const step = { ...round, round: run.rounds.length };
 
-		if (rounds.length >= COLOR_ROUNDS) {
-			const total = colorTotal(rounds.map((r) => r.score));
-			const payout = colorXp(total);
-			if (!(await db.stepColorRun(run.id, played, { round: rounds.length, guesses: encoded, status: 'done', payout }))) {
-				return { ok: false, error: 'run_changed', state };
-			}
-			return finishColor(client, ctx, state, { ...step, done: true, total, payout }, rounds);
+		if (run.rounds.length >= COLOR_ROUNDS) {
+			const ended = await endColor(client, ctx.memberId, run);
+			return { ok: true, step: { ...step, done: true, total: ended?.total ?? 0, payout: ended?.payout ?? 0 }, state: colorState() };
 		}
 
-		if (!(await db.stepColorRun(run.id, played, { round: rounds.length, guesses: encoded, status: 'active' }))) {
-			return { ok: false, error: 'run_changed', state };
-		}
-		return { ok: true, step: { ...step, done: false }, state: { ...state, round: rounds.length, rounds, target: colorTargets(run.seed)[rounds.length] } };
+		run.target = colorTarget();
+		armColorRun(client, ctx.memberId, run);
+		return { ok: true, step: { ...step, done: false }, state: colorState(run), target: run.target };
 	});
 }
 
-async function finishColor(client: any, ctx: any, state: any, step: any, rounds: any[]) {
+async function finishColor(client: any, ctx: any, result: { total: number; payout: number }, rounds: ColorRound[]) {
 	const { guildId, actorDiscordId, memberId } = ctx;
 
-	if (step.payout > 0) {
+	if (result.payout > 0) {
 		await db.ensureMemberLevel(memberId);
-		const after = await db.updateMemberLevelStats(memberId, { xpIncrement: step.payout });
+		const after = await db.updateMemberLevelStats(memberId, { xpIncrement: result.payout });
 		await reevaluateLevel(memberId, after, guildId);
 	}
 
 	await db
 		.logMinigameAction(memberId, {
 			game: COLOR_GAME,
-			multiplier: step.total,
+			multiplier: result.total,
 			wager: 0,
-			payout: step.payout,
-			xp: step.payout,
-			outcome: step.payout > 0 ? 'win' : 'lose',
+			payout: result.payout,
+			xp: result.payout,
+			outcome: result.payout > 0 ? 'win' : 'lose',
 			chance: null,
 			luck_percent: null
 		})
 		.catch(() => null);
 
-	if (step.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
+	if (result.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
 
 	const best = rounds.reduce((top, r) => (r.score > top.score ? r : top), rounds[0]);
 	setTimeout(() => {
-		announceColor(client, { guildId, actorDiscordId, result: { total: step.total, payout: step.payout, best } }).catch(() => null);
+		announceColor(client, { guildId, actorDiscordId, result: { ...result, best, rounds: rounds.length } }).catch(() => null);
 	}, COLOR_ANNOUNCE_DELAY_MS);
-
-	return { ok: true, step, state: { ...state, active: false, round: 0, rounds: [], target: null } };
 }
 
 async function announceColor(client: any, ctx: any) {
@@ -492,14 +499,14 @@ async function announceColor(client: any, ctx: any) {
 		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
-		const story = { member: actor ? `${actor}` : tr('minigames.someone'), rounds: COLOR_ROUNDS, payout: fmtXp(result.payout) };
+		const story = { member: actor ? `${actor}` : tr('minigames.someone'), rounds: result.rounds, payout: fmtXp(result.payout) };
 
 		const embed = new EmbedBuilder()
 			.setColor(hsbToHex(result.best.target))
 			.setTitle(tr('minigames.color.title'))
 			.setDescription(tr('minigames.color.description', story))
 			.addFields(
-				{ name: tr('minigames.color.fields.score'), value: `${result.total.toFixed(2)} / ${COLOR_MAX_TOTAL}`, inline: true },
+				{ name: tr('minigames.color.fields.score'), value: `${result.total.toFixed(2)} / ${result.rounds * COLOR_MAX_SCORE}`, inline: true },
 				{ name: tr('minigames.color.fields.bestRound'), value: `${result.best.score.toFixed(2)}`, inline: true },
 				{ name: tr('minigames.color.fields.prize'), value: `+${fmtXp(result.payout)}`, inline: true }
 			)

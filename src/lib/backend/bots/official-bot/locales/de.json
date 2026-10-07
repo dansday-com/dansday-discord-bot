@@ -610,7 +610,8 @@
 			"colorLabel": "Rollenfarbe (Hex)",
 			"colorPlaceholder": "#FF5733 (optional)",
 			"iconLabel": "Rollensymbol (Emoji oder Bild-URL)",
-			"iconPlaceholder": "🔥 oder https://example.com/icon.png (optional)"
+			"iconPlaceholder": "🔥 oder https://example.com/icon.png (optional)",
+			"iconUploadLabel": "Oder ein Icon-Bild hochladen"
 		},
 		"existing": {
 			"title": "💎 Eigene Supporter-Rolle",

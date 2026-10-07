@@ -610,7 +610,8 @@
 			"colorLabel": "Warna Role (Hex)",
 			"colorPlaceholder": "#FF5733 (pilihan)",
 			"iconLabel": "Ikon Role (Emoji atau URL Imej)",
-			"iconPlaceholder": "🔥 atau https://example.com/icon.png (pilihan)"
+			"iconPlaceholder": "🔥 atau https://example.com/icon.png (pilihan)",
+			"iconUploadLabel": "Atau Muat Naik Imej Ikon"
 		},
 		"existing": {
 			"title": "💎 Role Penyokong Tersuai",

@@ -610,7 +610,8 @@
 			"colorLabel": "Color del rol (hex)",
 			"colorPlaceholder": "#FF5733 (opcional)",
 			"iconLabel": "Icono del rol (emoji o URL de imagen)",
-			"iconPlaceholder": "🔥 o https://example.com/icon.png (opcional)"
+			"iconPlaceholder": "🔥 o https://example.com/icon.png (opcional)",
+			"iconUploadLabel": "O sube una imagen de icono"
 		},
 		"existing": {
 			"title": "💎 Rol de colaborador personalizado",

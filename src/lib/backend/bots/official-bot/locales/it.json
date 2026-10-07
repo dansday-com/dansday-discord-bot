@@ -610,7 +610,8 @@
 			"colorLabel": "Colore del ruolo (hex)",
 			"colorPlaceholder": "#FF5733 (facoltativo)",
 			"iconLabel": "Icona del ruolo (emoji o URL immagine)",
-			"iconPlaceholder": "🔥 o https://example.com/icon.png (facoltativo)"
+			"iconPlaceholder": "🔥 o https://example.com/icon.png (facoltativo)",
+			"iconUploadLabel": "Oppure carica un'immagine icona"
 		},
 		"existing": {
 			"title": "💎 Ruolo Supporter personalizzato",

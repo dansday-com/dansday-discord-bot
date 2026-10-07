@@ -610,7 +610,8 @@
 			"colorLabel": "Rolkleur (hex)",
 			"colorPlaceholder": "#FF5733 (optioneel)",
 			"iconLabel": "Rolicoon (emoji of afbeeldings-URL)",
-			"iconPlaceholder": "🔥 of https://example.com/icon.png (optioneel)"
+			"iconPlaceholder": "🔥 of https://example.com/icon.png (optioneel)",
+			"iconUploadLabel": "Of upload een icoonafbeelding"
 		},
 		"existing": {
 			"title": "💎 Eigen supporterrol",

@@ -11,7 +11,18 @@ import {
 } from '../../../config.js';
 import { domainToUnicode } from 'node:url';
 import { inviteJoinPath } from '../../../../invites.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	ContainerBuilder,
+	EmbedBuilder,
+	MessageFlags,
+	SectionBuilder,
+	SeparatorBuilder,
+	TextDisplayBuilder,
+	ThumbnailBuilder
+} from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import {
@@ -22,6 +33,7 @@ import {
 	handleDeleteCustomSupporterRole
 } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
+import { keepComponentsV2, v2Message } from './interface/componentsV2.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleModerationButton, handleModerationUserSelect, handleModerationActionSelect, handleModerationModal } from './interface/moderation.js';
 import {
@@ -174,46 +186,54 @@ async function handleMenuCategory(interaction, categoryId: string) {
 		return;
 	}
 
-	const lines: string[] = [];
-	const buttons = [];
+	const embedConfig = await getEmbedConfig(g);
+	const container = new ContainerBuilder()
+		.setAccentColor(embedConfig.COLOR)
+		.addTextDisplayComponents(
+			new TextDisplayBuilder().setContent(
+				`## ${await translate(`menu.categories.${category.id}.button`, g, u)}\n${await translate(`menu.categories.${category.id}.description`, g, u)}`
+			)
+		)
+		.addSeparatorComponents(new SeparatorBuilder());
+
 	for (const item of category.items) {
-		const label = await translate(item.label, g, u);
-		lines.push(`**${label}**\n${await translate(`menu.items.${item.desc}`, g, u)}`);
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId(item.customId)
-				.setLabel(label)
-				.setStyle(item.style ?? ButtonStyle.Success)
+		container.addSectionComponents(
+			menuRow(
+				await translate(`menu.items.${item.desc}`, g, u),
+				new ButtonBuilder()
+					.setCustomId(item.customId)
+					.setLabel(await translate(item.label, g, u))
+					.setStyle(item.style ?? ButtonStyle.Success)
+			)
 		);
 	}
 
-	const rows = [];
-	for (let i = 0; i < buttons.length; i += 5) {
-		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
-	}
-	rows.push(
-		new ActionRowBuilder().addComponents(
-			new ButtonBuilder()
-				.setCustomId('bot_menu')
-				.setLabel(await translate('menu.back', g, u))
-				.setStyle(ButtonStyle.Secondary)
+	container
+		.addSeparatorComponents(new SeparatorBuilder())
+		.addActionRowComponents(
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				new ButtonBuilder()
+					.setCustomId('bot_menu')
+					.setLabel(await translate('menu.back', g, u))
+					.setStyle(ButtonStyle.Secondary)
+			)
 		)
-	);
+		.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${embedConfig.FOOTER}`));
 
-	const embedConfig = await getEmbedConfig(g);
-	const embed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
-		.setTitle(await translate(`menu.categories.${category.id}.button`, g, u))
-		.setDescription(`${await translate(`menu.categories.${category.id}.description`, g, u)}\n\n${lines.join('\n\n')}`)
-		.setFooter({ text: embedConfig.FOOTER })
-		.setTimestamp();
+	await showMenuScreen(interaction, container);
+}
 
+function menuRow(text: string, button: ButtonBuilder) {
+	return new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(text)).setButtonAccessory(button);
+}
+
+async function showMenuScreen(interaction, container: ContainerBuilder) {
 	if (interaction.replied || interaction.deferred) {
-		await interaction.editReply({ content: '', embeds: [embed], components: rows });
-	} else if (interaction.message?.flags?.has(64)) {
-		await interaction.update({ content: '', embeds: [embed], components: rows });
+		await interaction.editReply(v2Message([container], interaction.message));
+	} else if (interaction.message?.flags?.has(MessageFlags.Ephemeral)) {
+		await interaction.update(v2Message([container], interaction.message));
 	} else {
-		await interaction.reply({ embeds: [embed], components: rows, flags: 64 });
+		await interaction.reply({ components: [container], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
 	}
 }
 
@@ -261,18 +281,13 @@ async function handleMenuButton(interaction) {
 		return;
 	}
 
-	const buttons = [];
+	const categories = [];
 	for (const category of MENU_CATEGORIES) {
 		if (category.permission && !(await hasPermission(member, category.permission))) continue;
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId(`menu_cat|${category.id}`)
-				.setLabel(await translate(`menu.categories.${category.id}.button`, interaction.guild.id, interaction.user.id))
-				.setStyle(category.style)
-		);
+		categories.push(category);
 	}
 
-	if (buttons.length === 0) {
+	if (categories.length === 0) {
 		const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);
 		if (interaction.replied || interaction.deferred) {
 			await interaction.editReply({
@@ -326,85 +341,62 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
-	const menuEmbed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
-		.setTitle(menuTitle)
-		.setDescription(description)
-		.setFooter({ text: embedConfig.FOOTER })
-		.setTimestamp();
+	const header = new TextDisplayBuilder().setContent(`## ${menuTitle}\n${description}`);
+	const icon = interaction.guild.iconURL({ extension: 'png', size: 128 });
+	const container = new ContainerBuilder().setAccentColor(embedConfig.COLOR);
+	if (icon) {
+		container.addSectionComponents(new SectionBuilder().addTextDisplayComponents(header).setThumbnailAccessory(new ThumbnailBuilder().setURL(icon)));
+	} else {
+		container.addTextDisplayComponents(header);
+	}
 
 	if (publicServer?.stats) {
 		const stats = publicServer.stats;
-		menuEmbed.addFields(
-			{
-				name: await translate('menu.stats.members', interaction.guild.id, interaction.user.id),
-				value: stats.members_total.toLocaleString(),
-				inline: true
-			},
-			{
-				name: await translate('menu.stats.totalXp', interaction.guild.id, interaction.user.id),
-				value: stats.leveling_total_xp.toLocaleString(),
-				inline: true
-			},
-			{
-				name: await translate('menu.stats.topLevel', interaction.guild.id, interaction.user.id),
-				value: stats.leveling_max_level.toLocaleString(),
-				inline: true
-			}
+		const stat = async (key: string, value: number) =>
+			`${await translate(`menu.stats.${key}`, interaction.guild.id, interaction.user.id)} **${value.toLocaleString()}**`;
+		container.addTextDisplayComponents(
+			new TextDisplayBuilder().setContent(
+				[await stat('members', stats.members_total), await stat('totalXp', stats.leveling_total_xp), await stat('topLevel', stats.leveling_max_level)].join(
+					' · '
+				)
+			)
 		);
 	}
 
-	const rows = [];
-	for (let i = 0; i < buttons.length; i += 5) {
-		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
+	container.addSeparatorComponents(new SeparatorBuilder());
+	for (const category of categories) {
+		container.addSectionComponents(
+			menuRow(
+				await translate(`menu.categories.${category.id}.description`, interaction.guild.id, interaction.user.id),
+				new ButtonBuilder()
+					.setCustomId(`menu_cat|${category.id}`)
+					.setLabel(await translate(`menu.categories.${category.id}.button`, interaction.guild.id, interaction.user.id))
+					.setStyle(category.style)
+			)
+		);
 	}
 
-	const settingsButton = new ButtonBuilder()
-		.setCustomId('settings_language')
-		.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
-		.setStyle(ButtonStyle.Secondary);
-
-	rows.push(new ActionRowBuilder().addComponents(settingsButton));
+	const footerRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder()
+			.setCustomId('settings_language')
+			.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Secondary)
+	);
 
 	if (publicServer) {
-		const base = publicServer.base;
-		const addLinkButton = (btn: ButtonBuilder) => {
-			const targetRow = rows[rows.length - 1];
-			if (targetRow.components.length < 5) {
-				targetRow.addComponents(btn);
-			} else if (rows.length < 5) {
-				rows.push(new ActionRowBuilder().addComponents(btn));
-			}
-		};
-
 		const cardHash = computeCardToken(publicServer.serverId, String(interaction.user.id));
 		const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
-		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/profile/stats/${cardHash}`).setStyle(ButtonStyle.Link));
+		footerRow.addComponents(
+			new ButtonBuilder().setLabel(accountLabel).setURL(`${publicServer.base}/account/profile/stats/${cardHash}`).setStyle(ButtonStyle.Link)
+		);
 	}
 
-	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
+	container
+		.addSeparatorComponents(new SeparatorBuilder())
+		.addActionRowComponents(footerRow)
+		.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${embedConfig.FOOTER}`));
 
-	if (isFromEphemeral) {
-		if (interaction.replied || interaction.deferred) {
-			await interaction.editReply({
-				content: '',
-				embeds: [menuEmbed],
-				components: rows
-			});
-		} else {
-			await interaction.update({
-				content: '',
-				embeds: [menuEmbed],
-				components: rows
-			});
-		}
-	} else {
-		await interaction.reply({
-			embeds: [menuEmbed],
-			components: rows,
-			flags: 64
-		});
-	}
+	await showMenuScreen(interaction, container);
 }
 
 async function handleMyAccountLinkButton(interaction) {
@@ -748,6 +740,7 @@ export async function refreshInterfaceInChannel(targetChannel, client, { sendIfM
 
 function init(client) {
 	client.on('interactionCreate', async (interaction) => {
+		keepComponentsV2(interaction);
 		if (interaction.isButton()) {
 			if (!interaction.guild) {
 				return;

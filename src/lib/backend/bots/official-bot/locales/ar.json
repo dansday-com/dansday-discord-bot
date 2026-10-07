@@ -610,7 +610,8 @@
 			"colorLabel": "لون الرتبة (سداسي)",
 			"colorPlaceholder": "#FF5733 (اختياري)",
 			"iconLabel": "أيقونة الرتبة (إيموجي أو رابط صورة)",
-			"iconPlaceholder": "🔥 أو https://example.com/icon.png (اختياري)"
+			"iconPlaceholder": "🔥 أو https://example.com/icon.png (اختياري)",
+			"iconUploadLabel": "أو ارفع صورة للأيقونة"
 		},
 		"existing": {
 			"title": "💎 رتبة الداعم المخصصة",

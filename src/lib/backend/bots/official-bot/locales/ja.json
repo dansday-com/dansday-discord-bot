@@ -610,7 +610,8 @@
 			"colorLabel": "ロールの色（16進数）",
 			"colorPlaceholder": "#FF5733（任意）",
 			"iconLabel": "ロールアイコン（絵文字または画像URL）",
-			"iconPlaceholder": "🔥 または https://example.com/icon.png（任意）"
+			"iconPlaceholder": "🔥 または https://example.com/icon.png（任意）",
+			"iconUploadLabel": "またはアイコン画像をアップロード"
 		},
 		"existing": {
 			"title": "💎 サポーター専用ロール",

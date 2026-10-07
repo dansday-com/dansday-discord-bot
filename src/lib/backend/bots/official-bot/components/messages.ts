@@ -9,6 +9,7 @@ import {
 	isMessageUploadKey,
 	isSelfAssignableRole,
 	messagePayloadTextLength,
+	messageReplyDoc,
 	parseMessageCustomId,
 	renderMessagePayload,
 	type MessageAction,
@@ -488,7 +489,8 @@ export async function handleMessageComponent(interaction: any) {
 			: component.select.options.filter((o) => picked.includes(o.id)).flatMap((o) => o.actions);
 	const show = actions.find((a): a is ShowAction => a.type === 'show');
 	const roles = ref.scope === 'server' ? actions.filter((a): a is RoleAction => a.type === 'role') : [];
-	if (!switching && !show && roles.length === 0) {
+	const written = messageReplyDoc(actions, message.content);
+	if (!switching && !show && !written && roles.length === 0) {
 		await interaction.reply(privately(tr('messages.notSetUp')));
 		return;
 	}
@@ -523,21 +525,24 @@ export async function handleMessageComponent(interaction: any) {
 		acknowledged = true;
 	}
 
-	if ((show || switching) && !shown) lines.push(tr('messages.unavailable'));
-	if (shown && !inPlace) {
-		if (!acknowledged && shown.files.length > 0) {
+	const sendPrivately = async (payload: MessagePayload) => {
+		if (!acknowledged && payload.files.length > 0) {
 			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 			pendingReply = true;
 		}
-		const files = await loadFiles(shown).catch(() => null);
+		const files = await loadFiles(payload).catch(() => null);
 		if (!files) lines.push(tr('messages.unavailable'));
 		else if (pendingReply) {
-			await interaction.editReply(sendBody(shown, files));
+			await interaction.editReply(sendBody(payload, files));
 			pendingReply = false;
-		} else if (acknowledged) await interaction.followUp(privateBody(shown, files));
-		else await interaction.reply(privateBody(shown, files));
+		} else if (acknowledged) await interaction.followUp(privateBody(payload, files));
+		else await interaction.reply(privateBody(payload, files));
 		acknowledged = true;
-	}
+	};
+
+	if ((show || switching) && !shown) lines.push(tr('messages.unavailable'));
+	if (shown && !inPlace) await sendPrivately(shown);
+	if (written) await sendPrivately(renderer(ref.scope, { ...message, content: written }, guild.name)(lang, { interactive: false }));
 	if (!acknowledged) {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		pendingReply = true;

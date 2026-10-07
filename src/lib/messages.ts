@@ -124,7 +124,11 @@ export type MessageButtonStyle = (typeof MESSAGE_BUTTON_STYLES)[number]['id'];
 export type MessageRoleMode = (typeof MESSAGE_ROLE_MODES)[number]['id'];
 export type MessageBlockType = (typeof MESSAGE_BLOCK_TYPES)[number]['id'];
 
-export type MessageAction = { type: 'show'; message_id: number } | { type: 'role'; mode: MessageRoleMode; role_id: string };
+export type MessageAction =
+	| { type: 'text'; text: Localized }
+	| { type: 'attachment'; file: string }
+	| { type: 'show'; message_id: number }
+	| { type: 'role'; mode: MessageRoleMode; role_id: string };
 
 export type MessageButton = { id: string; style: MessageButtonStyle; label: Localized; emoji: string; url: string; actions: MessageAction[] };
 export type MessageOption = { id: string; label: Localized; description: Localized; emoji: string; actions: MessageAction[] };
@@ -398,7 +402,11 @@ function normalizeActions(value: unknown, ctx: NormalizeContext): MessageAction[
 	const seen = new Set<string>();
 	for (const raw of list(value, MESSAGE_LIMITS.actions)) {
 		let action: MessageAction | null = null;
-		if (raw.type === 'show') {
+		if (raw.type === 'text') {
+			action = { type: 'text', text: localized(raw.text, MESSAGE_LIMITS.text, ctx.languages) };
+		} else if (raw.type === 'attachment') {
+			action = { type: 'attachment', file: uploadValue(raw.file, ctx) };
+		} else if (raw.type === 'show') {
 			const messageId = Math.trunc(Number(raw.message_id));
 			action = { type: 'show', message_id: Number.isFinite(messageId) && messageId > 0 ? messageId : 0 };
 		} else if (raw.type === 'role' && ctx.roles) {
@@ -407,7 +415,7 @@ function normalizeActions(value: unknown, ctx: NormalizeContext): MessageAction[
 			action = { type: 'role', mode, role_id: ROLE_ID.test(roleId) ? roleId : '' };
 		}
 		if (!action) continue;
-		const key = action.type === 'show' ? 'show' : `role:${action.role_id}`;
+		const key = action.type === 'role' ? `role:${action.role_id}` : action.type === 'attachment' ? `attachment:${action.file}` : action.type;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		out.push(action);
@@ -587,6 +595,16 @@ export function messageRoleIds(doc: MessageDoc): string[] {
 	return [...new Set(messageActions(doc).flatMap((a) => (a.type === 'role' && a.role_id ? [a.role_id] : [])))];
 }
 
+export function messageReplyDoc(actions: MessageAction[], source: MessageDoc): MessageDoc | null {
+	const written = actions.find((action): action is Extract<MessageAction, { type: 'text' }> => action.type === 'text')?.text ?? {};
+	const worded = pickText(written, source.language, source.language).trim() !== '';
+	const attachments = actions.flatMap((action, i) =>
+		action.type === 'attachment' && action.file ? [{ id: `reply${i}`, file: action.file, spoiler: false }] : []
+	);
+	if (!worded && attachments.length === 0) return null;
+	return { ...newMessageDoc(source.language), languages: source.languages, language_switch: false, text: worded ? written : {}, attachments };
+}
+
 export function messageUploadKeys(doc: MessageDoc): string[] {
 	const values: string[] = [];
 	for (const attachment of doc.attachments) values.push(attachment.file);
@@ -595,6 +613,7 @@ export function messageUploadKeys(doc: MessageDoc): string[] {
 		if (block.type === 'section') values.push(block.image);
 		if (block.type === 'gallery') values.push(...block.items.map((item) => item.media));
 	}
+	for (const action of messageActions(doc)) if (action.type === 'attachment') values.push(action.file);
 	return [...new Set(values.filter((value) => isMessageUploadKey(value)))];
 }
 
@@ -823,15 +842,17 @@ function buttonIssues(button: MessageButton, where: string, base: ServerLanguage
 	if (button.style === 'link') {
 		if (!button.url) add(`${where} needs a link that starts with https://.`);
 	} else {
-		for (const text of actionIssues(button.actions, where)) add(text);
+		for (const text of actionIssues(button.actions, where, base)) add(text);
 	}
 	return out;
 }
 
-function actionIssues(actions: MessageAction[], where: string): string[] {
+function actionIssues(actions: MessageAction[], where: string, base: ServerLanguage): string[] {
 	if (actions.length === 0) return [`${where}: pick what happens when it is clicked.`];
 	const out: string[] = [];
 	for (const action of actions) {
+		if (action.type === 'text' && !pickText(action.text, base, base).trim()) out.push(`${where}: write the message it replies with, or remove it.`);
+		if (action.type === 'attachment' && !action.file) out.push(`${where}: upload the attachment it replies with, or remove it.`);
 		if (action.type === 'show' && !action.message_id) out.push(`${where}: pick which message to show.`);
 		if (action.type === 'role' && !action.role_id) out.push(`${where}: pick a role.`);
 	}
@@ -849,7 +870,7 @@ function rowIssues(block: RowBlock, where: string, base: ServerLanguage): Messag
 		const out: string[] = [];
 		if (!pickText(option.label, base, base).trim()) out.push(`${at} needs a label.`);
 		if (option.emoji && !parseMessageEmoji(option.emoji)) out.push(`${at}: "${option.emoji}" is not an emoji.`);
-		out.push(...actionIssues(option.actions, at));
+		out.push(...actionIssues(option.actions, at, base));
 		return out.map((text) => ({ part: block.id, text }));
 	});
 }

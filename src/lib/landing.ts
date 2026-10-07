@@ -220,7 +220,7 @@ export const features: Feature[] = [
 		icon: 'fa-palette',
 		title: 'Message & embed builder',
 		desc: 'Post as the bot from the browser: text, photos, videos, embeds or a Components V2 layout, with a live preview.',
-		more: 'Buttons and dropdowns open another message privately. Translate it per language, reuse it as a template, and update a posted copy with one click.'
+		more: 'Buttons and dropdowns reply privately with a message you write, an attachment or another saved message. Translate it per language, reuse it as a template, and update a posted copy with one click.'
 	},
 	{
 		icon: 'fa-user-tag',

@@ -76,7 +76,11 @@ type Buttons = { id?: string; type: "buttons"; buttons: Button[] };      1 to ${
 type Button = { id?: string; style: "secondary" | "primary" | "success" | "danger" | "link"; label: Localized; emoji: string; url: Url; actions: Action[] };
 type Select = { id?: string; type: "select"; placeholder: Localized; multiple: boolean; options: Option[] };      a dropdown with 1 to ${L.options} options
 type Option = { id?: string; label: Localized; description: Localized; emoji: string; actions: Action[] };
-type Action = { type: "show"; message_id: number } | { type: "role"; mode: "toggle" | "add" | "remove"; role_id: string };
+type Action =
+  | { type: "text"; text: Localized }      replies privately with a message you write, up to ${L.text} characters
+  | { type: "attachment"; file: string }      replies privately with an uploaded file. Return these exactly as given and never add one
+  | { type: "show"; message_id: number }      replies privately with another saved message
+  | { type: "role"; mode: "toggle" | "add" | "remove"; role_id: string };
 type Block = Container | Inner;
 type Container = { id?: string; type: "container"; color: "#rrggbb" | ""; blocks: Inner[] };      a box with a colored edge holding up to ${L.innerBlocks} parts. A container cannot hold another container
 type Inner =
@@ -95,8 +99,8 @@ Length limits, per language: embed title ${L.title}, description ${L.description
 - Keep the current layout unless the admin asks for another one or the message is still empty. "standard" is classic text with embeds and rows of buttons. "components" is the modern one built from blocks: boxes, text beside an image, dividers and galleries. Each layout only uses its own fields.
 - Never invent an image link, an upload key or a website link. Without one, leave that part out.
 - Button colors carry meaning. At most one "primary" button per message, for its single main action. Everything else is "secondary". "danger" only for something that cannot be undone. "success" only for the yes of a yes or no pair. "link" opens a website: it needs a url and takes no actions.
-- Every button that is not a link, and every dropdown option, needs at least one action. "show" opens another saved message privately for the member who clicked. "role" gives, takes or toggles a role.
-- A "show" action may only use a message id from the saved messages listed below, and a "role" action only a role id from the roles listed below. If what the admin wants needs a message or role that is not listed, leave that button or option out and say in reply what has to exist first.
+- Every button that is not a link, and every dropdown option, needs at least one action. Only the member who clicked sees the reply. "text" is a reply you write right there: use it whenever plain text is enough, since it needs no other message. "show" opens another saved message: use it when the reply needs embeds, buttons or its own layout. "role" gives, takes or toggles a role. A button or option takes one "text" and one "show" at most.
+- A "show" action may only use a message id from the saved messages listed below, and a "role" action only a role id from the roles listed below. If what the admin wants needs a saved message that is not listed, write the reply as a "text" action when plain text will do. Otherwise, or when a role is not listed, leave that button or option out and say in reply what has to exist first.
 - emoji is one unicode emoji, or a custom emoji from the list below written exactly as shown, or "".
 - You write every text in the main language only, and the current message below shows you only that language. Translations are made for you after you answer, into every other language in "languages": for each text you add or change, and for each language you add. So to translate the message, add the language codes to "languages" and send the message. Never write a translation yourself, unless the admin dictates the exact wording in another language: then add that entry to the text and it is kept as written. In reply, say the translations are being added, not that you wrote them.
 - When the admin asks for real numbers or names from a server, such as a leaderboard, statistics, leveling rules, giveaways or the shop, read them with your tools first and write only what the tools returned. Never make such data up. If a tool is missing or fails, say so in reply.
@@ -132,7 +136,7 @@ function context(ctx: MessageAgentContext): string {
 		'# Saved messages a "show" action can open',
 		...(others.length > 0
 			? others.map((message) => `- ${message.id}: ${JSON.stringify(message.name)} ${JSON.stringify(messageSummary(message.content))}`)
-			: ['None yet. A "show" action has nothing to open.']),
+			: ['None yet. A "show" action has nothing to open, so write replies as "text" actions.']),
 		...(ctx.messageId !== null ? [`This message itself is id ${ctx.messageId}.`] : [])
 	];
 

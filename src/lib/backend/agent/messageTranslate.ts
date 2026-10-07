@@ -1,5 +1,5 @@
 import { serverLanguageEnglishName, type ServerLanguage } from '../../languages.js';
-import { MESSAGE_LIMITS, type InnerBlock, type Localized, type MessageButton, type MessageDoc } from '../../messages.js';
+import { MESSAGE_LIMITS, type InnerBlock, type Localized, type MessageAction, type MessageButton, type MessageDoc } from '../../messages.js';
 
 const CHUNK_CHARACTERS = 3500;
 const CONCURRENCY = 6;
@@ -14,21 +14,26 @@ type Job = { target: ServerLanguage; items: Item[]; values: Map<string, Localize
 
 const L = MESSAGE_LIMITS;
 
-function buttonText(button: MessageButton): MessageText {
-	return { key: `${button.id}.label`, value: button.label, max: L.label };
+function replyTexts(id: string, actions: MessageAction[]): MessageText[] {
+	return actions.flatMap((action) => (action.type === 'text' ? [{ key: `${id}.reply`, value: action.text, max: L.text }] : []));
+}
+
+function buttonTexts(button: MessageButton): MessageText[] {
+	return [{ key: `${button.id}.label`, value: button.label, max: L.label }, ...replyTexts(button.id, button.actions)];
 }
 
 function innerTexts(block: InnerBlock): MessageText[] {
 	if (block.type === 'text') return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }];
-	if (block.type === 'section') return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }, buttonText(block.button)];
+	if (block.type === 'section') return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }, ...buttonTexts(block.button)];
 	if (block.type === 'gallery') return block.items.map((item) => ({ key: `${item.id}.caption`, value: item.caption, max: L.caption }));
-	if (block.type === 'buttons') return block.buttons.map(buttonText);
+	if (block.type === 'buttons') return block.buttons.flatMap(buttonTexts);
 	if (block.type === 'select') {
 		return [
 			{ key: `${block.id}.placeholder`, value: block.placeholder, max: L.placeholder },
 			...block.options.flatMap((option) => [
 				{ key: `${option.id}.label`, value: option.label, max: L.optionLabel },
-				{ key: `${option.id}.description`, value: option.description, max: L.optionDescription }
+				{ key: `${option.id}.description`, value: option.description, max: L.optionDescription },
+				...replyTexts(option.id, option.actions)
 			])
 		];
 	}

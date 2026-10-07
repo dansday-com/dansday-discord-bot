@@ -736,7 +736,7 @@ export const modules = [
 			},
 			{
 				label: 'Buttons and dropdowns',
-				desc: `Each button or dropdown choice shows another saved message privately, changes a role, or both. Link buttons open a website. A row holds up to ${MESSAGE_LIMITS.buttons} buttons and a dropdown up to ${MESSAGE_LIMITS.options} choices.`
+				desc: `Each button or dropdown choice replies privately with a message written on it, an attachment or another saved message, changes a role, or all of these. Link buttons open a website. A row holds up to ${MESSAGE_LIMITS.buttons} buttons and a dropdown up to ${MESSAGE_LIMITS.options} choices.`
 			},
 			{
 				label: 'Reaction roles',

@@ -2,7 +2,15 @@
 	import { IMAGE_ACCEPT } from '$lib/images.js';
 	import { SERVER_LANGUAGES, serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
-	import { MESSAGE_LIMITS, MESSAGE_VIDEO_ACCEPT, messageRowLimit, type MessageAction, type MessageBlockType, type MessageDoc } from '$lib/messages.js';
+	import {
+		MESSAGE_LIMITS,
+		MESSAGE_VIDEO_ACCEPT,
+		messageReplyDoc,
+		messageRowLimit,
+		type MessageAction,
+		type MessageBlockType,
+		type MessageDoc
+	} from '$lib/messages.js';
 	import EmojiPicker from './EmojiPicker.svelte';
 	import MessageBody from './MessageBody.svelte';
 	import { clickOutside, messageEditor } from './editorContext.js';
@@ -107,7 +115,7 @@
 					{
 						type: 'buttons',
 						label: 'Button',
-						hint: 'Opens a message, gives a role or links somewhere',
+						hint: 'Replies privately, gives a role or links somewhere',
 						icon: 'fa-hand-pointer',
 						full: rowsFull && !buttonRoom
 					},
@@ -127,7 +135,7 @@
 					},
 					{ type: 'gallery', label: 'Images and videos', hint: 'One to ten, shown as a gallery', icon: 'fa-images', full: false },
 					{ type: 'separator', label: 'Divider', hint: 'A line or a gap', icon: 'fa-minus', full: false },
-					{ type: 'buttons', label: 'Button', hint: 'Opens a message, gives a role or links somewhere', icon: 'fa-hand-pointer', full: false },
+					{ type: 'buttons', label: 'Button', hint: 'Replies privately, gives a role or links somewhere', icon: 'fa-hand-pointer', full: false },
 					{ type: 'select', label: 'Dropdown', hint: 'A menu of choices, great for picking roles', icon: 'fa-list', full: false }
 				]
 	);
@@ -186,15 +194,20 @@
 	function press(actions: MessageAction[], from: Reply | null) {
 		const show = actions.find((action) => action.type === 'show');
 		const target = show ? (show.message_id ? resolve(show.message_id) : null) : null;
+		const written = messageReplyDoc(actions, from?.doc ?? doc);
 		const lines = roleLines(actions);
 		if (actions.length === 0) lines.push('Nothing happens yet. Switch to Edit, click it and pick what it does.');
 		if (show && !target) lines.push(show.message_id ? '❌ The message this shows no longer exists.' : '❌ No message is picked for this yet.');
+		if (!written && actions.some((action) => action.type === 'text' || action.type === 'attachment')) {
+			lines.push('❌ The message or attachment for this is still empty.');
+		}
 
 		if (target) {
 			const inPlace = from?.doc && (target.layout === 'components' || from.doc.layout !== 'components');
 			if (from && inPlace) from.doc = target;
 			else replies.push({ key: nextKey++, doc: target, lines: [], lang: from?.lang ?? null });
 		}
+		if (written) replies.push({ key: nextKey++, doc: written, lines: [], lang: from?.lang ?? null });
 		if (lines.length > 0) replies.push({ key: nextKey++, doc: null, lines, lang: from?.lang ?? null });
 	}
 

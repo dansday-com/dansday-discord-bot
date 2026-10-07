@@ -74,14 +74,6 @@ export function getDateTimeFromJSDate(date: Date) {
 	return DateTime.fromJSDate(date).toUTC();
 }
 
-export function addMinutesToNow(minutes: number) {
-	return DateTime.utc().plus({ minutes }).toJSDate();
-}
-
-export function addDaysToNow(days: number) {
-	return DateTime.utc().plus({ days }).toJSDate();
-}
-
 export function getCurrentDateTime() {
 	return DateTime.utc().toJSDate();
 }

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Tween, prefersReducedMotion } from 'svelte/motion';
-	import { blur } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { sfx } from '$lib/frontend/sfx';

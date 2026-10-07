@@ -111,14 +111,6 @@ export function slugifyDisplayName(input: string, emptyFallback = 'item'): strin
 	return s || emptyFallback;
 }
 
-export function slugifyServerName(input: string): string {
-	return slugifyDisplayName(input, 'server');
-}
-
-export function slugifyBotName(input: string): string {
-	return slugifyDisplayName(input, 'bot');
-}
-
 export function parseIndexedSlug(slug: string): { base: string; index: number } {
 	const s = String(slug ?? '')
 		.trim()
@@ -185,28 +177,4 @@ export function listIndexedSlugsForItems<T extends WithId>(
 		}
 	}
 	return out;
-}
-
-export function slugifyName(input: string) {
-	const s = foldLetterforms(String(input || ''))
-		.toLowerCase()
-		.normalize('NFKD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-		.replace(/-+/g, '-');
-	return s || 'item';
-}
-
-export function parseSlugWithIndex(slug: string): { base: string; index: number } {
-	const s = String(slug || '')
-		.trim()
-		.toLowerCase();
-	if (!s) return { base: '', index: 1 };
-	const m = s.match(/^(.*?)-(\d+)$/);
-	if (!m) return { base: s, index: 1 };
-	const base = (m[1] || '').trim();
-	const idx = Number(m[2]);
-	if (!base || !Number.isFinite(idx) || idx < 2) return { base: s, index: 1 };
-	return { base, index: idx };
 }

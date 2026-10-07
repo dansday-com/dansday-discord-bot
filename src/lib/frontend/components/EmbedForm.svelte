@@ -20,8 +20,7 @@
 		sending = false,
 		onsubmit,
 		sendToSnippet,
-		submitLabel = 'Send Embed',
-		serverId = null
+		submitLabel = 'Send Embed'
 	}: {
 		title: string;
 		description: string;
@@ -40,7 +39,6 @@
 		onsubmit: () => void | Promise<void>;
 		sendToSnippet?: Snippet;
 		submitLabel?: string;
-		serverId?: string | number | null;
 	} = $props();
 
 	const MAX_TITLE = 256;

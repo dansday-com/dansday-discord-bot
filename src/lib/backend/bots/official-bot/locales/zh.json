@@ -362,6 +362,7 @@
 			"label": "你的反馈",
 			"placeholder": "欢迎分享你的反馈、建议或问题……",
 			"maxLength": 2000,
+			"screenshotsLabel": "截图（可选）",
 			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {
@@ -609,7 +610,8 @@
 			"colorLabel": "身份组颜色（十六进制）",
 			"colorPlaceholder": "#FF5733（可选）",
 			"iconLabel": "身份组图标（emoji 或图片链接）",
-			"iconPlaceholder": "🔥 或 https://example.com/icon.png（可选）"
+			"iconPlaceholder": "🔥 或 https://example.com/icon.png（可选）",
+			"iconUploadLabel": "或上传图标图片"
 		},
 		"existing": {
 			"title": "💎 赞助者专属身份组",

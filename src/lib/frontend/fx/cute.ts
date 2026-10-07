@@ -1,7 +1,5 @@
 import { mulberry32 } from '$lib/effects.js';
-import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
-
-const P = 6;
+import { blit, clear, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 function chip(dx: number, dy: number, key: number) {
 	return ((((dx + 16) * 73 + (dy + 16) * 151 + key) * 2654435761) >>> 0) % 100;

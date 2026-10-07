@@ -8,15 +8,6 @@ export const CHANNEL_PICKER_ACCENT = {
 	labelText: 'text-violet-100'
 } as const;
 
-export const CATEGORY_PICKER_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-amber-300',
-	modalTitleIcon: 'fas fa-folder text-amber-400',
-	searchIcon: 'fas fa-search text-amber-300',
-	emptyStateIcon: 'mb-2 text-3xl text-amber-300/80',
-	labelIcon: 'fas fa-folder mr-1 text-amber-400',
-	labelText: 'text-amber-100'
-} as const;
-
 export const ROLE_PICKER_ACCENT = {
 	chevron: 'fas fa-chevron-down text-xs text-blue-300',
 	modalTitleIcon: 'fas fa-user-shield text-blue-400',

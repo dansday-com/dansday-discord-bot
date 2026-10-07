@@ -10,6 +10,7 @@
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
+	import { compact, md, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
 
 	let { data }: PageProps = $props();
 
@@ -174,6 +175,21 @@
 	function highestRole(m: (typeof members)[number]) {
 		return (m.roles ?? []).reduce((top: any, r: any) => (top == null || (r.position ?? 0) > (top.position ?? 0) ? r : top), null as any);
 	}
+
+	const linkEmbed = $derived.by(() => {
+		const all = data.members ?? [];
+		const boosters = all.filter((m) => m.is_booster).length;
+		const newest = [...all]
+			.filter((m) => m.member_since)
+			.sort((a, b) => new Date(b.member_since).getTime() - new Date(a.member_since).getTime())
+			.slice(0, 3)
+			.map((m) => `**${md(listDisplayName(m))}**`);
+		const lines = [
+			`**${compact(all.length)}** members${boosters > 0 ? ` · **${compact(boosters)}** boosters` : ''}`,
+			...(newest.length ? [`Newest: ${newest.join(', ')}`] : [])
+		];
+		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl, 'Member directory', lines);
+	});
 </script>
 
 <svelte:head>
@@ -185,6 +201,7 @@
 	<meta property="og:title" content="{serverName} Members | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content={metaDescription} />
 	<link rel="canonical" href={data.canonicalUrl} />
+	{@html linkEmbed}
 </svelte:head>
 
 <div class="text-base-content/70 mb-3 flex flex-wrap items-center gap-1.5 text-xs">

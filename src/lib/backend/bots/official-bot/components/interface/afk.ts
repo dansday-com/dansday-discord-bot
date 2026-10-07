@@ -4,7 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { memberTranslator, translate, translateServer } from '../../i18n.js';
-import { textField, yesNoField, yesNoValue } from './formFields.js';
+import { textField, checkboxField, checkboxValue } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
 
 const DEFAULT_AFK_MESSAGE = 'Away';
@@ -260,7 +260,7 @@ export async function handleAFKButton(interaction) {
 			.setRequired(false)
 			.setMaxLength(100);
 
-		modal.addLabelComponents(textField(tr('afk.modal.messageLabel'), messageInput), yesNoField(tr, tr('afk.modal.deafenLabel'), 'afk_deafen', true));
+		modal.addLabelComponents(textField(tr('afk.modal.messageLabel'), messageInput), checkboxField(tr('afk.modal.deafenLabel'), 'afk_deafen', true));
 
 		await interaction.showModal(modal);
 		await logger.log(`⏸️ AFK modal shown to ${member.id}`);
@@ -298,7 +298,7 @@ export async function handleAFKModal(interaction) {
 
 		const afkMessage = interaction.fields.getTextInputValue('afk_message')?.trim() || DEFAULT_AFK_MESSAGE;
 
-		const shouldDeafen = yesNoValue(interaction.fields, 'afk_deafen', true);
+		const shouldDeafen = checkboxValue(interaction.fields, 'afk_deafen', true);
 
 		await setAFK(member, afkMessage, shouldDeafen);
 

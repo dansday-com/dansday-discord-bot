@@ -1,4 +1,5 @@
-import { APP_NAME } from './frontend/panelServer.js';
+import { BRAND_TAGLINE } from './brand.js';
+import { APP_NAME, APP_NAME_PLAIN } from './frontend/panelServer.js';
 import { serverLanguageList } from './languages.js';
 import type { AggregatedPanelStats } from './frontend/public/statistics/aggregate.js';
 
@@ -9,9 +10,8 @@ export type Feature = { icon: string; title: string; desc: string; more: string;
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 export const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
-export const LANDING_TITLE = `Free MEE6 Alternative — Open-Source Discord Leveling Bot | ${APP_NAME}`;
-export const LANDING_DESCRIPTION =
-	'Free, open-source MEE6 alternative. Leveling, role rewards, welcome messages, moderation, giveaways and Twitch/YouTube alerts, with no premium tier.';
+export const LANDING_TITLE = `${APP_NAME_PLAIN}: ${BRAND_TAGLINE} — Open-Source Discord Bot`;
+export const LANDING_DESCRIPTION = `${APP_NAME_PLAIN} — ${BRAND_TAGLINE.toLowerCase()}. Free, open-source Discord bot: leveling, XP economy, moderation, giveaways. A MEE6 alternative with no premium tier.`;
 
 export const LANDING_FACTS = ['No premium tier', 'Open source, AGPL-3.0', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
 

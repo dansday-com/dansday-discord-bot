@@ -1,6 +1,6 @@
 import { load } from 'cheerio';
 import db from '../../../../database.js';
-import { cachedLookup, invalidateCached } from './aiCache.js';
+import { cachedLookup } from './aiCache.js';
 import { logger } from '../../../../utils/index.js';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -444,10 +444,6 @@ export async function getEnabledWikis(botId) {
 		const rows = await db.getBotWikis(botId);
 		return rows.filter((row) => row.enabled && row.api_url);
 	});
-}
-
-export async function invalidateEnabledWikis(botId) {
-	await invalidateCached(`botai:wikis:${botId}`);
 }
 
 const ROUTER_STOPWORDS = new Set([

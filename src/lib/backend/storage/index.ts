@@ -2,8 +2,6 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync,
 import { dirname, join } from 'path';
 import type { S3Client } from '@aws-sdk/client-s3';
 
-export type StorageMode = 'local' | 's3';
-
 type S3Settings = {
 	bucket: string;
 	region: string;
@@ -51,10 +49,6 @@ function s3Settings(): S3Settings | null {
 		publicUrl: env('S3_PUBLIC_URL').replace(/\/+$/, '') || null
 	};
 	return cachedSettings;
-}
-
-export function storageMode(): StorageMode {
-	return s3Settings() ? 's3' : 'local';
 }
 
 export function publicUrl(key: string): string {

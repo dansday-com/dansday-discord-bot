@@ -41,8 +41,6 @@
 	const frameCls = $derived([frameWidthLg ? 'min-[600px]:w-(--fw-lg)' : '', frameWidthSm ? 'max-[680px]:w-(--fw-sm)' : ''].filter(Boolean).join(' '));
 
 	const border = $derived(tone === 'win' ? 'border-success/60' : tone === 'lose' ? 'border-error/60' : 'border-base-300');
-
-	let strip = $state<HTMLDivElement | undefined>();
 </script>
 
 <div

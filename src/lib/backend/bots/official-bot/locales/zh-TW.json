@@ -362,6 +362,7 @@
 			"label": "你的意見回饋",
 			"placeholder": "歡迎分享你的意見、建議或疑慮……",
 			"maxLength": 2000,
+			"screenshotsLabel": "截圖（選填）",
 			"anonymousLabel": "匿名提交？"
 		},
 		"submitted": {
@@ -609,7 +610,8 @@
 			"colorLabel": "身分組顏色（十六進位）",
 			"colorPlaceholder": "#FF5733（選填）",
 			"iconLabel": "身分組圖示（表情符號或圖片網址）",
-			"iconPlaceholder": "🔥 或 https://example.com/icon.png（選填）"
+			"iconPlaceholder": "🔥 或 https://example.com/icon.png（選填）",
+			"iconUploadLabel": "或上傳圖示圖片"
 		},
 		"existing": {
 			"title": "💎 支持者專屬身分組",

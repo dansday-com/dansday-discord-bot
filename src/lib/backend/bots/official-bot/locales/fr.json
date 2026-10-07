@@ -362,6 +362,7 @@
 			"label": "Ton avis",
 			"placeholder": "Partage ton avis, tes suggestions ou tes préoccupations...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Captures d'écran (facultatif)",
 			"anonymousLabel": "Envoyer anonymement ?"
 		},
 		"submitted": {
@@ -609,7 +610,8 @@
 			"colorLabel": "Couleur du rôle (hex)",
 			"colorPlaceholder": "#FF5733 (facultatif)",
 			"iconLabel": "Icône du rôle (emoji ou URL d'image)",
-			"iconPlaceholder": "🔥 ou https://example.com/icon.png (facultatif)"
+			"iconPlaceholder": "🔥 ou https://example.com/icon.png (facultatif)",
+			"iconUploadLabel": "Ou importer une image d'icône"
 		},
 		"existing": {
 			"title": "💎 Rôle supporter personnalisé",

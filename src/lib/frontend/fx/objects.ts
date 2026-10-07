@@ -1,8 +1,6 @@
 import { mulberry32 } from '$lib/effects.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
-const P = 6;
-
 function hash2m(x: number, y: number, g: number) {
 	let h = (x | 0) * 374761393 + (y | 0) * 668265263 + (g | 0) * 2654435761;
 	h = (h ^ (h >>> 13)) * 1274126177;
@@ -445,7 +443,6 @@ export function makeCandle(rows: number): FxProgram {
 				}
 			}
 
-			const pool = ry * (0.85 + heat * 0.3);
 			for (let dy = -ry - 2; dy <= ry + 2; dy++)
 				for (let dx = -halfW - 1; dx <= halfW + 1; dx++) {
 					const d = Math.hypot(dx / halfW, dy / ry);

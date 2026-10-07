@@ -580,22 +580,6 @@ function rewardLineFromQuest(quest: Record<string, unknown>): string {
 	return parts.length ? [...new Set(parts)].join(' · ') : QUEST_REWARD_FALLBACK;
 }
 
-function rewardJsonMatchesDiscordCurrencyHeuristic(r: Record<string, unknown> | null | undefined): boolean {
-	if (!r || typeof r !== 'object') return false;
-	const qty = r[DISCORD_QUEST_REWARD_QTY_FIELD];
-	if (typeof qty === 'number' && qty > 0) return true;
-	const discordRewardLabelPattern = new RegExp(`${String.fromCharCode(111)}${String.fromCharCode(114)}${String.fromCharCode(98)}`, 'i');
-	const typeStr =
-		typeof r.type === 'string' ? r.type : typeof r.reward_type === 'string' ? r.reward_type : typeof r.rewardType === 'string' ? r.rewardType : '';
-	if (typeStr && discordRewardLabelPattern.test(typeStr)) return true;
-	const messages = r.messages as Record<string, unknown> | undefined;
-	const name = typeof messages?.name === 'string' ? messages.name : '';
-	if (discordRewardLabelPattern.test(name)) return true;
-	const sku = typeof r.sku_id === 'string' ? r.sku_id : typeof r.sku === 'string' ? r.sku : '';
-	if (sku && discordRewardLabelPattern.test(sku)) return true;
-	return false;
-}
-
 function rewardListFromQuest(quest: Record<string, unknown>): unknown[] {
 	const cfg = quest.config as Record<string, unknown> | undefined;
 	const fromConfig = cfg?.rewards_config as Record<string, unknown> | undefined;
@@ -607,11 +591,6 @@ function rewardListFromQuest(quest: Record<string, unknown>): unknown[] {
 	const direct = cfg?.rewards;
 	if (Array.isArray(direct)) return direct;
 	return [];
-}
-
-function questJsonHasHeuristicCurrencyReward(quest: Record<string, unknown>): boolean {
-	const list = rewardListFromQuest(quest);
-	return list.some((x) => rewardJsonMatchesDiscordCurrencyHeuristic(x as Record<string, unknown>));
 }
 
 function questExpired(quest: Record<string, unknown>): boolean {
@@ -682,31 +661,6 @@ export function extractDiscordQuestSummaries(payload: unknown): DiscordQuestSumm
 	}
 	out.sort((a, b) => (b.startsAt || '').localeCompare(a.startsAt || ''));
 	return out;
-}
-
-export function questPayloadRewardDiagnostics(payload: unknown): {
-	questCount: number;
-	afterPreviewExpired: number;
-	heuristicCurrencyRewardCount: number;
-} {
-	if (!payload || typeof payload !== 'object') {
-		return { questCount: 0, afterPreviewExpired: 0, heuristicCurrencyRewardCount: 0 };
-	}
-	const quests = (payload as Record<string, unknown>).quests;
-	if (!Array.isArray(quests)) {
-		return { questCount: 0, afterPreviewExpired: 0, heuristicCurrencyRewardCount: 0 };
-	}
-	let afterPreviewExpired = 0;
-	let heuristicCurrencyRewardCount = 0;
-	for (const q of quests) {
-		if (!q || typeof q !== 'object') continue;
-		const rec = q as Record<string, unknown>;
-		if (rec.preview === true) continue;
-		if (questExpired(rec)) continue;
-		afterPreviewExpired += 1;
-		if (questJsonHasHeuristicCurrencyReward(rec)) heuristicCurrencyRewardCount += 1;
-	}
-	return { questCount: quests.length, afterPreviewExpired, heuristicCurrencyRewardCount };
 }
 
 async function questApiRequest(userToken: string, method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<{ status: number; data: unknown }> {

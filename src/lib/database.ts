@@ -611,8 +611,6 @@ export async function deleteBotWiki(botId: number, wikiId: number) {
 
 export type SelfbotStatusInput = BotStatusInput;
 
-export const DEFAULT_SELFBOT_PRESENCE: SelfbotStatusInput = DEFAULT_BOT_PRESENCE;
-
 export async function getSelfbotStatus(selfbotId: number) {
 	await initializeDatabase();
 	const rows = await db
@@ -1002,19 +1000,6 @@ export async function resetGuildGreeting(discordServerId: string) {
 	if (!guildId) return false;
 	await db.execute(sql`UPDATE servers SET greeted_at = NULL WHERE discord_server_id = ${guildId}`);
 	return true;
-}
-
-async function getServerIdsInSameGuild(serverId: any) {
-	const sub = db
-		.select({ discord_server_id: schema.servers.discord_server_id })
-		.from(schema.servers)
-		.where(eq(schema.servers.id, Number(serverId)))
-		.limit(1);
-	const rows = await db
-		.select({ id: schema.servers.id })
-		.from(schema.servers)
-		.where(eq(schema.servers.discord_server_id, sql`(${sub})`));
-	return rows.map((r) => r.id);
 }
 
 export async function getNotificationChannels(serverId: any, channelIds: string[]) {

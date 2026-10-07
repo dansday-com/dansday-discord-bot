@@ -554,8 +554,6 @@ export function makeCoral(rows: number): FxProgram {
 			const surge = cyc < 0.34 ? Math.sin((cyc / 0.34) * Math.PI) : 0;
 			const sway = (Math.sin(s.t * 0.018 * s.v.speed) * 0.4 + surge * 1.5) * s.v.dir;
 
-			const [dr, dg, db] = hsl(s.v.hue2, 40 + s.v.sat * 0.3, 10);
-			const [sr, sg, sb] = hsl(s.v.hue2 - 12, 46 + s.v.sat * 0.3, 34);
 			for (let x = 0; x < s.w; x++) {
 				const shaft = Math.sin(x * 0.05 + s.t * 0.006 * s.v.speed) + Math.sin(x * 0.017 - s.t * 0.004);
 				if (shaft < 0.7) continue;
@@ -1232,7 +1230,6 @@ export function makeSlime(rows: number): FxProgram {
 			const dropX = id.drop[0] * s.w;
 			const dropY = id.drop[1] * s.h;
 
-			const [ar, ag2, ab] = hsl(s.v.hue2 + 20, 16 + s.v.sat * 0.14, 22);
 			const [br, bg, bb] = hsl(s.v.hue2 + 34, 22 + s.v.sat * 0.16, 30);
 			for (const [dx2, dy2, drad] of id.dew) {
 				const cx = dx2 * s.w;
@@ -1462,8 +1459,6 @@ export function makeCulture(rows: number): FxProgram {
 
 			const ino = (s as any).ino as number[][];
 			const [pr, pg, pb] = hsl(38 + (s.v.hue2 % 26), 26 + s.v.sat * 0.14, 38);
-			const ax = s.w * 0.5;
-			const ay = s.h * 0.5;
 			for (const [sx2, sy2, sa, sl] of id.scratch) {
 				const bx = sx2 * s.w;
 				const by = sy2 * s.h;
@@ -2044,8 +2039,6 @@ export function makeDecay(rows: number): FxProgram {
 			const fall = cyc > 0.86 ? (cyc - 0.86) / 0.14 : 0;
 			const slump = fall > 0 ? Math.min(1, fall * 2.2) : 0;
 
-			const [dr, dg, db] = hsl(24 + (s.v.hue % 22), 24 + s.v.sat * 0.14, 12);
-			const [lr2, lg2, lb2] = hsl(28 + (s.v.hue % 30), 32 + s.v.sat * 0.22, 26);
 			for (const [lx, ly, la, lt] of id.leaves) {
 				const x = lx * s.w;
 				const y = ly * s.h;
@@ -2296,11 +2289,6 @@ export function makeBloom(rows: number): FxProgram {
 			const frontX = dir > 0 ? front * 1.3 - 0.16 : 1.16 - front * 1.3;
 			const sway = Math.sin((s.t * 6.28) / id.swayT) * 0.5 + Math.sin((s.t * 6.28) / (id.swayT * 0.43)) * 0.26;
 			const bend = (sway * 0.05 * s.v.drift + gust * 0.2 * dir) * s.h;
-
-			const [skHi, skHiG, skHiB] = hsl(s.v.hue2 + 8, 24 + s.v.sat * 0.28, 26);
-			const [skLo, skLoG, skLoB] = hsl(s.v.hue2 + 34, 34 + s.v.sat * 0.3, 52);
-			const sunX = id.sunX * s.w;
-			const sunY = gy * 0.42;
 
 			const [hlR, hlG, hlB] = hsl(s.v.hue2 + 46, 18 + s.v.sat * 0.2, 34);
 			for (let x = 0; x < s.w; x++) {

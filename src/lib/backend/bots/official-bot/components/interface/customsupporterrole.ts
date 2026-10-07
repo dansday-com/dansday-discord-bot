@@ -6,6 +6,7 @@ import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
 import { memberTranslator, translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
+import { imageUploadField, uploadedFiles } from './formFields.js';
 
 const supporterRoles = new Map();
 
@@ -129,6 +130,21 @@ function isValidImageUrl(url) {
 	}
 
 	return true;
+}
+
+async function uploadedRoleIcon(fields): Promise<Buffer | string | null> {
+	const [file] = uploadedFiles(fields, 'role_icon_upload');
+	if (!file) return null;
+	try {
+		const res = await fetch(file.attachment);
+		const sharp = (await import('sharp')).default;
+		return await sharp(Buffer.from(await res.arrayBuffer()))
+			.resize(128, 128, { fit: 'inside', withoutEnlargement: true })
+			.png()
+			.toBuffer();
+	} catch {
+		return file.attachment;
+	}
 }
 
 function parseColor(colorInput) {
@@ -266,6 +282,9 @@ export async function handleCustomSupporterRoleButton(interaction) {
 		const iconRow = new ActionRowBuilder().addComponents(iconInput);
 
 		modal.addComponents(nameRow, colorRow, iconRow);
+		modal.addLabelComponents(
+			imageUploadField(await translate('customSupporterRole.create.iconUploadLabel', interaction.guild.id, interaction.user.id), 'role_icon_upload', 1)
+		);
 
 		await interaction.showModal(modal);
 		await logger.log(`💎 Supporter role creation modal shown to ${member.user.tag} (${member.user.id})`);
@@ -366,6 +385,7 @@ export async function handleEditCustomSupporterRole(interaction) {
 		const iconRow = new ActionRowBuilder().addComponents(iconInput);
 
 		modal.addComponents(nameRow, colorRow, iconRow);
+		modal.addLabelComponents(imageUploadField(tr('customSupporterRole.create.iconUploadLabel'), 'role_icon_upload', 1));
 
 		await interaction.showModal(modal);
 		await logger.log(`💎 Supporter role edit modal shown to ${member.user.tag} (${member.user.id})`);
@@ -452,7 +472,6 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 		await interaction.deferReply({ flags: 64 });
 
 		const member = interaction.member;
-		const guild = interaction.guild;
 
 		if (!(await hasPermission(member, 'custom_supporter_role'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'custom_supporter_role', interaction.user.id);
@@ -503,20 +522,22 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			await existingRole.edit(updateData);
 
 			const trimmedIconInput = iconInput?.trim() || '';
+			const uploadedIcon = await uploadedRoleIcon(interaction.fields);
+			const iconImage = uploadedIcon ?? (trimmedIconInput.startsWith('http://') || trimmedIconInput.startsWith('https://') ? trimmedIconInput : null);
 			let iconStatus = 'unchanged';
 			let iconError = null;
 
-			if (trimmedIconInput) {
+			if (trimmedIconInput || iconImage) {
 				try {
-					if (trimmedIconInput.startsWith('http://') || trimmedIconInput.startsWith('https://')) {
+					if (iconImage) {
 						const premiumTier = interaction.guild.premiumTier;
 						if (premiumTier < 2) {
 							iconStatus = 'failed';
 							iconError = tr('customSupporterRole.iconErrors.boost');
 							await logger.log(`⚠️ Cannot set custom icon: Server needs Level 2 boost (current: ${premiumTier})`);
-						} else if (isValidImageUrl(trimmedIconInput)) {
-							await existingRole.setIcon(trimmedIconInput, { reason: updateData.reason });
-							await logger.log(`✅ Set role icon to image URL: ${trimmedIconInput}`);
+						} else if (uploadedIcon || isValidImageUrl(iconImage)) {
+							await existingRole.setIcon(iconImage, { reason: updateData.reason });
+							await logger.log(`✅ Set role icon to ${uploadedIcon ? 'uploaded image' : `image URL: ${iconImage}`}`);
 							iconStatus = 'updated';
 						} else {
 							await logger.log(`⚠️ Invalid image URL format. Must be JPG/PNG image URL (http:// or https://).`);
@@ -662,13 +683,14 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		const roleColor = parseColor(colorInput);
 
 		const trimmedIconInput = iconInput?.trim() || '';
+		const uploadedIcon = await uploadedRoleIcon(interaction.fields);
 		let iconStatus = 'none';
 		let iconError = null;
 		let iconToSet = null;
 		let isEmojiIcon = false;
 
-		if (trimmedIconInput) {
-			if (trimmedIconInput.startsWith('http://') || trimmedIconInput.startsWith('https://')) {
+		if (trimmedIconInput || uploadedIcon) {
+			if (uploadedIcon || trimmedIconInput.startsWith('http://') || trimmedIconInput.startsWith('https://')) {
 				const premiumTier = guild.premiumTier;
 				if (premiumTier < 2) {
 					const errorMsg = await translate('customSupporterRole.errors.boostRequired', interaction.guild.id, interaction.user.id);
@@ -678,7 +700,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 					return;
 				}
 
-				iconToSet = trimmedIconInput;
+				iconToSet = uploadedIcon ?? trimmedIconInput;
 				isEmojiIcon = false;
 			} else {
 				iconToSet = trimmedIconInput;
@@ -729,9 +751,9 @@ export async function handleCustomSupporterRoleModal(interaction) {
 
 		if (iconToSet && !isEmojiIcon) {
 			try {
-				if (isValidImageUrl(iconToSet)) {
+				if (uploadedIcon || isValidImageUrl(iconToSet)) {
 					await newRole.setIcon(iconToSet, { reason: roleData.reason });
-					await logger.log(`✅ Set role icon to image URL: ${iconToSet}`);
+					await logger.log(`✅ Set role icon to ${uploadedIcon ? 'uploaded image' : `image URL: ${iconToSet}`}`);
 					iconStatus = 'success';
 				} else {
 					await logger.log(`⚠️ Invalid image URL format. Must be JPG/PNG image URL (http:// or https://). Role created without icon.`);

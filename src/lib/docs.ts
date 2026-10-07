@@ -825,7 +825,7 @@ export const discordMenu = [
 		desc: 'Starts the giveaway flow: choose whether members can enter more than once, pick eligibility roles, then fill the details form, including how many invites are needed to enter (0 for none).'
 	},
 	{ label: '⏸️ Set AFK Status', desc: 'Opens the AFK modal, or shows your current AFK status with a Remove AFK button.' },
-	{ label: '💬 Submit Feedback', desc: 'Opens the feedback modal with a message field and an anonymous option.' },
+	{ label: '💬 Submit Feedback', desc: 'Opens the feedback modal with a message field, up to three screenshots and an anonymous checkbox.' },
 	{ label: '🛡️ Staff Rating', desc: 'Pick a staff member, choose a 1 to 5 score and category, and submit a rating.' },
 	{
 		label: '🎬 Content Creator',

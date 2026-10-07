@@ -11,7 +11,7 @@ import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
 import { rewardRuleFlags, type RewardRules } from '../rewards.js';
 import { normalizeServerLanguage } from '../languages.js';
-import { defaultGreetingMessages, greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
+import { greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
 
 interface BotConfig {
 	id: number;
@@ -1058,13 +1058,12 @@ export const FORWARDER = {
 
 export { SERVER_SETTINGS, type ServerSettingsComponentName };
 export { serverSettingsComponent };
-export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
+
 export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
 export { publicSiteOrigin, publicServerPath, publicServerUrl, publicServerSubdomainOrigin, COMMUNITY_DISCORD_URL } from '../url.js';
 export { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
 export const SETUP_MENU_CATEGORY_NAME = '{botName} Menu';
-export const SETUP_INFO_CATEGORY_NAME = '{botName} Information';
 
 export const SETUP_CHANNEL_DEFS = [
 	{ name: '「💻」menu', settingsKey: 'menu' },
@@ -1092,7 +1091,3 @@ export const DEFAULT_LEVELING_SETTINGS = {
 	STREAMING: { XP_PER_MINUTE: 50 },
 	INVITE: { XP: 1000, MIN_ACCOUNT_AGE_DAYS: 7, HOLD_HOURS: 24, SHARE_PERCENT: 25 }
 };
-
-export const DEFAULT_WELCOMER_MESSAGES = defaultGreetingMessages('welcomer');
-
-export const DEFAULT_BOOSTER_MESSAGES = defaultGreetingMessages('booster');

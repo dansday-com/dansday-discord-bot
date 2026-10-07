@@ -362,6 +362,7 @@
 			"label": "Your Feedback",
 			"placeholder": "Please share your feedback, suggestions, or concerns...",
 			"maxLength": 2000,
+			"screenshotsLabel": "Screenshots (optional)",
 			"anonymousLabel": "Submit Anonymously?"
 		},
 		"submitted": {
@@ -609,7 +610,8 @@
 			"colorLabel": "Role Color (Hex)",
 			"colorPlaceholder": "#FF5733 (optional)",
 			"iconLabel": "Role Icon (Emoji or Image URL)",
-			"iconPlaceholder": "🔥 or https://example.com/icon.png (optional)"
+			"iconPlaceholder": "🔥 or https://example.com/icon.png (optional)",
+			"iconUploadLabel": "Or Upload an Icon Image"
 		},
 		"existing": {
 			"title": "💎 Custom Supporter Role",

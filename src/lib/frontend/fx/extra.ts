@@ -9,60 +9,6 @@ function seed(s: FxScene, fn: (s: FxScene, i: number) => void) {
 	for (let i = 0; i < s.n; i++) fn(s, i);
 }
 
-export function makeBands(rows: number, o: { count: number; slant: number; soft: number; spread: number; light: number }): FxProgram {
-	return {
-		rows,
-		stride: 0,
-		init() {},
-		frame(s) {
-			clear(s);
-			const t = s.t * 0.02 * s.v.speed * s.v.dir;
-			for (let i = 0; i < o.count; i++) {
-				const off = i / o.count;
-				const hue = s.v.hue + (s.v.hue2 - s.v.hue) * off * o.spread;
-				const [r, g, b] = hsl(hue, s.v.sat, o.light);
-				const margin = o.soft + Math.abs(o.slant) * s.h * 0.5 + 2;
-				const centre = ((((t + off) % 1) + 1) % 1) * (s.w + margin * 2) - margin;
-				for (let x = 0; x < s.w; x++) {
-					for (let y = 0; y < s.h; y++) {
-						const d = Math.abs(x - centre - (y - s.h / 2) * o.slant);
-						if (d > o.soft) continue;
-						plot(s, x, y, r, g, b, (1 - d / o.soft) * 0.34);
-					}
-				}
-			}
-			for (let bd = 0; bd < 6; bd++) {
-				const bx = (((bd * 0.19 + t * 0.4) % 1.2) - 0.1) * s.w;
-				const bw = s.w * (0.02 + (bd % 3) * 0.012);
-				for (let x = bx; x < bx + bw; x++) for (let y = 0; y < s.h; y++) plot(s, x + (y - s.h / 2) * o.slant, y, 255, 255, 255, 0.08);
-			}
-			blit(s);
-		}
-	};
-}
-
-export function makeNoise(rows: number, amount: number, chunk: number): FxProgram {
-	return {
-		rows,
-		stride: 0,
-		init() {},
-		frame(s) {
-			clear(s);
-			const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.3, 74);
-			const grit = Math.max(1, chunk + ((s.v.drift * 1.6) | 0));
-			const bias = s.v.dir * s.v.tilt * 6;
-			for (let y = 0; y < s.h; y += grit) {
-				for (let x = 0; x < s.w; x += grit) {
-					const a = s.rnd() * (0.8 + s.v.speed * 0.3);
-					if (a > amount) continue;
-					for (let j = 0; j < grit; j++) for (let k = 0; k < grit; k++) plot(s, x + k + bias, y + j, r, g, b, a * 0.5);
-				}
-			}
-			blit(s);
-		}
-	};
-}
-
 export function makeBolt(rows: number, period: number): FxProgram {
 	return {
 		rows,
@@ -147,43 +93,6 @@ export function makeVortex(rows: number, stride: number): FxProgram {
 				const front = Math.sin(p[o]) > 0 ? 1 : 0.4;
 				const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.6, 40 + p[o + 1] * 34);
 				plot(s, x, y, r, g, b, p[o + 3] * front * edge(p[o + 1], 0, 1, 0.16));
-			}
-			blit(s);
-		}
-	};
-}
-
-export function makeStreak(rows: number, stride: number, steep: number, len: number): FxProgram {
-	const spawn = (sc: FxScene, i: number) => {
-		const p = sc.parts;
-		p[i * P] = sc.rnd() * sc.w * 1.6 - sc.w * 0.3;
-		p[i * P + 1] = -sc.rnd() * sc.h;
-		p[i * P + 2] = 0.6 + sc.rnd() * 1.2;
-		p[i * P + 3] = 0.5 + sc.rnd() * 0.5;
-	};
-	return {
-		rows,
-		stride,
-		init(s) {
-			seed(s, (sc, i) => {
-				spawn(sc, i);
-				sc.parts[i * P + 1] = sc.rnd() * sc.h;
-			});
-		},
-		frame(s) {
-			clear(s);
-			const dx = steep * s.v.dir;
-			for (let i = 0; i < s.n; i++) {
-				const o = i * P;
-				const p = s.parts;
-				p[o] += dx * p[o + 2] * s.v.speed;
-				p[o + 1] += p[o + 2] * s.v.speed * 1.7;
-				if (p[o + 1] > s.h + 2) spawn(s, i);
-				const [r, g, b] = hsl(s.v.hue, s.v.sat, 88);
-				for (let k = 0; k < len; k++) {
-					const t = k / len;
-					plot(s, p[o] - dx * k * 1.4, p[o + 1] - k * 1.7, r, g, b, p[o + 3] * (1 - t) * edge(p[o + 1], -2, s.h + 2, s.h * 0.2));
-				}
 			}
 			blit(s);
 		}
@@ -746,43 +655,6 @@ export function makeEcg(rows: number): FxProgram {
 				const gy2 = mid - trail[x] * amp * 0.72;
 				plot(s, x, gy2 + 3, r, g, b, 0.12);
 			}
-			blit(s);
-		}
-	};
-}
-
-export function shadows(s: FxScene, count: number, drift: number) {
-	const r0 = mulberry32(s.v.seed + 4242);
-	const [dr, dg, db] = hsl(s.v.hue2, s.v.sat * 0.3, 5);
-	for (let c = 0; c < count; c++) {
-		const baseX = (c / count) * s.w + r0() * (s.w / count);
-		const baseY = r0() * s.h;
-		const span = s.w * (0.14 + r0() * 0.18);
-		const shift = ((s.t * 0.05 * drift * s.v.dir + c * 31) % (s.w + span * 2)) - span;
-		for (let lump = 0; lump < 5; lump++) {
-			const lx = baseX + shift + (lump - 2) * span * 0.34;
-			const ly = baseY + (lump - 2) * span * 0.11;
-			const rad = span * (0.4 - Math.abs(lump - 2) * 0.07);
-			for (let y = -rad; y <= rad; y++) {
-				for (let x = -rad; x <= rad; x++) {
-					const d = (x * x * 0.42 + y * y * 1.1) / (rad * rad);
-					if (d > 1) continue;
-					paint(s, lx + x, ly + y, dr, dg, db, (1 - d) * 0.32);
-				}
-			}
-		}
-	}
-}
-
-export function withOvercast(inner: FxProgram, count: number, drift: number): FxProgram {
-	return {
-		opaque: inner.opaque,
-		rows: inner.rows,
-		stride: inner.stride,
-		init: inner.init,
-		frame(s) {
-			inner.frame(s);
-			shadows(s, count, drift);
 			blit(s);
 		}
 	};

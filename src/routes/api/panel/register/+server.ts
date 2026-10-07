@@ -4,7 +4,6 @@ import db from '$lib/database.js';
 import {
 	checkRateLimit,
 	getClientIp,
-	sanitizeString,
 	sanitizeUsername,
 	sanitizeEmail,
 	validateInputLength,

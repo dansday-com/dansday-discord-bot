@@ -5,6 +5,7 @@ import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 import { apexHome, publicServerPath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
+import { getEffectiveMainEmbedAppearance } from '$lib/utils/mainConfig.js';
 
 export const load: LayoutServerLoad = async ({ params, url }) => {
 	const slug = String(params.serverSlug || '').trim();
@@ -21,7 +22,11 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const inviteEnabled = publicSubfeatureEnabled(settings, 'invite');
 
 	const server = resolved.server;
-	const serverRow = await db.getServer(server.id).catch(() => null);
+	const [serverRow, mainRow] = await Promise.all([
+		db.getServer(server.id).catch(() => null),
+		db.getServerSettings(server.id, SERVER_SETTINGS.component.main).catch(() => null)
+	]);
+	const accent = parseInt(getEffectiveMainEmbedAppearance((mainRow as any)?.settings).color.replace('#', ''), 16);
 	const onSubdomain = publicServerSlugFromHost(url.hostname) === resolved.computedSlug;
 	const canonicalBase = publicServerPath(resolved.computedSlug);
 	const pathname = url.pathname.replace(/\/+$/, '');
@@ -39,7 +44,8 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 			name: server.name,
 			slug: resolved.computedSlug,
 			server_icon: server.server_icon ?? null,
-			join_available: inviteEnabled && !!(serverRow?.vanity_url_code || serverRow?.invite_code)
+			join_available: inviteEnabled && !!(serverRow?.vanity_url_code || serverRow?.invite_code),
+			accent: Number.isFinite(accent) ? accent : null
 		}
 	};
 };

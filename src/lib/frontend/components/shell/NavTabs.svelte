@@ -59,7 +59,7 @@
 	<div
 		bind:this={strip}
 		onscroll={update}
-		class="flex [scrollbar-width:none] overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden {variant === 'segment'
+		class="flex overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {variant === 'segment'
 			? 'border-base-300 bg-base-200 min-w-0 flex-auto gap-[3px] rounded-xl border p-[3px]'
 			: 'gap-2'}"
 	>

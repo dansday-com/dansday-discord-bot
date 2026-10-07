@@ -7,7 +7,9 @@ import {
 	ButtonBuilder,
 	ButtonStyle,
 	RoleSelectMenuBuilder,
-	StringSelectMenuBuilder
+	StringSelectMenuBuilder,
+	ComponentType,
+	MessageFlags
 } from 'discord.js';
 import { getEmbedConfig, GIVEAWAY, NOTIFICATIONS, getServerForCurrentBot } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
@@ -16,6 +18,7 @@ import db from '../../../../../database.js';
 import { translate, serverTranslator, memberTranslator, type Translator } from '../../i18n.js';
 import { textField } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
+import { isComponentsV2 } from './componentsV2.js';
 
 function giveawayRoleMention(guild, roleId, tr: Translator) {
 	const role = guild.roles.cache.get(roleId);
@@ -70,9 +73,15 @@ export async function handleGiveawayMultipleSelect(interaction) {
 	const allowed = interaction.values?.[0] === 'yes';
 	pendingMultipleEntries.set(pendingKey(interaction), allowed);
 	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
-	const rows = (interaction.message?.components ?? []).map((row) => ActionRowBuilder.from(row));
-	rows[0] = multipleEntriesRow(tr, allowed);
-	await interaction.update({ components: rows }).catch(() => interaction.deferUpdate().catch(() => null));
+	const swap = (c: any) =>
+		c.type === ComponentType.ActionRow && c.components?.some((x: any) => x.custom_id === 'giveaway_multiple_select')
+			? multipleEntriesRow(tr, allowed).toJSON()
+			: c.components
+				? { ...c, components: c.components.map(swap) }
+				: c;
+	const components = (interaction.message?.components ?? []).map((c) => swap(c.toJSON()));
+	const flags = isComponentsV2(interaction.message) ? { flags: MessageFlags.IsComponentsV2 } : {};
+	await interaction.update({ components, ...flags }).catch(() => interaction.deferUpdate().catch(() => null));
 }
 
 function buildGiveawayWinnersDescription(tr: Translator, giveaway, winners, winnerMentions: string) {

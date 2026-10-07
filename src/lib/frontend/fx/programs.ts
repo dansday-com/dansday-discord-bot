@@ -2,7 +2,7 @@ import { makeCrown, makeCupcake, makeGem } from './cute.js';
 import { mulberry32 } from '$lib/effects.js';
 import { makeCandle, makeDice, makeFishtank, makeMoney, makePopcorn, makeRainglass, makeVinyl } from './objects.js';
 import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
-import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withOvercast, withSky } from './extra.js';
+import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withSky } from './extra.js';
 import {
 	boughSource,
 	canopySource,
@@ -374,8 +374,6 @@ function makeSpiral(rows: number, stride: number, inward: number): FxProgram {
 				p[o] += 0.035 * p[o + 2] * s.v.dir;
 				p[o + 1] -= inward * p[o + 2];
 				if (p[o + 1] <= 0.06) spawn(s, i);
-				const x = cx + Math.cos(p[o]) * rx * p[o + 1];
-				const y = cy + Math.sin(p[o]) * ry * p[o + 1];
 				const heat = 1 - p[o + 1];
 				const [r, g, b] = hsl(s.v.hue + heat * 50, s.v.sat, 46 + heat * 46);
 				const a = p[o + 3] * (0.35 + heat * 0.65) * edge(p[o + 1], 0.06, 1.25, 0.24);
@@ -543,8 +541,6 @@ export const PROGRAMS: Record<string, FxProgram> = {
 	gem: makeGem(56),
 	crown: makeCrown(56)
 };
-
-export const CANVAS_FAMILIES = new Set(Object.keys(PROGRAMS));
 
 export const BLEND: Record<string, 'screen' | 'normal'> = Object.fromEntries(
 	Object.entries(PROGRAMS).map(([family, program]) => [family, program.opaque ? 'normal' : 'screen'])

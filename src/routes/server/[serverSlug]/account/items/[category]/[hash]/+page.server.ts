@@ -3,14 +3,6 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
-function safeParse(raw: any) {
-	try {
-		return JSON.parse(raw);
-	} catch {
-		return null;
-	}
-}
-
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server, serverBasePath, itemsEnabled } = await parent();
 

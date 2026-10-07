@@ -4,8 +4,6 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 
 const store = createUploadStore('embed', [/admin(?:-[1-9]\d*)?|[1-9]\d*/]);
 
-export const EMBED_FILENAME_PATTERN = /^\d+-[a-z0-9]+\.[a-z0-9]+$/i;
-
 export function embedScope(serverId: any): string {
 	const id = Math.trunc(Number(serverId));
 	if (!Number.isFinite(id) || id <= 0) throw new Error(`Invalid embed scope: ${serverId}`);

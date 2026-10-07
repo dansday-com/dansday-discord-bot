@@ -464,51 +464,6 @@ export function makeSign(rows: number): FxProgram {
 	};
 }
 
-export function withImpacts(inner: FxProgram, period: number): FxProgram {
-	return {
-		opaque: inner.opaque,
-		rows: inner.rows,
-		stride: inner.stride,
-		init(s) {
-			inner.init(s);
-			const r = mulberry32(s.v.seed + 4711);
-			const sites: number[][] = [];
-			const n = 2 + ((r() * 3) | 0);
-			for (let i = 0; i < n; i++) sites.push([0.12 + r() * 0.76, r() * period, 0.7 + r() * 0.6]);
-			(s as any).sites = sites;
-		},
-		frame(s) {
-			inner.frame(s);
-			const sites = (s as any).sites as number[][];
-			const groundY = s.h * 0.86;
-			for (const [fx, offset, scale] of sites) {
-				const age = (s.t - offset + period * 4) % period;
-				if (age > 34) continue;
-				const cx = fx * s.w;
-				const f = age / 34;
-				const [hr, hg, hb] = hsl(s.v.hue, s.v.sat, 90 - f * 30);
-				const rad = f * s.w * 0.2 * scale;
-				for (let k = 0; k < 180; k += 3) {
-					const th = (k * Math.PI) / 180 + Math.PI;
-					plot(s, cx + Math.cos(th) * rad, groundY + Math.sin(th) * rad * 0.32, hr, hg, hb, (1 - f) * 0.75);
-				}
-				if (age < 12) {
-					const flash = 1 - age / 12;
-					for (let y = groundY - 6 * scale; y < groundY + 3; y++) for (let x = cx - 8 * scale; x < cx + 8 * scale; x++) plot(s, x, y, hr, hg, hb, flash * 0.3);
-				}
-				for (let e = 0; e < 7; e++) {
-					const th = Math.PI + (e / 6) * Math.PI;
-					const d = f * s.h * 0.5 * scale;
-					plot(s, cx + Math.cos(th) * d * 1.4, groundY + Math.sin(th) * d + f * f * s.h * 0.3, hr, hg, hb, (1 - f) * 0.9);
-				}
-				const glow = Math.max(0, 1 - ((s.t - offset + period * 4) % period) / period);
-				for (let x = cx - 5 * scale; x < cx + 5 * scale; x++) plot(s, x, groundY, hr, hg * 0.5, hb * 0.3, glow * 0.5);
-			}
-			blit(s);
-		}
-	};
-}
-
 export function makeWishNight(rows: number): FxProgram {
 	return {
 		rows,

@@ -19,25 +19,6 @@ export function sanitizeEmail(email: unknown) {
 	return email.trim().toLowerCase().substring(0, 255);
 }
 
-export function normalizeEmailForDuplicateCheck(email: string): string {
-	const atIndex = email.lastIndexOf('@');
-	if (atIndex === -1) return email;
-	const local = email.substring(0, atIndex);
-	const domain = email.substring(atIndex + 1);
-	if (domain === 'gmail.com' || domain === 'googlemail.com') {
-		return local.replace(/\./g, '') + '@' + domain;
-	}
-	return email;
-}
-
-export function sanitizeInteger(input: unknown, min: number | null = null, max: number | null = null): number | null {
-	const num = parseInt(String(input), 10);
-	if (Number.isNaN(num)) return null;
-	if (min !== null && num < min) return null;
-	if (max !== null && num > max) return null;
-	return num;
-}
-
 export function validateInputLength(input: unknown, fieldName: string, minLength: number, maxLength: number) {
 	if (typeof input !== 'string') return { valid: false, error: `${fieldName} must be a string` };
 	if (input.length < minLength) return { valid: false, error: `${fieldName} must be at least ${minLength} characters long` };

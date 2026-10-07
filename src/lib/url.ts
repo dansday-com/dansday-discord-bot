@@ -101,7 +101,7 @@ function punycodeDecode(input: string): string | null {
 	let n = 128;
 	let bias = 72;
 	let i = 0;
-	for (let pos = cut > 0 ? cut + 1 : 0; pos < input.length;) {
+	for (let pos = cut > 0 ? cut + 1 : 0; pos < input.length; ) {
 		const start = i;
 		for (let w = 1, k = 36; ; k += 36) {
 			if (pos >= input.length) return null;

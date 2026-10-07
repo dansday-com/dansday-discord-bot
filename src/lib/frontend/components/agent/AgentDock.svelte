@@ -111,6 +111,16 @@
 		log?.scrollTo({ top: log.scrollHeight });
 	}
 
+	async function readAnswer(res: Response): Promise<{ ok: boolean; body: any }> {
+		if (!res.headers.get('content-type')?.includes('text/event-stream')) return { ok: res.ok, body: await res.json().catch(() => ({})) };
+		const line = (await res.text())
+			.split('\n')
+			.reverse()
+			.find((entry) => entry.startsWith('data: '));
+		const payload = line ? JSON.parse(line.slice(6)) : { status: 502, body: {} };
+		return { ok: payload.status < 400, body: payload.body ?? {} };
+	}
+
 	async function call(body: Record<string, unknown>): Promise<any | null> {
 		try {
 			const res = await fetch('/api/agent', {
@@ -118,9 +128,9 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ ...body, server_id: serverId })
 			});
-			const out = await res.json().catch(() => ({}));
-			if (res.ok && out.ok) return out;
-			showToast(out.error || 'The assistant request failed. Try again in a moment.', 'error', 8000);
+			const answer = await readAnswer(res);
+			if (answer.ok && answer.body.ok) return answer.body;
+			showToast(answer.body.error || 'The assistant request failed. Try again in a moment.', 'error', 8000);
 		} catch {
 			showToast('Could not reach the panel. Check your connection and try again.', 'error', 8000);
 		}
@@ -234,7 +244,9 @@
 			{/each}
 
 			{#if busy}
-				<p class="text-ash-400 flex items-center gap-2 self-start text-sm"><i class="fas fa-spinner fa-spin"></i>Working. This can take up to a minute.</p>
+				<p class="text-ash-400 flex items-center gap-2 self-start text-sm">
+					<i class="fas fa-spinner fa-spin"></i>Working. A long message can take a few minutes.
+				</p>
 			{/if}
 		</div>
 
@@ -253,7 +265,7 @@
 				disabled={!ready || busy}
 				placeholder={editor ? 'Describe the message, or what to change' : 'What do you need?'}
 				aria-label="Message to the assistant"
-				class="{FIELD} min-w-0 flex-1 resize-none disabled:cursor-not-allowed disabled:opacity-60"
+				class="{FIELD} field-sizing-content max-h-40 min-w-0 flex-1 resize-none overflow-y-auto disabled:cursor-not-allowed disabled:opacity-60"
 				onkeydown={(event) => {
 					if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
 					event.preventDefault();

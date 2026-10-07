@@ -1,10 +1,11 @@
 import OpenAI from 'openai';
 
 const MAX_STEPS = 8;
-const REQUEST_TIMEOUT_MS = 60_000;
-const RUN_BUDGET_MS = 85_000;
+const REQUEST_TIMEOUT_MS = 180_000;
+const RUN_BUDGET_MS = 280_000;
 const MIN_STEP_MS = 8_000;
 const MAX_TOOL_RESULT_CHARS = 12_000;
+const LONG_ANSWER_TOKENS = 16_000;
 
 export type AgentModel = { api_url: string | null; api_key: string | null; model: string | null };
 
@@ -25,9 +26,14 @@ export type AgentTask<T> = {
 	finish: (answer: string) => AgentVerdict<T> | Promise<AgentVerdict<T>>;
 };
 
-export type AgentOutcome<T> = { ok: true; result: T; steps: number } | { ok: false; steps: number };
+export type AgentOutcome<T> = { ok: true; result: T; steps: number } | { ok: false; steps: number; cutOff: boolean };
 
-export type AgentCompletion = (request: { messages: any[]; tools: any[] | null; timeoutMs: number }) => Promise<any>;
+export type AgentCompletion = (request: {
+	messages: any[];
+	tools: any[] | null;
+	timeoutMs: number;
+	maxTokens?: number;
+}) => Promise<{ message: any; cutOff: boolean } | null>;
 
 function normalizeBaseUrl(rawUrl: string | null): string {
 	const trimmed = String(rawUrl ?? '')
@@ -45,13 +51,26 @@ function stripReasoning(text: string): string {
 
 function completionFor(model: AgentModel): AgentCompletion {
 	const client = new OpenAI({ baseURL: normalizeBaseUrl(model.api_url), apiKey: model.api_key ?? '', maxRetries: 0 });
-	return async ({ messages, tools, timeoutMs }) => {
+	return async ({ messages, tools, timeoutMs, maxTokens }) => {
 		const completion = await client.chat.completions.create(
-			{ model: model.model ?? '', messages, ...(tools ? { tools, tool_choice: 'auto' as const } : {}) },
+			{ model: model.model ?? '', messages, ...(tools ? { tools, tool_choice: 'auto' as const } : {}), ...(maxTokens ? { max_tokens: maxTokens } : {}) },
 			{ timeout: timeoutMs }
 		);
-		return completion.choices?.[0]?.message ?? null;
+		const choice = completion.choices?.[0];
+		return choice?.message ? { message: choice.message, cutOff: choice.finish_reason === 'length' } : null;
 	};
+}
+
+export async function completeText(model: AgentModel, system: string, user: string, timeoutMs: number): Promise<string> {
+	const reply = await completionFor(model)({
+		messages: [
+			{ role: 'system', content: system },
+			{ role: 'user', content: user }
+		],
+		tools: null,
+		timeoutMs
+	});
+	return stripReasoning(typeof reply?.message?.content === 'string' ? reply.message.content : '');
 }
 
 async function runTool(tools: AgentTool[], call: any): Promise<string> {
@@ -76,6 +95,7 @@ export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask
 	const messages: any[] = [{ role: 'system', content: task.system }, ...turns.map((turn) => ({ role: turn.role, content: turn.text }))];
 	const deadline = Date.now() + RUN_BUDGET_MS;
 	let fallback: { result: T } | null = null;
+	let cutOff = false;
 	let steps = 0;
 
 	while (steps < MAX_STEPS) {
@@ -83,14 +103,26 @@ export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask
 		if (remaining < MIN_STEP_MS) break;
 		steps++;
 		const offerTools = specs.length > 0 && steps < MAX_STEPS;
-		const message = await complete({ messages, tools: offerTools ? specs : null, timeoutMs: Math.min(REQUEST_TIMEOUT_MS, remaining) });
-		if (!message) break;
+		const request = { messages, tools: offerTools ? specs : null };
+		let reply = await complete({ ...request, timeoutMs: Math.min(REQUEST_TIMEOUT_MS, remaining) });
+		if (reply?.cutOff && deadline - Date.now() >= MIN_STEP_MS) {
+			const longer = await complete({ ...request, timeoutMs: Math.min(REQUEST_TIMEOUT_MS, deadline - Date.now()), maxTokens: LONG_ANSWER_TOKENS }).catch(
+				() => null
+			);
+			reply = longer ?? reply;
+		}
+		if (!reply) break;
+		const { message } = reply;
 
 		if (offerTools && Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
 			messages.push(message);
 			const results = await Promise.all(message.tool_calls.map((call: any) => runTool(tools, call)));
 			message.tool_calls.forEach((call: any, index: number) => messages.push({ role: 'tool', tool_call_id: call.id, content: results[index] }));
 			continue;
+		}
+		if (reply.cutOff) {
+			cutOff = true;
+			break;
 		}
 
 		const answer = stripReasoning(typeof message.content === 'string' ? message.content : '');
@@ -100,7 +132,7 @@ export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask
 		messages.push({ role: 'assistant', content: answer || '{}' }, { role: 'user', content: verdict.feedback });
 	}
 
-	return fallback ? { ok: true, result: fallback.result, steps } : { ok: false, steps };
+	return fallback ? { ok: true, result: fallback.result, steps } : { ok: false, steps, cutOff };
 }
 
 export function runAgent<T>(model: AgentModel, task: AgentTask<T>, turns: AgentTurn[]): Promise<AgentOutcome<T>> {

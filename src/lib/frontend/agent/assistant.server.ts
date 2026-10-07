@@ -18,7 +18,7 @@ import { serverDataPack } from './serverData.server.js';
 import { settingsPack } from './settings.server.js';
 import { wikisPack } from './wikis.server.js';
 
-const MAX_REPLY_LENGTH = 2000;
+const MAX_REPLY_LENGTH = 6000;
 
 type Scope = { reach: AgentReach; session: AgentSession; message: MessageRequest | null };
 

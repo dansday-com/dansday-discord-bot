@@ -1,4 +1,5 @@
 import db from '$lib/database.js';
+import { completeText } from '$lib/backend/agent/core.js';
 import { messagePack, type MessageAgentContext, type MessageAgentResult } from '$lib/backend/agent/messagePack.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
 import { APP_DOMAIN, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
@@ -6,7 +7,9 @@ import { ADMIN_TAB_PATHS, adminServerSectionPath } from '$lib/frontend/redirect.
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import { MESSAGE_LIMITS, isSelfAssignableRole, normalizeMessageDoc, type MessageOwner, type MessageScope } from '$lib/messages.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
-import type { AgentAnswer, AgentPack, AgentReach, AgentSession } from './runtime.server.js';
+import { agentModel, type AgentAnswer, type AgentPack, type AgentReach, type AgentSession } from './runtime.server.js';
+
+const TRANSLATION_TIMEOUT_MS = 90_000;
 
 export type MessageRequest = { scope: MessageScope; id: unknown; name: unknown; content: unknown };
 
@@ -143,7 +146,7 @@ export async function builderDoorPack(reach: AgentReach, session: AgentSession):
 export async function messageBuilderPack(reach: AgentReach, request: MessageRequest): Promise<AgentPack> {
 	const global = request.scope === 'global';
 	const owner: MessageOwner = global ? { scope: 'global', id: reach.panelId } : { scope: 'server', id: Number(reach.server.id) };
-	const library = await (global ? globalLibrary(reach.panelId) : serverLibrary(reach.server));
+	const [library, model] = await Promise.all([global ? globalLibrary(reach.panelId) : serverLibrary(reach.server), agentModel(reach.panelId)]);
 	const ownsUpload = (key: string) => messageFileBelongsTo(key, owner);
 
 	const requestedId = Math.trunc(Number(request.id));
@@ -160,14 +163,15 @@ export async function messageBuilderPack(reach: AgentReach, request: MessageRequ
 		messages: library.messages,
 		roles: library.roles,
 		emojis: library.emojis,
-		ownsUpload
+		ownsUpload,
+		ask: model ? (system, user) => completeText(model, system, user, TRANSLATION_TIMEOUT_MS) : undefined
 	});
 
 	return {
 		instructions: pack.instructions,
 		tools: pack.tools,
-		finish: (answer) => {
-			const verdict = pack.finish(answer);
+		finish: async (answer) => {
+			const verdict = await pack.finish(answer);
 			if (verdict.ok) return { ok: true, result: shape(verdict.result) };
 			return { ok: false, feedback: verdict.feedback, ...(verdict.fallback ? { fallback: shape(verdict.fallback) } : {}) };
 		}

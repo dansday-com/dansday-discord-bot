@@ -1,4 +1,4 @@
-import { SERVER_LANGUAGES } from '../../languages.js';
+import { SERVER_LANGUAGES, isServerLanguage, serverLanguageEnglishName, type ServerLanguage } from '../../languages.js';
 import {
 	MESSAGE_LIMITS,
 	messageDocProblems,
@@ -10,6 +10,7 @@ import {
 	type MessageScope
 } from '../../messages.js';
 import type { AgentTool, AgentVerdict } from './core.js';
+import { translateMessage, type TranslationAsk } from './messageTranslate.js';
 
 const MAX_REPLY_LENGTH = 600;
 const MAX_LISTED_ROLES = 150;
@@ -27,11 +28,12 @@ export type MessageAgentContext = {
 	roles: { id: string; name: string }[];
 	emojis: { id: string; name: string; animated: boolean }[];
 	ownsUpload: (key: string) => boolean;
+	ask?: TranslationAsk;
 };
 
 export type MessageAgentResult = { reply: string; name: string | null; content: MessageDoc | null };
 
-export type MessagePack = { instructions: string; tools: AgentTool[]; finish: (answer: string) => AgentVerdict<MessageAgentResult> };
+export type MessagePack = { instructions: string; tools: AgentTool[]; finish: (answer: string) => Promise<AgentVerdict<MessageAgentResult>> };
 
 const L = MESSAGE_LIMITS;
 
@@ -44,12 +46,14 @@ Answer with one JSON object and nothing else, with no code fence around it:
 - reply: one or two short plain sentences for the admin, in the language they wrote to you in. Say what you built or changed, or ask the one question you cannot work without. No markdown.
 - name: the name of this message in the admin's library, ${L.name} characters at most. Keep the current name unless it is empty or the admin asks for another.
 - message: the whole message after your change, in the format below. Always send the complete message, never a fragment. Leave it out when the message stays as it is: when you have to ask a question first, or when the admin asked for something else that you did with your other tools.
+- retranslate: optional. A list of language codes to translate again from scratch, for when the admin is unhappy with a translation.
+- translation_note: optional. One sentence for the translator, such as the tone the admin wants.
 
 Keep every part of the message the admin did not ask you to change exactly as it is.
 
 # Message format
 type Code = a language code from the list under Languages
-type Localized = { [code: Code]: string }      one entry per language the message is written in, for example {"en": "Hello", "id": "Halo"}
+type Localized = { [code: Code]: string }      you write the main language entry only, for example {"en": "Hello"}
 type Media = an https:// image link the admin gave you, or an upload key already present in the current message, or ""
 type Url = an https:// link, or ""
 
@@ -94,11 +98,15 @@ Length limits, per language: embed title ${L.title}, description ${L.description
 - Every button that is not a link, and every dropdown option, needs at least one action. "show" opens another saved message privately for the member who clicked. "role" gives, takes or toggles a role.
 - A "show" action may only use a message id from the saved messages listed below, and a "role" action only a role id from the roles listed below. If what the admin wants needs a message or role that is not listed, leave that button or option out and say in reply what has to exist first.
 - emoji is one unicode emoji, or a custom emoji from the list below written exactly as shown, or "".
-- To translate, add the language code to "languages" and write every text of the message in that language too. Translate naturally, the way a native speaker would write it, and keep placeholders, markdown, emoji, mentions and links unchanged. The main language must carry every text.
+- You write every text in the main language only, and the current message below shows you only that language. Translations are made for you after you answer, into every other language in "languages": for each text you add or change, and for each language you add. So to translate the message, add the language codes to "languages" and send the message. Never write a translation yourself, unless the admin dictates the exact wording in another language: then add that entry to the text and it is kept as written. In reply, say the translations are being added, not that you wrote them.
 - When the admin asks for real numbers or names from a server, such as a leaderboard, statistics, leveling rules, giveaways or the shop, read them with your tools first and write only what the tools returned. Never make such data up. If a tool is missing or fails, say so in reply.
 
 # Languages
 ${SERVER_LANGUAGES.map((language) => `${language.code} (${language.englishName})`).join(', ')}`;
+
+function mainLanguageOnly(doc: MessageDoc, ctx: MessageAgentContext) {
+	return { ...normalizeMessageDoc({ ...doc, languages: [doc.language] }, ctx.ownsUpload, ctx.scope), languages: doc.languages };
+}
 
 function context(ctx: MessageAgentContext): string {
 	const global = ctx.scope === 'global';
@@ -114,8 +122,8 @@ function context(ctx: MessageAgentContext): string {
 		`Status: ${status}`,
 		`Color for new embeds and boxes: ${ctx.defaults.color || (global ? 'leave empty' : 'none set')}`,
 		...(ctx.defaults.footer ? [`Footer for new embeds, in the main language: ${JSON.stringify(ctx.defaults.footer)}`] : []),
-		'Current message:',
-		JSON.stringify(ctx.doc),
+		'Current message, main language only:',
+		JSON.stringify(mainLanguageOnly(ctx.doc, ctx)),
 		'',
 		'# Saved messages a "show" action can open',
 		...(others.length > 0
@@ -172,14 +180,14 @@ export function messagePack(ctx: MessageAgentContext): MessagePack {
 		},
 		run: (args) => {
 			const found = known.find((message) => message.id === Number(args.id));
-			return found ? { ok: true, name: found.name, message: found.content } : { ok: false, reason: 'not_a_saved_message' };
+			return found ? { ok: true, name: found.name, message: mainLanguageOnly(found.content, ctx) } : { ok: false, reason: 'not_a_saved_message' };
 		}
 	};
 
 	return {
 		instructions: `${INSTRUCTIONS}\n\n${context(ctx)}`,
 		tools: known.some((message) => message.id !== ctx.messageId) ? [readMessage] : [],
-		finish(answer) {
+		async finish(answer) {
 			const parsed = parseAnswer(answer);
 			if (!parsed) {
 				if (answer && !answer.includes('{')) return { ok: true, result: { reply: answer.slice(0, MAX_REPLY_LENGTH), name: null, content: null } };
@@ -193,11 +201,14 @@ export function messagePack(ctx: MessageAgentContext): MessagePack {
 			const reply = (typeof parsed.reply === 'string' ? parsed.reply.trim() : '').slice(0, MAX_REPLY_LENGTH);
 			const rawName = typeof parsed.name === 'string' ? parsed.name.trim().slice(0, L.name) : '';
 			const name = rawName && rawName !== ctx.name.trim() ? rawName : null;
-			if (!parsed.message || typeof parsed.message !== 'object') {
+			const retranslate = (Array.isArray(parsed.retranslate) ? parsed.retranslate : []).filter((code): code is ServerLanguage => isServerLanguage(code));
+			const note = typeof parsed.translation_note === 'string' ? parsed.translation_note.trim().slice(0, 300) : '';
+			const rewritten = parsed.message && typeof parsed.message === 'object';
+			if (!rewritten && retranslate.length === 0) {
 				return { ok: true, result: { reply: reply || 'Nothing was changed.', name, content: null } };
 			}
 
-			const content = normalizeMessageDoc(parsed.message, ctx.ownsUpload, ctx.scope);
+			const content = normalizeMessageDoc(rewritten ? parsed.message : structuredClone(ctx.doc), ctx.ownsUpload, ctx.scope);
 			const problems = [
 				...messageDocProblems(content),
 				...messageShownIds(content)
@@ -207,13 +218,26 @@ export function messagePack(ctx: MessageAgentContext): MessagePack {
 					.filter((id) => !roleIds.has(id))
 					.map((id) => `A "role" action uses role_id ${id}, which is not in the roles list. Use an id from that list or remove that part.`)
 			];
-			if (problems.length === 0) return { ok: true, result: { reply: reply || 'Done.', name, content } };
 
-			return {
-				ok: false,
-				feedback: `The builder found problems with that message:\n${problems.map((problem) => `- ${problem}`).join('\n')}\n\nFix them and answer again with the complete JSON object. "Pick what happens when it is clicked" means the actions list of that button or option is empty. If you cannot fix a part with what you have, remove it and say so in reply.`,
-				fallback: { reply: `${reply || 'Done.'} A few parts still need you, see "Fix before saving".`, name, content }
-			};
+			if (problems.length > 0) {
+				await translateMessage(content, ctx.doc, { retranslate: [], note });
+				return {
+					ok: false,
+					feedback: `The builder found problems with that message:\n${problems.map((problem) => `- ${problem}`).join('\n')}\n\nFix them and answer again with the complete JSON object. "Pick what happens when it is clicked" means the actions list of that button or option is empty. If you cannot fix a part with what you have, remove it and say so in reply.`,
+					fallback: { reply: `${reply || 'Done.'} A few parts still need you, see "Fix before saving".`, name, content }
+				};
+			}
+
+			const { failed } = await translateMessage(content, ctx.doc, { retranslate, note, ask: ctx.ask });
+			const notes = [
+				...(failed.length > 0
+					? [
+							`Could not translate into ${failed.map(serverLanguageEnglishName).join(', ')}, so those parts still show the ${serverLanguageEnglishName(content.language)} text.`
+						]
+					: []),
+				...(messageDocProblems(content).length > 0 ? ['A few parts still need you, see "Fix before saving".'] : [])
+			];
+			return { ok: true, result: { reply: [reply || 'Done.', ...notes].join(' '), name, content } };
 		}
 	};
 }

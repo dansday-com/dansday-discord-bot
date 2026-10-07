@@ -319,6 +319,7 @@ export const aiAssistantRules = [
 	{ icon: 'fa-toggle-on', title: 'Needs AI chat', desc: 'It works once AI chat is on with a URL, key and model.' },
 	{ icon: 'fa-eye', title: 'You review messages', desc: 'A built message lands in the editor unsaved. You press Save or Send.' },
 	{ icon: 'fa-rotate-left', title: 'Undo', desc: 'One click puts the message back the way it was before the change.' },
+	{ icon: 'fa-language', title: 'Translations', desc: 'Ask for any languages. Only text you changed is translated again, the rest is kept.' },
 	{ icon: 'fa-ban', title: 'Never deletes', desc: 'It adds and edits. Deleting stays a click of your own in the panel.' },
 	{ icon: 'fa-user-lock', title: 'Own server only', desc: 'Owner and staff accounts reach their own server and nothing else.' },
 	{ icon: 'fa-robot', title: 'Needs the bot online', desc: 'Live server data comes from the running bot.' }

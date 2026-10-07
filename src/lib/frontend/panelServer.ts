@@ -32,6 +32,14 @@ const REGISTRY = [
 		iconClass: 'text-sky-400'
 	},
 	{
+		id: 'leaver',
+		label: 'Leaver',
+		featureSwitch: true,
+		hrefSuffix: '/leaver',
+		icon: 'fa-door-open',
+		iconClass: 'text-orange-400'
+	},
+	{
 		id: 'booster',
 		label: 'Booster',
 		featureSwitch: true,
@@ -194,6 +202,7 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.giveaway,
 	component.leveling,
 	component.welcomer,
+	component.leaver,
 	component.booster,
 	component.afk,
 	component.notifications,

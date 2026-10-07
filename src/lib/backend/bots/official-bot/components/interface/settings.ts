@@ -3,7 +3,7 @@ import { getEmbedConfig, getBotConfig } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
-import { translate, getAvailableLanguages, getUserLanguage, getServerLanguage } from '../../i18n.js';
+import { translate, getAvailableLanguages, getUserLanguage, getServerLanguage, errorReason } from '../../i18n.js';
 import { isServerLanguage, serverLanguageLabel } from '../../../../../languages.js';
 
 const SERVER_DEFAULT_VALUE = 'server';
@@ -110,7 +110,9 @@ export async function handleLanguageButton(interaction) {
 		await logger.log(`❌ Language button error: ${error.message}`);
 		await interaction
 			.update({
-				content: await translate('settings.language.failed', interaction.guild.id, interaction.user.id, { error: error.message }),
+				content: await translate('settings.language.failed', interaction.guild.id, interaction.user.id, {
+					error: await errorReason(error, interaction.guild.id, interaction.user.id)
+				}),
 				components: [],
 				flags: 64
 			})
@@ -179,7 +181,9 @@ export async function handleLanguageSelect(interaction) {
 			.catch(() => null);
 	} catch (error) {
 		await logger.log(`❌ Language select error: ${error.message}`);
-		const errorMsg = await translate('settings.language.failed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('settings.language.failed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		try {
 			if (interaction.deferred || interaction.replied) {
 				await interaction

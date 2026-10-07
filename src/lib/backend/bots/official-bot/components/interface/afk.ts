@@ -3,7 +3,7 @@ import { getEmbedConfig, getBotConfig, AFK_CONFIG } from '../../../../config.js'
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
-import { memberTranslator, translate, translateServer } from '../../i18n.js';
+import { memberTranslator, translate, translateServer, errorReason } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
 
@@ -202,7 +202,7 @@ export async function handleAFKButton(interaction) {
 
 		if (afkData) {
 			const removeButtonLabel = await translate('afk.buttons.remove', interaction.guild.id, interaction.user.id);
-			const removeButton = new ButtonBuilder().setCustomId('afk_remove').setLabel(removeButtonLabel).setStyle(ButtonStyle.Danger);
+			const removeButton = new ButtonBuilder().setCustomId('afk_remove').setLabel(removeButtonLabel).setStyle(ButtonStyle.Primary);
 
 			const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'me');
 
@@ -266,7 +266,9 @@ export async function handleAFKButton(interaction) {
 		await logger.log(`⏸️ AFK modal shown to ${member.id}`);
 	} catch (error) {
 		await logger.log(`❌ Error showing AFK modal: ${error.message}`);
-		const errorMsg = await translate('afk.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('afk.errors.failed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.reply({
 			content: errorMsg,
 			flags: 64
@@ -338,7 +340,9 @@ export async function handleAFKModal(interaction) {
 		await logger.log(`✅ AFK status set for ${member.id}: "${afkMessage}"${shouldDeafen ? ' (will be deafened)' : ' (not deafened)'}`);
 	} catch (error) {
 		await logger.log(`❌ Error setting AFK: ${error.message}`);
-		const errorMsg = await translate('afk.errors.setFailed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('afk.errors.setFailed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.editReply({
 			content: errorMsg
 		});
@@ -399,7 +403,9 @@ export async function handleRemoveAFKButton(interaction) {
 		await logger.log(`✅ AFK manually removed by ${member.id}`);
 	} catch (error) {
 		await logger.log(`❌ Error removing AFK: ${error.message}`);
-		const errorMsg = await translate('afk.errors.removeFailed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('afk.errors.removeFailed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.reply({
 			content: errorMsg,
 			flags: 64

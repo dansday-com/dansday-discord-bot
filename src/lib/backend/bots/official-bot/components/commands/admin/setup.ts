@@ -12,7 +12,7 @@ import {
 	SETUP_CHANNEL_DEFS
 } from '../../../../../config.js';
 import { publicSiteOrigin } from '../../../../../../url.js';
-import { getServerLanguage, rememberServerLanguage, t, translate } from '../../../i18n.js';
+import { getServerLanguage, rememberServerLanguage, t, translate, errorReason } from '../../../i18n.js';
 import { isUtcSqlExpired, logger } from '../../../../../../utils/index.js';
 import {
 	SERVER_LANGUAGES,
@@ -261,7 +261,7 @@ export async function execute(interaction: any, _client: any) {
 			flags: EPHEMERAL
 		});
 	} catch (error: any) {
-		const errorMsg = await translate('interface.panel.error', gid, uid, { error: error.message });
+		const errorMsg = await translate('interface.panel.error', gid, uid, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
 			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLOR_ERR).setDescription(errorMsg)], components: [] }).catch(() => null);
 		} else {
@@ -359,6 +359,14 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 			messages: defaultGreetingMessages('welcomer', lang),
 			...welcRaw,
 			channels: [channelMap['welcomer']]
+		});
+
+		const leaveRaw = (await getSettings(SERVER_SETTINGS.component.leaver)) || {};
+		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.leaver, {
+			enabled: true,
+			messages: defaultGreetingMessages('leaver', lang),
+			...leaveRaw,
+			channels: [channelMap['leaver']]
 		});
 
 		const boostRaw = (await getSettings(SERVER_SETTINGS.component.booster)) || {};
@@ -488,7 +496,7 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 			]
 		});
 	} catch (error: any) {
-		const errorMsg = await translate('interface.panel.error', gid, uid, { error: error.message });
+		const errorMsg = await translate('interface.panel.error', gid, uid, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
 			await interaction.editReply({
 				embeds: [new EmbedBuilder().setColor(COLOR_ERR).setDescription(errorMsg)]

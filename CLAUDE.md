@@ -15,6 +15,28 @@ Rules:
 
 - Run `npm run build:format` after every edit. Prettier rewrites files on disk, so skipping it makes the next exact-string edit fail against reformatted source.
 
+## Discord UI
+
+Every message, button, select and form the bot sends follows Discord's own developer guidance: the DevRel talk "Discord App Best Practices: UI/UX for Developers" and "Deep Dive: New Message Components". Apply these without being asked, and check existing screens against them when you touch a feature.
+
+**Button colours carry meaning.** At most one Primary (blue) button per message, for its single most common action. Everything else is Secondary (grey), including navigation between equal choices such as the menu and its categories. Danger (red) only for actions that cannot be undone: delete, ban, ending a giveaway early, leaving the creator programme. Success (green) only for the positive half of a decision pair such as Approve/Reject. Link buttons for anything that leaves Discord.
+
+**Pick the control from the kind of choice.** Yes/No in a form is a checkbox; in a message it is one toggle button whose label is the action ("Allow Multiple Entries"), with the current state shown as text beside it. Two to ten fixed choices are a radio group (forms only). Many items, or users, roles and channels, are a select menu; for "choose several" use a multi-select with the current picks as defaults. Images or files are a file upload. Never make someone type a value from a fixed set: durations are radio presets built with `durationField` in `interface/formFields.ts`, whose labels come from `Intl.NumberFormat` units in the member's language.
+
+**Use the fewest steps.** Forms hold up to five labelled components, including string/user/role selects, radio groups, checkboxes and file uploads, so a chain of message screens that ends in a form usually belongs in one form. Staff rating is the reference. Filter the options before showing the form so a submit cannot fail on something already knowable (yourself, a staff member still on cooldown), and still re-check on submit.
+
+**Show only what works here.** Hide features the server switched off (`availableMenuItems` in `interface.ts`) and things this member cannot use (Staff is staff-only), rather than showing a button that then errors.
+
+**Disable or remove.** Disable a component that can become useful again; remove it once it never will (an ended giveaway, a decided review card).
+
+**Keep public messages small.** A message in a channel carries one or two actions; everything else opens privately, as the channel panel's single Menu button opens an ephemeral menu.
+
+**Errors say what happened and how to fix it.** Never put `error.message` in a member-facing string. Pass `await errorReason(error, guildId, userId)` from `i18n.ts`, or `errorReasonFor(tr, error)` when you hold a translator; it maps Discord API error codes to a localised cause and fix. Log the raw error separately. A fix only an admin can make says "ask a server admin … in the bot configuration panel". No path fails silently: permission denials and catch blocks reply too.
+
+**Components V2 or classic embeds.** A message sent or edited with `IsComponentsV2` can never switch back, so every screen that edits it in place must be V2 as well. The menu is one ephemeral message that every feature screen edits, so the menu and those screens stay classic; never convert one screen of a flow on its own. V2 has no inline columns, so side-by-side stats need classic embed fields. If a whole flow is rebuilt in V2, build every screen natively in V2, as in Discord's Pokédex demo (list, then detail, then Back to the same page).
+
+**Every new string ships in all 12 locale files.** Reuse each language's existing terms (its word for channel, panel, giveaway, and its form of "you"), and write line breaks as a literal `\n`, which `t()` in `localeStore.ts` expands.
+
 ## Stylesheets
 
 - `src/theme.css` holds the Tailwind/DaisyUI theme and is imported by both entry stylesheets.

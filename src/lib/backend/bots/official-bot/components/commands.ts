@@ -3,7 +3,7 @@ import type { APIApplicationCommand } from 'discord-api-types/v10';
 import { getBotToken, getApplicationId } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { commandDefinition as setupCommand, execute as setupExecute } from './commands/admin/setup.js';
-import { translate } from '../i18n.js';
+import { errorReason, translate } from '../i18n.js';
 
 const commandDefinitions = [setupCommand];
 
@@ -30,7 +30,7 @@ async function executeSlashCommand(interaction: any, client: any) {
 			return { success: true, reason: 'executed' };
 		} catch (error: any) {
 			await logger.log(`❌ Error executing slash command ${commandName}: ${error.message}`);
-			return { success: false, reason: 'execution_error', error: error.message };
+			return { success: false, reason: 'execution_error', error };
 		}
 	}
 
@@ -79,8 +79,11 @@ function init(client: any) {
 							await logger.log(`❌ Unknown command attempted: /${interaction.commandName} by ${interaction.user.tag}`);
 							break;
 						case 'execution_error':
-							errorMessage = await translate('commands.errors.failed', guildId, userId, { command: interaction.commandName, error: result.error });
-							await logger.log(`❌ Command execution error: /${interaction.commandName} by ${interaction.user.tag} - ${result.error}`);
+							errorMessage = await translate('commands.errors.failed', guildId, userId, {
+								command: interaction.commandName,
+								error: await errorReason(result.error, guildId, userId)
+							});
+							await logger.log(`❌ Command execution error: /${interaction.commandName} by ${interaction.user.tag} - ${result.error?.message}`);
 							break;
 						default:
 							errorMessage = await translate('commands.errors.unexpected', guildId, userId, { command: interaction.commandName });

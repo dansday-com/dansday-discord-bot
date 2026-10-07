@@ -78,6 +78,24 @@ export async function memberTranslator(guildId: string, userId: string): Promise
 	return translatorFor(await getUserLanguage(guildId, userId));
 }
 
+const API_ERROR_REASONS: Record<number, string> = {
+	10003: 'unknownChannel',
+	10007: 'unknownMember',
+	10011: 'unknownRole',
+	30005: 'maxRoles',
+	50001: 'missingAccess',
+	50013: 'missingPermissions',
+	50035: 'invalidInput'
+};
+
+export function errorReasonFor(tr: Translator, error: any): string {
+	return tr(`common.errors.reasons.${API_ERROR_REASONS[error?.code] ?? 'unexpected'}`);
+}
+
+export async function errorReason(error: any, guildId: string, userId: string): Promise<string> {
+	return errorReasonFor(await memberTranslator(guildId, userId), error);
+}
+
 export async function aiLanguageInstruction(guildId: string, medium: 'chat' | 'voice'): Promise<string> {
 	const name = serverLanguageEnglishName(await getServerLanguage(guildId));
 	return medium === 'voice'

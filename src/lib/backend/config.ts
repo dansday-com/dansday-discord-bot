@@ -585,6 +585,33 @@ export const WELCOMER = {
 	}
 };
 
+export const LEAVER = {
+	async getChannels(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting leaver channels');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaver))) return [];
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.leaver);
+		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
+		return [];
+	},
+
+	async getMessages(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting leaver messages');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaver))) return [];
+		const serverId = (await getOfficialBotServer(guildId)).id;
+		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.leaver);
+		return greetingMessagesFor('leaver', settings?.settings?.messages, await getServerLanguageById(serverId));
+	},
+
+	async hasCustomMessages(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking leaver messages');
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.leaver);
+		return !isDefaultGreetingSet('leaver', settings?.settings?.messages);
+	}
+};
+
 export const BOOSTER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
@@ -1069,6 +1096,7 @@ export const SETUP_CHANNEL_DEFS = [
 	{ name: '「💻」menu', settingsKey: 'menu' },
 	{ name: '「⚙️」bot-updates', settingsKey: 'bot_updates' },
 	{ name: '「🚪」welcome', settingsKey: 'welcomer' },
+	{ name: '「👋」goodbye', settingsKey: 'leaver' },
 	{ name: '「🚀」booster', settingsKey: 'booster' },
 	{ name: '「🔨」moderation', settingsKey: 'moderation' },
 	{ name: '「🆙」level', settingsKey: 'leveling' },

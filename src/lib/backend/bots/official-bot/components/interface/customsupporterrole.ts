@@ -4,7 +4,7 @@ import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { resolveSupporterAnchor } from '../roleAnchor.js';
 import db from '../../../../../database.js';
-import { memberTranslator, translate } from '../../i18n.js';
+import { memberTranslator, translate, errorReason, errorReasonFor } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { imageUploadField, uploadedFiles } from './formFields.js';
 
@@ -290,7 +290,9 @@ export async function handleCustomSupporterRoleButton(interaction) {
 		await logger.log(`💎 Supporter role creation modal shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error: any) {
 		await logger.log(`❌ Error showing supporter role modal: ${error.message}`);
-		const errorMsg = await translate('customSupporterRole.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('customSupporterRole.errors.failed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.reply({
 			content: errorMsg,
 			flags: 64
@@ -391,7 +393,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 		await logger.log(`💎 Supporter role edit modal shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error showing edit modal: ${error.message}`);
-		const errorMsg = await translate('customSupporterRole.errors.editFailed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('customSupporterRole.errors.editFailed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.reply({
 			content: errorMsg,
 			flags: 64
@@ -459,7 +463,9 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 		await logger.log(`🗑️ Deleted custom supporter role "${roleName}" (${roleId}) for ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error deleting supporter role: ${error.message}`);
-		const errorMsg = await translate('customSupporterRole.errors.deleteFailed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('customSupporterRole.errors.deleteFailed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.followUp({
 			content: errorMsg,
 			flags: 64
@@ -629,7 +635,9 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			await logger.log(`❌ Stack: ${err.stack}`);
 
 			try {
-				const errorMsg = await translate('customSupporterRole.errors.updateFailed', interaction.guild.id, interaction.user.id, { error: err.message });
+				const errorMsg = await translate('customSupporterRole.errors.updateFailed', interaction.guild.id, interaction.user.id, {
+					error: await errorReason(err, interaction.guild.id, interaction.user.id)
+				});
 				await interaction.editReply({
 					content: errorMsg
 				});
@@ -844,9 +852,9 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			if (error instanceof AnchorError) {
 				errorMessage = tr('customSupporterRole.errors.createFailedReason', { reason: tr(error.key, error.params) });
 			} else if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
-				errorMessage = tr('customSupporterRole.errors.boostRequiredCreate', { error: error.message });
+				errorMessage = tr('customSupporterRole.errors.boostRequiredCreate');
 			} else {
-				errorMessage = tr('customSupporterRole.errors.createFailed', { error: error.message });
+				errorMessage = tr('customSupporterRole.errors.createFailed', { error: errorReasonFor(tr, error) });
 			}
 
 			await interaction.editReply({

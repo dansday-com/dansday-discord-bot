@@ -1,11 +1,29 @@
 import { ActionRowBuilder, ButtonBuilder, ModalBuilder, StringSelectMenuBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder } from 'discord.js';
+import { durationField, durationValue, textField, type DurationPreset } from './formFields.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate } from '../../i18n.js';
-import { performModerationAction, parseDuration } from '../moderation.js';
+import { getUserLanguage, translate } from '../../i18n.js';
+import { performModerationAction } from '../moderation.js';
 import { menuBackButton } from './menuBack.js';
 
 const MENU_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'clearwarns'];
 const TIMED_ACTIONS = ['timeout', 'tempban'];
+const DURATION_PRESETS: Record<string, DurationPreset[]> = {
+	timeout: [
+		[60, 'second'],
+		[5, 'minute'],
+		[10, 'minute'],
+		[1, 'hour'],
+		[1, 'day'],
+		[1, 'week']
+	],
+	tempban: [
+		[1, 'day'],
+		[3, 'day'],
+		[1, 'week'],
+		[2, 'week'],
+		[30, 'day']
+	]
+};
 
 async function backRow(g: string, u: string) {
 	return new ActionRowBuilder<ButtonBuilder>().addComponents(await menuBackButton(g, u, 'staff'));
@@ -72,30 +90,21 @@ export async function handleModerationActionSelect(interaction: any) {
 	const modal = new ModalBuilder()
 		.setCustomId(`moderation_modal|${action}|${targetId}`)
 		.setTitle(String(await translate(`moderation.actions.${action}`, g, u)).slice(0, 45));
-	const rows = [
-		new ActionRowBuilder().addComponents(
+	modal.addLabelComponents(
+		textField(
+			await translate('moderation.modal.reason', g, u),
 			new TextInputBuilder()
 				.setCustomId('reason')
-				.setLabel(await translate('moderation.modal.reason', g, u))
 				.setStyle(TextInputStyle.Paragraph)
 				.setMaxLength(1000)
 				.setRequired(action !== 'clearwarns' && action !== 'untimeout')
 		)
-	];
+	);
 	if (TIMED_ACTIONS.includes(action)) {
-		rows.push(
-			new ActionRowBuilder().addComponents(
-				new TextInputBuilder()
-					.setCustomId('duration')
-					.setLabel(await translate('moderation.modal.duration', g, u))
-					.setStyle(TextInputStyle.Short)
-					.setPlaceholder('10m, 2h, 7d')
-					.setMaxLength(20)
-					.setRequired(true)
-			)
+		modal.addLabelComponents(
+			durationField(await translate('moderation.modal.duration', g, u), 'duration', await getUserLanguage(g, u), DURATION_PRESETS[action])
 		);
 	}
-	modal.addComponents(...rows);
 	await interaction.showModal(modal);
 }
 
@@ -108,7 +117,7 @@ export async function handleModerationModal(interaction: any) {
 
 	let durationSeconds: number | null = null;
 	if (TIMED_ACTIONS.includes(action)) {
-		durationSeconds = parseDuration(interaction.fields.getTextInputValue('duration'));
+		durationSeconds = durationValue(interaction.fields, 'duration', DURATION_PRESETS[action]);
 		if (!durationSeconds) {
 			await interaction.editReply({ content: await translate('moderation.invalidDuration', g, u) });
 			return;

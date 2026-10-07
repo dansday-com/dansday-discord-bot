@@ -2,7 +2,7 @@ import { APP_DOMAIN } from './frontend/panelServer.js';
 import { localeValue, t } from './localeStore.js';
 import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES, normalizeServerLanguage, type ServerLanguage } from './languages.js';
 
-export type GreetingKind = 'welcomer' | 'booster';
+export type GreetingKind = 'welcomer' | 'leaver' | 'booster';
 
 export function defaultGreetingMessages(kind: GreetingKind, lang: unknown = DEFAULT_SERVER_LANGUAGE): string[] {
 	const messages = localeValue(`${kind}.defaultMessages`, normalizeServerLanguage(lang));

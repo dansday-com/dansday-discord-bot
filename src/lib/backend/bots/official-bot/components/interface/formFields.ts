@@ -1,4 +1,4 @@
-import { CheckboxBuilder, FileUploadBuilder, LabelBuilder, TextInputBuilder } from 'discord.js';
+import { CheckboxBuilder, FileUploadBuilder, LabelBuilder, RadioGroupBuilder, TextInputBuilder } from 'discord.js';
 
 export function textField(label: string, input: TextInputBuilder) {
 	return new LabelBuilder().setLabel(label.slice(0, 45)).setTextInputComponent(input);
@@ -29,4 +29,46 @@ export function uploadedFiles(fields: any, customId: string): { attachment: stri
 	} catch {
 		return [];
 	}
+}
+
+export function radioField(label: string, customId: string, options: { label: string; value: string }[]) {
+	return new LabelBuilder().setLabel(label.slice(0, 45)).setRadioGroupComponent(new RadioGroupBuilder().setCustomId(customId).addOptions(options));
+}
+
+export function selectValue(fields: any, customId: string): string | null {
+	try {
+		return fields.getStringSelectValues(customId)?.[0] ?? null;
+	} catch {
+		return null;
+	}
+}
+
+export function radioValue(fields: any, customId: string): string | null {
+	try {
+		return fields.getRadioGroup(customId) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+const UNIT_SECONDS = { second: 1, minute: 60, hour: 3600, day: 86400, week: 604800 };
+
+export type DurationPreset = [number, keyof typeof UNIT_SECONDS];
+
+const presetSeconds = ([amount, unit]: DurationPreset) => amount * UNIT_SECONDS[unit];
+
+export function durationField(label: string, customId: string, lang: string, presets: DurationPreset[]) {
+	return radioField(
+		label,
+		customId,
+		presets.map((p) => ({
+			label: new Intl.NumberFormat(lang, { style: 'unit', unit: p[1], unitDisplay: 'long' }).format(p[0]),
+			value: String(presetSeconds(p))
+		}))
+	);
+}
+
+export function durationValue(fields: any, customId: string, presets: DurationPreset[]): number | null {
+	const picked = Number(radioValue(fields, customId));
+	return presets.some((p) => presetSeconds(p) === picked) ? picked : null;
 }

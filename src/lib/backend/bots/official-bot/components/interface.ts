@@ -11,18 +11,7 @@ import {
 } from '../../../config.js';
 import { domainToUnicode } from 'node:url';
 import { inviteJoinPath } from '../../../../invites.js';
-import {
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	ContainerBuilder,
-	EmbedBuilder,
-	MessageFlags,
-	SectionBuilder,
-	SeparatorBuilder,
-	TextDisplayBuilder,
-	ThumbnailBuilder
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import {
@@ -33,7 +22,6 @@ import {
 	handleDeleteCustomSupporterRole
 } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
-import { keepComponentsV2, v2Message } from './interface/componentsV2.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleModerationButton, handleModerationUserSelect, handleModerationActionSelect, handleModerationModal } from './interface/moderation.js';
 import {
@@ -43,17 +31,13 @@ import {
 	handleGiveawayRoleSelect,
 	handleGiveawaySkipRolesContinue,
 	handleGiveawayFinish,
-	handleGiveawayMultipleSelect
+	handleGiveawayMultipleToggle
 } from './interface/giveaway.js';
 import { handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
 import { handleInvitesButton, handleInviteSlugButton, handleInviteSlugModal, INVITE_SLUG_BUTTON_ID, INVITE_SLUG_MODAL_ID } from './interface/invites.js';
 import {
 	handleStaffRatingButton,
-	handleStaffRatingUserSelect,
 	handleStaffRatingModal,
-	handleStaffRatingScoreSelect,
-	handleStaffRatingCategorySelect,
-	handleStaffRatingContinue,
 	handleStaffRatingApprove,
 	handleStaffRatingReject,
 	handleStaffRatingDecisionModal
@@ -133,46 +117,59 @@ async function replyIfFeatureDisabled(interaction: any, component: string): Prom
 	return true;
 }
 
-const MENU_CATEGORIES: {
-	id: string;
-	style: ButtonStyle;
-	permission?: string;
-	items: { customId: string; label: string; desc: string; style?: ButtonStyle }[];
-}[] = [
+const MENU_CATEGORIES: { id: string; permission?: string; items: { customId: string; label: string; desc: string; features?: string[] }[] }[] = [
 	{
 		id: 'me',
-		style: ButtonStyle.Primary,
 		items: [
-			{ customId: 'bot_afk', label: 'afk.title', desc: 'afk' },
-			{ customId: 'bot_notifications', label: 'notifications.button', desc: 'notifications' },
-			{ customId: 'bot_invites', label: 'invites.button', desc: 'invites' },
-			{ customId: DISCORD_QUEST_BUTTON_ID, label: 'questEnroll.menuButton', desc: 'quest' }
+			{ customId: 'bot_afk', label: 'afk.title', desc: 'afk', features: [serverSettingsComponent.afk] },
+			{
+				customId: 'bot_notifications',
+				label: 'notifications.button',
+				desc: 'notifications',
+				features: [serverSettingsComponent.notifications, serverSettingsComponent.roblox_catalog_notifier, serverSettingsComponent.creator_alerts]
+			},
+			{ customId: 'bot_invites', label: 'invites.button', desc: 'invites', features: [serverSettingsComponent.leveling] },
+			{ customId: DISCORD_QUEST_BUTTON_ID, label: 'questEnroll.menuButton', desc: 'quest', features: [serverSettingsComponent.discord_quest_notifier] }
 		]
 	},
 	{
 		id: 'community',
-		style: ButtonStyle.Primary,
 		items: [
-			{ customId: 'bot_giveaway', label: 'giveaway.create.title', desc: 'giveaway' },
-			{ customId: 'bot_feedback', label: 'feedback.modal.title', desc: 'feedback' },
-			{ customId: 'bot_staff_rating', label: 'staffRating.button', desc: 'staffRating' }
+			{ customId: 'bot_giveaway', label: 'giveaway.create.title', desc: 'giveaway', features: [serverSettingsComponent.giveaway] },
+			{ customId: 'bot_feedback', label: 'feedback.modal.title', desc: 'feedback', features: [serverSettingsComponent.feedback] },
+			{ customId: 'bot_staff_rating', label: 'staffRating.button', desc: 'staffRating', features: [serverSettingsComponent.staff_rating] }
 		]
 	},
 	{
 		id: 'perks',
-		style: ButtonStyle.Primary,
 		items: [
-			{ customId: 'bot_custom_supporter_role', label: 'customSupporterRole.existing.title', desc: 'customSupporterRole' },
-			{ customId: 'bot_content_creator', label: 'contentCreator.button', desc: 'contentCreator' }
+			{
+				customId: 'bot_custom_supporter_role',
+				label: 'customSupporterRole.existing.title',
+				desc: 'customSupporterRole',
+				features: [serverSettingsComponent.custom_supporter_role]
+			},
+			{
+				customId: 'bot_content_creator',
+				label: 'contentCreator.button',
+				desc: 'contentCreator',
+				features: [serverSettingsComponent.content_creator, serverSettingsComponent.creator_alerts]
+			}
 		]
 	},
 	{
 		id: 'staff',
-		style: ButtonStyle.Danger,
 		permission: 'staff_only',
-		items: [{ customId: 'bot_moderation', label: 'moderation.button', desc: 'moderation', style: ButtonStyle.Danger }]
+		items: [{ customId: 'bot_moderation', label: 'moderation.button', desc: 'moderation' }]
 	}
 ];
+
+async function availableMenuItems(category: (typeof MENU_CATEGORIES)[number], guildId: string) {
+	const enabled = await Promise.all(
+		category.items.map(async (item) => !item.features || (await Promise.all(item.features.map((f) => isComponentFeatureEnabled(guildId, f)))).some(Boolean))
+	);
+	return category.items.filter((_, i) => enabled[i]);
+}
 
 async function handleMenuCategory(interaction, categoryId: string) {
 	const category = MENU_CATEGORIES.find((c) => c.id === categoryId);
@@ -186,54 +183,47 @@ async function handleMenuCategory(interaction, categoryId: string) {
 		return;
 	}
 
-	const embedConfig = await getEmbedConfig(g);
-	const container = new ContainerBuilder()
-		.setAccentColor(embedConfig.COLOR)
-		.addTextDisplayComponents(
-			new TextDisplayBuilder().setContent(
-				`## ${await translate(`menu.categories.${category.id}.button`, g, u)}\n${await translate(`menu.categories.${category.id}.description`, g, u)}`
-			)
-		)
-		.addSeparatorComponents(new SeparatorBuilder());
-
-	for (const item of category.items) {
-		container.addSectionComponents(
-			menuRow(
-				await translate(`menu.items.${item.desc}`, g, u),
-				new ButtonBuilder()
-					.setCustomId(item.customId)
-					.setLabel(await translate(item.label, g, u))
-					.setStyle(item.style ?? ButtonStyle.Success)
-			)
-		);
+	const items = await availableMenuItems(category, g);
+	if (items.length === 0) {
+		await interaction.reply({ content: await translate('common.errors.featureDisabled', g, u), flags: 64 }).catch(() => null);
+		return;
 	}
 
-	container
-		.addSeparatorComponents(new SeparatorBuilder())
-		.addActionRowComponents(
-			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				new ButtonBuilder()
-					.setCustomId('bot_menu')
-					.setLabel(await translate('menu.back', g, u))
-					.setStyle(ButtonStyle.Secondary)
-			)
+	const lines: string[] = [];
+	const buttons = [];
+	for (const item of items) {
+		const label = await translate(item.label, g, u);
+		lines.push(`**${label}**\n${await translate(`menu.items.${item.desc}`, g, u)}`);
+		buttons.push(new ButtonBuilder().setCustomId(item.customId).setLabel(label).setStyle(ButtonStyle.Secondary));
+	}
+
+	const rows = [];
+	for (let i = 0; i < buttons.length; i += 5) {
+		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
+	}
+	rows.push(
+		new ActionRowBuilder().addComponents(
+			new ButtonBuilder()
+				.setCustomId('bot_menu')
+				.setLabel(await translate('menu.back', g, u))
+				.setStyle(ButtonStyle.Secondary)
 		)
-		.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${embedConfig.FOOTER}`));
+	);
 
-	await showMenuScreen(interaction, container);
-}
+	const embedConfig = await getEmbedConfig(g);
+	const embed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(await translate(`menu.categories.${category.id}.button`, g, u))
+		.setDescription(`${await translate(`menu.categories.${category.id}.description`, g, u)}\n\n${lines.join('\n\n')}`)
+		.setFooter({ text: embedConfig.FOOTER })
+		.setTimestamp();
 
-function menuRow(text: string, button: ButtonBuilder) {
-	return new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(text)).setButtonAccessory(button);
-}
-
-async function showMenuScreen(interaction, container: ContainerBuilder) {
 	if (interaction.replied || interaction.deferred) {
-		await interaction.editReply(v2Message([container], interaction.message));
-	} else if (interaction.message?.flags?.has(MessageFlags.Ephemeral)) {
-		await interaction.update(v2Message([container], interaction.message));
+		await interaction.editReply({ content: '', embeds: [embed], components: rows });
+	} else if (interaction.message?.flags?.has(64)) {
+		await interaction.update({ content: '', embeds: [embed], components: rows });
 	} else {
-		await interaction.reply({ components: [container], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+		await interaction.reply({ embeds: [embed], components: rows, flags: 64 });
 	}
 }
 
@@ -281,13 +271,19 @@ async function handleMenuButton(interaction) {
 		return;
 	}
 
-	const categories = [];
+	const buttons = [];
 	for (const category of MENU_CATEGORIES) {
 		if (category.permission && !(await hasPermission(member, category.permission))) continue;
-		categories.push(category);
+		if ((await availableMenuItems(category, interaction.guild.id)).length === 0) continue;
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId(`menu_cat|${category.id}`)
+				.setLabel(await translate(`menu.categories.${category.id}.button`, interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Secondary)
+		);
 	}
 
-	if (categories.length === 0) {
+	if (buttons.length === 0) {
 		const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);
 		if (interaction.replied || interaction.deferred) {
 			await interaction.editReply({
@@ -341,62 +337,85 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
-	const header = new TextDisplayBuilder().setContent(`## ${menuTitle}\n${description}`);
-	const icon = interaction.guild.iconURL({ extension: 'png', size: 128 });
-	const container = new ContainerBuilder().setAccentColor(embedConfig.COLOR);
-	if (icon) {
-		container.addSectionComponents(new SectionBuilder().addTextDisplayComponents(header).setThumbnailAccessory(new ThumbnailBuilder().setURL(icon)));
-	} else {
-		container.addTextDisplayComponents(header);
-	}
+	const menuEmbed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(menuTitle)
+		.setDescription(description)
+		.setFooter({ text: embedConfig.FOOTER })
+		.setTimestamp();
 
 	if (publicServer?.stats) {
 		const stats = publicServer.stats;
-		const stat = async (key: string, value: number) =>
-			`${await translate(`menu.stats.${key}`, interaction.guild.id, interaction.user.id)} **${value.toLocaleString()}**`;
-		container.addTextDisplayComponents(
-			new TextDisplayBuilder().setContent(
-				[await stat('members', stats.members_total), await stat('totalXp', stats.leveling_total_xp), await stat('topLevel', stats.leveling_max_level)].join(
-					' · '
-				)
-			)
+		menuEmbed.addFields(
+			{
+				name: await translate('menu.stats.members', interaction.guild.id, interaction.user.id),
+				value: stats.members_total.toLocaleString(),
+				inline: true
+			},
+			{
+				name: await translate('menu.stats.totalXp', interaction.guild.id, interaction.user.id),
+				value: stats.leveling_total_xp.toLocaleString(),
+				inline: true
+			},
+			{
+				name: await translate('menu.stats.topLevel', interaction.guild.id, interaction.user.id),
+				value: stats.leveling_max_level.toLocaleString(),
+				inline: true
+			}
 		);
 	}
 
-	container.addSeparatorComponents(new SeparatorBuilder());
-	for (const category of categories) {
-		container.addSectionComponents(
-			menuRow(
-				await translate(`menu.categories.${category.id}.description`, interaction.guild.id, interaction.user.id),
-				new ButtonBuilder()
-					.setCustomId(`menu_cat|${category.id}`)
-					.setLabel(await translate(`menu.categories.${category.id}.button`, interaction.guild.id, interaction.user.id))
-					.setStyle(category.style)
-			)
-		);
+	const rows = [];
+	for (let i = 0; i < buttons.length; i += 5) {
+		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
 	}
 
-	const footerRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder()
-			.setCustomId('settings_language')
-			.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Secondary)
-	);
+	const settingsButton = new ButtonBuilder()
+		.setCustomId('settings_language')
+		.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
+		.setStyle(ButtonStyle.Secondary);
+
+	rows.push(new ActionRowBuilder().addComponents(settingsButton));
 
 	if (publicServer) {
+		const base = publicServer.base;
+		const addLinkButton = (btn: ButtonBuilder) => {
+			const targetRow = rows[rows.length - 1];
+			if (targetRow.components.length < 5) {
+				targetRow.addComponents(btn);
+			} else if (rows.length < 5) {
+				rows.push(new ActionRowBuilder().addComponents(btn));
+			}
+		};
+
 		const cardHash = computeCardToken(publicServer.serverId, String(interaction.user.id));
 		const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
-		footerRow.addComponents(
-			new ButtonBuilder().setLabel(accountLabel).setURL(`${publicServer.base}/account/profile/stats/${cardHash}`).setStyle(ButtonStyle.Link)
-		);
+		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/profile/stats/${cardHash}`).setStyle(ButtonStyle.Link));
 	}
 
-	container
-		.addSeparatorComponents(new SeparatorBuilder())
-		.addActionRowComponents(footerRow)
-		.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${embedConfig.FOOTER}`));
+	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
 
-	await showMenuScreen(interaction, container);
+	if (isFromEphemeral) {
+		if (interaction.replied || interaction.deferred) {
+			await interaction.editReply({
+				content: '',
+				embeds: [menuEmbed],
+				components: rows
+			});
+		} else {
+			await interaction.update({
+				content: '',
+				embeds: [menuEmbed],
+				components: rows
+			});
+		}
+	} else {
+		await interaction.reply({
+			embeds: [menuEmbed],
+			components: rows,
+			flags: 64
+		});
+	}
 }
 
 async function handleMyAccountLinkButton(interaction) {
@@ -509,6 +528,10 @@ export async function handleButtonInteraction(interaction) {
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 			await handleGiveawayButton(interaction);
 			break;
+		case 'giveaway_multiple_toggle':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
+			await handleGiveawayMultipleToggle(interaction);
+			break;
 		case 'bot_feedback':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) break;
 			await handleFeedbackButton(interaction);
@@ -601,17 +624,9 @@ export async function handleButtonInteraction(interaction) {
 		case 'settings_language':
 			await handleLanguageButton(interaction);
 			break;
-		case 'staff_report_back_to_staff':
-		case 'staff_rating_back_to_staff':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
-			await handleStaffRatingButton(interaction);
-			break;
 		default:
 			if (customId.startsWith('menu_cat|')) {
 				await handleMenuCategory(interaction, customId.split('|')[1]);
-			} else if (customId.startsWith('staff_rating_continue') || customId.startsWith('staff_report_continue')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
-				await handleStaffRatingContinue(interaction);
 			} else if (customId.startsWith('staff_rating_approve') || customId.startsWith('staff_report_approve')) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 				await handleStaffRatingApprove(interaction);
@@ -740,7 +755,6 @@ export async function refreshInterfaceInChannel(targetChannel, client, { sendIfM
 
 function init(client) {
 	client.on('interactionCreate', async (interaction) => {
-		keepComponentsV2(interaction);
 		if (interaction.isButton()) {
 			if (!interaction.guild) {
 				return;
@@ -860,17 +874,8 @@ function init(client) {
 				const selectedValues = interaction.values;
 				await logger.log(`📋 String select: "${customId}" → [${selectedValues.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-				if (customId === 'staff_rating_select_user' || customId === 'staff_report_select_user') {
-					await handleStaffRatingUserSelect(interaction);
-				} else if (customId.startsWith('staff_rating_score') || customId.startsWith('staff_report_rating')) {
-					await handleStaffRatingScoreSelect(interaction);
-				} else if (customId.startsWith('staff_rating_category') || customId.startsWith('staff_report_category')) {
-					await handleStaffRatingCategorySelect(interaction);
-				} else if (customId.startsWith('moderation_action|')) {
+				if (customId.startsWith('moderation_action|')) {
 					await handleModerationActionSelect(interaction);
-				} else if (customId === 'giveaway_multiple_select') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
-					await handleGiveawayMultipleSelect(interaction);
 				} else if (customId === 'settings_language_select') {
 					await handleLanguageSelect(interaction);
 				} else if (customId === SETUP_LANGUAGE_SELECT_ID) {
@@ -894,6 +899,10 @@ function init(client) {
 				}
 			} catch (error) {
 				await logger.log(`❌ String select error: ${error.message}`);
+				if (!interaction.replied && !interaction.deferred) {
+					const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
+					await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
+				}
 			}
 		} else if (interaction.isRoleSelectMenu()) {
 			if (!interaction.guild) {
@@ -951,9 +960,7 @@ function init(client) {
 				const selectedUsers = interaction.values;
 				await logger.log(`👤 User selected: "${customId}" → [${selectedUsers.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-				if (customId === 'staff_rating_select_user' || customId === 'staff_report_select_user') {
-					await handleStaffRatingUserSelect(interaction);
-				} else if (customId === 'moderation_select_user') {
+				if (customId === 'moderation_select_user') {
 					await handleModerationUserSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown user select: "${customId}" by ${user.tag} (${user.id})`);

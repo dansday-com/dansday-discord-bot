@@ -82,7 +82,7 @@ const DOCS_SECTIONS = {
 	modules: {
 		title: 'Modules',
 		summary: () => [
-			'On by default: Welcomer, Booster, Channel notification, Leveling, Giveaway, AFK and Roblox Catalog.',
+			'On by default: Welcomer, Leaver, Booster, Channel notification, Leveling, Giveaway, AFK and Roblox Catalog.',
 			'Off until enabled: Forwarder, Custom Supporter Role, Feedback, Staff Rating, Content Creator and Discord Quest.',
 			'Always on: Main settings, Permissions, Moderation and Public cannot be switched off.',
 			'Items, Market, Minigames, Daily tasks and Server invite are sub-toggles of Public, all on by default.',

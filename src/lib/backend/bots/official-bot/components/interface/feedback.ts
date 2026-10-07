@@ -2,7 +2,7 @@ import { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } from 'di
 import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { memberTranslator, translate, serverTranslator } from '../../i18n.js';
+import { memberTranslator, translate, serverTranslator, errorReason } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue, imageUploadField, uploadedFiles } from './formFields.js';
 import db from '../../../../../database.js';
 
@@ -42,7 +42,9 @@ export async function handleFeedbackButton(interaction) {
 		await logger.log(`💬 Feedback modal shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error showing feedback modal: ${error.message}`);
-		const errorMsg = await translate('feedback.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('feedback.errors.failed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.reply({
 			content: errorMsg,
 			flags: 64
@@ -186,7 +188,9 @@ export async function handleFeedbackModal(interaction) {
 	} catch (error) {
 		await logger.log(`❌ Error processing feedback: ${error.message}`);
 		await logger.log(`❌ Stack: ${error.stack}`);
-		const errorMsg = await translate('feedback.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('feedback.errors.submitFailed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.editReply({
 			content: errorMsg
 		});

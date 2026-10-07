@@ -4,7 +4,7 @@
 		"description": "Kies een functie met de knoppen hieronder:",
 		"website": "🌐 Serverpagina: {url}",
 		"join": "📨 Uitnodigingslink: {url}",
-		"noAccess": "❌ Je hebt geen toegang tot functies.",
+		"noAccess": "❌ Je hebt geen toegang tot functies. Vraag een serverbeheerder als je denkt dat dit een vergissing is.",
 		"button": "📋 Menu",
 		"account": "👤 Account",
 		"stats": {
@@ -68,17 +68,27 @@
 			"setupChannelsAllPresent": "Alle kanalen bestaan al — er hoeft niets nieuws te worden aangemaakt.",
 			"setupWarnNoBotConfig": "⚠️ Interface verstuurd, maar de botconfiguratie is niet beschikbaar.",
 			"setupWarnNoServer": "⚠️ Interface verstuurd, maar de servergegevens om een uitnodiging te maken zijn niet gevonden.",
-			"error": "❌ Kon de interface niet versturen: {error}"
+			"error": "❌ Het menupaneel kon niet worden verstuurd. {error}"
 		}
 	},
 	"common": {
 		"errors": {
 			"featureDisabled": "❌ Deze functie staat uit op deze server. Een beheerder kan hem aanzetten in het configuratiepaneel van de bot.",
-			"memberNotFound": "❌ Kon de gegevens van het lid niet ophalen.",
-			"unknownButton": "❌ Onbekende knopinteractie.",
+			"memberNotFound": "❌ Ik kon dat lid niet laden. Misschien heeft het de server verlaten. Probeer het zo meteen opnieuw.",
+			"unknownButton": "❌ Deze knop is niet meer actief. Open het menu opnieuw.",
 			"buttonError": "❌ **Knopfout**: er ging iets mis bij het verwerken van je klik.\\n\\nProbeer het opnieuw of neem contact op met een beheerder.",
 			"modalError": "❌ **Formulierfout**: er ging iets mis bij het versturen van je formulier.\\n\\nProbeer het opnieuw of neem contact op met een beheerder.",
-			"selectionError": "❌ **Selectiefout**: er ging iets mis bij het verwerken van je keuze.\\n\\nProbeer het opnieuw of neem contact op met een beheerder."
+			"selectionError": "❌ **Selectiefout**: er ging iets mis bij het verwerken van je keuze.\\n\\nProbeer het opnieuw of neem contact op met een beheerder.",
+			"reasons": {
+				"missingPermissions": "Ik mis hiervoor een toestemming. Vraag een serverbeheerder om de toestemmingen van mijn rol te controleren en mijn rol zo nodig hoger te zetten.",
+				"missingAccess": "Ik heb geen toegang tot dat kanaal. Vraag een serverbeheerder om me toegang te geven.",
+				"unknownChannel": "Dat kanaal bestaat niet meer. Vraag een serverbeheerder om in het configuratiepaneel van de bot een nieuw kanaal te kiezen.",
+				"unknownMember": "Dat lid zit niet meer in de server.",
+				"unknownRole": "Die rol bestaat niet meer.",
+				"maxRoles": "Deze server heeft de rollenlimiet van Discord bereikt. Vraag een serverbeheerder om een ongebruikte rol te verwijderen.",
+				"invalidInput": "Discord accepteerde de invoer niet. Controleer het en probeer het opnieuw.",
+				"unexpected": "Er ging iets mis aan onze kant. Probeer het zo opnieuw en laat het een serverbeheerder weten als het blijft gebeuren."
+			}
 		},
 		"timeUnits": {
 			"hour": "uur",
@@ -118,7 +128,7 @@
 			"current": "Huidige taal",
 			"select": "Taal kiezen",
 			"updated": "✅ Taal bijgewerkt!",
-			"failed": "❌ Kon de taal niet bijwerken: {error}",
+			"failed": "❌ Je taal kon niet worden bijgewerkt. {error}",
 			"serverDefault": "Servertaal: {language}",
 			"serverDefaultDescription": "Volg de taal van de server",
 			"currentOption": "Huidige taal"
@@ -128,10 +138,10 @@
 		"account": {
 			"link": "👤 Je accountpagina: {url}",
 			"noMember": "⚠️ Je wordt nog niet bijgehouden op deze server. Stuur eerst een bericht of ga in een spraakkanaal.",
-			"unavailable": "⚠️ Openbare pagina's zijn niet beschikbaar voor deze server."
+			"unavailable": "⚠️ Openbare pagina's staan uit voor deze server. Vraag een serverbeheerder om ze aan te zetten in het configuratiepaneel van de bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Deze server is niet geregistreerd bij de bot. Voer eerst een synchronisatie uit.",
+			"notRegistered": "⚠️ Deze server is nog niet volledig met de bot verbonden. Probeer het over een paar minuten opnieuw en vraag een serverbeheerder om het configuratiepaneel van de bot te controleren als het blijft gebeuren.",
 			"createRecordFailed": "❌ Kon de ledengegevens niet aanmaken. Probeer het opnieuw."
 		},
 		"fields": {
@@ -243,9 +253,9 @@
 		"errors": {
 			"disabledOnServer": "❌ AFK staat uit op deze server. Een beheerder kan het aanzetten in het configuratiepaneel van de bot.",
 			"notAFK": "❌ Je bent momenteel niet AFK.",
-			"failed": "❌ Kon het AFK-formulier niet openen: {error}",
-			"setFailed": "❌ **AFK instellen mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw.",
-			"removeFailed": "❌ **AFK uitzetten mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw."
+			"failed": "❌ Het AFK-formulier kon niet worden geopend. {error}",
+			"setFailed": "❌ **Je AFK-status kon niet worden ingesteld**\\n\\n{error}",
+			"removeFailed": "❌ **Je AFK-status kon niet worden verwijderd**\\n\\n{error}"
 		},
 		"messages": {
 			"welcomeBack": "✅ Welkom terug, {member}! Je AFK-status is verwijderd.",
@@ -263,7 +273,8 @@
 			"step1Description": "Kies in het menu hieronder welke rollen aan deze giveaway mogen meedoen. Laat het leeg of klik op \"Door naar formulier\" om alle rollen toe te laten.",
 			"roleSelectPlaceholder": "Kies welke rollen mogen meedoen (optioneel)...",
 			"continueButton": "Door naar formulier",
-			"multipleEntries": "Meerdere deelnames toegestaan?"
+			"allowMultiple": "Meerdere deelnames toestaan",
+			"limitSingle": "Beperk tot één deelname"
 		},
 		"active": {
 			"title": "🎉 Actieve giveaway gevonden",
@@ -275,8 +286,7 @@
 			"titlePlaceholder": "Voer de titel van de giveaway in...",
 			"prizeLabel": "Prijs",
 			"prizePlaceholder": "Wat is de prijs?",
-			"durationLabel": "Duur (minuten)",
-			"durationPlaceholder": "bijv. 60 voor 1 uur, 1440 voor 1 dag",
+			"durationLabel": "Duur",
 			"winnerCountLabel": "Aantal winnaars",
 			"winnerCountPlaceholder": "Hoeveel winnaars? (standaard: 1)",
 			"invitesLabel": "Benodigde uitnodigingen",
@@ -294,34 +304,34 @@
 			"finish": "🏁 Giveaway beëindigen"
 		},
 		"errors": {
-			"memberNotFound": "❌ Kon de gegevens van het lid niet ophalen.",
+			"memberNotFound": "❌ Je ledenprofiel is nog niet gesynchroniseerd. Probeer het zo meteen opnieuw.",
 			"activeExists": "❌ Je hebt al een actieve giveaway. Rond die eerst af.",
 			"invalidTitle": "❌ **Ongeldige giveaway**\\n\\nDe titel mag niet leeg zijn.",
 			"invalidPrize": "❌ **Ongeldige giveaway**\\n\\nDe prijs mag niet leeg zijn.",
-			"invalidDuration": "❌ **Ongeldige giveaway**\\n\\nDe duur moet een positief getal zijn (in minuten).",
+			"invalidDuration": "❌ **Ongeldige giveaway**\\n\\nKies een duur uit de lijst.",
 			"invalidWinnerCount": "❌ **Ongeldige giveaway**\\n\\nHet aantal winnaars moet een positief getal zijn.",
-			"channelNotConfigured": "❌ Kon de giveaway niet aanmaken: het giveawaykanaal is niet ingesteld. Stel het in via het paneel.",
-			"channelNotFound": "❌ Kon de giveaway niet aanmaken: giveawaykanaal niet gevonden.",
-			"channelError": "❌ Kon de giveaway niet aanmaken: fout bij het ophalen van de instellingen van het giveawaykanaal.",
-			"createFailed": "❌ **Giveaway aanmaken mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw.",
-			"invalidMessage": "❌ Ongeldig giveawaybericht.",
-			"invalidId": "❌ Ongeldige giveaway-ID.",
+			"channelNotConfigured": "❌ Kon de giveaway niet aanmaken: er is geen giveawaykanaal ingesteld. Vraag een serverbeheerder om er een in te stellen in het configuratiepaneel van de bot.",
+			"channelNotFound": "❌ Kon de giveaway niet aanmaken: het giveawaykanaal bestaat niet meer. Vraag een serverbeheerder om in het configuratiepaneel van de bot een nieuw kanaal te kiezen.",
+			"channelError": "❌ Kon de giveaway niet aanmaken: de instellingen konden niet worden geladen. Probeer het zo meteen opnieuw.",
+			"createFailed": "❌ **De giveaway kon niet worden aangemaakt**\\n\\n{error}",
+			"invalidMessage": "❌ Dit giveawaybericht is verouderd. Vraag de host om een nieuwe giveaway te starten.",
+			"invalidId": "❌ Dit giveawaybericht is verouderd. Vraag de host om een nieuwe giveaway te starten.",
 			"notFound": "❌ Giveaway niet gevonden of al afgelopen.",
 			"ended": "❌ Deze giveaway is al afgelopen.",
 			"roleRestriction": "❌ **Rolbeperking**\\n\\nDeze giveaway is alleen voor de volgende rollen:\\n{roles}\\n\\nJe hebt al deze rollen nodig om mee te doen.",
-			"memberNotFoundDB": "❌ Lid niet gevonden in de database. Probeer het later opnieuw.",
+			"memberNotFoundDB": "❌ Je ledenprofiel is nog niet gesynchroniseerd. Probeer het zo meteen opnieuw.",
 			"cannotEnterOwn": "❌ Je kunt niet meedoen aan je eigen giveaway!",
 			"alreadyEntered": "❌ Je doet al mee aan deze giveaway!",
 			"finishOwnOnly": "❌ Je kunt alleen je eigen giveaways beëindigen.",
 			"finishNotActive": "❌ Deze giveaway is niet actief.",
-			"finishChannelError": "❌ Kon het giveawaykanaal niet ophalen.",
-			"finishChannelNotConfigured": "❌ Giveawaykanaal niet ingesteld.",
-			"finishChannelNotFound": "❌ Giveawaykanaal niet gevonden.",
-			"failed": "❌ Kon het giveawayformulier niet openen: {error}",
+			"finishChannelError": "❌ De giveaway-instellingen konden niet worden geladen. Probeer het zo meteen opnieuw.",
+			"finishChannelNotConfigured": "❌ Er is geen giveawaykanaal ingesteld. Vraag een serverbeheerder om er een in te stellen in het configuratiepaneel van de bot.",
+			"finishChannelNotFound": "❌ Het giveawaykanaal bestaat niet meer. Vraag een serverbeheerder om in het configuratiepaneel van de bot een nieuw kanaal te kiezen.",
+			"failed": "❌ Het giveawayformulier kon niet worden geopend. {error}",
 			"notEnoughInvites": "❌ Je hebt **{needed}** uitnodigingen nodig om mee te doen aan deze giveaway. Je hebt er **{have}**.",
-			"roleSelectFailed": "❌ Kon de rolkeuze niet verwerken: {error}",
-			"enterFailed": "❌ **Meedoen aan giveaway mislukt**\\n\\nFout: {error}",
-			"finishFailed": "❌ Kon de giveaway niet beëindigen: {error}",
+			"roleSelectFailed": "❌ Die rollen konden niet worden gebruikt. {error}",
+			"enterFailed": "❌ **Meedoen aan de giveaway is mislukt**\\n\\n{error}",
+			"finishFailed": "❌ De giveaway kon niet worden beëindigd. {error}",
 			"invalidInvites": "❌ **Ongeldige giveaway**\\n\\nBenodigde uitnodigingen moet 0 of een geheel getal zijn."
 		},
 		"unknownRole": "Rol {roleId}",
@@ -372,11 +382,11 @@
 		},
 		"errors": {
 			"invalid": "❌ **Ongeldige feedback**\\n\\nHet feedbackbericht mag niet leeg zijn.",
-			"channelError": "❌ Kon feedback niet versturen: fout bij het ophalen van de instellingen van het feedbackkanaal.",
-			"channelNotConfigured": "❌ Kon feedback niet versturen: feedbackkanaal niet ingesteld.",
-			"channelNotFound": "❌ Kon feedback niet versturen: feedbackkanaal niet gevonden.",
-			"failed": "❌ Kon het feedbackformulier niet openen: {error}",
-			"submitFailed": "❌ **Feedback versturen mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw."
+			"channelError": "❌ Je feedback kon niet worden verstuurd: de instellingen konden niet worden geladen. Probeer het zo meteen opnieuw.",
+			"channelNotConfigured": "❌ Je feedback kon niet worden verstuurd: er is geen feedbackkanaal ingesteld. Vraag een serverbeheerder om er een in te stellen in het configuratiepaneel van de bot.",
+			"channelNotFound": "❌ Je feedback kon niet worden verstuurd: het feedbackkanaal bestaat niet meer. Vraag een serverbeheerder om in het configuratiepaneel van de bot een nieuw kanaal te kiezen.",
+			"failed": "❌ Het feedbackformulier kon niet worden geopend. {error}",
+			"submitFailed": "❌ **Je feedback kon niet worden verstuurd**\\n\\n{error}"
 		},
 		"channelEmbed": {
 			"title": "💬 Nieuwe feedback",
@@ -387,22 +397,9 @@
 		}
 	},
 	"staffRating": {
-		"title": "📋 Staflid melden",
 		"selectStaff": "Kies een staflid",
 		"selectStaffPlaceholder": "Kies een staflid om te melden...",
 		"button": "🛡️ Staffbeoordeling",
-		"selectRatingPrompt": "Kies een beoordeling",
-		"selectCategoryPrompt": "Kies een categorie",
-		"status": {
-			"staff": "Staflid: {staff}",
-			"ratingPending": "Beoordeling: niet gekozen",
-			"ratingSelected": "Beoordeling: {rating}/5",
-			"categoryPending": "Categorie: niet gekozen",
-			"categorySelected": "Categorie: {category}"
-		},
-		"buttons": {
-			"continue": "Doorgaan"
-		},
 		"reviewModal": {
 			"titleApprove": "Staffmelding goedkeuren",
 			"titleReject": "Staffmelding afwijzen",
@@ -468,12 +465,11 @@
 			"cannotReportSelf": "❌ Je kunt jezelf niet melden!",
 			"notStaff": "❌ Het gekozen lid is geen staflid.",
 			"onCooldown": "❌ **Wachttijd voor beoordelen**\\n\\nJe moet {time} {unit} wachten voordat je dit staflid opnieuw kunt beoordelen.\\n\\nLaatst beoordeeld: {lastRated}",
-			"submitFailed": "❌ **Melding versturen mislukt**\\n\\nFout: {error}\\n\\nProbeer het later opnieuw.",
-			"notConfigured": "❌ Het staffbeoordelingssysteem is niet ingesteld voor deze server.",
+			"allOnCooldown": "❌ Je hebt onlangs alle stafleden beoordeeld. Na de wachttijd kun je ze opnieuw beoordelen.",
+			"submitFailed": "❌ **Je beoordeling kon niet worden verstuurd**\\n\\n{error}",
+			"notConfigured": "❌ Staffbeoordeling is nog niet ingesteld op deze server. Vraag een serverbeheerder om het in te stellen in het configuratiepaneel van de bot.",
 			"noStaffConfigured": "❌ Er zijn geen staffrollen ingesteld voor deze server. Vraag een admin om eerst de staffrechten in te stellen.",
 			"noStaffAvailable": "❌ Er zijn nu geen stafleden gevonden. Probeer het later opnieuw of neem contact op met een serveradmin.",
-			"missingRating": "❌ Kies een beoordeling voordat je verdergaat.",
-			"missingCategory": "❌ Kies een categorie voordat je verdergaat.",
 			"permissionDenied": "❌ **Geen toestemming**\\n\\nJe hebt adminrechten nodig om staffmeldingen goed te keuren of af te wijzen.",
 			"reviewReasonRequired": "❌ Geef een reden voor je beslissing."
 		},
@@ -555,13 +551,13 @@
 		},
 		"autoRejectApplicantReason": "Dubbel account of imitatie: deze TikTok-gebruikersnaam is al gekoppeld aan een ander Discord-account.",
 		"errors": {
-			"notConfigured": "❌ Aanmeldingen voor contentcreators zijn niet ingesteld voor deze server.",
+			"notConfigured": "❌ Aanmeldingen als contentcreator zijn nog niet ingesteld op deze server. Vraag een serverbeheerder om ze in te stellen in het configuratiepaneel van de bot.",
 			"alreadyCreator": "✅ Je hebt de rol Contentcreator al op deze server.",
 			"invalidUsername": "❌ Ongeldige TikTok-gebruikersnaam. Gebruik alleen letters, cijfers, punten en underscores.",
 			"reasonRequired": "❌ Geef aan waarom je contentcreator wilt worden.",
 			"pendingExists": "❌ Je hebt al een aanmelding als contentcreator in afwachting.",
 			"cooldown": "❌ Je moet **{days} dag(en)** wachten voordat je een nieuwe aanmelding als contentcreator kunt versturen.",
-			"submitFailed": "❌ Kon je aanmelding als contentcreator niet versturen: {error}",
+			"submitFailed": "❌ Je aanmelding kon niet worden verstuurd. {error}",
 			"permissionDenied": "❌ Je hebt adminrechten nodig om aanmeldingen van contentcreators goed te keuren of af te wijzen.",
 			"reviewReasonRequired": "❌ Geef een reden voor je beslissing."
 		},
@@ -587,9 +583,9 @@
 		"selectPlaceholder": "Kies meldingskanalen...",
 		"updated": "✅ Je meldingsvoorkeuren zijn bijgewerkt.",
 		"errors": {
-			"notConfigured": "❌ Meldingen zijn niet ingesteld voor deze server.",
+			"notConfigured": "❌ Meldingen zijn nog niet ingesteld op deze server. Vraag een serverbeheerder om ze in te stellen in het configuratiepaneel van de bot.",
 			"noRoles": "❌ Er zijn nog geen meldingskanalen ingesteld. Vraag een admin om meldingen in te stellen in het dashboard.",
-			"noneEnabled": "❌ Er staat geen enkele meldingsfunctie aan op deze server."
+			"noneEnabled": "❌ Er staat geen meldingsfunctie aan op deze server. Vraag een serverbeheerder om er een aan te zetten in het configuratiepaneel van de bot."
 		},
 		"hub": {
 			"title": "🔔 Meldingsvoorkeuren",
@@ -661,12 +657,12 @@
 			"alreadyHasRole": "❌ **Je hebt al een eigen rol**\\n\\nJe kunt maar één eigen supporterrol tegelijk hebben.\\n\\n💡 Gebruik **✏️ Rol bewerken** om hem te wijzigen, of eerst **🗑️ Rol verwijderen** als je een nieuwe wilt.",
 			"invalidName": "❌ **Ongeldige rolnaam**\\n\\nDe rolnaam moet tussen 1 en 100 tekens lang zijn.",
 			"boostRequired": "❌ **Eigen icoon niet beschikbaar**\\n\\nDeze server heeft **Server Boost-niveau 2** nodig voor eigen rolicoontjes (afbeeldingen).\\n\\n💡 **Tip:** je kunt in plaats daarvan een **emoji** gebruiken (zoals 🔥, ⭐ of een eigen server-emoji), daar zijn geen serverboosts voor nodig.",
-			"boostRequiredCreate": "❌ **Server Boost vereist**\\n\\nDeze server heeft **Server Boost-niveau 2** nodig om eigen supporterrollen met bepaalde functies te maken.\\n\\n💡 **Wat je kunt doen:**\\n- Vraag de serverbeheerders om de server naar niveau 2 te boosten\\n- Of vraag de staff van de server om hulp\\n\\n**Foutdetails:** {error}",
-			"createFailed": "❌ **Rol aanmaken mislukt**\\n\\nFout: {error}\\n\\nControleer of:\\n- de bot rollen mag aanmaken\\n- de bot rollen mag beheren\\n- de positie van de rol geldig is",
-			"updateFailed": "❌ **Rol bijwerken mislukt**\\n\\nFout: {error}\\n\\nControleer of:\\n- de bot rollen mag beheren\\n- de rolinstellingen geldig zijn",
-			"deleteFailed": "❌ Kon de rol niet verwijderen: {error}",
-			"failed": "❌ Kon het formulier voor een nieuwe rol niet openen: {error}",
-			"editFailed": "❌ Kon het bewerkformulier niet openen: {error}",
+			"boostRequiredCreate": "❌ **Server Boost vereist**\\n\\nAfbeeldingen als rolicoon vereisen dat deze server op **Server Boost niveau 2** zit.\\n\\n💡 Gebruik in plaats daarvan een emoji als icoon, of vraag een serverbeheerder om de server te boosten.",
+			"createFailed": "❌ **Je rol kon niet worden aangemaakt**\\n\\n{error}",
+			"updateFailed": "❌ **Je rol kon niet worden bijgewerkt**\\n\\n{error}",
+			"deleteFailed": "❌ Je rol kon niet worden verwijderd. {error}",
+			"failed": "❌ Het rolformulier kon niet worden geopend. {error}",
+			"editFailed": "❌ Het bewerkformulier kon niet worden geopend. {error}",
 			"createFailedReason": "❌ **Rol aanmaken mislukt**\n\n{reason}"
 		},
 		"colorDefault": "Standaard",
@@ -969,11 +965,11 @@
 		},
 		"modal": {
 			"reason": "Reden",
-			"duration": "Duur (bijv. 10 min, 2 uur, 7 dagen)"
+			"duration": "Duur"
 		},
 		"done": "✅ Actie \"{action}\" toegepast op {member}. Zaak #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Voer een duur in zoals 10 min, 2 uur of 7 dagen.",
+		"invalidDuration": "❌ Kies een duur uit de lijst.",
 		"notAllowed": "❌ De servereigenaar en bots kunnen niet worden gemodereerd.",
 		"caseLog": {
 			"titles": {
@@ -1040,6 +1036,7 @@
 			"menu": "「💻」menu",
 			"bot_updates": "「⚙️」bot-updates",
 			"welcomer": "「🚪」welkom",
+			"leaver": "「👋」tot-ziens",
 			"booster": "「🚀」boosters",
 			"moderation": "「🔨」moderatie",
 			"leveling": "「🆙」levels",
@@ -1370,6 +1367,30 @@
 			"🎊 Hoi {user}! Welkom op {server}! Je bent lid #{memberCount} (account aangemaakt: {accountAge})."
 		]
 	},
+	"leaver": {
+		"title": "👋 Tot ziens!",
+		"fields": {
+			"joined": "📅 Lid geworden",
+			"timeInServer": "⏳ Tijd op de server",
+			"memberCount": "👥 Aantal leden"
+		},
+		"membersNow": "{count} leden",
+		"timeInServer": {
+			"lessThanDay": "minder dan een dag",
+			"oneDay": "1 dag",
+			"days": "{days} dagen",
+			"unknown": "een tijdje"
+		},
+		"unknownServer": "Onbekende server",
+		"unknownDate": "Onbekend",
+		"defaultMessages": [
+			"👋 **{username}** heeft {server} na {timeInServer} verlaten. We zijn nu met {memberCount} leden.",
+			"🚪 **{username}** heeft {server} verlaten. Bedankt dat je erbij was!",
+			"🌙 Doei **{username}**! {server} telt nu {memberCount} leden.",
+			"🍂 **{username}** vertrekt na {timeInServer} uit {server}. Het ga je goed!",
+			"✈️ Goede reis, **{username}**! De deur van {server} staat altijd open."
+		]
+	},
 	"booster": {
 		"title": "💎 Bedankt voor je boost!",
 		"fields": {
@@ -1408,13 +1429,13 @@
 			"noResponse": "Ik kon nu geen antwoord genereren. Probeer het opnieuw.",
 			"keyRejected": "De API-sleutel van de AI is geweigerd. Controleer de instellingen in het botpaneel.",
 			"rateLimited": "De AI-dienst krijgt nu te veel verzoeken. Probeer het zo meteen opnieuw.",
-			"failed": "Er ging iets mis bij het verbinden met de AI-dienst."
+			"failed": "Er ging iets mis bij het contact met de AI-dienst. Probeer het zo meteen opnieuw."
 		}
 	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Onbekend commando**: `/{command}`\n\nDit commando bestaat niet. Alleen `/setup` is beschikbaar.",
-			"failed": "❌ **Commandofout**: `/{command}`\n\nHet commando kon niet goed worden uitgevoerd.\n**Fout**: {error}\n\nProbeer het opnieuw of neem contact op met een beheerder als het probleem blijft.",
+			"failed": "❌ **`/{command}` werkte niet**\\n\\n{error}",
 			"unexpected": "❌ **Onverwachte fout**: `/{command}`\n\nEr is een onverwachte fout opgetreden. Probeer het opnieuw.",
 			"critical": "❌ **Kritieke fout**: er is een onverwachte fout opgetreden bij het verwerken van je commando.\n\nProbeer het later opnieuw of neem contact op met een beheerder."
 		}

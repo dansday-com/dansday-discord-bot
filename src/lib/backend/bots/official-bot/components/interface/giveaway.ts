@@ -1,24 +1,11 @@
-import {
-	ModalBuilder,
-	TextInputBuilder,
-	ActionRowBuilder,
-	TextInputStyle,
-	EmbedBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	RoleSelectMenuBuilder,
-	StringSelectMenuBuilder,
-	ComponentType,
-	MessageFlags
-} from 'discord.js';
+import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, RoleSelectMenuBuilder } from 'discord.js';
 import { getEmbedConfig, GIVEAWAY, NOTIFICATIONS, getServerForCurrentBot } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
-import { translate, serverTranslator, memberTranslator, type Translator } from '../../i18n.js';
-import { textField } from './formFields.js';
+import { translate, serverTranslator, memberTranslator, getUserLanguage, type Translator, errorReason } from '../../i18n.js';
+import { durationField, durationValue, textField, type DurationPreset } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
-import { isComponentsV2 } from './componentsV2.js';
 
 function giveawayRoleMention(guild, roleId, tr: Translator) {
 	const role = guild.roles.cache.get(roleId);
@@ -27,20 +14,46 @@ function giveawayRoleMention(guild, roleId, tr: Translator) {
 
 const pendingMultipleEntries = new Map<string, boolean>();
 
+const DURATION_PRESETS: DurationPreset[] = [
+	[1, 'hour'],
+	[6, 'hour'],
+	[12, 'hour'],
+	[1, 'day'],
+	[3, 'day'],
+	[1, 'week'],
+	[2, 'week']
+];
+
 function pendingKey(interaction) {
 	return `${interaction.guild.id}:${interaction.user.id}`;
 }
 
-function multipleEntriesRow(tr: Translator, allowed: boolean) {
-	const question = tr('giveaway.create.multipleEntries');
-	return new ActionRowBuilder().addComponents(
-		new StringSelectMenuBuilder()
-			.setCustomId('giveaway_multiple_select')
-			.addOptions(
-				{ label: `${question} ${tr('common.no')}`.slice(0, 100), value: 'no', default: !allowed },
-				{ label: `${question} ${tr('common.yes')}`.slice(0, 100), value: 'yes', default: allowed }
-			)
+async function giveawaySetupPanel(interaction, allowed: boolean) {
+	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
+	const embedConfig = await getEmbedConfig(interaction.guild.id);
+	const entries = tr('giveaway.announcement.entriesLine', {
+		entries: tr(allowed ? 'giveaway.announcement.multipleEntries' : 'giveaway.announcement.singleEntry')
+	});
+	const embed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(tr('giveaway.create.title'))
+		.setDescription(`${tr('giveaway.create.step1Title')}\n\n${tr('giveaway.create.step1Description')}\n\n${entries}`)
+		.setTimestamp()
+		.setFooter({ text: embedConfig.FOOTER });
+	const roleSelect = new RoleSelectMenuBuilder()
+		.setCustomId('giveaway_role_select')
+		.setPlaceholder(tr('giveaway.create.roleSelectPlaceholder'))
+		.setMinValues(0)
+		.setMaxValues(25);
+	const buttonRow = new ActionRowBuilder().addComponents(
+		new ButtonBuilder().setCustomId('giveaway_continue_form').setLabel(tr('giveaway.create.continueButton')).setStyle(ButtonStyle.Primary),
+		new ButtonBuilder()
+			.setCustomId('giveaway_multiple_toggle')
+			.setLabel(tr(allowed ? 'giveaway.create.limitSingle' : 'giveaway.create.allowMultiple'))
+			.setStyle(ButtonStyle.Secondary),
+		await menuBackButton(interaction.guild.id, interaction.user.id, 'community')
 	);
+	return { embeds: [embed], components: [new ActionRowBuilder().addComponents(roleSelect), buttonRow] };
 }
 
 async function showGiveawayModal(interaction, customId: string) {
@@ -61,27 +74,27 @@ async function showGiveawayModal(interaction, customId: string) {
 		.addLabelComponents(
 			field('giveaway_title', 'title', TextInputStyle.Short, true, 256),
 			field('giveaway_prize', 'prize', TextInputStyle.Paragraph, true, 2000),
-			field('giveaway_duration', 'duration', TextInputStyle.Short, true, 10),
+			durationField(
+				tr('giveaway.modal.durationLabel'),
+				'giveaway_duration',
+				await getUserLanguage(interaction.guild.id, interaction.user.id),
+				DURATION_PRESETS
+			),
 			field('giveaway_winner_count', 'winnerCount', TextInputStyle.Short, false, 3),
 			field('giveaway_min_invites', 'invites', TextInputStyle.Short, false, 4)
 		);
 	await interaction.showModal(modal);
 }
 
-export async function handleGiveawayMultipleSelect(interaction) {
-	if (!(await hasPermission(interaction.member, 'giveaway'))) return;
-	const allowed = interaction.values?.[0] === 'yes';
+export async function handleGiveawayMultipleToggle(interaction) {
+	if (!(await hasPermission(interaction.member, 'giveaway'))) {
+		const content = await getPermissionDeniedMessage(interaction.guild, 'giveaway', interaction.user.id);
+		await interaction.reply({ content, flags: 64 }).catch(() => null);
+		return;
+	}
+	const allowed = !pendingMultipleEntries.get(pendingKey(interaction));
 	pendingMultipleEntries.set(pendingKey(interaction), allowed);
-	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
-	const swap = (c: any) =>
-		c.type === ComponentType.ActionRow && c.components?.some((x: any) => x.custom_id === 'giveaway_multiple_select')
-			? multipleEntriesRow(tr, allowed).toJSON()
-			: c.components
-				? { ...c, components: c.components.map(swap) }
-				: c;
-	const components = (interaction.message?.components ?? []).map((c) => swap(c.toJSON()));
-	const flags = isComponentsV2(interaction.message) ? { flags: MessageFlags.IsComponentsV2 } : {};
-	await interaction.update({ components, ...flags }).catch(() => interaction.deferUpdate().catch(() => null));
+	await interaction.update(await giveawaySetupPanel(interaction, allowed));
 }
 
 function buildGiveawayWinnersDescription(tr: Translator, giveaway, winners, winnerMentions: string) {
@@ -145,7 +158,7 @@ export async function handleGiveawayButton(interaction) {
 
 		if (activeGiveaway) {
 			const finishLabel = await translate('giveaway.buttons.finish', interaction.guild.id, interaction.user.id);
-			const finishButton = new ButtonBuilder().setCustomId(`giveaway_finish_${activeGiveaway.id}`).setLabel(finishLabel).setStyle(ButtonStyle.Success);
+			const finishButton = new ButtonBuilder().setCustomId(`giveaway_finish_${activeGiveaway.id}`).setLabel(finishLabel).setStyle(ButtonStyle.Danger);
 
 			const backButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'community');
 
@@ -189,38 +202,15 @@ export async function handleGiveawayButton(interaction) {
 			return;
 		}
 
-		const roleSelectPlaceholder = await translate('giveaway.create.roleSelectPlaceholder', interaction.guild.id, interaction.user.id);
-		const roleSelect = new RoleSelectMenuBuilder().setCustomId('giveaway_role_select').setPlaceholder(roleSelectPlaceholder).setMinValues(0).setMaxValues(25);
-
-		const continueLabel = await translate('giveaway.create.continueButton', interaction.guild.id, interaction.user.id);
-		const continueButton = new ButtonBuilder().setCustomId('giveaway_continue_form').setLabel(continueLabel).setStyle(ButtonStyle.Primary);
-
-		const backButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'community');
-
-		const roleSelectRow = new ActionRowBuilder().addComponents(roleSelect);
-		const buttonRow = new ActionRowBuilder().addComponents(continueButton, backButton);
 		pendingMultipleEntries.set(pendingKey(interaction), false);
-		const multipleRow = multipleEntriesRow(await memberTranslator(interaction.guild.id, interaction.user.id), false);
-
-		const createTitle = await translate('giveaway.create.title', interaction.guild.id, interaction.user.id);
-		const step1Title = await translate('giveaway.create.step1Title', interaction.guild.id, interaction.user.id);
-		const step1Description = await translate('giveaway.create.step1Description', interaction.guild.id, interaction.user.id);
-		const roleSelectEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(createTitle)
-			.setDescription(`${step1Title}\n\n${step1Description}`)
-			.setTimestamp()
-			.setFooter({ text: embedConfig.FOOTER });
-
-		await interaction.update({
-			embeds: [roleSelectEmbed],
-			components: [multipleRow, roleSelectRow, buttonRow]
-		});
+		await interaction.update(await giveawaySetupPanel(interaction, false));
 
 		await logger.log(`🎉 Giveaway role selector shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error showing giveaway interface: ${error.message}`);
-		const errorMsg = await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.reply({
 			content: errorMsg,
 			flags: 64
@@ -231,6 +221,8 @@ export async function handleGiveawayButton(interaction) {
 export async function handleGiveawayRoleSelect(interaction) {
 	try {
 		if (!(await hasPermission(interaction.member, 'giveaway'))) {
+			const content = await getPermissionDeniedMessage(interaction.guild, 'giveaway', interaction.user.id);
+			await interaction.reply({ content, flags: 64 }).catch(() => null);
 			return;
 		}
 
@@ -248,12 +240,16 @@ export async function handleGiveawayRoleSelect(interaction) {
 		try {
 			if (interaction.deferred || interaction.replied) {
 				await interaction.followUp({
-					content: await translate('giveaway.errors.roleSelectFailed', interaction.guild.id, interaction.user.id, { error: error.message }),
+					content: await translate('giveaway.errors.roleSelectFailed', interaction.guild.id, interaction.user.id, {
+						error: await errorReason(error, interaction.guild.id, interaction.user.id)
+					}),
 					flags: 64
 				});
 			} else {
 				await interaction.reply({
-					content: await translate('giveaway.errors.roleSelectFailed', interaction.guild.id, interaction.user.id, { error: error.message }),
+					content: await translate('giveaway.errors.roleSelectFailed', interaction.guild.id, interaction.user.id, {
+						error: await errorReason(error, interaction.guild.id, interaction.user.id)
+					}),
 					flags: 64
 				});
 			}
@@ -270,7 +266,9 @@ export async function handleGiveawaySkipRolesContinue(interaction) {
 	} catch (error) {
 		await logger.log(`❌ Error showing giveaway modal: ${error.message}`);
 		await interaction.reply({
-			content: await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message }),
+			content: await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, {
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			}),
 			flags: 64
 		});
 	}
@@ -296,7 +294,6 @@ export async function handleGiveawayModal(interaction) {
 
 		const title = interaction.fields.getTextInputValue('giveaway_title').trim();
 		const prize = interaction.fields.getTextInputValue('giveaway_prize').trim();
-		const durationStr = interaction.fields.getTextInputValue('giveaway_duration').trim();
 		const winnerCountStr = interaction.fields.getTextInputValue('giveaway_winner_count').trim() || '1';
 
 		if (!title || title.length === 0) {
@@ -315,8 +312,8 @@ export async function handleGiveawayModal(interaction) {
 			return;
 		}
 
-		const duration = parseInt(durationStr);
-		if (isNaN(duration) || duration <= 0) {
+		const duration = (durationValue(interaction.fields, 'giveaway_duration', DURATION_PRESETS) ?? 0) / 60;
+		if (duration <= 0) {
 			const errorMsg = await translate('giveaway.errors.invalidDuration', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({
 				content: errorMsg
@@ -507,7 +504,9 @@ export async function handleGiveawayModal(interaction) {
 	} catch (error) {
 		await logger.log(`❌ Error processing giveaway: ${error.message}`);
 		await logger.log(`❌ Stack: ${error.stack}`);
-		const errorMsg = await translate('giveaway.errors.createFailed', interaction.guild.id, interaction.user.id, { error: error.message });
+		const errorMsg = await translate('giveaway.errors.createFailed', interaction.guild.id, interaction.user.id, {
+			error: await errorReason(error, interaction.guild.id, interaction.user.id)
+		});
 		await interaction.editReply({
 			content: errorMsg
 		});
@@ -663,7 +662,9 @@ export async function handleGiveawayEnterButton(interaction) {
 		await logger.log(`❌ Error processing giveaway entry: ${error.message}`);
 		await interaction
 			.editReply({
-				content: await translate('giveaway.errors.enterFailed', interaction.guild.id, interaction.user.id, { error: error.message })
+				content: await translate('giveaway.errors.enterFailed', interaction.guild.id, interaction.user.id, {
+					error: await errorReason(error, interaction.guild.id, interaction.user.id)
+				})
 			})
 			.catch(() => null);
 	}
@@ -898,7 +899,9 @@ export async function handleGiveawayFinish(interaction) {
 		await logger.log(`❌ Error finishing giveaway: ${error.message}`);
 		await interaction
 			.editReply({
-				content: await translate('giveaway.errors.finishFailed', interaction.guild.id, interaction.user.id, { error: error.message })
+				content: await translate('giveaway.errors.finishFailed', interaction.guild.id, interaction.user.id, {
+					error: await errorReason(error, interaction.guild.id, interaction.user.id)
+				})
 			})
 			.catch(() => null);
 	}

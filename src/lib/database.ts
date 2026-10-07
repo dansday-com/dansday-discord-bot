@@ -1396,6 +1396,8 @@ async function seedNewServerSettings(serverId: number) {
 			Object.assign(baseSettings, DEFAULT_LEVELING_SETTINGS);
 		} else if (component === SERVER_SETTINGS.component.welcomer) {
 			baseSettings.messages = defaultGreetingMessages('welcomer', DEFAULT_SERVER_LANGUAGE);
+		} else if (component === SERVER_SETTINGS.component.leaver) {
+			baseSettings.messages = defaultGreetingMessages('leaver', DEFAULT_SERVER_LANGUAGE);
 		} else if (component === SERVER_SETTINGS.component.booster) {
 			baseSettings.messages = defaultGreetingMessages('booster', DEFAULT_SERVER_LANGUAGE);
 		}

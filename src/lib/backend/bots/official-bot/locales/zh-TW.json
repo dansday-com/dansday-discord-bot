@@ -4,7 +4,7 @@
 		"description": "請從下方按鈕選擇功能：",
 		"website": "🌐 伺服器頁面：{url}",
 		"join": "📨 邀請連結：{url}",
-		"noAccess": "❌ 你沒有任何功能的使用權限。",
+		"noAccess": "❌ 你無法使用任何功能。如果你認為這是錯誤，請聯絡伺服器管理員。",
 		"button": "📋 選單",
 		"account": "👤 帳號",
 		"stats": {
@@ -68,17 +68,27 @@
 			"setupChannelsAllPresent": "所有頻道都已存在，沒有需要新建的頻道。",
 			"setupWarnNoBotConfig": "⚠️ 介面已傳送，但無法取得機器人設定。",
 			"setupWarnNoServer": "⚠️ 介面已傳送，但找不到伺服器紀錄，無法產生邀請。",
-			"error": "❌ 介面傳送失敗：{error}"
+			"error": "❌ 無法送出選單面板。{error}"
 		}
 	},
 	"common": {
 		"errors": {
 			"featureDisabled": "❌ 這個伺服器已關閉此功能。管理員可以在機器人設定面板中啟用。",
-			"memberNotFound": "❌ 無法取得成員資訊。",
-			"unknownButton": "❌ 未知的按鈕互動。",
+			"memberNotFound": "❌ 無法載入該成員。對方可能已離開伺服器。請稍後再試。",
+			"unknownButton": "❌ 此按鈕已失效。請重新開啟選單。",
 			"buttonError": "❌ **按鈕錯誤**：處理你的點選時發生錯誤。\\n\\n請再試一次或聯絡管理員。",
 			"modalError": "❌ **表單錯誤**：處理你送出的表單時發生錯誤。\\n\\n請再試一次或聯絡管理員。",
-			"selectionError": "❌ **選擇錯誤**：處理你的選擇時發生錯誤。\\n\\n請再試一次或聯絡管理員。"
+			"selectionError": "❌ **選擇錯誤**：處理你的選擇時發生錯誤。\\n\\n請再試一次或聯絡管理員。",
+			"reasons": {
+				"missingPermissions": "我缺少執行此操作的權限。請伺服器管理員檢查我的身分組權限，並在需要時把我的身分組調高。",
+				"missingAccess": "我無法存取那個頻道。請伺服器管理員給我存取權限。",
+				"unknownChannel": "那個頻道已不存在。請伺服器管理員在機器人設定面板中選擇新的頻道。",
+				"unknownMember": "該成員已不在伺服器中。",
+				"unknownRole": "該身分組已不存在。",
+				"maxRoles": "這個伺服器已達到 Discord 的身分組數量上限。請伺服器管理員刪除一個不再使用的身分組。",
+				"invalidInput": "Discord 不接受所填寫的內容。請檢查後再試一次。",
+				"unexpected": "我們這邊出了點問題。請稍後再試，如果一直發生，請告訴伺服器管理員。"
+			}
 		},
 		"timeUnits": {
 			"hour": "小時",
@@ -118,7 +128,7 @@
 			"current": "目前語言",
 			"select": "選擇語言",
 			"updated": "✅ 語言已更新！",
-			"failed": "❌ 語言更新失敗：{error}",
+			"failed": "❌ 無法更新你的語言。{error}",
 			"serverDefault": "伺服器預設：{language}",
 			"serverDefaultDescription": "跟隨伺服器語言",
 			"currentOption": "目前語言"
@@ -128,10 +138,10 @@
 		"account": {
 			"link": "👤 你的帳號頁面：{url}",
 			"noMember": "⚠️ 這個伺服器還沒有你的紀錄。請先傳送一則訊息或加入語音頻道。",
-			"unavailable": "⚠️ 這個伺服器未開放公開頁面。"
+			"unavailable": "⚠️ 這個伺服器已關閉公開頁面。請伺服器管理員在機器人設定面板中開啟。"
 		},
 		"errors": {
-			"notRegistered": "⚠️ 這個伺服器尚未在機器人中註冊。請先執行一次同步。",
+			"notRegistered": "⚠️ 這個伺服器尚未與機器人完全連線。請幾分鐘後再試，如果一直發生，請伺服器管理員檢查機器人設定面板。",
 			"createRecordFailed": "❌ 建立成員紀錄失敗，請再試一次。"
 		},
 		"fields": {
@@ -243,9 +253,9 @@
 		"errors": {
 			"disabledOnServer": "❌ 這個伺服器已關閉 AFK 功能。管理員可以在機器人設定面板中啟用。",
 			"notAFK": "❌ 你目前不在 AFK 狀態。",
-			"failed": "❌ 無法開啟 AFK 表單：{error}",
-			"setFailed": "❌ **AFK 設定失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。",
-			"removeFailed": "❌ **AFK 解除失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。"
+			"failed": "❌ 無法開啟 AFK 表單。{error}",
+			"setFailed": "❌ **無法設定你的 AFK 狀態**\\n\\n{error}",
+			"removeFailed": "❌ **無法取消你的 AFK 狀態**\\n\\n{error}"
 		},
 		"messages": {
 			"welcomeBack": "✅ 歡迎回來，{member}！你的 AFK 狀態已解除。",
@@ -263,7 +273,8 @@
 			"step1Description": "從下方選單選擇可以參加這次抽獎的身分組。留空或點選「繼續填寫表單」，則所有身分組都能參加。",
 			"roleSelectPlaceholder": "選擇可以參加的身分組（選填）……",
 			"continueButton": "繼續填寫表單",
-			"multipleEntries": "允許重複參加？"
+			"allowMultiple": "允許多次參加",
+			"limitSingle": "限制為參加一次"
 		},
 		"active": {
 			"title": "🎉 你有進行中的抽獎",
@@ -275,8 +286,7 @@
 			"titlePlaceholder": "輸入抽獎標題……",
 			"prizeLabel": "獎品",
 			"prizePlaceholder": "獎品是什麼？",
-			"durationLabel": "持續時間（分鐘）",
-			"durationPlaceholder": "例如：60 代表 1 小時，1440 代表 1 天",
+			"durationLabel": "持續時間",
 			"winnerCountLabel": "得獎人數",
 			"winnerCountPlaceholder": "要抽出幾位得獎者？（預設：1）",
 			"invitesLabel": "所需邀請數",
@@ -294,34 +304,34 @@
 			"finish": "🏁 結束抽獎"
 		},
 		"errors": {
-			"memberNotFound": "❌ 無法取得成員資訊。",
+			"memberNotFound": "❌ 你的成員資料尚未同步完成，請稍後再試。",
 			"activeExists": "❌ 你已經有一個進行中的抽獎，請先將它結束。",
 			"invalidTitle": "❌ **抽獎無效**\\n\\n標題不能空白。",
 			"invalidPrize": "❌ **抽獎無效**\\n\\n獎品不能空白。",
-			"invalidDuration": "❌ **抽獎無效**\\n\\n持續時間必須是正數（單位：分鐘）。",
+			"invalidDuration": "❌ **抽獎無效**\\n\\n請從清單中選擇時長。",
 			"invalidWinnerCount": "❌ **抽獎無效**\\n\\n得獎人數必須是正數。",
-			"channelNotConfigured": "❌ 無法建立抽獎：尚未設定抽獎頻道。請在面板中完成設定。",
-			"channelNotFound": "❌ 無法建立抽獎：找不到抽獎頻道。",
-			"channelError": "❌ 無法建立抽獎：讀取抽獎頻道設定時發生錯誤。",
-			"createFailed": "❌ **抽獎建立失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。",
-			"invalidMessage": "❌ 抽獎訊息無效。",
-			"invalidId": "❌ 抽獎 ID 無效。",
+			"channelNotConfigured": "❌ 無法建立抽獎：尚未設定抽獎頻道。請伺服器管理員在機器人設定面板中設定。",
+			"channelNotFound": "❌ 無法建立抽獎：抽獎頻道已不存在。請伺服器管理員在機器人設定面板中選擇新的頻道。",
+			"channelError": "❌ 無法建立抽獎：無法載入其設定。請稍後再試。",
+			"createFailed": "❌ **無法建立抽獎**\\n\\n{error}",
+			"invalidMessage": "❌ 這則抽獎訊息已過期。請主辦者重新發起抽獎。",
+			"invalidId": "❌ 這則抽獎訊息已過期。請主辦者重新發起抽獎。",
 			"notFound": "❌ 找不到這個抽獎，或抽獎已經結束。",
 			"ended": "❌ 這個抽獎已經結束了。",
 			"roleRestriction": "❌ **身分組限制**\\n\\n這次抽獎僅限下列身分組參加：\\n{roles}\\n\\n你必須同時擁有以上所有身分組才能參加。",
-			"memberNotFoundDB": "❌ 資料庫中找不到這位成員，請稍後再試。",
+			"memberNotFoundDB": "❌ 你的成員資料尚未同步完成，請稍後再試。",
 			"cannotEnterOwn": "❌ 你不能參加自己舉辦的抽獎！",
 			"alreadyEntered": "❌ 你已經參加過這次抽獎了！",
 			"finishOwnOnly": "❌ 你只能結束自己舉辦的抽獎。",
 			"finishNotActive": "❌ 這個抽獎目前沒有在進行中。",
-			"finishChannelError": "❌ 無法取得抽獎頻道。",
-			"finishChannelNotConfigured": "❌ 尚未設定抽獎頻道。",
-			"finishChannelNotFound": "❌ 找不到抽獎頻道。",
-			"failed": "❌ 無法開啟抽獎表單：{error}",
+			"finishChannelError": "❌ 無法載入抽獎設定。請稍後再試。",
+			"finishChannelNotConfigured": "❌ 尚未設定抽獎頻道。請伺服器管理員在機器人設定面板中設定。",
+			"finishChannelNotFound": "❌ 抽獎頻道已不存在。請伺服器管理員在機器人設定面板中選擇新的頻道。",
+			"failed": "❌ 無法開啟抽獎表單。{error}",
 			"notEnoughInvites": "❌ 你需要 **{needed}** 個邀請才能參加這次抽獎，你目前有 **{have}** 個。",
-			"roleSelectFailed": "❌ 處理身分組選擇時失敗：{error}",
-			"enterFailed": "❌ **參加抽獎失敗**\\n\\n錯誤：{error}",
-			"finishFailed": "❌ 結束抽獎失敗：{error}",
+			"roleSelectFailed": "❌ 無法使用這些身分組。{error}",
+			"enterFailed": "❌ **無法參加抽獎**\\n\\n{error}",
+			"finishFailed": "❌ 無法結束抽獎。{error}",
 			"invalidInvites": "❌ **抽獎無效**\\n\\n所需邀請數必須是 0 或整數。"
 		},
 		"unknownRole": "身分組 {roleId}",
@@ -372,11 +382,11 @@
 		},
 		"errors": {
 			"invalid": "❌ **意見回饋無效**\\n\\n回饋內容不能空白。",
-			"channelError": "❌ 無法提交意見回饋：讀取回饋頻道設定時發生錯誤。",
-			"channelNotConfigured": "❌ 無法提交意見回饋：尚未設定回饋頻道。",
-			"channelNotFound": "❌ 無法提交意見回饋：找不到回饋頻道。",
-			"failed": "❌ 無法開啟意見回饋表單：{error}",
-			"submitFailed": "❌ **意見回饋提交失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。"
+			"channelError": "❌ 無法送出你的意見回饋：無法載入其設定。請稍後再試。",
+			"channelNotConfigured": "❌ 無法送出你的意見回饋：尚未設定意見回饋頻道。請伺服器管理員在機器人設定面板中設定。",
+			"channelNotFound": "❌ 無法送出你的意見回饋：意見回饋頻道已不存在。請伺服器管理員在機器人設定面板中選擇新的頻道。",
+			"failed": "❌ 無法開啟意見回饋表單。{error}",
+			"submitFailed": "❌ **無法送出你的意見回饋**\\n\\n{error}"
 		},
 		"channelEmbed": {
 			"title": "💬 新的意見回饋",
@@ -387,22 +397,9 @@
 		}
 	},
 	"staffRating": {
-		"title": "📋 評價工作人員",
 		"selectStaff": "選擇工作人員",
 		"selectStaffPlaceholder": "選擇要評價的工作人員……",
 		"button": "🛡️ 工作人員評分",
-		"selectRatingPrompt": "選擇評分",
-		"selectCategoryPrompt": "選擇類別",
-		"status": {
-			"staff": "工作人員：{staff}",
-			"ratingPending": "評分：尚未選擇",
-			"ratingSelected": "評分：{rating}/5",
-			"categoryPending": "類別：尚未選擇",
-			"categorySelected": "類別：{category}"
-		},
-		"buttons": {
-			"continue": "繼續"
-		},
 		"reviewModal": {
 			"titleApprove": "核准工作人員評價",
 			"titleReject": "駁回工作人員評價",
@@ -468,12 +465,11 @@
 			"cannotReportSelf": "❌ 你不能評價自己！",
 			"notStaff": "❌ 你選擇的成員不是工作人員。",
 			"onCooldown": "❌ **評價冷卻中**\\n\\n你必須再等 {time} {unit} 才能再次評價這位工作人員。\\n\\n上次評價：{lastRated}",
-			"submitFailed": "❌ **評價提交失敗**\\n\\n錯誤：{error}\\n\\n請稍後再試。",
-			"notConfigured": "❌ 這個伺服器尚未設定工作人員評分系統。",
+			"allOnCooldown": "❌ 你最近已評價過所有工作人員。冷卻時間結束後即可再次評價。",
+			"submitFailed": "❌ **無法送出你的評價**\\n\\n{error}",
+			"notConfigured": "❌ 這個伺服器尚未設定工作人員評價。請伺服器管理員在機器人設定面板中設定。",
 			"noStaffConfigured": "❌ 這個伺服器尚未設定工作人員身分組。請管理員先設定工作人員權限。",
 			"noStaffAvailable": "❌ 目前找不到任何工作人員。請稍後再試或聯絡伺服器管理員。",
-			"missingRating": "❌ 請先選擇評分再繼續。",
-			"missingCategory": "❌ 請先選擇類別再繼續。",
 			"permissionDenied": "❌ **權限不足**\\n\\n你需要管理員權限才能核准或駁回工作人員評價。",
 			"reviewReasonRequired": "❌ 請輸入你做出這個決定的理由。"
 		},
@@ -555,13 +551,13 @@
 		},
 		"autoRejectApplicantReason": "重複或冒用：這個 TikTok 使用者名稱已經連結到另一個 Discord 帳號。",
 		"errors": {
-			"notConfigured": "❌ 這個伺服器尚未設定內容創作者申請功能。",
+			"notConfigured": "❌ 這個伺服器尚未設定內容創作者申請。請伺服器管理員在機器人設定面板中設定。",
 			"alreadyCreator": "✅ 你已經擁有這個伺服器的內容創作者身分組。",
 			"invalidUsername": "❌ TikTok 使用者名稱無效。只能使用英文字母、數字、句點和底線。",
 			"reasonRequired": "❌ 請填寫你想成為內容創作者的理由。",
 			"pendingExists": "❌ 你已經有一份待審核的內容創作者申請。",
 			"cooldown": "❌ 你必須等待 **{days} 天** 才能再次提交內容創作者申請。",
-			"submitFailed": "❌ 內容創作者申請提交失敗：{error}",
+			"submitFailed": "❌ 無法送出你的申請。{error}",
 			"permissionDenied": "❌ 你需要管理員權限才能核准或駁回內容創作者申請。",
 			"reviewReasonRequired": "❌ 請輸入你做出這個決定的理由。"
 		},
@@ -587,9 +583,9 @@
 		"selectPlaceholder": "選擇通知頻道……",
 		"updated": "✅ 你的通知偏好設定已更新。",
 		"errors": {
-			"notConfigured": "❌ 這個伺服器尚未設定通知。",
+			"notConfigured": "❌ 這個伺服器尚未設定通知。請伺服器管理員在機器人設定面板中設定。",
 			"noRoles": "❌ 目前還沒有設定任何通知頻道。請管理員到控制台設定通知。",
-			"noneEnabled": "❌ 這個伺服器沒有啟用任何通知功能。"
+			"noneEnabled": "❌ 這個伺服器沒有開啟任何通知功能。請伺服器管理員在機器人設定面板中開啟。"
 		},
 		"hub": {
 			"title": "🔔 通知偏好設定",
@@ -661,12 +657,12 @@
 			"alreadyHasRole": "❌ **你已經有一個專屬身分組**\\n\\n同一時間只能擁有一個支持者專屬身分組。\\n\\n💡 請使用 **✏️ 編輯身分組** 來修改，或先使用 **🗑️ 刪除身分組** 再建立新的。",
 			"invalidName": "❌ **身分組名稱無效**\\n\\n身分組名稱長度必須介於 1 到 100 個字元之間。",
 			"boostRequired": "❌ **無法使用自訂圖示**\\n\\n這個伺服器需要達到 **伺服器加成等級 2**，才能使用身分組自訂圖示（圖片）。\\n\\n💡 **小提示：** 你可以改用 **表情符號**（例如 🔥、⭐ 或任何自訂表情符號），不需要伺服器加成。",
-			"boostRequiredCreate": "❌ **需要伺服器加成**\\n\\n這個伺服器需要達到 **伺服器加成等級 2**，才能建立具備部分功能的支持者專屬身分組。\\n\\n💡 **你可以這樣做：**\\n- 請伺服器管理員將伺服器加成提升到等級 2\\n- 或聯絡伺服器工作人員尋求協助\\n\\n**錯誤詳細資料：** {error}",
-			"createFailed": "❌ **身分組建立失敗**\\n\\n錯誤：{error}\\n\\n請確認：\\n- 機器人擁有建立身分組的權限\\n- 機器人擁有管理身分組的權限\\n- 身分組的位置限制設定正確",
-			"updateFailed": "❌ **身分組更新失敗**\\n\\n錯誤：{error}\\n\\n請確認：\\n- 機器人擁有管理身分組的權限\\n- 身分組的各項限制設定正確",
-			"deleteFailed": "❌ 身分組刪除失敗：{error}",
-			"failed": "❌ 無法開啟身分組建立表單：{error}",
-			"editFailed": "❌ 無法開啟編輯表單：{error}",
+			"boostRequiredCreate": "❌ **需要伺服器加成**\\n\\n使用圖片作為身分組圖示，需要這個伺服器達到**伺服器加成等級 2**。\\n\\n💡 可以改用表情符號作為圖示，或請伺服器管理員為伺服器加成。",
+			"createFailed": "❌ **無法建立你的身分組**\\n\\n{error}",
+			"updateFailed": "❌ **無法更新你的身分組**\\n\\n{error}",
+			"deleteFailed": "❌ 無法刪除你的身分組。{error}",
+			"failed": "❌ 無法開啟身分組表單。{error}",
+			"editFailed": "❌ 無法開啟編輯表單。{error}",
 			"createFailedReason": "❌ **身分組建立失敗**\n\n{reason}"
 		},
 		"colorDefault": "預設",
@@ -969,11 +965,11 @@
 		},
 		"modal": {
 			"reason": "原因",
-			"duration": "時長（例如 10分鐘、2小時、7天）"
+			"duration": "時長"
 		},
 		"done": "✅ 已對 {member} 執行「{action}」。案件 #{case}。",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ 請輸入時長，例如 10分鐘、2小時 或 7天。",
+		"invalidDuration": "❌ 請從清單中選擇時長。",
 		"notAllowed": "❌ 無法處置伺服器擁有者和機器人。",
 		"caseLog": {
 			"titles": {
@@ -1040,6 +1036,7 @@
 			"menu": "「💻」選單",
 			"bot_updates": "「⚙️」機器人更新",
 			"welcomer": "「🚪」歡迎",
+			"leaver": "「👋」再見",
 			"booster": "「🚀」加成者",
 			"moderation": "「🔨」管理",
 			"leveling": "「🆙」等級",
@@ -1370,6 +1367,30 @@
 			"🎊 哈囉 {user}！歡迎來到 {server}！你是第 {memberCount} 位成員（帳號年齡：{accountAge}）。"
 		]
 	},
+	"leaver": {
+		"title": "👋 再見！",
+		"fields": {
+			"joined": "📅 加入時間",
+			"timeInServer": "⏳ 在伺服器時長",
+			"memberCount": "👥 成員人數"
+		},
+		"membersNow": "{count} 位成員",
+		"timeInServer": {
+			"lessThanDay": "不到一天",
+			"oneDay": "1 天",
+			"days": "{days} 天",
+			"unknown": "一段時間"
+		},
+		"unknownServer": "未知伺服器",
+		"unknownDate": "未知",
+		"defaultMessages": [
+			"👋 **{username}** 在 {server} 待了 {timeInServer} 後離開了。現在我們有 {memberCount} 位成員。",
+			"🚪 **{username}** 離開了 {server}。感謝你曾與我們同行！",
+			"🌙 再見，**{username}**！{server} 現在有 {memberCount} 位成員。",
+			"🍂 **{username}** 在 {server} 度過了 {timeInServer}，現在啟程了。保重！",
+			"✈️ 一路順風，**{username}**！{server} 的大門永遠為你敞開。"
+		]
+	},
 	"booster": {
 		"title": "💎 感謝你的加成！",
 		"fields": {
@@ -1408,13 +1429,13 @@
 			"noResponse": "我現在無法產生回覆，請再試一次。",
 			"keyRejected": "AI API 金鑰遭到拒絕，請檢查機器人面板中的設定。",
 			"rateLimited": "AI 服務目前請求過於頻繁，請稍後再試。",
-			"failed": "連線到 AI 服務時發生錯誤。"
+			"failed": "連線到 AI 服務時出了點問題。請稍後再試。"
 		}
 	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **未知的指令**：`/{command}`\n\n這個指令不存在。目前只能使用 `/setup`。",
-			"failed": "❌ **指令錯誤**：`/{command}`\n\n指令未能正常執行。\n**錯誤**：{error}\n\n請再試一次；如果問題持續發生，請聯絡管理員。",
+			"failed": "❌ **`/{command}` 執行失敗**\\n\\n{error}",
 			"unexpected": "❌ **未預期的錯誤**：`/{command}`\n\n發生未預期的錯誤，請再試一次。",
 			"critical": "❌ **嚴重錯誤**：處理你的指令時發生未預期的錯誤。\n\n請稍後再試或聯絡管理員。"
 		}

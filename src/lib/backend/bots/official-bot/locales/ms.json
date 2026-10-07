@@ -4,7 +4,7 @@
 		"description": "Pilih ciri daripada butang di bawah:",
 		"website": "🌐 Halaman server: {url}",
 		"join": "📨 Pautan jemputan: {url}",
-		"noAccess": "❌ Anda tiada akses kepada mana-mana ciri.",
+		"noAccess": "❌ Anda tiada akses kepada mana-mana ciri. Tanya pentadbir server jika anda rasa ini satu kesilapan.",
 		"button": "📋 Menu",
 		"account": "👤 Akaun",
 		"stats": {
@@ -68,17 +68,27 @@
 			"setupChannelsAllPresent": "Semua channel sudah wujud — tiada yang perlu dibuat.",
 			"setupWarnNoBotConfig": "⚠️ Antara muka dihantar, tetapi konfigurasi bot tiada.",
 			"setupWarnNoServer": "⚠️ Antara muka dihantar, tetapi rekod server tidak dijumpai untuk jana jemputan.",
-			"error": "❌ Gagal hantar antara muka: {error}"
+			"error": "❌ Gagal menghantar panel menu. {error}"
 		}
 	},
 	"common": {
 		"errors": {
 			"featureDisabled": "❌ Ciri ini dimatikan untuk server ini. Pentadbir boleh hidupkannya dalam panel konfigurasi bot.",
-			"memberNotFound": "❌ Gagal dapatkan maklumat ahli.",
-			"unknownButton": "❌ Interaksi butang tidak dikenali.",
+			"memberNotFound": "❌ Saya tidak dapat memuatkan ahli itu. Mungkin dia sudah keluar dari server. Cuba lagi sebentar.",
+			"unknownButton": "❌ Butang ini sudah tidak aktif. Buka menu semula.",
 			"buttonError": "❌ **Ralat Butang**: Berlaku ralat semasa memproses klikan butang anda.\\n\\nSila cuba lagi atau hubungi pentadbir.",
 			"modalError": "❌ **Ralat Borang**: Berlaku ralat semasa memproses penghantaran borang anda.\\n\\nSila cuba lagi atau hubungi pentadbir.",
-			"selectionError": "❌ **Ralat Pilihan**: Berlaku ralat semasa memproses pilihan anda.\\n\\nSila cuba lagi atau hubungi pentadbir."
+			"selectionError": "❌ **Ralat Pilihan**: Berlaku ralat semasa memproses pilihan anda.\\n\\nSila cuba lagi atau hubungi pentadbir.",
+			"reasons": {
+				"missingPermissions": "Saya tiada kebenaran untuk ini. Minta pentadbir server semak kebenaran role saya dan naikkan kedudukan role saya jika perlu.",
+				"missingAccess": "Saya tidak dapat mengakses channel itu. Minta pentadbir server beri saya akses kepadanya.",
+				"unknownChannel": "Channel itu sudah tiada. Minta pentadbir server pilih channel baharu dalam panel konfigurasi bot.",
+				"unknownMember": "Ahli itu sudah tiada dalam server.",
+				"unknownRole": "Role itu sudah tiada.",
+				"maxRoles": "Server ini sudah mencapai had role Discord. Minta pentadbir server padam role yang tidak digunakan.",
+				"invalidInput": "Discord tidak menerima input tersebut. Semak dan cuba lagi.",
+				"unexpected": "Berlaku masalah di pihak kami. Cuba lagi sebentar, dan beritahu pentadbir server jika ia berterusan."
+			}
 		},
 		"timeUnits": {
 			"hour": "jam",
@@ -118,7 +128,7 @@
 			"current": "Bahasa Semasa",
 			"select": "Pilih Bahasa",
 			"updated": "✅ Bahasa berjaya dikemas kini!",
-			"failed": "❌ Gagal kemas kini bahasa: {error}",
+			"failed": "❌ Gagal mengemas kini bahasa anda. {error}",
 			"serverDefault": "Lalai server: {language}",
 			"serverDefaultDescription": "Ikut bahasa server",
 			"currentOption": "Bahasa semasa"
@@ -128,10 +138,10 @@
 		"account": {
 			"link": "👤 Halaman akaun anda: {url}",
 			"noMember": "⚠️ Anda belum direkod di server ini. Hantar mesej atau masuk voice dahulu.",
-			"unavailable": "⚠️ Halaman awam tiada untuk server ini."
+			"unavailable": "⚠️ Halaman awam dimatikan untuk server ini. Minta pentadbir server hidupkannya dalam panel konfigurasi bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Server ini belum didaftarkan dengan bot. Sila jalankan sync dahulu.",
+			"notRegistered": "⚠️ Server ini belum disambungkan sepenuhnya dengan bot. Cuba lagi dalam beberapa minit, dan minta pentadbir server semak panel konfigurasi bot jika ia berterusan.",
 			"createRecordFailed": "❌ Gagal buat rekod ahli. Sila cuba lagi."
 		},
 		"fields": {
@@ -243,9 +253,9 @@
 		"errors": {
 			"disabledOnServer": "❌ AFK dimatikan untuk server ini. Pentadbir boleh hidupkannya dalam panel konfigurasi bot.",
 			"notAFK": "❌ Anda tidak sedang AFK.",
-			"failed": "❌ Gagal buka borang AFK: {error}",
-			"setFailed": "❌ **Gagal Tetapkan AFK**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti.",
-			"removeFailed": "❌ **Gagal Buang AFK**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti."
+			"failed": "❌ Gagal membuka borang AFK. {error}",
+			"setFailed": "❌ **Gagal menetapkan status AFK anda**\\n\\n{error}",
+			"removeFailed": "❌ **Gagal membuang status AFK anda**\\n\\n{error}"
 		},
 		"messages": {
 			"welcomeBack": "✅ Selamat kembali, {member}! Status AFK anda telah dibuang.",
@@ -263,7 +273,8 @@
 			"step1Description": "Pilih role yang boleh sertai giveaway ini dari senarai di bawah. Biarkan kosong atau klik \"Teruskan ke Borang\" untuk benarkan semua role.",
 			"roleSelectPlaceholder": "Pilih role yang boleh sertai (pilihan)...",
 			"continueButton": "Teruskan ke Borang",
-			"multipleEntries": "Benarkan Sertai Berkali-kali?"
+			"allowMultiple": "Benarkan Penyertaan Berulang",
+			"limitSingle": "Hadkan kepada Satu Penyertaan"
 		},
 		"active": {
 			"title": "🎉 Giveaway Aktif Dijumpai",
@@ -275,8 +286,7 @@
 			"titlePlaceholder": "Masukkan tajuk giveaway...",
 			"prizeLabel": "Hadiah",
 			"prizePlaceholder": "Apa hadiahnya?",
-			"durationLabel": "Tempoh (minit)",
-			"durationPlaceholder": "cth., 60 untuk 1 jam, 1440 untuk 1 hari",
+			"durationLabel": "Tempoh",
 			"winnerCountLabel": "Bilangan Pemenang",
 			"winnerCountPlaceholder": "Berapa ramai pemenang? (lalai: 1)",
 			"invitesLabel": "Jemputan Diperlukan",
@@ -294,34 +304,34 @@
 			"finish": "🏁 Tamatkan Giveaway"
 		},
 		"errors": {
-			"memberNotFound": "❌ Gagal dapatkan maklumat ahli.",
+			"memberNotFound": "❌ Profil ahli anda belum disegerakkan. Cuba lagi sebentar nanti.",
 			"activeExists": "❌ Anda sudah ada giveaway yang aktif. Sila tamatkannya dahulu.",
 			"invalidTitle": "❌ **Giveaway Tidak Sah**\\n\\nTajuk tidak boleh kosong.",
 			"invalidPrize": "❌ **Giveaway Tidak Sah**\\n\\nHadiah tidak boleh kosong.",
-			"invalidDuration": "❌ **Giveaway Tidak Sah**\\n\\nTempoh mesti nombor positif (dalam minit).",
+			"invalidDuration": "❌ **Giveaway Tidak Sah**\\n\\nPilih tempoh daripada senarai.",
 			"invalidWinnerCount": "❌ **Giveaway Tidak Sah**\\n\\nBilangan pemenang mesti nombor positif.",
-			"channelNotConfigured": "❌ Gagal buat giveaway: Channel giveaway belum ditetapkan. Sila tetapkannya dalam panel.",
-			"channelNotFound": "❌ Gagal buat giveaway: Channel giveaway tidak dijumpai.",
-			"channelError": "❌ Gagal buat giveaway: Ralat semasa dapatkan tetapan channel giveaway.",
-			"createFailed": "❌ **Gagal Buat Giveaway**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti.",
-			"invalidMessage": "❌ Mesej giveaway tidak sah.",
-			"invalidId": "❌ ID giveaway tidak sah.",
+			"channelNotConfigured": "❌ Gagal buat giveaway: channel giveaway belum ditetapkan. Minta pentadbir server tetapkannya dalam panel konfigurasi bot.",
+			"channelNotFound": "❌ Gagal buat giveaway: channel giveaway sudah tiada. Minta pentadbir server pilih channel baharu dalam panel konfigurasi bot.",
+			"channelError": "❌ Gagal buat giveaway: tetapannya tidak dapat dimuatkan. Cuba lagi sebentar.",
+			"createFailed": "❌ **Gagal buat giveaway**\\n\\n{error}",
+			"invalidMessage": "❌ Hantaran giveaway ini sudah lapuk. Minta hos memulakan giveaway baharu.",
+			"invalidId": "❌ Hantaran giveaway ini sudah lapuk. Minta hos memulakan giveaway baharu.",
 			"notFound": "❌ Giveaway tidak dijumpai atau sudah tamat.",
 			"ended": "❌ Giveaway ini sudah tamat.",
 			"roleRestriction": "❌ **Sekatan Role**\\n\\nGiveaway ini terhad kepada role berikut:\\n{roles}\\n\\nAnda perlukan semua role ini untuk menyertainya.",
-			"memberNotFoundDB": "❌ Ahli tidak dijumpai dalam pangkalan data. Sila cuba lagi nanti.",
+			"memberNotFoundDB": "❌ Profil ahli anda belum disegerakkan. Cuba lagi sebentar nanti.",
 			"cannotEnterOwn": "❌ Anda tidak boleh sertai giveaway anda sendiri!",
 			"alreadyEntered": "❌ Anda sudah menyertai giveaway ini!",
 			"finishOwnOnly": "❌ Anda hanya boleh tamatkan giveaway anda sendiri.",
 			"finishNotActive": "❌ Giveaway ini tidak aktif.",
-			"finishChannelError": "❌ Gagal dapatkan channel giveaway.",
-			"finishChannelNotConfigured": "❌ Channel giveaway belum ditetapkan.",
-			"finishChannelNotFound": "❌ Channel giveaway tidak dijumpai.",
-			"failed": "❌ Gagal buka borang giveaway: {error}",
+			"finishChannelError": "❌ Gagal memuatkan tetapan giveaway. Cuba lagi sebentar.",
+			"finishChannelNotConfigured": "❌ Channel giveaway belum ditetapkan. Minta pentadbir server tetapkannya dalam panel konfigurasi bot.",
+			"finishChannelNotFound": "❌ Channel giveaway sudah tiada. Minta pentadbir server pilih channel baharu dalam panel konfigurasi bot.",
+			"failed": "❌ Gagal membuka borang giveaway. {error}",
 			"notEnoughInvites": "❌ Anda perlukan **{needed}** jemputan untuk menyertai giveaway ini. Anda ada **{have}**.",
-			"roleSelectFailed": "❌ Gagal memproses pilihan role: {error}",
-			"enterFailed": "❌ **Gagal Sertai Giveaway**\\n\\nRalat: {error}",
-			"finishFailed": "❌ Gagal menamatkan giveaway: {error}",
+			"roleSelectFailed": "❌ Gagal menggunakan role tersebut. {error}",
+			"enterFailed": "❌ **Gagal menyertai giveaway**\\n\\n{error}",
+			"finishFailed": "❌ Gagal menamatkan giveaway. {error}",
 			"invalidInvites": "❌ **Giveaway Tidak Sah**\\n\\nJemputan diperlukan mesti 0 atau nombor bulat."
 		},
 		"unknownRole": "Role {roleId}",
@@ -372,11 +382,11 @@
 		},
 		"errors": {
 			"invalid": "❌ **Maklum Balas Tidak Sah**\\n\\nMesej maklum balas tidak boleh kosong.",
-			"channelError": "❌ Gagal hantar maklum balas: Ralat semasa dapatkan tetapan channel maklum balas.",
-			"channelNotConfigured": "❌ Gagal hantar maklum balas: Channel maklum balas belum ditetapkan.",
-			"channelNotFound": "❌ Gagal hantar maklum balas: Channel maklum balas tidak dijumpai.",
-			"failed": "❌ Gagal buka borang maklum balas: {error}",
-			"submitFailed": "❌ **Gagal Hantar Maklum Balas**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti."
+			"channelError": "❌ Gagal menghantar maklum balas anda: tetapannya tidak dapat dimuatkan. Cuba lagi sebentar.",
+			"channelNotConfigured": "❌ Gagal menghantar maklum balas anda: channel maklum balas belum ditetapkan. Minta pentadbir server tetapkannya dalam panel konfigurasi bot.",
+			"channelNotFound": "❌ Gagal menghantar maklum balas anda: channel maklum balas sudah tiada. Minta pentadbir server pilih channel baharu dalam panel konfigurasi bot.",
+			"failed": "❌ Gagal membuka borang maklum balas. {error}",
+			"submitFailed": "❌ **Gagal menghantar maklum balas anda**\\n\\n{error}"
 		},
 		"channelEmbed": {
 			"title": "💬 Maklum Balas Baharu",
@@ -387,22 +397,9 @@
 		}
 	},
 	"staffRating": {
-		"title": "📋 Laporkan Staf",
 		"selectStaff": "Pilih Staf",
 		"selectStaffPlaceholder": "Pilih staf yang mahu dilaporkan...",
 		"button": "🛡️ Penilaian Staf",
-		"selectRatingPrompt": "Pilih penilaian",
-		"selectCategoryPrompt": "Pilih kategori",
-		"status": {
-			"staff": "Staf: {staff}",
-			"ratingPending": "Penilaian: Belum dipilih",
-			"ratingSelected": "Penilaian: {rating}/5",
-			"categoryPending": "Kategori: Belum dipilih",
-			"categorySelected": "Kategori: {category}"
-		},
-		"buttons": {
-			"continue": "Teruskan"
-		},
 		"reviewModal": {
 			"titleApprove": "Luluskan laporan staf",
 			"titleReject": "Tolak laporan staf",
@@ -468,12 +465,11 @@
 			"cannotReportSelf": "❌ Anda tidak boleh laporkan diri sendiri!",
 			"notStaff": "❌ Ahli yang dipilih bukan staf.",
 			"onCooldown": "❌ **Tempoh Menunggu Penilaian**\\n\\nAnda perlu tunggu {time} {unit} sebelum menilai staf ini lagi.\\n\\nKali terakhir dinilai: {lastRated}",
-			"submitFailed": "❌ **Gagal Hantar Laporan**\\n\\nRalat: {error}\\n\\nSila cuba lagi nanti.",
-			"notConfigured": "❌ Sistem penilaian staf belum ditetapkan untuk server ini.",
+			"allOnCooldown": "❌ Anda telah menilai semua staf baru-baru ini. Anda boleh menilai semula selepas tempoh bertenang tamat.",
+			"submitFailed": "❌ **Gagal menghantar penilaian anda**\\n\\n{error}",
+			"notConfigured": "❌ Penilaian staf belum disediakan dalam server ini. Minta pentadbir server sediakannya dalam panel konfigurasi bot.",
 			"noStaffConfigured": "❌ Role staf belum ditetapkan untuk server ini. Sila minta admin tetapkan kebenaran staf dahulu.",
 			"noStaffAvailable": "❌ Tiada staf yang dapat dijumpai sekarang. Sila cuba lagi nanti atau hubungi admin server.",
-			"missingRating": "❌ Sila pilih penilaian sebelum teruskan.",
-			"missingCategory": "❌ Sila pilih kategori sebelum teruskan.",
 			"permissionDenied": "❌ **Kebenaran Ditolak**\\n\\nAnda perlukan kebenaran admin untuk luluskan atau tolak laporan staf.",
 			"reviewReasonRequired": "❌ Sila isi sebab untuk keputusan anda."
 		},
@@ -555,13 +551,13 @@
 		},
 		"autoRejectApplicantReason": "Pendua atau penyamaran: nama pengguna TikTok ini sudah dipautkan ke akaun Discord lain.",
 		"errors": {
-			"notConfigured": "❌ Kemasukan content creator belum ditetapkan untuk server ini.",
+			"notConfigured": "❌ Permohonan content creator belum disediakan dalam server ini. Minta pentadbir server sediakannya dalam panel konfigurasi bot.",
 			"alreadyCreator": "✅ Anda sudah ada role Content Creator di server ini.",
 			"invalidUsername": "❌ Nama pengguna TikTok tidak sah. Guna huruf, nombor, titik dan garis bawah sahaja.",
 			"reasonRequired": "❌ Sila berikan sebab anda mahu jadi content creator.",
 			"pendingExists": "❌ Anda sudah ada permohonan content creator yang belum diproses.",
 			"cooldown": "❌ Anda perlu tunggu **{days} hari** sebelum hantar permohonan content creator lagi.",
-			"submitFailed": "❌ Gagal hantar permohonan content creator: {error}",
+			"submitFailed": "❌ Gagal menghantar permohonan anda. {error}",
 			"permissionDenied": "❌ Anda perlukan kebenaran admin untuk luluskan atau tolak permohonan content creator.",
 			"reviewReasonRequired": "❌ Sila isi sebab untuk keputusan anda."
 		},
@@ -587,9 +583,9 @@
 		"selectPlaceholder": "Pilih channel notifikasi...",
 		"updated": "✅ Pilihan notifikasi anda telah dikemas kini.",
 		"errors": {
-			"notConfigured": "❌ Notifikasi belum ditetapkan untuk server ini.",
+			"notConfigured": "❌ Notifikasi belum disediakan dalam server ini. Minta pentadbir server sediakannya dalam panel konfigurasi bot.",
 			"noRoles": "❌ Belum ada channel notifikasi disediakan. Minta admin tetapkan notifikasi dalam dashboard.",
-			"noneEnabled": "❌ Tiada ciri notifikasi yang dihidupkan di server ini."
+			"noneEnabled": "❌ Tiada ciri notifikasi yang dihidupkan dalam server ini. Minta pentadbir server hidupkan salah satu dalam panel konfigurasi bot."
 		},
 		"hub": {
 			"title": "🔔 Pilihan Notifikasi",
@@ -661,12 +657,12 @@
 			"alreadyHasRole": "❌ **Anda Sudah Ada Role Tersuai**\\n\\nAnda hanya boleh ada satu role penyokong tersuai pada satu masa.\\n\\n💡 Guna **✏️ Edit Role** untuk mengubahnya, atau **🗑️ Padam Role** dahulu jika mahu yang baharu.",
 			"invalidName": "❌ **Nama Role Tidak Sah**\\n\\nNama role mesti antara 1 hingga 100 aksara.",
 			"boostRequired": "❌ **Ikon Tersuai Tiada**\\n\\nServer ini perlukan **Server Boost Tahap 2** untuk guna ikon role tersuai (imej).\\n\\n💡 **Petua:** Anda boleh guna **emoji** sebagai gantinya (seperti 🔥, ⭐, atau mana-mana emoji tersuai) yang tidak perlukan server boost.",
-			"boostRequiredCreate": "❌ **Server Boost Diperlukan**\\n\\nServer ini perlukan **Server Boost Tahap 2** untuk buat role penyokong tersuai dengan ciri tertentu.\\n\\n💡 **Apa yang anda boleh buat:**\\n- Minta pentadbir server boost server ke Tahap 2\\n- Atau hubungi staf server untuk bantuan\\n\\n**Butiran ralat:** {error}",
-			"createFailed": "❌ **Gagal Buat Role**\\n\\nRalat: {error}\\n\\nSila pastikan:\\n- Bot ada kebenaran untuk buat role\\n- Bot ada kebenaran untuk urus role\\n- Had kedudukan role adalah sah",
-			"updateFailed": "❌ **Gagal Kemas Kini Role**\\n\\nRalat: {error}\\n\\nSila pastikan:\\n- Bot ada kebenaran untuk urus role\\n- Had role adalah sah",
-			"deleteFailed": "❌ Gagal padam role: {error}",
-			"failed": "❌ Gagal buka borang pembuatan role: {error}",
-			"editFailed": "❌ Gagal buka borang edit: {error}",
+			"boostRequiredCreate": "❌ **Server Boost Diperlukan**\\n\\nIkon role bergambar memerlukan server ini berada pada **Server Boost Tahap 2**.\\n\\n💡 Gunakan emoji sebagai ikon, atau minta pentadbir server untuk boost server ini.",
+			"createFailed": "❌ **Gagal membuat role anda**\\n\\n{error}",
+			"updateFailed": "❌ **Gagal mengemas kini role anda**\\n\\n{error}",
+			"deleteFailed": "❌ Gagal memadam role anda. {error}",
+			"failed": "❌ Gagal membuka borang role. {error}",
+			"editFailed": "❌ Gagal membuka borang edit. {error}",
 			"createFailedReason": "❌ **Gagal Buat Role**\n\n{reason}"
 		},
 		"colorDefault": "Lalai",
@@ -969,11 +965,11 @@
 		},
 		"modal": {
 			"reason": "Sebab",
-			"duration": "Tempoh (cth. 10 minit, 2 jam, 7 hari)"
+			"duration": "Tempoh"
 		},
 		"done": "✅ {action} dikenakan pada {member}. Kes #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Masukkan tempoh seperti 10 minit, 2 jam atau 7 hari.",
+		"invalidDuration": "❌ Pilih tempoh daripada senarai.",
 		"notAllowed": "❌ Pemilik server dan bot tidak boleh dimoderasi.",
 		"caseLog": {
 			"titles": {
@@ -1040,6 +1036,7 @@
 			"menu": "「💻」menu",
 			"bot_updates": "「⚙️」kemas-kini-bot",
 			"welcomer": "「🚪」selamat-datang",
+			"leaver": "「👋」selamat-tinggal",
 			"booster": "「🚀」booster",
 			"moderation": "「🔨」moderasi",
 			"leveling": "「🆙」tahap",
@@ -1370,6 +1367,30 @@
 			"🎊 Hai {user}! Selamat datang ke {server}! Anda ahli ke-{memberCount} (Umur akaun: {accountAge})."
 		]
 	},
+	"leaver": {
+		"title": "👋 Selamat Tinggal!",
+		"fields": {
+			"joined": "📅 Menyertai",
+			"timeInServer": "⏳ Tempoh di Server",
+			"memberCount": "👥 Bilangan Ahli"
+		},
+		"membersNow": "{count} ahli",
+		"timeInServer": {
+			"lessThanDay": "kurang dari sehari",
+			"oneDay": "1 hari",
+			"days": "{days} hari",
+			"unknown": "seketika"
+		},
+		"unknownServer": "Server Tidak Diketahui",
+		"unknownDate": "Tidak diketahui",
+		"defaultMessages": [
+			"👋 **{username}** telah keluar dari {server} selepas {timeInServer}. Kini kita {memberCount} ahli.",
+			"🚪 **{username}** telah meninggalkan {server}. Terima kasih kerana bersama kami!",
+			"🌙 Selamat tinggal **{username}**! {server} kini mempunyai {memberCount} ahli.",
+			"🍂 **{username}** mengundur diri dari {server} selepas {timeInServer}. Jaga diri!",
+			"✈️ Selamat jalan, **{username}**! Pintu {server} sentiasa terbuka untukmu."
+		]
+	},
 	"booster": {
 		"title": "💎 Terima Kasih Kerana Boost!",
 		"fields": {
@@ -1408,13 +1429,13 @@
 			"noResponse": "Saya tidak dapat menjana jawapan sekarang. Sila cuba lagi.",
 			"keyRejected": "Kunci API AI telah ditolak. Sila semak tetapan panel bot.",
 			"rateLimited": "Perkhidmatan AI sedang mencapai had permintaan sekarang. Sila cuba lagi sebentar lagi.",
-			"failed": "Berlaku ralat semasa menghubungi perkhidmatan AI."
+			"failed": "Berlaku masalah semasa menghubungi perkhidmatan AI. Cuba lagi sebentar."
 		}
 	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Arahan Tidak Dikenali**: `/{command}`\n\nArahan ini tidak wujud. Hanya `/setup` yang tersedia.",
-			"failed": "❌ **Ralat Arahan**: `/{command}`\n\nArahan gagal dilaksanakan dengan betul.\n**Ralat**: {error}\n\nSila cuba lagi atau hubungi pentadbir jika masalah berterusan.",
+			"failed": "❌ **`/{command}` gagal dijalankan**\\n\\n{error}",
 			"unexpected": "❌ **Ralat Tidak Dijangka**: `/{command}`\n\nBerlaku ralat yang tidak dijangka. Sila cuba lagi.",
 			"critical": "❌ **Ralat Kritikal**: Berlaku ralat yang tidak dijangka semasa memproses arahan anda.\n\nSila cuba lagi nanti atau hubungi pentadbir."
 		}

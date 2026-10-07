@@ -34,7 +34,7 @@ export async function handleNotificationsButton(interaction) {
 				new ButtonBuilder()
 					.setCustomId('notifications_channels')
 					.setLabel(await translate('notifications.hub.channels', guildId, userId))
-					.setStyle(ButtonStyle.Success)
+					.setStyle(ButtonStyle.Secondary)
 			);
 		}
 		if (robloxEnabled) {
@@ -42,14 +42,14 @@ export async function handleNotificationsButton(interaction) {
 				new ButtonBuilder()
 					.setCustomId('notifications_roblox')
 					.setLabel(await translate('notifications.hub.roblox', guildId, userId))
-					.setStyle(ButtonStyle.Success)
+					.setStyle(ButtonStyle.Secondary)
 			);
 		}
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('notifications_creators')
 				.setLabel(await translate('notifications.hub.creators', guildId, userId))
-				.setStyle(ButtonStyle.Success)
+				.setStyle(ButtonStyle.Secondary)
 		);
 
 		const rows = [new ActionRowBuilder().addComponents(...buttons), new ActionRowBuilder().addComponents(await menuBackButton(guildId, userId, 'me'))];

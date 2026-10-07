@@ -241,6 +241,12 @@ export const features: Feature[] = [
 		more: 'Placeholders for the member, the server, the member count, account age and who invited them.'
 	},
 	{
+		icon: 'fa-door-open',
+		title: 'Leaver',
+		desc: 'Say goodbye when a member leaves, in a channel you choose.',
+		more: 'Placeholders for the member, the server, the member count and how long they stayed.'
+	},
+	{
 		icon: 'fa-hand-sparkles',
 		title: 'Join greeting',
 		desc: 'The bot introduces itself when it joins, with your docs and support links.',

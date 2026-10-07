@@ -4,6 +4,7 @@ import { applyDiscordPresenceFromDb } from './applyDiscordPresence.js';
 import { logger } from '../../../utils/index.js';
 import forwarder from './components/forwarder.js';
 import welcomer from './components/welcomer.js';
+import leaver from './components/leaver.js';
 import booster from './components/booster.js';
 import moderation, { initModerationSweeper, stopModerationSweeper } from './components/moderation.js';
 import webhook from './components/webhook.js';
@@ -77,6 +78,7 @@ client.on('clientReady', async () => {
 	logger.init(client);
 	forwarder.init();
 	welcomer.init(client);
+	leaver.init(client);
 	booster.init(client);
 	moderation.init(client);
 	commands.init(client);

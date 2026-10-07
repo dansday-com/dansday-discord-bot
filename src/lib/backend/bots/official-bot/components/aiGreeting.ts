@@ -13,12 +13,21 @@ const MAX_LINE_LENGTH = 200;
 const KINDS = {
 	welcome: {
 		placeholders: ['{user}', '{server}', '{memberCount}', '{accountAge}'],
+		required: '{user}',
 		brief:
 			'Write short, warm one-line greetings for a member who just joined a Discord server. Each line should feel genuinely happy they are here and make them want to say hello back.',
 		example: '👋 Welcome {user} to {server}! You are member #{memberCount} — glad you made it.'
 	},
+	leave: {
+		placeholders: ['{username}', '{server}', '{memberCount}', '{timeInServer}'],
+		required: '{username}',
+		brief:
+			'Write short, kind one-line goodbyes for a member who just left a Discord server. Each line should wish them well without guilt-tripping them, and leave the door open to come back.',
+		example: '👋 {username} left {server} after {timeInServer}. Safe travels — {memberCount} of us are still here.'
+	},
 	boost: {
 		placeholders: ['{user}', '{server}', '{boostLevel}', '{totalBoosts}'],
+		required: '{user}',
 		brief:
 			'Write short, grateful one-line messages thanking a member who just boosted a Discord server. Each line should feel like a real thank you, not a receipt.',
 		example: '💎 Thank you {user} for boosting {server}! We are Level {boostLevel} now with {totalBoosts} boosts.'
@@ -49,7 +58,7 @@ function stripReasoning(text) {
 }
 
 function parseLines(raw, kind) {
-	const required = kind === 'welcome' ? ['{user}'] : ['{user}'];
+	const required = KINDS[kind].required;
 
 	return stripReasoning(raw)
 		.split('\n')
@@ -60,8 +69,8 @@ function parseLines(raw, kind) {
 				.trim()
 		)
 		.filter((line) => line.length > 0 && line.length <= MAX_LINE_LENGTH)
-		.filter((line) => required.every((token) => line.includes(token)))
-		.filter((line) => !/\{[a-z]/i.test(line.replace(/\{(?:user|server|memberCount|accountAge|boostLevel|totalBoosts)\}/g, '')))
+		.filter((line) => line.includes(required))
+		.filter((line) => !/\{[a-z]/i.test(line.replace(/\{(?:user|username|server|memberCount|accountAge|timeInServer|boostLevel|totalBoosts)\}/g, '')))
 		.slice(0, WANTED_LINES);
 }
 
@@ -106,7 +115,7 @@ Rules for every line:
 - Keep it to one short sentence that reads well out loud.
 - Start with one fitting emoji, then the text.
 - Use these placeholders exactly as written, they get replaced later: ${spec.placeholders.join(' ')}
-- Every line must contain {user}.
+- Every line must contain ${spec.required}.
 - Never invent any other {placeholder}.
 - Do not mention being an AI, and do not use hashtags.
 

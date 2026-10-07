@@ -1,0 +1,97 @@
+<script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import MessageList from '$lib/frontend/components/MessageList.svelte';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+
+	let saving = $state(false);
+	let featureEnabled = $state(data.settings?.enabled === true);
+	let channels = $state<string[]>(data.settings?.channels ?? []);
+	let messages = $state<string[]>(data.settings?.messages ?? []);
+
+	async function save() {
+		saving = true;
+		try {
+			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ component: SERVER_SETTINGS.component.leaver, channels, messages, enabled: featureEnabled })
+			});
+			const d = await res.json();
+			if (d.success) {
+				showToast('Saved', 'success');
+				invalidateAll();
+			} else showToast(d.error || 'Failed to save', 'error');
+		} finally {
+			saving = false;
+		}
+	}
+</script>
+
+<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
+	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
+		<i class="fas fa-door-open text-orange-400"></i>Leaver
+	</h3>
+	<p class="text-ash-400 text-xs">Sent when a member leaves.</p>
+
+	<ConfigToggleRow
+		label="Leaver module"
+		description="When off, leave messages are not sent."
+		labelIconClass="fas fa-door-open text-orange-400"
+		bind:enabled={featureEnabled}
+		ariaLabel="Toggle leaver module"
+	/>
+	{#if !featureEnabled}
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
+		</p>
+	{/if}
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-hashtag mr-1 text-orange-400"></i>Leave Channels
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">Channels for leave messages. Multiple channels allowed.</p>
+			<ChannelPicker
+				channels={data.channels}
+				categories={data.categories}
+				multi
+				value={channels}
+				placeholder="Select channels..."
+				onchange={(v) => (channels = v as string[])}
+			/>
+		</div>
+
+		<MessageList
+			label="Leave Messages"
+			iconAccent="text-orange-400"
+			iconAccentMuted="text-orange-400/80"
+			values={messages}
+			placeholder="{'{username}'} left {'{server}'}."
+			placeholders={[
+				{ code: 'username', desc: 'Name of the member who left' },
+				{ code: 'user', desc: 'Mentions the member who left' },
+				{ code: 'server', desc: 'Server name' },
+				{ code: 'memberCount', desc: 'Member count after they left' },
+				{ code: 'timeInServer', desc: 'How long they stayed' }
+			]}
+			onchange={(v) => (messages = v)}
+		/>
+	</div>
+
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{saving ? 'Saving...' : 'Save Configuration'}
+	</button>
+</div>

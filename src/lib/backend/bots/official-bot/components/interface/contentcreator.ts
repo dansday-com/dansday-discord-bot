@@ -11,7 +11,7 @@ import {
 import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { CREATOR_CONTENT_HUB_SUFFIX, CREATOR_NOTIFICATIONS_MENU_BUTTON_ID } from '../creatorAlerts.js';
-import { translate, serverTranslator } from '../../i18n.js';
+import { translate, serverTranslator, errorReason } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 import { menuBackButton } from './menuBack.js';
@@ -584,7 +584,7 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 			new ButtonBuilder()
 				.setCustomId('content_creator_apply_open')
 				.setLabel(await translate('contentCreator.list.applyButton', guild.id, localeUserId))
-				.setStyle(ButtonStyle.Success)
+				.setStyle(ButtonStyle.Primary)
 		);
 	}
 
@@ -646,11 +646,11 @@ export async function handleContentCreatorHubButton(interaction: any) {
 				new ButtonBuilder()
 					.setCustomId('content_creator_list')
 					.setLabel(await translate('contentCreator.modal.title', guildId, userId))
-					.setStyle(ButtonStyle.Success),
+					.setStyle(ButtonStyle.Secondary),
 				new ButtonBuilder()
 					.setCustomId(`${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`)
 					.setLabel(await translate('notifications.hub.creators', guildId, userId))
-					.setStyle(ButtonStyle.Success)
+					.setStyle(ButtonStyle.Secondary)
 			),
 			new ActionRowBuilder<ButtonBuilder>().addComponents(await menuBackButton(guildId, userId, 'perks'))
 		];
@@ -955,7 +955,9 @@ export async function handleContentCreatorModal(interaction: any) {
 	} catch (error: any) {
 		await logger.log(`❌ Error processing content creator application: ${error.message}`);
 		await interaction.editReply({
-			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: error.message })
+			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, {
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			})
 		});
 	}
 }
@@ -1117,7 +1119,9 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 	} catch (error: any) {
 		await logger.log(`❌ Error handling content creator decision modal: ${error.message}`);
 		await interaction.editReply({
-			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: error.message })
+			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, {
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			})
 		});
 	}
 }

@@ -475,11 +475,11 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 		new ButtonBuilder()
 			.setCustomId(`${CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID}${origin}`)
 			.setLabel(await translate('creatorAlerts.menu.follow', guildId, userId))
-			.setStyle(ButtonStyle.Success),
+			.setStyle(ButtonStyle.Primary),
 		new ButtonBuilder()
 			.setCustomId(`${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${origin}`)
 			.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
-			.setStyle(ButtonStyle.Primary)
+			.setStyle(ButtonStyle.Secondary)
 	];
 
 	if (subscriptions.length > 0) {
@@ -568,7 +568,7 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 				.setCustomId(`${CREATOR_FOLLOW_PLATFORM_BUTTON_PREFIX}${platform}${origin}`)
 				.setLabel(await translate(`creatorAlerts.platforms.${platform}`, guildId, userId))
 				.setEmoji(PLATFORM_EMOJI[platform])
-				.setStyle(ButtonStyle.Primary)
+				.setStyle(ButtonStyle.Secondary)
 		)
 	);
 

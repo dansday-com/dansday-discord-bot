@@ -4,7 +4,7 @@
 		"description": "Selecciona una función con los botones de abajo:",
 		"website": "🌐 Página del servidor: {url}",
 		"join": "📨 Enlace de invitación: {url}",
-		"noAccess": "❌ No tienes acceso a ninguna función.",
+		"noAccess": "❌ No tienes acceso a ninguna función. Pregunta a un administrador del servidor si crees que es un error.",
 		"button": "📋 Menú",
 		"account": "👤 Cuenta",
 		"stats": {
@@ -68,17 +68,27 @@
 			"setupChannelsAllPresent": "Todos los canales ya existen; no hay nada nuevo que crear.",
 			"setupWarnNoBotConfig": "⚠️ Interfaz enviada, pero la configuración del bot no está disponible.",
 			"setupWarnNoServer": "⚠️ Interfaz enviada, pero no se encontró el registro del servidor para generar la invitación.",
-			"error": "❌ No se pudo enviar la interfaz: {error}"
+			"error": "❌ No se pudo enviar el panel del menú. {error}"
 		}
 	},
 	"common": {
 		"errors": {
 			"featureDisabled": "❌ Esta función está desactivada en este servidor. Un administrador puede activarla en el panel de configuración del bot.",
-			"memberNotFound": "❌ No se pudo obtener la información del miembro.",
-			"unknownButton": "❌ Interacción de botón desconocida.",
+			"memberNotFound": "❌ No pude cargar a ese miembro. Puede que haya salido del servidor. Inténtalo de nuevo en un momento.",
+			"unknownButton": "❌ Este botón ya no está activo. Abre el menú de nuevo.",
 			"buttonError": "❌ **Error de botón**: Se produjo un error al procesar tu clic.\\n\\nInténtalo de nuevo o contacta con un administrador.",
 			"modalError": "❌ **Error de formulario**: Se produjo un error al procesar tu envío.\\n\\nInténtalo de nuevo o contacta con un administrador.",
-			"selectionError": "❌ **Error de selección**: Se produjo un error al procesar tu selección.\\n\\nInténtalo de nuevo o contacta con un administrador."
+			"selectionError": "❌ **Error de selección**: Se produjo un error al procesar tu selección.\\n\\nInténtalo de nuevo o contacta con un administrador.",
+			"reasons": {
+				"missingPermissions": "Me falta un permiso para esto. Pide a un administrador del servidor que revise los permisos de mi rol y lo suba si hace falta.",
+				"missingAccess": "No puedo acceder a ese canal. Pide a un administrador del servidor que me dé acceso.",
+				"unknownChannel": "Ese canal ya no existe. Pide a un administrador del servidor que elija uno nuevo en el panel de configuración del bot.",
+				"unknownMember": "Ese miembro ya no está en el servidor.",
+				"unknownRole": "Ese rol ya no existe.",
+				"maxRoles": "Este servidor alcanzó el límite de roles de Discord. Pide a un administrador del servidor que elimine un rol que no se use.",
+				"invalidInput": "Discord no aceptó lo que se escribió. Revísalo e inténtalo de nuevo.",
+				"unexpected": "Algo salió mal por nuestra parte. Inténtalo de nuevo en un momento y avisa a un administrador del servidor si sigue pasando."
+			}
 		},
 		"timeUnits": {
 			"hour": "hora",
@@ -118,7 +128,7 @@
 			"current": "Idioma actual",
 			"select": "Seleccionar idioma",
 			"updated": "✅ ¡Idioma actualizado correctamente!",
-			"failed": "❌ No se pudo actualizar el idioma: {error}",
+			"failed": "❌ No se pudo cambiar tu idioma. {error}",
 			"serverDefault": "Predeterminado del servidor: {language}",
 			"serverDefaultDescription": "Seguir el idioma del servidor",
 			"currentOption": "Idioma actual"
@@ -128,10 +138,10 @@
 		"account": {
 			"link": "👤 Tu página de cuenta: {url}",
 			"noMember": "⚠️ Todavía no se te registra en este servidor. Envía un mensaje o entra en un canal de voz primero.",
-			"unavailable": "⚠️ Las páginas públicas no están disponibles para este servidor."
+			"unavailable": "⚠️ Las páginas públicas están desactivadas en este servidor. Pide a un administrador del servidor que las active en el panel de configuración del bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Este servidor no está registrado en el bot. Realiza primero una sincronización.",
+			"notRegistered": "⚠️ Este servidor aún no está conectado del todo con el bot. Inténtalo de nuevo en unos minutos y pide a un administrador del servidor que revise el panel de configuración del bot si sigue pasando.",
 			"createRecordFailed": "❌ No se pudo crear el registro del miembro. Inténtalo de nuevo."
 		},
 		"fields": {
@@ -243,9 +253,9 @@
 		"errors": {
 			"disabledOnServer": "❌ El AFK está desactivado en este servidor. Un administrador puede activarlo en el panel de configuración del bot.",
 			"notAFK": "❌ Actualmente no estás AFK.",
-			"failed": "❌ No se pudo abrir el formulario de AFK: {error}",
-			"setFailed": "❌ **No se pudo establecer el AFK**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde.",
-			"removeFailed": "❌ **No se pudo quitar el AFK**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde."
+			"failed": "❌ No se pudo abrir el formulario AFK. {error}",
+			"setFailed": "❌ **No se pudo establecer tu estado AFK**\\n\\n{error}",
+			"removeFailed": "❌ **No se pudo quitar tu estado AFK**\\n\\n{error}"
 		},
 		"messages": {
 			"welcomeBack": "✅ ¡Bienvenido de nuevo, {member}! Se ha quitado tu estado AFK.",
@@ -263,7 +273,8 @@
 			"step1Description": "Selecciona en el menú de abajo los roles que pueden participar en este sorteo. Déjalo vacío o haz clic en \"Continuar al formulario\" para permitir todos los roles.",
 			"roleSelectPlaceholder": "Selecciona los roles que pueden participar (opcional)...",
 			"continueButton": "Continuar al formulario",
-			"multipleEntries": "¿Permitir varias participaciones?"
+			"allowMultiple": "Permitir varias participaciones",
+			"limitSingle": "Limitar a una participación"
 		},
 		"active": {
 			"title": "🎉 Sorteo activo encontrado",
@@ -275,8 +286,7 @@
 			"titlePlaceholder": "Introduce el título del sorteo...",
 			"prizeLabel": "Premio",
 			"prizePlaceholder": "¿Cuál es el premio?",
-			"durationLabel": "Duración (minutos)",
-			"durationPlaceholder": "p. ej., 60 para 1 hora, 1440 para 1 día",
+			"durationLabel": "Duración",
 			"winnerCountLabel": "Número de ganadores",
 			"winnerCountPlaceholder": "¿Cuántos ganadores? (predeterminado: 1)",
 			"invitesLabel": "Invitaciones necesarias",
@@ -294,34 +304,34 @@
 			"finish": "🏁 Finalizar sorteo"
 		},
 		"errors": {
-			"memberNotFound": "❌ No se pudo obtener la información del miembro.",
+			"memberNotFound": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento.",
 			"activeExists": "❌ Ya tienes un sorteo activo. Finalízalo primero.",
 			"invalidTitle": "❌ **Sorteo no válido**\\n\\nEl título no puede estar vacío.",
 			"invalidPrize": "❌ **Sorteo no válido**\\n\\nEl premio no puede estar vacío.",
-			"invalidDuration": "❌ **Sorteo no válido**\\n\\nLa duración debe ser un número positivo (en minutos).",
+			"invalidDuration": "❌ **Sorteo no válido**\\n\\nElige una duración de la lista.",
 			"invalidWinnerCount": "❌ **Sorteo no válido**\\n\\nEl número de ganadores debe ser un número positivo.",
-			"channelNotConfigured": "❌ No se pudo crear el sorteo: el canal de sorteos no está configurado. Configúralo en el panel.",
-			"channelNotFound": "❌ No se pudo crear el sorteo: no se encontró el canal de sorteos.",
-			"channelError": "❌ No se pudo crear el sorteo: error al obtener la configuración del canal de sorteos.",
-			"createFailed": "❌ **No se pudo crear el sorteo**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde.",
-			"invalidMessage": "❌ Mensaje de sorteo no válido.",
-			"invalidId": "❌ ID de sorteo no válido.",
+			"channelNotConfigured": "❌ No se pudo crear el sorteo: no hay un canal de sorteos configurado. Pide a un administrador del servidor que lo configure en el panel de configuración del bot.",
+			"channelNotFound": "❌ No se pudo crear el sorteo: el canal de sorteos ya no existe. Pide a un administrador del servidor que elija uno nuevo en el panel de configuración del bot.",
+			"channelError": "❌ No se pudo crear el sorteo: no se pudo cargar su configuración. Inténtalo de nuevo en un momento.",
+			"createFailed": "❌ **No se pudo crear el sorteo**\\n\\n{error}",
+			"invalidMessage": "❌ Esta publicación del sorteo está desactualizada. Pide al anfitrión que cree un sorteo nuevo.",
+			"invalidId": "❌ Esta publicación del sorteo está desactualizada. Pide al anfitrión que cree un sorteo nuevo.",
 			"notFound": "❌ Sorteo no encontrado o ya finalizado.",
 			"ended": "❌ Este sorteo ya ha finalizado.",
 			"roleRestriction": "❌ **Restricción de roles**\\n\\nEste sorteo está restringido a los siguientes roles:\\n{roles}\\n\\nNecesitas todos estos roles para participar.",
-			"memberNotFoundDB": "❌ Miembro no encontrado en la base de datos. Inténtalo de nuevo más tarde.",
+			"memberNotFoundDB": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento.",
 			"cannotEnterOwn": "❌ ¡No puedes participar en tu propio sorteo!",
 			"alreadyEntered": "❌ ¡Ya has participado en este sorteo!",
 			"finishOwnOnly": "❌ Solo puedes finalizar tus propios sorteos.",
 			"finishNotActive": "❌ Este sorteo no está activo.",
-			"finishChannelError": "❌ No se pudo obtener el canal de sorteos.",
-			"finishChannelNotConfigured": "❌ El canal de sorteos no está configurado.",
-			"finishChannelNotFound": "❌ No se encontró el canal de sorteos.",
-			"failed": "❌ No se pudo abrir el formulario de sorteo: {error}",
+			"finishChannelError": "❌ No se pudo cargar la configuración del sorteo. Inténtalo de nuevo en un momento.",
+			"finishChannelNotConfigured": "❌ No hay un canal de sorteos configurado. Pide a un administrador del servidor que lo configure en el panel de configuración del bot.",
+			"finishChannelNotFound": "❌ El canal de sorteos ya no existe. Pide a un administrador del servidor que elija uno nuevo en el panel de configuración del bot.",
+			"failed": "❌ No se pudo abrir el formulario del sorteo. {error}",
 			"notEnoughInvites": "❌ Necesitas **{needed}** invitaciones para entrar en este sorteo. Tienes **{have}**.",
-			"roleSelectFailed": "❌ No se pudo procesar la selección de roles: {error}",
-			"enterFailed": "❌ **No se pudo participar en el sorteo**\\n\\nError: {error}",
-			"finishFailed": "❌ No se pudo finalizar el sorteo: {error}",
+			"roleSelectFailed": "❌ No se pudieron usar esos roles. {error}",
+			"enterFailed": "❌ **No se pudo participar en el sorteo**\\n\\n{error}",
+			"finishFailed": "❌ No se pudo finalizar el sorteo. {error}",
 			"invalidInvites": "❌ **Sorteo no válido**\\n\\nLas invitaciones necesarias deben ser 0 o un número entero."
 		},
 		"unknownRole": "Rol {roleId}",
@@ -372,11 +382,11 @@
 		},
 		"errors": {
 			"invalid": "❌ **Comentarios no válidos**\\n\\nEl mensaje no puede estar vacío.",
-			"channelError": "❌ No se pudieron enviar los comentarios: error al obtener la configuración del canal de comentarios.",
-			"channelNotConfigured": "❌ No se pudieron enviar los comentarios: el canal de comentarios no está configurado.",
-			"channelNotFound": "❌ No se pudieron enviar los comentarios: no se encontró el canal de comentarios.",
-			"failed": "❌ No se pudo abrir el formulario de comentarios: {error}",
-			"submitFailed": "❌ **No se pudieron enviar los comentarios**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde."
+			"channelError": "❌ No se pudieron enviar tus comentarios: no se pudo cargar su configuración. Inténtalo de nuevo en un momento.",
+			"channelNotConfigured": "❌ No se pudieron enviar tus comentarios: no hay un canal de comentarios configurado. Pide a un administrador del servidor que lo configure en el panel de configuración del bot.",
+			"channelNotFound": "❌ No se pudieron enviar tus comentarios: el canal de comentarios ya no existe. Pide a un administrador del servidor que elija uno nuevo en el panel de configuración del bot.",
+			"failed": "❌ No se pudo abrir el formulario de comentarios. {error}",
+			"submitFailed": "❌ **No se pudieron enviar tus comentarios**\\n\\n{error}"
 		},
 		"channelEmbed": {
 			"title": "💬 Nuevos comentarios",
@@ -387,22 +397,9 @@
 		}
 	},
 	"staffRating": {
-		"title": "📋 Reportar a un miembro del staff",
 		"selectStaff": "Seleccionar miembro del staff",
 		"selectStaffPlaceholder": "Elige a un miembro del staff para reportar...",
 		"button": "🛡️ Valoración del staff",
-		"selectRatingPrompt": "Selecciona una valoración",
-		"selectCategoryPrompt": "Selecciona una categoría",
-		"status": {
-			"staff": "Staff: {staff}",
-			"ratingPending": "Valoración: sin seleccionar",
-			"ratingSelected": "Valoración: {rating}/5",
-			"categoryPending": "Categoría: sin seleccionar",
-			"categorySelected": "Categoría: {category}"
-		},
-		"buttons": {
-			"continue": "Continuar"
-		},
 		"reviewModal": {
 			"titleApprove": "Aprobar reporte de staff",
 			"titleReject": "Rechazar reporte de staff",
@@ -468,12 +465,11 @@
 			"cannotReportSelf": "❌ ¡No puedes reportarte a ti mismo!",
 			"notStaff": "❌ El miembro seleccionado no forma parte del staff.",
 			"onCooldown": "❌ **Tiempo de espera de valoración**\\n\\nDebes esperar {time} {unit} antes de volver a valorar a este miembro del staff.\\n\\nÚltima valoración: {lastRated}",
-			"submitFailed": "❌ **No se pudo enviar el reporte**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde.",
-			"notConfigured": "❌ El sistema de valoración del staff no está configurado en este servidor.",
+			"allOnCooldown": "❌ Ya calificaste a todo el staff recientemente. Podrás calificarlos de nuevo cuando termine el tiempo de espera.",
+			"submitFailed": "❌ **No se pudo enviar tu valoración**\\n\\n{error}",
+			"notConfigured": "❌ La valoración del staff aún no está configurada en este servidor. Pide a un administrador del servidor que la configure en el panel de configuración del bot.",
 			"noStaffConfigured": "❌ Los roles del staff no están configurados en este servidor. Pide a un administrador que configure primero los permisos del staff.",
 			"noStaffAvailable": "❌ Ahora mismo no se pudo encontrar ningún miembro del staff. Inténtalo de nuevo más tarde o contacta con un administrador del servidor.",
-			"missingRating": "❌ Selecciona una valoración antes de continuar.",
-			"missingCategory": "❌ Selecciona una categoría antes de continuar.",
 			"permissionDenied": "❌ **Permiso denegado**\\n\\nNecesitas permisos de administrador para aprobar o rechazar reportes de staff.",
 			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
 		},
@@ -555,13 +551,13 @@
 		},
 		"autoRejectApplicantReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
 		"errors": {
-			"notConfigured": "❌ La admisión de creadores de contenido no está configurada en este servidor.",
+			"notConfigured": "❌ Las solicitudes de creador de contenido aún no están configuradas en este servidor. Pide a un administrador del servidor que las configure en el panel de configuración del bot.",
 			"alreadyCreator": "✅ Ya tienes el rol de creador de contenido en este servidor.",
 			"invalidUsername": "❌ El usuario de TikTok no es válido. Usa solo letras, números, puntos y guiones bajos.",
 			"reasonRequired": "❌ Indica tu motivo para convertirte en creador de contenido.",
 			"pendingExists": "❌ Ya tienes una solicitud de creador de contenido pendiente.",
 			"cooldown": "❌ Debes esperar **{days} día(s)** antes de enviar otra solicitud de creador de contenido.",
-			"submitFailed": "❌ No se pudo enviar la solicitud de creador de contenido: {error}",
+			"submitFailed": "❌ No se pudo enviar tu solicitud. {error}",
 			"permissionDenied": "❌ Necesitas permisos de administrador para aprobar o rechazar solicitudes de creador de contenido.",
 			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
 		},
@@ -587,9 +583,9 @@
 		"selectPlaceholder": "Selecciona canales de notificación...",
 		"updated": "✅ Se han actualizado tus preferencias de notificación.",
 		"errors": {
-			"notConfigured": "❌ Las notificaciones no están configuradas en este servidor.",
+			"notConfigured": "❌ Las notificaciones aún no están configuradas en este servidor. Pide a un administrador del servidor que las configure en el panel de configuración del bot.",
 			"noRoles": "❌ Todavía no hay canales de notificación configurados. Pide a un administrador que configure las notificaciones en el panel.",
-			"noneEnabled": "❌ No hay ninguna función de notificación activada en este servidor."
+			"noneEnabled": "❌ No hay funciones de notificación activadas en este servidor. Pide a un administrador del servidor que active una en el panel de configuración del bot."
 		},
 		"hub": {
 			"title": "🔔 Preferencias de notificación",
@@ -661,12 +657,12 @@
 			"alreadyHasRole": "❌ **Ya tienes un rol personalizado**\\n\\nSolo puedes tener un rol de colaborador personalizado a la vez.\\n\\n💡 Usa **✏️ Editar rol** para cambiarlo, o **🗑️ Eliminar rol** primero si quieres uno nuevo.",
 			"invalidName": "❌ **Nombre de rol no válido**\\n\\nEl nombre del rol debe tener entre 1 y 100 caracteres.",
 			"boostRequired": "❌ **Icono personalizado no disponible**\\n\\nEste servidor necesita el **nivel 2 de mejora de servidor** para usar iconos de rol personalizados (imágenes).\\n\\n💡 **Consejo:** Puedes usar un **emoji** en su lugar (como 🔥, ⭐ o cualquier emoji personalizado), que no requiere mejoras del servidor.",
-			"boostRequiredCreate": "❌ **Se requiere mejora de servidor**\\n\\nEste servidor necesita el **nivel 2 de mejora de servidor** para crear roles de colaborador personalizados con ciertas funciones.\\n\\n💡 **Qué puedes hacer:**\\n- Pedir a los administradores del servidor que lo mejoren al nivel 2\\n- O contactar con el staff del servidor para pedir ayuda\\n\\n**Detalles del error:** {error}",
-			"createFailed": "❌ **No se pudo crear el rol**\\n\\nError: {error}\\n\\nAsegúrate de que:\\n- el bot tiene permiso para crear roles\\n- el bot tiene permiso para gestionar roles\\n- las restricciones de posición del rol son válidas",
-			"updateFailed": "❌ **No se pudo actualizar el rol**\\n\\nError: {error}\\n\\nAsegúrate de que:\\n- el bot tiene permiso para gestionar roles\\n- las restricciones del rol son válidas",
-			"deleteFailed": "❌ No se pudo eliminar el rol: {error}",
-			"failed": "❌ No se pudo abrir el formulario de creación de rol: {error}",
-			"editFailed": "❌ No se pudo abrir el formulario de edición: {error}",
+			"boostRequiredCreate": "❌ **Se requiere Server Boost**\\n\\nLos iconos de rol con imagen requieren que el servidor tenga **Server Boost nivel 2**.\\n\\n💡 Usa un emoji como icono o pide a un administrador del servidor que mejore el servidor.",
+			"createFailed": "❌ **No se pudo crear tu rol**\\n\\n{error}",
+			"updateFailed": "❌ **No se pudo actualizar tu rol**\\n\\n{error}",
+			"deleteFailed": "❌ No se pudo eliminar tu rol. {error}",
+			"failed": "❌ No se pudo abrir el formulario del rol. {error}",
+			"editFailed": "❌ No se pudo abrir el formulario de edición. {error}",
 			"createFailedReason": "❌ **No se pudo crear el rol**\n\n{reason}"
 		},
 		"colorDefault": "Predeterminado",
@@ -969,11 +965,11 @@
 		},
 		"modal": {
 			"reason": "Motivo",
-			"duration": "Duración (p. ej. 10 min, 2 h, 7 días)"
+			"duration": "Duración"
 		},
 		"done": "✅ {action} aplicado a {member}. Caso #{case}.",
 		"failed": "❌ {error}",
-		"invalidDuration": "❌ Introduce una duración como 10 min, 2 h o 7 días.",
+		"invalidDuration": "❌ Elige una duración de la lista.",
 		"notAllowed": "❌ El dueño del servidor y los bots no se pueden moderar.",
 		"caseLog": {
 			"titles": {
@@ -1040,6 +1036,7 @@
 			"menu": "「💻」menú",
 			"bot_updates": "「⚙️」novedades-del-bot",
 			"welcomer": "「🚪」bienvenida",
+			"leaver": "「👋」despedida",
 			"booster": "「🚀」mejoras",
 			"moderation": "「🔨」moderación",
 			"leveling": "「🆙」nivel",
@@ -1370,6 +1367,30 @@
 			"🎊 ¡Hola {user}! ¡Bienvenido a {server}! Eres el miembro #{memberCount} (Antigüedad de la cuenta: {accountAge})."
 		]
 	},
+	"leaver": {
+		"title": "👋 ¡Hasta pronto!",
+		"fields": {
+			"joined": "📅 Se unió",
+			"timeInServer": "⏳ Tiempo en el servidor",
+			"memberCount": "👥 Número de miembros"
+		},
+		"membersNow": "{count} miembros",
+		"timeInServer": {
+			"lessThanDay": "menos de un día",
+			"oneDay": "1 día",
+			"days": "{days} días",
+			"unknown": "un tiempo"
+		},
+		"unknownServer": "Servidor desconocido",
+		"unknownDate": "Desconocido",
+		"defaultMessages": [
+			"👋 **{username}** dejó {server} después de {timeInServer}. Ahora somos {memberCount} miembros.",
+			"🚪 **{username}** ha salido de {server}. ¡Gracias por haber estado con nosotros!",
+			"🌙 ¡Adiós, **{username}**! {server} ahora tiene {memberCount} miembros.",
+			"🍂 **{username}** se despidió de {server} tras {timeInServer}. ¡Cuídate!",
+			"✈️ ¡Buen viaje, **{username}**! Las puertas de {server} siempre estarán abiertas."
+		]
+	},
 	"booster": {
 		"title": "💎 ¡Gracias por mejorar el servidor!",
 		"fields": {
@@ -1408,13 +1429,13 @@
 			"noResponse": "No he podido generar una respuesta ahora mismo. Inténtalo de nuevo.",
 			"keyRejected": "Se rechazó la clave de API de la IA. Revisa la configuración en el panel del bot.",
 			"rateLimited": "El servicio de IA ha alcanzado su límite de solicitudes. Inténtalo de nuevo en un momento.",
-			"failed": "Algo salió mal al contactar con el servicio de IA."
+			"failed": "Algo salió mal al contactar con el servicio de IA. Inténtalo de nuevo en un momento."
 		}
 	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Comando desconocido**: `/{command}`\n\nEste comando no existe. Solo está disponible `/setup`.",
-			"failed": "❌ **Error de comando**: `/{command}`\n\nEl comando no se ejecutó correctamente.\n**Error**: {error}\n\nInténtalo de nuevo o contacta con un administrador si el problema persiste.",
+			"failed": "❌ **`/{command}` no funcionó**\\n\\n{error}",
 			"unexpected": "❌ **Error inesperado**: `/{command}`\n\nSe produjo un error inesperado. Inténtalo de nuevo.",
 			"critical": "❌ **Error crítico**: Se produjo un error inesperado al procesar tu comando.\n\nInténtalo más tarde o contacta con un administrador."
 		}

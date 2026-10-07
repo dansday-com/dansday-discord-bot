@@ -245,13 +245,15 @@ export async function performModerationAction(
 		if (staffId) {
 			const staff = await guild.members.fetch(staffId).catch(() => null);
 			if (staff && staff.id !== guild.ownerId && staff.roles.highest.position <= member.roles.highest.position) {
-				return { ok: false, error: 'That member has an equal or higher role than you' };
+				return { ok: false, error: 'That member has an equal or higher role than you, so only someone above them can do this' };
 			}
 		}
 		if ((action === 'timeout' || action === 'untimeout') && !member.moderatable)
-			return { ok: false, error: "The bot's role is too low to time out this member" };
-		if (action === 'kick' && !member.kickable) return { ok: false, error: "The bot's role is too low to kick this member" };
-		if ((action === 'ban' || action === 'tempban') && !member.bannable) return { ok: false, error: "The bot's role is too low to ban this member" };
+			return { ok: false, error: "The bot's role is too low to time out this member. Move the bot's role above theirs in Server Settings → Roles" };
+		if (action === 'kick' && !member.kickable)
+			return { ok: false, error: "The bot's role is too low to kick this member. Move the bot's role above theirs in Server Settings → Roles" };
+		if ((action === 'ban' || action === 'tempban') && !member.bannable)
+			return { ok: false, error: "The bot's role is too low to ban this member. Move the bot's role above theirs in Server Settings → Roles" };
 	}
 
 	let durationSeconds = payload.duration_seconds ? Math.floor(Number(payload.duration_seconds)) : null;

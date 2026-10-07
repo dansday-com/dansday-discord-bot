@@ -424,6 +424,7 @@ export const setupChannels = [
 	{ name: '「💻」menu', desc: 'Holds the main interface button members click to open the bot menu.' },
 	{ name: '「⚙️」bot-updates', desc: 'Bot update notifications.' },
 	{ name: '「🚪」welcome', desc: 'Where welcome messages post.' },
+	{ name: '「👋」goodbye', desc: 'Where leave messages post.' },
 	{ name: '「🚀」booster', desc: 'Where server boost messages post.' },
 	{ name: '「🔨」moderation', desc: 'Numbered moderation case embeds.' },
 	{ name: '「🆙」level', desc: 'Level and rank progress notifications.' },
@@ -602,6 +603,18 @@ export const modules = [
 			{ label: 'Welcomer module', desc: 'When off, welcome messages are not sent.' },
 			{ label: 'Welcome Channels', desc: 'One or more channels welcome messages post to.' },
 			{ label: 'Welcome Messages', desc: 'Your message templates. Placeholders: {user}, {server}, {memberCount}, {accountAge}, {inviter}, {inviteCount}.' }
+		]
+	},
+	{
+		id: 'leaver',
+		icon: 'fa-door-open',
+		accent: '#e8833a',
+		title: 'Leaver',
+		what: 'Says goodbye when a member leaves, in one or more channels.',
+		fields: [
+			{ label: 'Leaver module', desc: 'When off, leave messages are not sent.' },
+			{ label: 'Leave Channels', desc: 'One or more channels leave messages post to.' },
+			{ label: 'Leave Messages', desc: 'Your message templates. Placeholders: {username}, {user}, {server}, {memberCount}, {timeInServer}.' }
 		]
 	},
 	{

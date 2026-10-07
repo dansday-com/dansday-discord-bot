@@ -13,6 +13,8 @@ import {
 	aiVoiceRules,
 	aiServerRules,
 	aiServerTopics,
+	aiAssistantRules,
+	aiAssistantTopics,
 	aiWikiFields,
 	aiWikiRules,
 	aiWikiRelaySteps,
@@ -56,6 +58,7 @@ const SECTION_BODY: Record<string, () => string> = {
 	'ai-tools': () => blocks(fieldList(aiToolFields), subHead('ai-tools-how'), bulletList(aiToolRules)),
 	'ai-wikis': () => blocks(fieldList(aiWikiFields), subHead('ai-wiki-how'), bulletList(aiWikiRules), subHead('ai-wiki-relay'), stepList(aiWikiRelaySteps)),
 	'ai-server': () => blocks(bulletList(aiServerTopics), subHead('ai-server-how'), bulletList(aiServerRules)),
+	'ai-assistant': () => blocks(bulletList(aiAssistantTopics), subHead('ai-assistant-how'), bulletList(aiAssistantRules)),
 	shop: () => stepList(shopSteps),
 	discord: () => fieldList(discordMenu),
 	selfhost: () => blocks(stepList(selfhostSteps), subHead('selfhost-env'), fieldList(envVars))

@@ -18,6 +18,8 @@
 		aiVoiceRules,
 		aiServerRules,
 		aiServerTopics,
+		aiAssistantRules,
+		aiAssistantTopics,
 		aiWikiFields,
 		aiWikiRules,
 		aiWikiRelaySteps,
@@ -148,6 +150,16 @@
 			<StepGrid steps={aiWikiRules} />
 			{@render subHead(subHeading('ai-wiki-relay'), subLead('ai-wiki-relay'))}
 			<StepGrid steps={aiWikiRelaySteps} />
+		</DocSection>
+
+		<DocSection id="ai-assistant" icon={sectionIcon('ai-assistant')} heading={sectionHeading('ai-assistant')} lead={sectionLead('ai-assistant')}>
+			<div class="flex flex-wrap gap-3">
+				{#each aiAssistantTopics as c}
+					<AccentCard icon={c.icon} accent="#e43d12" title={c.title} text={c.desc} />
+				{/each}
+			</div>
+			{@render subHead(subHeading('ai-assistant-how'))}
+			<StepGrid steps={aiAssistantRules} />
 		</DocSection>
 
 		<DocSection id="shop" icon={sectionIcon('shop')} heading={sectionHeading('shop')} lead={sectionLead('shop')}>

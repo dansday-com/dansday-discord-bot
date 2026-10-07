@@ -243,6 +243,11 @@ Each member signs in to their own account on those same pages.
   - 📊 **Server knowledge** - Reads this server's own live data with no extra key: statistics, leaderboards on any metric, a member's public profile, staff ratings, running giveaways, active quests, the shop with prices and timings, and the XP guide. Follows your module toggles, so anything you switch off disappears from the AI too.
   - ⭐ **XP rates** - Reads your server's own leveling configuration, so "how much XP for an hour in voice", "how much per message" and "how much XP to reach level 10" get exact answers off your settings, not guesses. Covers voice, AFK voice, video, streaming and chat rates, the message cooldown, the friend and luck bonuses, and the level-up formula.
   - 🎒 **Their own account** - Level, bag, assets, minigames, history, tasks and streak — always the asker's own and never anyone else's, so "what is in my bag" works and "what is in theirs" does not.
+- **Panel assistant** - A chat in the bottom right corner of the panel that sets things up from a description, on the same AI configuration as chat.
+  - 🎨 **Messages** - Describe a message with the builder open and it fills the editor: text, embeds, buttons, dropdowns, role actions and translations. Nothing is saved or posted until you press Save or Send, and one click undoes the change.
+  - 📊 **Live server data** - Reads leaderboards, statistics, leveling rules, giveaways and the shop through the same tools as chat, so an announcement can carry real numbers.
+  - 📚 **Wikis, items and settings** - The panel admin can add, edit and delete wikis and shop items, and flip the panel settings, by asking. A delete waits for a Confirm click.
+  - 🔒 **Scoped to the account** - The panel admin reaches every server on the panel. Owner and staff accounts reach only their own server and get no wiki, item or settings tools.
 
 ### Panel
 

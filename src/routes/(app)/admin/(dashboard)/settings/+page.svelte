@@ -8,6 +8,10 @@
 	let autoQuest = $state(data.autoQuestEnrollment === true);
 	let savingAutoQuest = $state(false);
 
+	$effect(() => {
+		autoQuest = data.autoQuestEnrollment === true;
+	});
+
 	async function saveAutoQuest(next: boolean) {
 		if (savingAutoQuest) return;
 		savingAutoQuest = true;

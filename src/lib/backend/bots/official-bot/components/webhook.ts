@@ -110,6 +110,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: `${payload.type} failed`, details: messageErr.message }));
 					}
+				} else if (payload.type === 'agent_tools' || payload.type === 'agent_tool') {
+					try {
+						const agentTools = await import('./agentTools.js');
+						const result = payload.type === 'agent_tools' ? await agentTools.listAgentTools(payload) : await agentTools.runAgentTool(payload);
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (agentErr: any) {
+						await logger.log(`❌ ${payload.type} failed: ${agentErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, reason: 'tool_failed' }));
+					}
 				} else if (payload.type === 'send_quest_notification') {
 					try {
 						const guildId = payload.guild_id;

@@ -1,10 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { type WikiInput } from '$lib/database.js';
-
-const MAX_NAME_LENGTH = 64;
-const MAX_URL_LENGTH = 512;
-const MAX_DESCRIPTION_LENGTH = 255;
+import db from '$lib/database.js';
+import { parseWikiInput } from '$lib/frontend/wikis.server.js';
 
 function authorize(locals: App.Locals) {
 	if (!locals.user.authenticated) {
@@ -21,41 +18,6 @@ function authorize(locals: App.Locals) {
 	}
 
 	return { panelId };
-}
-
-function parseBody(body: Record<string, unknown>): { error: string } | { value: WikiInput } {
-	const name = String(body.name ?? '').trim();
-	const api_url = String(body.api_url ?? '').trim();
-	const site_url = String(body.site_url ?? '').trim();
-	const relay_url = String(body.relay_url ?? '').trim();
-	const relay_key = String(body.relay_key ?? '').trim();
-	const description = String(body.description ?? '').trim();
-
-	if (!name) return { error: 'Wiki name is required' };
-	if (name.length > MAX_NAME_LENGTH) return { error: `Wiki name must be at most ${MAX_NAME_LENGTH} characters` };
-	if (!api_url) return { error: 'API URL is required' };
-	if (api_url.length > MAX_URL_LENGTH) return { error: `API URL must be at most ${MAX_URL_LENGTH} characters` };
-	if (!/^https?:\/\//i.test(api_url)) return { error: 'API URL must start with http:// or https://' };
-	if (!/api\.php/i.test(api_url)) return { error: 'API URL must point at the MediaWiki api.php endpoint, e.g. https://fischipedia.org/w/api.php' };
-	if (site_url && !/^https?:\/\//i.test(site_url)) return { error: 'Site URL must start with http:// or https://' };
-	if (site_url.length > MAX_URL_LENGTH) return { error: `Site URL must be at most ${MAX_URL_LENGTH} characters` };
-	if (relay_url && !/^https?:\/\//i.test(relay_url)) return { error: 'Relay URL must start with http:// or https://' };
-	if (relay_url.length > MAX_URL_LENGTH) return { error: `Relay URL must be at most ${MAX_URL_LENGTH} characters` };
-	if (relay_url && !relay_key) return { error: 'A relay key is required when using a relay URL' };
-	if (relay_key.length > 191) return { error: 'Relay key must be at most 191 characters' };
-	if (description.length > MAX_DESCRIPTION_LENGTH) return { error: `Description must be at most ${MAX_DESCRIPTION_LENGTH} characters` };
-
-	return {
-		value: {
-			enabled: body.enabled !== false,
-			name,
-			api_url,
-			site_url: site_url || null,
-			relay_url: relay_url || null,
-			relay_key: relay_key || null,
-			description: description || null
-		}
-	};
 }
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -77,7 +39,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return json({ success: false, error: 'Invalid JSON' }, { status: 400 });
 	}
 
-	const parsed = parseBody(body);
+	const parsed = parseWikiInput(body);
 	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
 
 	const existing = await db.getWikis(panelId);
@@ -106,7 +68,7 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 	const current = await db.getWiki(panelId, wikiId);
 	if (!current) return json({ success: false, error: 'Wiki not found' }, { status: 404 });
 
-	const parsed = parseBody(body);
+	const parsed = parseWikiInput(body);
 	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
 
 	const existing = await db.getWikis(panelId);

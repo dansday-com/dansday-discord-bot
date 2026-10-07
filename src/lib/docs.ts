@@ -99,6 +99,14 @@ export const sections = [
 		lead: 'The AI can read this server\'s own live data, so "what is in the shop", "who is number one" and "what are my tasks" get real answers instead of guesses. It works as soon as AI chat is on — there is nothing extra to configure.'
 	},
 	{
+		id: 'ai-assistant',
+		icon: 'fa-wand-magic-sparkles',
+		label: 'Panel assistant',
+		heading: 'Panel assistant',
+		iconClass: 'fas fa-wand-magic-sparkles',
+		lead: 'A chat in the bottom right corner of every panel page. Say what you want and it sets it up for you instead of you clicking through the forms. It runs on the AI you set up on the admin panel under the AI tab, with no extra key.'
+	},
+	{
 		id: 'shop',
 		icon: 'fa-store',
 		label: 'Items shop',
@@ -134,6 +142,7 @@ export const subSections: Record<string, { heading: string; lead?: string }> = {
 	'ai-voice': { heading: 'Voice: how it behaves', lead: 'Everyone in the channel is heard by one shared session.' },
 	'ai-tools-how': { heading: 'How it works' },
 	'ai-server-how': { heading: 'How it works' },
+	'ai-assistant-how': { heading: 'How it works' },
 	'ai-wiki-how': { heading: 'How it works' },
 	'ai-wiki-relay': {
 		heading: 'When a wiki blocks your server',
@@ -296,6 +305,23 @@ export const aiServerTopics = [
 	{ icon: 'fa-gift', title: 'Giveaways & quests', desc: 'What is running, the prize and how long is left.' },
 	{ icon: 'fa-book-open', title: 'How the game works', desc: 'The same guide members read, so answers match the site.' },
 	{ icon: 'fa-user', title: 'Their account', desc: 'Level, bag, assets, minigames, history, tasks and streak.' }
+];
+
+export const aiAssistantTopics = [
+	{ icon: 'fa-palette', title: 'Messages', desc: 'Describe a message in the builder and it fills in text, embeds, buttons, role actions and translations.' },
+	{ icon: 'fa-database', title: 'Live server data', desc: 'Leaderboards, statistics, leveling rules, giveaways and the shop, read live.' },
+	{ icon: 'fa-book', title: 'Wikis', desc: 'Adds a wiki from its address, edits it, switches it off or deletes it. Panel admin only.' },
+	{ icon: 'fa-store', title: 'Shop items', desc: 'Creates, reprices, schedules, switches off or deletes items. Panel admin only.' },
+	{ icon: 'fa-sliders', title: 'Panel settings', desc: 'Flips the switches on the Settings tab. Panel admin only.' }
+];
+
+export const aiAssistantRules = [
+	{ icon: 'fa-toggle-on', title: 'Needs AI chat', desc: 'It works once AI chat is on with a URL, key and model.' },
+	{ icon: 'fa-eye', title: 'You review messages', desc: 'A built message lands in the editor unsaved. You press Save or Send.' },
+	{ icon: 'fa-rotate-left', title: 'Undo', desc: 'One click puts the message back the way it was before the change.' },
+	{ icon: 'fa-trash', title: 'Asks before deleting', desc: 'A delete waits for your click on a Confirm button in the chat.' },
+	{ icon: 'fa-user-lock', title: 'Own server only', desc: 'Owner and staff accounts reach their own server and nothing else.' },
+	{ icon: 'fa-robot', title: 'Needs the bot online', desc: 'Live server data comes from the running bot.' }
 ];
 
 export const aiWikiFields = [
@@ -730,6 +756,10 @@ export const modules = [
 			{
 				label: 'Editing',
 				desc: "The editor looks like a Discord channel. Type in the box at the bottom to write what the bot says, press + to add an embed, a photo or video, a button or a dropdown, then click anything in the message to change it. Emoji are picked from a list, including the server's own."
+			},
+			{
+				label: 'Build with AI',
+				desc: "Open the assistant in the bottom right corner and describe the message. It fills the editor for you: text, embeds, buttons, dropdowns and translations, using the server's live data when you ask for it. Nothing is saved or posted until you press Save or Send."
 			},
 			{
 				label: 'Try it',

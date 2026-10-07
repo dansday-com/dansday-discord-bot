@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { beforeNavigate, goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import { agentDock, type AgentMessageEditor } from '$lib/frontend/agent.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
@@ -85,6 +86,7 @@
 	let confirmPost = $state<PostedCopy | 'all' | null>(null);
 	let leaveTo = $state<URL | null>(null);
 	let leaving = false;
+	let beforeAgent: { name: string; doc: MessageDoc } | null = null;
 
 	const EVERYONE_MENTIONS = [
 		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: Number.MAX_SAFE_INTEGER },
@@ -242,6 +244,42 @@
 			uploading = null;
 		}
 	}
+
+	function applyAgent(result: { name: string | null; content: MessageDoc | null } | null): boolean {
+		if (!result?.content && !result?.name) return false;
+		beforeAgent = { name, doc: $state.snapshot(doc) as MessageDoc };
+		if (result.name) name = result.name;
+		if (result.content) {
+			doc = normalizeMessageDoc(result.content, undefined, data.scope);
+			if (!doc.languages.includes(lang)) lang = doc.language;
+			selection = null;
+			mode = 'edit';
+		}
+		return true;
+	}
+
+	function undoAgent() {
+		if (!beforeAgent) return;
+		name = beforeAgent.name;
+		doc = beforeAgent.doc;
+		if (!doc.languages.includes(lang)) lang = doc.language;
+		selection = null;
+		beforeAgent = null;
+	}
+
+	const dockEditor: AgentMessageEditor = {
+		scope: initial().scope,
+		read: () => ({ id: messageId, name, content: $state.snapshot(doc) as MessageDoc }),
+		apply: applyAgent,
+		undo: undoAgent
+	};
+
+	onMount(() => {
+		agentDock.editor = dockEditor;
+		return () => {
+			if (agentDock.editor === dockEditor) agentDock.editor = null;
+		};
+	});
 
 	function openIssue(issue: MessageIssue) {
 		if (issue.part === 'name') return nameInput?.focus();

@@ -4,6 +4,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
+	import AgentDock from '$lib/frontend/components/agent/AgentDock.svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { LayoutProps } from './$types';
 
@@ -86,4 +87,6 @@
 	</main>
 
 	<MainFooter palette="dark" />
+
+	<AgentDock superadmin={data.user.authenticated && data.user.account_source === 'accounts'} />
 </div>

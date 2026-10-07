@@ -1,18 +1,21 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
-import { getEmbedConfig, isComponentFeatureEnabled, NOTIFICATIONS, serverSettingsComponent } from '../../../../config.js';
+import { getEmbedConfig, NOTIFICATIONS, serverSettingsComponent } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { logger } from '../../../../../utils/index.js';
 import { translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
+import { featureAvailable } from './availability.js';
 
 export async function handleNotificationsButton(interaction) {
 	try {
 		const guildId = interaction.guild.id;
 		const userId = interaction.user.id;
 
-		const channelsEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications);
-		const robloxEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.roblox_catalog_notifier);
-		const creatorsEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.creator_alerts);
+		const [channelsEnabled, robloxEnabled, creatorsEnabled] = await Promise.all([
+			featureAvailable(guildId, serverSettingsComponent.notifications),
+			featureAvailable(guildId, serverSettingsComponent.roblox_catalog_notifier),
+			featureAvailable(guildId, serverSettingsComponent.creator_alerts)
+		]);
 
 		if (!channelsEnabled && !robloxEnabled && !creatorsEnabled) {
 			const errorMsg = await translate('notifications.errors.noneEnabled', guildId, userId);
@@ -45,12 +48,14 @@ export async function handleNotificationsButton(interaction) {
 					.setStyle(ButtonStyle.Secondary)
 			);
 		}
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('notifications_creators')
-				.setLabel(await translate('notifications.hub.creators', guildId, userId))
-				.setStyle(ButtonStyle.Secondary)
-		);
+		if (creatorsEnabled) {
+			buttons.push(
+				new ButtonBuilder()
+					.setCustomId('notifications_creators')
+					.setLabel(await translate('notifications.hub.creators', guildId, userId))
+					.setStyle(ButtonStyle.Secondary)
+			);
+		}
 
 		const rows = [new ActionRowBuilder().addComponents(...buttons), new ActionRowBuilder().addComponents(await menuBackButton(guildId, userId, 'me'))];
 

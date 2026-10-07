@@ -22,6 +22,7 @@ import {
 	handleDeleteCustomSupporterRole
 } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
+import { featureAvailable } from './interface/availability.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleModerationButton, handleModerationUserSelect, handleModerationActionSelect, handleModerationModal } from './interface/moderation.js';
 import {
@@ -117,7 +118,11 @@ async function replyIfFeatureDisabled(interaction: any, component: string): Prom
 	return true;
 }
 
-const MENU_CATEGORIES: { id: string; permission?: string; items: { customId: string; label: string; desc: string; features?: string[] }[] }[] = [
+const MENU_CATEGORIES: {
+	id: string;
+	permission?: string;
+	items: { customId: string; label: string; desc: string; features?: string[]; permission?: string }[];
+}[] = [
 	{
 		id: 'me',
 		items: [
@@ -147,13 +152,14 @@ const MENU_CATEGORIES: { id: string; permission?: string; items: { customId: str
 				customId: 'bot_custom_supporter_role',
 				label: 'customSupporterRole.existing.title',
 				desc: 'customSupporterRole',
-				features: [serverSettingsComponent.custom_supporter_role]
+				features: [serverSettingsComponent.custom_supporter_role],
+				permission: 'custom_supporter_role'
 			},
 			{
 				customId: 'bot_content_creator',
 				label: 'contentCreator.button',
 				desc: 'contentCreator',
-				features: [serverSettingsComponent.content_creator, serverSettingsComponent.creator_alerts]
+				features: [serverSettingsComponent.content_creator]
 			}
 		]
 	},
@@ -164,11 +170,15 @@ const MENU_CATEGORIES: { id: string; permission?: string; items: { customId: str
 	}
 ];
 
-async function availableMenuItems(category: (typeof MENU_CATEGORIES)[number], guildId: string) {
-	const enabled = await Promise.all(
-		category.items.map(async (item) => !item.features || (await Promise.all(item.features.map((f) => isComponentFeatureEnabled(guildId, f)))).some(Boolean))
+async function availableMenuItems(category: (typeof MENU_CATEGORIES)[number], member) {
+	const usable = await Promise.all(
+		category.items.map(async (item) => {
+			if (item.permission && !(await hasPermission(member, item.permission))) return false;
+			if (!item.features) return true;
+			return (await Promise.all(item.features.map((f) => featureAvailable(member.guild.id, f)))).some(Boolean);
+		})
 	);
-	return category.items.filter((_, i) => enabled[i]);
+	return category.items.filter((_, i) => usable[i]);
 }
 
 async function handleMenuCategory(interaction, categoryId: string) {
@@ -183,7 +193,7 @@ async function handleMenuCategory(interaction, categoryId: string) {
 		return;
 	}
 
-	const items = await availableMenuItems(category, g);
+	const items = await availableMenuItems(category, interaction.member);
 	if (items.length === 0) {
 		await interaction.reply({ content: await translate('common.errors.featureDisabled', g, u), flags: 64 }).catch(() => null);
 		return;
@@ -274,7 +284,7 @@ async function handleMenuButton(interaction) {
 	const buttons = [];
 	for (const category of MENU_CATEGORIES) {
 		if (category.permission && !(await hasPermission(member, category.permission))) continue;
-		if ((await availableMenuItems(category, interaction.guild.id)).length === 0) continue;
+		if ((await availableMenuItems(category, member)).length === 0) continue;
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(`menu_cat|${category.id}`)

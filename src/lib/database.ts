@@ -6454,7 +6454,7 @@ async function markServerCreatorContentMessagePosted(serverId: number, contentId
 		.where(and(eq(schema.serverCreatorContents.server_id, serverId), eq(schema.serverCreatorContents.content_id, contentId)));
 }
 
-async function listServerCreatorContents(serverId: number, limit = 20) {
+async function listMemberCreatorContents(serverId: number, memberId: number, limit = 20) {
 	await initializeDatabase();
 	return await db
 		.select({
@@ -6473,7 +6473,16 @@ async function listServerCreatorContents(serverId: number, limit = 20) {
 		.from(schema.serverCreatorContents)
 		.innerJoin(schema.botCreatorContents, eq(schema.botCreatorContents.id, schema.serverCreatorContents.content_id))
 		.innerJoin(schema.botCreators, eq(schema.botCreators.id, schema.botCreatorContents.creator_id))
-		.where(eq(schema.serverCreatorContents.server_id, serverId))
+		.innerJoin(
+			schema.serverMemberCreatorNotifications,
+			and(eq(schema.serverMemberCreatorNotifications.creator_id, schema.botCreators.id), eq(schema.serverMemberCreatorNotifications.member_id, memberId))
+		)
+		.where(
+			and(
+				eq(schema.serverCreatorContents.server_id, serverId),
+				sql`FIND_IN_SET(${schema.botCreatorContents.type}, ${schema.serverMemberCreatorNotifications.types}) > 0`
+			)
+		)
 		.orderBy(desc(schema.serverCreatorContents.id))
 		.limit(limit);
 }
@@ -8672,7 +8681,7 @@ export default {
 	listCreatorFollowerServerIds,
 	addServerCreatorContent,
 	markServerCreatorContentMessagePosted,
-	listServerCreatorContents,
+	listMemberCreatorContents,
 	getServerMemberCreatorNotificationTypes,
 	setServerMemberCreatorNotificationTypes,
 	listServerMemberCreatorNotifications,

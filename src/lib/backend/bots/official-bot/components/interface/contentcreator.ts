@@ -15,6 +15,7 @@ import { translate, serverTranslator, errorReason } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 import { menuBackButton } from './menuBack.js';
+import { featureAvailable } from './availability.js';
 
 const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();
@@ -633,6 +634,10 @@ export async function handleContentCreatorHubButton(interaction: any) {
 	try {
 		const guildId = interaction.guild.id;
 		const userId = interaction.user.id;
+		if (!(await featureAvailable(guildId, serverSettingsComponent.content_creator))) {
+			await interaction.reply({ content: await translate('common.errors.featureDisabled', guildId, userId), flags: 64 }).catch(() => null);
+			return;
+		}
 		const embedConfig = await getEmbedConfig(guildId).catch(() => null);
 		const embed = new EmbedBuilder()
 			.setColor(embedConfig?.COLOR ?? 0xec4899)
@@ -641,17 +646,22 @@ export async function handleContentCreatorHubButton(interaction: any) {
 			.setTimestamp();
 		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
 
-		const rows = [
-			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				new ButtonBuilder()
-					.setCustomId('content_creator_list')
-					.setLabel(await translate('contentCreator.modal.title', guildId, userId))
-					.setStyle(ButtonStyle.Secondary),
+		const buttons = [
+			new ButtonBuilder()
+				.setCustomId('content_creator_list')
+				.setLabel(await translate('contentCreator.modal.title', guildId, userId))
+				.setStyle(ButtonStyle.Secondary)
+		];
+		if (await featureAvailable(guildId, serverSettingsComponent.creator_alerts)) {
+			buttons.push(
 				new ButtonBuilder()
 					.setCustomId(`${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`)
 					.setLabel(await translate('notifications.hub.creators', guildId, userId))
 					.setStyle(ButtonStyle.Secondary)
-			),
+			);
+		}
+		const rows = [
+			new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
 			new ActionRowBuilder<ButtonBuilder>().addComponents(await menuBackButton(guildId, userId, 'perks'))
 		];
 

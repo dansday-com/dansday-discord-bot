@@ -475,14 +475,16 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 		new ButtonBuilder()
 			.setCustomId(`${CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID}${origin}`)
 			.setLabel(await translate('creatorAlerts.menu.follow', guildId, userId))
-			.setStyle(ButtonStyle.Primary),
-		new ButtonBuilder()
-			.setCustomId(`${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${origin}`)
-			.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
-			.setStyle(ButtonStyle.Secondary)
+			.setStyle(ButtonStyle.Primary)
 	];
 
 	if (subscriptions.length > 0) {
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId(`${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${origin}`)
+				.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
+				.setStyle(ButtonStyle.Secondary)
+		);
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(`${CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID}${origin}`)
@@ -727,7 +729,7 @@ export async function handleCreatorNotificationsRecentButton(interaction: Button
 	const context = await resolveMemberContext(guildId, userId);
 	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
 
-	const contents = await db.listServerCreatorContents(context.server.id, CREATOR_ALERTS_HISTORY_LIMIT).catch(() => []);
+	const contents = await db.listMemberCreatorContents(context.server.id, context.member.id, CREATOR_ALERTS_HISTORY_LIMIT).catch(() => []);
 	const typeLabels = new Map<string, string>();
 	for (const type of ['video', 'live', 'post'] as CreatorContentType[]) {
 		typeLabels.set(type, `${TYPE_EMOJI[type]} ${await translate(`creatorAlerts.types.${type}.label`, guildId, userId)}`);

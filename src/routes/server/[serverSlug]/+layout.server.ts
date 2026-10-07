@@ -15,7 +15,7 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const settings = (settingsRow as any)?.settings || {};
 
 	const itemsEnabled = publicSubfeatureEnabled(settings, 'items');
-	const assetsEnabled = publicSubfeatureEnabled(settings, 'assets');
+	const marketEnabled = publicSubfeatureEnabled(settings, 'market');
 	const minigamesEnabled = publicSubfeatureEnabled(settings, 'minigames');
 	const tasksEnabled = publicSubfeatureEnabled(settings, 'tasks');
 	const inviteEnabled = publicSubfeatureEnabled(settings, 'invite');
@@ -28,7 +28,7 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const tail = onSubdomain ? pathname : pathname.slice(publicServerPath(slug).length);
 	return {
 		itemsEnabled,
-		assetsEnabled,
+		marketEnabled,
 		minigamesEnabled,
 		tasksEnabled,
 		onSubdomain,

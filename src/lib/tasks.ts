@@ -108,7 +108,7 @@ export type TaskMetric =
 	| 'tower_trapped'
 	| 'tower_lucky';
 
-export type TaskRequirement = 'leveling' | 'minigames' | 'items' | 'assets';
+export type TaskRequirement = 'leveling' | 'minigames' | 'items' | 'market';
 
 export type TaskDefinition = {
 	id: string;
@@ -434,7 +434,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		icon: 'fa-arrow-trend-up',
 		accent: '#1f8a4c',
 		unit: 'trades',
-		requires: 'assets',
+		requires: 'market',
 		baselineKey: null,
 		describe: (g) => (g === 1 ? 'Open an asset position' : `Open ${g} asset positions`)
 	},
@@ -445,7 +445,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		icon: 'fa-money-bill-trend-up',
 		accent: '#c8911a',
 		unit: 'trades',
-		requires: 'assets',
+		requires: 'market',
 		baselineKey: null,
 		describe: (g) => (g === 1 ? 'Close an asset position' : `Close ${g} asset positions`)
 	},
@@ -456,7 +456,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		icon: 'fa-chart-line',
 		accent: '#1f8a4c',
 		unit: 'xp',
-		requires: 'assets',
+		requires: 'market',
 		baselineKey: null,
 		describe: (g) => `Make ${g.toLocaleString()} XP profit on trades`
 	},
@@ -1406,7 +1406,7 @@ export type TaskEligibility = {
 	levelingEnabled: boolean;
 	minigamesEnabled: boolean;
 	itemsEnabled: boolean;
-	assetsEnabled: boolean;
+	marketEnabled: boolean;
 	baselines: Partial<Record<TaskMetric, number>>;
 	activeDays: number;
 	effectCosts?: Record<string, number>;
@@ -2600,7 +2600,7 @@ function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
 	if (def.requires === 'leveling' && !elig.levelingEnabled) return false;
 	if (def.requires === 'minigames' && !elig.minigamesEnabled) return false;
 	if (def.requires === 'items' && !elig.itemsEnabled) return false;
-	if (def.requires === 'assets' && !elig.assetsEnabled) return false;
+	if (def.requires === 'market' && !elig.marketEnabled) return false;
 
 	if (def.costEffect && def.costEffect !== '*' && effectUnitCost(def.costEffect, elig) <= 0) return false;
 	if (def.costExtraEffect && effectUnitCost(def.costExtraEffect, elig) <= 0) return false;

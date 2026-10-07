@@ -4,8 +4,9 @@ import { itemAvailability, effectSummary, formatDuration, getItemEffect } from '
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
-import { LEVEL_REWARDS_CONFIG, getLevelingSettings, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import { REWARDS_CONFIG, getLevelingSettings, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
+import { rewardGoalLabel } from '../../../../rewards.js';
 import { COLOR_MAX_TOTAL } from '../../../../color.js';
 import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, resolveToolFeatures } from './aiToolShared.js';
@@ -124,7 +125,7 @@ export async function runServerStatsTool(botId, guildId) {
 			biggest_steal: s.items_biggest_steal
 		},
 		minigames: { plays: s.minigames_plays, wins: s.minigames_wins, wagered: s.minigames_wagered, biggest_win: s.minigames_biggest_win },
-		assets: { traders: s.assets_traders, open_positions: s.assets_open_positions, invested: s.assets_invested, market_value: s.assets_market_value },
+		market: { traders: s.assets_traders, open_positions: s.assets_open_positions, invested: s.assets_invested, market_value: s.assets_market_value },
 		giveaways: { total: s.giveaways_total, active: s.giveaways_active, entrants: s.giveaways_entrants },
 		quests: { claimed: s.quests_claimed, participants: s.quests_participants },
 		staff: { reviews: s.staff_reviews, average_rating: s.staff_avg_rating }
@@ -162,13 +163,16 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 
 	const [levelingOn, rewardRules, roles] = await Promise.all([
 		isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling),
-		LEVEL_REWARDS_CONFIG.getRules(guildId).catch(() => null),
+		REWARDS_CONFIG.getRules(guildId).catch(() => null),
 		db.getRoles(ctx.server.id).catch(() => [])
 	]);
 	const roleNames = new Map((roles as any[]).map((r) => [String(r.discord_role_id), String(r.name ?? '')]));
-	const roleRewards = (levelingOn ? (rewardRules?.rewards ?? []) : [])
-		.filter((r) => roleNames.has(r.role_id))
-		.map((r) => ({ level: r.level, role: roleNames.get(r.role_id), total_xp_needed: Math.ceil(levelRequirementXp(r.level, baseXp, multiplier)) }));
+	const rewardList = (levelingOn ? (rewardRules?.rewards ?? []) : []).map((r) => ({
+		goal: rewardGoalLabel(r),
+		gives: r.kind === 'role' ? `the ${roleNames.get(r.role_id ?? '') ?? 'reward'} role` : r.kind === 'xp' ? `${r.xp} XP` : (r.name ?? 'a custom reward'),
+		...(r.winner_limit !== null ? { only_first_members: r.winner_limit } : {}),
+		...(r.goal_type === 'level' ? { total_xp_needed: Math.ceil(levelRequirementXp(r.goal, baseXp, multiplier)) } : {})
+	}));
 
 	const levelTable = [];
 	for (let lv = 2; lv <= 11; lv++) {
@@ -210,14 +214,14 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 			formula: multiplier === 1 ? 'total XP for level N = base_xp * (N - 1)' : 'total XP for level N = base_xp * (multiplier^(N-1) - 1) / (multiplier - 1)',
 			first_levels: levelTable
 		},
-		role_rewards: {
-			rewards: roleRewards,
+		rewards: {
+			rewards: rewardList,
 			kept_when_level_drops: rewardRules?.keep !== false,
 			lower_rewards_kept: rewardRules?.stack !== false,
 			note:
-				roleRewards.length > 0
-					? 'The bot gives each role automatically when a member reaches its level. If kept_when_level_drops is false, losing XP to a steal or bomb below that level takes the role away until they climb back. If lower_rewards_kept is false, each new reward role replaces the one before.'
-					: 'This server gives no roles for levels.'
+				rewardList.length > 0
+					? 'Each reward is given automatically when a member reaches its goal. Voice hours count active time only. A custom reward is handed over by staff after it is earned. If kept_when_level_drops is false, dropping below a level after a steal or bomb takes its reward back until they climb back. If lower_rewards_kept is false, a higher reward on the same goal replaces the lower one. XP already paid and delivered rewards always stay.'
+					: 'This server has no rewards set.'
 		},
 		examples: {
 			voice_minutes: minutes,
@@ -615,7 +619,7 @@ const SHOP_DESCRIPTION =
 	'The XP item shop for this server. Returns each item with its price in XP, what it actually does, whether it is usable, whether it needs a target, how many minutes it lasts, its cooldown and immunity minutes, and whether it is on sale now or coming later. Use it for "what is in the shop", "how much does X cost", "what does X do", "what is coming soon", "how long does X last". Prices already include the asker\'s Luck discount.';
 
 const LEVELING_RULES_DESCRIPTION =
-	'How XP and levels actually work on this server: XP per message and its cooldown, XP per minute for voice, AFK voice, video and streaming, the friend and luck bonuses, the level-up formula with the XP needed for the first levels, the roles members get at each level, and worked examples. Use it for "how much XP do I get for an hour in voice", "how do I level up fastest", "how much XP per message", "how much XP to reach level 10", "does streaming give more XP", "what roles can I get", "what level gives the VIP role". Pass minutes or messages to have the example done for that exact amount. These are this server\'s own settings, not general advice.';
+	'How XP and levels actually work on this server: XP per message and its cooldown, XP per minute for voice, AFK voice, video and streaming, the friend and luck bonuses, the level-up formula with the XP needed for the first levels, the rewards members get for reaching a level, a message count or voice hours, and worked examples. Use it for "how much XP do I get for an hour in voice", "how do I level up fastest", "how much XP per message", "how much XP to reach level 10", "does streaming give more XP", "what rewards can I get", "what level gives the VIP role". Pass minutes or messages to have the example done for that exact amount. These are this server\'s own settings, not general advice.';
 
 const ROSTER_DESCRIPTION =
 	'Members of this server with their full public profile — level, XP, rank, messages, voice/video/streaming minutes, when they joined this server, how old their Discord account is, booster status and since when, their roles, and their AFK status. Order it with sort: "joined_oldest" for "who joined first", "oldest member", "member paling lama / paling sepuh", the founder or longest-standing member; "joined_newest" for the newest members; "account_oldest" or "account_newest" for how old the Discord accounts themselves are. Every answer about who joined when must come from this tool — never guess it from a leaderboard, an XP total or a rank, and never confuse joining this server with when the account was made or when the server was created.';

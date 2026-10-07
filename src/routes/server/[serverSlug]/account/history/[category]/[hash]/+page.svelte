@@ -30,6 +30,7 @@
 		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' },
 		leech: { label: 'Leech', icon: 'fa-droplet' },
 		task: { label: 'Task Reward', icon: 'fa-list-check' },
+		reward: { label: 'Reward', icon: 'fa-trophy' },
 		invite: { label: 'Invite', icon: 'fa-user-plus' },
 		invite_share: { label: 'Invite Share', icon: 'fa-people-arrows' },
 		daily: { label: 'Daily Reward', icon: 'fa-calendar-check' }
@@ -302,8 +303,8 @@
 			? 'No level XP earned yet. Chat or join voice to start earning.'
 			: data.tab === 'items'
 				? 'No item activity yet. Buy or use an item to start.'
-				: data.tab === 'assets'
-					? 'No asset trades yet. Invest XP from the Assets tab to start.'
+				: data.tab === 'market'
+					? 'No asset trades yet. Invest XP from the Market tab to start.'
 					: undefined}
 		boxed
 	/>

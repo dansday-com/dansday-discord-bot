@@ -4,18 +4,18 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS, canEditServerSettings } from '$lib/frontend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { postBotWebhook, resolveActiveBotForServer } from '$lib/frontend/public/items/index.js';
-import { LEVEL_REWARD_KEYS, levelRewardsFromSettings, type LevelRewardRules } from '$lib/level-rewards.js';
+import { REWARD_KEYS, normalizeRewardDrafts, rewardGoalLabel, rewardRuleFlags, type Reward, type RewardDraft } from '$lib/rewards.js';
+import { removeRewardImage, rewardImageBelongsTo } from '$lib/backend/storage/rewards.js';
 
-const RULE_LABELS: Record<keyof LevelRewardRules, string> = {
-	rewards: 'level rewards',
-	keep: 'when a level drops',
-	stack: 'lower rewards'
-};
-
-function describe(rules: LevelRewardRules, key: keyof LevelRewardRules): string {
-	if (key === 'rewards') return rules.rewards.map((r) => `Level ${r.level} → ${r.role_id}`).join('; ') || 'None';
-	if (key === 'keep') return rules.keep ? 'Keep the role' : 'Take the role back';
-	return rules.stack ? 'Keep them' : 'Replace with the newest';
+function describe(rewards: (Reward | RewardDraft)[]): string {
+	return (
+		rewards
+			.map((r) => {
+				const gives = r.kind === 'role' ? r.role_id : r.kind === 'xp' ? `${r.xp.toLocaleString()} XP` : r.name;
+				return `${rewardGoalLabel(r)} → ${gives}${r.winner_limit !== null ? ` (first ${r.winner_limit})` : ''}`;
+			})
+			.join('; ') || 'None'
+	);
 }
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -30,30 +30,42 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const body = await request.json().catch(() => null);
 	const roles = await db.getRoles(serverId).catch(() => []);
 	const known = new Set((roles as any[]).map((r) => String(r.discord_role_id)).filter((id) => id !== String((server as any).discord_server_id)));
-	const rules = levelRewardsFromSettings({
-		[LEVEL_REWARD_KEYS.rewards]: Array.isArray(body?.rewards) ? body.rewards.filter((r: any) => known.has(String(r?.role_id ?? ''))) : [],
-		[LEVEL_REWARD_KEYS.keep]: body?.keep !== false,
-		[LEVEL_REWARD_KEYS.stack]: body?.stack !== false
-	});
+	const { rewards, error } = normalizeRewardDrafts(body?.rewards, known);
+	if (error) return json({ ok: false, error }, { status: 400 });
+	for (const r of rewards) if (r.image && !rewardImageBelongsTo(r.image, serverId)) r.image = null;
 
 	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
 	const existing = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
-	const previous = levelRewardsFromSettings(existing);
+	const previous = { rewards: await db.getRewards(serverId), ...rewardRuleFlags(existing) };
+	const next = { keep: body?.keep !== false, stack: body?.stack !== false };
+
+	const { removedImages } = await db.saveRewards(serverId, rewards);
 	await db.upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
 		...existing,
-		[LEVEL_REWARD_KEYS.rewards]: rules.rewards,
-		[LEVEL_REWARD_KEYS.keep]: rules.keep,
-		[LEVEL_REWARD_KEYS.stack]: rules.stack
+		[REWARD_KEYS.keep]: next.keep,
+		[REWARD_KEYS.stack]: next.stack
 	});
+	for (const key of removedImages) await removeRewardImage(key);
 
-	const changes = (Object.keys(LEVEL_REWARD_KEYS) as (keyof typeof LEVEL_REWARD_KEYS)[])
-		.filter((key) => JSON.stringify(previous[key]) !== JSON.stringify(rules[key]))
-		.map((key) => ({ key: RULE_LABELS[key], before: describe(previous, key), after: describe(rules, key) }));
-	if (changes.length > 0) await db.createServerPanelLog(serverId, panelActorIds(locals), 'level_rewards', changes).catch(() => null);
+	const changes: { key: string; before: string | null; after: string | null }[] = [];
+	if (describe(previous.rewards) !== describe(rewards)) changes.push({ key: 'rewards', before: describe(previous.rewards), after: describe(rewards) });
+	if (previous.keep !== next.keep)
+		changes.push({
+			key: 'when a level drops',
+			before: previous.keep ? 'Keep the reward' : 'Take it back',
+			after: next.keep ? 'Keep the reward' : 'Take it back'
+		});
+	if (previous.stack !== next.stack)
+		changes.push({
+			key: 'lower rewards',
+			before: previous.stack ? 'Keep them' : 'Replace with the newest',
+			after: next.stack ? 'Keep them' : 'Replace with the newest'
+		});
+	if (changes.length > 0) await db.createServerPanelLog(serverId, panelActorIds(locals), 'rewards', changes).catch(() => null);
 
 	const bot = await resolveActiveBotForServer(server);
-	if (!bot || bot.status !== 'running' || !bot.port || !bot.secret_key) return json({ ok: true, rules, synced: false, blocked: [] });
-	const result = await postBotWebhook(bot, { type: 'sync_level_rewards', guild_id: (server as any).discord_server_id });
+	if (!bot || bot.status !== 'running' || !bot.port || !bot.secret_key) return json({ ok: true, synced: false, blocked: [] });
+	const result = await postBotWebhook(bot, { type: 'sync_rewards', guild_id: (server as any).discord_server_id });
 	const synced = result.status === 200 && result.body?.ok === true;
-	return json({ ok: true, rules, synced, blocked: synced && Array.isArray(result.body.blocked) ? result.body.blocked : [] });
+	return json({ ok: true, synced, blocked: synced && Array.isArray(result.body.blocked) ? result.body.blocked : [] });
 };

@@ -3,7 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { webBotHome, adminServerPath } from '$lib/frontend/redirect.js';
 import { accountOwnsServer } from '$lib/frontend/panelServer.js';
-import { loadAssetPriceMap } from '$lib/frontend/public/assets/index.js';
+import { loadAssetPriceMap } from '$lib/frontend/public/market/index.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

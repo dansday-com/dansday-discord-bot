@@ -4,7 +4,8 @@ import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { SERVER_SETTINGS, accountOwnsServer, canEditServerSettings } from '$lib/frontend/panelServer.js';
 import { DEFAULT_LEVELING_SETTINGS } from '$lib/backend/config.js';
-import { levelRewardsFromSettings } from '$lib/level-rewards.js';
+import { rewardGoalUnits, rewardProgress, rewardRuleFlags } from '$lib/rewards.js';
+import { rewardImageUrl } from '$lib/backend/storage/rewards.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -26,17 +27,19 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	}
 
 	const { overview } = await parent();
-	const [mainSettings, levelingSettings, roles, levels, canEdit] = await Promise.all([
+	const [mainSettings, levelingSettings, roles, rewards, winners, progress, pending, canEdit] = await Promise.all([
 		db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
 		db.getServerSettings(serverId, SERVER_SETTINGS.component.leveling).catch(() => null),
 		db.getRoles(serverId).catch(() => []),
-		db.getMemberLevelsForServer(serverId).catch(() => []),
+		db.getRewards(serverId).catch(() => []),
+		db.getRewardWinnerCounts(serverId).catch(() => new Map<number, number>()),
+		db.getRewardProgressForServer(serverId).catch(() => []),
+		db.getPendingRewardDeliveries(serverId).catch(() => []),
 		canEditServerSettings(locals, serverId)
 	]);
 	const leveling = (levelingSettings as any)?.settings ?? {};
 	const req = leveling.REQUIREMENTS ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS;
-	const levelCounts = new Map<number, number>();
-	for (const m of levels) levelCounts.set(m.level, (levelCounts.get(m.level) ?? 0) + 1);
+	const memberProgress = progress.map((m) => rewardProgress(m.stats));
 
 	return {
 		serverId,
@@ -46,8 +49,22 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			baseXp: Number(req.BASE_XP) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
 			multiplier: Number(req.MULTIPLIER) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.MULTIPLIER
 		},
-		rules: levelRewardsFromSettings((mainSettings as any)?.settings),
-		levelCounts: [...levelCounts.entries()].sort((a, b) => a[0] - b[0]),
+		rules: rewardRuleFlags((mainSettings as any)?.settings),
+		rewards: rewards.map((r) => ({
+			id: r.id,
+			goal_type: r.goal_type,
+			units: rewardGoalUnits(r),
+			kind: r.kind,
+			role_id: r.role_id ?? '',
+			xp: r.xp,
+			name: r.name ?? '',
+			image: r.image,
+			image_url: rewardImageUrl(r.image),
+			winner_limit: r.winner_limit,
+			winners: winners.get(r.id) ?? 0,
+			reached: memberProgress.reduce((n, m) => (m[r.goal_type] >= r.goal ? n + 1 : n), 0)
+		})),
+		pending: pending.map((p) => ({ ...p, image_url: rewardImageUrl(p.image), earned_at: p.earned_at ? String(p.earned_at) : null })),
 		roles: (roles as any[])
 			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))
 			.map((r) => ({ id: String(r.discord_role_id), name: String(r.name ?? 'Unnamed role'), color: r.color ?? null }))

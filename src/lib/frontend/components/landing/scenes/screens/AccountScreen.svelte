@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import { xpForLevel } from '$lib/level-rewards.js';
+	import { xpForLevel } from '$lib/rewards.js';
 	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
 	import { avatar } from '../scripts/common.js';
 	import type { SceneScreenProps } from '../types.js';

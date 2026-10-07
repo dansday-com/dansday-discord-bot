@@ -158,9 +158,9 @@ async function accountItems(shared, member) {
 }
 
 async function accountAssets(ctx, member) {
-	if (!ctx.assetsEnabled) return fail('assets_not_enabled_for_this_server');
+	if (!ctx.marketEnabled) return fail('market_not_enabled_for_this_server');
 
-	const { loadAssetPriceMap } = await import('../../../../frontend/public/assets/index.js');
+	const { loadAssetPriceMap } = await import('../../../../frontend/public/market/index.js');
 	const priceMap = await loadAssetPriceMap().catch(() => ({}));
 	const rows = await db.getOpenAssetPositions(member.id).catch(() => []);
 
@@ -270,7 +270,7 @@ async function accountTasks(ctx, member) {
 		member,
 		itemsEnabled: ctx.itemsEnabled,
 		minigamesEnabled: ctx.minigamesEnabled,
-		assetsEnabled: ctx.assetsEnabled,
+		marketEnabled: ctx.marketEnabled,
 		tzOffsetMin,
 		tzKnown
 	}).catch((error) => {
@@ -385,7 +385,7 @@ const OVERVIEW_DESCRIPTION = `The asker's own profile in this server, in full: l
 
 const ITEMS_DESCRIPTION = `Everything the asker owns. Lists every item in their bag by name with how many copies they have, what that item actually does, whether it needs a target, how long it lasts and its shop price — not just a count. Also their wallet XP, how full the bag is out of its capacity, which attacks are on cooldown and for how long, whether they are immune right now, and when insurance is ready again. Use it for "what is in my bag", "what items do I have", "do I have a shield", "how many steals do I own", "am I on cooldown", "can I be robbed right now". ${OWN_ONLY}`;
 
-const ASSETS_DESCRIPTION = `The asker's own investments in the assets market: each holding, what they put in, what it is worth now, profit or loss, and the 24 hour move. Use it for "what am I invested in", "am I up or down", "how are my assets doing". ${OWN_ONLY}`;
+const ASSETS_DESCRIPTION = `The asker's own investments in the market: each holding, what they put in, what it is worth now, profit or loss, and the 24 hour move. Use it for "what am I invested in", "am I up or down", "how are my assets doing". ${OWN_ONLY}`;
 
 const MINIGAMES_DESCRIPTION = `The asker's own minigame record: how many times they played, wins and losses, XP wagered, net XP won or lost, their biggest win, and their last few games. It covers every minigame: Gamble, which wagers XP, and the free Tower, whose rows have no wager and carry the floor the climb ended on. Use it for "how am I doing at gambling", "how much have I lost", "my biggest win", "how did my Tower climbs go". ${OWN_ONLY}`;
 
@@ -403,7 +403,7 @@ function allowedAccountTool(name, features) {
 	if (!features) return true;
 	if (!features.publicData) return false;
 	if (name === 'get_my_items') return features.items === true;
-	if (name === 'get_my_assets') return features.assets === true;
+	if (name === 'get_my_assets') return features.market === true;
 	if (name === 'get_my_minigames') return features.minigames === true;
 	if (name === 'get_my_tasks') return features.tasks === true;
 	return true;

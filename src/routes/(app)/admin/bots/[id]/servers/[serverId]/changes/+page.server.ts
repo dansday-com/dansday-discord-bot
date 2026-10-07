@@ -12,7 +12,7 @@ const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
 	moderation: { component: 'moderation', label: 'Moderation' },
 	moderation_bulk: { component: 'moderation', label: 'Moderation' },
 	moderation_rules: { component: 'moderation', label: 'Moderation' },
-	level_rewards: { component: 'rewards', label: 'Rewards' }
+	rewards: { component: 'rewards', label: 'Rewards' }
 };
 
 export const load: PageServerLoad = async ({ locals, params }) => {

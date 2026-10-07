@@ -25,6 +25,24 @@
 		return Number(val).toFixed(2);
 	}
 
+	const serverName = $derived(data.server.name || data.server.slug);
+
+	const metaDescription = $derived.by(() => {
+		const facts = [
+			{ n: data.stats.members_total, label: 'members' },
+			{ n: data.stats.leveling_total_xp, label: 'XP earned' },
+			{ n: data.stats.leveling_total_chat, label: 'messages' },
+			{ n: Number(data.stats.leveling_total_voice_minutes ?? 0) / 60, label: 'voice hours' }
+		]
+			.map((f) => ({ ...f, n: Math.round(Number(f.n ?? 0)) }))
+			.filter((f) => f.n > 0)
+			.map((f) => `${f.n.toLocaleString('en-US')} ${f.label}`);
+		const lead = `Live public statistics for ${serverName} on Discord`;
+		if (!facts.length) return `${lead}, tracked by ${APP_NAME} Bot.`;
+		const list = facts.length > 1 ? `${facts.slice(0, -1).join(', ')} and ${facts[facts.length - 1]}` : facts[0];
+		return `${lead}: ${list}. Tracked by ${APP_NAME} Bot.`;
+	});
+
 	const membersWithoutLevels = $derived(Math.max(0, (liveStats.members_total ?? 0) - (liveStats.members_with_levels ?? 0)));
 
 	const avgXP = $derived(
@@ -162,10 +180,13 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} Statistics | {APP_NAME} Discord Bot</title>
-	<meta name="description" content="Public statistics for {data.server.name || data.server.slug}." />
-	<meta property="og:title" content="{data.server.name || data.server.slug} Statistics | {APP_NAME} Discord Bot" />
-	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
+	<title>{serverName} Statistics | {APP_NAME} Discord Bot</title>
+	<meta name="description" content={metaDescription} />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={APP_NAME} />
+	<meta property="og:url" content={data.canonicalUrl} />
+	<meta property="og:title" content="{serverName} Statistics | {APP_NAME} Discord Bot" />
+	<meta property="og:description" content={metaDescription} />
 	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 

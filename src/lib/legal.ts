@@ -100,7 +100,7 @@ export const terms: LegalDoc = {
 							desc: 'Members wager XP. Only XP above the current level can be wagered, so a loss never costs a level.'
 						},
 						{
-							term: 'Assets market',
+							term: 'Market',
 							desc: 'Members lock XP into simulated crypto positions priced from live market data. This is a game score only, described further below.'
 						},
 						{
@@ -129,7 +129,7 @@ export const terms: LegalDoc = {
 		},
 		{
 			id: 'no-real-money',
-			heading: 'XP, items and the assets market are not real money',
+			heading: 'XP, items and the market are not real money',
 			blocks: [
 				{
 					kind: 'text',
@@ -137,7 +137,7 @@ export const terms: LegalDoc = {
 				},
 				{
 					kind: 'text',
-					text: 'The assets market is a simulation. It reads live public market prices to move a score up and down. No cryptocurrency is ever bought, held, sold or transferred on your behalf, no funds are custodied, and nothing here is financial advice or an investment product.'
+					text: 'The market is a simulation. It reads live public market prices to move a score up and down. No cryptocurrency is ever bought, held, sold or transferred on your behalf, no funds are custodied, and nothing here is financial advice or an investment product.'
 				},
 				{
 					kind: 'text',
@@ -199,7 +199,7 @@ export const terms: LegalDoc = {
 						'Violate law or third-party rights.',
 						'Harass, abuse, spam, or distribute malware.',
 						"Attempt to disrupt, overload, or gain unauthorized access to the Service or other people's data.",
-						'Exploit bugs in XP, items, tasks, minigames or the assets market, or automate interactions to farm rewards.',
+						'Exploit bugs in XP, items, tasks, minigames or the market, or automate interactions to farm rewards.',
 						'Use the AI features to generate content that is illegal, or that breaks Discord’s rules or your AI provider’s terms.',
 						'Scrape, resell, or misrepresent the bot or website without permission.',
 						'Circumvent rate limits, module toggles, or a server owner’s configuration.'
@@ -481,7 +481,7 @@ export const privacy: LegalDoc = {
 				},
 				{
 					kind: 'links',
-					text: 'Live market prices for the assets market come from ',
+					text: 'Live prices for the market come from ',
 					links: [{ label: 'CoinGecko', href: THIRD_PARTY_LINKS.coingecko }],
 					tail: 'Requests carry no member data.'
 				},

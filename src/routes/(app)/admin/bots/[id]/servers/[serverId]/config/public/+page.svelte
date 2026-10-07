@@ -17,7 +17,7 @@
 	let saving = $state(false);
 	let itemsEnabled = $state(data.settings?.items_enabled !== false);
 	let minigamesEnabled = $state(data.settings?.minigames_enabled !== false);
-	let assetsEnabled = $state(data.settings?.assets_enabled !== false);
+	let marketEnabled = $state(data.settings?.market_enabled !== false);
 	let tasksEnabled = $state(data.settings?.tasks_enabled !== false);
 	let inviteEnabled = $state(data.settings?.invite_enabled !== false);
 	let itemsChannel = $state<string>(data.settings?.ITEMS_CHANNEL_ID ?? '');
@@ -105,7 +105,7 @@
 					...base,
 					items_enabled: itemsEnabled,
 					minigames_enabled: minigamesEnabled,
-					assets_enabled: assetsEnabled,
+					market_enabled: marketEnabled,
 					tasks_enabled: tasksEnabled,
 					invite_enabled: inviteEnabled,
 					invite_theme_image: inviteImageKey,
@@ -280,11 +280,11 @@
 
 			<div class="space-y-3">
 				<ConfigToggleRow
-					label="Assets"
+					label="Market"
 					description="XP crypto trading. Posts nothing to Discord."
 					labelIconClass="fas fa-chart-line text-sky-400"
-					bind:enabled={assetsEnabled}
-					ariaLabel="Toggle assets"
+					bind:enabled={marketEnabled}
+					ariaLabel="Toggle market"
 				/>
 			</div>
 

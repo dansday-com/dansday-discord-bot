@@ -52,7 +52,7 @@ export async function publicServer(botId, guildId) {
 	return {
 		server,
 		itemsEnabled: publicSubfeatureEnabled(settings, 'items'),
-		assetsEnabled: publicSubfeatureEnabled(settings, 'assets'),
+		marketEnabled: publicSubfeatureEnabled(settings, 'market'),
 		minigamesEnabled: publicSubfeatureEnabled(settings, 'minigames'),
 		tasksEnabled: publicSubfeatureEnabled(settings, 'tasks')
 	};
@@ -76,7 +76,7 @@ export async function memberTzKnown(memberId) {
 }
 
 export async function resolveToolFeatures(botId, guildId) {
-	const off = { publicData: false, items: false, assets: false, minigames: false, tasks: false, giveaway: false, staffRating: false, quests: false };
+	const off = { publicData: false, items: false, market: false, minigames: false, tasks: false, giveaway: false, staffRating: false, quests: false };
 	if (!botId || !guildId) return off;
 
 	return cachedLookup(`botai:toolfeatures:${botId}:${guildId}`, TOOL_FEATURES_TTL_SEC, () => loadToolFeatures(botId, guildId, off));
@@ -103,7 +103,7 @@ async function loadToolFeatures(botId, guildId, off) {
 	return {
 		publicData: true,
 		items: publicSubfeatureEnabled(settings, 'items'),
-		assets: publicSubfeatureEnabled(settings, 'assets'),
+		market: publicSubfeatureEnabled(settings, 'market'),
 		minigames: publicSubfeatureEnabled(settings, 'minigames'),
 		tasks: publicSubfeatureEnabled(settings, 'tasks'),
 		giveaway,

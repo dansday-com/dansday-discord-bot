@@ -667,7 +667,7 @@ export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMembe
 }
 
 async function spyTargetAssets(targetMemberId: any) {
-	const { getMemberPortfolio } = await import('./assetMarket.js');
+	const { getMemberPortfolio } = await import('./market.js');
 	const portfolio = await getMemberPortfolio(targetMemberId).catch(() => null);
 	if (!portfolio) return { assets: [], invested: 0, value: 0 };
 	const assets = portfolio.positions.map((p) => ({

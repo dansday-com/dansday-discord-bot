@@ -9,34 +9,33 @@
 	const base = $derived(adminServerSectionPath(data.botId, data.serverId, 'members'));
 
 	const tabs = [
-		{ label: 'All', href: '' },
-		{ label: 'Supporter', href: '/supporter' },
-		{ label: 'Content Creator', href: '/content-creator' },
-		{ label: 'Staff', href: '/staff' },
-		{ label: 'Admin', href: '/admin' }
+		{ label: 'Members', icon: 'fa-users text-blue-400', href: '' },
+		{ label: 'Joins', icon: 'fa-right-to-bracket text-cyan-400', href: '/joins' },
+		{ label: 'Links', icon: 'fa-link text-emerald-400', href: '/links' }
 	];
-
-	function isActive(suffix: string) {
-		const full = base + suffix;
-		if (suffix === '') return page.url.pathname === base;
-		return page.url.pathname === full;
-	}
 </script>
 
 <svelte:head>
 	<title>Members | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<div class="bg-ash-800 border-ash-700 mb-4 flex gap-1 overflow-x-auto rounded-xl border p-1">
-	{#each tabs as tab}
-		<a
-			href={base + tab.href}
-			class="flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all
-				{isActive(tab.href) ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
-		>
-			{tab.label}
-		</a>
-	{/each}
-</div>
+{#if page.params.memberId}
+	<a href={base} class="text-ash-400 hover:text-ash-100 mb-4 inline-flex items-center gap-2 text-sm transition-colors">
+		<i class="fas fa-arrow-left text-violet-300"></i>All members
+	</a>
+{:else}
+	<div class="bg-ash-800 border-ash-700 mb-4 grid grid-cols-3 gap-1 rounded-xl border p-1">
+		{#each tabs as tab (tab.href)}
+			{@const active = page.url.pathname === base + tab.href}
+			<a
+				href={base + tab.href}
+				class="flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-all
+					{active ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+			>
+				<i class="fas {tab.icon} text-xs"></i>{tab.label}
+			</a>
+		{/each}
+	</div>
+{/if}
 
 {@render children()}

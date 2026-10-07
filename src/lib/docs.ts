@@ -554,10 +554,13 @@ export const modules = [
 			},
 			{ label: 'Invite hold time', desc: 'How long the new member must stay before the inviter is paid. Leaving earlier pays nothing.' },
 			{ label: 'Minimum account age', desc: 'Accounts younger than this count as fake invites and pay no XP.' },
-			{ label: 'Invites tab', desc: 'Every inviter, join and link, and whether each member used a personal or Discord link.' },
+			{
+				label: 'Members tab',
+				desc: "Each member's page shows who invited them, who they invited and their bonus invites. Joins and Links list every join and invite link, and whether a personal or Discord link was used."
+			},
 			{
 				label: 'Rewards tab',
-				desc: 'Roles the bot gives at the levels you set, also to members who already qualify. Choose whether a level lost to a steal takes the role back, and whether a new reward replaces the last. Members see the list on their Rewards tab.'
+				desc: 'Each reward is a goal and what reaching it gives. Goals are a level, messages, or voice, video and streaming hours. A reward is a role, an XP amount, or a custom reward with your own name and image that staff hand over and mark delivered. A reward can be limited to the first members who reach it. Choose whether a level lost to a steal takes a reward back, and whether a higher reward replaces the lower one. Members see the list on their Rewards tab.'
 			},
 			{ label: 'Level Progress Notification Channel', desc: 'Channel for level-up and rank notifications. A level-up that unlocks a reward names the role.' }
 		]
@@ -666,9 +669,9 @@ export const modules = [
 		title: 'Moderation',
 		what: 'Always on. Warn, time out, kick, ban and tempban members from the panel or the staff menu; every action is a numbered case.',
 		fields: [
-			{ label: 'Members list', desc: 'Tick any members, then warn, time out, kick, ban or change roles in one go.' },
-			{ label: 'Warned, timed out, banned', desc: 'Tabs for who is under an active action; click anyone for their full record.' },
-			{ label: 'Auto-escalation', desc: 'Steps like 3 warnings = 1 hour timeout; the bot applies them itself.' },
+			{ label: 'Members tab', desc: 'Tick any members, then warn, time out, kick, ban or change roles in one go. Open a member for their full record.' },
+			{ label: 'Warned, timed out, banned', desc: 'Filters on the Members tab for who is under an active action.' },
+			{ label: 'Auto-escalation', desc: 'Set under Configuration, Moderation. Steps like 3 warnings = 1 hour timeout; the bot applies them itself.' },
 			{ label: 'Warning expiry', desc: 'Warnings older than this stop counting; the record stays.' },
 			{ label: 'Reason presets', desc: 'Saved reasons staff pick from; any case reason can be edited later.' },
 			{ label: 'Moderation Logs Channel', desc: 'Set on the Main page. Each case pings the member; cases are always kept in the panel.' }
@@ -787,15 +790,15 @@ export const modules = [
 		icon: 'fa-chart-pie',
 		accent: '#e43d12',
 		title: 'Public',
-		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Themes, Guide) — are always on. Items, Minigames, Assets, Daily tasks and the server invite are enabled here as sub-toggles.',
+		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Profile, History, Themes, Guide) — are always on. Items, Minigames, Market, Daily tasks and the server invite are enabled here as sub-toggles.',
 		fields: [
 			{
-				label: 'Items / Minigames / Assets',
+				label: 'Items / Minigames / Market',
 				desc: 'Sub-toggles under Public. Each unlocks its account tab (and channel, for Items/Minigames). Tabs stay visible when off and explain that the feature is disabled.'
 			},
 			{
 				label: 'Daily tasks',
-				desc: 'Sub-toggle that adds the Task tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
+				desc: 'Sub-toggle that adds the Tasks tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
 			},
 			{
 				label: 'Themes',
@@ -837,5 +840,5 @@ export const discordMenu = [
 		desc: `Switches your own Discord interface language (${serverLanguageList('or')}), or follows the server language.`
 	},
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
-	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Themes, Guide).' }
+	{ label: '👤 Account', desc: 'Link to the member account (Profile, Tasks, Items, Minigames, Market, History, Themes, Guide).' }
 ];

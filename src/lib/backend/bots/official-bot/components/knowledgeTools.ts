@@ -32,7 +32,7 @@ import {
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { VOICE_NOTE, fail, publicServer } from './aiToolShared.js';
 
-const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'assets', 'tips'];
+const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'market', 'tips'];
 
 const DOCS_TOPICS = [
 	'all',
@@ -85,7 +85,7 @@ const DOCS_SECTIONS = {
 			'On by default: Welcomer, Booster, Channel notification, Leveling, Giveaway, AFK and Roblox Catalog.',
 			'Off until enabled: Forwarder, Custom Supporter Role, Feedback, Staff Rating, Content Creator and Discord Quest.',
 			'Always on: Main settings, Permissions, Moderation and Public cannot be switched off.',
-			'Items, Assets, Minigames, Daily tasks and Server invite are sub-toggles of Public, all on by default.',
+			'Items, Market, Minigames, Daily tasks and Server invite are sub-toggles of Public, all on by default.',
 			`Ask for topic "modules" for every setting of a named module: ${modules.map((m) => m.title).join(', ')}.`
 		],
 		points: () => modules.flatMap((m) => [`${m.title}: ${m.what}`, ...(m.fields ?? []).map((f) => `${m.title} — ${f.label}: ${f.desc}`)])
@@ -145,7 +145,7 @@ async function publicPagesSection(botId, guildId) {
 				`This server's statistics: ${publicServerUrl(slug)}`,
 				`This server's leaderboard: ${publicServerUrl(slug, 'leaderboard')}`,
 				`This server's member directory: ${publicServerUrl(slug, 'members')}`,
-				`A member signs in for their own overview, history, guide, items, assets, minigames and tasks: ${publicServerUrl(slug, 'account')}`
+				`A member signs in for their own profile, history, guide, items, market, minigames and tasks: ${publicServerUrl(slug, 'account')}`
 			]
 		: [];
 
@@ -238,7 +238,7 @@ export async function runGuideTool(botId, guildId, args) {
 		items: feature('items'),
 		tasks: feature('tasks'),
 		minigames: feature('minigames'),
-		assets: feature('assets'),
+		market: feature('market'),
 		tips: { title: 'Tips', facts: TIPS.map((t) => t.text) }
 	};
 
@@ -273,7 +273,7 @@ const DOCS_DESCRIPTION =
 	'The documentation for running this bot: getting started, what /setup creates, panel accounts and staff invites, permissions and roles, every module and how it is configured, how AI chat, voice, wikis and the tools are set up, the items shop, the public website with the exact links to this server\'s pages and the global directories, the support server and who builds the bot, the full Terms of Service and Privacy Policy, and self-hosting with its environment variables. Use it for "how do I set this up", "what does /setup do", "how do I add staff", "how do I configure the Roblox notifier", "where can I see the leaderboard online", "is there a page with every item", "where do I report a bug", "who made this bot", "what data do you keep", "do you store my messages", "how do I delete my data", "how do I self-host". This is the admin manual — for how the XP game works for members, use get_guide instead.';
 
 const GUIDE_DESCRIPTION =
-	'The official "How the XP Game Works" guide members read on this server — how XP is earned, what the wallet, cooldown, immunity and bounty mean, and how items, tasks and streaks, minigames and the assets market work, plus the tips. Use this for any "how does X work", "how do I earn XP", "what is a streak", "how do tasks work", "explain the game" question. Answer from this rather than guessing, because these rules are specific to this server. This is the player guide — for setting the bot up, use get_docs instead.';
+	'The official "How the XP Game Works" guide members read on this server — how XP is earned, what the wallet, cooldown, immunity and bounty mean, and how items, tasks and streaks, minigames and the market work, plus the tips. Use this for any "how does X work", "how do I earn XP", "what is a streak", "how do tasks work", "explain the game" question. Answer from this rather than guessing, because these rules are specific to this server. This is the player guide — for setting the bot up, use get_docs instead.';
 
 export function buildKnowledgeTools() {
 	return [

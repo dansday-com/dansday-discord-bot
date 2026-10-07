@@ -366,7 +366,7 @@ async function handleMenuButton(interaction) {
 
 		const cardHash = computeCardToken(publicServer.serverId, String(interaction.user.id));
 		const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
-		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/information/${cardHash}`).setStyle(ButtonStyle.Link));
+		addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/profile/stats/${cardHash}`).setStyle(ButtonStyle.Link));
 	}
 
 	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
@@ -431,7 +431,7 @@ async function handleMyAccountLinkButton(interaction) {
 	}
 
 	const hash = computeCardToken(server.id, String(dbMember.discord_member_id));
-	const url = `${base}/account/overview/information/${hash}`;
+	const url = `${base}/account/profile/stats/${hash}`;
 	let linkText = url;
 	try {
 		linkText = `[${new URL(url).host}](${url})`;

@@ -26,6 +26,15 @@ export const INVITE_SOURCE_LABEL: Record<string, string> = {
 	unknown: 'Unknown'
 };
 
+export const INVITE_SOURCE_TONE: Record<string, string> = {
+	personal: 'text-cyan-300',
+	invite: 'text-indigo-300',
+	server: 'text-emerald-300',
+	vanity: 'text-fuchsia-300',
+	manual: 'text-violet-300',
+	unknown: 'text-ash-400'
+};
+
 export const INVITE_SLUG_MIN = 3;
 
 export const INVITE_SLUG_MAX = 32;

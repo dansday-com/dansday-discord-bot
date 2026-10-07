@@ -33,27 +33,12 @@ function rad(degrees: number): number {
 	return (degrees * Math.PI) / 180;
 }
 
-function colorRng(seed: number): () => number {
-	let a = Number(seed) | 0;
-	return () => {
-		a = (a + 0x6d2b79f5) | 0;
-		let t = Math.imul(a ^ (a >>> 15), 1 | a);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+export function colorTarget(): Hsb {
+	return {
+		h: Math.floor(Math.random() * 360),
+		s: 15 + Math.floor(Math.random() * 86),
+		b: 15 + Math.floor(Math.random() * 86)
 	};
-}
-
-export function colorSeed(): number {
-	return Math.floor(Math.random() * 0x7fffffff);
-}
-
-export function colorTargets(seed: any): Hsb[] {
-	const rng = colorRng(Number(seed) || 0);
-	return Array.from({ length: COLOR_ROUNDS }, () => ({
-		h: Math.floor(rng() * 360),
-		s: 15 + Math.floor(rng() * 86),
-		b: 15 + Math.floor(rng() * 86)
-	}));
 }
 
 export function colorHueGap(a: number, b: number): number {
@@ -75,22 +60,6 @@ export function colorGuess(raw: any): Hsb | null {
 		s: clamp(Math.round(s), 0, COLOR_AXIS_MAX.s),
 		b: clamp(Math.round(b), 0, COLOR_AXIS_MAX.b)
 	};
-}
-
-export function encodeColorGuesses(guesses: Hsb[]): string {
-	return guesses.map((g) => `${g.h},${g.s},${g.b}`).join(';');
-}
-
-export function decodeColorGuesses(raw: any): Hsb[] {
-	return String(raw ?? '')
-		.split(';')
-		.filter(Boolean)
-		.map((part) => {
-			const [h, s, b] = part.split(',');
-			return colorGuess({ h, s, b });
-		})
-		.filter((g): g is Hsb => !!g)
-		.slice(0, COLOR_ROUNDS);
 }
 
 export function hsbToRgb(c: Hsb): [number, number, number] {
@@ -205,11 +174,6 @@ export function colorScore(target: Hsb, guess: Hsb): number {
 	const hueBonus = (COLOR_MAX_SCORE - base) * Math.max(0, 1 - Math.pow(hueGap / 25, 1.5)) * Math.min(1, vivid / 30) * 0.25;
 	const huePenalty = base * Math.max(0, (hueGap - 30) / 150) * Math.min(1, vivid / 40) * 0.15;
 	return clamp(round2(base + hueBonus - huePenalty), 0, COLOR_MAX_SCORE);
-}
-
-export function colorRounds(seed: any, guesses: Hsb[]): ColorRound[] {
-	const targets = colorTargets(seed);
-	return guesses.slice(0, COLOR_ROUNDS).map((guess, i) => ({ target: targets[i], guess, score: colorScore(targets[i], guess) }));
 }
 
 export function colorTotal(scores: number[]): number {

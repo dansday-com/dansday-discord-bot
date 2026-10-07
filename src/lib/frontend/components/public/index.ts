@@ -9,6 +9,6 @@ export { default as TowerGame } from './TowerGame.svelte';
 export { default as ColorGame } from './ColorGame.svelte';
 export { default as MetricTabs } from './MetricTabs.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
-export { default as LevelRewards } from './LevelRewards.svelte';
+export { default as Rewards } from './Rewards.svelte';
 
 export { RANK_STYLES, PODIUM_HEIGHT, rankStyle, initial, type RankStyle } from './ranks';

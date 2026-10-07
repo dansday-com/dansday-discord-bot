@@ -1046,6 +1046,43 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
+export const serverRewards = mysqlTable(
+	'server_rewards',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		goal_type: varchar('goal_type', { length: 16 }).notNull().default('level'),
+		goal: int('goal').notNull(),
+		kind: varchar('kind', { length: 8 }).notNull().default('role'),
+		role_id: int('role_id').references(() => serverRoles.id, { onDelete: 'set null' }),
+		xp: int('xp').notNull().default(0),
+		name: varchar('name', { length: 64 }),
+		image: varchar('image', { length: 255 }),
+		winner_limit: int('winner_limit'),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_rewards_server').on(t.server_id, t.goal_type, t.goal)]
+);
+
+export const serverMemberRewards = mysqlTable(
+	'server_member_rewards',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		reward_id: int('reward_id')
+			.notNull()
+			.references(() => serverRewards.id, { onDelete: 'cascade' }),
+		delivered_at: datetime('delivered_at'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_reward').on(t.member_id, t.reward_id), index('idx_server_member_rewards_reward').on(t.reward_id)]
+);
+
 export const serverMemberTasks = mysqlTable(
 	'server_member_tasks',
 	{
@@ -1145,24 +1182,6 @@ export const serverMemberTowerRuns = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [index('idx_server_member_tower_runs_member').on(t.member_id, t.created_at)]
-);
-
-export const serverMemberColorRuns = mysqlTable(
-	'server_member_color_runs',
-	{
-		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
-		member_id: int('member_id')
-			.notNull()
-			.references(() => serverMembers.id, { onDelete: 'cascade' }),
-		round: int('round').notNull().default(0),
-		seed: int('seed').notNull().default(0),
-		guesses: varchar('guesses', { length: 96 }).notNull().default(''),
-		status: varchar('status', { length: 16 }).notNull().default('active'),
-		payout: int('payout').notNull().default(0),
-		created_at: datetime('created_at').notNull(),
-		updated_at: datetime('updated_at').notNull()
-	},
-	(t) => [index('idx_server_member_color_runs_member').on(t.member_id, t.created_at)]
 );
 
 export const serverMemberLevelFriends = mysqlTable(

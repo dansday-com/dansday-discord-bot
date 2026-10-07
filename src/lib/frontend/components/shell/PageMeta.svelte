@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { publicSiteOrigin } from '$lib/url.js';
+	import { ldJson, siteNodes, webPageNode, type LdNode } from '$lib/structuredData.js';
 
-	let { title, description, path }: { title: string; description: string; path: string } = $props();
+	let { title, description, path, jsonLd = [] }: { title: string; description: string; path: string; jsonLd?: LdNode[] } = $props();
 
 	const url = $derived(publicSiteOrigin() + path);
 	const image = `${publicSiteOrigin()}/og.png?v=2`;
+	const graph = $derived(ldJson([...siteNodes(), webPageNode(url, title, description), ...jsonLd]));
 </script>
 
 <svelte:head>
@@ -22,4 +24,5 @@
 	<meta property="og:image:height" content="630" />
 	<meta property="og:image:alt" content="{APP_NAME} — the free, open-source MEE6 alternative for Discord" />
 	<meta name="twitter:card" content="summary_large_image" />
+	{@html `<script type="application/ld+json">${graph}<\/script>`}
 </svelte:head>

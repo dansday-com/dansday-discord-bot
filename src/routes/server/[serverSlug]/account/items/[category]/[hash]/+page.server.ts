@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');
-	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/overview/information/${params.hash}`);
+	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/profile/stats/${params.hash}`);
 	if ('guest' in shared) redirect(303, serverBasePath || '/');
 
 	const category = String(params.category || 'all');

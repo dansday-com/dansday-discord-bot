@@ -12,7 +12,7 @@ import { DEFAULT_SERVER_LANGUAGE } from './languages.js';
 import { defaultGreetingMessages, defaultMainEmbedFooter } from './localizedDefaults.js';
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
-import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
+import { DEFAULT_REWARD_SETTINGS, sortRewards, type Reward, type RewardDraft, type RewardEarning, type RewardGoal, type RewardKind } from './rewards.js';
 import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import { COLOR_GAME } from './color.js';
@@ -1429,7 +1429,7 @@ async function seedNewServerSettings(serverId: number) {
 		footer: defaultMainEmbedFooter(DEFAULT_SERVER_LANGUAGE),
 		bot_nickname: DEFAULT_BOT_NICKNAME,
 		...DEFAULT_MODERATION_RULE_SETTINGS,
-		...DEFAULT_LEVEL_REWARD_SETTINGS
+		...DEFAULT_REWARD_SETTINGS
 	});
 }
 
@@ -2558,7 +2558,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
 		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
 		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
-		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share')`);
+		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share', 'reward')`);
 		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
 		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
 		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
@@ -2852,17 +2852,6 @@ export async function recalculateServerMemberRanks(serverId: any) {
 		SET sml.rank = ranks.computed_rank
 	`);
 	return true;
-}
-
-export async function getMemberLevelsForServer(serverId: any): Promise<{ discord_member_id: string; level: number }[]> {
-	await initializeDatabase();
-	const rows = await db.execute(sql`
-		SELECT sm.discord_member_id, sml.level
-		FROM server_member_levels sml
-		INNER JOIN server_members sm ON sml.member_id = sm.id
-		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
-	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ discord_member_id: String(r.discord_member_id), level: Number(r.level) || 1 }));
 }
 
 export async function getMemberDiscordRoleIds(memberId: any): Promise<string[]> {
@@ -3388,36 +3377,6 @@ export async function stepTowerRun(runId: any, fromFloor: number, next: { floor:
 		sql`UPDATE server_member_tower_runs
 			SET floor = ${Number(next.floor)}, status = ${String(next.status)}, payout = ${Number(next.payout ?? 0)}, updated_at = ${toMySQLDateTime()}
 			WHERE id = ${Number(runId)} AND status = 'active' AND floor = ${Number(fromFloor)}`
-	);
-	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
-}
-
-export async function getActiveColorRun(memberId: any) {
-	await initializeDatabase();
-	const rows = await db.execute(
-		sql`SELECT id, round, seed, guesses FROM server_member_color_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
-	);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
-}
-
-export async function createColorRun(memberId: any, seed: number) {
-	await initializeDatabase();
-	const now = toMySQLDateTime();
-	await db.insert(schema.serverMemberColorRuns).values({
-		member_id: Number(memberId),
-		seed: Number(seed),
-		created_at: now as any,
-		updated_at: now as any
-	});
-	return true;
-}
-
-export async function stepColorRun(runId: any, fromRound: number, next: { round: number; guesses: string; status: string; payout?: number }) {
-	await initializeDatabase();
-	const result: any = await db.execute(
-		sql`UPDATE server_member_color_runs
-			SET round = ${Number(next.round)}, guesses = ${String(next.guesses)}, status = ${String(next.status)}, payout = ${Number(next.payout ?? 0)}, updated_at = ${toMySQLDateTime()}
-			WHERE id = ${Number(runId)} AND status = 'active' AND round = ${Number(fromRound)}`
 	);
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
@@ -4844,9 +4803,10 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 	return rows[0] as unknown as any[];
 }
 
-export async function getServerMembersList(serverId: any) {
+export async function getServerMembersList(serverId: any, opts?: { discordMemberId?: string }) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return [];
+	const scope = opts?.discordMemberId ? sql`sm.discord_member_id = ${String(opts.discordMemberId)}` : sql`sm.deleted_at IS NULL`;
 
 	const rows = await db.execute(sql`
 		SELECT
@@ -4867,7 +4827,7 @@ export async function getServerMembersList(serverId: any) {
 		LEFT JOIN server_member_afks sma ON sm.id = sma.member_id
 		LEFT JOIN server_member_roles smr ON sm.id = smr.member_id
 		LEFT JOIN server_roles sr ON smr.role_id = sr.id
-		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
+		WHERE sm.server_id = ${Number(serverId)} AND ${scope} AND sm.is_bot = 0
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since, sm.is_owner,
 		         sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
@@ -7729,6 +7689,181 @@ export async function expireModerationTimeouts() {
 	`);
 }
 
+function rewardFromRow(r: any): Reward {
+	return {
+		id: Number(r.id),
+		goal_type: String(r.goal_type) as RewardGoal,
+		goal: Number(r.goal) || 0,
+		kind: String(r.kind) as RewardKind,
+		role_id: r.discord_role_id != null ? String(r.discord_role_id) : null,
+		xp: Number(r.xp) || 0,
+		name: r.name != null ? String(r.name) : null,
+		image: r.image != null ? String(r.image) : null,
+		winner_limit: r.winner_limit != null ? Number(r.winner_limit) : null
+	};
+}
+
+export async function getRewards(serverId: any): Promise<Reward[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT r.id, r.goal_type, r.goal, r.kind, r.xp, r.name, r.image, r.winner_limit, sr.discord_role_id
+		FROM server_rewards r
+		LEFT JOIN server_roles sr ON sr.id = r.role_id
+		WHERE r.server_id = ${Number(serverId)}
+		ORDER BY r.goal_type, r.goal, r.id
+	`);
+	return sortRewards(((rows[0] as unknown as any[]) || []).map(rewardFromRow).filter((r) => r.kind !== 'role' || r.role_id !== null));
+}
+
+export async function saveRewards(serverId: any, drafts: RewardDraft[]): Promise<{ removedImages: string[] }> {
+	await initializeDatabase();
+	const sid = Number(serverId);
+	const now = toMySQLDateTime();
+	const existingRows = await db.execute(sql`SELECT id, goal_type, kind, image FROM server_rewards WHERE server_id = ${sid}`);
+	const existing = new Map(((existingRows[0] as unknown as any[]) || []).map((r: any) => [Number(r.id), r]));
+	const roleRows = await db.execute(sql`SELECT id, discord_role_id FROM server_roles WHERE server_id = ${sid}`);
+	const roleIdOf = new Map(((roleRows[0] as unknown as any[]) || []).map((r: any) => [String(r.discord_role_id), Number(r.id)]));
+
+	const kept = new Set<number>();
+	const keptImages = new Set<string>();
+	for (const d of drafts) {
+		const roleId = d.kind === 'role' && d.role_id ? (roleIdOf.get(d.role_id) ?? null) : null;
+		const before = d.id !== null ? existing.get(d.id) : null;
+		if (d.image) keptImages.add(d.image);
+		if (before && String(before.goal_type) === d.goal_type && String(before.kind) === d.kind) {
+			kept.add(Number(before.id));
+			await db.execute(sql`
+				UPDATE server_rewards
+				SET goal = ${d.goal}, role_id = ${roleId}, xp = ${d.xp}, name = ${d.name}, image = ${d.image}, winner_limit = ${d.winner_limit}, updated_at = ${now}
+				WHERE id = ${Number(before.id)} AND server_id = ${sid}
+			`);
+		} else {
+			await db.execute(sql`
+				INSERT INTO server_rewards (server_id, goal_type, goal, kind, role_id, xp, name, image, winner_limit, created_at, updated_at)
+				VALUES (${sid}, ${d.goal_type}, ${d.goal}, ${d.kind}, ${roleId}, ${d.xp}, ${d.name}, ${d.image}, ${d.winner_limit}, ${now}, ${now})
+			`);
+		}
+	}
+
+	const removedImages: string[] = [];
+	for (const [id, row] of existing) {
+		if (row.image && !keptImages.has(String(row.image))) removedImages.push(String(row.image));
+		if (!kept.has(id)) await db.execute(sql`DELETE FROM server_rewards WHERE id = ${id} AND server_id = ${sid}`);
+	}
+	return { removedImages };
+}
+
+export async function getMemberRewardEarnings(memberId: any): Promise<Map<number, RewardEarning>> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT reward_id, delivered_at FROM server_member_rewards WHERE member_id = ${Number(memberId)}`);
+	return new Map(((rows[0] as unknown as any[]) || []).map((r: any) => [Number(r.reward_id), { delivered: r.delivered_at != null }]));
+}
+
+export async function getRewardEarningsForServer(serverId: any): Promise<Map<number, Map<number, RewardEarning>>> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT smr.member_id, smr.reward_id, smr.delivered_at
+		FROM server_member_rewards smr
+		INNER JOIN server_rewards r ON r.id = smr.reward_id
+		WHERE r.server_id = ${Number(serverId)}
+	`);
+	const out = new Map<number, Map<number, RewardEarning>>();
+	for (const r of (rows[0] as unknown as any[]) || []) {
+		const memberId = Number(r.member_id);
+		if (!out.has(memberId)) out.set(memberId, new Map());
+		out.get(memberId)!.set(Number(r.reward_id), { delivered: r.delivered_at != null });
+	}
+	return out;
+}
+
+export async function getRewardWinnerCounts(serverId: any): Promise<Map<number, number>> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT smr.reward_id, COUNT(*) AS winners
+		FROM server_member_rewards smr
+		INNER JOIN server_rewards r ON r.id = smr.reward_id
+		WHERE r.server_id = ${Number(serverId)}
+		GROUP BY smr.reward_id
+	`);
+	return new Map(((rows[0] as unknown as any[]) || []).map((r: any) => [Number(r.reward_id), Number(r.winners) || 0]));
+}
+
+export async function earnMemberReward(memberId: any, rewardId: any, winnerLimit: number | null, delivered = false): Promise<boolean> {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const room =
+		winnerLimit === null
+			? sql`1 = 1`
+			: sql`(SELECT COUNT(*) FROM server_member_rewards taken WHERE taken.reward_id = ${Number(rewardId)}) < ${Number(winnerLimit)}`;
+	const result: any = await db.execute(sql`
+		INSERT IGNORE INTO server_member_rewards (member_id, reward_id, delivered_at, created_at)
+		SELECT ${Number(memberId)}, ${Number(rewardId)}, ${delivered ? now : null}, ${now}
+		FROM DUAL
+		WHERE ${room}
+	`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
+export async function withdrawMemberReward(memberId: any, rewardId: any): Promise<boolean> {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`
+		DELETE FROM server_member_rewards
+		WHERE member_id = ${Number(memberId)} AND reward_id = ${Number(rewardId)} AND delivered_at IS NULL
+	`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
+export async function getRewardProgressForServer(serverId: any): Promise<{ member_id: number; discord_member_id: string; stats: Record<string, unknown> }[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT sm.id AS member_id, sm.discord_member_id, sml.level, sml.chat_total, sml.voice_minutes_active, sml.voice_minutes_video, sml.voice_minutes_streaming
+		FROM server_member_levels sml
+		INNER JOIN server_members sm ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ member_id: Number(r.member_id), discord_member_id: String(r.discord_member_id), stats: r }));
+}
+
+export async function getPendingRewardDeliveries(serverId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT smr.id, smr.created_at, r.name, r.image, r.goal_type, r.goal,
+		       sm.discord_member_id, sm.avatar, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS member_name
+		FROM server_member_rewards smr
+		INNER JOIN server_rewards r ON r.id = smr.reward_id
+		INNER JOIN server_members sm ON sm.id = smr.member_id
+		WHERE r.server_id = ${Number(serverId)} AND r.kind = 'custom' AND smr.delivered_at IS NULL
+		ORDER BY smr.created_at ASC
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({
+		id: String(r.id),
+		name: String(r.name ?? 'Reward'),
+		image: r.image != null ? String(r.image) : null,
+		goal_type: String(r.goal_type),
+		goal: Number(r.goal) || 0,
+		member_name: String(r.member_name ?? r.discord_member_id),
+		discord_member_id: String(r.discord_member_id),
+		avatar: r.avatar != null ? String(r.avatar) : null,
+		earned_at: r.created_at
+	}));
+}
+
+export async function markRewardDelivered(serverId: any, earningId: any): Promise<{ reward: string; member: string } | null> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT smr.id, r.name, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS member_name
+		FROM server_member_rewards smr
+		INNER JOIN server_rewards r ON r.id = smr.reward_id
+		INNER JOIN server_members sm ON sm.id = smr.member_id
+		WHERE smr.id = ${String(earningId)} AND r.server_id = ${Number(serverId)} AND r.kind = 'custom' AND smr.delivered_at IS NULL
+		LIMIT 1
+	`);
+	const row = (rows[0] as unknown as any[])?.[0];
+	if (!row) return null;
+	await db.execute(sql`UPDATE server_member_rewards SET delivered_at = ${toMySQLDateTime()} WHERE id = ${String(earningId)}`);
+	return { reward: String(row.name ?? 'Reward'), member: String(row.member_name ?? 'member') };
+}
+
 export async function createServerPanelLog(
 	serverId: number,
 	actor: { server_account_id?: number | null; account_id?: number | null },
@@ -8462,9 +8597,6 @@ export default {
 	getTowerWindow,
 	createTowerRun,
 	stepTowerRun,
-	getActiveColorRun,
-	createColorRun,
-	stepColorRun,
 	getMemberMinigameHistory,
 	getMinigamesLeaderboard,
 	getMemberItemHistory,
@@ -8661,6 +8793,16 @@ export default {
 	getMemberTier,
 	getMemberTierMap,
 	createServerPanelLog,
+	getRewards,
+	saveRewards,
+	getMemberRewardEarnings,
+	getRewardEarningsForServer,
+	getRewardWinnerCounts,
+	earnMemberReward,
+	withdrawMemberReward,
+	getRewardProgressForServer,
+	getPendingRewardDeliveries,
+	markRewardDelivered,
 	getServerPanelLogs,
 	recordMemberJoinInvite,
 	markMemberInviteLeft,
@@ -8690,6 +8832,5 @@ export default {
 	getInviteLinkBySlug,
 	listInviteSlugsForServers,
 	getInviteLinkOwners,
-	getMemberLevelsForServer,
 	getMemberDiscordRoleIds
 };

@@ -480,7 +480,7 @@ export const tiers = [
 		what: 'Helper access invited by an owner. Every configuration change they save is logged under their name.',
 		can: [
 			'Configure every module for the server',
-			'Moderate members and send embeds from the panel',
+			'Moderate members and post messages as the bot from the panel',
 			'Use staff features like the rating review queue',
 			'Cannot invite, freeze or delete any account',
 			'Cannot run /setup'

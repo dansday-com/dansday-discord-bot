@@ -16,6 +16,7 @@ import { DEFAULT_REWARD_SETTINGS, sortRewards, type Reward, type RewardDraft, ty
 import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import { COLOR_GAME } from './color.js';
+import { normalizeMessageDoc, type MessageDoc } from './messages.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
 
@@ -7860,6 +7861,121 @@ export async function markRewardDelivered(serverId: any, earningId: any): Promis
 	return { reward: String(row.name ?? 'Reward'), member: String(row.member_name ?? 'member') };
 }
 
+export type ServerMessage = { id: number; name: string; content: MessageDoc; updated_at: string };
+
+export type ServerMessagePost = {
+	id: number;
+	message_id: number;
+	discord_channel_id: string;
+	channel_name: string;
+	discord_message_id: string;
+	language: string;
+	mentions: string | null;
+	created_at: string;
+};
+
+function messageFromRow(r: any): ServerMessage {
+	let content = r.content;
+	if (typeof content === 'string') {
+		try {
+			content = JSON.parse(content);
+		} catch {
+			content = {};
+		}
+	}
+	return { id: Number(r.id), name: String(r.name ?? ''), content: normalizeMessageDoc(content), updated_at: String(r.updated_at ?? '') };
+}
+
+export async function getServerMessages(serverId: any): Promise<ServerMessage[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT id, name, content, updated_at FROM server_messages WHERE server_id = ${Number(serverId)} ORDER BY name, id`);
+	return ((rows[0] as unknown as any[]) || []).map(messageFromRow);
+}
+
+export async function getServerMessage(serverId: any, messageId: any): Promise<ServerMessage | null> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT id, name, content, updated_at FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)} LIMIT 1
+	`);
+	const row = (rows[0] as unknown as any[])?.[0];
+	return row ? messageFromRow(row) : null;
+}
+
+export async function saveServerMessage(serverId: any, messageId: number | null, name: string, content: MessageDoc): Promise<number | null> {
+	await initializeDatabase();
+	const sid = Number(serverId);
+	const now = toMySQLDateTime();
+	const body = JSON.stringify(content);
+	if (messageId === null) {
+		const result: any = await db.execute(sql`
+			INSERT INTO server_messages (server_id, name, content, created_at, updated_at) VALUES (${sid}, ${name}, ${body}, ${now}, ${now})
+		`);
+		const id = Number(result?.[0]?.insertId ?? result?.insertId);
+		return Number.isFinite(id) && id > 0 ? id : null;
+	}
+	const result: any = await db.execute(sql`
+		UPDATE server_messages SET name = ${name}, content = ${body}, updated_at = ${now} WHERE id = ${Number(messageId)} AND server_id = ${sid}
+	`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0 ? Number(messageId) : null;
+}
+
+export async function deleteServerMessage(serverId: any, messageId: any): Promise<boolean> {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`DELETE FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)}`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
+export async function getServerMessagePosts(serverId: any, messageId: number | null = null): Promise<ServerMessagePost[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.created_at, c.discord_channel_id, c.name AS channel_name
+		FROM server_message_posts p
+		INNER JOIN server_messages e ON e.id = p.message_id
+		INNER JOIN server_channels c ON c.id = p.channel_id
+		WHERE e.server_id = ${Number(serverId)} AND ${messageId === null ? sql`1 = 1` : sql`p.message_id = ${Number(messageId)}`}
+		ORDER BY p.created_at DESC, p.id DESC
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({
+		id: Number(r.id),
+		message_id: Number(r.message_id),
+		discord_channel_id: String(r.discord_channel_id),
+		channel_name: String(r.channel_name ?? r.discord_channel_id),
+		discord_message_id: String(r.discord_message_id),
+		language: String(r.language),
+		mentions: r.mentions != null ? String(r.mentions) : null,
+		created_at: String(r.created_at ?? '')
+	}));
+}
+
+export async function addServerMessagePost(
+	serverId: any,
+	messageId: any,
+	discordChannelId: string,
+	discordMessageId: string,
+	language: string,
+	mentions: string | null
+): Promise<void> {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT IGNORE INTO server_message_posts (message_id, channel_id, discord_message_id, language, mentions, created_at, updated_at)
+		SELECT e.id, c.id, ${String(discordMessageId)}, ${language}, ${mentions}, ${now}, ${now}
+		FROM server_messages e
+		INNER JOIN server_channels c ON c.server_id = e.server_id AND c.discord_channel_id = ${String(discordChannelId)}
+		WHERE e.id = ${Number(messageId)} AND e.server_id = ${Number(serverId)}
+	`);
+}
+
+export async function deleteServerMessagePost(serverId: any, postId: any): Promise<boolean> {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`
+		DELETE p FROM server_message_posts p
+		INNER JOIN server_messages e ON e.id = p.message_id
+		WHERE p.id = ${Number(postId)} AND e.server_id = ${Number(serverId)}
+	`);
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
+}
+
 export async function createServerPanelLog(
 	serverId: number,
 	actor: { server_account_id?: number | null; account_id?: number | null },
@@ -8789,6 +8905,13 @@ export default {
 	getMemberTier,
 	getMemberTierMap,
 	createServerPanelLog,
+	getServerMessages,
+	getServerMessage,
+	saveServerMessage,
+	deleteServerMessage,
+	getServerMessagePosts,
+	addServerMessagePost,
+	deleteServerMessagePost,
 	getRewards,
 	saveRewards,
 	getMemberRewardEarnings,

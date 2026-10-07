@@ -1432,6 +1432,21 @@
 			"failed": "Er ging iets mis bij het contact met de AI-dienst. Probeer het zo meteen opnieuw."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ Dit is niet meer beschikbaar. Vraag een serverbeheerder om het opnieuw in te stellen in het configuratiepaneel van de bot.",
+		"notSetUp": "❌ Dit doet nog niets. Vraag een serverbeheerder om het af te maken in het configuratiepaneel van de bot.",
+		"roleAdded": "✅ Je hebt nu {role}.",
+		"roleRemoved": "✅ {role} is bij je weggehaald.",
+		"roleAlready": "Je hebt {role} al.",
+		"roleNotHeld": "Je hebt {role} niet.",
+		"roleFailed": "❌ Ik kon {role} niet wijzigen. {reason}",
+		"blocked": {
+			"deleted": "❌ Die rol bestaat niet meer. Vraag een serverbeheerder om in het configuratiepaneel van de bot een andere te kiezen.",
+			"managed": "❌ {role} hoort bij een integratie, dus ik kan hem niet geven of weghalen. Vraag een serverbeheerder om in het configuratiepaneel van de bot een andere rol te kiezen.",
+			"no_permission": "❌ Ik heb de toestemming Rollen beheren nodig om {role} te wijzigen. Vraag een serverbeheerder om die aan mijn rol te geven.",
+			"above_bot": "❌ {role} staat boven mijn eigen rol. Vraag een serverbeheerder om mijn rol hoger te zetten in Serverinstellingen → Rollen."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Onbekend commando**: `/{command}`\n\nDit commando bestaat niet. Alleen `/setup` is beschikbaar.",

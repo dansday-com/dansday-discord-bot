@@ -248,11 +248,11 @@ Each member signs in to their own account on those same pages.
 
 - **One-command setup** - `/setup` asks for the server language, then creates every channel named in it and wires each one to its module. Nothing else to pick by hand.
 - **Granular permissions** - Owner and staff tiers control who changes what.
-- **Change log** - Every configuration save records who changed which setting, before and after. Embeds sent from the builder, invite edits and panel moderation are logged with who did them too.
+- **Change log** - Every configuration save records who changed which setting, before and after. Messages saved, sent, edited or deleted from the panel, invite edits and panel moderation are logged with who did them too.
 - **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
 - **Per-module toggles** - Enable or disable each feature per server.
 - **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
-- **Embed builder** - Rich embeds with live preview, placeholders and images.
+- **Messages** - Post as the bot from the browser: plain text with photos and videos, embeds, or a full Components V2 layout, with a live preview you can click through. Buttons and dropdowns open another saved message privately or give, take or toggle a role, so one message covers rules panels, reaction roles and dropdown roles. Every text can be translated, and a member who clicks gets the reply in their own language. Saving a message edits every copy already posted, and each save, send and delete is in the change log with who did it.
 - **Bot appearance** - Own nickname, avatar, banner and bio per server, set on the Main page.
 - **Multi-language** - English, Indonesian, German, Spanish, French, Italian, Dutch, Arabic, Malay, Simplified Chinese, Traditional Chinese and Japanese. Each server picks a language in `/setup` or on the Main page: it names the setup channels and is used for the menu, approval posts, every public bot message and the AI's chat and voice. Members can pick their own language for their private replies and DMs, and otherwise follow the server's.
 

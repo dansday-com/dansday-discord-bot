@@ -1432,6 +1432,21 @@
 			"failed": "連線到 AI 服務時出了點問題。請稍後再試。"
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ 此內容已無法使用。請伺服器管理員在機器人設定面板中重新設定。",
+		"notSetUp": "❌ 這裡還沒有設定任何動作。請伺服器管理員在機器人設定面板中完成設定。",
+		"roleAdded": "✅ 你現在擁有 {role}。",
+		"roleRemoved": "✅ 已移除你的 {role}。",
+		"roleAlready": "你已經擁有 {role}。",
+		"roleNotHeld": "你沒有 {role}。",
+		"roleFailed": "❌ 我無法變更 {role}。{reason}",
+		"blocked": {
+			"deleted": "❌ 該身分組已不存在。請伺服器管理員在機器人設定面板中選擇其他身分組。",
+			"managed": "❌ {role} 屬於某個整合，所以我無法給予或移除它。請伺服器管理員在機器人設定面板中選擇其他身分組。",
+			"no_permission": "❌ 我需要「管理身分組」權限才能變更 {role}。請伺服器管理員把這個權限給我的身分組。",
+			"above_bot": "❌ {role} 高於我自己的身分組。請伺服器管理員在伺服器設定 → 身分組中把我的身分組調高。"
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **未知的指令**：`/{command}`\n\n這個指令不存在。目前只能使用 `/setup`。",

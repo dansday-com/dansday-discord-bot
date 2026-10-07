@@ -1432,6 +1432,21 @@
 			"failed": "Beim Kontaktieren des KI-Dienstes ist etwas schiefgelaufen. Versuche es gleich erneut."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ Das ist nicht mehr verfügbar. Bitte einen Server-Admin, es im Bot-Konfigurationspanel neu einzurichten.",
+		"notSetUp": "❌ Das macht noch nichts. Bitte einen Server-Admin, die Einrichtung im Bot-Konfigurationspanel abzuschließen.",
+		"roleAdded": "✅ Du hast jetzt {role}.",
+		"roleRemoved": "✅ {role} wurde dir entfernt.",
+		"roleAlready": "Du hast {role} bereits.",
+		"roleNotHeld": "Du hast {role} nicht.",
+		"roleFailed": "❌ Ich konnte {role} nicht ändern. {reason}",
+		"blocked": {
+			"deleted": "❌ Diese Rolle existiert nicht mehr. Bitte einen Server-Admin, im Bot-Konfigurationspanel eine andere auszuwählen.",
+			"managed": "❌ {role} gehört zu einer Integration, deshalb kann ich sie weder vergeben noch entfernen. Bitte einen Server-Admin, im Bot-Konfigurationspanel eine andere Rolle auszuwählen.",
+			"no_permission": "❌ Ich brauche die Berechtigung „Rollen verwalten“, um {role} zu ändern. Bitte einen Server-Admin, sie meiner Rolle zu geben.",
+			"above_bot": "❌ {role} liegt über meiner eigenen Rolle. Bitte einen Server-Admin, meine Rolle unter Servereinstellungen → Rollen höher zu setzen."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Unbekannter Befehl**: `/{command}`\n\nDieser Befehl existiert nicht. Nur `/setup` ist verfügbar.",

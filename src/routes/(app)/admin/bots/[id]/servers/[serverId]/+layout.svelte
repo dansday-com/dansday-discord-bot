@@ -22,7 +22,7 @@
 		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_source === 'server_accounts')
 			? [{ label: 'Accounts', icon: 'fa-user-shield', iconClass: 'text-amber-400', href: `${base}/accounts` }]
 			: []),
-		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/embed` },
+		{ label: 'Messages', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/messages` },
 		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` },
 		{ label: 'Rewards', icon: 'fa-trophy', iconClass: 'text-yellow-400', href: `${base}/rewards` },
 		{ label: 'Change Log', icon: 'fa-clock-rotate-left', iconClass: 'text-sky-400', href: `${base}/changes` }

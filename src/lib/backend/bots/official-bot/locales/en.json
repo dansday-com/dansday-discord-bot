@@ -1432,6 +1432,21 @@
 			"failed": "Something went wrong while contacting the AI service. Try again in a moment."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ This is no longer available. Ask a server admin to set it up again in the bot configuration panel.",
+		"notSetUp": "❌ This doesn't do anything yet. Ask a server admin to finish setting it up in the bot configuration panel.",
+		"roleAdded": "✅ You now have {role}.",
+		"roleRemoved": "✅ {role} was removed from you.",
+		"roleAlready": "You already have {role}.",
+		"roleNotHeld": "You don't have {role}.",
+		"roleFailed": "❌ I couldn't change {role}. {reason}",
+		"blocked": {
+			"deleted": "❌ That role no longer exists. Ask a server admin to pick another one in the bot configuration panel.",
+			"managed": "❌ {role} belongs to an integration, so I can't give it or take it away. Ask a server admin to pick another role in the bot configuration panel.",
+			"no_permission": "❌ I need the Manage Roles permission to change {role}. Ask a server admin to give it to my role.",
+			"above_bot": "❌ {role} is above my own role. Ask a server admin to move my role higher in Server Settings → Roles."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Unknown Command**: `/{command}`\n\nThis command doesn't exist. Only `/setup` is available.",

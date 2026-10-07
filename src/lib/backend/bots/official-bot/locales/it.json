@@ -1432,6 +1432,21 @@
 			"failed": "Qualcosa è andato storto contattando il servizio di IA. Riprova tra un attimo."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ Non è più disponibile. Chiedi a un amministratore del server di configurarlo di nuovo nel pannello di configurazione del bot.",
+		"notSetUp": "❌ Per ora non fa nulla. Chiedi a un amministratore del server di completare la configurazione nel pannello di configurazione del bot.",
+		"roleAdded": "✅ Ora hai {role}.",
+		"roleRemoved": "✅ {role} ti è stato rimosso.",
+		"roleAlready": "Hai già {role}.",
+		"roleNotHeld": "Non hai {role}.",
+		"roleFailed": "❌ Non sono riuscito a modificare {role}. {reason}",
+		"blocked": {
+			"deleted": "❌ Quel ruolo non esiste più. Chiedi a un amministratore del server di sceglierne un altro nel pannello di configurazione del bot.",
+			"managed": "❌ {role} appartiene a un'integrazione, quindi non posso né darlo né toglierlo. Chiedi a un amministratore del server di scegliere un altro ruolo nel pannello di configurazione del bot.",
+			"no_permission": "❌ Mi serve il permesso Gestire i ruoli per modificare {role}. Chiedi a un amministratore del server di darlo al mio ruolo.",
+			"above_bot": "❌ {role} è sopra il mio ruolo. Chiedi a un amministratore del server di spostare il mio ruolo più in alto in Impostazioni server → Ruoli."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Comando sconosciuto**: `/{command}`\n\nQuesto comando non esiste. È disponibile solo `/setup`.",

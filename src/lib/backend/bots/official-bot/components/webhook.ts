@@ -211,182 +211,6 @@ async function handleSendGlobalEmbed(payload) {
 	}
 }
 
-async function handleSendEmbed(payload) {
-	try {
-		const { guild_id, channel_ids, role_ids, title, description, image_url, color, footer, image_attachment } = payload;
-
-		const channelIds = channel_ids || (payload.channel_id ? [payload.channel_id] : []);
-		const roleIds = role_ids || (payload.role_id ? [payload.role_id] : []);
-
-		if (!guild_id || !channelIds || channelIds.length === 0 || !title) {
-			throw new Error('Missing required fields: guild_id, channel_ids (array), and title are required');
-		}
-
-		const guild = client.guilds.cache.get(guild_id);
-		if (!guild) {
-			throw new Error('Guild not found');
-		}
-		let serverRow = null;
-		if (currentBotId) {
-			serverRow = await db.getServerByDiscordId(currentBotId, guild_id);
-			if (!serverRow) {
-				throw new Error('Guild not found');
-			}
-		}
-
-		const embedConfig = await getEmbedConfig(guild_id);
-		let embedColor = embedConfig.COLOR;
-
-		if (color && color.trim()) {
-			const parsedColor = parseColor(color.trim());
-			if (parsedColor !== null) {
-				embedColor = parsedColor;
-			} else {
-				throw new Error('Invalid color format');
-			}
-		}
-
-		const serverNameForFooter = serverRow?.name || guild.name;
-
-		const rawFooter = footer && footer.trim() ? footer.trim() : embedConfig.FOOTER;
-		const footerText = resolveEmbedFooterPlaceholders(rawFooter, serverNameForFooter);
-
-		const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
-
-		embed.setTitle(title);
-		if (description) embed.setDescription(description);
-
-		let imageAttachment = null;
-		if (image_attachment && image_attachment.data) {
-			try {
-				const imageBuffer = Buffer.from(image_attachment.data, 'base64');
-				const attachmentFilename = image_attachment.filename || 'image.png';
-				imageAttachment = {
-					attachment: imageBuffer,
-					name: attachmentFilename
-				};
-				embed.setImage(`attachment://${attachmentFilename}`);
-			} catch (attachErr) {
-				await logger.log(`⚠️  Failed to process image attachment: ${attachErr.message}`);
-				if (image_url) {
-					embed.setImage(image_url);
-				}
-			}
-		} else if (image_url) {
-			const trimmedUrl = image_url.trim();
-			if (trimmedUrl && (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://') || trimmedUrl.startsWith('data:'))) {
-				embed.setImage(trimmedUrl);
-			} else {
-				await logger.log(`⚠️  Invalid image URL format: ${image_url}`);
-			}
-		}
-
-		let content = '';
-		if (roleIds && roleIds.length > 0) {
-			const mentions = [];
-			for (const roleId of roleIds) {
-				if (roleId === 'everyone') {
-					mentions.push('@everyone');
-					continue;
-				}
-				if (roleId === 'here') {
-					mentions.push('@here');
-					continue;
-				}
-				const role = guild.roles.cache.get(roleId);
-				if (role) {
-					mentions.push(`<@&${roleId}>`);
-				}
-			}
-			if (mentions.length > 0) {
-				content = mentions.join(' ');
-			}
-		}
-
-		const messageOptions: any = {
-			content: content || undefined,
-			embeds: [embed]
-		};
-
-		if (imageAttachment) {
-			messageOptions.files = [imageAttachment];
-		}
-
-		const results = [];
-		for (const channelId of channelIds) {
-			try {
-				if (!channelId || channelId === 'undefined' || channelId === 'null') {
-					results.push({ channelId: String(channelId), success: false, error: 'Invalid channel ID' });
-					await logger.log(`❌ Invalid channel ID: ${channelId} in guild ${guild_id}`);
-					continue;
-				}
-
-				const channel = await guild.channels.fetch(channelId).catch(() => null);
-				if (!channel) {
-					results.push({ channelId: String(channelId), success: false, error: 'Channel not found' });
-					await logger.log(`❌ Channel ${channelId} not found in guild ${guild_id}`);
-					continue;
-				}
-
-				if (!channel.isTextBased()) {
-					results.push({ channelId, success: false, error: 'Channel is not a text channel' });
-					continue;
-				}
-
-				let currentImageAttachment = null;
-				if (image_attachment && image_attachment.data) {
-					try {
-						const imageBuffer = Buffer.from(image_attachment.data, 'base64');
-						const attachmentFilename = image_attachment.filename || 'image.png';
-						currentImageAttachment = {
-							attachment: imageBuffer,
-							name: attachmentFilename
-						};
-					} catch (e) {
-						await logger.log(`⚠️  Failed to process image attachment: ${e.message}`);
-					}
-				}
-
-				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channelId).catch(() => null);
-				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
-				const channelContent = [firstMentionChunk ? firstMentionChunk : null, content].filter(Boolean).join(' ') || undefined;
-
-				const channelMessageOptions: any = {
-					content: channelContent,
-					embeds: [embed]
-				};
-
-				if (currentImageAttachment) {
-					channelMessageOptions.files = [currentImageAttachment];
-				}
-
-				await channel.send(channelMessageOptions);
-
-				if (notificationMentions && notificationMentions.length > 1) {
-					for (let i = 1; i < notificationMentions.length; i++) {
-						await channel.send({ content: notificationMentions[i] }).catch(() => null);
-					}
-				}
-				results.push({ channelId, success: true, channelName: channel.name });
-				await logger.log(`📤 Embed sent via webhook to ${channel.name} (${channel.id}) in ${guild.name} (${guild.id})`);
-			} catch (channelError) {
-				results.push({ channelId, success: false, error: channelError.message });
-				await logger.log(`❌ Failed to send embed to channel ${channelId}: ${channelError.message}`);
-			}
-		}
-
-		const successCount = results.filter((r) => r.success).length;
-		if (successCount === 0) {
-			throw new Error(`Failed to send embed to any channel. Errors: ${results.map((r) => r.error).join(', ')}`);
-		}
-
-		return { success: true, results, sentTo: successCount, total: channelIds.length };
-	} catch (error) {
-		await logger.log(`❌ Failed to send embed via webhook: ${error.message}`);
-		throw error;
-	}
-}
-
 function getClientIp(req) {
 	const address = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
 	return address.startsWith('::ffff:') ? address.slice(7) : address || 'unknown';
@@ -440,17 +264,23 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send global embed', details: embedErr.message }));
 					}
-				} else if (payload.type === 'send_embed') {
+				} else if (typeof payload.type === 'string' && payload.type.startsWith('server_message_')) {
 					try {
-						const channelIds = payload.channel_ids || (payload.channel_id ? [payload.channel_id] : []);
-						await logger.log(`📥 Received send_embed webhook: ${channelIds.length} channel(s) in guild ${payload.guild_id}`);
-						await handleSendEmbed(payload);
-						res.writeHead(200, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ success: true, message: 'Embed sent successfully' }));
-					} catch (embedErr) {
-						await logger.log(`❌ Failed to send embed: ${embedErr.message}`);
+						const serverMessages = await import('./serverMessages.js');
+						const handlers = {
+							server_message_send: serverMessages.sendServerMessage,
+							server_message_sync: serverMessages.syncServerMessagePosts,
+							server_message_remove_post: serverMessages.removeServerMessagePost,
+							server_message_emojis: serverMessages.listGuildEmojis
+						};
+						const handler = handlers[payload.type];
+						const result = handler ? await handler(client, payload) : { ok: false, error: 'Unknown message action' };
+						res.writeHead(handler ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (messageErr: any) {
+						await logger.log(`❌ ${payload.type} failed: ${messageErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to send embed', details: embedErr.message }));
+						res.end(JSON.stringify({ ok: false, error: `${payload.type} failed`, details: messageErr.message }));
 					}
 				} else if (payload.type === 'send_quest_notification') {
 					try {

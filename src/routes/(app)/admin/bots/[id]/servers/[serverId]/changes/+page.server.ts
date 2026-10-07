@@ -5,7 +5,11 @@ import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.j
 import { accountOwnsServer, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
-	embed_sent: { component: 'embed_builder', label: 'Embed builder' },
+	embed_sent: { component: 'messages', label: 'Messages' },
+	message_saved: { component: 'messages', label: 'Messages' },
+	message_sent: { component: 'messages', label: 'Messages' },
+	message_deleted: { component: 'messages', label: 'Messages' },
+	message_post_removed: { component: 'messages', label: 'Messages' },
 	account_invite: { component: 'accounts', label: 'Accounts' },
 	invite_bonus: { component: 'invites', label: 'Invites' },
 	invite_assign: { component: 'invites', label: 'Invites' },

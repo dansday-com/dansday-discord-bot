@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db, { botAiFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
+import db, { aiFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { normalizeServerAiSettings } from '$lib/server-ai-settings.js';
 
@@ -12,14 +12,14 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		getOfficialBotIdForServer(Number(params.serverId)).catch(() => null)
 	]);
 
-	const botAi = botAiFromDbRow(officialBotId == null ? null : await db.getBotAiByBotId(officialBotId).catch(() => null));
+	const panelAi = aiFromDbRow(officialBotId == null ? null : await db.getAiByBotId(officialBotId).catch(() => null));
 
 	return {
 		settings: normalizeServerAiSettings(row && !Array.isArray(row) ? row.settings : null),
-		botFallback: {
-			system_prompt: botAi.system_prompt,
-			voice_system_prompt: botAi.voice_system_prompt,
-			voice_name: botAi.voice_name
+		panelFallback: {
+			system_prompt: panelAi.system_prompt,
+			voice_system_prompt: panelAi.voice_system_prompt,
+			voice_name: panelAi.voice_name
 		}
 	};
 };

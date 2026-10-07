@@ -1,5 +1,5 @@
 import { Type } from '@google/genai';
-import { botAiImageEndpoint } from '../../../../database.js';
+import { aiImageEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { postJson, resolveToolUrl } from './aiToolHttp.js';
 
@@ -23,12 +23,12 @@ Do not use this to look something up — search_web finds real photos and pages,
 One image per call. Write the prompt in English even when the user wrote another language, and describe subject, style and setting concretely.`;
 
 export function imageConfigured(config) {
-	const endpoint = botAiImageEndpoint(config);
+	const endpoint = aiImageEndpoint(config);
 	return Boolean(endpoint.api_url && endpoint.api_key && endpoint.model);
 }
 
 export async function runImageTool(config, args) {
-	const endpoint = botAiImageEndpoint(config);
+	const endpoint = aiImageEndpoint(config);
 	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'image_generation_not_configured' };
 
 	const prompt = String(args?.prompt ?? '').trim();

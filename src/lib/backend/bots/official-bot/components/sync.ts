@@ -246,7 +246,7 @@ async function findGreetingChannel(guild) {
 async function isAiChatReady() {
 	if (!botId) return false;
 	try {
-		const config = db.botAiFromDbRow(await db.getBotAiByBotId(botId));
+		const config = db.aiFromDbRow(await db.getAiByBotId(botId));
 		return !!(config.enabled && config.api_url && config.api_key && config.model);
 	} catch {
 		return false;

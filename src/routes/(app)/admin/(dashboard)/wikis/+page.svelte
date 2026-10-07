@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
@@ -37,7 +38,7 @@
 	async function testConnection() {
 		testing = true;
 		try {
-			const res = await fetch(`/api/bots/${data.bot.id}/wikis/test`, {
+			const res = await fetch('/api/admin/wikis/test', {
 				method: 'POST',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
@@ -60,7 +61,7 @@
 	async function saveWiki() {
 		saving = true;
 		try {
-			const res = await fetch(`/api/bots/${data.bot.id}/wikis`, {
+			const res = await fetch('/api/admin/wikis', {
 				method: isEditing ? 'PATCH' : 'POST',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
@@ -89,7 +90,7 @@
 	}
 
 	async function toggleWiki(wiki: (typeof data.wikis)[number], enabled: boolean) {
-		const res = await fetch(`/api/bots/${data.bot.id}/wikis`, {
+		const res = await fetch('/api/admin/wikis', {
 			method: 'PATCH',
 			credentials: 'include',
 			headers: { 'Content-Type': 'application/json' },
@@ -116,7 +117,7 @@
 		if (!pendingDelete) return;
 		deleting = true;
 		try {
-			const res = await fetch(`/api/bots/${data.bot.id}/wikis`, {
+			const res = await fetch('/api/admin/wikis', {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
@@ -137,13 +138,17 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Wikis | {APP_NAME} Discord Bot</title>
+</svelte:head>
+
 <div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 mb-1 text-lg font-semibold">
 		<i class="fas fa-book mr-2 text-violet-400"></i>Wiki knowledge
 	</h3>
 	<p class="text-ash-400 mb-4 text-sm">
-		Game wikis the AI looks things up in instead of guessing. Works in chat and voice. Any <strong class="text-ash-300">MediaWiki</strong> site works, including Fandom.
-		Changes apply right away — chat on the next message, voice on the next call.
+		Game wikis the AI looks things up in instead of guessing. Works in chat and voice on every bot. Any <strong class="text-ash-300">MediaWiki</strong> site works,
+		including Fandom. Changes apply right away — chat on the next message, voice on the next call.
 	</p>
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -56,6 +56,53 @@ CREATE TABLE IF NOT EXISTS bot_status (
     FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS ai (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    panel_id INT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    api_url TEXT NULL,
+    api_key TEXT NULL,
+    model VARCHAR(191) NULL,
+    system_prompt TEXT NULL,
+    reasoning ENUM('none', 'low', 'medium', 'high', 'xhigh') NOT NULL DEFAULT 'none',
+    voice_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    voice_model VARCHAR(191) NULL,
+    voice_name VARCHAR(64) NULL,
+    voice_thinking ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'low',
+    voice_api_key TEXT NULL,
+    voice_system_prompt TEXT NULL,
+    search_api_url TEXT NULL,
+    search_api_key TEXT NULL,
+    search_model VARCHAR(191) NULL,
+    fetch_api_url TEXT NULL,
+    fetch_api_key TEXT NULL,
+    fetch_model VARCHAR(191) NULL,
+    image_api_url TEXT NULL,
+    image_api_key TEXT NULL,
+    image_model VARCHAR(191) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_ai_panel_id (panel_id),
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS wikis (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    panel_id INT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    name VARCHAR(64) NOT NULL,
+    api_url VARCHAR(512) NOT NULL,
+    site_url VARCHAR(512) NULL,
+    relay_url VARCHAR(512) NULL,
+    relay_key VARCHAR(191) NULL,
+    description VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_wikis_panel_name (panel_id, name),
+    INDEX idx_wikis_panel (panel_id),
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS servers (
     id INT PRIMARY KEY AUTO_INCREMENT,
     bot_id INT NULL,

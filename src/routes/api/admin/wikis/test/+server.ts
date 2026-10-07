@@ -1,7 +1,5 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/database.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 import { WIKI_USER_AGENT } from '$lib/backend/bots/official-bot/components/wiki.js';
 
 const TIMEOUT_MS = 12_000;
@@ -32,16 +30,12 @@ async function summarizeWiki(askWiki: AskWiki, general: Record<string, any>): Pr
 	}
 }
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated) {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
-	const botId = Number(params.id);
-	if (!Number.isFinite(botId) || !(await db.getBot(botId))) {
-		return json({ success: false, error: 'Bot not found' }, { status: 404 });
-	}
-	if (!(await accountOwnsBot(locals, botId))) {
+	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

@@ -13,7 +13,7 @@ import {
 import { AttachmentBuilder } from 'discord.js';
 import prism from 'prism-media';
 import { Readable } from 'node:stream';
-import { botAiVoiceEndpoint } from '../../../../database.js';
+import { aiVoiceEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
@@ -179,7 +179,7 @@ The get_my_* tools only ever read the account of the person talking to you. Neve
 
 export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
 	const speaking = new Map();
-	const endpoint = botAiVoiceEndpoint(config);
+	const endpoint = aiVoiceEndpoint(config);
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
 	const extendedThinking = isExtendedThinking(config.voice_model);
 	const toolBehavior = extendedThinking ? Behavior.NON_BLOCKING : Behavior.BLOCKING;

@@ -10,6 +10,8 @@ export const ADMIN_TAB_PATHS = {
 	selfbots: `${ADMIN_BASE}/selfbots`,
 	globalMessages: `${ADMIN_BASE}/global-messages`,
 	items: `${ADMIN_BASE}/items`,
+	ai: `${ADMIN_BASE}/ai`,
+	wikis: `${ADMIN_BASE}/wikis`,
 	settings: `${ADMIN_BASE}/settings`
 } as const;
 
@@ -26,7 +28,7 @@ export function adminServerSectionPath(botId: string | number, serverId: string 
 	return suffix ? `${adminServerPath(botId, serverId)}/${suffix}` : adminServerPath(botId, serverId);
 }
 
-const BOT_SECTION_RE = new RegExp(`^${BOTS_ROOT}/[^/]+(?:/(?:presence|ai|wikis))?/?$`);
+const BOT_SECTION_RE = new RegExp(`^${BOTS_ROOT}/[^/]+(?:/presence)?/?$`);
 const BOT_SERVERS_ROOT_RE = new RegExp(`^${BOTS_ROOT}/[^/]+/servers$`);
 
 const BOT_ID_RE = new RegExp(`^${BOTS_ROOT}/([^/]+)`);

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -28,7 +29,7 @@
 
 	let { data }: PageProps = $props();
 
-	function aiFromServer(a: typeof data.botAi) {
+	function aiFromServer(a: typeof data.ai) {
 		return {
 			enabled: a.enabled,
 			api_url: a.api_url ?? '',
@@ -54,7 +55,7 @@
 		};
 	}
 
-	let ai = $state(aiFromServer(data.botAi));
+	let ai = $state(aiFromServer(data.ai));
 	const voiceThinkingSupported = $derived(ai.voice_model.toLowerCase().includes('live-extended-thinking'));
 	let aiKeyInput = $state('');
 	let voiceKeyInput = $state('');
@@ -64,7 +65,7 @@
 	let savingAi = $state(false);
 
 	$effect(() => {
-		ai = aiFromServer(data.botAi);
+		ai = aiFromServer(data.ai);
 		aiKeyInput = '';
 		voiceKeyInput = '';
 		searchKeyInput = '';
@@ -77,7 +78,7 @@
 	async function saveAi() {
 		savingAi = true;
 		try {
-			const res = await fetch(`/api/bots/${data.bot.id}/ai`, {
+			const res = await fetch('/api/admin/ai', {
 				method: 'PATCH',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
@@ -118,13 +119,17 @@
 	}
 </script>
 
+<svelte:head>
+	<title>AI | {APP_NAME} Discord Bot</title>
+</svelte:head>
+
 <div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 mb-1 text-lg font-semibold">
 		<i class="fas fa-robot mr-2 text-violet-400"></i>AI chat
 	</h3>
 	<p class="text-ash-400 mb-4 text-sm">
 		Members talk to the bot by mentioning it, or by replying to its messages. Each member keeps their own conversation in every server. Requires an
-		<strong class="text-ash-300">OpenAI-compatible</strong> endpoint. Restart the bot to apply changes.
+		<strong class="text-ash-300">OpenAI-compatible</strong> endpoint. Every bot shares these settings. Restart your bots to apply changes.
 	</p>
 
 	<ConfigToggleRow

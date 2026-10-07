@@ -86,13 +86,13 @@ export const botStatus = mysqlTable(
 	(t) => [uniqueIndex('uq_bot_status_bot_id').on(t.bot_id)]
 );
 
-export const botAi = mysqlTable(
-	'bot_ai',
+export const ai = mysqlTable(
+	'ai',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		bot_id: int('bot_id')
+		panel_id: int('panel_id')
 			.notNull()
-			.references(() => bots.id, { onDelete: 'cascade' }),
+			.references(() => panel.id, { onDelete: 'cascade' }),
 		enabled: boolean('enabled').notNull().default(false),
 		api_url: text('api_url'),
 		api_key: text('api_key'),
@@ -117,16 +117,16 @@ export const botAi = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [uniqueIndex('uq_bot_ai_bot_id').on(t.bot_id)]
+	(t) => [uniqueIndex('uq_ai_panel_id').on(t.panel_id)]
 );
 
-export const botWikis = mysqlTable(
-	'bot_wikis',
+export const wikis = mysqlTable(
+	'wikis',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		bot_id: int('bot_id')
+		panel_id: int('panel_id')
 			.notNull()
-			.references(() => bots.id, { onDelete: 'cascade' }),
+			.references(() => panel.id, { onDelete: 'cascade' }),
 		enabled: boolean('enabled').notNull().default(true),
 		name: varchar('name', { length: 64 }).notNull(),
 		api_url: varchar('api_url', { length: 512 }).notNull(),
@@ -137,7 +137,7 @@ export const botWikis = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [uniqueIndex('uq_bot_wikis_bot_name').on(t.bot_id, t.name), index('idx_bot_wikis_bot').on(t.bot_id)]
+	(t) => [uniqueIndex('uq_wikis_panel_name').on(t.panel_id, t.name), index('idx_wikis_panel').on(t.panel_id)]
 );
 
 export const servers = mysqlTable(

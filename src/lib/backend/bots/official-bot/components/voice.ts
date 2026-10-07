@@ -13,11 +13,11 @@ async function handleJoin(command) {
 	const botConfig = getBotConfig();
 	if (!botConfig?.id) return;
 
-	const botAi = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
-	const endpoint = db.botAiVoiceEndpoint(botAi);
-	if (!botAi.enabled || !botAi.voice_enabled || !endpoint.api_key || !endpoint.model) return;
+	const panelAi = db.aiFromDbRow(await db.getAiByBotId(botConfig.id));
+	const endpoint = db.aiVoiceEndpoint(panelAi);
+	if (!panelAi.enabled || !panelAi.voice_enabled || !endpoint.api_key || !endpoint.model) return;
 
-	const config = await resolveGuildAiConfig(command.guildId, botAi);
+	const config = await resolveGuildAiConfig(command.guildId, panelAi);
 
 	const session = createVoiceSession({
 		client: clientInstance,

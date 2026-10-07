@@ -1,4 +1,4 @@
-import db, { type BotAiInput } from '../database.js';
+import db, { type AiInput } from '../database.js';
 import { SERVER_SETTINGS, publicSubfeatureEnabled, type PublicStatisticsSubfeature, type ServerSettingsComponentName } from '../frontend/panelServer.js';
 import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-settings.js';
 
@@ -202,7 +202,7 @@ export async function isComponentFeatureEnabled(guildDiscordId: string, componen
 	}
 }
 
-export async function resolveGuildAiConfig<T extends BotAiInput>(guildDiscordId: string, config: T): Promise<T> {
+export async function resolveGuildAiConfig<T extends AiInput>(guildDiscordId: string, config: T): Promise<T> {
 	if (!guildDiscordId) return config;
 
 	let overrides: ServerAiSettings;

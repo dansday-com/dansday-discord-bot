@@ -390,14 +390,14 @@ async function handleMessageCreate(message) {
 				return;
 			}
 
-			const [configRow, replied] = await Promise.all([db.getBotAiByBotId(botConfig.id), fetchRepliedMessage(message)]);
+			const [configRow, replied] = await Promise.all([db.getAiByBotId(botConfig.id), fetchRepliedMessage(message)]);
 
-			const botAi = db.botAiFromDbRow(configRow);
-			if (!botAi.enabled || !botAi.api_url || !botAi.api_key || !botAi.model) return;
+			const panelAi = db.aiFromDbRow(configRow);
+			if (!panelAi.enabled || !panelAi.api_url || !panelAi.api_key || !panelAi.model) return;
 
 			if (!mentioned && replied?.author?.id !== botUserId) return;
 
-			const config = await resolveGuildAiConfig(message.guild.id, botAi);
+			const config = await resolveGuildAiConfig(message.guild.id, panelAi);
 
 			const prompt = stripBotMention(message.content ?? '', botUserId);
 

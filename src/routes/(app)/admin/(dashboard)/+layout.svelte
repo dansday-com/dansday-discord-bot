@@ -11,6 +11,8 @@
 		{ label: 'Selfbots', icon: 'fa-user-secret', iconClass: 'text-fuchsia-400', href: ADMIN_TAB_PATHS.selfbots },
 		{ label: 'Global Messages', icon: 'fa-bullhorn', iconClass: 'text-rose-400', href: ADMIN_TAB_PATHS.globalMessages },
 		{ label: 'Items', icon: 'fa-store', iconClass: 'text-teal-400', href: ADMIN_TAB_PATHS.items },
+		{ label: 'AI', icon: 'fa-robot', iconClass: 'text-emerald-400', href: ADMIN_TAB_PATHS.ai },
+		{ label: 'Wikis', icon: 'fa-book', iconClass: 'text-sky-400', href: ADMIN_TAB_PATHS.wikis },
 		{ label: 'Settings', icon: 'fa-sliders', iconClass: 'text-sky-400', href: ADMIN_TAB_PATHS.settings }
 	]);
 

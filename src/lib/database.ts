@@ -374,23 +374,23 @@ export async function upsertBotStatus(botId: number, data: BotStatusInput) {
 	return getBotStatusByBotId(botId);
 }
 
-export const BOT_AI_REASONING_LEVELS = ['none', 'low', 'medium', 'high', 'xhigh'] as const;
-export type BotAiReasoning = (typeof BOT_AI_REASONING_LEVELS)[number];
+export const AI_REASONING_LEVELS = ['none', 'low', 'medium', 'high', 'xhigh'] as const;
+export type AiReasoning = (typeof AI_REASONING_LEVELS)[number];
 
-export const BOT_AI_VOICE_THINKING_LEVELS = ['low', 'medium', 'high'] as const;
-export type BotAiVoiceThinking = (typeof BOT_AI_VOICE_THINKING_LEVELS)[number];
+export const AI_VOICE_THINKING_LEVELS = ['low', 'medium', 'high'] as const;
+export type AiVoiceThinking = (typeof AI_VOICE_THINKING_LEVELS)[number];
 
-export interface BotAiInput {
+export interface AiInput {
 	enabled: boolean;
 	api_url: string | null;
 	api_key: string | null;
 	model: string | null;
 	system_prompt: string | null;
-	reasoning: BotAiReasoning;
+	reasoning: AiReasoning;
 	voice_enabled: boolean;
 	voice_model: string | null;
 	voice_name: string | null;
-	voice_thinking: BotAiVoiceThinking;
+	voice_thinking: AiVoiceThinking;
 	voice_api_key: string | null;
 	voice_system_prompt: string | null;
 	search_api_url: string | null;
@@ -404,7 +404,7 @@ export interface BotAiInput {
 	image_model: string | null;
 }
 
-export const DEFAULT_BOT_AI: BotAiInput = {
+export const DEFAULT_AI: AiInput = {
 	enabled: false,
 	api_url: null,
 	api_key: null,
@@ -428,14 +428,14 @@ export const DEFAULT_BOT_AI: BotAiInput = {
 	image_model: null
 };
 
-export interface BotAiEndpoint {
+export interface AiEndpoint {
 	api_url: string | null;
 	api_key: string | null;
 	model: string | null;
 	system_prompt: string | null;
 }
 
-export function botAiVoiceEndpoint(config: BotAiInput): Omit<BotAiEndpoint, 'api_url'> {
+export function aiVoiceEndpoint(config: AiInput): Omit<AiEndpoint, 'api_url'> {
 	return {
 		api_key: config.voice_api_key,
 		model: config.voice_model,
@@ -443,31 +443,31 @@ export function botAiVoiceEndpoint(config: BotAiInput): Omit<BotAiEndpoint, 'api
 	};
 }
 
-export function botAiSearchEndpoint(config: BotAiInput): BotAiEndpoint {
+export function aiSearchEndpoint(config: AiInput): AiEndpoint {
 	return { api_url: config.search_api_url, api_key: config.search_api_key, model: config.search_model, system_prompt: null };
 }
 
-export function botAiFetchEndpoint(config: BotAiInput): BotAiEndpoint {
+export function aiFetchEndpoint(config: AiInput): AiEndpoint {
 	return { api_url: config.fetch_api_url, api_key: config.fetch_api_key, model: config.fetch_model, system_prompt: null };
 }
 
-export function botAiImageEndpoint(config: BotAiInput): BotAiEndpoint {
+export function aiImageEndpoint(config: AiInput): AiEndpoint {
 	return { api_url: config.image_api_url, api_key: config.image_api_key, model: config.image_model, system_prompt: null };
 }
 
-export function botAiFromDbRow(row: any): BotAiInput {
-	if (!row) return { ...DEFAULT_BOT_AI };
+export function aiFromDbRow(row: any): AiInput {
+	if (!row) return { ...DEFAULT_AI };
 	return {
 		enabled: row.enabled === true || row.enabled === 1,
 		api_url: row.api_url?.trim() ? row.api_url.trim() : null,
 		api_key: row.api_key?.trim() ? row.api_key.trim() : null,
 		model: row.model?.trim() ? row.model.trim() : null,
 		system_prompt: row.system_prompt?.trim() ? row.system_prompt.trim() : null,
-		reasoning: BOT_AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
+		reasoning: AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
 		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
 		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
 		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null,
-		voice_thinking: BOT_AI_VOICE_THINKING_LEVELS.includes(row.voice_thinking) ? row.voice_thinking : 'low',
+		voice_thinking: AI_VOICE_THINKING_LEVELS.includes(row.voice_thinking) ? row.voice_thinking : 'low',
 		voice_api_key: row.voice_api_key?.trim() ? row.voice_api_key.trim() : null,
 		voice_system_prompt: row.voice_system_prompt?.trim() ? row.voice_system_prompt.trim() : null,
 		search_api_url: row.search_api_url?.trim() ? row.search_api_url.trim() : null,
@@ -482,17 +482,22 @@ export function botAiFromDbRow(row: any): BotAiInput {
 	};
 }
 
-export async function getBotAiByBotId(botId: number) {
+export async function getAi(panelId: number) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.botAi)
-		.where(eq(schema.botAi.bot_id, Number(botId)))
+		.from(schema.ai)
+		.where(eq(schema.ai.panel_id, Number(panelId)))
 		.limit(1);
 	return rows[0] ?? null;
 }
 
-export async function upsertBotAi(botId: number, data: BotAiInput) {
+export async function getAiByBotId(botId: number) {
+	const panelId = await getBotPanelId(botId);
+	return panelId == null ? null : getAi(panelId);
+}
+
+export async function upsertAi(panelId: number, data: AiInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const values = {
@@ -519,13 +524,13 @@ export async function upsertBotAi(botId: number, data: BotAiInput) {
 		image_model: data.image_model?.trim() ? data.image_model.trim() : null
 	};
 	await db
-		.insert(schema.botAi)
-		.values({ bot_id: botId, ...values, created_at: now as any, updated_at: now as any })
+		.insert(schema.ai)
+		.values({ panel_id: Number(panelId), ...values, created_at: now as any, updated_at: now as any })
 		.onDuplicateKeyUpdate({ set: { ...values, updated_at: now as any } });
-	return getBotAiByBotId(botId);
+	return getAi(panelId);
 }
 
-export interface BotWikiInput {
+export interface WikiInput {
 	enabled: boolean;
 	name: string;
 	api_url: string;
@@ -535,7 +540,7 @@ export interface BotWikiInput {
 	description: string | null;
 }
 
-export function botWikiFromDbRow(row: any) {
+export function wikiFromDbRow(row: any) {
 	return {
 		id: Number(row.id),
 		enabled: row.enabled === true || row.enabled === 1,
@@ -548,31 +553,36 @@ export function botWikiFromDbRow(row: any) {
 	};
 }
 
-export async function getBotWikis(botId: number) {
+export async function getWikis(panelId: number) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.botWikis)
-		.where(eq(schema.botWikis.bot_id, Number(botId)))
-		.orderBy(schema.botWikis.name);
-	return rows.map(botWikiFromDbRow);
+		.from(schema.wikis)
+		.where(eq(schema.wikis.panel_id, Number(panelId)))
+		.orderBy(schema.wikis.name);
+	return rows.map(wikiFromDbRow);
 }
 
-export async function getBotWiki(botId: number, wikiId: number) {
+export async function getWikisByBotId(botId: number) {
+	const panelId = await getBotPanelId(botId);
+	return panelId == null ? [] : getWikis(panelId);
+}
+
+export async function getWiki(panelId: number, wikiId: number) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.botWikis)
-		.where(and(eq(schema.botWikis.bot_id, Number(botId)), eq(schema.botWikis.id, Number(wikiId))))
+		.from(schema.wikis)
+		.where(and(eq(schema.wikis.panel_id, Number(panelId)), eq(schema.wikis.id, Number(wikiId))))
 		.limit(1);
-	return rows[0] ? botWikiFromDbRow(rows[0]) : null;
+	return rows[0] ? wikiFromDbRow(rows[0]) : null;
 }
 
-export async function createBotWiki(botId: number, data: BotWikiInput) {
+export async function createWiki(panelId: number, data: WikiInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const [result] = await db.insert(schema.botWikis).values({
-		bot_id: Number(botId),
+	const [result] = await db.insert(schema.wikis).values({
+		panel_id: Number(panelId),
 		enabled: data.enabled,
 		name: data.name,
 		api_url: data.api_url,
@@ -583,13 +593,13 @@ export async function createBotWiki(botId: number, data: BotWikiInput) {
 		created_at: now as any,
 		updated_at: now as any
 	});
-	return getBotWiki(botId, Number((result as any).insertId));
+	return getWiki(panelId, Number((result as any).insertId));
 }
 
-export async function updateBotWiki(botId: number, wikiId: number, data: BotWikiInput) {
+export async function updateWiki(panelId: number, wikiId: number, data: WikiInput) {
 	await initializeDatabase();
 	await db
-		.update(schema.botWikis)
+		.update(schema.wikis)
 		.set({
 			enabled: data.enabled,
 			name: data.name,
@@ -600,13 +610,13 @@ export async function updateBotWiki(botId: number, wikiId: number, data: BotWiki
 			description: data.description,
 			updated_at: toMySQLDateTime() as any
 		})
-		.where(and(eq(schema.botWikis.bot_id, Number(botId)), eq(schema.botWikis.id, Number(wikiId))));
-	return getBotWiki(botId, wikiId);
+		.where(and(eq(schema.wikis.panel_id, Number(panelId)), eq(schema.wikis.id, Number(wikiId))));
+	return getWiki(panelId, wikiId);
 }
 
-export async function deleteBotWiki(botId: number, wikiId: number) {
+export async function deleteWiki(panelId: number, wikiId: number) {
 	await initializeDatabase();
-	await db.delete(schema.botWikis).where(and(eq(schema.botWikis.bot_id, Number(botId)), eq(schema.botWikis.id, Number(wikiId))));
+	await db.delete(schema.wikis).where(and(eq(schema.wikis.panel_id, Number(panelId)), eq(schema.wikis.id, Number(wikiId))));
 	return true;
 }
 
@@ -1480,18 +1490,16 @@ export async function listPublicWikis(limit = 300) {
 	if (!panelIds.length) return [];
 	return db
 		.select({
-			id: schema.botWikis.id,
-			bot_id: schema.botWikis.bot_id,
-			enabled: schema.botWikis.enabled,
-			name: schema.botWikis.name,
-			site_url: schema.botWikis.site_url,
-			description: schema.botWikis.description,
-			updated_at: schema.botWikis.updated_at
+			id: schema.wikis.id,
+			enabled: schema.wikis.enabled,
+			name: schema.wikis.name,
+			site_url: schema.wikis.site_url,
+			description: schema.wikis.description,
+			updated_at: schema.wikis.updated_at
 		})
-		.from(schema.botWikis)
-		.innerJoin(schema.bots, eq(schema.bots.id, schema.botWikis.bot_id))
-		.where(inArray(schema.bots.panel_id, panelIds))
-		.orderBy(desc(schema.botWikis.enabled), asc(schema.botWikis.name))
+		.from(schema.wikis)
+		.where(inArray(schema.wikis.panel_id, panelIds))
+		.orderBy(desc(schema.wikis.enabled), asc(schema.wikis.name))
 		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
 }
 
@@ -8686,19 +8694,21 @@ export default {
 	deleteBot,
 	getBotStatusByBotId,
 	upsertBotStatus,
-	getBotAiByBotId,
-	upsertBotAi,
-	botAiFromDbRow,
-	botAiVoiceEndpoint,
-	botAiSearchEndpoint,
-	botAiFetchEndpoint,
-	botAiImageEndpoint,
-	getBotWikis,
-	getBotWiki,
-	createBotWiki,
-	updateBotWiki,
-	deleteBotWiki,
-	botWikiFromDbRow,
+	getAi,
+	getAiByBotId,
+	upsertAi,
+	aiFromDbRow,
+	aiVoiceEndpoint,
+	aiSearchEndpoint,
+	aiFetchEndpoint,
+	aiImageEndpoint,
+	getWikis,
+	getWikisByBotId,
+	getWiki,
+	createWiki,
+	updateWiki,
+	deleteWiki,
+	wikiFromDbRow,
 	getSelfbotStatus,
 	upsertSelfbotStatus,
 	getServer,

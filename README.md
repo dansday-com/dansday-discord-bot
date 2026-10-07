@@ -59,7 +59,7 @@ make logs   # follow output
 make down   # stop
 ```
 
-Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal or the bot will not start. AI, voice, tools and wikis are set per bot **in the panel**, not in `.env`.
+Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal or the bot will not start. AI, voice, tools and wikis are set once **in the panel** for every bot, not in `.env`.
 
 Prefer not to host anything? **[Add the hosted bot](https://dansday.dev)** — same features, nothing to run.
 
@@ -238,7 +238,7 @@ Each member signs in to their own account on those same pages.
   - 🔍 **Web search** - The default lookup for any factual question: news, prices, versions, whether something is real.
   - 📄 **Web fetch** - Reads a page a member linked, or a search result whose snippet was too thin to answer from. Never invented URLs.
   - 🖼️ **Images** - Drawn on request and uploaded to Discord as files rather than linked, so nothing breaks when the provider's URL expires.
-  - 📚 **Wikis** - Any MediaWiki site including Fandom, many per bot, managed in the panel. Reads the full rendered page with infoboxes, tables and changelogs, in any language, cached 10 minutes. Applies to chat and voice with no restart.
+  - 📚 **Wikis** - Any MediaWiki site including Fandom, many per panel and shared by every bot, managed in the panel. Reads the full rendered page with infoboxes, tables and changelogs, in any language, cached 10 minutes. Applies to chat and voice with no restart.
   - 🔗 **Chains instead of giving up** - A thin, empty or off-target result moves on to the next tool rather than reporting failure. Live values like timers and active events go straight to the web.
   - 📊 **Server knowledge** - Reads this server's own live data with no extra key: statistics, leaderboards on any metric, a member's public profile, staff ratings, running giveaways, active quests, the shop with prices and timings, and the XP guide. Follows your module toggles, so anything you switch off disappears from the AI too.
   - ⭐ **XP rates** - Reads your server's own leveling configuration, so "how much XP for an hour in voice", "how much per message" and "how much XP to reach level 10" get exact answers off your settings, not guesses. Covers voice, AFK voice, video, streaming and chat rates, the message cooldown, the friend and luck bonuses, and the level-up formula.
@@ -303,7 +303,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 | Language & framework | [TypeScript](https://www.typescriptlang.org/) 6.0, [SvelteKit](https://kit.svelte.dev/) 2.70, [Svelte](https://svelte.dev/) 5.55, [Vite](https://vitejs.dev/) 8.2, adapter-node 5.5                                             |
 | Styling              | [Tailwind CSS](https://tailwindcss.com/) 4.2 with [DaisyUI](https://daisyui.com/) 5.7, Prettier 3.8 with Svelte and Tailwind plugins                                                                                            |
 | Discord              | [discord.js](https://discord.js.org/) 14.26, discord-api-types 0.38                                                                                                                                                             |
-| AI chat              | [openai](https://www.npmjs.com/package/openai) 7.1 SDK against any OpenAI-compatible endpoint, set per bot in the panel                                                                                                         |
+| AI chat              | [openai](https://www.npmjs.com/package/openai) 7.1 SDK against any OpenAI-compatible endpoint, set once in the panel                                                                                                            |
 | Voice AI             | [@google/genai](https://www.npmjs.com/package/@google/genai) 2.15 (Gemini Live API), @discordjs/voice 0.19, @discordjs/opus 0.10, sodium-native 5.1, prism-media 1.3, ffmpeg, onnxruntime-node 1.27 for the on-device wake word |
 | AI tools             | Native `fetch` to `/search`, `/web/fetch` and `/images/generations` on any OpenAI-compatible gateway; [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) with cheerio 1.2                                     |
 | Data                 | [MySQL](https://www.mysql.com/) via mysql2 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 and Drizzle Kit 0.31                                                                                                             |
@@ -317,9 +317,9 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 - Copy **`.env.example`** to **`.env`** and set the database, session, captcha, mail, Redis and bot token values.
 - **Uploads** are written to local disk by default. Set `S3_BUCKET` and both S3 keys to store them in an S3 or R2 bucket instead — add `S3_ENDPOINT` for R2, or set `S3_REGION` to the bucket's region on AWS. Images are still served through the app, so the bucket stays private.
 - Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal, or the bot will not start.
-- **AI, voice and the tools** are configured in the panel, not `.env`. Each needs its URL, model and key before it switches on, so a half-filled section is inactive rather than broken. Keys are stored per bot and never sent back to the browser. Restart the bot after changing them.
+- **AI, voice and the tools** are configured in the panel, not `.env`. Each needs its URL, model and key before it switches on, so a half-filled section is inactive rather than broken. Keys are stored per panel, shared by every bot, and never sent back to the browser. Restart your bots after changing them.
 - **Voice** needs AI chat enabled first, plus its own Google AI key and voice model, plus Redis.
-- **Wikis** live on the bot's **Wikis** tab. Add an `api.php` endpoint, press Test, done — no restart. If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), copy [`scripts/relay.php`](scripts/relay.php) to hosting it does accept, replace `RELAY_KEY` with a long random string, and fill in **Relay URL** and **Relay key** for that wiki.
+- **Wikis** live on the admin panel's **Wikis** tab. Add an `api.php` endpoint, press Test, done — no restart. If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), copy [`scripts/relay.php`](scripts/relay.php) to hosting it does accept, replace `RELAY_KEY` with a long random string, and fill in **Relay URL** and **Relay key** for that wiki.
 
 ## Contributing
 

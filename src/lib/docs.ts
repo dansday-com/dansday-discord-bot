@@ -72,7 +72,7 @@ export const sections = [
 		label: 'AI chat',
 		heading: 'AI chat',
 		iconClass: 'fas fa-robot',
-		lead: 'Members mention the bot to talk to it, or reply to one of its messages to keep going without mentioning again. Set this on the bot panel under the AI tab, not per server, so every server the bot is in shares one configuration. Each member keeps their own conversation in each server. Restart the bot after saving.'
+		lead: 'Members mention the bot to talk to it, or reply to one of its messages to keep going without mentioning again. Set this on the admin panel under the AI tab, not per bot or per server, so every bot and every server shares one configuration. Each member keeps their own conversation in each server. Restart the bot after saving.'
 	},
 	{
 		id: 'ai-tools',
@@ -80,7 +80,7 @@ export const sections = [
 		label: 'Search, fetch, images',
 		heading: 'Web search, fetch and images',
 		iconClass: 'fas fa-toolbox',
-		lead: 'Three optional tools the AI reaches for on its own: searching the live web, reading a page it was linked to, and drawing a picture. Server data needs none of these. Each is a separate URL, model and key on the bot panel under the AI tab, so they can point at different providers. Any OpenAI-compatible gateway works. Restart the bot after saving.'
+		lead: 'Three optional tools the AI reaches for on its own: searching the live web, reading a page it was linked to, and drawing a picture. Server data needs none of these. Each is a separate URL, model and key on the admin panel under the AI tab, so they can point at different providers. Any OpenAI-compatible gateway works. Restart the bot after saving.'
 	},
 	{
 		id: 'ai-wikis',
@@ -88,7 +88,7 @@ export const sections = [
 		label: 'Wiki knowledge',
 		heading: 'Wiki knowledge',
 		iconClass: 'fas fa-book',
-		lead: 'Without this, the AI answers game questions from memory and gets them wrong. Add a wiki and it looks the answer up instead. Set this on the bot panel under the Wikis tab. It applies to chat and voice alike, and to every server the bot is in.'
+		lead: 'Without this, the AI answers game questions from memory and gets them wrong. Add a wiki and it looks the answer up instead. Set this on the admin panel under the Wikis tab. It applies to chat and voice alike, on every bot and every server.'
 	},
 	{
 		id: 'ai-server',
@@ -192,7 +192,7 @@ export const shopSteps = [
 export const aiChatFields = [
 	{ label: 'Enable AI chat', req: 'required', desc: 'When off, mentions are ignored. The URL, key and model must all be set before it can be turned on.' },
 	{ label: 'API URL', req: 'required', desc: 'Any OpenAI-compatible endpoint. A trailing slash or a full /chat/completions URL both work.' },
-	{ label: 'API key', req: 'required', desc: 'Stored per bot and never sent back to the browser. Leave blank when saving to keep the current key.' },
+	{ label: 'API key', req: 'required', desc: 'Stored per panel and never sent back to the browser. Leave blank when saving to keep the current key.' },
 	{ label: 'Model name', req: 'required', desc: 'The model id your endpoint expects, for example gemini-3.6-flash or gpt-4o.' },
 	{ label: 'Reasoning', req: 'optional', desc: 'Off, Low, Medium, High or Extra high. Thinking options are matched to the model you named.' },
 	{
@@ -313,7 +313,7 @@ export const aiWikiFields = [
 ];
 
 export const aiWikiRules = [
-	{ icon: 'fa-plus', title: 'Add a wiki', desc: 'Open the bot, go to the Wikis tab and paste the api.php URL. Any MediaWiki site works, including Fandom.' },
+	{ icon: 'fa-plus', title: 'Add a wiki', desc: "Open the admin panel's Wikis tab and paste the api.php URL. Any MediaWiki site works, including Fandom." },
 	{ icon: 'fa-check', title: 'Test it', desc: 'Test confirms the endpoint answers and is really a wiki, then fills in the name for you.' },
 	{ icon: 'fa-comments', title: 'Ask normally', desc: 'Members just ask. Full questions work, not only exact page names.' },
 	{ icon: 'fa-list', title: 'Real numbers', desc: 'Prices, weights and drop rates come from the wiki infobox, so stat answers are exact.' },

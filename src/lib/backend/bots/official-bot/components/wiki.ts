@@ -441,7 +441,7 @@ export async function searchWiki(wiki, query, page, mainPage = false) {
 
 export async function getEnabledWikis(botId) {
 	return cachedLookup(`botai:wikis:${botId}`, ENABLED_WIKIS_TTL_SEC, async () => {
-		const rows = await db.getBotWikis(botId);
+		const rows = await db.getWikisByBotId(botId);
 		return rows.filter((row) => row.enabled && row.api_url);
 	});
 }

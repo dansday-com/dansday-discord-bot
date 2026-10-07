@@ -136,7 +136,7 @@ export async function aiGreetingMessages(kind, { botId, serverId, serverName }) 
 	const cached = await readCache(kind, serverId, lang);
 	if (cached) return cached;
 
-	const config = db.botAiFromDbRow(await db.getBotAiByBotId(botId).catch(() => null));
+	const config = db.aiFromDbRow(await db.getAiByBotId(botId).catch(() => null));
 	if (!config.enabled || !config.api_url || !config.api_key || !config.model) return null;
 
 	try {

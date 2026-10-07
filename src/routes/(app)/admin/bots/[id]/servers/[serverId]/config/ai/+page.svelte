@@ -10,10 +10,10 @@
 
 	let { data }: PageProps = $props();
 
-	const fallback = $derived(data.botFallback);
+	const fallback = $derived(data.panelFallback);
 
 	const VOICE_OPTIONS: LabeledSelectOption[] = $derived([
-		{ value: '', label: fallback.voice_name ? `None — bot voice (${fallback.voice_name})` : 'None — bot default voice' },
+		{ value: '', label: fallback.voice_name ? `None — panel voice (${fallback.voice_name})` : 'None — panel default voice' },
 		...GEMINI_VOICES.map((v) => ({ value: v.name, label: `${v.name} — ${v.tone}` }))
 	]);
 
@@ -53,7 +53,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-robot text-violet-400"></i>AI
 	</h3>
-	<p class="text-ash-400 text-xs">Give the bot its own personality and voice in this server. Anything left blank falls back to the bot-wide AI settings.</p>
+	<p class="text-ash-400 text-xs">Give the bot its own personality and voice in this server. Anything left blank falls back to the panel AI settings.</p>
 
 	<div class="min-w-0">
 		<label for="server-ai-system-prompt" class="text-ash-400 mb-1.5 block text-xs font-medium">Chat system prompt</label>
@@ -66,7 +66,7 @@
 			class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 		></textarea>
 		<p class="text-ash-500 mt-1.5 text-xs">
-			Replaces the bot prompt for mentions and replies here. Use <code class="text-ash-300">&#123;&#123;today&#125;&#125;</code> to insert the current date.
+			Replaces the panel prompt for mentions and replies here. Use <code class="text-ash-300">&#123;&#123;today&#125;&#125;</code> to insert the current date.
 		</p>
 	</div>
 

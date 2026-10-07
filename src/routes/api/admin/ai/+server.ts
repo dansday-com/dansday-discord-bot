@@ -1,20 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, {
-	botAiFromDbRow,
-	BOT_AI_REASONING_LEVELS,
-	BOT_AI_VOICE_THINKING_LEVELS,
-	type BotAiInput,
-	type BotAiReasoning,
-	type BotAiVoiceThinking
-} from '$lib/database.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import db, { aiFromDbRow, AI_REASONING_LEVELS, AI_VOICE_THINKING_LEVELS, type AiInput, type AiReasoning, type AiVoiceThinking } from '$lib/database.js';
 import { GEMINI_VOICE_NAMES } from '$lib/geminiVoices.js';
 
 const MAX_MODEL_LENGTH = 191;
 const MAX_SYSTEM_PROMPT_LENGTH = 8000;
 
-function maskConfig(config: BotAiInput) {
+function maskConfig(config: AiInput) {
 	const { api_key, voice_api_key, search_api_key, fetch_api_key, image_api_key, ...rest } = config;
 	return {
 		...rest,
@@ -26,40 +18,35 @@ function maskConfig(config: BotAiInput) {
 	};
 }
 
-async function authorize(locals: App.Locals, params: Partial<Record<string, string>>) {
+function authorize(locals: App.Locals) {
 	if (!locals.user.authenticated) {
 		return { error: json({ success: false, error: 'Authentication required' }, { status: 401 }) };
 	}
 
-	const botId = Number(params.id);
-	if (!Number.isFinite(botId)) {
-		return { error: json({ success: false, error: 'Invalid bot id' }, { status: 400 }) };
-	}
-
-	const bot = await db.getBot(botId);
-	if (!bot) {
-		return { error: json({ success: false, error: 'Bot not found' }, { status: 404 }) };
-	}
-
-	if (!(await accountOwnsBot(locals, botId))) {
+	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
 		return { error: json({ success: false, error: 'Access denied' }, { status: 403 }) };
 	}
 
-	return { botId };
+	const panelId = Number(locals.user.panel_id);
+	if (!Number.isFinite(panelId) || panelId <= 0) {
+		return { error: json({ success: false, error: 'No panel available' }, { status: 404 }) };
+	}
+
+	return { panelId };
 }
 
-export const GET: RequestHandler = async ({ locals, params }) => {
-	const auth = await authorize(locals, params);
+export const GET: RequestHandler = async ({ locals }) => {
+	const auth = authorize(locals);
 	if (auth.error) return auth.error;
 
-	const row = await db.getBotAiByBotId(auth.botId!);
-	return json({ ai: maskConfig(botAiFromDbRow(row)) });
+	const row = await db.getAi(auth.panelId!);
+	return json({ ai: maskConfig(aiFromDbRow(row)) });
 };
 
-export const PATCH: RequestHandler = async ({ locals, params, request }) => {
-	const auth = await authorize(locals, params);
+export const PATCH: RequestHandler = async ({ locals, request }) => {
+	const auth = authorize(locals);
 	if (auth.error) return auth.error;
-	const botId = auth.botId!;
+	const panelId = auth.panelId!;
 
 	let body: Record<string, unknown>;
 	try {
@@ -68,7 +55,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Invalid JSON' }, { status: 400 });
 	}
 
-	const existing = botAiFromDbRow(await db.getBotAiByBotId(botId));
+	const existing = aiFromDbRow(await db.getAi(panelId));
 
 	const enabled = body.enabled === true;
 	const api_url = body.api_url === null || body.api_url === undefined ? null : String(body.api_url).trim() || null;
@@ -78,16 +65,16 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const rawKey = body.api_key === null || body.api_key === undefined ? '' : String(body.api_key).trim();
 	const api_key = rawKey ? rawKey : existing.api_key;
 
-	const reasoning = (body.reasoning === null || body.reasoning === undefined ? 'none' : String(body.reasoning)) as BotAiReasoning;
-	if (!BOT_AI_REASONING_LEVELS.includes(reasoning)) {
+	const reasoning = (body.reasoning === null || body.reasoning === undefined ? 'none' : String(body.reasoning)) as AiReasoning;
+	if (!AI_REASONING_LEVELS.includes(reasoning)) {
 		return json({ success: false, error: 'Invalid reasoning level' }, { status: 400 });
 	}
 
 	const voice_enabled = body.voice_enabled === true;
 	const voice_model = body.voice_model === null || body.voice_model === undefined ? null : String(body.voice_model).trim() || null;
 	const voice_name = body.voice_name === null || body.voice_name === undefined ? null : String(body.voice_name).trim() || null;
-	const voice_thinking = (body.voice_thinking === null || body.voice_thinking === undefined ? 'low' : String(body.voice_thinking)) as BotAiVoiceThinking;
-	if (!BOT_AI_VOICE_THINKING_LEVELS.includes(voice_thinking)) {
+	const voice_thinking = (body.voice_thinking === null || body.voice_thinking === undefined ? 'low' : String(body.voice_thinking)) as AiVoiceThinking;
+	if (!AI_VOICE_THINKING_LEVELS.includes(voice_thinking)) {
 		return json({ success: false, error: 'Invalid voice thinking level' }, { status: 400 });
 	}
 	const voice_system_prompt =
@@ -159,7 +146,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'API URL, API key, and model are required to enable AI chat' }, { status: 400 });
 	}
 
-	const saved = await db.upsertBotAi(botId, {
+	const saved = await db.upsertAi(panelId, {
 		enabled,
 		api_url,
 		api_key,
@@ -182,5 +169,5 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		image_api_key,
 		image_model
 	});
-	return json({ success: true, ai: maskConfig(botAiFromDbRow(saved)) });
+	return json({ success: true, ai: maskConfig(aiFromDbRow(saved)) });
 };

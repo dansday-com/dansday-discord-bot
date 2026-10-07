@@ -1,5 +1,5 @@
 import { Type } from '@google/genai';
-import { botAiSearchEndpoint, botAiFetchEndpoint } from '../../../../database.js';
+import { aiSearchEndpoint, aiFetchEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { postJson, resolveToolUrl } from './aiToolHttp.js';
 
@@ -36,12 +36,12 @@ const FETCH_FAILED_HINT =
 	'This page could not be read. Go back to your search_web results and open a different one, or search again — do not answer from memory.';
 
 export function searchConfigured(config) {
-	const endpoint = botAiSearchEndpoint(config);
+	const endpoint = aiSearchEndpoint(config);
 	return Boolean(endpoint.api_url && endpoint.api_key && endpoint.model);
 }
 
 export function fetchConfigured(config) {
-	const endpoint = botAiFetchEndpoint(config);
+	const endpoint = aiFetchEndpoint(config);
 	return Boolean(endpoint.api_url && endpoint.api_key && endpoint.model);
 }
 
@@ -52,7 +52,7 @@ function clampResults(raw) {
 }
 
 export async function runSearchTool(config, args) {
-	const endpoint = botAiSearchEndpoint(config);
+	const endpoint = aiSearchEndpoint(config);
 	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'web_search_not_configured' };
 
 	const query = String(args?.query ?? '').trim();
@@ -95,7 +95,7 @@ export async function runSearchTool(config, args) {
 }
 
 export async function runFetchTool(config, args) {
-	const endpoint = botAiFetchEndpoint(config);
+	const endpoint = aiFetchEndpoint(config);
 	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'web_fetch_not_configured' };
 
 	const url = String(args?.url ?? '').trim();

@@ -379,7 +379,7 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'For each server the bot joins we store the Discord server ID and name, its categories, channels and roles, your per-module settings, embed styles and templates, and the channel assignments made by /setup. Bot tokens and AI provider keys are stored per bot and are never sent back to the browser.'
+					text: 'For each server the bot joins we store the Discord server ID and name, its categories, channels and roles, your per-module settings, embed styles and templates, and the channel assignments made by /setup. Bot tokens are stored per bot and AI provider keys per panel, and neither is ever sent back to the browser.'
 				}
 			]
 		},

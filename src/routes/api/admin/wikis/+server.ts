@@ -1,35 +1,29 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { type BotWikiInput } from '$lib/database.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import db, { type WikiInput } from '$lib/database.js';
 
 const MAX_NAME_LENGTH = 64;
 const MAX_URL_LENGTH = 512;
 const MAX_DESCRIPTION_LENGTH = 255;
 
-async function authorize(locals: App.Locals, params: Partial<Record<string, string>>) {
+function authorize(locals: App.Locals) {
 	if (!locals.user.authenticated) {
 		return { error: json({ success: false, error: 'Authentication required' }, { status: 401 }) };
 	}
 
-	const botId = Number(params.id);
-	if (!Number.isFinite(botId)) {
-		return { error: json({ success: false, error: 'Invalid bot id' }, { status: 400 }) };
-	}
-
-	const bot = await db.getBot(botId);
-	if (!bot) {
-		return { error: json({ success: false, error: 'Bot not found' }, { status: 404 }) };
-	}
-
-	if (!(await accountOwnsBot(locals, botId))) {
+	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
 		return { error: json({ success: false, error: 'Access denied' }, { status: 403 }) };
 	}
 
-	return { botId };
+	const panelId = Number(locals.user.panel_id);
+	if (!Number.isFinite(panelId) || panelId <= 0) {
+		return { error: json({ success: false, error: 'No panel available' }, { status: 404 }) };
+	}
+
+	return { panelId };
 }
 
-function parseBody(body: Record<string, unknown>): { error: string } | { value: BotWikiInput } {
+function parseBody(body: Record<string, unknown>): { error: string } | { value: WikiInput } {
 	const name = String(body.name ?? '').trim();
 	const api_url = String(body.api_url ?? '').trim();
 	const site_url = String(body.site_url ?? '').trim();
@@ -64,17 +58,17 @@ function parseBody(body: Record<string, unknown>): { error: string } | { value: 
 	};
 }
 
-export const GET: RequestHandler = async ({ locals, params }) => {
-	const auth = await authorize(locals, params);
+export const GET: RequestHandler = async ({ locals }) => {
+	const auth = authorize(locals);
 	if (auth.error) return auth.error;
 
-	return json({ wikis: await db.getBotWikis(auth.botId!) });
+	return json({ wikis: await db.getWikis(auth.panelId!) });
 };
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
-	const auth = await authorize(locals, params);
+export const POST: RequestHandler = async ({ locals, request }) => {
+	const auth = authorize(locals);
 	if (auth.error) return auth.error;
-	const botId = auth.botId!;
+	const panelId = auth.panelId!;
 
 	let body: Record<string, unknown>;
 	try {
@@ -86,18 +80,18 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const parsed = parseBody(body);
 	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
 
-	const existing = await db.getBotWikis(botId);
+	const existing = await db.getWikis(panelId);
 	if (existing.some((wiki) => wiki.name.toLowerCase() === parsed.value.name.toLowerCase())) {
 		return json({ success: false, error: 'A wiki with that name already exists' }, { status: 400 });
 	}
 
-	return json({ success: true, wiki: await db.createBotWiki(botId, parsed.value) });
+	return json({ success: true, wiki: await db.createWiki(panelId, parsed.value) });
 };
 
-export const PATCH: RequestHandler = async ({ locals, params, request }) => {
-	const auth = await authorize(locals, params);
+export const PATCH: RequestHandler = async ({ locals, request }) => {
+	const auth = authorize(locals);
 	if (auth.error) return auth.error;
-	const botId = auth.botId!;
+	const panelId = auth.panelId!;
 
 	let body: Record<string, unknown>;
 	try {
@@ -109,22 +103,22 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const wikiId = Number(body.id);
 	if (!Number.isFinite(wikiId)) return json({ success: false, error: 'Invalid wiki id' }, { status: 400 });
 
-	const current = await db.getBotWiki(botId, wikiId);
+	const current = await db.getWiki(panelId, wikiId);
 	if (!current) return json({ success: false, error: 'Wiki not found' }, { status: 404 });
 
 	const parsed = parseBody(body);
 	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
 
-	const existing = await db.getBotWikis(botId);
+	const existing = await db.getWikis(panelId);
 	if (existing.some((wiki) => wiki.id !== wikiId && wiki.name.toLowerCase() === parsed.value.name.toLowerCase())) {
 		return json({ success: false, error: 'A wiki with that name already exists' }, { status: 400 });
 	}
 
-	return json({ success: true, wiki: await db.updateBotWiki(botId, wikiId, parsed.value) });
+	return json({ success: true, wiki: await db.updateWiki(panelId, wikiId, parsed.value) });
 };
 
-export const DELETE: RequestHandler = async ({ locals, params, request }) => {
-	const auth = await authorize(locals, params);
+export const DELETE: RequestHandler = async ({ locals, request }) => {
+	const auth = authorize(locals);
 	if (auth.error) return auth.error;
 
 	let body: Record<string, unknown>;
@@ -137,9 +131,9 @@ export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 	const wikiId = Number(body.id);
 	if (!Number.isFinite(wikiId)) return json({ success: false, error: 'Invalid wiki id' }, { status: 400 });
 
-	const current = await db.getBotWiki(auth.botId!, wikiId);
+	const current = await db.getWiki(auth.panelId!, wikiId);
 	if (!current) return json({ success: false, error: 'Wiki not found' }, { status: 404 });
 
-	await db.deleteBotWiki(auth.botId!, wikiId);
+	await db.deleteWiki(auth.panelId!, wikiId);
 	return json({ success: true });
 };

@@ -1380,3 +1380,37 @@ export const serverMemberInviteLinks = mysqlTable(
 		uniqueIndex('unique_member_invite_link_slug').on(t.slug)
 	]
 );
+
+export const serverMessages = mysqlTable(
+	'server_messages',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 100 }).notNull(),
+		content: json('content').notNull(),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_messages_server').on(t.server_id)]
+);
+
+export const serverMessagePosts = mysqlTable(
+	'server_message_posts',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		message_id: int('message_id')
+			.notNull()
+			.references(() => serverMessages.id, { onDelete: 'cascade' }),
+		channel_id: int('channel_id')
+			.notNull()
+			.references(() => serverChannels.id, { onDelete: 'cascade' }),
+		discord_message_id: varchar('discord_message_id', { length: 150 }).notNull(),
+		language: varchar('language', { length: 10 }).notNull(),
+		mentions: text('mentions'),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_message_post').on(t.discord_message_id), index('idx_server_message_posts_message').on(t.message_id)]
+);

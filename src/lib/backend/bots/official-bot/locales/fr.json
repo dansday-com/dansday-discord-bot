@@ -1432,6 +1432,21 @@
 			"failed": "Un problème est survenu en contactant le service d'IA. Réessaie dans un instant."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ Ce n'est plus disponible. Demande à un administrateur du serveur de le reconfigurer dans le panel de configuration du bot.",
+		"notSetUp": "❌ Ça ne fait encore rien. Demande à un administrateur du serveur de terminer la configuration dans le panel de configuration du bot.",
+		"roleAdded": "✅ Tu as maintenant {role}.",
+		"roleRemoved": "✅ {role} t'a été retiré.",
+		"roleAlready": "Tu as déjà {role}.",
+		"roleNotHeld": "Tu n'as pas {role}.",
+		"roleFailed": "❌ Je n'ai pas pu modifier {role}. {reason}",
+		"blocked": {
+			"deleted": "❌ Ce rôle n'existe plus. Demande à un administrateur du serveur d'en choisir un autre dans le panel de configuration du bot.",
+			"managed": "❌ {role} appartient à une intégration, je ne peux donc ni le donner ni le retirer. Demande à un administrateur du serveur de choisir un autre rôle dans le panel de configuration du bot.",
+			"no_permission": "❌ J'ai besoin de la permission Gérer les rôles pour modifier {role}. Demande à un administrateur du serveur de la donner à mon rôle.",
+			"above_bot": "❌ {role} est au-dessus de mon propre rôle. Demande à un administrateur du serveur de placer mon rôle plus haut dans Paramètres du serveur → Rôles."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Commande inconnue** : `/{command}`\n\nCette commande n'existe pas. Seule `/setup` est disponible.",

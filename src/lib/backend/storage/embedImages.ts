@@ -4,12 +4,6 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 
 const store = createUploadStore('embed', [/admin(?:-[1-9]\d*)?|[1-9]\d*/]);
 
-export function embedScope(serverId: any): string {
-	const id = Math.trunc(Number(serverId));
-	if (!Number.isFinite(id) || id <= 0) throw new Error(`Invalid embed scope: ${serverId}`);
-	return String(id);
-}
-
 export function embedAdminScope(panelId: any): string {
 	const id = Math.trunc(Number(panelId));
 	return Number.isFinite(id) && id > 0 ? `admin-${id}` : 'admin';

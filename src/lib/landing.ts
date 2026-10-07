@@ -218,9 +218,9 @@ export const features: Feature[] = [
 	},
 	{
 		icon: 'fa-palette',
-		title: 'Embed builder',
-		desc: 'Rich embeds with live preview, placeholders and images.',
-		more: 'Send them to channels from the browser instead of spamming slash commands.'
+		title: 'Messages',
+		desc: 'Post as the bot: text, photos, videos, embeds or a Components V2 layout, with a live preview.',
+		more: 'Buttons and dropdowns open another message privately or hand out roles. Edit once and every posted copy updates.'
 	},
 	{
 		icon: 'fa-tower-broadcast',

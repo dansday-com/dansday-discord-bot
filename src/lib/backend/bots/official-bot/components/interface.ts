@@ -102,6 +102,7 @@ import {
 	CREATOR_CONTENT_HUB_SUFFIX,
 	isCreatorMenuId
 } from './creatorAlerts.js';
+import { handleServerMessageComponent, isServerMessageComponentId } from './serverMessages.js';
 import { memberTranslator, translate, translateServer } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import { SETUP_LANGUAGE_SELECT_ID, handleSetupLanguageSelect } from './commands/admin/setup.js';
@@ -518,6 +519,11 @@ export async function handleButtonInteraction(interaction) {
 
 	await logger.log(`🔘 Button clicked: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
+	if (isServerMessageComponentId(customId)) {
+		await handleServerMessageComponent(interaction);
+		return;
+	}
+
 	switch (customId) {
 		case 'bot_menu':
 			await handleMenuButton(interaction);
@@ -884,7 +890,9 @@ function init(client) {
 				const selectedValues = interaction.values;
 				await logger.log(`📋 String select: "${customId}" → [${selectedValues.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-				if (customId.startsWith('moderation_action|')) {
+				if (isServerMessageComponentId(customId)) {
+					await handleServerMessageComponent(interaction);
+				} else if (customId.startsWith('moderation_action|')) {
 					await handleModerationActionSelect(interaction);
 				} else if (customId === 'settings_language_select') {
 					await handleLanguageSelect(interaction);

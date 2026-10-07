@@ -386,7 +386,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		check: async (locals, match) => canEditServerSettings(locals, match[1])
 	},
 	{
-		pattern: /^\/api\/servers\/(\d+)\/(send-embed|upload-embed-image|delete-embed-image)/,
+		pattern: /^\/api\/servers\/(\d+)\/messages/,
 		check: async (locals, match) => canUseEmbedBuilder(locals, match[1])
 	},
 	{

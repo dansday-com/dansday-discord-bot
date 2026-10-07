@@ -1432,6 +1432,21 @@
 			"failed": "Terjadi kesalahan saat menghubungi layanan AI. Coba lagi sebentar."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ Ini sudah tidak tersedia. Minta admin server mengaturnya lagi di panel konfigurasi bot.",
+		"notSetUp": "❌ Ini belum melakukan apa-apa. Minta admin server menyelesaikan pengaturannya di panel konfigurasi bot.",
+		"roleAdded": "✅ Kamu sekarang punya {role}.",
+		"roleRemoved": "✅ {role} sudah dilepas dari kamu.",
+		"roleAlready": "Kamu sudah punya {role}.",
+		"roleNotHeld": "Kamu tidak punya {role}.",
+		"roleFailed": "❌ Aku tidak bisa mengubah {role}. {reason}",
+		"blocked": {
+			"deleted": "❌ Role itu sudah tidak ada. Minta admin server memilih role lain di panel konfigurasi bot.",
+			"managed": "❌ {role} milik sebuah integrasi, jadi aku tidak bisa memberi atau melepasnya. Minta admin server memilih role lain di panel konfigurasi bot.",
+			"no_permission": "❌ Aku butuh izin Kelola Role untuk mengubah {role}. Minta admin server memberikannya ke role-ku.",
+			"above_bot": "❌ {role} berada di atas role-ku. Minta admin server menaikkan posisi role-ku di Pengaturan Server → Role."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Perintah Tidak Dikenal**: `/{command}`\n\nPerintah ini tidak ada. Hanya `/setup` yang tersedia.",

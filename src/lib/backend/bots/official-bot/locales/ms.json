@@ -1432,6 +1432,21 @@
 			"failed": "Berlaku masalah semasa menghubungi perkhidmatan AI. Cuba lagi sebentar."
 		}
 	},
+	"serverMessages": {
+		"unavailable": "❌ Ini sudah tidak tersedia. Minta pentadbir server sediakannya semula dalam panel konfigurasi bot.",
+		"notSetUp": "❌ Ini belum melakukan apa-apa. Minta pentadbir server siapkan tetapannya dalam panel konfigurasi bot.",
+		"roleAdded": "✅ Anda kini ada {role}.",
+		"roleRemoved": "✅ {role} telah dibuang daripada anda.",
+		"roleAlready": "Anda sudah ada {role}.",
+		"roleNotHeld": "Anda tiada {role}.",
+		"roleFailed": "❌ Saya tidak dapat menukar {role}. {reason}",
+		"blocked": {
+			"deleted": "❌ Role itu sudah tiada. Minta pentadbir server pilih role lain dalam panel konfigurasi bot.",
+			"managed": "❌ {role} milik sebuah integrasi, jadi saya tidak boleh memberi atau membuangnya. Minta pentadbir server pilih role lain dalam panel konfigurasi bot.",
+			"no_permission": "❌ Saya perlukan kebenaran Urus Role untuk menukar {role}. Minta pentadbir server berikannya kepada role saya.",
+			"above_bot": "❌ {role} berada di atas role saya. Minta pentadbir server naikkan kedudukan role saya dalam Tetapan Server → Role."
+		}
+	},
 	"commands": {
 		"errors": {
 			"unknown": "❌ **Arahan Tidak Dikenali**: `/{command}`\n\nArahan ini tidak wujud. Hanya `/setup` yang tersedia.",

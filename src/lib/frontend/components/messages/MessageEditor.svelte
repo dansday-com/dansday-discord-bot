@@ -103,7 +103,8 @@
 		{ icon: 'fa-keyboard', text: 'Type in the box under the message to write what the bot says.' },
 		{ icon: 'fa-plus', text: 'Press + to add an embed, a photo or video, a button or a dropdown.' },
 		{ icon: 'fa-arrow-pointer', text: 'Click anything in the message to change it here.' },
-		{ icon: 'fa-play', text: 'Switch to Try it to click the buttons like a member would.' }
+		{ icon: 'fa-play', text: 'Switch to Try it to click the buttons like a member would.' },
+		{ icon: 'fa-wand-magic-sparkles', text: 'Or press Ask AI in the corner and describe the message.' }
 	];
 
 	const mentionRoles = $derived(

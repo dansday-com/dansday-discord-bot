@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { quintOut } from 'svelte/easing';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { AGENT_OFF, AGENT_PROMPT_LIMIT } from '$lib/agent.js';
@@ -10,6 +11,11 @@
 
 	type Turn = { role: 'user' | 'assistant'; text: string };
 
+	const SEEN_KEY = 'agent-dock-seen';
+	const TEASER_DELAY_MS = 6000;
+
+	const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 	let { superadmin }: { superadmin: boolean } = $props();
 
 	let open = $state(false);
@@ -18,35 +24,83 @@
 	let turns = $state<Turn[]>([]);
 	let prompt = $state('');
 	let busy = $state(false);
+	let teaser = $state(false);
+	let unread = $state(false);
 	let undoable = $state.raw<{ turn: number; editor: AgentMessageEditor } | null>(null);
 	let log = $state<HTMLElement>();
 	let input = $state<HTMLTextAreaElement>();
 
 	const serverId = $derived(page.params.serverId ? Number(page.params.serverId) : null);
 	const editor = $derived(agentDock.editor);
+	const teaserText = $derived(
+		editor
+			? "Describe this message and I'll build it for you."
+			: superadmin
+				? "Need a message, a wiki or a shop item? Tell me and I'll set it up."
+				: 'Need a message built, or numbers from your server? Just ask.'
+	);
 
-	$effect(() => {
-		if (!open) return;
+	function pop(_node: Element, { duration, lift = 0 }: { duration: number; lift?: number }) {
+		return {
+			duration,
+			easing: quintOut,
+			css: (t: number, u: number) =>
+				reduced ? `opacity: ${t}` : `opacity: ${t}; transform: translateY(${u * lift}px) scale(${0.96 + 0.04 * t}); transform-origin: bottom right`
+		};
+	}
+
+	async function describe(): Promise<{ ready: boolean; can: string[] }> {
 		const query = new URLSearchParams();
 		if (serverId) query.set('server_id', String(serverId));
 		if (editor) query.set('message', editor.scope);
+		try {
+			const out = await (await fetch(`/api/agent?${query}`)).json();
+			return { ready: out.ok === true && out.ready === true, can: Array.isArray(out.can) ? out.can : [] };
+		} catch (_) {
+			return { ready: false, can: [] };
+		}
+	}
+
+	$effect(() => {
+		if (!open) return;
 		let current = true;
-		fetch(`/api/agent?${query}`)
-			.then((res) => res.json())
-			.then((out) => {
-				if (!current) return;
-				ready = out.ok === true && out.ready === true;
-				can = Array.isArray(out.can) ? out.can : [];
-			})
-			.catch(() => {
-				if (current) ready = false;
-			});
+		describe().then((info) => {
+			if (!current) return;
+			ready = info.ready;
+			can = info.can;
+		});
 		return () => {
 			current = false;
 		};
 	});
 
+	function seen(): boolean {
+		try {
+			return localStorage.getItem(SEEN_KEY) === '1';
+		} catch (_) {
+			return true;
+		}
+	}
+
+	function markSeen() {
+		teaser = false;
+		try {
+			localStorage.setItem(SEEN_KEY, '1');
+		} catch (_) {}
+	}
+
+	onMount(() => {
+		if (seen()) return;
+		const timer = setTimeout(async () => {
+			const info = await describe();
+			if (info.ready && !open && !seen()) teaser = true;
+		}, TEASER_DELAY_MS);
+		return () => clearTimeout(timer);
+	});
+
 	async function show() {
+		markSeen();
+		unread = false;
 		open = true;
 		await tick();
 		input?.focus();
@@ -93,6 +147,7 @@
 			});
 			if (!out) return;
 			turns.push({ role: 'user', text }, { role: 'assistant', text: String(out.reply ?? '') });
+			if (!open) unread = true;
 			if (out.message && editor?.apply(out.message)) undoable = { turn: turns.length - 1, editor };
 			prompt = '';
 			await settle(out);
@@ -116,6 +171,8 @@
 
 {#if open}
 	<section
+		in:pop={{ duration: 200 }}
+		out:pop={{ duration: 150 }}
 		role="dialog"
 		aria-label="Assistant"
 		class="bg-ash-800 border-ash-700 fixed right-3 bottom-3 z-50 flex h-[min(34rem,calc(100dvh-5.5rem))] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border shadow-2xl"
@@ -196,12 +253,26 @@
 		</form>
 	</section>
 {:else}
+	{#if teaser}
+		<div
+			in:pop={{ duration: 260, lift: 8 }}
+			out:pop={{ duration: 150, lift: 8 }}
+			class="bg-ash-700 border-ash-500 fixed right-4 bottom-20 z-30 flex max-w-[min(18rem,calc(100vw-2rem))] items-start gap-1 rounded-xl rounded-br-sm border py-2 pr-1.5 pl-3 shadow-xl"
+		>
+			<button type="button" class="text-ash-100 py-1 text-left text-sm" onclick={show}>{teaserText}</button>
+			<button type="button" class={ICON_BUTTON} aria-label="Dismiss" onclick={markSeen}><i class="fas fa-xmark"></i></button>
+		</div>
+	{/if}
 	<button
 		type="button"
-		aria-label="Open the assistant"
+		aria-label="Ask the AI assistant"
 		onclick={show}
-		class="bg-ash-700 hover:bg-ash-600 border-ash-500 fixed right-4 bottom-4 z-30 grid size-12 place-items-center rounded-full border text-fuchsia-300 shadow-xl transition-colors"
+		class="fixed right-4 bottom-4 z-30 inline-flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-linear-to-br from-fuchsia-600 to-violet-600 text-sm font-semibold text-white shadow-xl shadow-black/40 transition-[filter,scale] duration-150 ease-out hover:brightness-110 active:scale-[0.97] sm:w-auto sm:px-5"
 	>
-		<i class="fas fa-wand-magic-sparkles"></i>
+		<i class="fas {busy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}"></i>
+		<span class="hidden sm:inline">Ask AI</span>
+		{#if unread}
+			<span class="ring-ash-950 absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 ring-2"></span>
+		{/if}
 	</button>
 {/if}

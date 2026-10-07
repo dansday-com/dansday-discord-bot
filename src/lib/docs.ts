@@ -104,7 +104,7 @@ export const sections = [
 		label: 'Panel assistant',
 		heading: 'Panel assistant',
 		iconClass: 'fas fa-wand-magic-sparkles',
-		lead: 'A chat in the bottom right corner of every panel page. Say what you want and it sets it up for you instead of you clicking through the forms. It runs on the AI you set up on the admin panel under the AI tab, with no extra key.'
+		lead: 'A chat behind the Ask AI button in the bottom right corner of every panel page. Say what you want and it sets it up for you instead of you clicking through the forms. It runs on the AI you set up on the admin panel under the AI tab, with no extra key.'
 	},
 	{
 		id: 'shop',
@@ -759,7 +759,7 @@ export const modules = [
 			},
 			{
 				label: 'Build with AI',
-				desc: "Open the assistant in the bottom right corner and describe the message. It fills the editor for you: text, embeds, buttons, dropdowns and translations, using the server's live data when you ask for it. Nothing is saved or posted until you press Save or Send."
+				desc: "Press Ask AI in the bottom right corner and describe the message. It fills the editor for you: text, embeds, buttons, dropdowns and translations, using the server's live data when you ask for it. Nothing is saved or posted until you press Save or Send."
 			},
 			{
 				label: 'Try it',

@@ -725,7 +725,7 @@ export const modules = [
 			},
 			{
 				label: 'Languages',
-				desc: 'Add a language and translate any text; anything left empty uses the main text. A member who clicks gets the reply in the language they picked in the bot menu. When sending, pick which language the post itself uses.'
+				desc: 'Add a language and translate any text; anything left empty uses the main text. The posted message then gets a language button (a dropdown with three or more), so any member can read it privately in another language, whatever the server uses. Buttons in that copy keep the chosen language. It can be turned off in the language menu. When sending, pick which language the post itself uses.'
 			},
 			{
 				label: 'Editing',

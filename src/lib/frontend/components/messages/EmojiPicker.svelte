@@ -25,7 +25,7 @@
 	}
 </script>
 
-<div class="bg-ash-800 border-ash-600 w-80 max-w-[calc(100vw-2rem)] rounded-xl border p-2 shadow-2xl">
+<div class="bg-ash-800 border-ash-600 w-full rounded-xl border p-2">
 	<input type="text" bind:value={search} placeholder="Search emoji" aria-label="Search emoji" class="{FIELD} mb-2" />
 	{#if !query}
 		<div class="mb-2 flex gap-0.5 overflow-x-auto">

@@ -3,6 +3,7 @@ import db, { type ServerMessage, type ServerMessagePost } from '../../../../data
 import { NOTIFICATIONS, getBotConfig, getEmbedConfig, getServerForCurrentBot, publicSiteOrigin } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import {
+	MESSAGE_LANGUAGE_PART,
 	MESSAGE_LIMITS,
 	findMessageComponent,
 	isMessageUploadKey,
@@ -23,7 +24,7 @@ type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
 type RoleBlock = 'deleted' | 'managed' | 'unsafe' | 'no_permission' | 'above_bot';
 type LoadedFile = { attachment: Buffer; name: string };
-type RenderExtra = { prefix?: string; interactive?: boolean; defaultColor?: number | null };
+type RenderExtra = { prefix?: string; interactive?: boolean; pinned?: boolean; defaultColor?: number | null };
 type Renderer = (lang: ServerLanguage, extra?: RenderExtra) => MessagePayload;
 type SyncResult = { post_id: number; channel_id: string; channel_name: string; ok: boolean; gone?: boolean; error?: string };
 
@@ -426,7 +427,17 @@ export async function handleMessageComponent(interaction: any) {
 
 	const guild = interaction.guild;
 	const server = await getServerForCurrentBot(guild.id);
-	const lang = await memberLanguage(server.id, interaction.user.id, ref.lang);
+	const switching = ref.partId === MESSAGE_LANGUAGE_PART;
+	const fromMenu = Array.isArray(interaction.values);
+	const chosen = switching && fromMenu ? interaction.values[0] : ref.lang;
+	const lang: ServerLanguage = switching
+		? isServerLanguage(chosen)
+			? chosen
+			: ref.lang
+		: ref.pinned
+			? ref.lang
+			: await memberLanguage(server.id, interaction.user.id, ref.lang);
+	const pinned = switching || ref.pinned;
 	const tr = translatorFor(lang);
 	const privately = (content: string) => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 
@@ -435,24 +446,27 @@ export async function handleMessageComponent(interaction: any) {
 	const defaults = ref.scope === 'global' ? { defaultColor: await serverColor(guild.id) } : {};
 
 	const message = await load(ref.messageId);
-	const component = message ? findMessageComponent(message.content, ref.partId) : null;
-	if (!message || !component) {
+	const component = message && !switching ? findMessageComponent(message.content, ref.partId) : null;
+	if (!message || (!switching && !component)) {
 		await interaction.reply(privately(tr('messages.unavailable')));
 		return;
 	}
 
-	const picked: string[] = component.kind === 'select' ? (interaction.values ?? []) : [];
-	const actions =
-		component.kind === 'button' ? component.button.actions : component.select.options.filter((o) => picked.includes(o.id)).flatMap((o) => o.actions);
+	const picked: string[] = fromMenu ? interaction.values : [];
+	const actions = !component
+		? []
+		: component.kind === 'button'
+			? component.button.actions
+			: component.select.options.filter((o) => picked.includes(o.id)).flatMap((o) => o.actions);
 	const show = actions.find((a): a is ShowAction => a.type === 'show');
 	const roles = ref.scope === 'server' ? actions.filter((a): a is RoleAction => a.type === 'role') : [];
-	if (!show && roles.length === 0) {
+	if (!switching && !show && roles.length === 0) {
 		await interaction.reply(privately(tr('messages.notSetUp')));
 		return;
 	}
 
-	const target = show ? await load(show.message_id) : null;
-	const rendered = target ? renderer(ref.scope, target, guild.name, defaults)(lang) : null;
+	const target = switching ? message : show ? await load(show.message_id) : null;
+	const rendered = target ? renderer(ref.scope, target, guild.name, defaults)(switching ? postLanguage(target.content, lang) : lang, { pinned }) : null;
 	const shown = rendered && !rendered.empty ? rendered : null;
 	const source = interaction.message;
 	const sourceV2 = source.flags.has(MessageFlags.IsComponentsV2);
@@ -471,7 +485,7 @@ export async function handleMessageComponent(interaction: any) {
 			else await interaction.update(body);
 		} else lines.push(tr('messages.unavailable'));
 		acknowledged = true;
-	} else if (component.kind === 'select') {
+	} else if (fromMenu) {
 		const posts: ServerMessagePost[] =
 			ref.scope === 'global'
 				? panel == null
@@ -479,12 +493,12 @@ export async function handleMessageComponent(interaction: any) {
 					: await db.getGlobalMessagePosts(panel, message.id, currentBotId())
 				: await db.getServerMessagePosts(server.id, message.id);
 		const prefix = posts.find((entry) => entry.discord_message_id === source.id)?.mentions ?? '';
-		const again = renderer(ref.scope, message, guild.name, defaults)(ref.lang, { prefix });
+		const again = renderer(ref.scope, message, guild.name, defaults)(ref.lang, { prefix, pinned: ref.pinned });
 		await interaction.update(again.v2 ? { components: again.components, flags: MessageFlags.IsComponentsV2 } : { components: again.components });
 		acknowledged = true;
 	}
 
-	if (show && !shown) lines.push(tr('messages.unavailable'));
+	if ((show || switching) && !shown) lines.push(tr('messages.unavailable'));
 	if (shown && !inPlace) {
 		if (!acknowledged && shown.files.length > 0) {
 			await interaction.deferReply({ flags: MessageFlags.Ephemeral });

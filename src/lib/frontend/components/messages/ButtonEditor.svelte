@@ -40,10 +40,8 @@
 		<p class="text-ash-500 mt-1 text-[11px]">{hint}</p>
 	</div>
 
-	<div class="grid gap-3 sm:grid-cols-2">
-		<LocalizedField bind:value={button.label} label="Label" max={MESSAGE_LIMITS.label} placeholder="Rules" />
-		<EmojiField bind:value={button.emoji} />
-	</div>
+	<LocalizedField bind:value={button.label} label="Label" max={MESSAGE_LIMITS.label} placeholder="Rules" />
+	<EmojiField bind:value={button.emoji} />
 
 	{#if button.style === 'link'}
 		<div>

@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { IMAGE_ACCEPT } from '$lib/images.js';
 	import { SERVER_LANGUAGES, serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
-	import { MESSAGE_LIMITS, MESSAGE_VIDEO_ACCEPT, type MessageAction, type MessageBlockType, type MessageDoc } from '$lib/messages.js';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import { MESSAGE_LIMITS, MESSAGE_VIDEO_ACCEPT, messageRowLimit, type MessageAction, type MessageBlockType, type MessageDoc } from '$lib/messages.js';
 	import EmojiPicker from './EmojiPicker.svelte';
 	import MessageBody from './MessageBody.svelte';
 	import { clickOutside, messageEditor } from './editorContext.js';
 	import { discordMarkdown, type MarkdownContext } from './discordMarkdown.js';
 
-	type Reply = { key: number; doc: MessageDoc | null; lines: string[] };
+	type Reply = { key: number; doc: MessageDoc | null; lines: string[]; lang: ServerLanguage | null };
 	type AddType = 'embed' | 'file' | MessageBlockType;
 	type AddItem = { type: AddType; label: string; hint: string; icon: string; full: boolean };
 
@@ -80,7 +81,7 @@
 		standard ? !!(doc.text[doc.language] ?? '').trim() || doc.attachments.length > 0 || doc.embeds.length > 0 || doc.rows.length > 0 : doc.blocks.length > 0
 	);
 	const otherLanguages = $derived(SERVER_LANGUAGES.filter((language) => !doc.languages.includes(language.code)));
-	const rowsFull = $derived(doc.rows.length >= MESSAGE_LIMITS.rows);
+	const rowsFull = $derived(doc.rows.length >= messageRowLimit(doc));
 	const buttonRoom = $derived.by(() => {
 		const last = doc.rows[doc.rows.length - 1];
 		return last?.type === 'buttons' && last.buttons.length < MESSAGE_LIMITS.buttons;
@@ -191,9 +192,14 @@
 		if (target) {
 			const inPlace = from?.doc && (target.layout === 'components' || from.doc.layout !== 'components');
 			if (from && inPlace) from.doc = target;
-			else replies.push({ key: nextKey++, doc: target, lines: [] });
+			else replies.push({ key: nextKey++, doc: target, lines: [], lang: from?.lang ?? null });
 		}
-		if (lines.length > 0) replies.push({ key: nextKey++, doc: null, lines });
+		if (lines.length > 0) replies.push({ key: nextKey++, doc: null, lines, lang: from?.lang ?? null });
+	}
+
+	function switchLanguage(code: ServerLanguage, from: Reply | null) {
+		if (from) from.lang = code;
+		else replies.push({ key: nextKey++, doc, lines: [], lang: code });
 	}
 </script>
 
@@ -294,6 +300,15 @@
 							{/each}
 						</div>
 					{/if}
+					{#if doc.languages.length > 1}
+						<div class="border-ash-700 mt-2 border-t px-2 pt-3 pb-1">
+							<ConfigToggleRow
+								label="Language button on the message"
+								description="Members click it to read the message in another language, whatever language the server uses."
+								bind:enabled={doc.language_switch}
+							/>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -346,6 +361,10 @@
 						{onselect}
 						{onaddbutton}
 						{onaddinside}
+						onlanguage={(code) => {
+							if (code) switchLanguage(code, null);
+							else languageOpen = true;
+						}}
 						onpress={(actions) => press(actions, null)}
 					/>
 				{:else}
@@ -367,7 +386,15 @@
 				<div class="dc-content">
 					{@render author()}
 					{#if reply.doc}
-						<MessageBody doc={reply.doc} {lang} {server} {context} {now} onpress={(actions) => press(actions, reply)} />
+						<MessageBody
+							doc={reply.doc}
+							lang={reply.lang ?? lang}
+							{server}
+							{context}
+							{now}
+							onlanguage={(code) => code && switchLanguage(code, reply)}
+							onpress={(actions) => press(actions, reply)}
+						/>
 					{:else}
 						<div class="dc-result">
 							{#each reply.lines as line, i (i)}
@@ -427,7 +454,7 @@
 					<i class="fas fa-face-smile"></i>
 				</button>
 				{#if emojiOpen}
-					<div class="absolute right-0 bottom-full z-30 mb-2"><EmojiPicker onpick={insertEmoji} /></div>
+					<div class="absolute right-0 bottom-full z-30 mb-2 w-80 max-w-[calc(100vw-3rem)] shadow-2xl"><EmojiPicker onpick={insertEmoji} /></div>
 				{/if}
 			</div>
 		{:else}

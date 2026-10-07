@@ -1,10 +1,13 @@
 <script lang="ts">
 	import type { ServerLanguage } from '$lib/languages.js';
 	import {
+		MESSAGE_LANGUAGE_EMOJI,
 		MESSAGE_LIMITS,
 		applyMessagePlaceholders,
 		isMessageVideo,
 		messageFilePreviewUrl,
+		messageLanguageChoices,
+		messageLanguageName,
 		parseMessageEmoji,
 		pickText,
 		type InnerBlock,
@@ -32,6 +35,7 @@
 		onselect = () => {},
 		onaddbutton = () => {},
 		onaddinside = () => {},
+		onlanguage = () => {},
 		onpress
 	}: {
 		doc: MessageDoc;
@@ -45,6 +49,7 @@
 		onselect?: (id: string, focus: string) => void;
 		onaddbutton?: (rowId: string) => void;
 		onaddinside?: (containerId: string) => void;
+		onlanguage?: (code: ServerLanguage | null) => void;
 		onpress: (actions: MessageAction[]) => void;
 	} = $props();
 
@@ -55,6 +60,10 @@
 	const text = (value: Localized) => applyMessagePlaceholders(pickText(value, lang, doc.language), server);
 	const markdown = (value: Localized) => discordMarkdown(text(value), context);
 	const safeUrl = (url: string) => (/^https?:\/\//i.test(url) ? url : undefined);
+	const shownLanguage = $derived(doc.languages.includes(lang) ? lang : doc.language);
+	const otherLanguages = $derived(messageLanguageChoices(doc, shownLanguage));
+	const LANGUAGE_MENU = '@lang';
+	const LANGUAGE_HINT = 'Added automatically because this message has translations. Members click it to read the message in another language.';
 
 	function hit(id: string, focus = '') {
 		if (!editable) return {};
@@ -264,6 +273,61 @@
 	{/if}
 {/snippet}
 
+{#snippet languageControl()}
+	{#if otherLanguages.length === 1}
+		<div class="dc-row">
+			<button
+				type="button"
+				class="dc-button dc-button-secondary"
+				title={editable ? LANGUAGE_HINT : undefined}
+				onclick={(event) => {
+					event.stopPropagation();
+					onlanguage(editable ? null : otherLanguages[0]);
+				}}
+			>
+				<span class="dc-button-emoji-text">{MESSAGE_LANGUAGE_EMOJI}</span>
+				<span>{messageLanguageName(otherLanguages[0])}</span>
+			</button>
+		</div>
+	{:else if otherLanguages.length > 1}
+		<div class="dc-select-wrap">
+			<button
+				type="button"
+				class="dc-select dc-select-chosen {openSelect === LANGUAGE_MENU ? 'dc-select-open' : ''}"
+				title={editable ? LANGUAGE_HINT : undefined}
+				onclick={(event) => {
+					event.stopPropagation();
+					if (editable) return onlanguage(null);
+					openSelect = openSelect === LANGUAGE_MENU ? null : LANGUAGE_MENU;
+				}}
+			>
+				<span class="dc-select-placeholder">{MESSAGE_LANGUAGE_EMOJI} {messageLanguageName(shownLanguage)}</span>
+				<i class="fas fa-chevron-down"></i>
+			</button>
+			{#if openSelect === LANGUAGE_MENU && !editable}
+				<ul class="dc-select-menu">
+					{#each doc.languages as code (code)}
+						<li>
+							<button
+								type="button"
+								class="dc-select-option"
+								onclick={() => {
+									openSelect = null;
+									if (code !== shownLanguage) onlanguage(code);
+								}}
+							>
+								<span class="dc-button-emoji-text">{MESSAGE_LANGUAGE_EMOJI}</span>
+								<span class="dc-select-text"><span>{messageLanguageName(code)}</span></span>
+								{#if code === shownLanguage}<i class="fas fa-check dc-checked"></i>{/if}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
 <div
 	class="dc-body {editable ? 'dc-editing' : ''}"
 	role="presentation"
@@ -297,6 +361,7 @@
 				{@render inner(block)}
 			{/if}
 		{/each}
+		{@render languageControl()}
 	{:else}
 		{#if text(doc.text).trim()}
 			<div class="dc-markdown {mark('text')}" {...hit('text')}>{@html markdown(doc.text)}</div>
@@ -369,6 +434,7 @@
 		{#each doc.rows as block (block.id)}
 			{@render row(block)}
 		{/each}
+		{@render languageControl()}
 	{/if}
 </div>
 
@@ -806,6 +872,10 @@
 
 	.dc-select-open {
 		border-color: #5865f2;
+	}
+
+	.dc-select-chosen {
+		color: #dbdee1;
 	}
 
 	.dc-select-placeholder {

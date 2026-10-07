@@ -1,8 +1,10 @@
-import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES, isServerLanguage, serverLanguageLabel, type ServerLanguage } from './languages.js';
+import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGES, SERVER_LANGUAGE_CODES, isServerLanguage, serverLanguageLabel, type ServerLanguage } from './languages.js';
 
 export const MESSAGE_UPLOAD_ROOTS = { server: 'server-messages', global: 'global-messages' } as const;
 export const MESSAGE_CUSTOM_ID_PREFIXES = { server: 'msg', global: 'gmsg' } as const;
 export const MESSAGE_SCOPES = ['server', 'global'] as const;
+export const MESSAGE_LANGUAGE_PART = '@lang';
+export const MESSAGE_LANGUAGE_EMOJI = '\u{1F310}';
 export const MAX_SAVED_MESSAGES = 100;
 
 export const MESSAGE_LIMITS = {
@@ -164,6 +166,7 @@ export type MessageDoc = {
 	layout: MessageLayout;
 	language: ServerLanguage;
 	languages: ServerLanguage[];
+	language_switch: boolean;
 	text: Localized;
 	attachments: MessageAttachment[];
 	embeds: MessageEmbed[];
@@ -183,6 +186,7 @@ export type MessageRenderOptions = {
 	server: string;
 	image: (value: string) => string;
 	interactive?: boolean;
+	pinned?: boolean;
 	prefix?: string;
 };
 
@@ -241,17 +245,33 @@ export function parseMessageEmoji(value: string): { id?: string; name: string; a
 	return UNICODE_EMOJI.test(raw) ? { name: raw } : null;
 }
 
-export function messageCustomId(scope: MessageScope, messageId: number, partId: string, lang: ServerLanguage): string {
-	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}`;
+export function messageCustomId(scope: MessageScope, messageId: number, partId: string, lang: ServerLanguage, pinned = false): string {
+	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}${pinned ? '*' : ''}`;
 }
 
-export function parseMessageCustomId(customId: unknown): { scope: MessageScope; messageId: number; partId: string; lang: ServerLanguage } | null {
+export function parseMessageCustomId(
+	customId: unknown
+): { scope: MessageScope; messageId: number; partId: string; lang: ServerLanguage; pinned: boolean } | null {
 	const parts = String(customId ?? '').split('|');
 	const scope = MESSAGE_SCOPES.find((candidate) => MESSAGE_CUSTOM_ID_PREFIXES[candidate] === parts[0]);
 	if (parts.length !== 4 || !scope) return null;
 	const messageId = Number(parts[1]);
 	if (!Number.isInteger(messageId) || messageId <= 0 || !parts[2]) return null;
-	return { scope, messageId, partId: parts[2], lang: isServerLanguage(parts[3]) ? parts[3] : DEFAULT_SERVER_LANGUAGE };
+	const pinned = parts[3].endsWith('*');
+	const lang = pinned ? parts[3].slice(0, -1) : parts[3];
+	return { scope, messageId, partId: parts[2], lang: isServerLanguage(lang) ? lang : DEFAULT_SERVER_LANGUAGE, pinned };
+}
+
+export function messageLanguageName(code: ServerLanguage): string {
+	return SERVER_LANGUAGES.find((language) => language.code === code)?.name ?? code;
+}
+
+export function messageLanguageChoices(doc: MessageDoc, lang: ServerLanguage): ServerLanguage[] {
+	return doc.language_switch ? doc.languages.filter((code) => code !== lang) : [];
+}
+
+export function messageRowLimit(doc: MessageDoc): number {
+	return MESSAGE_LIMITS.rows - (doc.language_switch && doc.languages.length > 1 ? 1 : 0);
 }
 
 export function newMessageButton(): MessageButton {
@@ -297,6 +317,7 @@ export function newMessageDoc(language: ServerLanguage): MessageDoc {
 		layout: 'standard',
 		language,
 		languages: [language],
+		language_switch: true,
 		text: {},
 		attachments: [],
 		embeds: [],
@@ -491,6 +512,7 @@ export function normalizeMessageDoc(raw: unknown, ownsUpload: (key: string) => b
 			layout,
 			language,
 			languages,
+			language_switch: source.language_switch !== false,
 			text: {},
 			attachments: [],
 			embeds: [],
@@ -505,6 +527,7 @@ export function normalizeMessageDoc(raw: unknown, ownsUpload: (key: string) => b
 		layout,
 		language,
 		languages,
+		language_switch: source.language_switch !== false,
 		text: localized(source.text, MESSAGE_LIMITS.text, languages),
 		attachments: list(source.attachments, MESSAGE_LIMITS.attachments)
 			.map((a) => ({ id: partId(a.id, ctx), file: uploadValue(a.file, ctx), spoiler: a.spoiler === true }))
@@ -582,7 +605,7 @@ function renderButton(button: MessageButton, opts: MessageRenderOptions, base: S
 	if (button.style === 'link') return button.url ? { ...shared, style: 5, url: button.url } : null;
 	if (opts.interactive === false) return null;
 	const style = button.style === 'primary' ? 1 : button.style === 'success' ? 3 : button.style === 'danger' ? 4 : 2;
-	return { ...shared, style, custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, button.id, opts.lang) };
+	return { ...shared, style, custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, button.id, opts.lang, opts.pinned) };
 }
 
 function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLanguage): any | null {
@@ -613,7 +636,7 @@ function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLang
 		components: [
 			{
 				type: 3,
-				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, block.id, opts.lang),
+				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, block.id, opts.lang, opts.pinned),
 				min_values: 1,
 				max_values: block.multiple ? options.length : 1,
 				options,
@@ -688,9 +711,35 @@ function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: Serv
 	};
 }
 
+function renderLanguageRow(doc: MessageDoc, opts: MessageRenderOptions): any | null {
+	if (opts.interactive === false) return null;
+	const scope = opts.scope ?? 'server';
+	const current = doc.languages.includes(opts.lang) ? opts.lang : doc.language;
+	const others = messageLanguageChoices(doc, current);
+	if (others.length === 0) return null;
+	const emoji = { name: MESSAGE_LANGUAGE_EMOJI };
+	if (others.length === 1) {
+		const custom_id = messageCustomId(scope, opts.messageId, MESSAGE_LANGUAGE_PART, others[0]);
+		return { type: 1, components: [{ type: 2, style: 2, emoji, label: messageLanguageName(others[0]), custom_id }] };
+	}
+	return {
+		type: 1,
+		components: [
+			{
+				type: 3,
+				custom_id: messageCustomId(scope, opts.messageId, MESSAGE_LANGUAGE_PART, current, opts.pinned),
+				min_values: 1,
+				max_values: 1,
+				options: doc.languages.map((code) => ({ label: messageLanguageName(code), value: code, emoji, default: code === current }))
+			}
+		]
+	};
+}
+
 export function renderMessagePayload(doc: MessageDoc, opts: MessageRenderOptions): MessagePayload {
 	const base = doc.language;
 	const prefix = (opts.prefix ?? '').trim();
+	const languageRow = renderLanguageRow(doc, opts);
 
 	if (doc.layout === 'components') {
 		const files: MessageFile[] = [];
@@ -701,11 +750,12 @@ export function renderMessagePayload(doc: MessageDoc, opts: MessageRenderOptions
 				return inner.length > 0 ? { type: 17, ...(block.color ? { accent_color: parseInt(block.color.slice(1), 16) } : {}), components: inner } : null;
 			})
 			.filter(Boolean);
+		const parts = languageRow && components.length > 0 ? [...components, languageRow] : components;
 		return {
 			v2: true,
 			content: null,
 			embeds: [],
-			components: prefix && components.length > 0 ? [{ type: 10, content: prefix }, ...components] : components,
+			components: prefix && parts.length > 0 ? [{ type: 10, content: prefix }, ...parts] : parts,
 			files,
 			empty: components.length === 0
 		};
@@ -716,13 +766,14 @@ export function renderMessagePayload(doc: MessageDoc, opts: MessageRenderOptions
 	const components = doc.rows.map((row) => renderRow(row, opts, base)).filter(Boolean);
 	const files = doc.attachments.map((attachment) => ({ key: attachment.file, name: uploadName(attachment.file, attachment.spoiler) }));
 	const content = [prefix, body.trim() ? body : ''].filter(Boolean).join('\n');
+	const empty = !body.trim() && embeds.length === 0 && components.length === 0 && files.length === 0;
 	return {
 		v2: false,
 		content: content || null,
 		embeds,
-		components,
+		components: languageRow && !empty ? [...components, languageRow] : components,
 		files,
-		empty: !body.trim() && embeds.length === 0 && components.length === 0 && files.length === 0
+		empty
 	};
 }
 
@@ -834,6 +885,12 @@ export function messageDocIssues(doc: MessageDoc): MessageIssue[] {
 			});
 		});
 		doc.rows.forEach((row, i) => out.push(...rowIssues(row, `Row ${i + 1}`, base)));
+		if (doc.rows.length > messageRowLimit(doc)) {
+			out.push({
+				part: null,
+				text: `The language button needs a row of its own and Discord allows ${MESSAGE_LIMITS.rows}. Remove a row of buttons or a dropdown, or turn the language button off in the language menu.`
+			});
+		}
 		if (!pickText(doc.text, base, base).trim() && doc.embeds.length === 0 && doc.rows.length === 0 && doc.attachments.length === 0) {
 			out.push({ part: null, text: 'Write something, or press + to add an embed, a photo or buttons.' });
 		}

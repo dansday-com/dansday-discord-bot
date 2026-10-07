@@ -9,29 +9,20 @@ const MAX_HISTORY_TURNS = 8;
 
 export type AgentReach = { panelId: number; all: boolean; server: any | null };
 
-export type AgentConfirm = { name: string; args: Record<string, unknown>; label: string };
-
-export type AgentSession = { actor: string; confirms: AgentConfirm[]; changed: Set<string> };
+export type AgentSession = { actor: string; changed: Set<string> };
 
 export type AgentAnswer = { reply: string; message?: { name: string | null; content: MessageDoc | null } };
-
-export type DangerAction = {
-	name: string;
-	describe: (args: Record<string, unknown>) => Promise<string | null>;
-	run: (args: Record<string, unknown>) => Promise<string>;
-};
 
 export type AgentPack = {
 	instructions: string;
 	tools: AgentTool[];
-	dangers?: DangerAction[];
 	finish?: (answer: string) => AgentVerdict<AgentAnswer>;
 };
 
 export type AgentReply<T> = { ok: true; result: T } | { ok: false; status: number; error: string };
 
 export function agentSession(locals: App.Locals): AgentSession {
-	return { actor: locals.user.authenticated ? locals.user.username : 'Someone', confirms: [], changed: new Set() };
+	return { actor: locals.user.authenticated ? locals.user.username : 'Someone', changed: new Set() };
 }
 
 export async function agentReach(locals: App.Locals, server: any | null = null): Promise<AgentReach | null> {
@@ -63,22 +54,6 @@ export function agentTurns(rawHistory: unknown, rawPrompt: unknown): AgentTurn[]
 	while (history[0]?.role === 'assistant') history.shift();
 
 	return [...history, { role: 'user', text: prompt }];
-}
-
-export function dangerTool(session: AgentSession, action: DangerAction, description: string, parameters: Record<string, unknown>): AgentTool {
-	return {
-		name: action.name,
-		description: `${description} This does not happen right away: the admin gets a Confirm button under your reply.`,
-		parameters,
-		run: async (args) => {
-			const label = await action.describe(args);
-			if (!label) return { ok: false, reason: 'not_found' };
-			if (!session.confirms.some((confirm) => confirm.name === action.name && JSON.stringify(confirm.args) === JSON.stringify(args))) {
-				session.confirms.push({ name: action.name, args, label });
-			}
-			return { ok: true, waiting_for_confirm: true, note: 'Nothing is deleted yet. The admin sees a Confirm button under your reply and has to press it.' };
-		}
-	};
 }
 
 function agentError(error: any): string {

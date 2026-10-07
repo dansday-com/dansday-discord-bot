@@ -411,7 +411,7 @@ export const features: Feature[] = [
 		icon: 'fa-wand-sparkles',
 		title: 'Panel assistant',
 		desc: 'Tell the dashboard what you want and it sets it up: messages with buttons and translations, wikis, shop items.',
-		more: 'Reads your live server data, asks before it deletes, and each account only reaches its own servers.'
+		more: 'Reads your live server data, never deletes anything, and each account only reaches its own servers.'
 	},
 	{
 		icon: 'fa-code-branch',

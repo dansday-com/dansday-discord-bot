@@ -1,7 +1,7 @@
 import db from '$lib/database.js';
 import { EFFECT_TYPE_IDS, ITEM_EFFECTS, effectDefaultCost, effectSummary, getItemEffect } from '$lib/items.js';
 import { logger } from '$lib/utils/index.js';
-import { dangerTool, type AgentPack, type AgentReach, type AgentSession, type DangerAction } from './runtime.server.js';
+import type { AgentPack, AgentReach, AgentSession } from './runtime.server.js';
 
 const MAX_NAME_LENGTH = 150;
 const BOOST_SCOPES = ['all', 'message', 'voice'];
@@ -178,25 +178,8 @@ export function itemsPack(reach: AgentReach, session: AgentSession): AgentPack {
 		return item && Number((item as any).panel_id) === panelId ? item : null;
 	}
 
-	const remove: DangerAction = {
-		name: 'delete_item',
-		describe: async (args) => {
-			const item = await owned(args.id);
-			return item ? `Delete the item "${item.name}" and take it out of every member's bag` : null;
-		},
-		run: async (args) => {
-			const item = await owned(args.id);
-			if (!item) return 'That item no longer exists.';
-			await db.deleteItem(item.id);
-			session.changed.add('items');
-			logger.log(`${session.actor} deleted item "${item.name}" (${item.id}) through the assistant`);
-			return `Deleted the item "${item.name}".`;
-		}
-	};
-
 	return {
-		instructions: `# Shop items\nItems are the XP shop catalog, shared by every server on this panel that has items turned on. Members buy them with XP. Each item is one of these kinds:\n${CATALOG}\nDurations and cooldowns are in minutes and percentages are plain numbers. Set only what the admin asked for and let every other setting keep its usual value. Sale times are wall-clock times that apply in each member's own timezone. To take an item off sale without deleting it, set enabled to false: members keep the copies they own. Deleting an item also removes it from every member's bag.`,
-		dangers: [remove],
+		instructions: `# Shop items\nItems are the XP shop catalog, shared by every server on this panel that has items turned on. Members buy them with XP. Each item is one of these kinds:\n${CATALOG}\nDurations and cooldowns are in minutes and percentages are plain numbers. Set only what the admin asked for and let every other setting keep its usual value. Sale times are wall-clock times that apply in each member's own timezone. You cannot delete an item. To take one off sale, set enabled to false: members keep the copies they own.`,
 		tools: [
 			{
 				name: 'list_items',
@@ -233,12 +216,7 @@ export function itemsPack(reach: AgentReach, session: AgentSession): AgentPack {
 					logger.log(`${session.actor} updated item ${current.id} through the assistant`);
 					return { ok: true, item: item ? shown(item) : null };
 				}
-			},
-			dangerTool(session, remove, 'Delete an item from the shop catalog. Every member who owns it loses it.', {
-				type: 'object',
-				properties: { id: ID_FIELD },
-				required: ['id']
-			})
+			}
 		]
 	};
 }

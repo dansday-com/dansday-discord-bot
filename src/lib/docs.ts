@@ -310,8 +310,8 @@ export const aiServerTopics = [
 export const aiAssistantTopics = [
 	{ icon: 'fa-palette', title: 'Messages', desc: 'Describe a message in the builder and it fills in text, embeds, buttons, role actions and translations.' },
 	{ icon: 'fa-database', title: 'Live server data', desc: 'Leaderboards, statistics, leveling rules, giveaways and the shop, read live.' },
-	{ icon: 'fa-book', title: 'Wikis', desc: 'Adds a wiki from its address, edits it, switches it off or deletes it. Panel admin only.' },
-	{ icon: 'fa-store', title: 'Shop items', desc: 'Creates, reprices, schedules, switches off or deletes items. Panel admin only.' },
+	{ icon: 'fa-book', title: 'Wikis', desc: 'Adds a wiki from its address, edits it or switches it off. Panel admin only.' },
+	{ icon: 'fa-store', title: 'Shop items', desc: 'Creates, reprices, schedules or switches off items. Panel admin only.' },
 	{ icon: 'fa-sliders', title: 'Panel settings', desc: 'Flips the switches on the Settings tab. Panel admin only.' }
 ];
 
@@ -319,7 +319,7 @@ export const aiAssistantRules = [
 	{ icon: 'fa-toggle-on', title: 'Needs AI chat', desc: 'It works once AI chat is on with a URL, key and model.' },
 	{ icon: 'fa-eye', title: 'You review messages', desc: 'A built message lands in the editor unsaved. You press Save or Send.' },
 	{ icon: 'fa-rotate-left', title: 'Undo', desc: 'One click puts the message back the way it was before the change.' },
-	{ icon: 'fa-trash', title: 'Asks before deleting', desc: 'A delete waits for your click on a Confirm button in the chat.' },
+	{ icon: 'fa-ban', title: 'Never deletes', desc: 'It adds and edits. Deleting stays a click of your own in the panel.' },
 	{ icon: 'fa-user-lock', title: 'Own server only', desc: 'Owner and staff accounts reach their own server and nothing else.' },
 	{ icon: 'fa-robot', title: 'Needs the bot online', desc: 'Live server data comes from the running bot.' }
 ];

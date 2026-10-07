@@ -8,8 +8,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { FIELD, GHOST_BUTTON, ICON_BUTTON } from '$lib/frontend/components/messages/styles.js';
 
-	type Confirm = { name: string; args: Record<string, unknown>; label: string };
-	type Turn = { role: 'user' | 'assistant'; text: string; confirms: Confirm[] };
+	type Turn = { role: 'user' | 'assistant'; text: string };
 
 	let { superadmin }: { superadmin: boolean } = $props();
 
@@ -93,27 +92,9 @@
 				message: editor ? { scope: editor.scope, ...editor.read() } : null
 			});
 			if (!out) return;
-			turns.push(
-				{ role: 'user', text, confirms: [] },
-				{ role: 'assistant', text: String(out.reply ?? ''), confirms: Array.isArray(out.confirms) ? out.confirms : [] }
-			);
+			turns.push({ role: 'user', text }, { role: 'assistant', text: String(out.reply ?? '') });
 			if (out.message && editor?.apply(out.message)) undoable = { turn: turns.length - 1, editor };
 			prompt = '';
-			await settle(out);
-		} finally {
-			busy = false;
-			scrollDown();
-		}
-	}
-
-	async function confirm(turn: Turn, action: Confirm) {
-		if (busy) return;
-		busy = true;
-		try {
-			const out = await call({ confirm: { name: action.name, args: action.args } });
-			if (!out) return;
-			turn.confirms = turn.confirms.filter((other) => other !== action);
-			turns.push({ role: 'assistant', text: String(out.reply ?? ''), confirms: [] });
 			await settle(out);
 		} finally {
 			busy = false;
@@ -169,21 +150,6 @@
 				{:else}
 					<div class="flex max-w-[92%] flex-col gap-2 self-start">
 						<p class="bg-ash-700 text-ash-100 rounded-lg px-3 py-2 text-sm break-words whitespace-pre-wrap">{turn.text}</p>
-						{#each turn.confirms as action (action.label)}
-							<div class="flex flex-wrap gap-2">
-								<button
-									type="button"
-									disabled={busy}
-									onclick={() => confirm(turn, action)}
-									class="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-3 py-1.5 text-left text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-								>
-									<i class="fas fa-trash text-red-200"></i>{action.label}
-								</button>
-								<button type="button" class={GHOST_BUTTON} disabled={busy} onclick={() => (turn.confirms = turn.confirms.filter((other) => other !== action))}>
-									Keep it
-								</button>
-							</div>
-						{/each}
 						{#if undoable?.turn === i && undoable.editor === editor}
 							<button type="button" class="{GHOST_BUTTON} self-start" disabled={busy} onclick={undo}>
 								<i class="fas fa-rotate-left"></i>Undo this change

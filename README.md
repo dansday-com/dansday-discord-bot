@@ -246,7 +246,7 @@ Each member signs in to their own account on those same pages.
 - **Panel assistant** - A chat in the bottom right corner of the panel that sets things up from a description, on the same AI configuration as chat.
   - 🎨 **Messages** - Describe a message with the builder open and it fills the editor: text, embeds, buttons, dropdowns, role actions and translations. Nothing is saved or posted until you press Save or Send, and one click undoes the change.
   - 📊 **Live server data** - Reads leaderboards, statistics, leveling rules, giveaways and the shop through the same tools as chat, so an announcement can carry real numbers.
-  - 📚 **Wikis, items and settings** - The panel admin can add, edit and delete wikis and shop items, and flip the panel settings, by asking. A delete waits for a Confirm click.
+  - 📚 **Wikis, items and settings** - The panel admin can add and edit wikis and shop items, and flip the panel settings, by asking. It never deletes; that stays a click of your own in the panel.
   - 🔒 **Scoped to the account** - The panel admin reaches every server on the panel. Owner and staff accounts reach only their own server and get no wiki, item or settings tools.
 
 ### Panel

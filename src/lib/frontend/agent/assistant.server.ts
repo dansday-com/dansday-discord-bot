@@ -25,7 +25,6 @@ type Scope = { reach: AgentReach; session: AgentSession; message: MessageRequest
 type Capability = {
 	can: (scope: Scope) => string;
 	available: (scope: Scope) => boolean;
-	confirms?: boolean;
 	pack: (scope: Scope) => AgentPack | Promise<AgentPack>;
 };
 
@@ -42,15 +41,13 @@ const CAPABILITIES: Capability[] = [
 		pack: ({ reach }) => serverDataPack(reach)
 	},
 	{
-		can: () => 'Add, change and delete wikis',
+		can: () => 'Add and change wikis',
 		available: ({ reach }) => reach.all,
-		confirms: true,
 		pack: ({ reach, session }) => wikisPack(reach, session)
 	},
 	{
-		can: () => 'Add, change and delete shop items',
+		can: () => 'Add and change shop items',
 		available: ({ reach }) => reach.all,
-		confirms: true,
 		pack: ({ reach, session }) => itemsPack(reach, session)
 	},
 	{
@@ -63,7 +60,7 @@ const CAPABILITIES: Capability[] = [
 const RULES = `# Rules
 - Do the work with your tools instead of explaining how to do it by hand. Ask only when you cannot go on without an answer.
 - Say something was created, changed or read only after the tool for it returned ok. When a tool fails, say what went wrong in plain words.
-- A tool that deletes does not delete right away. The admin gets a Confirm button under your reply and nothing is gone until they press it, so tell them to press it and never say it is already deleted.
+- You cannot delete a wiki, an item or a saved message. When the admin asks for that, say so and offer to switch it off instead where that exists.
 - You only have the tools you were given. When the admin asks for something outside them, say in one sentence that you cannot do that from here.
 - Never show an API key, token or password, and never ask for one unless a tool needs it for what the admin asked.`;
 
@@ -99,25 +96,9 @@ export async function describeAssistant(locals: App.Locals, url: URL): Promise<R
 	});
 }
 
-async function confirmAction(scope: Scope, confirm: any): Promise<Response> {
-	const packs = await Promise.all(
-		CAPABILITIES.filter((capability) => capability.confirms && capability.available(scope)).map((capability) => capability.pack(scope))
-	);
-	const action = packs.flatMap((pack) => pack.dangers ?? []).find((danger) => danger.name === confirm?.name);
-	if (!action) return json({ ok: false, error: 'That action is not available here.' }, { status: 403 });
-
-	try {
-		const reply = await action.run(confirm.args && typeof confirm.args === 'object' ? confirm.args : {});
-		return json({ ok: true, reply, confirms: [], changed: [...scope.session.changed] });
-	} catch {
-		return json({ ok: false, error: 'That did not go through. Try again in a moment.' }, { status: 500 });
-	}
-}
-
 export async function answerAssistant(locals: App.Locals, body: any): Promise<Response> {
 	const scope = await scopeFor(locals, body?.server_id, messageRequest(body?.message));
 	if (!scope) return json({ ok: false, error: 'Access denied' }, { status: 403 });
-	if (body?.confirm) return confirmAction(scope, body.confirm);
 
 	const turns = agentTurns(body?.history, body?.prompt);
 	if (!turns) return json({ ok: false, error: 'Tell the assistant what you need.' }, { status: 400 });
@@ -137,15 +118,15 @@ export async function answerAssistant(locals: App.Locals, body: any): Promise<Re
 
 	const where = scope.reach.server ? ` on server "${scope.reach.server.name || scope.reach.server.id}"` : '';
 	const reply = await runPanelAgent(scope.reach, task, turns, `${scope.session.actor} asked the assistant${where}`);
-	const effects = { confirms: scope.session.confirms, changed: [...scope.session.changed] };
+	const changed = [...scope.session.changed];
 
-	if (reply.ok) return json({ ok: true, reply: reply.result.reply, message: reply.result.message ?? null, ...effects });
-	if (effects.confirms.length > 0 || effects.changed.length > 0) {
+	if (reply.ok) return json({ ok: true, reply: reply.result.reply, message: reply.result.message ?? null, changed });
+	if (changed.length > 0) {
 		return json({
 			ok: true,
 			reply: 'I got part of the way and then ran out of time. Check what changed, then tell me what is left.',
 			message: null,
-			...effects
+			changed
 		});
 	}
 	return json({ ok: false, error: reply.error }, { status: reply.status });

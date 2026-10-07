@@ -1,7 +1,7 @@
 import db from '$lib/database.js';
 import { parseWikiInput, testWiki } from '$lib/frontend/wikis.server.js';
 import { logger } from '$lib/utils/index.js';
-import { dangerTool, type AgentPack, type AgentReach, type AgentSession, type DangerAction } from './runtime.server.js';
+import type { AgentPack, AgentReach, AgentSession } from './runtime.server.js';
 
 const WIKI_FIELDS = {
 	name: { type: 'string', description: 'Short name of the wiki, 64 characters at most. Leave out to take it from the wiki itself.' },
@@ -37,26 +37,9 @@ export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
 		return wikis.some((wiki) => wiki.id !== exceptId && wiki.name.toLowerCase() === name.toLowerCase());
 	}
 
-	const remove: DangerAction = {
-		name: 'delete_wiki',
-		describe: async (args) => {
-			const wiki = await db.getWiki(panelId, Number(args.id));
-			return wiki ? `Delete the wiki "${wiki.name}"` : null;
-		},
-		run: async (args) => {
-			const wiki = await db.getWiki(panelId, Number(args.id));
-			if (!wiki) return 'That wiki no longer exists.';
-			await db.deleteWiki(panelId, wiki.id);
-			session.changed.add('wikis');
-			logger.log(`${session.actor} deleted wiki "${wiki.name}" through the assistant`);
-			return `Deleted the wiki "${wiki.name}".`;
-		}
-	};
-
 	return {
 		instructions:
-			"# Wikis\nWikis are the game wikis the bot's AI looks things up in, in chat and voice, shared by every bot on this panel. Any MediaWiki site works, Fandom included. create_wiki checks the address first and takes the name, site address and description from the wiki itself, so the api.php address is all you need. When the admin gives a site address or only a wiki name, try test_wiki on the likely api.php addresses of that site, such as /w/api.php and /api.php, and use the one that answers. A wiki that refuses this server needs a relay, which only the admin can set up.",
-		dangers: [remove],
+			"# Wikis\nWikis are the game wikis the bot's AI looks things up in, in chat and voice, shared by every bot on this panel. Any MediaWiki site works, Fandom included. create_wiki checks the address first and takes the name, site address and description from the wiki itself, so the api.php address is all you need. When the admin gives a site address or only a wiki name, try test_wiki on the likely api.php addresses of that site, such as /w/api.php and /api.php, and use the one that answers. A wiki that refuses this server needs a relay, which only the admin can set up. You cannot delete a wiki. To stop the AI using one, set enabled to false.",
 		tools: [
 			{
 				name: 'list_wikis',
@@ -116,12 +99,7 @@ export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
 					logger.log(`${session.actor} changed wiki "${parsed.value.name}" through the assistant`);
 					return { ok: true, wiki: wiki ? shown(wiki) : null };
 				}
-			},
-			dangerTool(session, remove, 'Delete a saved wiki.', {
-				type: 'object',
-				properties: { id: { type: 'integer', description: 'The id of the wiki, from list_wikis.' } },
-				required: ['id']
-			})
+			}
 		]
 	};
 }

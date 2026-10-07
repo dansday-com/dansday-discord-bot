@@ -83,6 +83,7 @@
 	let saving = $state(false);
 	let sending = $state(false);
 	let removing = $state<number | 'all' | null>(null);
+	let updating = $state<number | 'all' | null>(null);
 	let deleting = $state(false);
 	let confirmDelete = $state(false);
 	let confirmLanguage = $state<ServerLanguage | null>(null);
@@ -298,15 +299,6 @@
 		if (issue.part) select(issue.part);
 	}
 
-	function savedToast(posts: any) {
-		const failed: string[] = posts?.failed ?? [];
-		const unreached = global ? (posts?.unreached ?? 0) > 0 : data.posts.length > 0 && posts?.running === false;
-		if (failed.length > 0) return showToast(`Saved, but ${failed[0]}`, 'error', 9000);
-		if (unreached) return showToast('Saved. A bot is offline, so some posted copies still show the old version.', 'info', 7000);
-		if (posts?.updated > 0) return showToast(`Saved and updated ${posts.updated} posted ${posts.updated === 1 ? 'copy' : 'copies'}.`, 'success');
-		showToast('Message saved.', 'success');
-	}
-
 	async function save(thenSend = false): Promise<boolean> {
 		if (issues.length > 0) {
 			showToast(issues[0].text, 'error', 6000);
@@ -333,7 +325,7 @@
 				await goto(`${data.listPath}/${out.id}${thenSend ? '?send=1' : ''}`, { replaceState: true });
 				return true;
 			}
-			savedToast(out.posts);
+			showToast('Message saved.', 'success');
 			await invalidateAll();
 			return true;
 		} finally {
@@ -372,6 +364,22 @@
 			return true;
 		} finally {
 			sending = false;
+		}
+	}
+
+	async function updatePost(target: PostedCopy | 'all') {
+		if (dirty && !(await save())) return;
+		updating = target === 'all' ? 'all' : target.id;
+		try {
+			const res = await fetch(`${data.apiBase}/${messageId}/posts/${target === 'all' ? 'all' : target.id}`, { method: 'POST' });
+			const out = await res.json().catch(() => ({}));
+			if (!res.ok || !out.ok) return showToast(out.error || 'Could not update it', 'error', 7000);
+			if (out.failed?.length > 0) showToast(`Updated ${out.updated}, but ${out.failed[0]}`, 'error', 9000);
+			else if (out.unreached > 0) showToast(`Updated ${out.updated}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
+			else showToast(out.updated === 1 ? 'Posted copy updated.' : `Updated ${out.updated} posted copies.`, 'success');
+			await invalidateAll();
+		} finally {
+			updating = null;
 		}
 	}
 
@@ -440,7 +448,7 @@
 		class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		<i class="fas {saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>
-		{#if !dirty && messageId !== null}Saved{:else if data.posts.length > 0}Save and update {copies}{:else}Save{/if}
+		{#if !dirty && messageId !== null}Saved{:else}Save{/if}
 	</button>
 	<button
 		type="button"
@@ -550,7 +558,9 @@
 	posts={data.posts}
 	{sending}
 	{removing}
+	{updating}
 	onsend={send}
+	onupdate={updatePost}
 	onremove={(post) => (confirmPost = post)}
 />
 

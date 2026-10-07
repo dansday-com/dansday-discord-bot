@@ -33,10 +33,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 			'message_deleted',
 			posts.map((post) => ({
 				serverId: post.server_id,
-				changes: [
-					{ key: 'global message deleted', before: message.name, after: null },
-					{ key: 'posted copies left in', before: null, after: post.discord_channel_id }
-				]
+				changes: [{ key: 'global message deleted, posted copy left in', before: null, after: post.discord_channel_id }]
 			}))
 		);
 		await pruneGlobalMessageFiles(

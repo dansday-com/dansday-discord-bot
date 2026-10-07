@@ -53,7 +53,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 			channel_name: post.channel_name,
 			discord_message_id: post.discord_message_id,
 			language: post.language,
-			created_at: post.created_at
+			created_at: post.created_at,
+			outdated: !!current && !!post.content && JSON.stringify(post.content) !== JSON.stringify(current.content)
 		})),
 		channels: channels ?? [],
 		categories: categories ?? [],

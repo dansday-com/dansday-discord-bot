@@ -31,9 +31,14 @@ export async function callMessageBot(server: any, type: string, payload: Record<
 	return { running: result.status !== 502, body: result.body };
 }
 
-export async function syncMessagePosts(server: any, messageId: number, interactive = true) {
+export async function syncMessagePosts(server: any, messageId: number, interactive = true, refresh: number[] | 'all' | null = null) {
 	const out = { running: false, updated: [] as string[], removed: 0, failed: [] as string[] };
-	const call = await callMessageBot(server, 'server_message_sync', { message_id: messageId, interactive });
+	const call = await callMessageBot(server, 'server_message_sync', {
+		message_id: messageId,
+		interactive,
+		refresh: refresh !== null,
+		...(Array.isArray(refresh) ? { post_ids: refresh } : {})
+	});
 	out.running = call.running;
 	if (!call.body?.ok) return out;
 	for (const result of call.body.results ?? []) {
@@ -48,6 +53,9 @@ export async function syncMessagePosts(server: any, messageId: number, interacti
 
 export async function pruneMessageFiles(serverId: number, messages?: ServerMessage[]) {
 	const all = messages ?? (await db.getServerMessages(serverId).catch(() => null));
-	if (!all) return;
-	await pruneStoredFiles({ scope: 'server', id: serverId }, new Set(all.flatMap((message) => messageUploadKeys(message.content)))).catch(() => null);
+	const posts = await db.getServerMessagePosts(serverId).catch(() => null);
+	if (!all || !posts) return;
+	const kept = new Set(all.map((message) => message.id));
+	const used = [...all.map((message) => message.content), ...posts.flatMap((post) => (post.content && kept.has(post.message_id) ? [post.content] : []))];
+	await pruneStoredFiles({ scope: 'server', id: serverId }, new Set(used.flatMap((content) => messageUploadKeys(content)))).catch(() => null);
 }

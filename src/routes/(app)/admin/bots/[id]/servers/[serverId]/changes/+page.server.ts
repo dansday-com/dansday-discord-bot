@@ -10,6 +10,7 @@ const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
 	message_sent: { component: 'messages', label: 'Messages' },
 	message_deleted: { component: 'messages', label: 'Messages' },
 	message_post_removed: { component: 'messages', label: 'Messages' },
+	message_post_updated: { component: 'messages', label: 'Messages' },
 	account_invite: { component: 'accounts', label: 'Accounts' },
 	invite_bonus: { component: 'invites', label: 'Invites' },
 	invite_assign: { component: 'invites', label: 'Invites' },

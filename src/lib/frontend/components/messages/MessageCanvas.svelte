@@ -304,8 +304,8 @@
 					{#if doc.languages.length > 1}
 						<div class="border-ash-700 mt-2 border-t px-2 pt-3 pb-1">
 							<ConfigToggleRow
-								label="Language button on the message"
-								description="Members click it to read the message in another language, whatever language the server uses."
+								label="Language selector on the message"
+								description="Members pick a language from it to read the message privately, whatever language the server uses."
 								bind:enabled={doc.language_switch}
 							/>
 						</div>

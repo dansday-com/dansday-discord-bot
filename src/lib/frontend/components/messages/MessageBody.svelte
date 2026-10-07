@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ServerLanguage } from '$lib/languages.js';
+	import { serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
 	import {
 		MESSAGE_LANGUAGE_EMOJI,
 		MESSAGE_LIMITS,
@@ -7,7 +7,6 @@
 		isMessageVideo,
 		messageFilePreviewUrl,
 		messageLanguageChoices,
-		messageLanguageName,
 		parseMessageEmoji,
 		pickText,
 		type InnerBlock,
@@ -63,7 +62,7 @@
 	const shownLanguage = $derived(doc.languages.includes(lang) ? lang : doc.language);
 	const otherLanguages = $derived(messageLanguageChoices(doc, shownLanguage));
 	const LANGUAGE_MENU = '@lang';
-	const LANGUAGE_HINT = 'Added automatically because this message has translations. Members click it to read the message in another language.';
+	const LANGUAGE_HINT = 'Added automatically because this message has translations. Members pick a language from it to read the message in that language.';
 
 	function hit(id: string, focus = '') {
 		if (!editable) return {};
@@ -274,22 +273,7 @@
 {/snippet}
 
 {#snippet languageControl()}
-	{#if otherLanguages.length === 1}
-		<div class="dc-row">
-			<button
-				type="button"
-				class="dc-button dc-button-secondary"
-				title={editable ? LANGUAGE_HINT : undefined}
-				onclick={(event) => {
-					event.stopPropagation();
-					onlanguage(editable ? null : otherLanguages[0]);
-				}}
-			>
-				<span class="dc-button-emoji-text">{MESSAGE_LANGUAGE_EMOJI}</span>
-				<span>{messageLanguageName(otherLanguages[0])}</span>
-			</button>
-		</div>
-	{:else if otherLanguages.length > 1}
+	{#if otherLanguages.length > 0}
 		<div class="dc-select-wrap">
 			<button
 				type="button"
@@ -301,7 +285,7 @@
 					openSelect = openSelect === LANGUAGE_MENU ? null : LANGUAGE_MENU;
 				}}
 			>
-				<span class="dc-select-placeholder">{MESSAGE_LANGUAGE_EMOJI} {messageLanguageName(shownLanguage)}</span>
+				<span class="dc-select-placeholder">{MESSAGE_LANGUAGE_EMOJI} {serverLanguageLabel(shownLanguage)}</span>
 				<i class="fas fa-chevron-down"></i>
 			</button>
 			{#if openSelect === LANGUAGE_MENU && !editable}
@@ -317,7 +301,7 @@
 								}}
 							>
 								<span class="dc-button-emoji-text">{MESSAGE_LANGUAGE_EMOJI}</span>
-								<span class="dc-select-text"><span>{messageLanguageName(code)}</span></span>
+								<span class="dc-select-text"><span>{serverLanguageLabel(code)}</span></span>
 								{#if code === shownLanguage}<i class="fas fa-check dc-checked"></i>{/if}
 							</button>
 						</li>

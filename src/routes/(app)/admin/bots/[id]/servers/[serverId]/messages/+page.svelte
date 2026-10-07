@@ -15,7 +15,7 @@
 
 <MessageLibrary
 	title="Messages"
-	intro="Write as the bot: plain posts with photos and videos, embeds, or a full Components V2 layout. Add buttons and dropdowns that show another message privately or hand out roles. Saving a message edits every copy already posted."
+	intro="Write as the bot: plain posts with photos and videos, embeds, or a full Components V2 layout. Add buttons and dropdowns that show another message privately or hand out roles. Each post stays the way it was sent, so a saved message can be changed and sent again."
 	empty="No messages yet. Create one to post as the bot, build a rules panel, or set up role buttons."
 	{base}
 	apiBase="/api/servers/{data.serverId}/messages"

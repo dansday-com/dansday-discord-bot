@@ -4,7 +4,7 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { MAX_SAVED_MESSAGES, MESSAGE_LIMITS, messageDocProblems, messageShownIds, normalizeMessageDoc } from '$lib/messages.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
-import { globalPanelAccess, pruneGlobalMessageFiles, syncGlobalMessagePosts } from '$lib/frontend/globalMessages.server.js';
+import { globalPanelAccess, pruneGlobalMessageFiles } from '$lib/frontend/globalMessages.server.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const access = globalPanelAccess(locals);
@@ -40,11 +40,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		if (id === null) return json({ ok: false, error: 'Could not save the message. Try again.' }, { status: 500 });
 		await pruneGlobalMessageFiles(panelId);
 		logger.log(`${locals.user.authenticated ? locals.user.username : 'Someone'} saved global message "${name}"`);
-
-		const posts = previous
-			? await syncGlobalMessagePosts(locals, panelId, { id, name, content, updated_at: '' })
-			: { total: 0, updated: 0, removed: 0, failed: [], unreached: 0 };
-		return json({ ok: true, id, posts });
+		return json({ ok: true, id });
 	} catch (error: any) {
 		logger.log(`❌ Error saving global message: ${error.message}`);
 		return json({ ok: false, error: 'Could not save the message. Try again in a moment.' }, { status: 500 });

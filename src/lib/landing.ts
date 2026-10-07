@@ -220,7 +220,7 @@ export const features: Feature[] = [
 		icon: 'fa-palette',
 		title: 'Message & embed builder',
 		desc: 'Post as the bot from the browser: text, photos, videos, embeds or a Components V2 layout, with a live preview.',
-		more: 'Buttons and dropdowns open another message privately. Translate it per language, edit once and every posted copy updates.'
+		more: 'Buttons and dropdowns open another message privately. Translate it per language, reuse it as a template, and update a posted copy with one click.'
 	},
 	{
 		icon: 'fa-user-tag',
@@ -238,7 +238,7 @@ export const features: Feature[] = [
 		icon: 'fa-tower-broadcast',
 		title: 'Global messages',
 		desc: "Write one message and send it to every server at once, in each server's own language.",
-		more: 'For announcements and downtime notices. Edit it everywhere at once, or pull it back from one server or all.'
+		more: 'For announcements and downtime notices. Update it everywhere with one click, or pull it back from one server or all.'
 	},
 	{
 		icon: 'fa-language',

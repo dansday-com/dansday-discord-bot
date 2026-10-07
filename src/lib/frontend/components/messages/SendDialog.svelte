@@ -19,7 +19,9 @@
 		posts,
 		sending,
 		removing,
+		updating,
 		onsend,
+		onupdate,
 		onremove
 	}: {
 		open: boolean;
@@ -31,7 +33,9 @@
 		posts: PostedCopy[];
 		sending: boolean;
 		removing: number | 'all' | null;
+		updating: number | 'all' | null;
 		onsend: (target: { channelIds: string[]; mentionIds: string[]; language: string }) => Promise<boolean>;
+		onupdate: (post: PostedCopy | 'all') => void;
 		onremove: (post: PostedCopy | 'all') => void;
 	} = $props();
 
@@ -41,6 +45,8 @@
 
 	const languageOptions = $derived(languages.map((code) => ({ value: code, label: serverLanguageLabel(code) })));
 	const postLanguage = $derived(languages.includes(language as ServerLanguage) ? language : languages[0]);
+	const outdated = $derived(posts.filter((post) => post.outdated).length);
+	const busy = $derived(removing !== null || updating !== null);
 
 	async function send() {
 		if (!global && channelIds.length === 0) return showToast('Pick at least one channel to send it to.', 'error');
@@ -124,22 +130,45 @@
 				<div class="border-ash-700 mt-5 border-t pt-4">
 					<div class="flex items-center gap-2">
 						<h4 class="text-ash-100 mr-auto flex items-center gap-2 text-sm font-semibold"><i class="fas fa-thumbtack text-amber-300"></i>Already posted</h4>
+						{#if outdated > 1}
+							<button type="button" class={GHOST_BUTTON} disabled={busy} onclick={() => onupdate('all')}>
+								<i class="fas {updating === 'all' ? 'fa-spinner fa-spin' : 'fa-rotate'} text-sky-300"></i>Update all
+							</button>
+						{/if}
 						{#if global}
-							<button type="button" class={GHOST_BUTTON} disabled={removing !== null} onclick={() => onremove('all')}>
+							<button type="button" class={GHOST_BUTTON} disabled={busy} onclick={() => onremove('all')}>
 								<i class="fas {removing === 'all' ? 'fa-spinner fa-spin' : 'fa-trash'} text-red-300"></i>Delete from every server
 							</button>
 						{/if}
 					</div>
-					<p class="text-ash-400 mt-1 mb-3 text-xs">Saving the message edits every copy below. You don't need to send it again.</p>
+					<p class="text-ash-400 mt-1 mb-3 text-xs">
+						Each copy stays the way it was sent, so you can change this message and send it again. Update gives a copy the saved version.
+					</p>
 					<div class="flex max-h-60 flex-col gap-1.5 overflow-y-auto">
 						{#each posts as post (post.id)}
 							<div class="bg-ash-700/50 border-ash-600 flex items-center gap-2 rounded-lg border px-2.5 py-2">
 								<div class="min-w-0 flex-1">
 									<p class="text-ash-100 truncate text-sm">{post.server_name ? `${post.server_name} · ` : ''}#{post.channel_name}</p>
 									<p class="text-ash-400 truncate text-xs">
-										<LocalTime value={post.created_at} />{languages.length > 1 ? ` · ${serverLanguageLabel(post.language)}` : ''}
+										<LocalTime value={post.created_at} />{languages.length > 1 ? ` · ${serverLanguageLabel(post.language)}` : ''}{#if post.outdated}<span
+												class="text-amber-300"
+											>
+												· Older version</span
+											>{/if}
 									</p>
 								</div>
+								{#if post.outdated}
+									<button
+										type="button"
+										class={ICON_BUTTON}
+										aria-label="Update the copy in #{post.channel_name}"
+										title="Update to the saved version"
+										disabled={busy}
+										onclick={() => onupdate(post)}
+									>
+										<i class="fas {updating === post.id ? 'fa-spinner fa-spin' : 'fa-rotate'}"></i>
+									</button>
+								{/if}
 								<a
 									href="https://discord.com/channels/{post.guild_id}/{post.channel_id}/{post.discord_message_id}"
 									target="_blank"
@@ -155,7 +184,7 @@
 									class={ICON_BUTTON}
 									aria-label="Remove from #{post.channel_name}"
 									title="Delete from Discord"
-									disabled={removing !== null}
+									disabled={busy}
 									onclick={() => onremove(post)}
 								>
 									<i class="fas {removing === post.id ? 'fa-spinner fa-spin' : 'fa-trash'}"></i>

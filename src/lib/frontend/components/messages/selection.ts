@@ -10,6 +10,7 @@ export type PostedCopy = {
 	discord_message_id: string;
 	language: string;
 	created_at: string;
+	outdated: boolean;
 };
 export type PartKind = 'attachment' | 'embed' | 'button' | 'select' | 'text' | 'section' | 'gallery' | 'separator' | 'container';
 

@@ -1409,6 +1409,7 @@ export const serverMessagePosts = mysqlTable(
 		discord_message_id: varchar('discord_message_id', { length: 150 }).notNull(),
 		language: varchar('language', { length: 10 }).notNull(),
 		mentions: text('mentions'),
+		content: json('content'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
@@ -1443,6 +1444,7 @@ export const messagePosts = mysqlTable(
 		discord_message_id: varchar('discord_message_id', { length: 150 }).notNull(),
 		language: varchar('language', { length: 10 }).notNull(),
 		mentions: text('mentions'),
+		content: json('content'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},

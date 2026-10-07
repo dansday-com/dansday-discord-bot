@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const results: any[] = call.body.results ?? [];
 		const sent = results.filter((r) => r.ok);
 		for (const r of sent) {
-			await db.addServerMessagePost(serverId, messageId, String(r.channel_id), String(r.message_id), language, r.mentions ?? null);
+			await db.addServerMessagePost(serverId, messageId, String(r.channel_id), String(r.message_id), language, r.mentions ?? null, message.content);
 		}
 
 		if (sent.length > 0) {

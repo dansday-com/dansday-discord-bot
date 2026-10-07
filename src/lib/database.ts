@@ -7879,6 +7879,7 @@ export type ServerMessagePost = {
 	discord_message_id: string;
 	language: string;
 	mentions: string | null;
+	content: MessageDoc | null;
 	created_at: string;
 };
 
@@ -7892,6 +7893,19 @@ function messageFromRow(r: any, scope: MessageScope = 'server'): ServerMessage {
 		}
 	}
 	return { id: Number(r.id), name: String(r.name ?? ''), content: normalizeMessageDoc(content, undefined, scope), updated_at: String(r.updated_at ?? '') };
+}
+
+function postContent(raw: unknown, scope: MessageScope): MessageDoc | null {
+	if (raw == null) return null;
+	let content = raw;
+	if (typeof content === 'string') {
+		try {
+			content = JSON.parse(content);
+		} catch {
+			return null;
+		}
+	}
+	return normalizeMessageDoc(content, undefined, scope);
 }
 
 export async function getServerMessages(serverId: any): Promise<ServerMessage[]> {
@@ -7936,7 +7950,7 @@ export async function deleteServerMessage(serverId: any, messageId: any): Promis
 export async function getServerMessagePosts(serverId: any, messageId: number | null = null): Promise<ServerMessagePost[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.created_at, c.discord_channel_id, c.name AS channel_name
+		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.content, p.created_at, c.discord_channel_id, c.name AS channel_name
 		FROM server_message_posts p
 		INNER JOIN server_messages e ON e.id = p.message_id
 		INNER JOIN server_channels c ON c.id = p.channel_id
@@ -7951,6 +7965,7 @@ export async function getServerMessagePosts(serverId: any, messageId: number | n
 		discord_message_id: String(r.discord_message_id),
 		language: String(r.language),
 		mentions: r.mentions != null ? String(r.mentions) : null,
+		content: postContent(r.content, 'server'),
 		created_at: String(r.created_at ?? '')
 	}));
 }
@@ -7961,16 +7976,27 @@ export async function addServerMessagePost(
 	discordChannelId: string,
 	discordMessageId: string,
 	language: string,
-	mentions: string | null
+	mentions: string | null,
+	content: MessageDoc
 ): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT IGNORE INTO server_message_posts (message_id, channel_id, discord_message_id, language, mentions, created_at, updated_at)
-		SELECT e.id, c.id, ${String(discordMessageId)}, ${language}, ${mentions}, ${now}, ${now}
+		INSERT IGNORE INTO server_message_posts (message_id, channel_id, discord_message_id, language, mentions, content, created_at, updated_at)
+		SELECT e.id, c.id, ${String(discordMessageId)}, ${language}, ${mentions}, ${JSON.stringify(content)}, ${now}, ${now}
 		FROM server_messages e
 		INNER JOIN server_channels c ON c.server_id = e.server_id AND c.discord_channel_id = ${String(discordChannelId)}
 		WHERE e.id = ${Number(messageId)} AND e.server_id = ${Number(serverId)}
+	`);
+}
+
+export async function setServerMessagePostContent(serverId: any, postId: any, content: MessageDoc): Promise<void> {
+	await initializeDatabase();
+	await db.execute(sql`
+		UPDATE server_message_posts p
+		INNER JOIN server_messages e ON e.id = p.message_id
+		SET p.content = ${JSON.stringify(content)}, p.updated_at = ${toMySQLDateTime()}
+		WHERE p.id = ${Number(postId)} AND e.server_id = ${Number(serverId)}
 	`);
 }
 
@@ -8028,7 +8054,7 @@ export async function deleteGlobalMessage(panelId: any, messageId: any): Promise
 export async function getGlobalMessagePosts(panelId: any, messageId: number | null = null, botId: number | null = null): Promise<GlobalMessagePost[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.created_at,
+		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.content, p.created_at,
 		       c.discord_channel_id, c.name AS channel_name, s.id AS server_id, s.name AS server_name, s.discord_server_id, s.bot_id
 		FROM message_posts p
 		INNER JOIN messages m ON m.id = p.message_id
@@ -8047,6 +8073,7 @@ export async function getGlobalMessagePosts(panelId: any, messageId: number | nu
 		discord_message_id: String(r.discord_message_id),
 		language: String(r.language),
 		mentions: r.mentions != null ? String(r.mentions) : null,
+		content: postContent(r.content, 'global'),
 		created_at: String(r.created_at ?? ''),
 		server_id: Number(r.server_id),
 		server_name: String(r.server_name ?? 'Server'),
@@ -8062,16 +8089,27 @@ export async function addGlobalMessagePost(
 	discordChannelId: string,
 	discordMessageId: string,
 	language: string,
-	mentions: string | null
+	mentions: string | null,
+	content: MessageDoc
 ): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT IGNORE INTO message_posts (message_id, channel_id, discord_message_id, language, mentions, created_at, updated_at)
-		SELECT m.id, c.id, ${String(discordMessageId)}, ${language}, ${mentions}, ${now}, ${now}
+		INSERT IGNORE INTO message_posts (message_id, channel_id, discord_message_id, language, mentions, content, created_at, updated_at)
+		SELECT m.id, c.id, ${String(discordMessageId)}, ${language}, ${mentions}, ${JSON.stringify(content)}, ${now}, ${now}
 		FROM messages m
 		INNER JOIN server_channels c ON c.server_id = ${Number(serverId)} AND c.discord_channel_id = ${String(discordChannelId)}
 		WHERE m.id = ${Number(messageId)} AND m.panel_id = ${Number(panelId)}
+	`);
+}
+
+export async function setGlobalMessagePostContent(panelId: any, postId: any, content: MessageDoc): Promise<void> {
+	await initializeDatabase();
+	await db.execute(sql`
+		UPDATE message_posts p
+		INNER JOIN messages m ON m.id = p.message_id
+		SET p.content = ${JSON.stringify(content)}, p.updated_at = ${toMySQLDateTime()}
+		WHERE p.id = ${Number(postId)} AND m.panel_id = ${Number(panelId)}
 	`);
 }
 
@@ -9022,6 +9060,7 @@ export default {
 	deleteServerMessage,
 	getServerMessagePosts,
 	addServerMessagePost,
+	setServerMessagePostContent,
 	deleteServerMessagePost,
 	getGlobalMessages,
 	getGlobalMessage,
@@ -9029,6 +9068,7 @@ export default {
 	deleteGlobalMessage,
 	getGlobalMessagePosts,
 	addGlobalMessagePost,
+	setGlobalMessagePostContent,
 	deleteGlobalMessagePost,
 	getRewards,
 	saveRewards,

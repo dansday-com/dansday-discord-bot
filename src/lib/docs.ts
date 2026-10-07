@@ -752,7 +752,7 @@ export const modules = [
 			},
 			{
 				label: 'Languages',
-				desc: 'Add a language and translate any text; anything left empty uses the main text. The posted message then gets a language button (a dropdown with three or more), so any member can read it privately in another language, whatever the server uses. Buttons in that copy keep the chosen language. It can be turned off in the language menu. When sending, pick which language the post itself uses.'
+				desc: 'Add a language and translate any text; anything left empty uses the main text. The posted message then gets a language selector, the same dropdown as in the menu and /setup, so any member can read it privately in another language, whatever the server uses. Buttons in that copy keep the chosen language. It can be turned off in the language menu. When sending, pick which language the post itself uses.'
 			},
 			{
 				label: 'Editing',
@@ -768,7 +768,7 @@ export const modules = [
 			},
 			{
 				label: 'Send and edit',
-				desc: 'Pick one or more channels and, if you want, roles to ping. Saving a message later edits every copy already posted. Each posted copy can be opened in Discord or deleted from it.'
+				desc: 'Pick one or more channels and, if you want, roles to ping. A posted copy stays the way it was sent, so one saved message can be changed and sent again as a template. Each posted copy can be opened in Discord, updated to the saved version, or deleted from it.'
 			},
 			{
 				label: 'Deleting a message',
@@ -785,7 +785,7 @@ export const modules = [
 			},
 			{
 				label: 'Global messages',
-				desc: "For the panel admin. The same builder under Global Messages sends one message to every server on all bots, into each server's Bot Updates Channel and in that server's language. Saving edits every copy, and a copy can be deleted from one server or all. Buttons can open another global message; role buttons are left out because roles differ per server. Each server's Change Log shows which admin sent it."
+				desc: "For the panel admin. The same builder under Global Messages sends one message to every server on all bots, into each server's Bot Updates Channel and in that server's language. A posted copy stays the way it was sent, and a copy can be updated or deleted in one server or all. Buttons can open another global message; role buttons are left out because roles differ per server. Each server's Change Log shows which admin sent it."
 			},
 			{ label: 'Change Log', desc: 'Creating, editing, sending and deleting a message, and removing a posted copy, are recorded with who did it.' }
 		]

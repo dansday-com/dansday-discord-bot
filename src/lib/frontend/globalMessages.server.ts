@@ -37,7 +37,16 @@ export async function sendGlobalMessage(locals: App.Locals, panelId: number, mes
 	const call = await callBots(panelId, 'global_message_send', { message_id: message.id, mention_groups: groups });
 	const sent = call.results.filter((r) => r.ok);
 	for (const r of sent) {
-		await db.addGlobalMessagePost(panelId, message.id, r.server_id, String(r.channel_id), String(r.message_id), String(r.language), r.mentions ?? null);
+		await db.addGlobalMessagePost(
+			panelId,
+			message.id,
+			r.server_id,
+			String(r.channel_id),
+			String(r.message_id),
+			String(r.language),
+			r.mentions ?? null,
+			message.content
+		);
 	}
 	await logGlobalMessageAction(
 		locals,
@@ -45,8 +54,7 @@ export async function sendGlobalMessage(locals: App.Locals, panelId: number, mes
 		sent.map((r) => ({
 			serverId: Number(r.server_id),
 			changes: [
-				{ key: 'global message sent', before: null, after: message.name },
-				{ key: 'channels', before: null, after: String(r.channel_id) },
+				{ key: 'global message sent', before: null, after: String(r.channel_id) },
 				...(groups.length > 0 ? [{ key: 'groups pinged', before: null, after: groups.join(', ') }] : [])
 			]
 		}))
@@ -60,10 +68,25 @@ export async function sendGlobalMessage(locals: App.Locals, panelId: number, mes
 	};
 }
 
-export async function syncGlobalMessagePosts(locals: App.Locals, panelId: number, message: ServerMessage, interactive = true) {
-	const posts = await db.getGlobalMessagePosts(panelId, message.id);
+export async function syncGlobalMessagePosts(
+	locals: App.Locals,
+	panelId: number,
+	message: ServerMessage,
+	interactive = true,
+	refresh: number[] | 'all' | null = null
+) {
+	const wanted = Array.isArray(refresh) ? new Set(refresh) : null;
+	const posts = (await db.getGlobalMessagePosts(panelId, message.id)).filter((post) => !wanted || wanted.has(post.id));
 	const byId = new Map(posts.map((post) => [post.id, post]));
-	const call = posts.length > 0 ? await callBots(panelId, 'global_message_sync', { message_id: message.id, interactive }) : { offline: 0, results: [] };
+	const call =
+		posts.length > 0
+			? await callBots(panelId, 'global_message_sync', {
+					message_id: message.id,
+					interactive,
+					refresh: refresh !== null,
+					...(wanted ? { post_ids: [...wanted] } : {})
+				})
+			: { offline: 0, results: [] };
 	const updated: GlobalMessagePost[] = [];
 	const failed: string[] = [];
 	let removed = 0;
@@ -76,16 +99,13 @@ export async function syncGlobalMessagePosts(locals: App.Locals, panelId: number
 		} else if (result.ok) updated.push(post);
 		else failed.push(`${post.server_name}: ${result.error ?? 'could not update the copy.'}`);
 	}
-	if (interactive) {
+	if (refresh !== null) {
 		await logGlobalMessageAction(
 			locals,
-			'message_saved',
+			'message_post_updated',
 			updated.map((post) => ({
 				serverId: post.server_id,
-				changes: [
-					{ key: 'global message edited', before: null, after: message.name },
-					{ key: 'posted copies updated', before: null, after: post.discord_channel_id }
-				]
+				changes: [{ key: 'global message updated', before: null, after: post.discord_channel_id }]
 			}))
 		);
 	}
@@ -113,10 +133,7 @@ export async function removeGlobalMessagePosts(locals: App.Locals, panelId: numb
 		'message_post_removed',
 		removed.map((post) => ({
 			serverId: post.server_id,
-			changes: [
-				{ key: 'global message removed', before: message.name, after: null },
-				{ key: 'channel', before: post.discord_channel_id, after: null }
-			]
+			changes: [{ key: 'global message removed', before: post.discord_channel_id, after: null }]
 		}))
 	);
 	return { removed: removed.length, failed, unreached: posts.length - call.results.length };
@@ -124,6 +141,9 @@ export async function removeGlobalMessagePosts(locals: App.Locals, panelId: numb
 
 export async function pruneGlobalMessageFiles(panelId: number, messages?: ServerMessage[]) {
 	const all = messages ?? (await db.getGlobalMessages(panelId).catch(() => null));
-	if (!all) return;
-	await pruneMessageFiles({ scope: 'global', id: panelId }, new Set(all.flatMap((message) => messageUploadKeys(message.content)))).catch(() => null);
+	const posts = await db.getGlobalMessagePosts(panelId).catch(() => null);
+	if (!all || !posts) return;
+	const kept = new Set(all.map((message) => message.id));
+	const used = [...all.map((message) => message.content), ...posts.flatMap((post) => (post.content && kept.has(post.message_id) ? [post.content] : []))];
+	await pruneMessageFiles({ scope: 'global', id: panelId }, new Set(used.flatMap((content) => messageUploadKeys(content)))).catch(() => null);
 }

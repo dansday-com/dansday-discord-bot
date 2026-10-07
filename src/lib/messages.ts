@@ -1,4 +1,4 @@
-import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGES, SERVER_LANGUAGE_CODES, isServerLanguage, serverLanguageLabel, type ServerLanguage } from './languages.js';
+import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES, isServerLanguage, serverLanguageLabel, type ServerLanguage } from './languages.js';
 
 export const MESSAGE_UPLOAD_ROOTS = { server: 'server-messages', global: 'global-messages' } as const;
 export const MESSAGE_CUSTOM_ID_PREFIXES = { server: 'msg', global: 'gmsg' } as const;
@@ -189,6 +189,7 @@ export type MessageRenderOptions = {
 	pinned?: boolean;
 	prefix?: string;
 	media?: boolean;
+	post?: number | null;
 };
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -246,25 +247,36 @@ export function parseMessageEmoji(value: string): { id?: string; name: string; a
 	return UNICODE_EMOJI.test(raw) ? { name: raw } : null;
 }
 
-export function messageCustomId(scope: MessageScope, messageId: number, partId: string, lang: ServerLanguage, pinned = false): string {
-	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}${pinned ? '*' : ''}`;
+export function messageCustomId(
+	scope: MessageScope,
+	messageId: number,
+	partId: string,
+	lang: ServerLanguage,
+	pinned = false,
+	post: number | null = null
+): string {
+	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}${pinned ? '*' : ''}${post ? `|${post}` : ''}`;
 }
 
 export function parseMessageCustomId(
 	customId: unknown
-): { scope: MessageScope; messageId: number; partId: string; lang: ServerLanguage; pinned: boolean } | null {
+): { scope: MessageScope; messageId: number; partId: string; lang: ServerLanguage; pinned: boolean; post: number | null } | null {
 	const parts = String(customId ?? '').split('|');
 	const scope = MESSAGE_SCOPES.find((candidate) => MESSAGE_CUSTOM_ID_PREFIXES[candidate] === parts[0]);
-	if (parts.length !== 4 || !scope) return null;
+	if ((parts.length !== 4 && parts.length !== 5) || !scope) return null;
 	const messageId = Number(parts[1]);
 	if (!Number.isInteger(messageId) || messageId <= 0 || !parts[2]) return null;
 	const pinned = parts[3].endsWith('*');
 	const lang = pinned ? parts[3].slice(0, -1) : parts[3];
-	return { scope, messageId, partId: parts[2], lang: isServerLanguage(lang) ? lang : DEFAULT_SERVER_LANGUAGE, pinned };
-}
-
-export function messageLanguageName(code: ServerLanguage): string {
-	return SERVER_LANGUAGES.find((language) => language.code === code)?.name ?? code;
+	const post = Number(parts[4]);
+	return {
+		scope,
+		messageId,
+		partId: parts[2],
+		lang: isServerLanguage(lang) ? lang : DEFAULT_SERVER_LANGUAGE,
+		pinned,
+		post: Number.isInteger(post) && post > 0 ? post : null
+	};
 }
 
 export function messageLanguageChoices(doc: MessageDoc, lang: ServerLanguage): ServerLanguage[] {
@@ -607,7 +619,7 @@ function renderButton(button: MessageButton, opts: MessageRenderOptions, base: S
 	if (button.style === 'link') return button.url ? { ...shared, style: 5, url: button.url } : null;
 	if (opts.interactive === false) return null;
 	const style = button.style === 'primary' ? 1 : button.style === 'success' ? 3 : button.style === 'danger' ? 4 : 2;
-	return { ...shared, style, custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, button.id, opts.lang, opts.pinned) };
+	return { ...shared, style, custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, button.id, opts.lang, opts.pinned, opts.post) };
 }
 
 function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLanguage): any | null {
@@ -638,7 +650,7 @@ function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLang
 		components: [
 			{
 				type: 3,
-				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, block.id, opts.lang, opts.pinned),
+				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, block.id, opts.lang, opts.pinned, opts.post),
 				min_values: 1,
 				max_values: block.multiple ? options.length : 1,
 				options,
@@ -717,24 +729,18 @@ function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: Serv
 
 function renderLanguageRow(doc: MessageDoc, opts: MessageRenderOptions): any | null {
 	if (opts.interactive === false) return null;
-	const scope = opts.scope ?? 'server';
 	const current = doc.languages.includes(opts.lang) ? opts.lang : doc.language;
-	const others = messageLanguageChoices(doc, current);
-	if (others.length === 0) return null;
+	if (messageLanguageChoices(doc, current).length === 0) return null;
 	const emoji = { name: MESSAGE_LANGUAGE_EMOJI };
-	if (others.length === 1) {
-		const custom_id = messageCustomId(scope, opts.messageId, MESSAGE_LANGUAGE_PART, others[0]);
-		return { type: 1, components: [{ type: 2, style: 2, emoji, label: messageLanguageName(others[0]), custom_id }] };
-	}
 	return {
 		type: 1,
 		components: [
 			{
 				type: 3,
-				custom_id: messageCustomId(scope, opts.messageId, MESSAGE_LANGUAGE_PART, current, opts.pinned),
+				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, MESSAGE_LANGUAGE_PART, current, opts.pinned, opts.post),
 				min_values: 1,
 				max_values: 1,
-				options: doc.languages.map((code) => ({ label: messageLanguageName(code), value: code, emoji, default: code === current }))
+				options: doc.languages.map((code) => ({ label: serverLanguageLabel(code), value: code, emoji, default: code === current }))
 			}
 		]
 	};
@@ -893,7 +899,7 @@ export function messageDocIssues(doc: MessageDoc): MessageIssue[] {
 		if (doc.rows.length > messageRowLimit(doc)) {
 			out.push({
 				part: null,
-				text: `The language button needs a row of its own and Discord allows ${MESSAGE_LIMITS.rows}. Remove a row of buttons or a dropdown, or turn the language button off in the language menu.`
+				text: `The language selector needs a row of its own and Discord allows ${MESSAGE_LIMITS.rows}. Remove a row of buttons or a dropdown, or turn the language selector off in the language menu.`
 			});
 		}
 		if (!pickText(doc.text, base, base).trim() && doc.embeds.length === 0 && doc.rows.length === 0 && doc.attachments.length === 0) {

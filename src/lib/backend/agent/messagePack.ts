@@ -111,7 +111,11 @@ function mainLanguageOnly(doc: MessageDoc, ctx: MessageAgentContext) {
 function context(ctx: MessageAgentContext): string {
 	const global = ctx.scope === 'global';
 	const status =
-		ctx.messageId === null ? 'new and not saved yet' : ctx.posted ? 'saved and already posted in Discord, so saving updates every posted copy' : 'saved';
+		ctx.messageId === null
+			? 'new and not saved yet'
+			: ctx.posted
+				? 'saved and already posted in Discord. Posted copies keep what they were sent with'
+				: 'saved';
 	const others = ctx.messages.filter((message) => message.id !== ctx.messageId);
 	const lines = [
 		'# This message',

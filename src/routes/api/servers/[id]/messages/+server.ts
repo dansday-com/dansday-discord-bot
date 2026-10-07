@@ -12,7 +12,7 @@ import {
 	normalizeMessageDoc
 } from '$lib/messages.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
-import { logMessageAction, messagePanelAccess, pruneMessageFiles, syncMessagePosts } from '$lib/frontend/serverMessages.server.js';
+import { logMessageAction, messagePanelAccess, pruneMessageFiles } from '$lib/frontend/serverMessages.server.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const access = await messagePanelAccess(locals, params.id);
@@ -67,14 +67,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (id === null) return json({ ok: false, error: 'Could not save the message. Try again.' }, { status: 500 });
 		await pruneMessageFiles(serverId);
 
-		const posts = previous ? await syncMessagePosts(server, id) : { running: true, updated: [], removed: 0, failed: [] };
 		await logMessageAction(locals, serverId, 'message_saved', [
-			{ key: previous ? 'message edited' : 'message created', before: previous && previous.name !== name ? previous.name : null, after: name },
-			...(posts.updated.length > 0 ? [{ key: 'posted copies updated', before: null, after: posts.updated.join(', ') }] : [])
+			{ key: previous ? 'message edited' : 'message created', before: previous && previous.name !== name ? previous.name : null, after: name }
 		]);
 		logger.log(`${locals.user.authenticated ? locals.user.username : 'Someone'} saved message "${name}" on server "${server.name || serverId}"`);
 
-		return json({ ok: true, id, posts: { running: posts.running, updated: posts.updated.length, removed: posts.removed, failed: posts.failed } });
+		return json({ ok: true, id });
 	} catch (error: any) {
 		logger.log(`❌ Error saving message: ${error.message}`);
 		return json({ ok: false, error: 'Could not save the message. Try again in a moment.' }, { status: 500 });

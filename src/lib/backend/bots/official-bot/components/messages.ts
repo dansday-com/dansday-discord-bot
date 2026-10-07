@@ -24,7 +24,7 @@ type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
 type RoleBlock = 'deleted' | 'managed' | 'unsafe' | 'no_permission' | 'above_bot';
 type LoadedFile = { attachment: Buffer; name: string };
-type RenderExtra = { prefix?: string; interactive?: boolean; pinned?: boolean; defaultColor?: number | null; media?: boolean };
+type RenderExtra = { prefix?: string; interactive?: boolean; pinned?: boolean; defaultColor?: number | null; media?: boolean; post?: number | null };
 type Renderer = (lang: ServerLanguage, extra?: RenderExtra) => MessagePayload;
 type SyncResult = { post_id: number; channel_id: string; channel_name: string; ok: boolean; gone?: boolean; error?: string };
 
@@ -248,10 +248,15 @@ export async function syncServerMessagePosts(client: any, payload: any) {
 	const message = await db.getServerMessage(payload.server_id, payload.message_id);
 	if (!message) return { ok: false, error: 'That message no longer exists.' };
 
-	const render = renderer('server', message, guild.name);
+	const refresh = payload.refresh === true;
+	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
 	for (const entry of await db.getServerMessagePosts(payload.server_id, message.id)) {
-		results.push(await syncPost(guild, entry, message.content, render, payload.interactive !== false));
+		if (wanted && !wanted.has(entry.id)) continue;
+		const content = refresh ? message.content : (entry.content ?? message.content);
+		const result = await syncPost(guild, entry, content, renderer('server', { ...message, content }, guild.name), payload.interactive !== false);
+		if (refresh && result.ok && !result.gone) await db.setServerMessagePostContent(payload.server_id, entry.id, content).catch(() => null);
+		results.push(result);
 	}
 	return { ok: true, results };
 }
@@ -321,15 +326,21 @@ export async function syncGlobalMessagePosts(client: any, payload: any) {
 	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id);
 	if (!message || panel == null) return { ok: false, error: 'That message no longer exists.' };
 
+	const refresh = payload.refresh === true;
+	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
 	for (const entry of await db.getGlobalMessagePosts(panel, message.id, currentBotId())) {
+		if (wanted && !wanted.has(entry.id)) continue;
 		const guild = await resolveGuild(client, entry.discord_server_id);
 		if (!guild) {
 			results.push({ post_id: entry.id, channel_id: entry.discord_channel_id, channel_name: entry.channel_name, ok: true, gone: true });
 			continue;
 		}
-		const render = renderer('global', message, guild.name, { defaultColor: await serverColor(guild.id) });
-		results.push(await syncPost(guild, entry, message.content, render, payload.interactive !== false));
+		const content = refresh ? message.content : (entry.content ?? message.content);
+		const render = renderer('global', { ...message, content }, guild.name, { defaultColor: await serverColor(guild.id) });
+		const result = await syncPost(guild, entry, content, render, payload.interactive !== false);
+		if (refresh && result.ok && !result.gone) await db.setGlobalMessagePostContent(panel, entry.id, content).catch(() => null);
+		results.push(result);
 	}
 	return { ok: true, results };
 }
@@ -452,7 +463,17 @@ export async function handleMessageComponent(interaction: any) {
 	const load = (id: number) => (ref.scope === 'global' ? (panel == null ? null : db.getGlobalMessage(panel, id)) : db.getServerMessage(server.id, id));
 	const defaults = ref.scope === 'global' ? { defaultColor: await serverColor(guild.id) } : {};
 
-	const message = await load(ref.messageId);
+	const template = await load(ref.messageId);
+	const source = interaction.message;
+	const posts: ServerMessagePost[] = !template
+		? []
+		: ref.scope === 'global'
+			? panel == null
+				? []
+				: await db.getGlobalMessagePosts(panel, template.id, currentBotId())
+			: await db.getServerMessagePosts(server.id, template.id);
+	const post = posts.find((entry) => (ref.post != null ? entry.id === ref.post : entry.discord_message_id === source.id)) ?? null;
+	const message = template && post?.content ? { ...template, content: post.content } : template;
 	const component = message && !switching ? findMessageComponent(message.content, ref.partId) : null;
 	if (!message || (!switching && !component)) {
 		await interaction.reply(privately(tr('messages.unavailable')));
@@ -473,9 +494,8 @@ export async function handleMessageComponent(interaction: any) {
 	}
 
 	const target = switching ? message : show ? await load(show.message_id) : null;
-	const source = interaction.message;
 	const sourceV2 = source.flags.has(MessageFlags.IsComponentsV2);
-	const render = target ? renderer(ref.scope, target, guild.name, defaults) : null;
+	const render = target ? renderer(ref.scope, target, guild.name, switching && post ? { ...defaults, post: post.id } : defaults) : null;
 	const shownLanguage = switching && target ? postLanguage(target.content, lang) : lang;
 	const withoutMedia = switching && (!source.flags.has(MessageFlags.Ephemeral) || !showsMedia(source));
 	const lean = render && withoutMedia ? render(shownLanguage, { pinned, media: false }) : null;
@@ -497,14 +517,8 @@ export async function handleMessageComponent(interaction: any) {
 		} else lines.push(tr('messages.unavailable'));
 		acknowledged = true;
 	} else if (fromMenu) {
-		const posts: ServerMessagePost[] =
-			ref.scope === 'global'
-				? panel == null
-					? []
-					: await db.getGlobalMessagePosts(panel, message.id, currentBotId())
-				: await db.getServerMessagePosts(server.id, message.id);
-		const prefix = posts.find((entry) => entry.discord_message_id === source.id)?.mentions ?? '';
-		const again = renderer(ref.scope, message, guild.name, defaults)(ref.lang, { prefix, pinned: ref.pinned });
+		const prefix = ref.post == null ? (post?.mentions ?? '') : '';
+		const again = renderer(ref.scope, message, guild.name, defaults)(ref.lang, { prefix, pinned: ref.pinned, post: ref.post });
 		await interaction.update(again.v2 ? { components: again.components, flags: MessageFlags.IsComponentsV2 } : { components: again.components });
 		acknowledged = true;
 	}

@@ -1,12 +1,15 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
+import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MAX_SAVED_MESSAGES, messageButtons, messageSelects, messageSummary } from '$lib/messages.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const serverId = Number(params.serverId);
+	if (!(await canUseEmbedBuilder(locals, serverId))) redirect(302, DASHBOARD_PATH);
 	const [messages, posts] = await Promise.all([db.getServerMessages(serverId).catch(() => []), db.getServerMessagePosts(serverId).catch(() => [])]);
 
 	return {

@@ -1440,9 +1440,11 @@
 		"roleAlready": "Je hebt {role} al.",
 		"roleNotHeld": "Je hebt {role} niet.",
 		"roleFailed": "❌ Ik kon {role} niet wijzigen. {reason}",
+		"cooldown": "⏳ Je wisselt te snel van rol. Probeer het over {time} opnieuw.",
 		"blocked": {
 			"deleted": "❌ Die rol bestaat niet meer. Vraag een serverbeheerder om in het configuratiepaneel van de bot een andere te kiezen.",
 			"managed": "❌ {role} hoort bij een integratie, dus ik kan hem niet geven of weghalen. Vraag een serverbeheerder om in het configuratiepaneel van de bot een andere rol te kiezen.",
+			"unsafe": "❌ {role} kan de server modereren of beheren, dus die kan niet via een knop worden uitgedeeld. Vraag een serverbeheerder om in het configuratiepaneel van de bot een andere rol te kiezen.",
 			"no_permission": "❌ Ik heb de toestemming Rollen beheren nodig om {role} te wijzigen. Vraag een serverbeheerder om die aan mijn rol te geven.",
 			"above_bot": "❌ {role} staat boven mijn eigen rol. Vraag een serverbeheerder om mijn rol hoger te zetten in Serverinstellingen → Rollen."
 		}

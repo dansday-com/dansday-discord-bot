@@ -2,7 +2,15 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { MAX_SAVED_MESSAGES, MESSAGE_LIMITS, messageDocProblems, messageRoleIds, messageShownIds, normalizeMessageDoc } from '$lib/messages.js';
+import {
+	MAX_SAVED_MESSAGES,
+	MESSAGE_LIMITS,
+	isSelfAssignableRole,
+	messageDocProblems,
+	messageRoleIds,
+	messageShownIds,
+	normalizeMessageDoc
+} from '$lib/messages.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
 import { logMessageAction, messagePanelAccess, pruneMessageFiles, syncMessagePosts } from '$lib/frontend/serverMessages.server.js';
 
@@ -37,9 +45,22 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ ok: false, error: 'A button or dropdown shows a message that no longer exists. Pick another one for it.' }, { status: 400 });
 		}
 		const roles = await db.getRoles(serverId).catch(() => []);
-		const knownRoles = new Set((roles as any[]).map((r) => String(r.discord_role_id)).filter((id) => id !== String(server.discord_server_id)));
-		if (messageRoleIds(content).some((id) => !knownRoles.has(id))) {
+		const roleById = new Map(
+			(roles as any[]).filter((r) => String(r.discord_role_id) !== String(server.discord_server_id)).map((r) => [String(r.discord_role_id), r])
+		);
+		const usedRoles = messageRoleIds(content);
+		if (usedRoles.some((id) => !roleById.has(id))) {
 			return json({ ok: false, error: 'A button or dropdown uses a role that no longer exists. Pick another role for it.' }, { status: 400 });
+		}
+		const unsafe = usedRoles.map((id) => roleById.get(id)).find((role) => !isSelfAssignableRole(role.permissions));
+		if (unsafe) {
+			return json(
+				{
+					ok: false,
+					error: `@${unsafe.name} can moderate or manage the server, so a button can't hand it out to whoever clicks. Pick a role without those permissions.`
+				},
+				{ status: 400 }
+			);
 		}
 
 		const id = await db.saveServerMessage(serverId, messageId, name, content);

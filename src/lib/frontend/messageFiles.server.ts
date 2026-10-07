@@ -34,7 +34,13 @@ function pruneStale() {
 	}
 }
 
-export async function receiveMessageUpload(request: Request, owner: MessageOwner, limit: number, tooLarge: string): Promise<Response> {
+export async function receiveMessageUpload(
+	request: Request,
+	owner: MessageOwner,
+	limit: number,
+	tooLarge: string,
+	pruneUnused: () => Promise<unknown>
+): Promise<Response> {
 	const uploadId = request.headers.get('x-upload-id') ?? '';
 	const index = Number(request.headers.get('x-upload-index'));
 	const total = Number(request.headers.get('x-upload-total'));
@@ -51,6 +57,7 @@ export async function receiveMessageUpload(request: Request, owner: MessageOwner
 
 		if (index === 0) {
 			pruneStale();
+			void pruneUnused().catch(() => null);
 			rmSync(dir, { recursive: true, force: true });
 			mkdirSync(dir, { recursive: true });
 		} else if (!existsSync(dir)) {
@@ -99,7 +106,8 @@ export async function serveMessageFile(request: Request, owner: MessageOwner, fi
 		'Content-Type': messageFileContentType(key),
 		'Cache-Control': 'public, max-age=31536000, immutable',
 		'Accept-Ranges': 'bytes',
-		'X-Content-Type-Options': 'nosniff'
+		'X-Content-Type-Options': 'nosniff',
+		'Content-Security-Policy': "default-src 'none'; sandbox"
 	};
 
 	const range = request.headers.get('range')?.match(/^bytes=(\d*)-(\d*)$/);

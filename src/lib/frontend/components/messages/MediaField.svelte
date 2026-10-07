@@ -1,16 +1,8 @@
 <script lang="ts">
-	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, imageExtension, imageSizeLabel } from '$lib/images.js';
-	import {
-		MESSAGE_VIDEO_ACCEPT,
-		MESSAGE_VIDEO_FORMATS_LABEL,
-		MESSAGE_VIDEO_TYPES,
-		isMessageUploadKey,
-		isMessageVideo,
-		messageFilePreviewUrl
-	} from '$lib/messages.js';
-	import { uploadMessageFile } from '$lib/frontend/messageUpload.js';
-	import { showToast } from '$lib/frontend/toast.svelte';
+	import { IMAGE_ACCEPT, imageSizeLabel } from '$lib/images.js';
+	import { MESSAGE_VIDEO_ACCEPT, isMessageUploadKey, isMessageVideo, messageFilePreviewUrl } from '$lib/messages.js';
 	import { messageEditor } from './editorContext.js';
+	import { mediaKinds, uploadMedia } from './mediaUpload.js';
 	import { FIELD, GHOST_BUTTON, ICON_BUTTON, LABEL } from './styles.js';
 
 	let {
@@ -31,26 +23,14 @@
 
 	const uploaded = $derived(isMessageUploadKey(value));
 	const preview = $derived(value ? messageFilePreviewUrl(value) : '');
-	const kinds = $derived(video ? `${IMAGE_FORMATS_LABEL}, ${MESSAGE_VIDEO_FORMATS_LABEL}` : IMAGE_FORMATS_LABEL);
 
 	async function pick(input: HTMLInputElement) {
 		const file = input.files?.[0];
 		input.value = '';
 		if (!file) return;
-		const supported = !!imageExtension(file.type) || (video && file.type in MESSAGE_VIDEO_TYPES);
-		if (!supported) return showToast(`Use a ${kinds} file.`, 'error');
-		if (file.size > editor.uploadLimit) {
-			return showToast(
-				`That file is ${imageSizeLabel(file.size)}. The limit is ${imageSizeLabel(editor.uploadLimit)}. ${editor.uploadLimitNote}`,
-				'error',
-				7000
-			);
-		}
-		progress = 0;
 		try {
-			const result = await uploadMessageFile(editor.uploadUrl, file, (fraction) => (progress = fraction));
-			if (!result.ok) return showToast(result.error, 'error', 7000);
-			value = result.key;
+			const key = await uploadMedia(editor, file, video, (fraction) => (progress = fraction));
+			if (key) value = key;
 		} finally {
 			progress = null;
 		}
@@ -76,13 +56,13 @@
 		{:else if link}
 			<input type="url" bind:value placeholder="Paste a link, or upload" aria-label={label || 'Link'} class="{FIELD} min-w-0 flex-1" />
 		{:else}
-			<span class="text-ash-500 min-w-0 flex-1 text-xs">{kinds} · up to {imageSizeLabel(editor.uploadLimit)}</span>
+			<span class="text-ash-500 min-w-0 flex-1 text-xs">{mediaKinds(video)} · up to {imageSizeLabel(editor.uploadLimit)}</span>
 		{/if}
 		<label for="media-{uid}" class="{GHOST_BUTTON} shrink-0 cursor-pointer {progress !== null ? 'pointer-events-none opacity-60' : ''}">
 			<i class="fas {progress !== null ? 'fa-spinner fa-spin' : 'fa-upload'}"></i>
 			{progress !== null ? `${Math.round(progress * 100)}%` : value ? 'Replace' : 'Upload'}
 		</label>
-		{#if value}
+		{#if value && link}
 			<button type="button" class={ICON_BUTTON} aria-label="Remove {label || 'file'}" onclick={() => (value = '')}><i class="fas fa-xmark"></i></button>
 		{/if}
 		<input

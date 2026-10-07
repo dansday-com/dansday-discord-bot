@@ -713,7 +713,7 @@ export const modules = [
 			},
 			{
 				label: 'Reaction roles',
-				desc: 'Set a button to give or take a role: the first click gives it, the next takes it away. It can also only give or only take. The member gets a private confirmation.'
+				desc: 'Set a button to give or take a role: the first click gives it, the next takes it away. It can also only give or only take. The member gets a private confirmation, and each member can change roles once every 3 seconds, so nobody can spam a button.'
 			},
 			{
 				label: 'Dropdown roles',
@@ -721,15 +721,19 @@ export const modules = [
 			},
 			{
 				label: 'Role requirements',
-				desc: "The bot needs Manage Roles and its own role must sit above every role it hands out. Roles owned by an integration can't be given. A member who clicks is told what to ask an admin to fix."
+				desc: 'The bot needs Manage Roles and its own role must sit above every role it hands out. Roles that can moderate or manage the server, and roles owned by an integration, can never be handed out by a button or dropdown. A member who clicks is told what to ask an admin to fix.'
 			},
 			{
 				label: 'Languages',
 				desc: 'Add a language and translate any text; anything left empty uses the main text. A member who clicks gets the reply in the language they picked in the bot menu. When sending, pick which language the post itself uses.'
 			},
 			{
-				label: 'Preview',
-				desc: 'Shows the message as Discord draws it. Click a button or dropdown to see the private reply or role result a member would get.'
+				label: 'Editing',
+				desc: "The editor looks like a Discord channel. Type in the box at the bottom to write what the bot says, press + to add an embed, a photo or video, a button or a dropdown, then click anything in the message to change it. Emoji are picked from a list, including the server's own."
+			},
+			{
+				label: 'Try it',
+				desc: 'Switch from Edit to Try it and click the buttons and dropdowns to see the private reply or role result a member would get.'
 			},
 			{
 				label: 'Send and edit',

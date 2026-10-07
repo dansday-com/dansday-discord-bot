@@ -1440,9 +1440,11 @@
 		"roleAlready": "Ya tienes {role}.",
 		"roleNotHeld": "No tienes {role}.",
 		"roleFailed": "❌ No pude cambiar {role}. {reason}",
+		"cooldown": "⏳ Estás cambiando de rol demasiado rápido. Inténtalo de nuevo en {time}.",
 		"blocked": {
 			"deleted": "❌ Ese rol ya no existe. Pide a un administrador del servidor que elija otro en el panel de configuración del bot.",
 			"managed": "❌ {role} pertenece a una integración, así que no puedo darlo ni quitarlo. Pide a un administrador del servidor que elija otro rol en el panel de configuración del bot.",
+			"unsafe": "❌ {role} puede moderar o gestionar el servidor, así que no se puede repartir con un botón. Pide a un administrador del servidor que elija otro rol en el panel de configuración del bot.",
 			"no_permission": "❌ Necesito el permiso Gestionar roles para cambiar {role}. Pide a un administrador del servidor que se lo dé a mi rol.",
 			"above_bot": "❌ {role} está por encima de mi rol. Pide a un administrador del servidor que suba mi rol en Ajustes del servidor → Roles."
 		}

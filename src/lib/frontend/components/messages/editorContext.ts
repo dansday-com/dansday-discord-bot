@@ -2,7 +2,7 @@ import { getContext, setContext } from 'svelte';
 import type { ServerLanguage } from '$lib/languages.js';
 
 export type EditorEmoji = { id: string; name: string; animated: boolean };
-export type EditorRole = { id: string; name: string; color: string | null };
+export type EditorRole = { id: string; name: string; color: string | null; assignable?: boolean };
 export type EditorMessage = { id: number; name: string };
 
 export type MessageEditorContext = {
@@ -34,4 +34,20 @@ export function moveItem<T>(items: T[], index: number, delta: number) {
 	if (target < 0 || target >= items.length) return;
 	const [item] = items.splice(index, 1);
 	items.splice(target, 0, item);
+}
+
+export function clickOutside(node: HTMLElement, onoutside: () => void) {
+	let handler = onoutside;
+	const listener = (event: PointerEvent) => {
+		if (event.target instanceof Node && !node.contains(event.target)) handler();
+	};
+	document.addEventListener('pointerdown', listener, true);
+	return {
+		update(next: () => void) {
+			handler = next;
+		},
+		destroy() {
+			document.removeEventListener('pointerdown', listener, true);
+		}
+	};
 }

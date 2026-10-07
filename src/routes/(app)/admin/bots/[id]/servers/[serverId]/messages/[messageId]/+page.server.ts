@@ -1,16 +1,17 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { adminServerSectionPath } from '$lib/frontend/redirect.js';
+import { SERVER_SETTINGS, canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
-import { MESSAGE_LIMITS, messageUploadLimit } from '$lib/messages.js';
+import { MESSAGE_LIMITS, isSelfAssignableRole, messageUploadLimit } from '$lib/messages.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const serverId = Number(params.serverId);
+	if (!(await canUseEmbedBuilder(locals, serverId))) redirect(302, DASHBOARD_PATH);
 	const listPath = adminServerSectionPath(params.id, params.serverId, 'messages');
 	const isNew = params.messageId === 'new';
 	const messages = await db.getServerMessages(serverId).catch(() => []);
@@ -60,7 +61,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 				id: String(role.discord_role_id),
 				name: String(role.name ?? 'Unnamed role'),
 				color: role.color != null ? String(role.color) : null,
-				position: role.position != null ? Number(role.position) : null
+				position: role.position != null ? Number(role.position) : null,
+				assignable: isSelfAssignableRole(role.permissions)
 			})),
 		defaults: { language: main.language, color: main.color, footer: main.footer },
 		bot: {

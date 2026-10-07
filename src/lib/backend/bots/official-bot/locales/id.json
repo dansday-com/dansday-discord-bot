@@ -1440,9 +1440,11 @@
 		"roleAlready": "Kamu sudah punya {role}.",
 		"roleNotHeld": "Kamu tidak punya {role}.",
 		"roleFailed": "❌ Aku tidak bisa mengubah {role}. {reason}",
+		"cooldown": "⏳ Kamu mengganti role terlalu cepat. Coba lagi dalam {time}.",
 		"blocked": {
 			"deleted": "❌ Role itu sudah tidak ada. Minta admin server memilih role lain di panel konfigurasi bot.",
 			"managed": "❌ {role} milik sebuah integrasi, jadi aku tidak bisa memberi atau melepasnya. Minta admin server memilih role lain di panel konfigurasi bot.",
+			"unsafe": "❌ {role} bisa memoderasi atau mengelola server, jadi tidak bisa dibagikan lewat tombol. Minta admin server memilih role lain di panel konfigurasi bot.",
 			"no_permission": "❌ Aku butuh izin Kelola Role untuk mengubah {role}. Minta admin server memberikannya ke role-ku.",
 			"above_bot": "❌ {role} berada di atas role-ku. Minta admin server menaikkan posisi role-ku di Pengaturan Server → Role."
 		}

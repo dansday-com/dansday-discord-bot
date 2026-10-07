@@ -6,6 +6,7 @@ import {
 	MESSAGE_LIMITS,
 	findMessageComponent,
 	isMessageUploadKey,
+	isSelfAssignableRole,
 	messagePayloadTextLength,
 	parseMessageCustomId,
 	renderMessagePayload,
@@ -20,7 +21,7 @@ import { errorReasonFor, translatorFor, type Translator } from '../i18n.js';
 
 type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
-type RoleBlock = 'deleted' | 'managed' | 'no_permission' | 'above_bot';
+type RoleBlock = 'deleted' | 'managed' | 'unsafe' | 'no_permission' | 'above_bot';
 type LoadedFile = { attachment: Buffer; name: string };
 type RenderExtra = { prefix?: string; interactive?: boolean; defaultColor?: number | null };
 type Renderer = (lang: ServerLanguage, extra?: RenderExtra) => MessagePayload;
@@ -30,6 +31,10 @@ const UNKNOWN_CHANNEL = 10003;
 const UNKNOWN_MESSAGE = 10008;
 const FILE_TOO_LARGE = 40005;
 const FILE_MISSING = 'file_missing';
+const ROLE_COOLDOWN_MS = 3000;
+const ROLE_COOLDOWN_SWEEP_AT = 2000;
+
+const roleCooldowns = new Map<string, number>();
 
 let panelId: Promise<number | null> | null = null;
 
@@ -355,6 +360,7 @@ export async function listGuildEmojis(client: any, payload: any) {
 function roleBlock(guild: any, role: any): RoleBlock | null {
 	if (!role) return 'deleted';
 	if (role.managed) return 'managed';
+	if (!isSelfAssignableRole(role.permissions?.bitfield)) return 'unsafe';
 	if (!guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return 'no_permission';
 	if (!role.editable) return 'above_bot';
 	return null;
@@ -391,6 +397,18 @@ async function applyRoles(interaction: any, actions: RoleAction[], tr: Translato
 		}
 	}
 	return lines;
+}
+
+function roleCooldownLeft(guildId: string, userId: string): number {
+	const key = `${guildId}:${userId}`;
+	const now = Date.now();
+	const until = roleCooldowns.get(key) ?? 0;
+	if (until > now) return until - now;
+	if (roleCooldowns.size >= ROLE_COOLDOWN_SWEEP_AT) {
+		for (const [entry, expires] of roleCooldowns) if (expires <= now) roleCooldowns.delete(entry);
+	}
+	roleCooldowns.set(key, now + ROLE_COOLDOWN_MS);
+	return 0;
 }
 
 async function memberLanguage(serverId: number, userId: string, fallback: ServerLanguage): Promise<ServerLanguage> {
@@ -486,7 +504,11 @@ export async function handleMessageComponent(interaction: any) {
 		pendingReply = true;
 	}
 
-	lines.push(...(await applyRoles(interaction, roles, tr)));
+	const wait = roles.length > 0 ? roleCooldownLeft(guild.id, interaction.user.id) : 0;
+	if (wait > 0) {
+		const time = new Intl.NumberFormat(lang, { style: 'unit', unit: 'second', unitDisplay: 'long' }).format(Math.ceil(wait / 1000));
+		lines.push(tr('messages.cooldown', { time }));
+	} else lines.push(...(await applyRoles(interaction, roles, tr)));
 	if (lines.length === 0) return;
 	const result = { content: lines.join('\n'), allowedMentions: { parse: [] } };
 	if (pendingReply) await interaction.editReply(result);

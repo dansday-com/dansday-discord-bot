@@ -1,6 +1,7 @@
+import { randomBytes } from 'crypto';
 import { deleteObject, getObject, listObjectKeys, publicUrl, putObject } from './index.js';
 import { imageContentType } from '../../images.js';
-import { uploadFilename, uploadTimestampMs } from './uploadStore.js';
+import { uploadTimestampMs } from './uploadStore.js';
 import { MESSAGE_UPLOAD_ROOTS, MESSAGE_VIDEO_TYPES, isMessageUploadKey, type MessageOwner } from '../../messages.js';
 
 const UNSAVED_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -17,7 +18,7 @@ function assertKey(key: string): string {
 }
 
 export function messageFileKey(owner: MessageOwner, extension: string): string {
-	return assertKey(`${folder(owner)}/${uploadFilename(extension)}`);
+	return assertKey(`${folder(owner)}/${Date.now()}-${randomBytes(12).toString('hex')}.${extension}`);
 }
 
 export function messageFileKeyFor(owner: MessageOwner, filename: string): string {

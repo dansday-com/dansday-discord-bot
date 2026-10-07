@@ -1,48 +1,34 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { beforeNavigate, goto, invalidateAll } from '$app/navigation';
-	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import { page } from '$app/state';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
-	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
-	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
-	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { imageSizeLabel } from '$lib/images.js';
-	import { SERVER_LANGUAGES, serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
+	import { serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
 	import {
 		MESSAGE_LIMITS,
-		MESSAGE_PLACEHOLDERS,
-		MESSAGE_VIDEO_FORMATS_LABEL,
-		messageDocProblems,
+		messageDocIssues,
 		newMessageBlock,
+		newMessageButton,
 		newMessageDoc,
 		newMessageEmbed,
 		newMessagePartId,
 		normalizeMessageDoc,
 		removeMessageLanguage,
+		type ButtonsBlock,
+		type MessageBlockType,
 		type MessageDoc,
-		type MessageScope,
-		type RowBlock
+		type MessageIssue,
+		type MessageScope
 	} from '$lib/messages.js';
-	import BlockList from './BlockList.svelte';
-	import EmbedEditor from './EmbedEditor.svelte';
-	import LocalizedField from './LocalizedField.svelte';
-	import MediaField from './MediaField.svelte';
-	import MessagePreview from './MessagePreview.svelte';
-	import RowEditor from './RowEditor.svelte';
-	import { moveItem, setMessageEditor, type EditorEmoji, type EditorRole } from './editorContext.js';
+	import MessageCanvas from './MessageCanvas.svelte';
+	import PartInspector from './PartInspector.svelte';
+	import SendDialog from './SendDialog.svelte';
+	import { setMessageEditor, type EditorEmoji, type EditorRole, type MessageEditorContext } from './editorContext.js';
 	import type { MarkdownContext } from './discordMarkdown.js';
-	import { GHOST_BUTTON, ICON_BUTTON, LABEL, PANEL } from './styles.js';
-
-	type Post = {
-		id: number;
-		guild_id: string;
-		server_name: string | null;
-		channel_id: string;
-		channel_name: string;
-		discord_message_id: string;
-		language: string;
-		created_at: string;
-	};
+	import { uploadMedia } from './mediaUpload.js';
+	import { containerOf, locatePart, type PostedCopy, type Selection } from './selection.js';
+	import { GHOST_BUTTON, PANEL } from './styles.js';
 
 	let {
 		data
@@ -56,7 +42,7 @@
 			message: { id: number; name: string; content: MessageDoc } | null;
 			draft: { name: string; content: MessageDoc } | null;
 			messages: { id: number; name: string; content: MessageDoc }[];
-			posts: Post[];
+			posts: PostedCopy[];
 			channels: any[];
 			categories: any[];
 			roles: (EditorRole & { position: number | null })[];
@@ -70,11 +56,8 @@
 		id: data.message?.id ?? null,
 		scope: data.scope,
 		name: data.message?.name ?? data.draft?.name ?? '',
-		doc: normalizeMessageDoc(
-			$state.snapshot(data.message?.content ?? data.draft?.content ?? newMessageDoc(data.defaults.language, data.defaults.color, data.defaults.footer)),
-			undefined,
-			data.scope
-		)
+		send: page.url.searchParams.get('send') === '1',
+		doc: normalizeMessageDoc($state.snapshot(data.message?.content ?? data.draft?.content ?? newMessageDoc(data.defaults.language)), undefined, data.scope)
 	});
 	const serialize = (messageName: string, content: MessageDoc) => JSON.stringify([messageName.trim(), content]);
 
@@ -85,25 +68,23 @@
 	let lang = $state<ServerLanguage>(initial().doc.language);
 	let saved = $state(messageId === null ? '' : serialize(initial().name, initial().doc));
 
+	let mode = $state<'edit' | 'try'>('edit');
+	let selection = $state<Selection>(null);
+	let nonce = $state(0);
+	let menuOpen = $state(false);
+	let uploading = $state<number | null>(null);
+	let sendOpen = $state(messageId !== null && initial().send);
+	let nameInput = $state<HTMLInputElement>();
+
 	let saving = $state(false);
 	let sending = $state(false);
 	let removing = $state<number | 'all' | null>(null);
 	let deleting = $state(false);
 	let confirmDelete = $state(false);
 	let confirmLanguage = $state<ServerLanguage | null>(null);
-	let confirmPost = $state<Post | 'all' | null>(null);
+	let confirmPost = $state<PostedCopy | 'all' | null>(null);
 	let leaveTo = $state<URL | null>(null);
 	let leaving = false;
-
-	let channelIds = $state<string[]>([]);
-	let mentionIds = $state<string[]>([]);
-	let sendLanguage = $state<string>(initial().doc.language);
-	let addLanguage = $state('');
-
-	const LAYOUTS = [
-		{ id: 'standard', label: 'Standard message', icon: 'fa-message', hint: 'Text, photos, videos, embeds and buttons, like a normal post.' },
-		{ id: 'components', label: 'Components V2', icon: 'fa-layer-group', hint: 'Free layout: containers, sections, galleries and dividers.' }
-	] as const;
 
 	const EVERYONE_MENTIONS = [
 		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: Number.MAX_SAFE_INTEGER },
@@ -116,19 +97,24 @@
 		{ discord_role_id: 'staff', name: 'Staff Roles', color: '#f59e0b', position: 1 }
 	];
 
+	const STEPS = [
+		{ icon: 'fa-keyboard', text: 'Type in the box under the message to write what the bot says.' },
+		{ icon: 'fa-plus', text: 'Press + to add an embed, a photo or video, a button or a dropdown.' },
+		{ icon: 'fa-arrow-pointer', text: 'Click anything in the message to change it here.' },
+		{ icon: 'fa-play', text: 'Switch to Try it to click the buttons like a member would.' }
+	];
+
 	const mentionRoles = $derived(
 		global
 			? GROUP_MENTIONS
 			: [...EVERYONE_MENTIONS, ...data.roles.map((role) => ({ discord_role_id: role.id, name: role.name, color: role.color ?? '', position: role.position }))]
 	);
 	const dirty = $derived(serialize(name, doc) !== saved);
-	const problems = $derived([...(name.trim() ? [] : ['Give the message a name so you can find it later.']), ...messageDocProblems(doc)]);
-	const otherLanguages = $derived(SERVER_LANGUAGES.filter((language) => !doc.languages.includes(language.code)));
-	const languageOptions = $derived([
-		{ value: '', label: 'Add a language' },
-		...otherLanguages.map((language) => ({ value: language.code, label: serverLanguageLabel(language.code) }))
+	const issues = $derived<MessageIssue[]>([
+		...(name.trim() ? [] : [{ part: 'name', text: 'Give the message a name at the top so you can find it later.' }]),
+		...messageDocIssues(doc)
 	]);
-	const sendLanguageOptions = $derived(doc.languages.map((code) => ({ value: code, label: serverLanguageLabel(code) })));
+	const flagged = $derived(new Set(issues.flatMap((issue) => (issue.part ? [issue.part] : []))));
 	const markdownContext = $derived<MarkdownContext>({
 		roles: new Map(data.roles.map((role) => [role.id, { name: role.name, color: role.color }])),
 		channels: new Map(data.channels.map((channel: any) => [String(channel.discord_channel_id), String(channel.name ?? '')]))
@@ -137,8 +123,10 @@
 	const copies = $derived(
 		global ? `${servers} ${servers === 1 ? 'server' : 'servers'}` : `${data.posts.length} posted ${data.posts.length === 1 ? 'copy' : 'copies'}`
 	);
+	const box = $derived(selection ? containerOf(doc, selection.id) : null);
+	const editingPart = $derived(!!selection && selection.id !== 'text' && !!locatePart(doc, selection.id));
 
-	setMessageEditor({
+	const editorContext: MessageEditorContext = {
 		get lang() {
 			return lang;
 		},
@@ -174,25 +162,23 @@
 		get messages() {
 			return data.messages;
 		}
-	});
-
-	$effect(() => {
-		if (!addLanguage) return;
-		const code = addLanguage as ServerLanguage;
-		addLanguage = '';
-		if (!doc.languages.includes(code)) doc.languages.push(code);
-		lang = code;
-	});
-
-	$effect(() => {
-		if (!doc.languages.includes(sendLanguage as ServerLanguage)) sendLanguage = doc.language;
-	});
+	};
+	setMessageEditor(editorContext);
 
 	beforeNavigate((navigation) => {
 		if (!dirty || leaving) return;
 		navigation.cancel();
 		if (!navigation.willUnload && navigation.to) leaveTo = navigation.to.url;
 	});
+
+	async function select(id: string, focus = '') {
+		mode = 'edit';
+		selection = { id, focus };
+		nonce++;
+		if (!window.matchMedia('(max-width: 1023px)').matches) return;
+		await tick();
+		document.querySelector('.dc-selected')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+	}
 
 	function resolveMessage(id: number): MessageDoc | null {
 		if (id === messageId) return doc;
@@ -205,8 +191,61 @@
 		confirmLanguage = null;
 	}
 
-	function addRow(type: RowBlock['type']) {
-		doc.rows.push(newMessageBlock(type) as RowBlock);
+	function addButtonTo(row: ButtonsBlock) {
+		const button = newMessageButton();
+		row.buttons.push(button);
+		select(button.id);
+	}
+
+	function addButton(rowId: string) {
+		const rows = doc.layout === 'standard' ? doc.rows : doc.blocks.flatMap((block) => (block.type === 'container' ? block.blocks : [block]));
+		const row = rows.find((block) => block.id === rowId);
+		if (row?.type === 'buttons' && row.buttons.length < MESSAGE_LIMITS.buttons) addButtonTo(row);
+	}
+
+	function add(type: 'embed' | MessageBlockType) {
+		if (doc.layout === 'standard') {
+			if (type === 'embed') {
+				const embed = newMessageEmbed(data.defaults.color, data.defaults.footer ? { [doc.language]: data.defaults.footer } : {});
+				doc.embeds.push(embed);
+				return select(embed.id, 'title');
+			}
+			if (type === 'buttons') {
+				const last = doc.rows[doc.rows.length - 1];
+				if (last?.type === 'buttons' && last.buttons.length < MESSAGE_LIMITS.buttons) return addButtonTo(last);
+			}
+			if (type !== 'buttons' && type !== 'select') return;
+			const row = newMessageBlock(type) as ButtonsBlock;
+			doc.rows.push(row);
+			return select(type === 'buttons' ? row.buttons[0].id : row.id);
+		}
+
+		const target: any[] = box && type !== 'container' ? box.blocks : doc.blocks;
+		if (target.length >= (target === doc.blocks ? MESSAGE_LIMITS.blocks : MESSAGE_LIMITS.innerBlocks)) {
+			return showToast('That is as many parts as fit here. Remove one first.', 'error');
+		}
+		const block: any = newMessageBlock(type as MessageBlockType, data.defaults.color);
+		target.push(block);
+		if (block.type === 'buttons') select(block.buttons[0].id);
+		else if (block.type === 'container') select(block.blocks[0].id);
+		else select(block.id);
+	}
+
+	async function addFile(file: File) {
+		try {
+			const key = await uploadMedia(editorContext, file, true, (fraction) => (uploading = fraction));
+			if (!key) return;
+			const attachment = { id: newMessagePartId(), file: key, spoiler: false };
+			doc.attachments.push(attachment);
+			select(attachment.id);
+		} finally {
+			uploading = null;
+		}
+	}
+
+	function openIssue(issue: MessageIssue) {
+		if (issue.part === 'name') return nameInput?.focus();
+		if (issue.part) select(issue.part);
 	}
 
 	function savedToast(posts: any) {
@@ -218,9 +257,10 @@
 		showToast('Message saved.', 'success');
 	}
 
-	async function save(): Promise<boolean> {
-		if (problems.length > 0) {
-			showToast(problems[0], 'error', 6000);
+	async function save(thenSend = false): Promise<boolean> {
+		if (issues.length > 0) {
+			showToast(issues[0].text, 'error', 6000);
+			openIssue(issues[0]);
 			return false;
 		}
 		saving = true;
@@ -238,9 +278,9 @@
 			}
 			saved = serialize(name, doc);
 			if (messageId === null) {
-				showToast('Message saved. You can send it now.', 'success');
+				if (!thenSend) showToast('Message saved. Press Send to post it.', 'success');
 				leaving = true;
-				await goto(`${data.listPath}/${out.id}`, { replaceState: true });
+				await goto(`${data.listPath}/${out.id}${thenSend ? '?send=1' : ''}`, { replaceState: true });
 				return true;
 			}
 			savedToast(out.posts);
@@ -251,18 +291,26 @@
 		}
 	}
 
-	async function send() {
-		if (!global && channelIds.length === 0) return showToast('Pick at least one channel to send it to.', 'error');
-		if (dirty && !(await save())) return;
+	async function openSend() {
+		if ((dirty || messageId === null) && !(await save(true))) return;
+		if (messageId !== null) sendOpen = true;
+	}
+
+	async function send(target: { channelIds: string[]; mentionIds: string[]; language: string }): Promise<boolean> {
 		sending = true;
 		try {
 			const res = await fetch(`${data.apiBase}/${messageId}/send`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(global ? { mention_groups: mentionIds } : { channel_ids: channelIds, role_ids: mentionIds, language: sendLanguage })
+				body: JSON.stringify(
+					global ? { mention_groups: target.mentionIds } : { channel_ids: target.channelIds, role_ids: target.mentionIds, language: target.language }
+				)
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not send the message', 'error', 8000);
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not send the message', 'error', 8000);
+				return false;
+			}
 			const where = global ? (out.sent === 1 ? 'server' : 'servers') : out.sent === 1 ? 'channel' : 'channels';
 			const notes = [
 				out.failed?.length > 0 ? `${out.failed.length} failed: ${out.failed[0]}` : '',
@@ -270,15 +318,14 @@
 				out.offline > 0 ? `${out.offline} ${out.offline === 1 ? 'bot is' : 'bots are'} offline.` : ''
 			].filter(Boolean);
 			showToast([`Sent to ${out.sent} ${where}.`, ...notes].join(' '), notes.length > 0 ? 'info' : 'success', notes.length > 0 ? 9000 : 4000);
-			channelIds = [];
-			mentionIds = [];
 			await invalidateAll();
+			return true;
 		} finally {
 			sending = false;
 		}
 	}
 
-	async function removePost(target: Post | 'all') {
+	async function removePost(target: PostedCopy | 'all') {
 		removing = target === 'all' ? 'all' : target.id;
 		try {
 			const res = await fetch(`${data.apiBase}/${messageId}/posts/${target === 'all' ? 'all' : target.id}`, { method: 'DELETE' });
@@ -314,15 +361,22 @@
 	}
 </script>
 
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape' && selection && !sendOpen) selection = null;
+	}}
+/>
+
 <div class="mb-4 flex flex-wrap items-center gap-2">
 	<a href={data.listPath} class="text-ash-400 hover:text-ash-100 inline-flex shrink-0 items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left text-violet-300"></i>{global ? 'Global messages' : 'Messages'}
 	</a>
 	<input
+		bind:this={nameInput}
 		type="text"
 		bind:value={name}
 		maxlength={MESSAGE_LIMITS.name}
-		placeholder={global ? 'Name it, e.g. Maintenance notice' : 'Name it, e.g. Rules panel'}
+		placeholder="Name this message. Only you see the name."
 		aria-label="Message name"
 		class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 min-w-0 flex-1 basis-48 rounded-lg border px-3 py-2 text-sm font-semibold focus:ring-2 focus:outline-none"
 	/>
@@ -331,311 +385,124 @@
 	{/if}
 	<button
 		type="button"
-		onclick={save}
+		onclick={() => save()}
 		disabled={saving || (!dirty && messageId !== null)}
-		class="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+		class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		<i class="fas {saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>
 		{#if !dirty && messageId !== null}Saved{:else if data.posts.length > 0}Save and update {copies}{:else}Save{/if}
 	</button>
+	<button
+		type="button"
+		onclick={openSend}
+		disabled={saving}
+		class="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+	>
+		<i class="fas fa-paper-plane"></i>Send
+		{#if data.posts.length > 0}
+			<span class="rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-semibold">{global ? `in ${copies}` : `${data.posts.length} posted`}</span>
+		{/if}
+	</button>
 </div>
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
-	<div class="flex min-w-0 flex-col gap-4">
-		<section class={PANEL}>
-			<div class="flex flex-wrap gap-2">
-				{#each LAYOUTS as layout (layout.id)}
-					<button
-						type="button"
-						aria-pressed={doc.layout === layout.id}
-						onclick={() => (doc.layout = layout.id)}
-						class="min-w-0 flex-1 basis-56 rounded-lg border p-3 text-left transition-colors {doc.layout === layout.id
-							? 'border-ash-300 bg-ash-700'
-							: 'border-ash-600 hover:border-ash-500'}"
-					>
-						<span class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas {layout.icon} text-fuchsia-300"></i>{layout.label}</span>
-						<span class="text-ash-400 mt-1 block text-xs">{layout.hint}</span>
-					</button>
-				{/each}
-			</div>
-
-			<div class="border-ash-700 mt-4 border-t pt-4">
-				<div class="flex flex-wrap items-center gap-1.5">
-					<span class="{LABEL} mr-1"><i class="fas fa-language mr-1 text-sky-300"></i>Language</span>
-					{#each doc.languages as code (code)}
-						<span
-							class="flex items-center overflow-hidden rounded-lg border text-xs transition-colors {lang === code
-								? 'border-ash-300 bg-ash-600 text-ash-100'
-								: 'border-ash-600 text-ash-300 hover:border-ash-500'}"
-						>
-							<button type="button" class="px-2.5 py-1.5" aria-pressed={lang === code} onclick={() => (lang = code)}>
-								{serverLanguageLabel(code)}{code === doc.language ? ' · main' : ''}
-							</button>
-							{#if code !== doc.language}
-								<button
-									type="button"
-									class="py-1.5 pr-2 hover:text-red-300"
-									aria-label="Remove {serverLanguageLabel(code)}"
-									onclick={() => (confirmLanguage = code)}
-								>
-									<i class="fas fa-xmark"></i>
-								</button>
-							{/if}
-						</span>
-					{/each}
-					{#if otherLanguages.length > 0}
-						<div class="w-44">
-							<LabeledSelect appearance="field" options={languageOptions} bind:value={addLanguage} ariaLabel="Add a language" />
-						</div>
-					{/if}
-				</div>
-				<p class="text-ash-500 mt-2 text-xs">
-					{#if doc.languages.length === 1 && global}
-						Add a language to translate this message. Each server then gets the post in its own language, and the others get the main text.
-					{:else if doc.languages.length === 1}
-						Add a language to translate this message. Members who click a button get the reply in the language they picked in the bot menu.
-					{:else if lang === doc.language}
-						This is the main text. Other languages fall back to it wherever a translation is left empty.
-					{:else}
-						You are translating into {serverLanguageLabel(lang)}. Empty boxes show the {serverLanguageLabel(doc.language)} text as a hint.
-					{/if}
-				</p>
-			</div>
-		</section>
-
-		{#if doc.layout === 'standard'}
-			<section class={PANEL}>
-				<h3 class="text-ash-100 mb-3 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-pen text-violet-400"></i>Text</h3>
-				<LocalizedField
-					bind:value={doc.text}
-					label="What the bot says"
-					max={MESSAGE_LIMITS.text}
-					multiline
-					rows={4}
-					placeholder="Write it like a normal Discord message. Markdown and emoji work."
-				/>
-				<p class="text-ash-500 mt-2 text-xs">
-					{#each MESSAGE_PLACEHOLDERS as placeholder, i (placeholder.token)}
-						{i > 0 ? ' · ' : ''}<code class="text-ash-300">{placeholder.token}</code> {placeholder.label.toLowerCase()}
-					{/each}
-				</p>
-			</section>
-
-			<section class={PANEL}>
-				<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-photo-film text-sky-400"></i>Photos and videos</h3>
-				<p class="text-ash-400 mt-1 mb-3 text-xs">
-					Sent as real attachments, like a member uploading them. Images or {MESSAGE_VIDEO_FORMATS_LABEL}, up to {imageSizeLabel(data.uploadLimit)} each, which is
-					{global ? "Discord's limit for a server without boosts" : "this server's Discord limit"}.
-				</p>
-				<div class="flex flex-col gap-2">
-					{#each doc.attachments as attachment, i (attachment.id)}
-						<div class="bg-ash-700/50 border-ash-600 flex flex-wrap items-center gap-2 rounded-lg border p-2.5">
-							<div class="min-w-0 flex-1 basis-64"><MediaField bind:value={attachment.file} video link={false} /></div>
-							<label class="text-ash-300 flex cursor-pointer items-center gap-2 text-xs">
-								<input type="checkbox" bind:checked={attachment.spoiler} class="accent-ash-300 size-3.5" />Spoiler
-							</label>
-							<button type="button" class={ICON_BUTTON} aria-label="Move up" disabled={i === 0} onclick={() => moveItem(doc.attachments, i, -1)}>
-								<i class="fas fa-arrow-up"></i>
-							</button>
-							<button
-								type="button"
-								class={ICON_BUTTON}
-								aria-label="Move down"
-								disabled={i === doc.attachments.length - 1}
-								onclick={() => moveItem(doc.attachments, i, 1)}
-							>
-								<i class="fas fa-arrow-down"></i>
-							</button>
-							<button type="button" class={ICON_BUTTON} aria-label="Remove file" onclick={() => doc.attachments.splice(i, 1)}
-								><i class="fas fa-trash"></i></button
-							>
-						</div>
-					{/each}
-				</div>
-				{#if doc.attachments.length < MESSAGE_LIMITS.attachments}
-					<button
-						type="button"
-						class="{GHOST_BUTTON} {doc.attachments.length > 0 ? 'mt-3' : ''}"
-						onclick={() => doc.attachments.push({ id: newMessagePartId(), file: '', spoiler: false })}
-					>
-						<i class="fas fa-plus text-emerald-400"></i>Photo or video
-					</button>
-				{/if}
-			</section>
-
-			{#each doc.embeds as embed, i (embed.id)}
-				<section class={PANEL}>
-					<div class="mb-3 flex items-center gap-1">
-						<h3 class="text-ash-100 mr-auto flex items-center gap-2 text-sm font-semibold">
-							<span class="h-4 w-1 rounded-full" style="background: {embed.color || 'var(--color-ash-500)'}"></span>Embed {i + 1}
-						</h3>
-						<button type="button" class={ICON_BUTTON} aria-label="Move up" disabled={i === 0} onclick={() => moveItem(doc.embeds, i, -1)}>
-							<i class="fas fa-arrow-up"></i>
-						</button>
-						<button type="button" class={ICON_BUTTON} aria-label="Move down" disabled={i === doc.embeds.length - 1} onclick={() => moveItem(doc.embeds, i, 1)}>
-							<i class="fas fa-arrow-down"></i>
-						</button>
-						<button type="button" class={ICON_BUTTON} aria-label="Remove embed" onclick={() => doc.embeds.splice(i, 1)}><i class="fas fa-trash"></i></button>
-					</div>
-					<EmbedEditor bind:embed={doc.embeds[i]} />
-				</section>
-			{/each}
-
-			{#each doc.rows as row, i (row.id)}
-				<section class={PANEL}>
-					<div class="mb-3 flex items-center gap-1">
-						<h3 class="text-ash-100 mr-auto flex items-center gap-2 text-sm font-semibold">
-							<i class="fas {row.type === 'buttons' ? 'fa-hand-pointer' : 'fa-list'} text-amber-300"></i>{row.type === 'buttons' ? 'Buttons' : 'Dropdown'}
-						</h3>
-						<button type="button" class={ICON_BUTTON} aria-label="Move up" disabled={i === 0} onclick={() => moveItem(doc.rows, i, -1)}>
-							<i class="fas fa-arrow-up"></i>
-						</button>
-						<button type="button" class={ICON_BUTTON} aria-label="Move down" disabled={i === doc.rows.length - 1} onclick={() => moveItem(doc.rows, i, 1)}>
-							<i class="fas fa-arrow-down"></i>
-						</button>
-						<button type="button" class={ICON_BUTTON} aria-label="Remove row" onclick={() => doc.rows.splice(i, 1)}><i class="fas fa-trash"></i></button>
-					</div>
-					<RowEditor bind:row={doc.rows[i]} />
-				</section>
-			{/each}
-
-			<div class="flex flex-wrap gap-2">
-				{#if doc.embeds.length < MESSAGE_LIMITS.embeds}
-					<button type="button" class={GHOST_BUTTON} onclick={() => doc.embeds.push(newMessageEmbed(data.defaults.color))}>
-						<i class="fas fa-plus text-emerald-400"></i>Embed
-					</button>
-				{/if}
-				{#if doc.rows.length < MESSAGE_LIMITS.rows}
-					<button type="button" class={GHOST_BUTTON} onclick={() => addRow('buttons')}><i class="fas fa-plus text-emerald-400"></i>Row of buttons</button>
-					<button type="button" class={GHOST_BUTTON} onclick={() => addRow('select')}><i class="fas fa-plus text-emerald-400"></i>Dropdown</button>
-				{/if}
-			</div>
-		{:else}
-			<section class={PANEL}>
-				<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-layer-group text-violet-400"></i>Blocks</h3>
-				<p class="text-ash-400 mt-1 mb-3 text-xs">Stack blocks top to bottom. Put them in a container to get the box with a colored edge.</p>
-				<BlockList bind:blocks={doc.blocks} max={MESSAGE_LIMITS.blocks} color={data.defaults.color} />
-			</section>
-		{/if}
+<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+	<div class="min-w-0">
+		<MessageCanvas
+			bind:doc
+			bind:lang
+			bind:mode
+			bind:menuOpen
+			channel={global ? 'bot-updates' : 'your-channel'}
+			server={data.serverName}
+			bot={data.bot}
+			context={markdownContext}
+			resolve={resolveMessage}
+			selected={selection?.id ?? null}
+			{flagged}
+			insideBox={!!box}
+			{uploading}
+			onselect={select}
+			onclear={() => (selection = null)}
+			onadd={add}
+			onfile={addFile}
+			onaddbutton={addButton}
+			onaddinside={(containerId) => {
+				select(containerId);
+				menuOpen = true;
+			}}
+			onremovelanguage={(code) => (confirmLanguage = code)}
+		/>
 	</div>
 
-	<div class="flex min-w-0 flex-col gap-4 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-		<section class={PANEL}>
-			<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-eye text-cyan-400"></i>Preview</h3>
-			<p class="text-ash-400 mt-1 mb-3 text-xs">Click a button or dropdown to see what a member gets.</p>
-			<MessagePreview {doc} {lang} server={data.serverName} bot={data.bot} context={markdownContext} resolve={resolveMessage} />
-		</section>
+	<aside
+		class="{PANEL} min-w-0 {editingPart
+			? 'fixed inset-x-0 bottom-0 z-40 max-h-[55vh] overflow-y-auto rounded-b-none shadow-2xl lg:sticky lg:inset-x-auto lg:top-4 lg:bottom-auto lg:z-auto lg:max-h-[calc(100vh-2rem)] lg:rounded-xl lg:shadow-none'
+			: 'lg:sticky lg:top-4'}"
+	>
+		{#if editingPart}
+			<PartInspector bind:doc bind:selection {nonce} />
+		{:else}
+			<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-wand-magic-sparkles text-fuchsia-300"></i>How it works</h3>
+			<ul class="mt-3 flex flex-col gap-2.5">
+				{#each STEPS as step (step.icon)}
+					<li class="text-ash-300 flex items-start gap-2.5 text-sm">
+						<span class="bg-ash-700 text-ash-200 grid size-6 shrink-0 place-items-center rounded-md text-[11px]"><i class="fas {step.icon}"></i></span>
+						<span>{step.text}</span>
+					</li>
+				{/each}
+			</ul>
+			{#if lang !== doc.language}
+				<p class="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 p-2.5 text-xs text-sky-100">
+					You are translating into {serverLanguageLabel(lang)}. Anything you leave empty shows the {serverLanguageLabel(doc.language)} text.
+				</p>
+			{/if}
+		{/if}
 
-		{#if problems.length > 0}
-			<section class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 sm:p-4">
+		{#if issues.length > 0 && !editingPart}
+			<div class="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
 				<p class="flex items-center gap-2 text-sm font-semibold text-amber-200"><i class="fas fa-triangle-exclamation text-amber-400"></i>Fix before saving</p>
-				<ul class="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-100/90">
-					{#each problems as problem (problem)}
-						<li>{problem}</li>
+				<ul class="mt-2 flex flex-col gap-1">
+					{#each issues as issue (issue.text)}
+						<li>
+							<button
+								type="button"
+								disabled={!issue.part}
+								onclick={() => openIssue(issue)}
+								class="w-full rounded-md px-1.5 py-1 text-left text-xs text-amber-100/90 enabled:hover:bg-amber-500/15"
+							>
+								{issue.text}{#if issue.part}<i class="fas fa-arrow-right ml-1.5 text-[10px] opacity-70"></i>{/if}
+							</button>
+						</li>
 					{/each}
 				</ul>
-			</section>
+			</div>
 		{/if}
-
-		<section class={PANEL}>
-			<h3 class="text-ash-100 mb-3 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-paper-plane text-emerald-400"></i>Send</h3>
-			{#if messageId === null}
-				<p class="text-ash-400 text-sm">Save the message first, then {global ? 'send it to every server' : 'pick where the bot posts it'}.</p>
-			{:else}
-				<div class="flex flex-col gap-3">
-					{#if global}
-						<p class="text-ash-400 text-xs">
-							Goes to every server on all of your bots, in each server's <strong class="text-ash-200">Bot Updates Channel</strong> and in that server's language.
-							Servers without that channel are skipped.
-						</p>
-					{:else}
-						<div>
-							<span class="{LABEL} mb-1.5 block">Channels</span>
-							<ChannelPicker
-								channels={data.channels}
-								categories={data.categories}
-								value={channelIds}
-								multi={true}
-								placeholder="Select channels..."
-								onchange={(value) => (channelIds = value as string[])}
-							/>
-						</div>
-					{/if}
-					<div>
-						<span class="{LABEL} mb-1.5 block">{global ? 'Ping role groups with it' : 'Ping roles with it'}</span>
-						<RolePicker roles={mentionRoles as any} value={mentionIds} placeholder="Nobody" onchange={(value) => (mentionIds = value as string[])} />
-						{#if global}
-							<p class="text-ash-500 mt-1.5 text-[11px]">Each server pings its own admin and staff roles. Servers with no matching role are not pinged.</p>
-						{/if}
-					</div>
-					{#if !global && doc.languages.length > 1}
-						<div>
-							<span class="{LABEL} mb-1.5 block">Post it in</span>
-							<LabeledSelect appearance="field" options={sendLanguageOptions} bind:value={sendLanguage} ariaLabel="Language to post in" />
-						</div>
-					{/if}
-					<button
-						type="button"
-						onclick={send}
-						disabled={sending || saving || problems.length > 0}
-						class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<i class="fas {sending ? 'fa-spinner fa-spin' : 'fa-paper-plane'} text-emerald-300"></i>
-						{#if sending}Sending...{:else if global}{dirty ? 'Save and send to every server' : 'Send to every server'}{:else}{dirty
-								? 'Save and send'
-								: 'Send'}{/if}
-					</button>
-				</div>
-			{/if}
-		</section>
-
-		{#if data.posts.length > 0}
-			<section class={PANEL}>
-				<div class="flex items-center gap-2">
-					<h3 class="text-ash-100 mr-auto flex items-center gap-2 text-sm font-semibold"><i class="fas fa-thumbtack text-amber-300"></i>Posted copies</h3>
-					{#if global}
-						<button type="button" class={GHOST_BUTTON} disabled={removing !== null} onclick={() => (confirmPost = 'all')}>
-							<i class="fas {removing === 'all' ? 'fa-spinner fa-spin' : 'fa-trash'} text-red-300"></i>Delete from every server
-						</button>
-					{/if}
-				</div>
-				<p class="text-ash-400 mt-1 mb-3 text-xs">Saving this message edits every copy below.</p>
-				<div class="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
-					{#each data.posts as post (post.id)}
-						<div class="bg-ash-700/50 border-ash-600 flex items-center gap-2 rounded-lg border px-2.5 py-2">
-							<div class="min-w-0 flex-1">
-								<p class="text-ash-100 truncate text-sm">{post.server_name ? `${post.server_name} · ` : ''}#{post.channel_name}</p>
-								<p class="text-ash-400 truncate text-xs">
-									<LocalTime value={post.created_at} />{doc.languages.length > 1 ? ` · ${serverLanguageLabel(post.language)}` : ''}
-								</p>
-							</div>
-							<a
-								href="https://discord.com/channels/{post.guild_id}/{post.channel_id}/{post.discord_message_id}"
-								target="_blank"
-								rel="noreferrer"
-								class={ICON_BUTTON}
-								aria-label="Open in Discord"
-								title="Open in Discord"
-							>
-								<i class="fas fa-arrow-up-right-from-square"></i>
-							</a>
-							<button
-								type="button"
-								class={ICON_BUTTON}
-								aria-label="Remove from #{post.channel_name}"
-								title="Delete from Discord"
-								disabled={removing !== null}
-								onclick={() => (confirmPost = post)}
-							>
-								<i class="fas {removing === post.id ? 'fa-spinner fa-spin' : 'fa-trash'}"></i>
-							</button>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
-	</div>
+	</aside>
 </div>
+
+{#if editingPart}
+	<div class="h-[55vh] lg:hidden"></div>
+{/if}
+
+<SendDialog
+	bind:open={
+		() => sendOpen,
+		(next) => {
+			sendOpen = next;
+			if (!next && page.url.searchParams.has('send')) goto(page.url.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+		}
+	}
+	{global}
+	channels={data.channels}
+	categories={data.categories}
+	{mentionRoles}
+	languages={doc.languages}
+	posts={data.posts}
+	{sending}
+	{removing}
+	onsend={send}
+	onremove={(post) => (confirmPost = post)}
+/>
 
 <ConfirmModal
 	open={confirmDelete}

@@ -50,6 +50,36 @@ export const MESSAGE_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 
 const MB = 1024 * 1024;
 
+const UNSAFE_ROLE_PERMISSION_BITS = {
+	kickMembers: 1,
+	banMembers: 2,
+	administrator: 3,
+	manageChannels: 4,
+	manageGuild: 5,
+	viewAuditLog: 7,
+	manageMessages: 13,
+	mentionEveryone: 17,
+	muteMembers: 22,
+	deafenMembers: 23,
+	moveMembers: 24,
+	manageNicknames: 27,
+	manageRoles: 28,
+	manageWebhooks: 29,
+	manageExpressions: 30,
+	manageEvents: 33,
+	manageThreads: 34,
+	moderateMembers: 40
+} as const;
+const UNSAFE_ROLE_PERMISSIONS = Object.values(UNSAFE_ROLE_PERMISSION_BITS).reduce((mask, bit) => mask | (1n << BigInt(bit)), 0n);
+
+export function isSelfAssignableRole(permissions: unknown): boolean {
+	try {
+		return (BigInt(String(permissions ?? '0') || '0') & UNSAFE_ROLE_PERMISSIONS) === 0n;
+	} catch {
+		return false;
+	}
+}
+
 export function messageUploadLimit(boostLevel: unknown): number {
 	const level = Number(boostLevel) || 0;
 	return (level >= 3 ? 100 : level >= 2 ? 50 : 20) * MB;
@@ -262,14 +292,14 @@ export function newMessageBlock(type: MessageBlockType, color = ''): MessageBloc
 	return { id, type: 'select', placeholder: {}, multiple: false, options: [newMessageOption()] };
 }
 
-export function newMessageDoc(language: ServerLanguage, color: string, footer: string): MessageDoc {
+export function newMessageDoc(language: ServerLanguage): MessageDoc {
 	return {
 		layout: 'standard',
 		language,
 		languages: [language],
 		text: {},
 		attachments: [],
-		embeds: [newMessageEmbed(color, footer ? { [language]: footer } : {})],
+		embeds: [],
 		rows: [],
 		blocks: []
 	};
@@ -720,20 +750,23 @@ function embedLength(embed: any): number {
 	);
 }
 
-function buttonProblems(button: MessageButton, where: string, base: ServerLanguage): string[] {
-	const out: string[] = [];
+export type MessageIssue = { part: string | null; text: string };
+
+function buttonIssues(button: MessageButton, where: string, base: ServerLanguage): MessageIssue[] {
+	const out: MessageIssue[] = [];
+	const add = (text: string) => out.push({ part: button.id, text });
 	const label = pickText(button.label, base, base).trim();
-	if (!label && !button.emoji) out.push(`${where} needs a label or an emoji.`);
-	if (button.emoji && !parseMessageEmoji(button.emoji)) out.push(`${where}: "${button.emoji}" is not an emoji.`);
+	if (!label && !button.emoji) add(`${where} needs a label or an emoji.`);
+	if (button.emoji && !parseMessageEmoji(button.emoji)) add(`${where}: "${button.emoji}" is not an emoji.`);
 	if (button.style === 'link') {
-		if (!button.url) out.push(`${where} needs a link that starts with https://.`);
+		if (!button.url) add(`${where} needs a link that starts with https://.`);
 	} else {
-		out.push(...actionProblems(button.actions, where));
+		for (const text of actionIssues(button.actions, where)) add(text);
 	}
 	return out;
 }
 
-function actionProblems(actions: MessageAction[], where: string): string[] {
+function actionIssues(actions: MessageAction[], where: string): string[] {
 	if (actions.length === 0) return [`${where}: pick what happens when it is clicked.`];
 	const out: string[] = [];
 	for (const action of actions) {
@@ -743,64 +776,66 @@ function actionProblems(actions: MessageAction[], where: string): string[] {
 	return out;
 }
 
-function rowProblems(block: RowBlock, where: string, base: ServerLanguage): string[] {
+function rowIssues(block: RowBlock, where: string, base: ServerLanguage): MessageIssue[] {
 	if (block.type === 'buttons') {
-		if (block.buttons.length === 0) return [`${where} has no buttons. Add one or remove the row.`];
-		return block.buttons.flatMap((button, i) => buttonProblems(button, `${where}, button ${i + 1}`, base));
+		if (block.buttons.length === 0) return [{ part: block.id, text: `${where} has no buttons. Add one or remove the row.` }];
+		return block.buttons.flatMap((button, i) => buttonIssues(button, `${where}, button ${i + 1}`, base));
 	}
-	if (block.options.length === 0) return [`${where} has no choices. Add one or remove the dropdown.`];
+	if (block.options.length === 0) return [{ part: block.id, text: `${where} has no choices. Add one or remove the dropdown.` }];
 	return block.options.flatMap((option, i) => {
 		const at = `${where}, choice ${i + 1}`;
 		const out: string[] = [];
 		if (!pickText(option.label, base, base).trim()) out.push(`${at} needs a label.`);
 		if (option.emoji && !parseMessageEmoji(option.emoji)) out.push(`${at}: "${option.emoji}" is not an emoji.`);
-		out.push(...actionProblems(option.actions, at));
-		return out;
+		out.push(...actionIssues(option.actions, at));
+		return out.map((text) => ({ part: block.id, text }));
 	});
 }
 
-function innerProblems(block: InnerBlock, where: string, base: ServerLanguage): string[] {
-	if (block.type === 'text') return pickText(block.text, base, base).trim() ? [] : [`${where} is empty. Write something or remove it.`];
+function innerIssues(block: InnerBlock, where: string, base: ServerLanguage): MessageIssue[] {
+	const at = (text: string): MessageIssue => ({ part: block.id, text });
+	if (block.type === 'text') return pickText(block.text, base, base).trim() ? [] : [at(`${where} is empty. Write something or remove it.`)];
 	if (block.type === 'section') {
-		const out: string[] = [];
-		if (!pickText(block.text, base, base).trim()) out.push(`${where} needs text.`);
-		if (block.accessory === 'thumbnail' && !block.image) out.push(`${where} needs an image, or switch it to a button.`);
-		if (block.accessory === 'button') out.push(...buttonProblems(block.button, `${where}, button`, base));
+		const out: MessageIssue[] = [];
+		if (!pickText(block.text, base, base).trim()) out.push(at(`${where} needs text.`));
+		if (block.accessory === 'thumbnail' && !block.image) out.push(at(`${where} needs an image, or switch it to a button.`));
+		if (block.accessory === 'button') out.push(...buttonIssues(block.button, `${where}, button`, base).map((issue) => ({ ...issue, part: block.id })));
 		return out;
 	}
 	if (block.type === 'gallery') {
-		if (block.items.length === 0) return [`${where} is empty. Add an image or video, or remove it.`];
-		return block.items.flatMap((item, i) => (item.media ? [] : [`${where}, item ${i + 1} is missing. Upload an image or video, or paste a link.`]));
+		if (block.items.length === 0) return [at(`${where} is empty. Add an image or video, or remove it.`)];
+		return block.items.flatMap((item, i) => (item.media ? [] : [at(`${where}, item ${i + 1} is missing. Upload an image or video, or paste a link.`)]));
 	}
 	if (block.type === 'separator') return [];
-	return rowProblems(block, where, base);
+	return rowIssues(block, where, base);
 }
 
-export function messageDocProblems(doc: MessageDoc): string[] {
-	const out: string[] = [];
+export function messageDocIssues(doc: MessageDoc): MessageIssue[] {
+	const out: MessageIssue[] = [];
 	const base = doc.language;
 	const dummy = { messageId: 1, server: '', image: (value: string) => value };
 
 	if (doc.layout === 'components') {
-		if (doc.blocks.length === 0) out.push('Add at least one block.');
+		if (doc.blocks.length === 0) out.push({ part: null, text: 'Press + to add your first block.' });
 		doc.blocks.forEach((block, i) => {
 			const where = `Block ${i + 1}`;
-			if (block.type !== 'container') return out.push(...innerProblems(block, where, base));
-			if (block.blocks.length === 0) return out.push(`${where} is an empty container. Add a block inside or remove it.`);
-			block.blocks.forEach((inner, j) => out.push(...innerProblems(inner, `${where}, part ${j + 1}`, base)));
+			if (block.type !== 'container') return out.push(...innerIssues(block, where, base));
+			if (block.blocks.length === 0) return out.push({ part: block.id, text: `${where} is an empty box. Add something inside or remove it.` });
+			block.blocks.forEach((inner, j) => out.push(...innerIssues(inner, `${where}, part ${j + 1}`, base)));
 		});
 	} else {
 		doc.embeds.forEach((embed, i) => {
 			const where = `Embed ${i + 1}`;
-			if (!embedHasContent(embed, base, base)) out.push(`${where} is empty. Give it a title or description, or remove it.`);
+			if (!embedHasContent(embed, base, base)) out.push({ part: embed.id, text: `${where} is empty. Give it a title or description, or remove it.` });
 			embed.fields.forEach((field, j) => {
-				if (!pickText(field.name, base, base).trim() || !pickText(field.value, base, base).trim())
-					out.push(`${where}, field ${j + 1} needs a name and a value.`);
+				if (!pickText(field.name, base, base).trim() || !pickText(field.value, base, base).trim()) {
+					out.push({ part: embed.id, text: `${where}, field ${j + 1} needs a name and a value.` });
+				}
 			});
 		});
-		doc.rows.forEach((row, i) => out.push(...rowProblems(row, `Row ${i + 1}`, base)));
+		doc.rows.forEach((row, i) => out.push(...rowIssues(row, `Row ${i + 1}`, base)));
 		if (!pickText(doc.text, base, base).trim() && doc.embeds.length === 0 && doc.rows.length === 0 && doc.attachments.length === 0) {
-			out.push('Write something, attach a file or add an embed.');
+			out.push({ part: null, text: 'Write something, or press + to add an embed, a photo or buttons.' });
 		}
 	}
 
@@ -810,20 +845,32 @@ export function messageDocProblems(doc: MessageDoc): string[] {
 		if (payload.v2) {
 			const length = messagePayloadTextLength(payload);
 			if (length > MESSAGE_LIMITS.blockText) {
-				out.push(`All text together is ${length.toLocaleString()} characters${suffix}. Discord allows ${MESSAGE_LIMITS.blockText.toLocaleString()}.`);
+				out.push({
+					part: null,
+					text: `All text together is ${length.toLocaleString()} characters${suffix}. Discord allows ${MESSAGE_LIMITS.blockText.toLocaleString()}.`
+				});
 			}
 			const total = countComponents(payload.components);
-			if (total > MESSAGE_LIMITS.components && lang === base)
-				out.push(`This uses ${total} components. Discord allows ${MESSAGE_LIMITS.components} per message.`);
+			if (total > MESSAGE_LIMITS.components && lang === base) {
+				out.push({ part: null, text: `This uses ${total} components. Discord allows ${MESSAGE_LIMITS.components} per message.` });
+			}
 		} else {
 			const length = payload.embeds.reduce((sum, embed) => sum + embedLength(embed), 0);
 			if (length > MESSAGE_LIMITS.embedTotal) {
-				out.push(`The embeds add up to ${length.toLocaleString()} characters${suffix}. Discord allows ${MESSAGE_LIMITS.embedTotal.toLocaleString()}.`);
+				out.push({
+					part: null,
+					text: `The embeds add up to ${length.toLocaleString()} characters${suffix}. Discord allows ${MESSAGE_LIMITS.embedTotal.toLocaleString()}.`
+				});
 			}
 		}
 	}
 
-	return [...new Set(out)];
+	const seen = new Set<string>();
+	return out.filter((issue) => !seen.has(issue.text) && seen.add(issue.text));
+}
+
+export function messageDocProblems(doc: MessageDoc): string[] {
+	return messageDocIssues(doc).map((issue) => issue.text);
 }
 
 export function messageSummary(doc: MessageDoc): string {

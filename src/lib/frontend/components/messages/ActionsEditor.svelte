@@ -17,7 +17,10 @@
 
 	function roleOptions(current: string) {
 		const taken = new Set(actions.flatMap((action) => (action.type === 'role' && action.role_id !== current ? [action.role_id] : [])));
-		return [{ value: '', label: 'Pick a role' }, ...editor.roles.filter((role) => !taken.has(role.id)).map((role) => ({ value: role.id, label: role.name }))];
+		return [
+			{ value: '', label: 'Pick a role' },
+			...editor.roles.filter((role) => role.assignable !== false && !taken.has(role.id)).map((role) => ({ value: role.id, label: role.name }))
+		];
 	}
 </script>
 
@@ -65,6 +68,9 @@
 				</button>
 			{/if}
 		</div>
+	{/if}
+	{#if actions.some((action) => action.type === 'role') && editor.roles.some((role) => role.assignable === false)}
+		<p class="text-ash-500 mt-2 text-xs">Roles that can moderate or manage the server are left out, so a click can never hand those out.</p>
 	{/if}
 	{#if actions.some((action) => action.type === 'show') && editor.messages.length === 0}
 		<p class="text-ash-500 mt-2 text-xs">There is no saved message to show yet. Save this one, create the message you want to show, then pick it here.</p>

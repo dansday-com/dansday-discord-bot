@@ -4,7 +4,7 @@ import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { SERVER_SETTINGS, accountOwnsServer, canEditServerSettings } from '$lib/frontend/panelServer.js';
 import { DEFAULT_LEVELING_SETTINGS } from '$lib/backend/config.js';
-import { levelRewardsFromSettings } from '$lib/level-rewards.js';
+import { rewardsFromSettings } from '$lib/rewards.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			baseXp: Number(req.BASE_XP) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
 			multiplier: Number(req.MULTIPLIER) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.MULTIPLIER
 		},
-		rules: levelRewardsFromSettings((mainSettings as any)?.settings),
+		rules: rewardsFromSettings((mainSettings as any)?.settings),
 		levelCounts: [...levelCounts.entries()].sort((a, b) => a[0] - b[0]),
 		roles: (roles as any[])
 			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))

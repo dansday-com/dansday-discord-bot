@@ -17,7 +17,7 @@ import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
 import { serverTranslator } from '../i18n.js';
-import { syncGuildLevelRewards, syncMemberLevelRewards } from './levelRewards.js';
+import { syncGuildRewards, syncMemberRewards } from './rewards.js';
 
 const recentMessages = new Map();
 
@@ -509,7 +509,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		await logger.log(`⭐ Level stored update (${reason}): ${memberName} -> level ${expectedLevel} in ${server.name}`);
 		const guild = clientInstance?.guilds.cache.get(guildId);
 		if (guild && dbMember.discord_member_id) {
-			rewardRoleIds = await syncMemberLevelRewards(guild, String(dbMember.discord_member_id), expectedLevel);
+			rewardRoleIds = await syncMemberRewards(guild, String(dbMember.discord_member_id), expectedLevel);
 		}
 	}
 
@@ -1308,7 +1308,7 @@ async function recalculateAllMemberLevels(client) {
 		await logger.log(`✅ Level recalculation complete: ${totalRecalculated} member(s) checked, ${totalFixed} level(s) corrected`);
 
 		for (const server of servers) {
-			if (client.guilds.cache.has(server.discord_server_id)) await syncGuildLevelRewards(client, server.discord_server_id);
+			if (client.guilds.cache.has(server.discord_server_id)) await syncGuildRewards(client, server.discord_server_id);
 		}
 	} catch (error) {
 		await logger.log(`❌ Error during level recalculation: ${error.message}`);
@@ -1409,7 +1409,7 @@ async function handleRewardRejoin(member: any) {
 		const server = await getServerForCurrentBot(member.guild.id);
 		const stats = await db.getMemberLevelByDiscordId(server.id, member.id);
 		const level = Number(stats?.level) || 1;
-		if (level > 1) await syncMemberLevelRewards(member.guild, member.id, level);
+		if (level > 1) await syncMemberRewards(member.guild, member.id, level);
 	} catch (_) {}
 }
 

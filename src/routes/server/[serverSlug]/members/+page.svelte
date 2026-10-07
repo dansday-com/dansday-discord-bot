@@ -13,6 +13,11 @@
 
 	let { data }: PageProps = $props();
 
+	const serverName = $derived(data.server.name || data.server.slug);
+	const metaDescription = $derived(
+		`Member directory for ${serverName} on Discord: ${(data.members ?? []).length.toLocaleString('en-US')} members with their rank, level, XP, messages, voice time and top role.`
+	);
+
 	type RoleRgb = { r: number; g: number; b: number };
 
 	function parseRoleColorRaw(raw: string | null | undefined): RoleRgb | null {
@@ -172,10 +177,13 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot</title>
-	<meta name="description" content="Members, ranks, XP, and voice stats for {data.server.name || data.server.slug}." />
-	<meta property="og:title" content="{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot" />
-	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
+	<title>{serverName} Members | {APP_NAME} Discord Bot</title>
+	<meta name="description" content={metaDescription} />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={APP_NAME} />
+	<meta property="og:url" content={data.canonicalUrl} />
+	<meta property="og:title" content="{serverName} Members | {APP_NAME} Discord Bot" />
+	<meta property="og:description" content={metaDescription} />
 	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 

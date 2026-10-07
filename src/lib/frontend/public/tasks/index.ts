@@ -267,14 +267,14 @@ export async function loadTasksShared(opts: {
 	member: any;
 	itemsEnabled: boolean;
 	minigamesEnabled: boolean;
-	assetsEnabled?: boolean;
+	marketEnabled?: boolean;
 	tzOffsetMin: number;
 	nowMs?: number;
 	generate?: boolean;
 	tzKnown?: boolean;
 }) {
 	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
-	const assetsEnabled = opts.assetsEnabled === true;
+	const marketEnabled = opts.marketEnabled === true;
 	const nowMs = opts.nowMs ?? Date.now();
 	const nowKey = minuteKeyFor(nowMs);
 	const [latestDaily, latestWeekly] = await Promise.all([
@@ -311,7 +311,7 @@ export async function loadTasksShared(opts: {
 		levelingEnabled: true,
 		minigamesEnabled,
 		itemsEnabled,
-		assetsEnabled,
+		marketEnabled,
 		baselines,
 		activeDays: daysActive(member.member_since),
 		effectCosts: cheapestByEffect(catalog),

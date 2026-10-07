@@ -4,7 +4,7 @@
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { MAX_LEVEL_REWARDS, MAX_REWARD_LEVEL, xpForLevel } from '$lib/level-rewards.js';
+	import { MAX_REWARDS, MAX_REWARD_LEVEL, xpForLevel } from '$lib/rewards.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -107,7 +107,7 @@
 	{/if}
 
 	<section class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold"><i class="fas fa-trophy text-yellow-400"></i>Level rewards</h3>
+		<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold"><i class="fas fa-trophy text-yellow-400"></i>Rewards</h3>
 		<p class="text-ash-400 mt-1 mb-4 text-xs">
 			Members get the role when they reach the level, and see this list on their Rewards tab. The bot gives and takes back the roles on this list, so don't hand
 			them out yourself.
@@ -152,7 +152,7 @@
 			{/each}
 		</div>
 
-		{#if data.canEdit && rows.length < MAX_LEVEL_REWARDS}
+		{#if data.canEdit && rows.length < MAX_REWARDS}
 			<button type="button" onclick={addRow} class="text-ash-200 border-ash-600 hover:bg-ash-600 mt-3 rounded-lg border px-3 py-1.5 text-xs">
 				<i class="fas fa-plus mr-1 text-emerald-400"></i>Add reward
 			</button>

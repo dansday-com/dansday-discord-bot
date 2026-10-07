@@ -1,7 +1,7 @@
 import db from '../../../database.js';
 import { type PublicStatisticsSnapshot, getCachedPublicStatistics, setCachedPublicStatistics } from './cache.js';
 import { shapePublicStatisticsFromOverview } from './shape.js';
-import { loadAssetPriceMap } from '../assets/index.js';
+import { loadAssetPriceMap } from '../market/index.js';
 
 type Listener = (payload: PublicStatisticsSnapshot) => void;
 

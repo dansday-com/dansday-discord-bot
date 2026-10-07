@@ -152,7 +152,7 @@ Each member signs in to their own account on those same pages.
 <td width="33%"><img src=".github/screenshots/shop-items.png" alt="XP shop with steal, bomb, boost and shield items, prices and timed availability"></td>
 </tr>
 <tr>
-<td><strong>Overview</strong> — where their XP came from, and who they earn it with.</td>
+<td><strong>Profile</strong> — where their XP came from, and who they earn it with.</td>
 <td><strong>Tasks & streaks</strong> — 18 daily and 18 weekly, plus check-in.</td>
 <td><strong>Shop</strong> — buy and activate items priced in XP.</td>
 </tr>
@@ -160,12 +160,12 @@ Each member signs in to their own account on those same pages.
 
 <table>
 <tr>
-<td width="33%"><img src=".github/screenshots/assets-market.png" alt="Assets market listing top 50 coins at live prices with sparklines"></td>
+<td width="33%"><img src=".github/screenshots/assets-market.png" alt="Market listing top 50 coins at live prices with sparklines"></td>
 <td width="33%"><img src=".github/screenshots/minigames.png" alt="Minigames tab with the Gamble wager game"></td>
 <td width="33%"><img src=".github/screenshots/history.png" alt="History feed of task rewards, chat and voice XP, gambles and item activations"></td>
 </tr>
 <tr>
-<td><strong>Assets</strong> — live CoinGecko prices, no real money.</td>
+<td><strong>Market</strong> — live CoinGecko prices, no real money.</td>
 <td><strong>Minigames</strong> — wager XP in Gamble, climb the free Tower or rebuild colors from memory.</td>
 <td><strong>History</strong> — every XP event, filterable by source.</td>
 </tr>
@@ -207,13 +207,13 @@ Each member signs in to their own account on those same pages.
 
 - **Account page** - The Account button in the Discord menu opens the member's own page. XP sources, a 14-day XP flow, voice buddies, bag, tasks, portfolio, minigames and history. No signup, no password.
 - **Member themes** - Each member sets a background image and an accent colour read from it, then spins 1,000 XP for an animated effect. It repaints their account, cards, their leaderboard row and their members-list card.
-- **Public** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets, Daily tasks and Server invite are sub-toggles, all on by default. The server join page takes its own background image, tone and animated effect. Off means everything public goes dark.
+- **Public** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Market, Daily tasks and Server invite are sub-toggles, all on by default. The server join page takes its own background image, tone and animated effect. Off means everything public goes dark.
 
 ### XP economy & PvP
 
 - **Items & XP economy** - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
   - 🍀 **Luck** raises steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.
-- **Assets market** - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
+- **Market** - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
 - **Minigames** - 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level. 🗼 **Tower**: free, unlimited climbs up a tower of unknown height. Odds start at 75%, drop each floor and each climb, and reset 24 hours after the first climb. A trap only drops the unbanked prize. 🎨 **Color**: free, unlimited games of five rounds. A color shows for 5 seconds, then you rebuild it from memory on hue, saturation and brightness sliders. Each round is scored out of 10 by how close the match is and pays that much XP, up to 50 a game.
 
 ### Tasks, streaks & check-in

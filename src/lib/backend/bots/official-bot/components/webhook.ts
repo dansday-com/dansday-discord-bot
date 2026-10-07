@@ -698,16 +698,16 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'moderation_bulk failed', details: bulkErr.message }));
 					}
-				} else if (payload.type === 'sync_level_rewards') {
+				} else if (payload.type === 'sync_rewards') {
 					try {
-						const { syncGuildLevelRewards } = await import('./levelRewards.js');
-						const result = await syncGuildLevelRewards(client, payload.guild_id);
+						const { syncGuildRewards } = await import('./rewards.js');
+						const result = await syncGuildRewards(client, payload.guild_id);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
 					} catch (rewardErr: any) {
-						await logger.log(`❌ sync_level_rewards failed: ${rewardErr.message}`);
+						await logger.log(`❌ sync_rewards failed: ${rewardErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'sync_level_rewards failed', details: rewardErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'sync_rewards failed', details: rewardErr.message }));
 					}
 				} else if (payload.type === 'use_item') {
 					try {
@@ -832,7 +832,7 @@ async function handleWebhookRequest(req, res) {
 					}
 				} else if (payload.type === 'asset_buy') {
 					try {
-						const { handleAssetBuy } = await import('./assetMarket.js');
+						const { handleAssetBuy } = await import('./market.js');
 						const result = await handleAssetBuy(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
@@ -843,7 +843,7 @@ async function handleWebhookRequest(req, res) {
 					}
 				} else if (payload.type === 'asset_sell') {
 					try {
-						const { handleAssetSell } = await import('./assetMarket.js');
+						const { handleAssetSell } = await import('./market.js');
 						const result = await handleAssetSell(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
@@ -854,7 +854,7 @@ async function handleWebhookRequest(req, res) {
 					}
 				} else if (payload.type === 'asset_search') {
 					try {
-						const { searchAssets } = await import('./assetMarket.js');
+						const { searchAssets } = await import('./market.js');
 						const results = await searchAssets(String(payload.query || ''));
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: true, results }));

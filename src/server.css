@@ -37,11 +37,11 @@
 @source './lib/frontend/components/public/ConfirmModal.svelte';
 @source './lib/frontend/components/public/EmptyState.svelte';
 @source './lib/frontend/components/public/GameModal.svelte';
-@source './lib/frontend/components/public/LevelRewards.svelte';
 @source './lib/frontend/components/public/MetricTabs.svelte';
 @source './lib/frontend/components/public/OutcomeModal.svelte';
 @source './lib/frontend/components/public/RankAvatar.svelte';
 @source './lib/frontend/components/public/ReelStrip.svelte';
+@source './lib/frontend/components/public/Rewards.svelte';
 @source './lib/frontend/components/public/TargetPicker.svelte';
 @source './lib/frontend/components/public/WagerPicker.svelte';
 @source './lib/frontend/components/public/index.ts';
@@ -68,7 +68,8 @@
 @source './lib/invites.ts';
 @source './lib/items.ts';
 @source './lib/legal.ts';
-@source './lib/level-rewards.ts';
+@source './lib/rewards.ts';
+@source './lib/structuredData.ts';
 @source './lib/themes.ts';
 @source './lib/url.ts';
 @source './lib/utils/datetime.ts';

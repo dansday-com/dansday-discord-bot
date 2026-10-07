@@ -10,7 +10,7 @@
 <PageShell width="flush">
 	<section class="py-9 sm:py-11 lg:py-14">
 		<div class="mb-6 text-center sm:mb-7">
-			<h2 class="text-base-content text-[22px] font-extrabold tracking-tight sm:text-[26px]">{doc.heading}</h2>
+			<h1 class="text-base-content text-[22px] font-extrabold tracking-tight sm:text-[26px]">{doc.heading}</h1>
 			<p class="text-base-content/60 mx-auto mt-2 max-w-2xl text-sm leading-relaxed">{doc.intro}</p>
 		</div>
 

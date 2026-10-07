@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		member: actor,
 		itemsEnabled: publicSubfeatureEnabled(psSettings, 'items'),
 		minigamesEnabled: publicSubfeatureEnabled(psSettings, 'minigames'),
-		assetsEnabled: publicSubfeatureEnabled(psSettings, 'assets'),
+		marketEnabled: publicSubfeatureEnabled(psSettings, 'market'),
 		tzOffsetMin: Number(body.tz_offset) || 0
 	}).catch(() => null);
 

@@ -4,7 +4,7 @@ import { itemAvailability, effectSummary, formatDuration, getItemEffect } from '
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
-import { LEVEL_REWARDS_CONFIG, getLevelingSettings, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import { REWARDS_CONFIG, getLevelingSettings, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
 import { COLOR_MAX_TOTAL } from '../../../../color.js';
 import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -124,7 +124,7 @@ export async function runServerStatsTool(botId, guildId) {
 			biggest_steal: s.items_biggest_steal
 		},
 		minigames: { plays: s.minigames_plays, wins: s.minigames_wins, wagered: s.minigames_wagered, biggest_win: s.minigames_biggest_win },
-		assets: { traders: s.assets_traders, open_positions: s.assets_open_positions, invested: s.assets_invested, market_value: s.assets_market_value },
+		market: { traders: s.assets_traders, open_positions: s.assets_open_positions, invested: s.assets_invested, market_value: s.assets_market_value },
 		giveaways: { total: s.giveaways_total, active: s.giveaways_active, entrants: s.giveaways_entrants },
 		quests: { claimed: s.quests_claimed, participants: s.quests_participants },
 		staff: { reviews: s.staff_reviews, average_rating: s.staff_avg_rating }
@@ -162,7 +162,7 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 
 	const [levelingOn, rewardRules, roles] = await Promise.all([
 		isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling),
-		LEVEL_REWARDS_CONFIG.getRules(guildId).catch(() => null),
+		REWARDS_CONFIG.getRules(guildId).catch(() => null),
 		db.getRoles(ctx.server.id).catch(() => [])
 	]);
 	const roleNames = new Map((roles as any[]).map((r) => [String(r.discord_role_id), String(r.name ?? '')]));

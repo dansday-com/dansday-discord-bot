@@ -11,7 +11,7 @@
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { effectVariant } from '$lib/effects.js';
-	import { xpForLevel as levelThreshold } from '$lib/level-rewards.js';
+	import { xpForLevel as levelThreshold } from '$lib/rewards.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -23,17 +23,17 @@
 	const readOnly = false;
 	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isOverview = $derived(/\/account\/overview\/information\//.test(pathNorm));
+	const isStats = $derived(/\/account\/profile\/stats\//.test(pathNorm));
 	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
-	const isGuide = $derived(/\/account\/overview\/guide\//.test(pathNorm));
-	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
+	const isGuide = $derived(/\/account\/profile\/guide\//.test(pathNorm));
+	const isMarket = $derived(/\/account\/market\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
-	const isTask = $derived(/\/account\/task\//.test(pathNorm));
-	const isRewards = $derived(/\/account\/overview\/rewards\//.test(pathNorm));
-	const isThemes = $derived(/\/account\/overview\/themes\//.test(pathNorm));
-	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask && !isRewards && !isThemes);
+	const isTasks = $derived(/\/account\/tasks\//.test(pathNorm));
+	const isRewards = $derived(/\/account\/profile\/rewards\//.test(pathNorm));
+	const isThemes = $derived(/\/account\/profile\/themes\//.test(pathNorm));
+	const isItems = $derived(!isStats && !isHistory && !isGuide && !isMarket && !isMinigames && !isTasks && !isRewards && !isThemes);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/(?:items|assets|minigames|overview)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:items|market|minigames|profile)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 	const historyCat = $derived.by(() => {
@@ -43,15 +43,15 @@
 
 	const tasksEnabled = $derived(data.tasksEnabled === true);
 	const itemsEnabled = $derived(data.itemsEnabled === true);
-	const assetsEnabled = $derived(data.assetsEnabled === true);
+	const marketEnabled = $derived(data.marketEnabled === true);
 	const minigamesEnabled = $derived(data.minigamesEnabled === true);
 
 	const disabledFeature = $derived.by(() => {
-		if (isTask && !tasksEnabled)
+		if (isTasks && !tasksEnabled)
 			return { title: 'Tasks are turned off', message: 'This server has not enabled daily and weekly tasks.', icon: 'fa-list-check' };
 		if (isItems && !itemsEnabled) return { title: 'Items are turned off', message: 'This server has not enabled the item shop and bag.', icon: 'fa-store' };
 		if (isMinigames && !minigamesEnabled) return { title: 'Minigames are turned off', message: 'This server has not enabled minigames.', icon: 'fa-dice' };
-		if (isAssets && !assetsEnabled) return { title: 'Assets are turned off', message: 'This server has not enabled the assets market.', icon: 'fa-chart-line' };
+		if (isMarket && !marketEnabled) return { title: 'Market is turned off', message: 'This server has not enabled the market.', icon: 'fa-chart-line' };
 		return null;
 	});
 
@@ -59,11 +59,11 @@
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
 		...(data.itemsEnabled === true ? [{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' }] : []),
 		...(data.minigamesEnabled === true ? [{ id: 'minigames', label: 'Minigames', icon: 'fa-dice' }] : []),
-		...(data.assetsEnabled === true ? [{ id: 'assets', label: 'Assets', icon: 'fa-chart-line' }] : []),
+		...(data.marketEnabled === true ? [{ id: 'market', label: 'Market', icon: 'fa-chart-line' }] : []),
 		{ id: 'level', label: 'Level', icon: 'fa-star' }
 	]);
 
-	const assetTabs = $derived([
+	const marketTabs = $derived([
 		{ id: 'top', label: 'Top 50', icon: 'fa-ranking-star' },
 		{ id: 'gainers', label: 'Gainers', icon: 'fa-arrow-trend-up' },
 		{ id: 'losers', label: 'Losers', icon: 'fa-arrow-trend-down' },
@@ -71,8 +71,8 @@
 		{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }
 	]);
 
-	const overviewTabs = [
-		{ id: 'information', label: 'Information', icon: 'fa-circle-info' },
+	const profileTabs = [
+		{ id: 'stats', label: 'Stats', icon: 'fa-circle-info' },
 		{ id: 'themes', label: 'Themes', icon: 'fa-palette' },
 		{ id: 'rewards', label: 'Rewards', icon: 'fa-trophy' },
 		{ id: 'guide', label: 'Guide', icon: 'fa-circle-question' }
@@ -95,7 +95,7 @@
 		taskSummaryLive = s;
 	}
 	const taskSummary = $derived(taskSummaryLive ?? pd.tasks?.streak ?? null);
-	const rewardItems = $derived((pd.levelRewards?.items ?? []) as { reached: boolean }[]);
+	const rewardItems = $derived((pd.rewards?.items ?? []) as { reached: boolean }[]);
 	const streakPct = $derived.by(() => {
 		const cur = Number(taskSummary?.current) || 0;
 		const next = Number(taskSummary?.nextMilestone?.at) || 7;
@@ -219,7 +219,7 @@
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
 	});
 
-	const inOverview = $derived(isOverview || isThemes || isRewards || isGuide);
+	const inProfile = $derived(isStats || isThemes || isRewards || isGuide);
 
 	function subTabs(kind: string, tabs: { id: string; label: string; icon: string }[], activeId: string | null): NavTab[] {
 		return tabs.map((t) => ({ label: t.label, icon: t.icon, href: `${accountBase}/${kind}/${t.id}/${navHash}`, active: activeId === t.id }));
@@ -227,13 +227,13 @@
 
 	const sectionTabs: NavTab[] = $derived([
 		{
-			label: 'Overview',
+			label: 'Profile',
 			icon: 'fa-gauge-high',
-			href: `${accountBase}/overview/information/${navHash}`,
-			active: inOverview,
-			children: subTabs('overview', overviewTabs, inOverview ? activeCat : null)
+			href: `${accountBase}/profile/stats/${navHash}`,
+			active: inProfile,
+			children: subTabs('profile', profileTabs, inProfile ? activeCat : null)
 		},
-		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
+		{ label: 'Tasks', icon: 'fa-list-check', href: `${accountBase}/tasks/${navHash}`, active: isTasks },
 		{
 			id: 'items',
 			label: 'Items',
@@ -252,11 +252,11 @@
 			children: minigamesEnabled ? subTabs('minigames', minigameTabs, isMinigames ? activeCat : null) : undefined
 		},
 		{
-			label: 'Assets',
+			label: 'Market',
 			icon: 'fa-chart-line',
-			href: `${accountBase}/assets/top/${navHash}`,
-			active: isAssets,
-			children: assetsEnabled ? subTabs('assets', assetTabs, isAssets ? activeCat : null) : undefined
+			href: `${accountBase}/market/top/${navHash}`,
+			active: isMarket,
+			children: marketEnabled ? subTabs('market', marketTabs, isMarket ? activeCat : null) : undefined
 		},
 		{
 			label: 'History',
@@ -443,14 +443,14 @@
 
 			<div class="relative min-w-0 flex-1">
 				<span class="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-white/60 uppercase">
-					<i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : isRewards ? 'fa-trophy' : 'fa-wallet'}"></i>{isOverview
+					<i class="fas {isStats ? 'fa-user' : isMarket ? 'fa-chart-line' : isTasks ? 'fa-fire' : isRewards ? 'fa-trophy' : 'fa-wallet'}"></i>{isStats
 						? 'Profile'
-						: isAssets
+						: isMarket
 							? 'Assets Value'
-							: isTask
+							: isTasks
 								? 'Daily streak'
 								: isRewards
-									? 'Level rewards'
+									? 'Rewards'
 									: 'Wallet'}
 				</span>
 
@@ -464,37 +464,37 @@
 					/>
 				{/if}
 
-				{#if isTask}
+				{#if isTasks}
 					<span class="mt-0.5 flex items-baseline gap-1.5 text-2xl leading-tight font-extrabold tracking-tight text-white tabular-nums">
 						{taskSummary?.current ?? 0}<span class="text-[13px] font-bold tracking-[0.04em] text-white/70"
 							>{(taskSummary?.current ?? 0) === 1 ? 'DAY' : 'DAYS'}</span
 						>
 					</span>
-				{:else if !isOverview}
+				{:else if !isStats}
 					<span class="mt-0.5 flex items-baseline gap-1.5 text-2xl leading-tight font-extrabold tracking-tight text-white tabular-nums">
-						{fmt(isAssets ? assetSummary.value : liveXp)}<span class="text-[13px] font-bold tracking-[0.04em] text-white/70">XP</span>
+						{fmt(isMarket ? assetSummary.value : liveXp)}<span class="text-[13px] font-bold tracking-[0.04em] text-white/70">XP</span>
 					</span>
 				{/if}
 
-				{#if !isAssets && !isOverview}
+				{#if !isMarket && !isStats}
 					<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
 						<div
 							class="h-full rounded-full bg-linear-to-r from-[#5eead4] to-[#fbbf24] shadow-[0_0_10px_-1px_rgba(94,234,212,0.6)] transition-[width] duration-500"
-							style="width: {isTask ? streakPct : levelInfo.pct}%"
+							style="width: {isTasks ? streakPct : levelInfo.pct}%"
 						></div>
 					</div>
 				{/if}
 
 				<span class="mt-1.5 flex flex-nowrap items-baseline justify-between gap-2 text-[10.5px] font-semibold text-white/65">
-					{#if isOverview}
+					{#if isStats}
 						<span>Joined {joinedDate ?? '—'}</span>
 						{#if pd.profile?.isBooster || pd.profile?.isAfk}
 							<span>{pd.profile?.isBooster ? 'Booster' : ''}{pd.profile?.isBooster && pd.profile?.isAfk ? ' · ' : ''}{pd.profile?.isAfk ? 'AFK' : ''}</span>
 						{/if}
-					{:else if isAssets}
+					{:else if isMarket}
 						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
 						<span>Invested {fmt(assetSummary.invested)} XP</span>
-					{:else if isTask}
+					{:else if isTasks}
 						<span>{taskSummary?.toNextMilestone ?? 0} to {taskSummary?.nextMilestone?.emoji ?? '🔥'} {taskSummary?.nextMilestone?.label ?? 'One week'}</span>
 						<span>Best {taskSummary?.longest ?? 0} days</span>
 					{:else}
@@ -503,7 +503,7 @@
 					{/if}
 				</span>
 
-				{#if isOverview && pd.profile?.roles?.[0]}
+				{#if isStats && pd.profile?.roles?.[0]}
 					<div class="mt-2 flex flex-wrap gap-1.5">
 						<span
 							class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/12 px-2.25 py-[3px] text-[10.5px] font-semibold text-white"
@@ -516,7 +516,7 @@
 			</div>
 
 			<div class="relative flex shrink-0 items-center gap-4.5 border-l border-white/15 pt-4.5 pl-4.5">
-				{#if isAssets}
+				{#if isMarket}
 					<div class="flex flex-col items-center leading-tight">
 						<span class="text-lg font-extrabold text-white tabular-nums">
 							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
@@ -525,7 +525,7 @@
 							{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP
 						</span>
 					</div>
-				{:else if isTask}
+				{:else if isTasks}
 					<div class="flex flex-col items-center leading-tight">
 						<span class="text-lg font-extrabold text-white tabular-nums">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 3}</span>
 						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Freezes</span>

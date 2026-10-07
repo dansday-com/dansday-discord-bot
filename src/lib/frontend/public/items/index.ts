@@ -110,7 +110,7 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	return out;
 }
 
-export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'assets' | 'minigames' | null) {
+export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'market' | 'minigames' | null) {
 	const { SERVER_SETTINGS, publicSubfeatureEnabled } = await import('../../panelServer.js');
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);

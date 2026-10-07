@@ -4,6 +4,7 @@
 
 	import {
 		DOCS_HERO,
+		DOCS_URL,
 		sections,
 		sectionHeading,
 		sectionIcon,
@@ -31,12 +32,23 @@
 		discordMenu
 	} from '$lib/docs.js';
 	import { OFFICIAL_BOT_INVITE_URL } from '$lib/url.js';
+	import { techArticleNode } from '$lib/structuredData.js';
+
+	const DESCRIPTION = `Set up ${APP_NAME} Bot from scratch: run /setup, register, invite staff, set permissions, and configure every module field by field.`;
 </script>
 
 <PageMeta
 	title="Documentation | {APP_NAME} Discord Bot"
-	description="Set up {APP_NAME} Bot from scratch: run /setup, register, invite staff, set permissions, and configure every module field by field."
+	description={DESCRIPTION}
 	path="/docs"
+	jsonLd={[
+		techArticleNode(
+			DOCS_URL,
+			DOCS_HERO.heading.replace('{app}', APP_NAME),
+			DESCRIPTION,
+			sections.map((s) => s.heading)
+		)
+	]}
 />
 
 {#snippet subHead(text: string, lead?: string)}

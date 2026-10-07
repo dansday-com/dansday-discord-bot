@@ -94,7 +94,7 @@ const TASK_REQUIREMENT_LABEL: Record<TaskRequirement, string> = {
 	leveling: 'Leveling',
 	minigames: 'Minigames',
 	items: 'Items',
-	assets: 'Assets'
+	market: 'Market'
 };
 
 const SAMPLE_GOAL: Record<string, number> = {

@@ -8,6 +8,7 @@ function requiredEnv(key: string): string {
 }
 
 export const APP_NAME = typeof __APP_NAME__ !== 'undefined' ? __APP_NAME__ : requiredEnv('APP_NAME');
+export const APP_NAME_PLAIN = APP_NAME.replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || APP_NAME;
 export const APP_URL = (typeof __APP_URL__ !== 'undefined' ? __APP_URL__ : requiredEnv('APP_URL')).replace(/\/+$/, '');
 export const APP_DOMAIN = APP_URL.replace(/^https?:\/\//, '');
 export const APP_EMAIL = (mailbox: string) => `${mailbox}@${APP_DOMAIN}`;
@@ -179,7 +180,7 @@ export const SERVER_SETTINGS = {
 
 export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component;
 
-export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'assets', 'minigames', 'tasks', 'invite'] as const;
+export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'market', 'minigames', 'tasks', 'invite'] as const;
 
 export type PublicStatisticsSubfeature = (typeof PUBLIC_STATISTICS_SUBFEATURES)[number];
 
@@ -399,7 +400,7 @@ const PUBLIC_PREFIXES = [
 	'/api/uploads/',
 	'/api/panel/invite-link/',
 	'/api/items/',
-	'/api/assets/',
+	'/api/market/',
 	'/api/minigames/',
 	'/api/tasks/',
 	'/api/themes/'

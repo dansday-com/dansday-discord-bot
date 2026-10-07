@@ -60,7 +60,7 @@ export const BASICS: GuideCard[] = [
 	{
 		icon: 'fa-trophy',
 		accent: '#c8911a',
-		title: 'Level rewards',
+		title: 'Rewards',
 		desc: 'Some servers give a role at set levels. Your Rewards tab lists each one and the XP it still needs.'
 	},
 	{
@@ -187,12 +187,12 @@ export const FEATURES: GuideFeature[] = [
 		}
 	},
 	{
-		id: 'assets',
+		id: 'market',
 		icon: 'fa-chart-line',
-		title: 'Assets market',
+		title: 'Market',
 		lead: 'Invest XP in real crypto at live prices — no real money and no real coins.',
 		steps: [
-			{ icon: 'fa-magnifying-glass', title: 'Open Assets', desc: 'Browse the Top 50, Gainers, Losers, or search any coin.' },
+			{ icon: 'fa-magnifying-glass', title: 'Open Market', desc: 'Browse the Top 50, Gainers, Losers, or search any coin.' },
 			{ icon: 'fa-arrow-trend-up', title: 'Invest XP', desc: 'Buy from 10,000 XP up. Buying again averages into one holding.' },
 			{ icon: 'fa-wallet', title: 'Watch it move', desc: 'Invested XP leaves your Wallet and your level until you sell.' },
 			{ icon: 'fa-hand-holding-dollar', title: 'Sell anytime', desc: 'No cooldown. XP comes back scaled by how the price moved.' }

@@ -26,7 +26,7 @@ import { initCreatorAlerts, stopCreatorAlerts } from './components/creatorAlerts
 import { initExpirySweeper, stopExpirySweeper } from './components/items.js';
 import { initStreakWatch } from '../../streak-watch.js';
 import { announceStreak } from './components/tasks.js';
-import { startAssetMarketPoller, stopAssetMarketPoller } from './components/assetMarket.js';
+import { startMarketPoller, stopMarketPoller } from './components/market.js';
 import { acquireBotSingletonLock, type BotSingletonLock } from '../botSingletonLock.js';
 
 const PRESENCE_POLL_MS = 30_000;
@@ -118,7 +118,7 @@ client.on('clientReady', async () => {
 	initExpirySweeper(client);
 	initModerationSweeper(client);
 	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(client, guildId, discordMemberId, streakResult, milestone));
-	startAssetMarketPoller(String(officialBotId));
+	startMarketPoller(String(officialBotId));
 	webhook.startWebhookServer(client, officialBotId);
 });
 
@@ -133,7 +133,7 @@ async function shutdown() {
 	stopCreatorAlerts();
 	stopExpirySweeper();
 	stopModerationSweeper();
-	stopAssetMarketPoller();
+	stopMarketPoller();
 	stopInviteRewards();
 	webhook.stopWebhookServer();
 	client.destroy();

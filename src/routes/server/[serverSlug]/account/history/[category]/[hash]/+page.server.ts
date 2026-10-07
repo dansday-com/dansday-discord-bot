@@ -7,7 +7,7 @@ import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/ite
 const PER_PAGE = 50;
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
-	const { server, serverBasePath, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
+	const { server, serverBasePath, itemsEnabled, marketEnabled, minigamesEnabled } = await parent();
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	const tabParam = String(params.category || 'all');
 	const allowed = new Set(['all', 'level']);
 	if (itemsEnabled) allowed.add('items');
-	if (assetsEnabled) allowed.add('assets');
+	if (marketEnabled) allowed.add('market');
 	if (minigamesEnabled) allowed.add('minigames');
 	const tab = allowed.has(tabParam) ? tabParam : 'all';
 
@@ -58,7 +58,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 
-	const assetRows = assetsEnabled ? await db.getMemberAssetHistory(shared.member.id, 0).catch(() => []) : [];
+	const assetRows = marketEnabled ? await db.getMemberAssetHistory(shared.member.id, 0).catch(() => []) : [];
 	const assetEvents = (assetRows as any[]).map((r) => ({
 		id: `a-${r.id}`,
 		kind: 'asset' as const,
@@ -92,7 +92,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 			? itemEvents
 			: tab === 'level'
 				? levelEvents
-				: tab === 'assets'
+				: tab === 'market'
 					? assetEvents
 					: tab === 'minigames'
 						? minigameEvents

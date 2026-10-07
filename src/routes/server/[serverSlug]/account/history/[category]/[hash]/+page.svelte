@@ -302,8 +302,8 @@
 			? 'No level XP earned yet. Chat or join voice to start earning.'
 			: data.tab === 'items'
 				? 'No item activity yet. Buy or use an item to start.'
-				: data.tab === 'assets'
-					? 'No asset trades yet. Invest XP from the Assets tab to start.'
+				: data.tab === 'market'
+					? 'No asset trades yet. Invest XP from the Market tab to start.'
 					: undefined}
 		boxed
 	/>

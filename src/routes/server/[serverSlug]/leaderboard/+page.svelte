@@ -12,6 +12,11 @@
 
 	let { data }: PageProps = $props();
 
+	const serverName = $derived(data.server.name || data.server.slug);
+	const metaDescription = $derived(
+		`Live leaderboard for ${serverName} on Discord. Members ranked by XP, chat, voice, video, streaming, invites, items and minigames, for all time, this month or this week.`
+	);
+
 	type Metric = typeof data.metric;
 	type Period = typeof data.period;
 
@@ -396,10 +401,13 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} Leaderboard | {APP_NAME} Discord Bot</title>
-	<meta name="description" content="Top members leaderboard for {data.server.name || data.server.slug}." />
-	<meta property="og:title" content="{data.server.name || data.server.slug} Leaderboard | {APP_NAME} Discord Bot" />
-	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
+	<title>{serverName} Leaderboard | {APP_NAME} Discord Bot</title>
+	<meta name="description" content={metaDescription} />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={APP_NAME} />
+	<meta property="og:url" content={data.canonicalUrl} />
+	<meta property="og:title" content="{serverName} Leaderboard | {APP_NAME} Discord Bot" />
+	<meta property="og:description" content={metaDescription} />
 	<link rel="canonical" href={data.canonicalUrl} />
 </svelte:head>
 

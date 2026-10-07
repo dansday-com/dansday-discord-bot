@@ -12,7 +12,7 @@ import { DEFAULT_SERVER_LANGUAGE } from './languages.js';
 import { defaultGreetingMessages, defaultMainEmbedFooter } from './localizedDefaults.js';
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
-import { DEFAULT_LEVEL_REWARD_SETTINGS } from './level-rewards.js';
+import { DEFAULT_REWARD_SETTINGS } from './rewards.js';
 import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import { COLOR_GAME } from './color.js';
@@ -1429,7 +1429,7 @@ async function seedNewServerSettings(serverId: number) {
 		footer: defaultMainEmbedFooter(DEFAULT_SERVER_LANGUAGE),
 		bot_nickname: DEFAULT_BOT_NICKNAME,
 		...DEFAULT_MODERATION_RULE_SETTINGS,
-		...DEFAULT_LEVEL_REWARD_SETTINGS
+		...DEFAULT_REWARD_SETTINGS
 	});
 }
 

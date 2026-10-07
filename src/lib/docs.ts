@@ -787,15 +787,15 @@ export const modules = [
 		icon: 'fa-chart-pie',
 		accent: '#e43d12',
 		title: 'Public',
-		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Themes, Guide) — are always on. Items, Minigames, Assets, Daily tasks and the server invite are enabled here as sub-toggles.',
+		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Profile, History, Themes, Guide) — are always on. Items, Minigames, Market, Daily tasks and the server invite are enabled here as sub-toggles.',
 		fields: [
 			{
-				label: 'Items / Minigames / Assets',
+				label: 'Items / Minigames / Market',
 				desc: 'Sub-toggles under Public. Each unlocks its account tab (and channel, for Items/Minigames). Tabs stay visible when off and explain that the feature is disabled.'
 			},
 			{
 				label: 'Daily tasks',
-				desc: 'Sub-toggle that adds the Task tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
+				desc: 'Sub-toggle that adds the Tasks tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
 			},
 			{
 				label: 'Themes',
@@ -837,5 +837,5 @@ export const discordMenu = [
 		desc: `Switches your own Discord interface language (${serverLanguageList('or')}), or follows the server language.`
 	},
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
-	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Themes, Guide).' }
+	{ label: '👤 Account', desc: 'Link to the member account (Profile, Tasks, Items, Minigames, Market, History, Themes, Guide).' }
 ];

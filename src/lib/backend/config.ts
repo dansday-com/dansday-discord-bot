@@ -9,7 +9,7 @@ import { logger } from '../utils/index.js';
 import { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
-import { levelRewardsFromSettings, type LevelRewardRules } from '../level-rewards.js';
+import { rewardsFromSettings, type RewardRules } from '../rewards.js';
 import { normalizeServerLanguage } from '../languages.js';
 import { defaultGreetingMessages, greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
 
@@ -761,12 +761,12 @@ export const MODERATION_CONFIG = {
 	}
 };
 
-export const LEVEL_REWARDS_CONFIG = {
-	async getRules(guildId: string): Promise<LevelRewardRules> {
+export const REWARDS_CONFIG = {
+	async getRules(guildId: string): Promise<RewardRules> {
 		requireBotConfig();
-		requireGuildId(guildId, 'getting level rewards');
+		requireGuildId(guildId, 'getting rewards');
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.main);
-		return levelRewardsFromSettings(settings?.settings);
+		return rewardsFromSettings(settings?.settings);
 	}
 };
 

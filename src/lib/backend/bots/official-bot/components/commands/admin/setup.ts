@@ -345,7 +345,7 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.public, {
 			items_enabled: true,
 			minigames_enabled: true,
-			assets_enabled: true,
+			market_enabled: true,
 			tasks_enabled: true,
 			invite_enabled: true,
 			...psRaw,

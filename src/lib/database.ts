@@ -115,6 +115,7 @@ async function runMigrations() {
 	const connection = await mysql.createConnection({ ...getConnectionConfig(), multipleStatements: true });
 	try {
 		await connection.connect();
+		await connection.query(`SELECT GET_LOCK(CONCAT(DATABASE(), ':migrations'), 120)`);
 		await connection.query(
 			`CREATE TABLE IF NOT EXISTS migrations (
 				id INT PRIMARY KEY AUTO_INCREMENT,

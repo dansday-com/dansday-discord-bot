@@ -1,5 +1,5 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import { subscribeBotStatus, getBotUptimeMs } from '$lib/botProcesses.js';
+import { subscribeBotStatus, getBotUptimeMs } from '$lib/botControl.js';
 import db from '$lib/database.js';
 import { canManagePanelSelfbots } from '$lib/frontend/panelServer.js';
 

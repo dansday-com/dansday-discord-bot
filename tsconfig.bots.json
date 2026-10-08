@@ -16,6 +16,7 @@
 	"include": [
 		"src/lib/backend/**/*.ts",
 		"src/lib/utils/**/*.ts",
+		"src/lib/botProcesses.ts",
 		"src/lib/database.ts",
 		"src/lib/drizzle.ts",
 		"src/lib/schema.ts",

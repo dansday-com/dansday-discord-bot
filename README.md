@@ -59,6 +59,8 @@ make logs   # follow output
 make down   # stop
 ```
 
+The panel starts the bots itself by default, so rebuilding it restarts them. To keep them online through panel deploys, set `BOT_RUNNER=external` and run [`docker-compose.bots.yaml`](docker-compose.bots.yaml) as its own service — this mode needs Redis.
+
 Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal or the bot will not start. AI, voice, tools and wikis are set once **in the panel** for every bot, not in `.env`.
 
 Prefer not to host anything? **[Add the hosted bot](https://dansday.dev)** — same features, nothing to run.

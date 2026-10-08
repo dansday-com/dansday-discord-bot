@@ -2,7 +2,7 @@ import '../console-instrumentation.js';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
-import db from '$lib/database.js';
+import db, { initializeDatabase } from '$lib/database.js';
 import { runsBotsInProcess } from '$lib/botControl.js';
 import { startRunner } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
@@ -10,7 +10,10 @@ import { guardApiRoute } from '$lib/backend/panelServer.js';
 import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 
 export const init = async () => {
-	if (!building && runsBotsInProcess()) void startRunner();
+	if (!building) {
+		await initializeDatabase();
+		if (runsBotsInProcess()) void startRunner();
+	}
 	await startDemoSessionExpiryListener();
 };
 

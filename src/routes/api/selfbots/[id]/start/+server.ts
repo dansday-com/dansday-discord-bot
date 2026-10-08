@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { startBotById } from '$lib/botProcesses.js';
+import { startBotById } from '$lib/botControl.js';
 import { logger } from '$lib/utils/index.js';
 import { canManagePanelSelfbots } from '$lib/frontend/panelServer.js';
 

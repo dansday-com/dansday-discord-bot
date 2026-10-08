@@ -1,19 +1,16 @@
 import '../console-instrumentation.js';
 import { redirect, type Handle } from '@sveltejs/kit';
+import { building } from '$app/environment';
 import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
 import db from '$lib/database.js';
-import { resumeAutoStartBots, shutdownAllBots, verifyBotStatuses } from '$lib/botProcesses.js';
+import { runsBotsInProcess } from '$lib/botControl.js';
+import { startRunner } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
 import { guardApiRoute } from '$lib/frontend/panelServer.js';
 import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 
 export const init = async () => {
-	await verifyBotStatuses();
-	void resumeAutoStartBots();
-	setInterval(() => void verifyBotStatuses(), 30 * 1000);
-	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-		process.on(signal, () => void shutdownAllBots().finally(() => process.exit(0)));
-	}
+	if (!building && runsBotsInProcess()) void startRunner();
 	await startDemoSessionExpiryListener();
 };
 

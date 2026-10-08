@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import db from './database.js';
+import { getRedisClient, isRedisConfigured } from './redis.js';
 import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate } from './utils/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,12 +67,25 @@ function cancelScheduledRestart(mapKey: string): void {
 
 export type BotProcessKind = 'official' | 'selfbot';
 
+export const RUNNER_LEADER_KEY = 'bot:runner:leader';
+export const RUNNER_COMMAND_CHANNEL = 'bot:runner:cmd';
+export const RUNNER_REPLY_CHANNEL = 'bot:runner:reply';
+export const RUNNER_STATUS_CHANNEL = 'bot:runner:status';
+
+export type RunnerAction = 'start' | 'stop' | 'restart';
+export type RunnerCommand = { requestId: string; action: RunnerAction; kind: BotProcessKind; id: number };
+export type RunnerResult = { success: boolean; error?: string; pid?: number; message?: string };
+
 export function botProcessMapKey(kind: BotProcessKind, id: number): string {
 	return `${kind}:${id}`;
 }
 
+export function botKindOf(bot: any): BotProcessKind {
+	return isSelfbot(bot) ? 'selfbot' : 'official';
+}
+
 function processKeyForBot(bot: any): string {
-	return botProcessMapKey(isSelfbot(bot) ? 'selfbot' : 'official', bot.id);
+	return botProcessMapKey(botKindOf(bot), bot.id);
 }
 
 function processKeyForStop(botId: number, bot?: any): string {
@@ -92,10 +106,18 @@ export function subscribeBotStatus(kind: BotProcessKind, botNumericId: number, f
 	return () => statusListeners.get(mapKey)?.delete(fn);
 }
 
+async function publishRunnerMessage(channel: string, payload: object): Promise<void> {
+	if (!isRedisConfigured()) return;
+	try {
+		const redis = await getRedisClient();
+		await redis?.publish(channel, JSON.stringify(payload));
+	} catch (_) {}
+}
+
 function emitBotStatus(mapKey: string, status: string, process_id: number | null, uptime_started_at: number | null) {
-	const listeners = statusListeners.get(mapKey);
-	if (!listeners || listeners.size === 0) return;
-	for (const fn of listeners) fn({ status, process_id, uptime_started_at });
+	const event: BotStatusEvent = { status, process_id, uptime_started_at };
+	for (const fn of statusListeners.get(mapKey) ?? []) fn(event);
+	void publishRunnerMessage(RUNNER_STATUS_CHANNEL, { key: mapKey, ...event });
 }
 
 function isSelfbot(bot: any): boolean {
@@ -659,6 +681,113 @@ export function shutdownAllBots(): Promise<void> {
 	logger.log(`⏹️  Server shutting down, stopping ${waits.length} bot process(es)`);
 	shutdownPromise = Promise.allSettled(waits).then(() => {});
 	return shutdownPromise;
+}
+
+const LEADER_TTL_SECONDS = 30;
+const LEADER_RENEW_MS = 10_000;
+const LEADER_POLL_MS = 2_000;
+const VERIFY_INTERVAL_MS = 30_000;
+const LEADER_RENEW_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) else return 0 end`;
+const LEADER_RELEASE_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
+const leaderToken = `${process.pid}:${process.hrtime.bigint().toString()}`;
+
+let runnerStarted = false;
+let leadershipHeldElsewhere = false;
+let leaderTimer: ReturnType<typeof setInterval> | null = null;
+
+async function claimLeadership(): Promise<boolean> {
+	try {
+		const redis = await getRedisClient();
+		if (!redis) return false;
+		return (await redis.set(RUNNER_LEADER_KEY, leaderToken, { NX: true, EX: LEADER_TTL_SECONDS })) === 'OK';
+	} catch (_) {
+		return false;
+	}
+}
+
+async function renewLeadership(): Promise<void> {
+	try {
+		const redis = await getRedisClient();
+		if (!redis) return;
+		const renewed = await redis.eval(LEADER_RENEW_SCRIPT, { keys: [RUNNER_LEADER_KEY], arguments: [leaderToken, String(LEADER_TTL_SECONDS)] });
+		const held = renewed === 1 || (await claimLeadership());
+		if (!held && !leadershipHeldElsewhere) logger.log('⚠️  Bot runner leadership is held by another runner, still managing the bots started here');
+		leadershipHeldElsewhere = !held;
+	} catch (_) {}
+}
+
+async function waitForLeadership(): Promise<void> {
+	if (!isRedisConfigured()) return;
+	let standingBy = false;
+	while (!shuttingDown && !(await claimLeadership())) {
+		if (!standingBy) {
+			standingBy = true;
+			logger.log('⏳ Another bot runner is active, standing by until it stops');
+		}
+		await new Promise((resolve) => setTimeout(resolve, LEADER_POLL_MS));
+	}
+	if (shuttingDown) return;
+	if (standingBy) logger.log('▶️  Bot runner took over leadership');
+	leaderTimer = setInterval(() => void renewLeadership(), LEADER_RENEW_MS);
+	leaderTimer.unref?.();
+}
+
+async function releaseLeadership(): Promise<void> {
+	if (leaderTimer) clearInterval(leaderTimer);
+	leaderTimer = null;
+	if (!isRedisConfigured()) return;
+	try {
+		const redis = await getRedisClient();
+		await redis?.eval(LEADER_RELEASE_SCRIPT, { keys: [RUNNER_LEADER_KEY], arguments: [leaderToken] });
+	} catch (_) {}
+}
+
+async function runRunnerCommand(command: RunnerCommand): Promise<RunnerResult> {
+	const id = Number(command.id);
+	const row = await (command.kind === 'selfbot' ? db.getSelfbotById(id) : db.getBot(id));
+	if (!row) return { success: false, error: 'Bot not found' };
+	if (command.action === 'start') return startBotById(row.id, row);
+	if (command.action === 'stop') return stopBotById(row.id, row);
+	if (command.action === 'restart') return restartBotById(row.id, row);
+	return { success: false, error: 'Unknown bot runner command' };
+}
+
+async function serveRunnerCommands(): Promise<void> {
+	const redis = await getRedisClient();
+	if (!redis) return;
+	const subscriber = redis.duplicate();
+	subscriber.on('error', (err: Error) => logger.error('Bot runner command subscriber error', { error: String(err?.message || err) }));
+	await subscriber.connect();
+	await subscriber.subscribe(RUNNER_COMMAND_CHANNEL, (raw) => {
+		let command: RunnerCommand;
+		try {
+			command = JSON.parse(raw);
+		} catch (_) {
+			return;
+		}
+		if (!command?.requestId) return;
+		runRunnerCommand(command)
+			.catch((err: any): RunnerResult => ({ success: false, error: String(err?.message || err) }))
+			.then((result) => publishRunnerMessage(RUNNER_REPLY_CHANNEL, { ...result, requestId: command.requestId }));
+	});
+}
+
+export async function startRunner(): Promise<void> {
+	if (runnerStarted) return;
+	runnerStarted = true;
+	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+		process.on(signal, () => void stopRunner().finally(() => process.exit(0)));
+	}
+	await waitForLeadership();
+	if (shuttingDown) return;
+	await verifyBotStatuses();
+	void resumeAutoStartBots();
+	setInterval(() => void verifyBotStatuses(), VERIFY_INTERVAL_MS);
+	await serveRunnerCommands().catch((err: any) => logger.log(`⚠️  Bot runner cannot receive panel commands: ${String(err?.message || err)}`));
+}
+
+function stopRunner(): Promise<void> {
+	return shutdownAllBots().then(releaseLeadership);
 }
 
 export function getBotUptimeMs(bot: any): number {

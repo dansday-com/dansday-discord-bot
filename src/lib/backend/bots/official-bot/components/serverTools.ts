@@ -1,9 +1,9 @@
 import { Type } from '@google/genai';
 import db from '../../../../database.js';
 import { itemAvailability, effectSummary, formatDuration, getItemEffect } from '../../../../items.js';
-import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
-import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
-import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
+import { loadItemsCatalog } from '../../../public/items/index.js';
+import { resolveLeaderboardSnapshot } from '../../../public/leaderboard/stream.js';
+import { resolvePublicStatisticsSnapshot } from '../../../public/statistics/stream.js';
 import { REWARDS_CONFIG, getLevelingSettings, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
 import { rewardGoalLabel } from '../../../../rewards.js';

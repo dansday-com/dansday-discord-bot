@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { invalidateAll } from '$app/navigation';
-	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+	import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';

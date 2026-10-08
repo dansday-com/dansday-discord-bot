@@ -1,5 +1,5 @@
 import { BRAND_TAGLINE } from './brand.js';
-import { APP_NAME, APP_NAME_PLAIN, APP_URL } from './frontend/panelServer.js';
+import { APP_NAME, APP_NAME_PLAIN, APP_URL } from './backend/panelServer.js';
 import { COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from './url.js';
 
 export type LdNode = Record<string, unknown>;

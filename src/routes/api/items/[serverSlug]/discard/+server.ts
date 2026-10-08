@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
-import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
-import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
+import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
+import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/backend/public/items/index.js';
+import { publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();

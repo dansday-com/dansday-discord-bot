@@ -1,4 +1,4 @@
-import { APP_DOMAIN } from './frontend/panelServer.js';
+import { APP_DOMAIN } from './backend/panelServer.js';
 import { localeValue, t } from './localeStore.js';
 import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES, normalizeServerLanguage, type ServerLanguage } from './languages.js';
 

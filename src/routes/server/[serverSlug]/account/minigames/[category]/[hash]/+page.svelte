@@ -3,7 +3,7 @@
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { sfx } from '$lib/frontend/sfx';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { luckBoostLabel } from '$lib/items';
 	import { ColorGame, EmptyState, GameModal, REEL_CURVE, REEL_SECONDS, ReelStrip, TowerGame, WagerPicker } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';

@@ -17,9 +17,9 @@ import {
 	startSteps,
 	tiers
 } from '../../../../docs.js';
-import { APP_NAME } from '../../../../frontend/panelServer.js';
+import { APP_NAME } from '../../../panelServer.js';
 import { LEGAL_LAST_UPDATED, LEGAL_RETENTION_DAYS, PRIVACY_URL, SECURITY_EMAIL, TERMS_URL, privacy, terms } from '../../../../legal.js';
-import { computePublicServerSlugForServerId } from '../../../../frontend/public/server-slug/index.js';
+import { computePublicServerSlugForServerId } from '../../../public/server-slug/index.js';
 import {
 	COMMUNITY_DISCORD_URL,
 	DISCORD_APP_DIRECTORY_URL,
@@ -29,7 +29,7 @@ import {
 	publicServerUrl,
 	publicSiteOrigin
 } from '../../../../url.js';
-import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
+import { loadItemsCatalog } from '../../../public/items/index.js';
 import { VOICE_NOTE, fail, publicServer } from './aiToolShared.js';
 
 const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'market', 'tips'];

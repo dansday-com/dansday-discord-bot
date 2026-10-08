@@ -1,6 +1,6 @@
 <script lang="ts">
 	import MessageLibrary from '$lib/frontend/components/messages/MessageLibrary.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { ADMIN_TAB_PATHS } from '$lib/frontend/redirect.js';
 	import type { PageProps } from './$types';
 

@@ -2,7 +2,7 @@ import db from '$lib/database.js';
 import { completeText } from '$lib/backend/agent/core.js';
 import { messagePack, type MessageAgentContext, type MessageAgentResult } from '$lib/backend/agent/messagePack.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
-import { APP_DOMAIN, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { APP_DOMAIN, SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { ADMIN_TAB_PATHS, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import { MESSAGE_LIMITS, isSelfAssignableRole, normalizeMessageDoc, type MessageOwner, type MessageScope } from '$lib/messages.js';

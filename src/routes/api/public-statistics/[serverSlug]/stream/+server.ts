@@ -1,6 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { type LeaderboardMetric, type LeaderboardPeriod, subscribeLeaderboard } from '$lib/frontend/public/leaderboard/index.js';
-import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
+import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();

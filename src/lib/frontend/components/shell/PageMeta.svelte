@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { BRAND_TAGLINE } from '$lib/brand.js';
-	import { APP_NAME, APP_NAME_PLAIN } from '$lib/frontend/panelServer.js';
+	import { APP_NAME, APP_NAME_PLAIN } from '$lib/backend/panelServer.js';
 	import { publicSiteOrigin } from '$lib/url.js';
 	import { ldJson, siteNodes, webPageNode, type LdNode } from '$lib/structuredData.js';
 

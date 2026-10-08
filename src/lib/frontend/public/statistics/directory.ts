@@ -1,6 +1,6 @@
 import { getRedisClient } from '../../../redis.js';
-import { listLivePublicServers } from '../server-slug/index.js';
-import { resolvePublicStatisticsSnapshot } from './stream.js';
+import { listLivePublicServers } from '../../../backend/public/server-slug/index.js';
+import { resolvePublicStatisticsSnapshot } from '../../../backend/public/statistics/stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
 
 const REDIS_KEY = 'dansday:server_directory';

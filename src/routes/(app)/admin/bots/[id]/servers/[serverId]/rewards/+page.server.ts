@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
-import { SERVER_SETTINGS, accountOwnsServer, canEditServerSettings } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS, accountOwnsServer, canEditServerSettings } from '$lib/backend/panelServer.js';
 import { DEFAULT_LEVELING_SETTINGS } from '$lib/backend/config.js';
 import { rewardGoalUnits, rewardProgress, rewardRuleFlags } from '$lib/rewards.js';
 import { rewardImageUrl } from '$lib/backend/storage/rewards.js';

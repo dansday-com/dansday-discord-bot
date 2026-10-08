@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS, canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS, canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import { MESSAGE_LIMITS, isSelfAssignableRole, messageUploadLimit } from '$lib/messages.js';

@@ -1,5 +1,5 @@
 import db from '../../database.js';
-import { resolveMemberThemeForClient } from '../../backend/storage/memberThemes.js';
+import { resolveMemberThemeForClient } from '../storage/memberThemes.js';
 
 export type RowTheme = { theme_image: string | null; theme_accent: string | null; theme_effect: string; theme_effect_seed: number };
 

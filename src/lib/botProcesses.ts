@@ -1,7 +1,8 @@
 import { spawn, spawnSync } from 'child_process';
 import { join, dirname } from 'path';
+import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import db from './database.js';
 import { getRedisClient, isRedisConfigured } from './redis.js';
 import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate } from './utils/index.js';
@@ -689,17 +690,26 @@ const LEADER_POLL_MS = 2_000;
 const VERIFY_INTERVAL_MS = 30_000;
 const LEADER_RENEW_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) else return 0 end`;
 const LEADER_RELEASE_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
+const RUNNER_ALIVE_FILE = join(tmpdir(), 'bot-runner.alive');
 const leaderToken = `${process.pid}:${process.hrtime.bigint().toString()}`;
 
 let runnerStarted = false;
 let leadershipHeldElsewhere = false;
 let leaderTimer: ReturnType<typeof setInterval> | null = null;
 
+function markRunnerAlive(): void {
+	try {
+		writeFileSync(RUNNER_ALIVE_FILE, String(Date.now()));
+	} catch (_) {}
+}
+
 async function claimLeadership(): Promise<boolean> {
 	try {
 		const redis = await getRedisClient();
 		if (!redis) return false;
-		return (await redis.set(RUNNER_LEADER_KEY, leaderToken, { NX: true, EX: LEADER_TTL_SECONDS })) === 'OK';
+		const claimed = (await redis.set(RUNNER_LEADER_KEY, leaderToken, { NX: true, EX: LEADER_TTL_SECONDS })) === 'OK';
+		markRunnerAlive();
+		return claimed;
 	} catch (_) {
 		return false;
 	}
@@ -710,6 +720,7 @@ async function renewLeadership(): Promise<void> {
 		const redis = await getRedisClient();
 		if (!redis) return;
 		const renewed = await redis.eval(LEADER_RENEW_SCRIPT, { keys: [RUNNER_LEADER_KEY], arguments: [leaderToken, String(LEADER_TTL_SECONDS)] });
+		markRunnerAlive();
 		const held = renewed === 1 || (await claimLeadership());
 		if (!held && !leadershipHeldElsewhere) logger.log('⚠️  Bot runner leadership is held by another runner, still managing the bots started here');
 		leadershipHeldElsewhere = !held;
@@ -717,7 +728,11 @@ async function renewLeadership(): Promise<void> {
 }
 
 async function waitForLeadership(): Promise<void> {
-	if (!isRedisConfigured()) return;
+	if (!isRedisConfigured()) {
+		markRunnerAlive();
+		setInterval(markRunnerAlive, LEADER_RENEW_MS).unref?.();
+		return;
+	}
 	let standingBy = false;
 	while (!shuttingDown && !(await claimLeadership())) {
 		if (!standingBy) {

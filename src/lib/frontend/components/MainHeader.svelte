@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { apexLink, OFFICIAL_BOT_INVITE_URL } from '$lib/url.js';
 	import DiscordIcon from './shell/DiscordIcon.svelte';
 	import BoltIcon from './shell/BoltIcon.svelte';

@@ -1,4 +1,4 @@
-FROM node:25.8.1-slim AS builder
+FROM node:25.8.1-slim AS deps
 
 WORKDIR /app
 
@@ -11,11 +11,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
 
-COPY . .
+FROM deps AS builder
 
-RUN npm run build
+COPY tsconfig.bots.json ./
+COPY src/lib ./src/lib
 
 RUN npx tsc -p tsconfig.bots.json || true
+
+FROM deps AS modules
 
 RUN npm prune --production
 
@@ -24,15 +27,16 @@ FROM node:25.8.1-slim AS runner
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	curl ffmpeg libopus0 ca-certificates \
+	ffmpeg libopus0 ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app .
+COPY --from=modules /app/node_modules ./node_modules
+COPY package.json ./
+COPY otel ./otel
+COPY static/wakeword ./static/wakeword
+COPY src/lib/backend/bots/official-bot/locales ./src/lib/backend/bots/official-bot/locales
+COPY --from=builder /app/bots ./bots
 
-EXPOSE 80
-
-ENV HOST=0.0.0.0
-ENV PORT=80
 ENV NODE_ENV=production
 
-CMD ["node", "--import", "./otel/console-instrumentation.js", "build/index.js"]
+CMD ["node", "--import", "./otel/console-instrumentation.js", "bots/backend/bots/runner.js"]

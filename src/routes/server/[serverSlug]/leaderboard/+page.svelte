@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 	import '../../../../server.css';

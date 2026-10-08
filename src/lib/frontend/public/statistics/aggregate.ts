@@ -1,4 +1,4 @@
-import type { PublicPageStats } from './shape.js';
+import type { PublicPageStats } from '../../../backend/public/statistics/shape.js';
 
 const MAX_FIELDS = [
 	'leveling_max_level',

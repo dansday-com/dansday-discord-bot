@@ -1,7 +1,7 @@
 <script lang="ts">
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { invalidateAll } from '$app/navigation';
-	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+	import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import { GEMINI_VOICES } from '$lib/geminiVoices.js';

@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
-import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
+import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
+import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/backend/public/items/index.js';
 import { checkRateLimit, getClientIp } from '$lib/utils/index.js';
 
 const RATE_WINDOW_MS = 60 * 1000;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import MessageEditor from '$lib/frontend/components/messages/MessageEditor.svelte';
 	import type { PageProps } from './$types';
 

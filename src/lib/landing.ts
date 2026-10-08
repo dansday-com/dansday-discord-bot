@@ -1,5 +1,5 @@
 import { BRAND_TAGLINE } from './brand.js';
-import { APP_NAME, APP_NAME_PLAIN } from './frontend/panelServer.js';
+import { APP_NAME, APP_NAME_PLAIN } from './backend/panelServer.js';
 import { serverLanguageList } from './languages.js';
 import type { AggregatedPanelStats } from './frontend/public/statistics/aggregate.js';
 

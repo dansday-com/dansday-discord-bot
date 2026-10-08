@@ -2,7 +2,7 @@
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { avatar } from '../scripts/common.js';
 	import type { SceneScreenProps } from '../types.js';
 

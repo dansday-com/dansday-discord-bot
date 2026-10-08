@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { canEditServerSettings } from '$lib/frontend/panelServer.js';
+import { canEditServerSettings } from '$lib/backend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {

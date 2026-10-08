@@ -2,7 +2,7 @@
 	import { getContext } from 'svelte';
 	import { effectLabel, effectIcon } from '$lib/items.js';
 	import { publicServerPath } from '$lib/url.js';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { EmptyState } from '$lib/frontend/components/public';
 	import { TOWER_FLOORS, TOWER_GAME, towerPrize } from '$lib/tower';
 	import { COLOR_GAME, COLOR_MAX_TOTAL } from '$lib/color';

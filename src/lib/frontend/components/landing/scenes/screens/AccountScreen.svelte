@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { xpForLevel } from '$lib/rewards.js';
 	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
 	import { avatar } from '../scripts/common.js';

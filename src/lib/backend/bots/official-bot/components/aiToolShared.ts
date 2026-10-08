@@ -1,6 +1,6 @@
 import db from '../../../../database.js';
 import { formatDuration } from '../../../../items.js';
-import { SERVER_SETTINGS, publicSubfeatureEnabled } from '../../../../frontend/panelServer.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled } from '../../../panelServer.js';
 import { isComponentFeatureEnabled } from '../../../config.js';
 import { cachedLookup } from './aiCache.js';
 

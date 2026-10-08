@@ -1,9 +1,9 @@
 import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
-import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
+import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
+import { publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 import { apexHome, publicServerPath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 import { getEffectiveMainEmbedAppearance } from '$lib/utils/mainConfig.js';
 

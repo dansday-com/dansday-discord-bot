@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';

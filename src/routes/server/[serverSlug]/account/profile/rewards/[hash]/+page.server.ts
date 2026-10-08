@@ -2,8 +2,8 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { apexHome } from '$lib/url.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
 import { rewardGoalLabel, rewardProgress, rewardRuleFlags, rewardStates } from '$lib/rewards.js';
 import { rewardImageUrl } from '$lib/backend/storage/rewards.js';
 

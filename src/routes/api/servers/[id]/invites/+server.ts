@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { guardMemberAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
 const MAX_ADJUST = 10_000;

@@ -1,8 +1,8 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { computePublicServerSlugForServerId, resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
-import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
+import { computePublicServerSlugForServerId, resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 import { inviteJoinPath, isValidInviteSlug, normalizeInviteSlug } from '$lib/invites.js';
 import { serverThemeUrl } from '$lib/backend/storage/serverThemes.js';
 import { DEFAULT_ACCENT, normalizeAccent, type MemberTheme } from '$lib/themes.js';

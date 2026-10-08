@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
-import { loadMarketShared } from '$lib/frontend/public/market/index.js';
+import { itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
+import { loadMarketShared } from '$lib/backend/public/market/index.js';
 
 const VALID = new Set(['top', 'gainers', 'losers', 'search', 'mine']);
 

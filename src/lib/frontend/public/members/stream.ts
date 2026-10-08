@@ -1,5 +1,5 @@
 import { getServerMembersList, getDisguisedMemberIds } from '../../../database.js';
-import { attachMemberThemes } from '../memberThemes.js';
+import { attachMemberThemes } from '../../../backend/public/memberThemes.js';
 
 type RawMember = NonNullable<Awaited<ReturnType<typeof getServerMembersList>>>[number];
 

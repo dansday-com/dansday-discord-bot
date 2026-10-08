@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { attachMemberThemes } from '$lib/frontend/public/memberThemes.js';
+import { attachMemberThemes } from '$lib/backend/public/memberThemes.js';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { server } = await parent();

@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { computePublicServerSlugForServerConfig } from '$lib/frontend/public/server-slug/index.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
+import { computePublicServerSlugForServerConfig } from '$lib/backend/public/server-slug/index.js';
 import { publicServerPath, publicServerSubdomainUrl, publicSiteOrigin } from '$lib/url.js';
 import { inviteJoinPath } from '$lib/invites.js';
 import { serverThemeUrl } from '$lib/backend/storage/serverThemes.js';

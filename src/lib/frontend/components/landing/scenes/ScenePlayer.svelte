@@ -3,7 +3,7 @@
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { SceneClock, playWhenVisible, typed } from './clock.svelte.js';
 	import DiscordCall from './DiscordCall.svelte';
 	import DiscordComponents from './DiscordComponents.svelte';

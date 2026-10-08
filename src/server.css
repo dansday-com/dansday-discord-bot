@@ -61,7 +61,7 @@
 @source './lib/frontend/components/shell/index.ts';
 @source './lib/frontend/components/shell/reveal.ts';
 @source './lib/frontend/firstInteraction.ts';
-@source './lib/frontend/panelServer.ts';
+@source './lib/backend/panelServer.ts';
 @source './lib/frontend/scrollLock.ts';
 @source './lib/frontend/sfx.ts';
 @source './lib/frontend/toast.svelte.ts';

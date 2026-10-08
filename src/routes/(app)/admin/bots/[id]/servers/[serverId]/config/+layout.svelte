@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
-	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+	import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 	import { adminServerSectionPath } from '$lib/frontend/redirect.js';
 
 	let { data, children }: LayoutProps = $props();

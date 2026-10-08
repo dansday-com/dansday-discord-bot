@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { apexHome } from '$lib/url.js';
-import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
-import { loadTasksShared } from '$lib/frontend/public/tasks/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
+import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
 
 export const load: PageServerLoad = async ({ parent, params, cookies }) => {
 	const { server, serverBasePath, itemsEnabled, minigamesEnabled, marketEnabled, tasksEnabled } = await parent();

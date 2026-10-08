@@ -5,11 +5,11 @@ export {
 	type LeaderboardSnapshot,
 	getCachedLeaderboard,
 	setCachedLeaderboard
-} from './cache.js';
+} from '../../../backend/public/leaderboard/cache.js';
 export {
 	buildLeaderboardRowsFromMembersList,
 	type MembersListEntry,
 	type ResolveLeaderboardSnapshotOpts,
 	resolveLeaderboardSnapshot,
 	subscribeLeaderboard
-} from './stream.js';
+} from '../../../backend/public/leaderboard/stream.js';

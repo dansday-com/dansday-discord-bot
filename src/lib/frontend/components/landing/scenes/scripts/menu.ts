@@ -1,5 +1,5 @@
 import { BRAND_PRIMARY } from '$lib/brand.js';
-import { APP_DOMAIN, APP_NAME } from '$lib/frontend/panelServer.js';
+import { APP_DOMAIN, APP_NAME } from '$lib/backend/panelServer.js';
 import type { SceneButton, SceneEmbed, SceneEvent, SceneRow } from '../types.js';
 import { BOT, FOOTER, at, avatar, defineScene } from './common.js';
 

@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import db, { type ServerMessage } from '$lib/database.js';
-import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { postBotWebhook, resolveActiveBotForServer } from '$lib/frontend/public/items/index.js';
+import { postBotWebhook, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { messageUploadKeys } from '$lib/messages.js';
 import { pruneMessageFiles as pruneStoredFiles } from '$lib/backend/storage/messageFiles.js';
 

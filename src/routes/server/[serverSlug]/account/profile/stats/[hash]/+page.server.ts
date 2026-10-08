@@ -2,12 +2,12 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { apexHome } from '$lib/url.js';
 import db from '$lib/database.js';
-import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
-import { loadAssetPriceMap } from '$lib/frontend/public/market/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
+import { loadAssetPriceMap } from '$lib/backend/public/market/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server, serverBasePath, marketEnabled } = await parent();
-	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
+	const { SERVER_SETTINGS } = await import('$lib/backend/panelServer.js');
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);

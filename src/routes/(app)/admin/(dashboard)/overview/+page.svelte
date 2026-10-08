@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { DashGrid, KpiTile, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
 

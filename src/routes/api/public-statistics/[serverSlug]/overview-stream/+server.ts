@@ -1,5 +1,5 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
+import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
 import { subscribePublicServerStatistics } from '$lib/frontend/public/statistics/index.js';
 
 export const GET: RequestHandler = async ({ params }) => {

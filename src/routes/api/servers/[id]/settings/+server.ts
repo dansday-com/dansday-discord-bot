@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
 import { validateServerAiSettings } from '$lib/server-ai-settings.js';
 import { normalizeForwarderKeywords } from '$lib/forwarder-settings.js';

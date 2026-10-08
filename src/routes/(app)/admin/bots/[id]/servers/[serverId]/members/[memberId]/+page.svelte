@@ -4,7 +4,7 @@
 	import MemberActionBar from '$lib/frontend/components/MemberActionBar.svelte';
 	import MemberInvitesPanel from '$lib/frontend/components/MemberInvitesPanel.svelte';
 	import ModerationMemberRecord from '$lib/frontend/components/ModerationMemberRecord.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

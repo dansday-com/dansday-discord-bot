@@ -1,6 +1,6 @@
 <script lang="ts">
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 

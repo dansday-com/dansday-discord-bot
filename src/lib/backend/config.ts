@@ -1,5 +1,5 @@
 import db, { type AiInput } from '../database.js';
-import { SERVER_SETTINGS, publicSubfeatureEnabled, type PublicStatisticsSubfeature, type ServerSettingsComponentName } from '../frontend/panelServer.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled, type PublicStatisticsSubfeature, type ServerSettingsComponentName } from './panelServer.js';
 import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-settings.js';
 
 const serverSettingsComponent = SERVER_SETTINGS.component;
@@ -1086,7 +1086,7 @@ export const FORWARDER = {
 export { SERVER_SETTINGS, type ServerSettingsComponentName };
 export { serverSettingsComponent };
 
-export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
+export { computePublicServerSlugForServerId } from './public/server-slug/index.js';
 export { publicSiteOrigin, publicServerPath, publicServerUrl, publicServerSubdomainOrigin, COMMUNITY_DISCORD_URL } from '../url.js';
 export { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
@@ -1109,7 +1109,7 @@ export const SETUP_CHANNEL_DEFS = [
 	{ name: '「🎲」minigames', settingsKey: 'minigames' }
 ] as const;
 
-export { AUTO_ENABLED_COMPONENTS } from '../frontend/panelServer.js';
+export { AUTO_ENABLED_COMPONENTS } from './panelServer.js';
 
 export const DEFAULT_LEVELING_SETTINGS = {
 	REQUIREMENTS: { BASE_XP: 100, MULTIPLIER: 1.2 },

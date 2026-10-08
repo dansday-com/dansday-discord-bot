@@ -1,5 +1,5 @@
 import { EFFECTS, EFFECT_SPIN_COST } from './effects.js';
-import { APP_URL } from './frontend/panelServer.js';
+import { APP_URL } from './backend/panelServer.js';
 import { imageSizeLabel } from './images.js';
 import { serverLanguageList } from './languages.js';
 import { MESSAGE_LIMITS, MESSAGE_VIDEO_FORMATS_LABEL, messageUploadLimit } from './messages.js';

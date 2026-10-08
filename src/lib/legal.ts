@@ -1,4 +1,4 @@
-import { APP_EMAIL, APP_NAME, APP_URL } from './frontend/panelServer.js';
+import { APP_EMAIL, APP_NAME, APP_URL } from './backend/panelServer.js';
 
 export const LEGAL_BASE_URL = APP_URL;
 

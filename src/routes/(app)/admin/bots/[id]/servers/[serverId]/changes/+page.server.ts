@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
-import { accountOwnsServer, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { accountOwnsServer, SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
 	embed_sent: { component: 'messages', label: 'Messages' },

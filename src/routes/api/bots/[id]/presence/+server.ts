@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db, { presenceFromDbRow, type BotStatusInput } from '$lib/database.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import { accountOwnsBot } from '$lib/backend/panelServer.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'] as const;

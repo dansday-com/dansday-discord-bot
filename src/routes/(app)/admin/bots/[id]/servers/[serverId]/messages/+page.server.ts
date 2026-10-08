@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { canUseEmbedBuilder } from '$lib/frontend/panelServer.js';
+import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MAX_SAVED_MESSAGES, messageButtons, messageSelects, messageSummary } from '$lib/messages.js';
 

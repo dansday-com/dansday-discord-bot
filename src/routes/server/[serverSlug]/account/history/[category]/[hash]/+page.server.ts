@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { apexHome } from '$lib/url.js';
 import db from '$lib/database.js';
-import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
 
 const PER_PAGE = 50;
 

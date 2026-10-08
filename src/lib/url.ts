@@ -1,4 +1,4 @@
-import { APP_DOMAIN, APP_URL } from './frontend/panelServer.js';
+import { APP_DOMAIN, APP_URL } from './backend/panelServer.js';
 
 export const COMMUNITY_DISCORD_URL = 'https://discord.gg/7fEqEDSur3';
 

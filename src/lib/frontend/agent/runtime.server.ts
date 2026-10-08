@@ -2,7 +2,7 @@ import db, { aiFromDbRow, type AiInput } from '$lib/database.js';
 import { AGENT_OFF, AGENT_PROMPT_LIMIT } from '$lib/agent.js';
 import { runAgent, type AgentTask, type AgentTool, type AgentTurn, type AgentVerdict } from '$lib/backend/agent/core.js';
 import type { MessageDoc } from '$lib/messages.js';
-import { accountOwnsServer } from '$lib/frontend/panelServer.js';
+import { accountOwnsServer } from '$lib/backend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
 
 const MAX_HISTORY_TURNS = 8;

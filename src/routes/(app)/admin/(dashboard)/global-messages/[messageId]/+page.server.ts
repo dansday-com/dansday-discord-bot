@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { DEFAULT_SERVER_LANGUAGE } from '$lib/languages.js';
-import { APP_DOMAIN, APP_NAME } from '$lib/frontend/panelServer.js';
+import { APP_DOMAIN, APP_NAME } from '$lib/backend/panelServer.js';
 import { ADMIN_TAB_PATHS, DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MESSAGE_LIMITS, messageUploadLimit } from '$lib/messages.js';
 

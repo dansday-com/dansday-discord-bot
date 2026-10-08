@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
-import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
+import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
+import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/backend/public/items/index.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
+import { publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 
 const RATE_WINDOW_MS = 60 * 1000;
 const MAX_PLAYS = 30;

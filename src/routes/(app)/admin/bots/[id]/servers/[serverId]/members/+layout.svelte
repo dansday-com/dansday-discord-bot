@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { page } from '$app/state';
 	import { adminServerSectionPath } from '$lib/frontend/redirect.js';
 	import type { LayoutProps } from './$types';

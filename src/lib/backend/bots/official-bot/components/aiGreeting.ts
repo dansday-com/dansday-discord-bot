@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
-import { SERVER_SETTINGS } from '../../../../frontend/panelServer.js';
+import { SERVER_SETTINGS } from '../../../panelServer.js';
 import { normalizeServerLanguage, serverLanguageEnglishName } from '../../../../languages.js';
 
 const CACHE_TTL_SECONDS = 24 * 60 * 60;

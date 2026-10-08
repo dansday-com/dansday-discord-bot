@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { attachSfx } from '$lib/frontend/sfx';
 	import { PageMeta, PageShell } from '$lib/frontend/components/shell';
 	import { inviteJoinPath } from '$lib/invites.js';

@@ -1,5 +1,5 @@
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 async function questSettings(panelId: number): Promise<Record<string, unknown>> {
 	const row = await db.getPanelSettings(panelId, SERVER_SETTINGS.component.discord_quest_notifier).catch(() => null);

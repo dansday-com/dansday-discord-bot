@@ -1,4 +1,4 @@
-import { loadItemsShared } from '../items/index.js';
+import { loadItemsShared } from '../../../backend/public/items/index.js';
 
 export const MINIGAME_CATEGORIES = ['all', 'gamble', 'tower', 'color'];
 

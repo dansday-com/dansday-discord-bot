@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { APP_URL } from '$lib/frontend/panelServer.js';
+import { APP_URL } from '$lib/backend/panelServer.js';
 
 export const GET: RequestHandler = async () => {
 	const baseUrl = APP_URL;

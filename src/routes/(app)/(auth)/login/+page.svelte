@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';

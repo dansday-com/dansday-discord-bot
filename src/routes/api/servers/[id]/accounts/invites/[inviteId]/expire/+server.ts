@@ -8,7 +8,7 @@ import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.ser
 async function canManageInvites(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
 	if (locals.user.account_source === 'accounts') {
-		const { accountOwnsServer } = await import('$lib/frontend/panelServer.js');
+		const { accountOwnsServer } = await import('$lib/backend/panelServer.js');
 		return accountOwnsServer(locals, serverId);
 	}
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {

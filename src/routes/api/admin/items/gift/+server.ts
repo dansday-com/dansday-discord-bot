@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
+import { resolveActiveBotForServer, postBotWebhook } from '$lib/backend/public/items/index.js';
 
 const GIFT_SEARCH_LIMIT = 50;
 

@@ -1,11 +1,11 @@
 import type { RequestHandler } from './$types';
-import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
+import { listPublicServerSlugs } from '$lib/backend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 import { TERMS_URL, PRIVACY_URL, LEGAL_LAST_UPDATED } from '$lib/legal.js';
-import { APP_URL } from '$lib/frontend/panelServer.js';
+import { APP_URL } from '$lib/backend/panelServer.js';
 import db from '$lib/database.js';
 import { inviteJoinPath } from '$lib/invites.js';
-import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(

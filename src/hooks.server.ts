@@ -6,7 +6,7 @@ import db from '$lib/database.js';
 import { runsBotsInProcess } from '$lib/botControl.js';
 import { startRunner } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
-import { guardApiRoute } from '$lib/frontend/panelServer.js';
+import { guardApiRoute } from '$lib/backend/panelServer.js';
 import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 
 export const init = async () => {

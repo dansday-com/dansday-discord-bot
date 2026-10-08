@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { AccentCard, DocHero, DocSection, FieldList, ModuleCard, PageMeta, PageShell, StepGrid } from '$lib/frontend/components/shell';
 
 	import {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { APP_DOMAIN, APP_URL } from '$lib/frontend/panelServer.js';
+	import { APP_DOMAIN, APP_URL } from '$lib/backend/panelServer.js';
 	import { legalNav } from '$lib/legal.js';
 	import { apexLink } from '$lib/url.js';
 	type Palette = 'light' | 'dark';

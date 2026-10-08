@@ -2,9 +2,9 @@ import { Type } from '@google/genai';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { BAG_CAPACITY, effectSummary, formatDuration, getItemEffect } from '../../../../items.js';
-import { computeCardToken, loadItemsShared } from '../../../../frontend/public/items/index.js';
-import { loadTasksShared } from '../../../../frontend/public/tasks/index.js';
-import { SERVER_SETTINGS } from '../../../../frontend/panelServer.js';
+import { computeCardToken, loadItemsShared } from '../../../public/items/index.js';
+import { loadTasksShared } from '../../../public/tasks/index.js';
+import { SERVER_SETTINGS } from '../../../panelServer.js';
 import { TOWER_GAME } from '../../../../tower.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzKnown, memberTzOffset, nameOfMember, num, publicServer, safeConfig } from './aiToolShared.js';
 
@@ -160,7 +160,7 @@ async function accountItems(shared, member) {
 async function accountAssets(ctx, member) {
 	if (!ctx.marketEnabled) return fail('market_not_enabled_for_this_server');
 
-	const { loadAssetPriceMap } = await import('../../../../frontend/public/market/index.js');
+	const { loadAssetPriceMap } = await import('../../../public/market/index.js');
 	const priceMap = await loadAssetPriceMap().catch(() => ({}));
 	const rows = await db.getOpenAssetPositions(member.id).catch(() => []);
 

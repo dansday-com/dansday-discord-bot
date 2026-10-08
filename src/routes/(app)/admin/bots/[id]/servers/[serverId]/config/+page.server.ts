@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 import { defaultMainEmbedFooters } from '$lib/localizedDefaults.js';
 

@@ -1,4 +1,4 @@
-import { APP_DOMAIN, APP_NAME } from '$lib/frontend/panelServer.js';
+import { APP_DOMAIN, APP_NAME } from '$lib/backend/panelServer.js';
 import type { Person, Scene } from '../types.js';
 
 export const avatar = (n: number) => `https://cdn.discordapp.com/embed/avatars/${n}.png`;

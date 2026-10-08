@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SEED_RANGE, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';

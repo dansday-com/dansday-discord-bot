@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS, canEditServerSettings } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS, canEditServerSettings } from '$lib/backend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { MODERATION_RULE_KEYS, moderationRulesFromSettings, type ModerationRules } from '$lib/moderation-rules.js';
 import { MODERATION_ACTION_META, formatDuration } from '$lib/frontend/moderation.js';

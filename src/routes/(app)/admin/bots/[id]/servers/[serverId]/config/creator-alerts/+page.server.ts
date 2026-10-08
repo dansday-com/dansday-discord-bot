@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 export const load = async ({ locals, params }: { locals: any; params: any }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

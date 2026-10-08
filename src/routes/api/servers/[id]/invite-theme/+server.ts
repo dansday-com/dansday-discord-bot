@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { SERVER_SETTINGS, canEditServerSettings } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS, canEditServerSettings } from '$lib/backend/panelServer.js';
 import { MEMBER_THEME_MAX_BYTES } from '$lib/images.js';
 import { readUploadedImage } from '$lib/backend/storage/imageUpload.js';
 import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';

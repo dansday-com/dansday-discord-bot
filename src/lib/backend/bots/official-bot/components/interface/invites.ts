@@ -5,7 +5,7 @@ import db from '../../../../../database.js';
 import { translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { inviteRewardFor, pickInviteChannel, rememberCreatedInvite } from '../invites.js';
-import { listSluggedPublicServers } from '../../../../../frontend/public/server-slug/index.js';
+import { listSluggedPublicServers } from '../../../../public/server-slug/index.js';
 import { INVITE_SLUG_MAX, INVITE_SLUG_MIN, inviteJoinPath, isValidInviteSlug, normalizeInviteSlug } from '../../../../../invites.js';
 
 export const INVITE_SLUG_BUTTON_ID = 'invites_slug';

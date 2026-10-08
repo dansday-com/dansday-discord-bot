@@ -107,9 +107,9 @@ import { memberTranslator, translate, translateServer } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import { SETUP_LANGUAGE_SELECT_ID, handleSetupLanguageSelect } from './commands/admin/setup.js';
 import db from '../../../../database.js';
-import { computeCardToken } from '../../../../frontend/public/items/index.js';
-import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
-import type { PublicPageStats } from '../../../../frontend/public/statistics/shape.js';
+import { computeCardToken } from '../../../public/items/index.js';
+import { resolvePublicStatisticsSnapshot } from '../../../public/statistics/stream.js';
+import type { PublicPageStats } from '../../../public/statistics/shape.js';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
 	if (!interaction.guild) return false;

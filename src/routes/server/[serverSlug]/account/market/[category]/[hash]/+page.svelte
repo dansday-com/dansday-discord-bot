@@ -2,7 +2,7 @@
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { EmptyState, GameModal, OutcomeModal } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 

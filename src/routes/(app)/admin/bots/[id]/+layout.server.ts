@@ -3,7 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, webRouteUp, isBotSectionPath, adminServerPath } from '$lib/frontend/redirect.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import { accountOwnsBot } from '$lib/backend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

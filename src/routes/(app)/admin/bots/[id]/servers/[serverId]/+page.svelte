@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { DashGrid, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
 	import { INVITE_SOURCE_LABEL } from '$lib/invites.js';

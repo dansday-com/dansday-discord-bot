@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server, serverBasePath, itemsEnabled } = await parent();

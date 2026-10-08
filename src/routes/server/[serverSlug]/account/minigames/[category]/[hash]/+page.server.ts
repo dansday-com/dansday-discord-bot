@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
 import { loadMinigamesShared, MINIGAME_CATEGORIES } from '$lib/frontend/public/minigames/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {

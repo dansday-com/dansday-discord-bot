@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '../../../database.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
-import { resolveMemberThemeForClient } from '../../../backend/storage/memberThemes.js';
+import { resolveMemberThemeForClient } from '../../storage/memberThemes.js';
 
 export function computeCardToken(serverId: any, discordMemberId: string): string {
 	const secret = process.env.SECRET;

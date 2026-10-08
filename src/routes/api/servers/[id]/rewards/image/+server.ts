@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { logger } from '$lib/utils/index.js';
-import { canEditServerSettings } from '$lib/frontend/panelServer.js';
+import { canEditServerSettings } from '$lib/backend/panelServer.js';
 import { REWARD_IMAGE_MAX_BYTES } from '$lib/rewards.js';
 import { readUploadedImage } from '$lib/backend/storage/imageUpload.js';
 import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';

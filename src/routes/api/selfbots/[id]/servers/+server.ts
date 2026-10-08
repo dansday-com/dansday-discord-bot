@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { canReadSelfbotTopology } from '$lib/frontend/panelServer.js';
+import { canReadSelfbotTopology } from '$lib/backend/panelServer.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	try {

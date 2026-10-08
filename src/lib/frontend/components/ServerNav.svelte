@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { publicServerBasePath, publicSiteOrigin } from '$lib/url.js';
-	import { APP_DOMAIN } from '$lib/frontend/panelServer.js';
+	import { APP_DOMAIN } from '$lib/backend/panelServer.js';
 	import { inviteJoinPath } from '$lib/invites.js';
 	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 

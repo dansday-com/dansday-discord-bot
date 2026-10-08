@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { aiFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { normalizeServerAiSettings } from '$lib/server-ai-settings.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {

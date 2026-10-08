@@ -18,7 +18,7 @@
 		ITEM_EFFECTS,
 		type ItemOutcome
 	} from '$lib/items.js';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { EmptyState, OutcomeModal, TargetPicker } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 

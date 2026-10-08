@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, imageExtension, imageSizeLabel } from '$lib/images.js';
 	import { prepareThemeUpload } from '$lib/themes.js';
 	import { showToast } from '$lib/frontend/toast.svelte';

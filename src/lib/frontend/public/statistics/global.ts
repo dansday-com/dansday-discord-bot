@@ -1,8 +1,8 @@
 import { getMaxPublicXpEventId, listPublicXpEventsAfter } from '../../../database.js';
-import { listLivePublicServers } from '../server-slug/index.js';
-import { resolvePublicStatisticsSnapshot } from './stream.js';
+import { listLivePublicServers } from '../../../backend/public/server-slug/index.js';
+import { resolvePublicStatisticsSnapshot } from '../../../backend/public/statistics/stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
-import type { PublicPageStats } from './shape.js';
+import type { PublicPageStats } from '../../../backend/public/statistics/shape.js';
 
 export type GlobalStatisticsSnapshot = {
 	totals: AggregatedPanelStats;

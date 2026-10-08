@@ -23,7 +23,7 @@ function getTransporter() {
 	});
 }
 
-import { APP_NAME, APP_DOMAIN, APP_URL } from './panelServer.js';
+import { APP_NAME, APP_DOMAIN, APP_URL } from '../backend/panelServer.js';
 
 const APP_NAME_TEXT = `${APP_NAME} Discord Bot`;
 const APP_NAME_HTML = `${APP_NAME.replace(/</g, '&lt;').replace(/>/g, '&gt;')} Discord Bot`;

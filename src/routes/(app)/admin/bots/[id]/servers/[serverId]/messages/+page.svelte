@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import MessageLibrary from '$lib/frontend/components/messages/MessageLibrary.svelte';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

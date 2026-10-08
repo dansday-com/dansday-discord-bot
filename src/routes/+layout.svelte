@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 	import { effectAccentCssVars } from '$lib/items.js';
 	import { publicServerSlugFromHost } from '$lib/url.js';

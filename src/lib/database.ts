@@ -4,7 +4,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './backend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS } from './backend/config.js';
@@ -181,8 +181,12 @@ async function setupDatabase() {
 let dbInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
+export function skipDatabaseSetup() {
+	dbInitialized = true;
+}
+
 export async function initializeDatabase() {
-	if (dbInitialized) return;
+	if (dbInitialized || process.env.BOT_KIND) return;
 	if (initializationPromise) return initializationPromise;
 
 	initializationPromise = (async () => {
@@ -304,7 +308,7 @@ export type BotStatusInput = {
 	activity_state: string | null;
 };
 
-import { APP_DOMAIN } from './frontend/panelServer.js';
+import { APP_DOMAIN } from './backend/panelServer.js';
 
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',

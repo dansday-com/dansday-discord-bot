@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { stopBotById } from '$lib/botControl.js';
 import { logger } from '$lib/utils/index.js';
-import { canManagePanelSelfbots } from '$lib/frontend/panelServer.js';
+import { canManagePanelSelfbots } from '$lib/backend/panelServer.js';
 
 export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) return json({ success: false, error: 'Authentication required' }, { status: 401 });

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';

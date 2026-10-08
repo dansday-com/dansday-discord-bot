@@ -2,11 +2,11 @@ import bcrypt from 'bcryptjs';
 import { sql } from 'drizzle-orm';
 import { db } from '../../drizzle.js';
 import * as schema from '../../schema.js';
-import { SERVER_SETTINGS } from '../../frontend/panelServer.js';
+import { SERVER_SETTINGS } from '../panelServer.js';
 import { ITEM_EFFECTS } from '../../items.js';
 import { initializeDatabase } from '../../database.js';
 import { toMySQLDateTime } from '../../utils/datetime.js';
-import { APP_NAME } from '../../frontend/panelServer.js';
+import { APP_NAME } from '../panelServer.js';
 
 const DEMO = {
 	serverCount: 2,

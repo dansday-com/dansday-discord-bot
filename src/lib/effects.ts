@@ -395,7 +395,7 @@ const PALETTE: Record<string, [string, string]> = {
 	crown: ['#ff9ecb', '#ffe9c9']
 };
 
-export function effectPalette(family: any, accent: unknown): [string, string] {
+export function effectPalette(family: unknown, accent: unknown): [string, string] {
 	const id = normalizeEffect(family);
 	const pair = PALETTE[id];
 	if (pair) {
@@ -407,7 +407,7 @@ export function effectPalette(family: any, accent: unknown): [string, string] {
 
 export type EffectVariant = { family: EffectFamily; seed: number; style: string };
 
-export function effectVariant(family: any, seed: unknown, accent: unknown): EffectVariant {
+export function effectVariant(family: unknown, seed: unknown, accent: unknown): EffectVariant {
 	const id = normalizeEffect(family);
 	const s = normalizeSeed(seed);
 	if (id === 'none') {

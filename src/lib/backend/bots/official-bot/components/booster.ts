@@ -4,9 +4,7 @@ import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
 import { serverTranslator } from '../i18n.js';
-import type { GuildMember, PartialGuildMember } from 'discord.js';
-import type { GuildTextBasedChannel } from 'discord.js';
-import type { Client } from 'discord.js';
+import type { GuildMember, PartialGuildMember, GuildTextBasedChannel, Client } from 'discord.js';
 
 function replaceBoosterPlaceholders(message: string, memberId: string, serverName: string, boostLevel: number, totalBoosts: number) {
 	return message

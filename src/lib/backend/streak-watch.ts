@@ -1,7 +1,12 @@
 import db from '../database.js';
 import { TASK_BY_ID, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY, streakMilestone, periodOpen, type TaskMetric } from '../tasks.js';
 
-type StreakAnnouncer = (guildId: string, discordMemberId: string, streakResult: any, milestone: any) => Promise<any>;
+type StreakAnnouncer = (
+	guildId: string,
+	discordMemberId: string,
+	streakResult: NonNullable<Awaited<ReturnType<typeof db.applyStreakDay>>>,
+	milestone: ReturnType<typeof streakMilestone>
+) => Promise<unknown>;
 
 let announcer: StreakAnnouncer | null = null;
 
@@ -93,7 +98,7 @@ export async function bankStreakIfEarned(memberId: number | string) {
 			const member = await db.getServerMemberById(id).catch(() => null);
 			const server = member ? await db.getServer(member.server_id).catch(() => null) : null;
 			if (server?.discord_server_id) {
-				await announcer(String(server.discord_server_id), String(member.discord_member_id), result, milestone).catch(() => null);
+				await announcer(String(server.discord_server_id), String(member!.discord_member_id), result, milestone).catch(() => null);
 			}
 		}
 

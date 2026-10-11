@@ -3,7 +3,26 @@ import { request as httpRequest } from 'http';
 import db from '../../../database.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
 import { resolveMemberThemeForClient } from '../../storage/memberThemes.js';
-import type { ServerRow } from '../../../schema.js';
+import type { BotRow, ServerRow } from '../../../schema.js';
+import type { MemberListRow } from '../../../database.js';
+
+type ItemDbRow = Omit<Awaited<ReturnType<typeof db.listItems>>[number], 'enabled' | 'usable'> & { enabled: boolean | number; usable: boolean | number };
+
+export type CatalogItem = {
+	id: number;
+	name: string;
+	effect_type: string;
+	description: string | null;
+	cost: number;
+	enabled: boolean;
+	usable: boolean;
+	availableUntil: number | null;
+	available_from: string | null;
+	available_to: string | null;
+	recurring_schedule: unknown;
+	config: Record<string, unknown> | null;
+	live: boolean;
+};
 
 export function computeCardToken(serverId: number, discordMemberId: string): string {
 	const secret = process.env.SECRET;
@@ -15,13 +34,13 @@ export function computeCardToken(serverId: number, discordMemberId: string): str
 		.digest('hex');
 }
 
-export async function resolveMemberByCardToken(serverId: number, token: string): Promise<any | null> {
+export async function resolveMemberByCardToken(serverId: number, token: string): Promise<MemberListRow | null> {
 	if (!token) {
 		return null;
 	}
 	const supplied = Buffer.from(String(token), 'utf8');
 	const members = await db.getServerMembersList(serverId).catch(() => []);
-	for (const m of members as any[]) {
+	for (const m of members) {
 		if (!m.discord_member_id) {
 			continue;
 		}
@@ -40,7 +59,7 @@ export function itemsCardTokenFromUrl(urlHash: unknown): string {
 	return raw && raw !== SENTINEL_GUEST ? raw : '';
 }
 
-export async function resolveActiveBotForServer(server: ServerRow): Promise<any | null> {
+export async function resolveActiveBotForServer(server: ServerRow): Promise<BotRow | null> {
 	const officialBotId = await db.resolveOfficialBotIdForServer(server).catch(() => null);
 	if (officialBotId == null) {
 		return null;
@@ -49,12 +68,12 @@ export async function resolveActiveBotForServer(server: ServerRow): Promise<any 
 	return bot ?? null;
 }
 
-async function isMemberDisguised(memberId: number | string): Promise<boolean> {
+async function isMemberDisguised(memberId: number | string | null): Promise<boolean> {
 	const effects = await db.getActiveEffectsForMember(memberId).catch(() => []);
 	return (effects || []).some((e) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
 }
 
-function safeParse(raw: any) {
+function safeParse(raw: string) {
 	try {
 		return JSON.parse(raw);
 	} catch {
@@ -72,7 +91,7 @@ function scheduleMinutes(hhmm: unknown, fallback: number): number {
 	return h * 60 + m;
 }
 
-function availableUntilMs(item: any): number | null {
+function availableUntilMs(item: { available_to: string | null; recurring_schedule: unknown }): number | null {
 	const ends: number[] = [];
 	if (item.available_to) {
 		const t = floatingWallClockMs(item.available_to, 0);
@@ -95,21 +114,20 @@ function availableUntilMs(item: any): number | null {
 	return Math.min(...ends);
 }
 
-export async function loadItemsCatalog(serverId: number): Promise<any[]> {
+export async function loadItemsCatalog(serverId: number): Promise<CatalogItem[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) {
 		return [];
 	}
 	const all = await db.listItems(panelId).catch(() => []);
-	const out: any[] = [];
-	for (const i of all as any[]) {
+	const out: CatalogItem[] = [];
+	for (const i of all as ItemDbRow[]) {
 		const enabled = i.enabled !== false && i.enabled !== 0;
 
 		const mapped = {
 			id: i.id,
 			name: i.name,
 			effect_type: i.effect_type,
-			category: i.category,
 			description: i.description,
 			cost: i.cost,
 			enabled,
@@ -118,7 +136,7 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 			available_from: i.available_from ?? null,
 			available_to: i.available_to ?? null,
 			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
-			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
+			config: (typeof i.config === 'string' ? safeParse(i.config) : i.config) as Record<string, unknown> | null
 		};
 		const state = itemAvailability(mapped, Date.now(), 0).state;
 		const listed = mapped.enabled || mapped.usable;
@@ -127,21 +145,21 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	return out;
 }
 
-export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'market' | 'minigames' | null) {
+export async function loadItemsShared(server: Pick<ServerRow, 'id'>, hash: string, subKey?: 'items' | 'market' | 'minigames' | null) {
 	const { SERVER_SETTINGS, publicSubfeatureEnabled } = await import('../../panelServer.js');
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);
-	const ps = (psRow as any)?.settings ?? {};
+	const ps = psRow?.settings ?? {};
 	if (subKey && !publicSubfeatureEnabled(ps, subKey)) {
 		return { notFound: true } as const;
 	}
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
-	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
+	const req = (levelingRow?.settings?.REQUIREMENTS as { BASE_XP?: unknown; MULTIPLIER?: unknown } | undefined) ?? {};
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
-	const enabledCategories = [...new Set((items as any[]).filter((i) => i.live).map((i) => i.effect_type))];
+	const enabledCategories = [...new Set(items.filter((i) => i.live).map((i) => i.effect_type))];
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 
@@ -150,12 +168,12 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	}
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
-	const bagStock = effectiveBagStock(invRows as any[]);
+	const bagStock = effectiveBagStock(invRows);
 
 	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
-	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';
+	const nameOf = (sdn: string | null, dn: string | null, un: string | null) => sdn || dn || un || 'a member';
 	const activeEffects = await Promise.all(
-		(effectRows as any[]).map(async (e) => {
+		effectRows.map(async (e) => {
 			const base = {
 				effect_type: e.effect_type,
 				effect_value: Number(e.effect_value) || 0,
@@ -176,9 +194,9 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		})
 	);
 
-	const luckEffect = (effectRows as any[]).find((e) => e.effect_type === 'luck');
+	const luckEffect = effectRows.find((e) => e.effect_type === 'luck');
 	const luckPercent = luckEffect ? Number(luckEffect.effect_value) || 0 : 0;
-	const pricedItems = (items as any[]).map((i) => {
+	const pricedItems = items.map((i) => {
 		const original = Number(i.cost) || 0;
 		const cost = discountedItemCost(original, luckPercent, i.effect_type);
 		return cost !== original ? { ...i, cost, original_cost: original } : i;
@@ -186,7 +204,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 
 	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	const immunityMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
-	for (const it of items as any[]) {
+	for (const it of items) {
 		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') {
 			continue;
 		}
@@ -230,7 +248,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 
 	let insuranceCooldownUntil: number | null = null;
 	let maxInsuranceCooldownMin = 0;
-	for (const it of items as any[]) {
+	for (const it of items) {
 		if (it.effect_type !== 'insurance') {
 			continue;
 		}
@@ -258,7 +276,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		categories: [
 			...new Set([
 				...enabledCategories,
-				...(invRows as any[]).filter((r) => (r.enabled !== false && r.enabled !== 0) || (r.usable !== false && r.usable !== 0)).map((r) => r.effect_type)
+				...invRows.filter((r) => (r.enabled !== false && r.enabled !== 0) || (r.usable !== false && r.usable !== 0)).map((r) => r.effect_type)
 			])
 		],
 		memberName: member.server_display_name || member.display_name || member.username,

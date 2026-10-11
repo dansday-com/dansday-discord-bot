@@ -4,8 +4,7 @@ import { getBotToken, getApplicationId } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { commandDefinition as setupCommand, execute as setupExecute } from './commands/admin/setup.js';
 import { errorReason, translate } from '../i18n.js';
-import type { ChatInputCommandInteraction } from 'discord.js';
-import type { Client } from 'discord.js';
+import type { ChatInputCommandInteraction, Client } from 'discord.js';
 
 const commandDefinitions = [setupCommand];
 

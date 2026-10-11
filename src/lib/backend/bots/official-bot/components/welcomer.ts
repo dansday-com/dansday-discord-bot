@@ -6,8 +6,7 @@ import { aiGreetingMessages } from './aiGreeting.js';
 import { attributeJoin, type JoinInviteResult } from './invites.js';
 import { INVITE_SOURCE_LABEL } from '../../../../invites.js';
 import { serverTranslator, type Translator } from '../i18n.js';
-import type { Client, GuildMember } from 'discord.js';
-import type { GuildTextBasedChannel } from 'discord.js';
+import type { Client, GuildMember, GuildTextBasedChannel } from 'discord.js';
 
 const INVITE_WAIT_MS = 5_000;
 

@@ -5,9 +5,7 @@ import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
 import { translate, getAvailableLanguages, getUserLanguage, getServerLanguage, errorReason } from '../../i18n.js';
 import { isServerLanguage, serverLanguageLabel } from '../../../../../languages.js';
-import type { ButtonInteraction, RepliableInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { StringSelectMenuInteraction } from 'discord.js';
+import type { ButtonInteraction, RepliableInteraction, MessageActionRowComponentBuilder, StringSelectMenuInteraction } from 'discord.js';
 
 const SERVER_DEFAULT_VALUE = 'server';
 

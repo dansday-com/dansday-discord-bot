@@ -6,10 +6,18 @@ import db from '../../../../../database.js';
 import { translate, serverTranslator, memberTranslator, getUserLanguage, type Translator, errorReason } from '../../i18n.js';
 import { durationField, durationValue, textField, type DurationPreset } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
-import type { Client, Guild, GuildTextBasedChannel, ModalSubmitInteraction, Role, RoleSelectMenuInteraction } from 'discord.js';
-import type { MessageComponentInteraction, RepliableInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { ButtonInteraction } from 'discord.js';
+import type {
+	Client,
+	Guild,
+	GuildTextBasedChannel,
+	ModalSubmitInteraction,
+	Role,
+	RoleSelectMenuInteraction,
+	MessageComponentInteraction,
+	RepliableInteraction,
+	MessageActionRowComponentBuilder,
+	ButtonInteraction
+} from 'discord.js';
 
 function giveawayRoleMention(guild: Guild, roleId: string, tr: Translator) {
 	const role = guild.roles.cache.get(roleId);
@@ -146,12 +154,7 @@ export async function handleGiveawayButton(interaction: ButtonInteraction<'cache
 
 		let dbMember = await db.getMemberByDiscordId(server.id, user.id);
 		if (!dbMember) {
-			dbMember = await db.upsertMember(server.id, {
-				id: user.id,
-				username: user.username,
-				display_name: user.displayName || user.username,
-				avatar: user.avatar
-			});
+			dbMember = await db.upsertMember(server.id, user);
 		}
 
 		if (!dbMember || !dbMember.id) {
@@ -392,12 +395,7 @@ export async function handleGiveawayModal(interaction: ModalSubmitInteraction<'c
 
 		let dbMember = await db.getMemberByDiscordId(server.id, user.id);
 		if (!dbMember) {
-			dbMember = await db.upsertMember(server.id, {
-				id: user.id,
-				username: user.username,
-				display_name: user.displayName || user.username,
-				avatar: user.avatar
-			});
+			dbMember = await db.upsertMember(server.id, user);
 		}
 
 		if (!dbMember || !dbMember.id) {
@@ -433,7 +431,7 @@ export async function handleGiveawayModal(interaction: ModalSubmitInteraction<'c
 			min_invites: minInvites
 		};
 
-		const giveaway = await db.createGiveaway(giveawayData);
+		const giveaway = (await db.createGiveaway(giveawayData))!;
 		pendingMultipleEntries.delete(pendingKey(interaction));
 
 		const tr = await serverTranslator(guild.id);
@@ -774,7 +772,7 @@ export async function handleGiveawayFinish(interaction: ButtonInteraction<'cache
 			return;
 		}
 
-		const message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
+		const message = giveaway.discord_message_id ? await channel.messages.fetch(giveaway.discord_message_id).catch(() => null) : null;
 		if (message) {
 			await message.edit({ components: [] }).catch(() => null);
 		}

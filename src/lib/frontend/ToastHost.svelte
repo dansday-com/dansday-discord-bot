@@ -13,7 +13,7 @@
 		info: { icon: 'fa-circle-info', tint: 'bg-primary/12 text-primary', bar: 'bg-primary' }
 	} as const;
 
-	function enter() {
+	function enter(_node: Element) {
 		return {
 			duration: reduced ? 0 : 460,
 			easing: backOut,
@@ -21,7 +21,7 @@
 		};
 	}
 
-	function exit() {
+	function exit(_node: Element) {
 		return {
 			duration: reduced ? 0 : 240,
 			easing: cubicOut,

@@ -2,6 +2,8 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import type { ResultSetHeader } from 'mysql2';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './backend/panelServer.js';
@@ -19,6 +21,45 @@ import { COLOR_GAME } from './color.js';
 import { normalizeMessageDoc, type MessageDoc, type MessageScope } from './messages.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
+
+type SelectResult<T> = [T[], unknown];
+type ScalarRow<K extends string> = Partial<Record<K, string | number | null>>;
+type ScalarRows<K extends string> = [ScalarRow<K> & Record<number, ScalarRow<K>>, unknown];
+type WriteResult = [ResultSetHeader, unknown] & Partial<ResultSetHeader>;
+
+type UserLike = {
+	id: string;
+	username?: string | null;
+	globalName?: string | null;
+	displayName?: string | null;
+	bot?: boolean;
+	createdAt?: Date | null;
+	displayAvatarURL?(options?: object): string;
+};
+export type MemberLike = UserLike & {
+	user?: UserLike | null;
+	nickname?: string | null;
+	joinedAt?: Date | null;
+	premiumSince?: Date | null;
+	guild?: { id?: string; ownerId?: string | null } | null;
+	roles?: { cache: { keys(): IterableIterator<string> } } | null;
+};
+type GuildLike = {
+	id: string;
+	name: string;
+	iconURL?(options?: object): string | null;
+	createdAt?: Date | null;
+	vanityURLCode?: string | null;
+	invites?: { fetch?(): Promise<unknown> } | null;
+	client?: { user?: { id: string } | null } | null;
+	premiumTier?: number | string | null;
+	memberCount?: number | null;
+	channels?: { cache?: { size: number } } | null;
+	premiumSubscriptionCount?: number | null;
+};
+type RoleLike = { id: string; name: string; position: number; hexColor: string; permissions?: { bitfield?: bigint | number | string } | null };
+type CategoryLike = { id: string; name: string | null; position?: number | null };
+type ChannelLike = { id: string; name: string | null; type: string | null; parent_id?: string | null; position?: number | null };
 
 const WAGER_FREE_GAMES = sql`(${TOWER_GAME}, ${COLOR_GAME})`;
 
@@ -66,7 +107,7 @@ async function tableExists(name: string) {
 			cfg.database,
 			name
 		]);
-		return (rows as any[])[0]?.count > 0;
+		return (rows as [{ count: number }])[0]?.count > 0;
 	} finally {
 		await conn.end();
 	}
@@ -276,7 +317,28 @@ export async function getBot(botId: number | string) {
 	});
 }
 
-export async function createBot(botData: any) {
+type BotInput = {
+	name?: string | null;
+	token: string;
+	application_id?: string | null;
+	bot_icon?: string | null;
+	port?: number;
+	secret_key?: string | null;
+	panel_id: number;
+};
+
+export type BotRunStatus = 'running' | 'stopped' | 'starting' | 'stopping';
+
+type BotUpdate = Partial<{
+	name: string;
+	bot_icon: string | null;
+	status: BotRunStatus;
+	process_id: number | null;
+	uptime_started_at: string | Date | null;
+	auto_start: boolean;
+}>;
+
+export async function createBot(botData: BotInput) {
 	await initializeDatabase();
 	const bots = await getAllBots(botData.panel_id);
 	const botNumber = bots.length + 1;
@@ -298,7 +360,7 @@ export async function createBot(botData: any) {
 	return rows[0];
 }
 
-export async function updateBot(botId: number, botData: any) {
+export async function updateBot(botId: number, botData: BotUpdate) {
 	const updateData: Record<string, unknown> = { ...botData, updated_at: toMySQLDateTime() };
 
 	if (botData.status === 'running' && !botData.uptime_started_at) {
@@ -316,8 +378,8 @@ export async function updateBot(botId: number, botData: any) {
 	return getBot(botId);
 }
 
-export async function deleteBot(botId: number) {
-	await db.delete(schema.bots).where(eq(schema.bots.id, botId));
+export async function deleteBot(botId: number | string) {
+	await db.delete(schema.bots).where(eq(schema.bots.id, Number(botId)));
 	return true;
 }
 
@@ -484,7 +546,9 @@ export function aiImageEndpoint(config: AiInput): AiEndpoint {
 	return { api_url: config.image_api_url, api_key: config.image_api_key, model: config.image_model, system_prompt: null };
 }
 
-export function aiFromDbRow(row: any): AiInput {
+type AiDbRow = Partial<Record<Exclude<keyof AiInput, 'enabled' | 'voice_enabled'>, string | null>> & { enabled?: unknown; voice_enabled?: unknown };
+
+export function aiFromDbRow(row: AiDbRow | null | undefined): AiInput {
 	if (!row) {
 		return { ...DEFAULT_AI };
 	}
@@ -494,11 +558,11 @@ export function aiFromDbRow(row: any): AiInput {
 		api_key: row.api_key?.trim() ? row.api_key.trim() : null,
 		model: row.model?.trim() ? row.model.trim() : null,
 		system_prompt: row.system_prompt?.trim() ? row.system_prompt.trim() : null,
-		reasoning: AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
+		reasoning: (AI_REASONING_LEVELS as readonly unknown[]).includes(row.reasoning) ? (row.reasoning as AiReasoning) : 'none',
 		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
 		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
 		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null,
-		voice_thinking: AI_VOICE_THINKING_LEVELS.includes(row.voice_thinking) ? row.voice_thinking : 'low',
+		voice_thinking: (AI_VOICE_THINKING_LEVELS as readonly unknown[]).includes(row.voice_thinking) ? (row.voice_thinking as AiVoiceThinking) : 'low',
 		voice_api_key: row.voice_api_key?.trim() ? row.voice_api_key.trim() : null,
 		voice_system_prompt: row.voice_system_prompt?.trim() ? row.voice_system_prompt.trim() : null,
 		search_api_url: row.search_api_url?.trim() ? row.search_api_url.trim() : null,
@@ -575,7 +639,9 @@ export interface Wiki extends WikiInput {
 	id: number;
 }
 
-export function wikiFromDbRow(row: any): Wiki {
+type WikiDbRow = Omit<typeof schema.wikis.$inferSelect, 'enabled'> & { enabled: boolean | number };
+
+export function wikiFromDbRow(row: WikiDbRow): Wiki {
 	return {
 		id: Number(row.id),
 		enabled: row.enabled === true || row.enabled === 1,
@@ -717,7 +783,7 @@ export async function countServerMembers(serverId: number | string): Promise<num
 	await initializeDatabase();
 	const rows = (await db.execute(
 		sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`
-	)) as any;
+	)) as unknown as SelectResult<{ total: string }>;
 	return Number(rows[0]?.[0]?.total) || 0;
 }
 
@@ -953,8 +1019,8 @@ export async function getPanelSourceServerTopology(panelId: number, discordServe
 		return { channels: [], categories: [] };
 	}
 
-	const categories = new Map<string, any>();
-	const channels = new Map<string, any>();
+	const categories = new Map<string, typeof schema.selfbotServerCategories.$inferSelect>();
+	const channels = new Map<string, typeof schema.selfbotServerChannels.$inferSelect>();
 
 	for (const source of sources) {
 		const [rawChannels, rawCategories] = await Promise.all([getSelfbotChannelsForServer(source.id), getSelfbotCategoriesForServer(source.id)]);
@@ -1040,7 +1106,7 @@ export async function getServerByDiscordId(botId: number, discordServerId: strin
 	return getOfficialServerByDiscordId(botId, discordServerId);
 }
 
-export async function getOfficialBotServerIdForServer(serverId: any) {
+export async function getOfficialBotServerIdForServer(serverId: number | string) {
 	const server = await getServer(serverId);
 	if (!server) {
 		return null;
@@ -1091,7 +1157,15 @@ export async function getNotificationChannels(serverId: number | string, channel
 		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id IN (${sql.join(channelIds, sql`, `)})
 		ORDER BY category_position ASC, channel_position ASC, channel_name ASC
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			discord_channel_id: string;
+			category_name: string | null;
+			category_position: number;
+			channel_position: number;
+			channel_name: string | null;
+		}[]) || []
+	);
 }
 
 export async function getMemberNotificationChannelIds(serverId: number | string, discordMemberId: string) {
@@ -1103,7 +1177,7 @@ export async function getMemberNotificationChannelIds(serverId: number | string,
 		INNER JOIN server_channels c ON c.id = n.channel_id
 		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${discordMemberId}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_channel_id);
+	return ((rows[0] as unknown as { discord_channel_id: string }[]) || []).map((r) => r.discord_channel_id);
 }
 
 export async function getNotifiedMemberDiscordIds(serverId: number | string, discordChannelId: string) {
@@ -1115,7 +1189,7 @@ export async function getNotifiedMemberDiscordIds(serverId: number | string, dis
 		INNER JOIN server_channels c ON c.id = n.channel_id
 		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id = ${discordChannelId}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_member_id);
+	return ((rows[0] as unknown as { discord_member_id: string }[]) || []).map((r) => r.discord_member_id);
 }
 
 export async function updateMemberNotificationChannels(serverId: number | string, discordMemberId: string, discordChannelIds: string[]) {
@@ -1157,9 +1231,10 @@ export async function getContentCreatorRoleDbIds(serverId: number | string) {
 	await initializeDatabase();
 	const contentCreatorSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.content_creator).catch(() => null);
 	const roleIds = new Set<string>(
-		[...((contentCreatorSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(
-			Boolean
-		)
+		[
+			...((contentCreatorSettings?.settings?.content_creator_roles as string[] | undefined) || []),
+			contentCreatorSettings?.settings?.content_creator_role as string | undefined
+		].filter(Boolean) as string[]
 	);
 	if (roleIds.size === 0) {
 		return new Set<number>();
@@ -1171,13 +1246,13 @@ export async function getContentCreatorRoleDbIds(serverId: number | string) {
 	return new Set(rows.map((r) => r.id).filter(Boolean));
 }
 
-async function collectGuildSnapshotForUpsert(guild: any) {
+async function collectGuildSnapshotForUpsert(guild: GuildLike) {
 	const iconUrl = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
 	const discordCreatedAt = guild.createdAt ? toMySQLDateTime(guild.createdAt) : null;
 	const vanityCode = guild.vanityURLCode ? String(guild.vanityURLCode) : null;
 	let inviteCode: string | null = null;
 	try {
-		const invites = await guild?.invites?.fetch?.();
+		const invites = (await guild?.invites?.fetch?.()) as { values(): Iterable<{ inviterId: string | null; maxAge: number | null; code: string }> } | undefined;
 		const botUserId = guild?.client?.user?.id ?? null;
 		const owned = invites && typeof invites.values === 'function' ? [...invites.values()].filter((i) => i.inviterId === botUserId && !i.maxAge) : [];
 		const personal = await getPersonalInviteCodes(owned.map((i) => String(i.code)));
@@ -1210,7 +1285,7 @@ async function collectGuildSnapshotForUpsert(guild: any) {
 	};
 }
 
-export async function upsertOfficialServer(officialBotId: number, guild: any) {
+export async function upsertOfficialServer(officialBotId: number, guild: GuildLike) {
 	const existing = await getOfficialServerByDiscordId(officialBotId, guild.id);
 	const isNewServer = existing == null;
 	const v = await collectGuildSnapshotForUpsert(guild);
@@ -1290,7 +1365,7 @@ async function batchUpsert<T>(label: string, rows: T[], runBatch: (batch: T[]) =
 	}
 }
 
-export async function syncSelfbotCategories(selfbotServerId: number, categories: any[]) {
+export async function syncSelfbotCategories(selfbotServerId: number, categories: CategoryLike[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const sid = Number(selfbotServerId);
@@ -1342,11 +1417,11 @@ export async function syncSelfbotCategories(selfbotServerId: number, categories:
 	return true;
 }
 
-export async function syncSelfbotChannels(selfbotServerId: number, channels: any[]) {
+export async function syncSelfbotChannels(selfbotServerId: number, channels: ChannelLike[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const sid = Number(selfbotServerId);
-	const valid = (channels ?? []).filter((ch) => ch.type !== 4);
+	const valid = channels ?? [];
 
 	if (valid.length > 0) {
 		const rows = valid.map((ch) => ({
@@ -1425,7 +1500,7 @@ export async function getSelfbotChannelsForServer(selfbotServerId: number) {
 		.orderBy(asc(schema.selfbotServerChannels.position), asc(schema.selfbotServerChannels.name));
 }
 
-export async function upsertServer(botId: number, guild: unknown) {
+export async function upsertServer(botId: number, guild: GuildLike) {
 	return upsertOfficialServer(botId, guild);
 }
 
@@ -1453,7 +1528,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 				OR JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) LIKE ${`${base}-%`}
 		  )
 	`);
-	const existing = new Set<string>(((rows[0] as unknown as unknown[]) || []).map((r: any) => String(r.slug || '')).filter(Boolean));
+	const existing = new Set<string>(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => String(r.slug || '')).filter(Boolean));
 	if (!existing.has(base)) {
 		return base;
 	}
@@ -1468,7 +1543,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 
 async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
 	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.public);
-	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
+	const settings = row?.settings && typeof row.settings === 'object' ? row.settings : {};
 	if (settings?.slug) {
 		return true;
 	}
@@ -1524,10 +1599,18 @@ export async function listPublicServers() {
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public}
 	`);
-	const list = (rows[0] as unknown as unknown[]) || [];
+	const list =
+		(rows[0] as unknown as {
+			id: number | string;
+			bot_id: number | string | null;
+			name: string | null;
+			updated_at: string;
+			server_icon: string | null;
+			deleted_at: string | null;
+		}[]) || [];
 	return list
 		.filter((r: unknown) => !!r)
-		.map((r: any) => ({
+		.map((r) => ({
 			id: Number(r.id),
 			bot_id: r.bot_id == null ? null : Number(r.bot_id),
 			name: r.name ?? null,
@@ -1661,12 +1744,12 @@ export async function listPublicXpEventsAfter(afterId: unknown, limit = 40) {
 		LIMIT ${safeLimit}
 	`);
 
-	return ((rows[0] as unknown as unknown[]) || [])
-		.map((r: any) => ({ id: Number(r.id), xp: Number(r.xp) || 0 }))
+	return ((rows[0] as unknown as { id: number | string; xp: number | string }[]) || [])
+		.map((r) => ({ id: Number(r.id), xp: Number(r.xp) || 0 }))
 		.filter((r) => Number.isFinite(r.id) && r.xp > 0);
 }
 
-export async function upsertCategory(serverId: number | string, categoryData: any) {
+export async function upsertCategory(serverId: number | string, categoryData: CategoryLike) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
 		INSERT INTO server_categories (server_id, discord_category_id, name, position, created_at, updated_at)
@@ -1681,7 +1764,7 @@ export async function upsertCategory(serverId: number | string, categoryData: an
 	return rows[0];
 }
 
-export async function syncCategories(serverId: number | string, categories: Record<string, unknown>[]) {
+export async function syncCategories(serverId: number | string, categories: CategoryLike[]) {
 	if (!categories || categories.length === 0) {
 		return new Map();
 	}
@@ -1711,7 +1794,7 @@ export async function syncCategories(serverId: number | string, categories: Reco
 	return categoryMap;
 }
 
-export async function upsertChannel(serverId: number | string, channelData: any, categoryMap: Map<unknown, unknown> | null = null) {
+export async function upsertChannel(serverId: number | string, channelData: ChannelLike, categoryMap: Map<unknown, unknown> | null = null) {
 	const categoryId = channelData.parent_id && categoryMap ? categoryMap.get(channelData.parent_id) || null : null;
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -1727,9 +1810,7 @@ export async function upsertChannel(serverId: number | string, channelData: any,
 	return rows[0];
 }
 
-export async function syncChannels(serverId: number | string, channels: Record<string, unknown>[], categoryMap: Map<unknown, unknown> | null = null) {
-	const validChannels = channels.filter((ch) => ch.type !== 4);
-
+export async function syncChannels(serverId: number | string, channels: ChannelLike[], categoryMap: Map<unknown, unknown> | null = null) {
 	const catRows = await db
 		.select({ id: schema.serverChannels.id })
 		.from(schema.serverChannels)
@@ -1744,14 +1825,14 @@ export async function syncChannels(serverId: number | string, channels: Record<s
 	}
 
 	await Promise.all(
-		validChannels.map((ch) =>
+		channels.map((ch) =>
 			upsertChannel(serverId, { id: ch.id, name: ch.name, type: ch.type, parent_id: ch.parent_id || null, position: ch.position }, categoryMap).catch(
 				() => null
 			)
 		)
 	);
 
-	const discordIds = new Set(validChannels.map((ch) => ch.id));
+	const discordIds = new Set(channels.map((ch) => ch.id));
 	const dbChannels = await db
 		.select({ id: schema.serverChannels.id, discord_channel_id: schema.serverChannels.discord_channel_id })
 		.from(schema.serverChannels)
@@ -1783,7 +1864,7 @@ export async function getAdministratorRoleIds(serverId: number | string): Promis
 		FROM server_roles
 		WHERE server_id = ${Number(serverId)} AND (CAST(permissions AS UNSIGNED) & 8) = 8
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
+	return ((rows[0] as unknown as { discord_role_id: string }[]) || []).map((r) => String(r.discord_role_id));
 }
 
 async function getTierRoleIds(serverId: number | string): Promise<{ staffRoleIds: string[]; adminRoleIds: string[] }> {
@@ -1791,7 +1872,7 @@ async function getTierRoleIds(serverId: number | string): Promise<{ staffRoleIds
 		getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
 		getAdministratorRoleIds(serverId).catch(() => [] as string[])
 	]);
-	return { staffRoleIds: ((main as any)?.settings?.staff_roles ?? []).map(String), adminRoleIds };
+	return { staffRoleIds: ((main?.settings?.staff_roles as unknown[] | undefined) ?? []).map(String), adminRoleIds };
 }
 
 export async function getMemberTier(serverId: number | string, discordMemberId: string): Promise<MemberTier> {
@@ -1802,8 +1883,8 @@ export async function getMemberTier(serverId: number | string, discordMemberId: 
 		LEFT JOIN server_member_roles smr ON smr.member_id = sm.id
 		LEFT JOIN server_roles sr ON sr.id = smr.role_id
 		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${String(discordMemberId)}
-	`)) as any;
-	const list = (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ is_owner: number; discord_role_id: string | null }>;
+	const list = rows ?? [];
 	if (list.length === 0) {
 		return 'member';
 	}
@@ -1834,9 +1915,9 @@ export async function getMemberTierMap(
 		LEFT JOIN server_member_roles smr ON smr.member_id = sm.id
 		LEFT JOIN server_roles sr ON sr.id = smr.role_id AND ${roleMatch}
 		WHERE sm.server_id = ${Number(serverId)} AND (sm.is_owner = 1 OR sr.id IS NOT NULL)
-	`)) as any;
+	`)) as unknown as SelectResult<{ discord_member_id: string; is_owner: number; discord_role_id: string | null }>;
 	const grouped = new Map<string, { is_owner: number; roleIds: string[] }>();
-	for (const r of (rows as Record<string, unknown>[]) ?? []) {
+	for (const r of rows ?? []) {
 		const id = String(r.discord_member_id);
 		const entry = grouped.get(id) ?? { is_owner: Number(r.is_owner) || 0, roleIds: [] };
 		if (r.discord_role_id != null) {
@@ -1854,7 +1935,7 @@ export async function getMemberTierMap(
 	return { staffRoleIds, adminRoleIds, tiers };
 }
 
-export async function upsertRole(serverId: number | string, roleData: any) {
+export async function upsertRole(serverId: number | string, roleData: RoleLike) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
 		INSERT INTO server_roles (server_id, discord_role_id, name, position, color, permissions, created_at, updated_at)
@@ -1869,7 +1950,7 @@ export async function upsertRole(serverId: number | string, roleData: any) {
 	return rows[0];
 }
 
-export async function syncRoles(serverId: number | string, roles: Record<string, unknown>[]) {
+export async function syncRoles(serverId: number | string, roles: RoleLike[]) {
 	if (!roles || roles.length === 0) {
 		return true;
 	}
@@ -1901,7 +1982,7 @@ export async function syncRoles(serverId: number | string, roles: Record<string,
 	return true;
 }
 
-export async function upsertMember(serverId: number | string, memberData: any) {
+export async function upsertMember(serverId: number | string, memberData: MemberLike) {
 	const user = memberData.user || memberData;
 	const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
 	const now = toMySQLDateTime();
@@ -1971,7 +2052,7 @@ export async function getMemberByDiscordId(serverId: number | string, discordMem
 	return member;
 }
 
-export async function getServerMemberById(memberId: number | string) {
+export async function getServerMemberById(memberId: number | string | null) {
 	await initializeDatabase();
 	if (!memberId) {
 		return null;
@@ -1982,7 +2063,18 @@ export async function getServerMemberById(memberId: number | string) {
 		WHERE id = ${Number(memberId)}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (
+		(
+			rows[0] as unknown as {
+				id: number;
+				server_id: number;
+				discord_member_id: string;
+				username: string | null;
+				display_name: string | null;
+				server_display_name: string | null;
+			}[]
+		)[0] || null
+	);
 }
 
 export async function searchServerMembers(serverId: number | string, queryText: string | null, limit = 15) {
@@ -2088,7 +2180,18 @@ export async function searchPanelMembersForGift(panelId: number | string, queryT
 		${orderClause}
 		LIMIT ${safeLimit}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			id: number;
+			discord_member_id: string;
+			username: string | null;
+			display_name: string | null;
+			server_display_name: string | null;
+			avatar: string | null;
+			server_id: number;
+			server_name: string | null;
+		}[]) || []
+	);
 }
 
 export async function getMemberInventoryTotals(memberIds: unknown[]) {
@@ -2172,7 +2275,7 @@ async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: 
 	}
 }
 
-export async function setMemberCustomSupporterRole(serverId: number | string, discordMemberId: string, roleData: Record<string, unknown>) {
+export async function setMemberCustomSupporterRole(serverId: number | string, discordMemberId: string, roleData: RoleLike) {
 	await initializeDatabase();
 	if (!serverId || !discordMemberId || !roleData?.id) {
 		return false;
@@ -2273,7 +2376,7 @@ export async function syncMemberRoles(memberId: unknown, discordRoleIds: string[
 	return true;
 }
 
-export async function syncMembers(serverId: number | string, members: any[]) {
+export async function syncMembers(serverId: number | string, members: MemberLike[]) {
 	if (!members || members.length === 0) {
 		return true;
 	}
@@ -2525,9 +2628,9 @@ export async function applyStreakDay(memberId: number | string, dayKey: number, 
 
 export async function getLatestTaskKey(memberId: number | string, period = 'daily') {
 	await initializeDatabase();
-	const rows: any = await db.execute(
+	const rows = (await db.execute(
 		sql`SELECT MAX(day_key) AS k FROM server_member_tasks WHERE member_id = ${Number(memberId)} AND period = ${String(period)}`
-	);
+	)) as unknown as ScalarRows<'k'>;
 	const key = rows?.[0]?.[0]?.k ?? rows?.[0]?.k ?? null;
 	return key == null ? null : Number(key);
 }
@@ -2570,7 +2673,7 @@ export async function persistMemberTasks(memberId: number | string, dayKey: numb
 				xp_reward: Number(r.rewardXp) || 0,
 				reward_item_id: r.rewardItemId == null ? null : Number(r.rewardItemId),
 				created_at: now
-			})) as any
+			}))
 		)
 		.onDuplicateKeyUpdate({ set: { day_key: sql`day_key` } });
 	return getMemberTasks(memberId, dayKey, period);
@@ -2579,9 +2682,9 @@ export async function persistMemberTasks(memberId: number | string, dayKey: numb
 export async function claimMemberTask(memberId: number | string, dayKey: number, slot: number, period = 'daily') {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND period = ${String(period)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
-	);
+	)) as unknown as WriteResult;
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	return affected > 0;
 }
@@ -2611,7 +2714,7 @@ export async function applyMemberClaim(memberId: number | string, dayKey: number
 	const now = toMySQLDateTime();
 	const readyBefore = Number(dayKey) - DAY_MINUTES;
 	const brokenBefore = Number(dayKey) - 2 * DAY_MINUTES;
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_claims
 			SET cycle_day = CASE
 					WHEN last_claim_day_key IS NULL OR last_claim_day_key <= ${brokenBefore} THEN 1
@@ -2622,7 +2725,7 @@ export async function applyMemberClaim(memberId: number | string, dayKey: number
 				last_claim_day_key = ${Number(dayKey)},
 				updated_at = ${now}
 			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key <= ${readyBefore})`
-	);
+	)) as unknown as WriteResult;
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	if (affected === 0) {
 		return { changed: false, row: await getMemberClaim(memberId) };
@@ -2650,9 +2753,9 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 	};
 
 	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${GAMBLE_FILTERS[String(metric)]}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
@@ -2665,24 +2768,24 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 	};
 
 	if (TOWER_FILTERS[String(metric)] !== undefined) {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since} AND game = ${TOWER_GAME}${TOWER_FILTERS[String(metric)]}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'invites_joined') {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'gamble_wagered' || metric === 'gamble_wagered_lost') {
 		const lostOnly = metric === 'gamble_wagered_lost' ? sql` AND outcome = 'lose'` : sql``;
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${lostOnly}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
@@ -2711,7 +2814,7 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 
 	const lm = LEVEL_METRICS[String(metric)];
 	if (lm) {
-		const parts: any[] = [];
+		const parts: SQL[] = [];
 		if (lm.sources) {
 			parts.push(
 				sql`source IN (${sql.join(
@@ -2737,50 +2840,52 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 		}
 		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
 		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
-		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
+		const rows = (await db.execute(
+			sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (XP_SOURCE_FILTERS[String(metric)] !== undefined) {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'xp_stolen') {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'xp_gained') {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'xp_spent') {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'asset_bought' || metric === 'asset_sold') {
 		const act = metric === 'asset_bought' ? 'buy' : 'sell';
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = ${act}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'asset_profit') {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
@@ -2798,9 +2903,9 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 					: metric === 'item_specific_success'
 						? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL AND outcome = 'success'`
 						: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
@@ -2816,7 +2921,7 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 
 	const combo = COMBO_METRICS[String(metric)];
 	if (combo) {
-		const parts: any[] = [];
+		const parts: SQL[] = [];
 		if (combo.actions) {
 			parts.push(
 				sql`action IN (${sql.join(
@@ -2837,15 +2942,15 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 		if (combo.success) {
 			parts.push(sql`outcome = 'success'`);
 		}
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${sql.join(parts, sql` AND `)}`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	const durationMatch = /^duration_([a-z]+)$/.exec(String(metric));
 	if (durationMatch) {
-		const rows: any = await db.execute(
+		const rows = (await db.execute(
 			sql`SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, GREATEST(a.created_at, ${since}), LEAST(a.expires_at, NOW()))), 0) AS c
 				FROM server_member_item_actives a
 				INNER JOIN server_member_items mi ON mi.id = a.member_item_id
@@ -2854,7 +2959,7 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 					AND i.effect_type = ${durationMatch[1]}
 					AND a.expires_at > ${since}
 					AND a.created_at <= NOW()`
-		);
+		)) as unknown as ScalarRows<'c'>;
 		const seconds = Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 		return Math.floor(Math.max(0, seconds) / 60);
 	}
@@ -2875,7 +2980,9 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 	if (victim) {
 		const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : sql`COUNT(*)`;
 		const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
-		const rows: any = await db.execute(sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`);
+		const rows = (await db.execute(
+			sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`
+		)) as unknown as ScalarRows<'c'>;
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
@@ -2924,19 +3031,38 @@ export async function countMemberEventsSince(memberId: number | string, metric: 
 		return 0;
 	}
 
-	const rows: any = await db.execute(
+	const rows = (await db.execute(
 		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${actionFilter}`
-	);
+	)) as unknown as ScalarRows<'c'>;
 	return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 }
 
-export async function updateMemberLevelStats(memberId: number | string, updates: any = {}) {
+export type MemberLevelUpdates = {
+	chatIncrement?: number;
+	reactionsIncrement?: number;
+	voiceMinutesActiveIncrement?: number;
+	voiceMinutesAfkIncrement?: number;
+	voiceMinutesVideoIncrement?: number;
+	voiceMinutesStreamingIncrement?: number;
+	xpIncrement?: number;
+	level?: number | null;
+	rank?: number | null;
+	isInVoice?: boolean;
+	isInVideo?: boolean;
+	isInStream?: boolean;
+	chatRewardedAt?: string | Date | null;
+	voiceRewardedAt?: string | Date | null;
+	videoRewardedAt?: string | Date | null;
+	streamRewardedAt?: string | Date | null;
+};
+
+export async function updateMemberLevelStats(memberId: number | string, updates: MemberLevelUpdates = {}) {
 	await initializeDatabase();
 	if (!memberId) {
 		throw new Error('memberId is required');
 	}
 
-	const clauses: any[] = [];
+	const clauses: SQL[] = [];
 
 	if (typeof updates.chatIncrement === 'number' && updates.chatIncrement !== 0) {
 		clauses.push(sql`chat_total = chat_total + ${updates.chatIncrement}`);
@@ -3037,7 +3163,7 @@ export async function claimVoiceRewardWindow(memberId: number | string, cooldown
 		WHERE member_id = ${Number(memberId)}
 			AND (voice_rewarded_at IS NULL OR voice_rewarded_at <= DATE_SUB(${now}, INTERVAL ${cooldownSeconds} SECOND))
 	`);
-	const affected = (result as any)?.[0]?.affectedRows ?? (result as any)?.affectedRows ?? 0;
+	const affected = (result as unknown as WriteResult)?.[0]?.affectedRows ?? (result as unknown as WriteResult)?.affectedRows ?? 0;
 	return affected > 0;
 }
 
@@ -3094,8 +3220,33 @@ export async function getMemberDiscordRoleIds(memberId: unknown): Promise<string
 		INNER JOIN server_roles sr ON smr.role_id = sr.id
 		WHERE smr.member_id = ${Number(memberId)}
 	`);
-	return ((rows[0] as unknown as unknown[]) || []).map((r: any) => String(r.discord_role_id));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => String(r.discord_role_id));
 }
+
+type MemberLevelSqlRow = {
+	id: number;
+	member_id: number;
+	chat_total: number | null;
+	reactions_given: number | null;
+	voice_minutes_total: number | null;
+	voice_minutes_active: number | null;
+	voice_minutes_afk: number | null;
+	voice_minutes_video: number | null;
+	voice_minutes_streaming: number | null;
+	xp: number | null;
+	level: number | null;
+	is_in_voice: number | null;
+	is_in_video: number | null;
+	is_in_stream: number | null;
+	rank: number | null;
+	chat_rewarded_at: string | null;
+	voice_rewarded_at: string | null;
+	video_rewarded_at: string | null;
+	stream_rewarded_at: string | null;
+	created_at: string;
+	updated_at: string;
+};
+type MemberNameColumns = { username: string | null; display_name: string | null; server_display_name: string | null };
 
 export async function getMemberLevelByDiscordId(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
@@ -3106,7 +3257,7 @@ export async function getMemberLevelByDiscordId(serverId: number | string, disco
 		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${discordMemberId}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (rows[0] as unknown as (MemberLevelSqlRow & MemberNameColumns & { discord_member_id: string })[])[0] || null;
 }
 
 export async function getMembersWithInVoiceFlag(serverId: number | string) {
@@ -3121,12 +3272,12 @@ export async function getMembersWithInVoiceFlag(serverId: number | string) {
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), eq(schema.serverMemberLevels.is_in_voice, true)));
 }
 
-export async function listItems(panelId: number | string, options: any = {}) {
+export async function listItems(panelId: number | string, options: { enabledOnly?: boolean } = {}) {
 	await initializeDatabase();
 	if (!panelId) {
 		throw new Error('panelId is required');
 	}
-	const conditions: any[] = [eq(schema.items.panel_id, Number(panelId))];
+	const conditions: SQL[] = [eq(schema.items.panel_id, Number(panelId))];
 	if (options.enabledOnly) {
 		conditions.push(eq(schema.items.enabled, true));
 	}
@@ -3156,13 +3307,27 @@ export async function setItemEnabled(itemId: number | string, enabled: boolean) 
 	return true;
 }
 
-export async function createItem(panelId: number | string, data: any = {}) {
+type ItemInput = {
+	name?: string | null;
+	effect_type?: string | null;
+	description?: string | null;
+	cost?: number | string | null;
+	config?: unknown;
+	enabled?: boolean;
+	usable?: boolean;
+	available_from?: string | null;
+	available_to?: string | null;
+	recurring_schedule?: unknown;
+	sort_order?: number | string | null;
+};
+
+export async function createItem(panelId: number | string, data: ItemInput = {}) {
 	await initializeDatabase();
 	if (!panelId) {
 		throw new Error('panelId is required');
 	}
 	const now = toMySQLDateTime();
-	const result: any = await db.insert(schema.items).values({
+	const result = (await db.insert(schema.items).values({
 		panel_id: Number(panelId),
 		name: String(data.name ?? ''),
 		effect_type: String(data.effect_type ?? ''),
@@ -3177,7 +3342,7 @@ export async function createItem(panelId: number | string, data: any = {}) {
 		sort_order: Number(data.sort_order ?? 0),
 		created_at: now,
 		updated_at: now
-	});
+	})) as unknown as WriteResult;
 	const insertId = result?.insertId ?? result?.[0]?.insertId;
 	return getItem(insertId);
 }
@@ -3237,6 +3402,23 @@ export async function deleteItem(itemId: number | string) {
 	return true;
 }
 
+export type InventorySqlRow = {
+	id: number;
+	member_id: number;
+	item_id: number;
+	quantity: number;
+	acquired_at: string;
+	created_at: string;
+	updated_at: string;
+	name: string;
+	effect_type: string;
+	description: string | null;
+	cost: number;
+	config: unknown;
+	usable: number | boolean;
+	enabled: number | boolean;
+};
+
 export async function getMemberInventory(memberId: number | string) {
 	await initializeDatabase();
 	if (!memberId) {
@@ -3249,7 +3431,7 @@ export async function getMemberInventory(memberId: number | string) {
 		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0
 		ORDER BY smi.updated_at DESC
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as InventorySqlRow[];
 }
 
 export async function getMemberItem(memberItemId: number | string) {
@@ -3288,28 +3470,28 @@ export async function consumeMemberItem(memberItemId: number | string, quantity 
 	}
 	const id = Number(memberItemId);
 	const qty = Math.max(1, Number(quantity) || 1);
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_items SET quantity = quantity - ${qty}, updated_at = ${toMySQLDateTime()} WHERE id = ${id} AND quantity >= ${qty}`
-	);
+	)) as unknown as WriteResult;
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	return affected > 0;
 }
 
 export async function backfillItemLogItemIds() {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE server_member_item_logs sml
 		JOIN server_member_items smi ON smi.id = sml.member_item_id
 		SET sml.item_id = smi.item_id
 		WHERE sml.item_id IS NULL AND sml.member_item_id IS NOT NULL
-	`);
+	`)) as unknown as WriteResult;
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 }
 
 export async function listStaleStreaks(limit = 500) {
 	await initializeDatabase();
 	const nowKey = minuteKeyFor(Date.now());
-	const rows: any = await db.execute(sql`
+	const rows = (await db.execute(sql`
 		SELECT s.member_id, s.current_streak, s.longest_streak, s.freezes_available, s.last_claim_day_key, s.tz_offset_min,
 		       m.server_id, m.discord_member_id, sv.discord_server_id
 		FROM server_member_streaks s
@@ -3328,8 +3510,18 @@ export async function listStaleStreaks(limit = 500) {
 		  )
 		ORDER BY s.updated_at ASC
 		LIMIT ${Number(limit) || 500}
-	`);
-	return (rows?.[0] as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		member_id: number;
+		current_streak: number;
+		longest_streak: number;
+		freezes_available: number;
+		last_claim_day_key: number | null;
+		tz_offset_min: number | null;
+		server_id: number;
+		discord_member_id: string;
+		discord_server_id: string;
+	}>;
+	return rows?.[0] ?? [];
 }
 
 export async function expireStreak(memberId: unknown, dayKey: number, freezesLeft: number, broke: boolean) {
@@ -3348,7 +3540,7 @@ export async function expireStreak(memberId: unknown, dayKey: number, freezesLef
 
 export async function purgeDepletedMemberItems() {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE smi FROM server_member_items smi
 		WHERE smi.quantity <= 0
 		  AND smi.updated_at <= UTC_TIMESTAMP() - INTERVAL 60 SECOND
@@ -3357,29 +3549,39 @@ export async function purgeDepletedMemberItems() {
 		    WHERE a.member_item_id = smi.id
 		      AND a.expires_at > UTC_TIMESTAMP() - INTERVAL 8 DAY
 		  )
-	`);
+	`)) as unknown as WriteResult;
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 }
 
-export async function addMemberItemActive(memberItemId: number | string, data: any = {}) {
+export async function addMemberItemActive(
+	memberItemId: number | string,
+	data: {
+		effect_value?: number | string | null;
+		beneficiary_member_id?: number | string | null;
+		target_member_id?: number | string | null;
+		expires_at?: string | Date;
+	} = {}
+) {
 	await initializeDatabase();
 	if (!memberItemId) {
 		throw new Error('memberItemId is required');
 	}
 	const now = toMySQLDateTime();
-	const result: any = await db.insert(schema.serverMemberItemActives).values({
+	const result = (await db.insert(schema.serverMemberItemActives).values({
 		member_item_id: Number(memberItemId),
-		effect_value: String(data.effect_value ?? 0) as any,
+		effect_value: String(data.effect_value ?? 0),
 		beneficiary_member_id: data.beneficiary_member_id != null ? Number(data.beneficiary_member_id) : null,
 		target_member_id: data.target_member_id != null ? Number(data.target_member_id) : null,
-		expires_at: toMySQLDateTime(data.expires_at) as any,
-		created_at: now as any
-	});
+		expires_at: toMySQLDateTime(data.expires_at) as Date,
+		created_at: now
+	})) as unknown as WriteResult;
 	const insertId = result?.insertId ?? result?.[0]?.insertId;
 	return insertId;
 }
 
-export async function getActiveEffectsForMember(memberId: number | string) {
+type TargetNameColumns = { target_server_display_name: string | null; target_display_name: string | null; target_username: string | null };
+
+export async function getActiveEffectsForMember(memberId: number | string | null) {
 	await initializeDatabase();
 	if (!memberId) {
 		throw new Error('memberId is required');
@@ -3402,10 +3604,25 @@ export async function getActiveEffectsForMember(memberId: number | string) {
 		    OR sma.beneficiary_member_id = ${Number(memberId)}
 		  )
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as (TargetNameColumns & {
+		id: number;
+		member_item_id: number;
+		effect_value: string;
+		beneficiary_member_id: number | null;
+		target_member_id: number | null;
+		expires_at: string;
+		item_id: number;
+		name: string;
+		effect_type: string;
+		config: unknown;
+		owner_member_id: number;
+		beneficiary_server_display_name: string | null;
+		beneficiary_display_name: string | null;
+		beneficiary_username: string | null;
+	})[];
 }
 
-export async function getActiveLeechByBeneficiary(beneficiaryMemberId: any) {
+export async function getActiveLeechByBeneficiary(beneficiaryMemberId: number | string | null | undefined) {
 	await initializeDatabase();
 	if (!beneficiaryMemberId) {
 		return null;
@@ -3423,7 +3640,7 @@ export async function getActiveLeechByBeneficiary(beneficiaryMemberId: any) {
 		ORDER BY sma.expires_at DESC
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])?.[0] ?? null;
+	return (rows[0] as unknown as (TargetNameColumns & { id: number; target_member_id: number | null; expires_at: string })[])?.[0] ?? null;
 }
 
 export async function clearExpiredMemberItemActives() {
@@ -3435,7 +3652,7 @@ export async function clearExpiredMemberItemActives() {
 export async function getNewlyExpiredEffects(botId: number | string, limit = 100) {
 	await initializeDatabase();
 	if (!botId) {
-		return [] as any[];
+		return [];
 	}
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id, sma.target_member_id,
@@ -3464,7 +3681,20 @@ export async function getNewlyExpiredEffects(botId: number | string, limit = 100
 		ORDER BY sma.expires_at ASC
 		LIMIT ${Number(limit)}
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as (TargetNameColumns & {
+		id: number;
+		effect_value: string;
+		expires_at: string;
+		beneficiary_member_id: number | null;
+		target_member_id: number | null;
+		effect_type: string;
+		item_name: string;
+		member_id: number;
+		discord_member_id: string;
+		discord_server_id: string;
+		target_discord_member_id: string | null;
+		disguised_at_activation: number | null;
+	})[];
 }
 
 export async function markEffectExpiryNotified(ids: unknown[]) {
@@ -3482,18 +3712,18 @@ export async function markEffectExpiryNotified(ids: unknown[]) {
 	return list.length;
 }
 
-export async function recordItemNotification(memberId: number | string, notificationType: string, notifiedForAt: any) {
+export async function recordItemNotification(memberId: number | string, notificationType: string, notifiedForAt: string | Date) {
 	await initializeDatabase();
 	if (!memberId || !notificationType || !notifiedForAt) {
 		return false;
 	}
 	try {
-		const result: any = await db.insert(schema.serverMemberItemNotifications).values({
+		const result = (await db.insert(schema.serverMemberItemNotifications).values({
 			member_id: Number(memberId),
 			notification_type: String(notificationType),
-			notified_for_at: toMySQLDateTime(notifiedForAt) as any,
-			created_at: toMySQLDateTime() as any
-		});
+			notified_for_at: toMySQLDateTime(notifiedForAt) as Date,
+			created_at: toMySQLDateTime()
+		})) as unknown as WriteResult;
 		const affected = result?.affectedRows ?? result?.[0]?.affectedRows ?? 1;
 		return Number(affected) > 0;
 	} catch (_) {
@@ -3504,7 +3734,7 @@ export async function recordItemNotification(memberId: number | string, notifica
 export async function getRecentVictimHits(botId: number | string, sinceMinutes = 720) {
 	await initializeDatabase();
 	if (!botId) {
-		return [] as any[];
+		return [];
 	}
 	const rows = await db.execute(sql`
 		SELECT sml.target_member_id AS member_id, sml.action AS action, MAX(sml.created_at) AS last_hit,
@@ -3520,13 +3750,13 @@ export async function getRecentVictimHits(botId: number | string, sinceMinutes =
 		  AND s.bot_id = ${Number(botId)}
 		GROUP BY sml.target_member_id, sml.action, sm.discord_member_id, s.discord_server_id
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as { member_id: number; action: string; last_hit: string | Date; discord_member_id: string; discord_server_id: string }[];
 }
 
 export async function getRecentAttackerActions(botId: number | string, sinceMinutes = 720) {
 	await initializeDatabase();
 	if (!botId) {
-		return [] as any[];
+		return [];
 	}
 	const rows = await db.execute(sql`
 		SELECT smi.member_id AS member_id, sml.action AS action, MAX(sml.created_at) AS last_attack,
@@ -3540,13 +3770,13 @@ export async function getRecentAttackerActions(botId: number | string, sinceMinu
 		  AND s.bot_id = ${Number(botId)}
 		GROUP BY smi.member_id, sml.action, sm.discord_member_id, s.discord_server_id
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as { member_id: number; action: string; last_attack: string | Date; discord_member_id: string; discord_server_id: string }[];
 }
 
 export async function getRecentInsuranceActivations(botId: number | string, sinceMinutes = 2880) {
 	await initializeDatabase();
 	if (!botId) {
-		return [] as any[];
+		return [];
 	}
 	const rows = await db.execute(sql`
 		SELECT smi.member_id AS member_id, MAX(sml.created_at) AS last_activation,
@@ -3561,7 +3791,7 @@ export async function getRecentInsuranceActivations(botId: number | string, sinc
 		  AND s.bot_id = ${Number(botId)}
 		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as { member_id: number; last_activation: string | Date; discord_member_id: string; discord_server_id: string }[];
 }
 
 export async function expireMemberItemActive(activeId: number | string) {
@@ -3587,7 +3817,7 @@ export async function endMemberItemActiveNow(activeId: number | string) {
 	return true;
 }
 
-export async function logMemberItemAction(memberId: number | string, data: any = {}) {
+export async function logMemberItemAction(memberId: number | string, data: Record<string, unknown> = {}) {
 	await initializeDatabase();
 	if (!memberId) {
 		throw new Error('memberId is required');
@@ -3643,7 +3873,7 @@ export async function getActiveTowerRun(memberId: unknown) {
 	const rows = await db.execute(
 		sql`SELECT id, slot, floor FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
 	);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+	return ((rows[0] as unknown as { id: string; slot: number; floor: number }[]) || [])[0] ?? null;
 }
 
 export async function getTowerWindow(memberId: unknown) {
@@ -3673,15 +3903,15 @@ export async function createTowerRun(memberId: number | string, slot: number) {
 
 export async function stepTowerRun(runId: number | string, fromFloor: number, next: { floor: number; status: string; payout?: number }) {
 	await initializeDatabase();
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_tower_runs
 			SET floor = ${Number(next.floor)}, status = ${String(next.status)}, payout = ${Number(next.payout ?? 0)}, updated_at = ${toMySQLDateTime()}
 			WHERE id = ${Number(runId)} AND status = 'active' AND floor = ${Number(fromFloor)}`
-	);
+	)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
+export async function recordLevelFriends(actorMemberId: number | string, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
 	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) {
@@ -3694,7 +3924,7 @@ export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: s
 	}
 
 	const actorRow = await db.execute(sql`SELECT server_id FROM server_members WHERE id = ${actorId} LIMIT 1`);
-	const serverId = Number(((actorRow[0] as unknown as any[]) || [])[0]?.server_id);
+	const serverId = Number(((actorRow[0] as unknown as { server_id: number }[]) || [])[0]?.server_id);
 	if (!Number.isFinite(serverId)) {
 		return;
 	}
@@ -3729,7 +3959,7 @@ export async function getMemberLevelFriends(memberId: number | string, limit = 5
 	await initializeDatabase();
 	const mid = Number(memberId);
 	if (!mid) {
-		return [] as any[];
+		return [];
 	}
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
 	const rows = await db.execute(sql`
@@ -3742,19 +3972,21 @@ export async function getMemberLevelFriends(memberId: number | string, limit = 5
 		ORDER BY t.ticks DESC
 		LIMIT ${Number(limit) || 5}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => ({
-		name: r.name || 'a member',
-		avatar: r.avatar ?? null,
-		ticks: Number(r.ticks) || 0,
-		minutes: Number(r.minutes) || 0,
-		xp: Number(r.xp) || 0
-	}));
+	return ((rows[0] as unknown as { buddy_id: number; name: string | null; avatar: string | null; ticks: number; minutes: number; xp: string }[]) || []).map(
+		(r) => ({
+			name: r.name || 'a member',
+			avatar: r.avatar ?? null,
+			ticks: Number(r.ticks) || 0,
+			minutes: Number(r.minutes) || 0,
+			xp: Number(r.xp) || 0
+		})
+	);
 }
 
 export async function getMemberMinigameHistory(memberId: number | string, limit = 600) {
 	await initializeDatabase();
 	if (!memberId) {
-		return [] as any[];
+		return [];
 	}
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
@@ -3764,13 +3996,26 @@ export async function getMemberMinigameHistory(memberId: number | string, limit 
 		ORDER BY created_at DESC
 		${lim}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			id: string;
+			game: string;
+			multiplier: string;
+			wager: number;
+			payout: number;
+			xp: number;
+			outcome: string;
+			chance: string | null;
+			luck_percent: string | null;
+			created_at: string;
+		}[]) || []
+	);
 }
 
 export async function getMinigamesLeaderboard(serverId: number | string, since: Date | null, game = 'gamble') {
 	await initializeDatabase();
 	if (!serverId) {
-		return [] as any[];
+		return [];
 	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
@@ -3819,7 +4064,7 @@ export async function getMinigamesLeaderboard(serverId: number | string, since: 
 			schema.serverMemberLevels.level
 		);
 
-	return rows as any[];
+	return rows;
 }
 
 export async function logMemberLevelGain(memberId: number | string, data: Record<string, unknown> = {}) {
@@ -3851,7 +4096,7 @@ export async function logMemberLevelGain(memberId: number | string, data: Record
 export async function getMemberLevelHistory(memberId: number | string, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) {
-		return [] as any[];
+		return [];
 	}
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
@@ -3861,13 +4106,25 @@ export async function getMemberLevelHistory(memberId: number | string, limit = 2
 		ORDER BY created_at DESC, id DESC
 		${lim}
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		id: string;
+		source: string;
+		xp: number;
+		xp_total: string | null;
+		level: number | null;
+		rank: number | null;
+		multiplier: string | null;
+		skim_percent: number | null;
+		friend_percent: number | null;
+		luck_percent: number | null;
+		created_at: string;
+	}[];
 }
 
 export async function getMemberItemHistory(memberId: number | string, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) {
-		return [] as any[];
+		return [];
 	}
 	const rows = await db.execute(sql`
 		SELECT
@@ -3890,7 +4147,25 @@ export async function getMemberItemHistory(memberId: number | string, limit = 20
 		ORDER BY sml.created_at DESC, sml.id DESC
 		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		id: string;
+		action: string;
+		xp: number;
+		outcome: string;
+		rate_percent: string | null;
+		luck_percent: string | null;
+		actor_disguised: number;
+		created_at: string;
+		item_name: string | null;
+		effect_type: string | null;
+		direction: 'outgoing' | 'incoming';
+		target_username: string | null;
+		target_display_name: string | null;
+		target_server_display_name: string | null;
+		actor_username: string | null;
+		actor_display_name: string | null;
+		actor_server_display_name: string | null;
+	}[];
 }
 
 export async function getLastActionByActor(memberId: number | string, action: string) {
@@ -3932,7 +4207,7 @@ export async function getLastAttackActionByActor(memberId: number | string, acti
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
 }
 
-export async function getLastActionAgainstTarget(targetMemberId: any, actions: string[]) {
+export async function getLastActionAgainstTarget(targetMemberId: number | string, actions: string[]) {
 	await initializeDatabase();
 	if (!targetMemberId) {
 		throw new Error('targetMemberId is required');
@@ -3960,14 +4235,14 @@ export async function clearImmunityForMember(targetMemberId: number | string) {
 	if (!targetMemberId) {
 		return 0;
 	}
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE server_member_item_logs
 		SET immunity_cleared = 1
 		WHERE target_member_id = ${Number(targetMemberId)}
 		  AND outcome = 'success'
 		  AND immunity_cleared = 0
 		  AND action IN ('steal', 'bomb')
-	`);
+	`)) as unknown as WriteResult;
 	return Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) || 0;
 }
 
@@ -3986,7 +4261,7 @@ export async function placeBounty(targetMemberId: unknown, placedByMemberId: unk
 	return true;
 }
 
-export async function getActiveBountyTotal(targetMemberId: any) {
+export async function getActiveBountyTotal(targetMemberId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(
 		sql`SELECT COALESCE(SUM(xp), 0) AS total FROM server_member_item_bounties WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`
@@ -4012,10 +4287,10 @@ export async function getDistinctHeldAssetIds(assetType?: string) {
 	await initializeDatabase();
 	if (assetType) {
 		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_assets WHERE asset_type = ${String(assetType)}`);
-		return (rows[0] as unknown as any[]) || [];
+		return (rows[0] as unknown as { asset_id: string }[]) || [];
 	}
 	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_assets`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as { asset_type: string; asset_id: string }[]) || [];
 }
 
 export async function logAssetEvent(data: {
@@ -4068,25 +4343,40 @@ export async function openAssetPosition(data: {
 		asset_name: String(data.asset_name),
 		asset_image: data.asset_image != null ? String(data.asset_image) : null,
 		xp_invested: Number(data.xp_invested) || 0,
-		buy_price: String(data.buy_price) as any,
-		opened_at: now as any,
-		created_at: now as any,
-		updated_at: now as any
+		buy_price: String(data.buy_price),
+		opened_at: now,
+		created_at: now,
+		updated_at: now
 	});
-	const id = (result as any)?.insertId ?? null;
+	const id = result?.insertId ?? null;
 	return id ? getAssetPosition(id) : null;
 }
 
-export async function getAssetPosition(positionId: any) {
+type AssetPositionRow = {
+	id: number;
+	member_id: number;
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_invested: number;
+	buy_price: string;
+	opened_at: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export async function getAssetPosition(positionId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE id = ${Number(positionId)} LIMIT 1`);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+	return ((rows[0] as unknown as AssetPositionRow[]) || [])[0] ?? null;
 }
 
 export async function getOpenAssetPositions(memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} ORDER BY opened_at DESC`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as AssetPositionRow[]) || [];
 }
 
 export async function getOpenAssetPosition(memberId: unknown, assetType: string, assetId: string) {
@@ -4096,7 +4386,7 @@ export async function getOpenAssetPosition(memberId: unknown, assetType: string,
 		WHERE member_id = ${Number(memberId)} AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
 		LIMIT 1
 	`);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+	return ((rows[0] as unknown as AssetPositionRow[]) || [])[0] ?? null;
 }
 
 export async function mergeAssetPosition(positionId: number | string, data: { xp_invested: number; buy_price: number }) {
@@ -4119,7 +4409,21 @@ export async function getMemberAssetHistory(memberId: number | string, limit = 6
 		ORDER BY created_at DESC
 		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			id: string;
+			action: string;
+			asset_type: string;
+			asset_id: string;
+			symbol: string;
+			asset_name: string;
+			asset_image: string | null;
+			xp: number;
+			price: string;
+			net: number;
+			created_at: string;
+		}[]) || []
+	);
 }
 
 export async function getServerEconomyStats(serverId: unknown, priceMap: Record<string, { price: number }> = {}) {
@@ -4253,7 +4557,21 @@ export async function listPublicDiscordQuests(limit = 300) {
 		ORDER BY (q.expires_at IS NOT NULL AND q.expires_at > UTC_TIMESTAMP()) DESC, q.expires_at DESC, q.id DESC
 		LIMIT ${Number(limit) || 300}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			quest_id: string;
+			quest_name: string | null;
+			game_title: string | null;
+			quest_url: string | null;
+			quest_description: string | null;
+			quest_task_label: string;
+			reward: string | null;
+			thumbnail_url: string | null;
+			banner_url: string | null;
+			starts_at: string | null;
+			expires_at: string | null;
+		}[]) || []
+	);
 }
 
 export async function listPublicRobloxItems(limit: number | null = 300, offset = 0) {
@@ -4278,7 +4596,22 @@ export async function listPublicRobloxItems(limit: number | null = 300, offset =
 		ORDER BY r.favorite_count DESC, r.id DESC
 		${capped ? sql`LIMIT ${cap} OFFSET ${skip}` : sql``}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			asset_id: string;
+			name: string | null;
+			category: string | null;
+			creator_name: string | null;
+			thumbnail_url: string | null;
+			price: string | null;
+			favorite_count: number | null;
+			units_available: string | null;
+			total_quantity: string | null;
+			last_price: string | null;
+			lowest_resale_price: string | null;
+			notification_count: string;
+		}[]) || []
+	);
 }
 
 export async function listPublicRobloxItemsByNotifications(limit = 6) {
@@ -4297,7 +4630,23 @@ export async function listPublicRobloxItemsByNotifications(limit = 6) {
 		ORDER BY notification_count DESC, r.favorite_count DESC, r.id DESC
 		LIMIT ${Number(limit) || 6}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			asset_id: string;
+			name: string | null;
+			category: string | null;
+			creator_name: string | null;
+			description: string | null;
+			thumbnail_url: string | null;
+			price: string | null;
+			favorite_count: number | null;
+			units_available: string | null;
+			total_quantity: string | null;
+			last_price: string | null;
+			lowest_resale_price: string | null;
+			notification_count: string;
+		}[]) || []
+	);
 }
 
 export async function countPublicRobloxItems(): Promise<number> {
@@ -4584,16 +4933,18 @@ export async function getMemberDashboard(memberId: unknown, priceMap: Record<str
 	};
 }
 
-export async function getMemberInsights(memberId: number | string, serverId: any = null) {
+type NameHitRow = { name: string | null; hits: string; xp: string | number };
+
+export async function getMemberInsights(memberId: number | string, serverId: number | string | null = null) {
 	await initializeDatabase();
 	const mid = Number(memberId);
 	const disguisedIds = serverId ? await getDisguisedMemberIds(serverId) : [];
 	const hideDisguised = disguisedIds.length > 0 ? sql`AND m.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
 
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
-	const q = (query: any) => db.execute(query).catch(() => [[]] as any);
-	const mapName = (rows: any) =>
-		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+	const q = (query: SQL) => db.execute(query).catch(() => [[]]);
+	const mapName = (rows: unknown) =>
+		(((rows as unknown[])[0] as NameHitRow[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
 
 	const outgoing = (action: string, successOnly: boolean) =>
 		q(sql`
@@ -4794,7 +5145,7 @@ export async function getMemberInsights(memberId: number | string, serverId: any
 		...interactionQueries.map((iq) => iq.p)
 	]);
 
-	const interactions: Record<string, { out: any[]; in: any[] }> = {};
+	const interactions: Record<string, { out: ReturnType<typeof mapName>; in: ReturnType<typeof mapName> }> = {};
 	interactionQueries.forEach((iq, i) => {
 		if (!interactions[iq.key]) {
 			interactions[iq.key] = { out: [], in: [] };
@@ -4812,7 +5163,14 @@ export async function getMemberInsights(memberId: number | string, serverId: any
 	interactions.bounty_paid_out = { out: mapName(bountyPaidOutRows), in: [] };
 	interactions.leech_blocked = { out: mapName(leechBlockedRows), in: [] };
 
-	const defRow = (defenseRows[0] as unknown as any[])[0] || {};
+	const defRow: Partial<{
+		spies_caught: string;
+		blocked: string;
+		reflected: string;
+		my_steals_caught: string;
+		insurance_covers: string;
+		insurance_xp: string;
+	}> = (defenseRows[0] as unknown as Record<string, string>[])[0] || {};
 	const defense = {
 		spies_caught: Number(defRow.spies_caught) || 0,
 		blocked: Number(defRow.blocked) || 0,
@@ -4829,12 +5187,21 @@ export async function getMemberInsights(memberId: number | string, serverId: any
 		best_ally: one(bestAllyRows)
 	};
 
-	const flowRows = ((xpFlow[0] as unknown as any[]) || []).map((r) => ({
+	const flowRows = ((xpFlow[0] as unknown as { day: string | Date; net: string }[]) || []).map((r) => ({
 		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
 		net: Number(r.net) || 0
 	}));
 
-	const assetHoldings = ((holdings[0] as unknown as any[]) || [])
+	const assetHoldings = (
+		(holdings[0] as unknown as {
+			asset_type: string;
+			asset_id: string;
+			symbol: string;
+			asset_name: string;
+			asset_image: string | null;
+			invested: string;
+		}[]) || []
+	)
 		.map((r) => ({
 			asset_type: r.asset_type,
 			asset_id: r.asset_id,
@@ -4846,7 +5213,7 @@ export async function getMemberInsights(memberId: number | string, serverId: any
 		.filter((r) => r.invested > 0);
 
 	return {
-		favorite_items: ((topItems[0] as unknown as any[]) || []).map((r) => ({
+		favorite_items: ((topItems[0] as unknown as { name: string | null; effect_type: string | null; uses: string }[]) || []).map((r) => ({
 			name: r.name || 'Item',
 			effect_type: r.effect_type || null,
 			uses: Number(r.uses) || 0
@@ -4854,7 +5221,7 @@ export async function getMemberInsights(memberId: number | string, serverId: any
 		interactions,
 		defense,
 		relationships,
-		effect_usage: ((effectUsage[0] as unknown as any[]) || [])
+		effect_usage: ((effectUsage[0] as unknown as { effect_type: string | null; uses: string }[]) || [])
 			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
 			.filter((r) => r.uses > 0),
 		xp_flow: flowRows,
@@ -4918,7 +5285,7 @@ export async function getServerLeaderboard(serverId: number | string, limit = 3,
 	const rangeDays = r === '1d' ? 1 : r === '7d' ? 7 : r === '30d' ? 30 : 0;
 	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000) : null;
 
-	const orderMap: Record<string, any> = {
+	const orderMap: Record<string, SQL[]> = {
 		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_active: [desc(schema.serverMemberLevels.voice_minutes_active), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_afk: [desc(schema.serverMemberLevels.voice_minutes_afk), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
@@ -4974,7 +5341,7 @@ export async function getServerLeaderboard(serverId: number | string, limit = 3,
 export async function getLeaderboardPeriodCounts(serverId: number | string, since: Date) {
 	await initializeDatabase();
 	if (!serverId) {
-		return [] as any[];
+		return [];
 	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
@@ -5019,13 +5386,13 @@ export async function getLeaderboardPeriodCounts(serverId: number | string, sinc
 			schema.serverMemberLevels.level
 		);
 
-	return rows as any[];
+	return rows;
 }
 
 export async function getItemsAttackLeaderboard(serverId: number | string, action: 'steal' | 'bomb', since: Date | null) {
 	await initializeDatabase();
 	if (!serverId) {
-		return [] as any[];
+		return [];
 	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
@@ -5072,13 +5439,13 @@ export async function getItemsAttackLeaderboard(serverId: number | string, actio
 			schema.serverMemberLevels.level
 		);
 
-	return rows as any[];
+	return rows;
 }
 
 export async function getItemsBountyLeaderboard(serverId: number | string, since: Date | null) {
 	await initializeDatabase();
 	if (!serverId) {
-		return [] as any[];
+		return [];
 	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
@@ -5118,13 +5485,23 @@ export async function getItemsBountyLeaderboard(serverId: number | string, since
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		level: number | null;
+		bounty_on_them: string;
+		bounty_collected: string;
+		bounty_given: string;
+	}[];
 }
 
 export async function getItemsGiftLeaderboard(serverId: number | string, since: Date | null) {
 	await initializeDatabase();
 	if (!serverId) {
-		return [] as any[];
+		return [];
 	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
@@ -5156,7 +5533,16 @@ export async function getItemsGiftLeaderboard(serverId: number | string, since: 
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		level: number | null;
+		gift_given: string;
+		gift_received: string;
+	}[];
 }
 
 export type MemberListRole = { id: string; name: string; color: string | null; position: number };
@@ -5188,7 +5574,7 @@ export type MemberListRow = {
 	is_afk: boolean;
 };
 
-export async function getServerMembersList(serverId: any, opts?: { discordMemberId?: string }): Promise<MemberListRow[]> {
+export async function getServerMembersList(serverId: number | string | null | undefined, opts?: { discordMemberId?: string }): Promise<MemberListRow[]> {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') {
 		return [];
@@ -5223,7 +5609,9 @@ export async function getServerMembersList(serverId: any, opts?: { discordMember
 	`);
 	const inviteCounts = await getMemberInviteCountsByServer(serverId).catch(() => new Map<number, number>());
 
-	return (rows[0] as unknown as unknown[]).map((member: any) => ({
+	return (
+		rows[0] as unknown as (Omit<MemberListRow, 'invites_total' | 'roles' | 'is_afk' | 'is_owner'> & { roles: string | null; is_owner: number | null })[]
+	).map((member) => ({
 		...member,
 		invites_total: inviteCounts.get(Number(member.id)) ?? 0,
 		roles: member.roles
@@ -5234,7 +5622,7 @@ export async function getServerMembersList(serverId: any, opts?: { discordMember
 						const [roleId, position, roleColor, ...rest] = role.split('\x1f');
 						return { id: roleId, name: rest.join('\x1f'), color: roleColor || null, position: Number.parseInt(position, 10) || 0 };
 					})
-					.sort((a: any, b: any) => b.position - a.position)
+					.sort((a, b) => b.position - a.position)
 			: [],
 		is_afk: !!member.afk_message,
 		is_owner: !!Number(member.is_owner)
@@ -5648,7 +6036,7 @@ async function getAccountByUsername(username: string) {
 	return rows[0] || null;
 }
 
-async function createAccount(accountData: any) {
+async function createAccount(accountData: { username: string; email: string; password_hash: string; account_type?: 'superadmin'; ip_address?: string | null }) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.accounts).values({
 		username: accountData.username,
@@ -5689,7 +6077,13 @@ async function getAllAccounts() {
 		.orderBy(asc(schema.accounts.created_at));
 }
 
-async function createInviteLink(linkData: any) {
+async function createInviteLink(linkData: {
+	token: string;
+	account_type: string;
+	server_id?: number | null;
+	created_by: number;
+	expires_at?: string | Date | null;
+}) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.accountInvites).values({
 		token: linkData.token,
@@ -5709,9 +6103,9 @@ async function getInviteLinkByToken(token: string) {
 }
 
 async function updateInviteLink(linkId: unknown, updateData: Record<string, unknown>) {
-	const data: any = { ...updateData };
+	const data: Record<string, unknown> = { ...updateData };
 	if (data.used_at) {
-		data.used_at = toMySQLDateTime(data.used_at);
+		data.used_at = toMySQLDateTime(data.used_at as string | Date);
 	}
 	await db
 		.update(schema.accountInvites)
@@ -5939,10 +6333,10 @@ async function addSelfbot(data: { panel_id: number; name: string; token: string 
 		name: data.name,
 		token: data.token,
 		status: 'stopped',
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
 async function updateSelfbot(
@@ -5951,15 +6345,15 @@ async function updateSelfbot(
 		name: string;
 		token: string;
 		bot_icon: string | null;
-		status: string;
+		status: BotRunStatus;
 		process_id: number | null;
-		uptime_started_at: string | null;
+		uptime_started_at: Date | null;
 		auto_start: boolean;
 	}>
 ) {
 	await db
 		.update(schema.selfbots)
-		.set({ ...data, updated_at: toMySQLDateTime() as any } as any)
+		.set({ ...data, updated_at: toMySQLDateTime() })
 		.where(eq(schema.selfbots.id, id));
 }
 
@@ -5987,8 +6381,8 @@ export async function resolveOfficialBotIdForServer(server: typeof schema.server
 	if (!server) {
 		return null;
 	}
-	if ((server as any).bot_id != null) {
-		return (server as any).bot_id;
+	if (server.bot_id != null) {
+		return server.bot_id;
 	}
 	return null;
 }
@@ -6025,8 +6419,8 @@ function isServerSettingsRowArray(x: unknown): x is ServerSettingsRow[] {
 	return Array.isArray(x);
 }
 
-async function getServerSettings(serverId: any, componentName: string): Promise<ServerSettingsRow | null>;
-async function getServerSettings(serverId: any, componentName?: null): Promise<ServerSettingsRow[]>;
+async function getServerSettings(serverId: number | string, componentName: string): Promise<ServerSettingsRow | null>;
+async function getServerSettings(serverId: number | string, componentName?: null): Promise<ServerSettingsRow[]>;
 async function getServerSettings(serverId: number | string, componentName: string | null): Promise<ServerSettingsRow | ServerSettingsRow[] | null>;
 async function getServerSettings(serverId: number | string, componentName: string | null = null) {
 	await initializeDatabase();
@@ -6322,7 +6716,7 @@ async function claimServerDiscordQuestForPost(serverId: number, questId: string)
 	}
 	const result = await db
 		.update(schema.serverDiscordQuest)
-		.set({ message_posted_at: posted as any })
+		.set({ message_posted_at: posted })
 		.where(
 			and(
 				eq(schema.serverDiscordQuest.server_id, serverId),
@@ -6330,7 +6724,7 @@ async function claimServerDiscordQuestForPost(serverId: number, questId: string)
 				isNull(schema.serverDiscordQuest.message_posted_at)
 			)
 		);
-	const affected = (result as any)?.[0]?.affectedRows ?? (result as any)?.affectedRows ?? 0;
+	const affected = (result as unknown as WriteResult)?.[0]?.affectedRows ?? (result as unknown as WriteResult)?.affectedRows ?? 0;
 	return affected > 0;
 }
 
@@ -7194,7 +7588,7 @@ export async function getAFKStatus(serverId: number | string, discordMemberId: s
 	return { message: afkData.message || 'Away', timestamp, serverDisplayName: afkData.server_display_name };
 }
 
-export async function setAFKStatus(serverId: number | string, discordMemberId: string, afkData: any) {
+export async function setAFKStatus(serverId: number | string, discordMemberId: string, afkData: { message?: string | null }) {
 	await initializeDatabase();
 	const memberRows = await db
 		.select({ id: schema.serverMembers.id })
@@ -7341,7 +7735,16 @@ export async function serversNeedSync(botId: number) {
 	return false;
 }
 
-export async function createGiveaway(giveawayData: any) {
+export async function createGiveaway(giveawayData: {
+	member_id: number;
+	title: string;
+	prize: string;
+	duration_minutes: number;
+	allowed_roles?: string[] | null;
+	multiple_entries_allowed?: boolean;
+	winner_count?: number;
+	min_invites?: number;
+}) {
 	await initializeDatabase();
 	const createdAt = new Date();
 	const durationMin = Number(giveawayData.duration_minutes);
@@ -7357,11 +7760,11 @@ export async function createGiveaway(giveawayData: any) {
 		winner_count: giveawayData.winner_count || 1,
 		min_invites: Math.max(0, Math.floor(Number(giveawayData.min_invites) || 0)),
 		status: 'active',
-		ends_at: endsAt as any,
-		created_at: createdAt as any,
-		updated_at: createdAt as any
+		ends_at: endsAt,
+		created_at: createdAt,
+		updated_at: createdAt
 	});
-	return getGiveawayById((result[0] as any).insertId);
+	return getGiveawayById(result[0].insertId);
 }
 
 export async function updateGiveawayMessageId(giveawayId: number | string, discordMessageId: string) {
@@ -7382,11 +7785,11 @@ export async function getEndedGiveaways() {
 	const now = new Date();
 	return rows
 		.filter((r) => {
-			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at as any);
+			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at);
 			return endsAt != null && endsAt.getTime() <= now.getTime();
 		})
 		.map((r) => {
-			const g = { ...r.giveaway, server_id: r.server_id } as any;
+			const g = { ...r.giveaway, server_id: r.server_id };
 			if (g.allowed_roles) {
 				try {
 					g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
@@ -7456,7 +7859,7 @@ export async function getGiveawayById(giveawayId: number | string) {
 	if (!rows[0]) {
 		return null;
 	}
-	const g = { ...rows[0].giveaway, server_id: rows[0].server_id } as any;
+	const g = { ...rows[0].giveaway, server_id: rows[0].server_id };
 	if (g.allowed_roles) {
 		try {
 			g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
@@ -7487,7 +7890,7 @@ export async function getActiveGiveawayByMember(serverId: number | string, membe
 	if (!rows[0]) {
 		return null;
 	}
-	const g = { ...rows[0].giveaway } as any;
+	const g = { ...rows[0].giveaway };
 	if (g.allowed_roles) {
 		try {
 			g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
@@ -7501,7 +7904,7 @@ export async function getActiveGiveawayByMember(serverId: number | string, membe
 	return g;
 }
 
-export async function addGiveawayEntry(giveawayId: number | string, memberId: number | string, increment = true) {
+export async function addGiveawayEntry(giveawayId: number | string, memberId: number | string, increment: boolean | null = true) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	if (increment) {
@@ -7552,7 +7955,7 @@ export async function getRandomGiveawayWinners(giveawayId: number | string, winn
 		}
 	}
 
-	const weighted: any[] = [];
+	const weighted: typeof shuffledEntries = [];
 	for (const entry of shuffledEntries) {
 		for (let i = 0; i < (entry.entry_count ?? 1); i++) {
 			weighted.push(entry);
@@ -7565,7 +7968,7 @@ export async function getRandomGiveawayWinners(giveawayId: number | string, winn
 		}
 	}
 
-	const winners: any[] = [];
+	const winners: typeof shuffledEntries = [];
 	const used = new Set();
 	const available = [...weighted];
 	while (winners.length < winnerCount && available.length > 0) {
@@ -7600,7 +8003,7 @@ export async function markGiveawayEndedForce(giveawayId: number | string) {
 		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
-export async function markGiveawayWinners(giveawayId: unknown, winnerMemberIds: any[]) {
+export async function markGiveawayWinners(giveawayId: unknown, winnerMemberIds: number[]) {
 	await initializeDatabase();
 	if (!winnerMemberIds?.length) {
 		return;
@@ -7622,7 +8025,7 @@ export async function getStaffRating(serverId: number | string, staffMemberId: n
 	return rows[0]?.server_member_staff_ratings || null;
 }
 
-export async function upsertStaffRating(serverId: number | string, staffMemberId: number | string, ratingValue: number, totalReports: number) {
+export async function upsertStaffRating(serverId: number | string, staffMemberId: number | string, ratingValue: number | string, totalReports: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const existing = await getStaffRating(serverId, staffMemberId);
@@ -7663,9 +8066,9 @@ export async function createStaffRatingReport(
 		description,
 		is_anonymous: isAnonymous,
 		status: 'pending',
-		reported_at: now as any
+		reported_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
 export async function getLastStaffRatingReport(serverId: number | string, reporterMemberId: number | string, reportedStaffId: number | string) {
@@ -7702,7 +8105,25 @@ export async function getStaffRatingAggregate(serverId: number | string, staffMe
 	return { total_reports: rows[0]?.total_reports || 0, average_rating: rows[0]?.average_rating || 0 };
 }
 
-export async function getStaffReportById(serverId: number | string, reportId: any) {
+type StaffReportSqlRow = {
+	id: number;
+	reporter_member_id: number;
+	reported_staff_id: number;
+	rating: number;
+	category: string;
+	description: string | null;
+	is_anonymous: number | null;
+	status: 'pending' | 'approved' | 'rejected' | null;
+	reviewed_by_member_id: number | null;
+	reviewed_at: string | null;
+	review_reason: string | null;
+	reported_at: string;
+	reporter_discord_id: string;
+	staff_discord_id: string;
+	reviewer_discord_id: string | null;
+};
+
+export async function getStaffReportById(serverId: number | string, reportId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sr.*, reporter.discord_member_id AS reporter_discord_id, staff.discord_member_id AS staff_discord_id, reviewer.discord_member_id AS reviewer_discord_id
@@ -7713,7 +8134,7 @@ export async function getStaffReportById(serverId: number | string, reportId: an
 		WHERE reporter.server_id = ${Number(serverId)} AND sr.id = ${Number(reportId)}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (rows[0] as unknown as StaffReportSqlRow[])[0] || null;
 }
 
 export async function updateStaffReportStatus(reportId: number | string, status: string, reviewedByMemberId?: number | string, reviewReason?: string | null) {
@@ -7741,9 +8162,9 @@ export async function createContentCreatorApplication(_serverId: unknown, member
 		tiktok_username: tiktokUsername,
 		reason,
 		status: 'pending',
-		submitted_at: now as any
+		submitted_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
 export async function getLastContentCreatorApplication(serverId: number | string, memberId: number | string) {
@@ -7804,7 +8225,21 @@ export async function getContentCreatorTiktokConflict(normalizedUsername: string
 	return null;
 }
 
-export async function getContentCreatorApplicationById(serverId: number | string, applicationId: any) {
+type ContentCreatorReviewSqlRow = {
+	id: number;
+	member_id: number;
+	tiktok_username: string;
+	reason: string;
+	status: 'pending' | 'approved' | 'rejected' | null;
+	reviewed_by_member_id: number | null;
+	reviewed_at: string | null;
+	review_reason: string | null;
+	submitted_at: string;
+	applicant_discord_id: string;
+	reviewer_discord_id: string | null;
+};
+
+export async function getContentCreatorApplicationById(serverId: number | string, applicationId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT cca.*, applicant.discord_member_id AS applicant_discord_id, reviewer.discord_member_id AS reviewer_discord_id
@@ -7814,7 +8249,7 @@ export async function getContentCreatorApplicationById(serverId: number | string
 		WHERE applicant.server_id = ${Number(serverId)} AND cca.id = ${Number(applicationId)}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (rows[0] as unknown as ContentCreatorReviewSqlRow[])[0] || null;
 }
 
 export async function updateContentCreatorApplicationStatus(
@@ -7856,7 +8291,7 @@ export async function getApprovedContentCreators(serverId: number | string) {
 		  )
 		ORDER BY cca.reviewed_at DESC, cca.id DESC
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as { id: number; member_id: number; tiktok_username: string; reviewed_at: string | null; discord_member_id: string }[]) || [];
 }
 
 export async function getPendingContentCreatorApplications(serverId: number | string) {
@@ -7869,7 +8304,7 @@ export async function getPendingContentCreatorApplications(serverId: number | st
 		  AND cca.status = 'pending'
 		ORDER BY cca.submitted_at ASC, cca.id ASC
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as { id: number; member_id: number; tiktok_username: string; submitted_at: string; discord_member_id: string }[]) || [];
 }
 
 export async function createContentCreatorStream(memberId: number, roomId: string | null) {
@@ -7971,9 +8406,9 @@ export async function createFeedback(_serverId: unknown, memberId: unknown, desc
 		member_id: Number(memberId),
 		description,
 		is_anonymous: isAnonymous,
-		submitted_at: now as any
+		submitted_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
 export async function getFeedback(serverId: number | string, feedbackId: number | string) {
@@ -8114,6 +8549,24 @@ export async function getStaffRatingRole(serverId: number | string, staffMemberI
 	return rows[0]?.discord_role_id || null;
 }
 
+type ModerationCaseRow = {
+	id: string;
+	case_number: number;
+	action: string;
+	reason: string | null;
+	duration_seconds: number | null;
+	expires_at: string | null;
+	active: number;
+	source: string;
+	revoked_at: string | null;
+	created_at: string;
+	discord_member_id: string;
+	member_name: string | null;
+	member_avatar: string | null;
+	staff_discord_id: string | null;
+	staff_name: string | null;
+};
+
 export async function createModerationLog(data: {
 	server_id: number;
 	member_id: number;
@@ -8130,7 +8583,7 @@ export async function createModerationLog(data: {
 		FROM server_member_moderation_logs l
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${data.server_id}
-	`)) as any;
+	`)) as unknown as SelectResult<{ next: number | string }>;
 	const caseNumber = Number(rows?.[0]?.next ?? 1);
 	await db.execute(sql`
 		INSERT INTO server_member_moderation_logs
@@ -8154,8 +8607,8 @@ export async function getActiveModerationCases(serverId: number | string) {
 		WHERE m.server_id = ${Number(serverId)} AND l.active = 1 AND l.action IN ('warn', 'timeout', 'ban', 'tempban')
 			AND (l.action <> 'timeout' OR l.expires_at IS NULL OR l.expires_at > UTC_TIMESTAMP())
 		ORDER BY l.case_number DESC
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<ModerationCaseRow & { member_left_at: string | null }>;
+	return rows ?? [];
 }
 
 export async function getMemberModerationCases(serverId: number | string, discordMemberId: string, limit = 200) {
@@ -8167,8 +8620,8 @@ export async function getMemberModerationCases(serverId: number | string, discor
 		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${String(discordMemberId)}
 		ORDER BY l.case_number DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<ModerationCaseRow>;
+	return rows ?? [];
 }
 
 export async function updateModerationCaseReason(serverId: number | string, caseNumber: number, reason: string | null) {
@@ -8201,7 +8654,9 @@ export async function getModerationCase(serverId: number | string, caseNumber: n
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${Number(serverId)} AND l.case_number = ${Number(caseNumber)}
 		LIMIT 1
-	`)) as any;
+	`)) as unknown as SelectResult<
+		Omit<ModerationCaseRow, 'member_name' | 'member_avatar' | 'staff_discord_id' | 'staff_name'> & { member_id: number; staff_member_id: number | null }
+	>;
 	return rows?.[0] ?? null;
 }
 
@@ -8230,7 +8685,7 @@ export async function endActiveModeration(memberId: number, actions: string[], r
 export async function countActiveWarnings(memberId: number) {
 	const [rows] = (await db.execute(sql`
 		SELECT COUNT(*) AS c FROM server_member_moderation_logs WHERE member_id = ${memberId} AND action = 'warn' AND active = 1
-	`)) as any;
+	`)) as unknown as SelectResult<{ c: string }>;
 	return Number(rows?.[0]?.c ?? 0);
 }
 
@@ -8242,8 +8697,15 @@ export async function getDueTempbans(botId: number) {
 		JOIN servers s ON s.id = m.server_id
 		WHERE l.action = 'tempban' AND l.active = 1 AND l.expires_at IS NOT NULL AND l.expires_at <= UTC_TIMESTAMP() AND s.bot_id = ${botId}
 		LIMIT 50
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: string;
+		member_id: number;
+		case_number: number;
+		discord_member_id: string;
+		server_id: number;
+		discord_server_id: string;
+	}>;
+	return rows ?? [];
 }
 
 export async function expireModerationTimeouts() {
@@ -8253,7 +8715,7 @@ export async function expireModerationTimeouts() {
 	`);
 }
 
-function rewardFromRow(r: any): Reward {
+function rewardFromRow(r: Record<string, unknown>): Reward {
 	return {
 		id: Number(r.id),
 		goal_type: String(r.goal_type) as RewardGoal,
@@ -8276,7 +8738,7 @@ export async function getRewards(serverId: unknown): Promise<Reward[]> {
 		WHERE r.server_id = ${Number(serverId)}
 		ORDER BY r.goal_type, r.goal, r.id
 	`);
-	return sortRewards(((rows[0] as unknown as unknown[]) || []).map(rewardFromRow).filter((r) => r.kind !== 'role' || r.role_id !== null));
+	return sortRewards(((rows[0] as unknown as Record<string, unknown>[]) || []).map(rewardFromRow).filter((r) => r.kind !== 'role' || r.role_id !== null));
 }
 
 export async function saveRewards(serverId: unknown, drafts: RewardDraft[]): Promise<{ removedImages: string[] }> {
@@ -8286,7 +8748,7 @@ export async function saveRewards(serverId: unknown, drafts: RewardDraft[]): Pro
 	const existingRows = await db.execute(sql`SELECT id, goal_type, kind, image FROM server_rewards WHERE server_id = ${sid}`);
 	const existing = new Map(((existingRows[0] as unknown as Record<string, unknown>[]) || []).map((r: Record<string, unknown>) => [Number(r.id), r]));
 	const roleRows = await db.execute(sql`SELECT id, discord_role_id FROM server_roles WHERE server_id = ${sid}`);
-	const roleIdOf = new Map(((roleRows[0] as unknown as unknown[]) || []).map((r: any) => [String(r.discord_role_id), Number(r.id)]));
+	const roleIdOf = new Map(((roleRows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [String(r.discord_role_id), Number(r.id)]));
 
 	const kept = new Set<number>();
 	const keptImages = new Set<string>();
@@ -8326,7 +8788,7 @@ export async function saveRewards(serverId: unknown, drafts: RewardDraft[]): Pro
 export async function getMemberRewardEarnings(memberId: unknown): Promise<Map<number, RewardEarning>> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT reward_id, delivered_at FROM server_member_rewards WHERE member_id = ${Number(memberId)}`);
-	return new Map(((rows[0] as unknown as unknown[]) || []).map((r: any) => [Number(r.reward_id), { delivered: r.delivered_at != null }]));
+	return new Map(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [Number(r.reward_id), { delivered: r.delivered_at != null }]));
 }
 
 export async function getRewardEarningsForServer(serverId: number | string): Promise<Map<number, Map<number, RewardEarning>>> {
@@ -8357,7 +8819,7 @@ export async function getRewardWinnerCounts(serverId: unknown): Promise<Map<numb
 		WHERE r.server_id = ${Number(serverId)}
 		GROUP BY smr.reward_id
 	`);
-	return new Map(((rows[0] as unknown as unknown[]) || []).map((r: any) => [Number(r.reward_id), Number(r.winners) || 0]));
+	return new Map(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [Number(r.reward_id), Number(r.winners) || 0]));
 }
 
 export async function earnMemberReward(memberId: number | string, rewardId: number | string, winnerLimit: number | null, delivered = false): Promise<boolean> {
@@ -8367,21 +8829,21 @@ export async function earnMemberReward(memberId: number | string, rewardId: numb
 		winnerLimit === null
 			? sql`1 = 1`
 			: sql`(SELECT COUNT(*) FROM server_member_rewards taken WHERE taken.reward_id = ${Number(rewardId)}) < ${Number(winnerLimit)}`;
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		INSERT IGNORE INTO server_member_rewards (member_id, reward_id, delivered_at, created_at)
 		SELECT ${Number(memberId)}, ${Number(rewardId)}, ${delivered ? now : null}, ${now}
 		FROM DUAL
 		WHERE ${room}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
 export async function withdrawMemberReward(memberId: number | string, rewardId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE FROM server_member_rewards
 		WHERE member_id = ${Number(memberId)} AND reward_id = ${Number(rewardId)} AND delivered_at IS NULL
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
@@ -8413,7 +8875,7 @@ export async function getPendingRewardDeliveries(serverId: unknown) {
 		WHERE r.server_id = ${Number(serverId)} AND r.kind = 'custom' AND smr.delivered_at IS NULL
 		ORDER BY smr.created_at ASC
 	`);
-	return ((rows[0] as unknown as unknown[]) || []).map((r: any) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: String(r.id),
 		name: String(r.name ?? 'Reward'),
 		image: r.image != null ? String(r.image) : null,
@@ -8426,7 +8888,7 @@ export async function getPendingRewardDeliveries(serverId: unknown) {
 	}));
 }
 
-export async function markRewardDelivered(serverId: number | string, earningId: any): Promise<{ reward: string; member: string } | null> {
+export async function markRewardDelivered(serverId: number | string, earningId: number | string): Promise<{ reward: string; member: string } | null> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT smr.id, r.name, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS member_name
@@ -8458,7 +8920,7 @@ export type ServerMessagePost = {
 	created_at: string;
 };
 
-function messageFromRow(r: any, scope: MessageScope = 'server'): ServerMessage {
+function messageFromRow(r: Record<string, unknown>, scope: MessageScope = 'server'): ServerMessage {
 	let content = r.content;
 	if (typeof content === 'string') {
 		try {
@@ -8488,7 +8950,7 @@ function postContent(raw: unknown, scope: MessageScope): MessageDoc | null {
 export async function getServerMessages(serverId: unknown): Promise<ServerMessage[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT id, name, content, updated_at FROM server_messages WHERE server_id = ${Number(serverId)} ORDER BY name, id`);
-	return ((rows[0] as unknown as unknown[]) || []).map((r) => messageFromRow(r));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => messageFromRow(r));
 }
 
 export async function getServerMessage(serverId: number | string, messageId: number | string): Promise<ServerMessage | null> {
@@ -8496,7 +8958,7 @@ export async function getServerMessage(serverId: number | string, messageId: num
 	const rows = await db.execute(sql`
 		SELECT id, name, content, updated_at FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)} LIMIT 1
 	`);
-	const row = (rows[0] as unknown as unknown[])?.[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])?.[0];
 	return row ? messageFromRow(row) : null;
 }
 
@@ -8506,21 +8968,23 @@ export async function saveServerMessage(serverId: number | string, messageId: nu
 	const now = toMySQLDateTime();
 	const body = JSON.stringify(content);
 	if (messageId === null) {
-		const result: any = await db.execute(sql`
+		const result = (await db.execute(sql`
 			INSERT INTO server_messages (server_id, name, content, created_at, updated_at) VALUES (${sid}, ${name}, ${body}, ${now}, ${now})
-		`);
+		`)) as unknown as WriteResult;
 		const id = Number(result?.[0]?.insertId ?? result?.insertId);
 		return Number.isFinite(id) && id > 0 ? id : null;
 	}
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE server_messages SET name = ${name}, content = ${body}, updated_at = ${now} WHERE id = ${Number(messageId)} AND server_id = ${sid}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0 ? Number(messageId) : null;
 }
 
 export async function deleteServerMessage(serverId: number | string, messageId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`DELETE FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)}`);
+	const result = (await db.execute(
+		sql`DELETE FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)}`
+	)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
@@ -8534,7 +8998,7 @@ export async function getServerMessagePosts(serverId: unknown, messageId: number
 		WHERE e.server_id = ${Number(serverId)} AND ${messageId === null ? sql`1 = 1` : sql`p.message_id = ${Number(messageId)}`}
 		ORDER BY p.created_at DESC, p.id DESC
 	`);
-	return ((rows[0] as unknown as unknown[]) || []).map((r: any) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: Number(r.id),
 		message_id: Number(r.message_id),
 		discord_channel_id: String(r.discord_channel_id),
@@ -8579,11 +9043,11 @@ export async function setServerMessagePostContent(serverId: number | string, pos
 
 export async function deleteServerMessagePost(serverId: number | string, postId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE p FROM server_message_posts p
 		INNER JOIN server_messages e ON e.id = p.message_id
 		WHERE p.id = ${Number(postId)} AND e.server_id = ${Number(serverId)}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
@@ -8592,7 +9056,7 @@ export type GlobalMessagePost = ServerMessagePost & { server_id: number; server_
 export async function getGlobalMessages(panelId: unknown): Promise<ServerMessage[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT id, name, content, updated_at FROM messages WHERE panel_id = ${Number(panelId)} ORDER BY name, id`);
-	return ((rows[0] as unknown as unknown[]) || []).map((r) => messageFromRow(r, 'global'));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => messageFromRow(r, 'global'));
 }
 
 export async function getGlobalMessage(panelId: number | string, messageId: number | string): Promise<ServerMessage | null> {
@@ -8600,7 +9064,7 @@ export async function getGlobalMessage(panelId: number | string, messageId: numb
 	const rows = await db.execute(sql`
 		SELECT id, name, content, updated_at FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)} LIMIT 1
 	`);
-	const row = (rows[0] as unknown as unknown[])?.[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])?.[0];
 	return row ? messageFromRow(row, 'global') : null;
 }
 
@@ -8610,21 +9074,21 @@ export async function saveGlobalMessage(panelId: number | string, messageId: num
 	const now = toMySQLDateTime();
 	const body = JSON.stringify(content);
 	if (messageId === null) {
-		const result: any = await db.execute(sql`
+		const result = (await db.execute(sql`
 			INSERT INTO messages (panel_id, name, content, created_at, updated_at) VALUES (${pid}, ${name}, ${body}, ${now}, ${now})
-		`);
+		`)) as unknown as WriteResult;
 		const id = Number(result?.[0]?.insertId ?? result?.insertId);
 		return Number.isFinite(id) && id > 0 ? id : null;
 	}
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE messages SET name = ${name}, content = ${body}, updated_at = ${now} WHERE id = ${Number(messageId)} AND panel_id = ${pid}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0 ? Number(messageId) : null;
 }
 
 export async function deleteGlobalMessage(panelId: number | string, messageId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`DELETE FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)}`);
+	const result = (await db.execute(sql`DELETE FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)}`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
@@ -8642,7 +9106,7 @@ export async function getGlobalMessagePosts(panelId: unknown, messageId: number 
 		  AND ${botId === null ? sql`1 = 1` : sql`s.bot_id = ${Number(botId)}`}
 		ORDER BY s.name, p.id DESC
 	`);
-	return ((rows[0] as unknown as unknown[]) || []).map((r: any) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: Number(r.id),
 		message_id: Number(r.message_id),
 		discord_channel_id: String(r.discord_channel_id),
@@ -8692,11 +9156,11 @@ export async function setGlobalMessagePostContent(panelId: number | string, post
 
 export async function deleteGlobalMessagePost(panelId: number | string, postId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE p FROM message_posts p
 		INNER JOIN messages m ON m.id = p.message_id
 		WHERE p.id = ${Number(postId)} AND m.panel_id = ${Number(panelId)}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
@@ -8732,8 +9196,18 @@ export async function getServerPanelLogs(serverIds: number[], limit = 300) {
 		)})
 		ORDER BY l.id DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: string;
+		action: string;
+		changes: unknown;
+		created_at: string;
+		server_account_username: string | null;
+		server_account_type: string | null;
+		account_username: string | null;
+		server_account_id: number | null;
+		account_id: number | null;
+	}>;
+	return rows ?? [];
 }
 
 export async function getMemberNamesByDiscordIds(serverId: number | string, discordIds: string[]) {
@@ -8747,8 +9221,8 @@ export async function getMemberNamesByDiscordIds(serverId: number | string, disc
 			discordIds.map((id) => sql`${id}`),
 			sql`, `
 		)})
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ discord_member_id: string; username: string | null; name: string | null }>;
+	return rows ?? [];
 }
 
 const INVITE_NAME = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
@@ -8765,6 +9239,20 @@ function inviteStatus(row: Record<string, unknown>): 'active' | 'left' | 'fake' 
 
 const PRIOR_MEMBER_MARGIN_MS = 5 * 60_000;
 
+type InviteRow = {
+	id: number;
+	code: string | null;
+	source: string;
+	fake_reason: string | null;
+	xp: number;
+	share_xp: string;
+	rewarded_at: string | null;
+	joined_at: string;
+	left_at: string | null;
+	created_at: string;
+};
+type InviteMemberColumns = { discord_member_id: string; name: string | null; avatar: string | null };
+
 export async function recordMemberJoinInvite(data: {
 	member_id: number;
 	inviter_member_id: number | null;
@@ -8777,14 +9265,14 @@ export async function recordMemberJoinInvite(data: {
 	const now = toMySQLDateTime();
 	const [existingRows] = (await db.execute(sql`
 		SELECT id, inviter_member_id, rewarded_at FROM server_member_invites WHERE member_id = ${data.member_id} LIMIT 1
-	`)) as any;
+	`)) as unknown as SelectResult<{ id: number; inviter_member_id: number | null; rewarded_at: string | null }>;
 	const existing = existingRows?.[0] ?? null;
 
 	if (!existing) {
 		const cutoff = toMySQLDateTime(new Date(data.joined_at.getTime() - PRIOR_MEMBER_MARGIN_MS));
 		const [priorRows] = (await db.execute(sql`
 			SELECT created_at < ${cutoff} AS prior FROM server_members WHERE id = ${data.member_id} LIMIT 1
-		`)) as any;
+		`)) as unknown as SelectResult<{ prior: number | string | null }>;
 		const prior = Number(priorRows?.[0]?.prior) === 1;
 		const fakeReason = data.fake_reason ?? (prior && data.inviter_member_id != null ? 'rejoin' : null);
 		await db.execute(sql`
@@ -8826,8 +9314,8 @@ export async function getPendingInviteServers(botId: number) {
 		JOIN servers s ON s.id = m.server_id
 		WHERE i.rewarded_at IS NULL AND i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL
 			AND m.deleted_at IS NULL AND s.bot_id = ${Number(botId)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ server_id: number; discord_server_id: string }>;
+	return rows ?? [];
 }
 
 export async function getDueInviteRewards(serverId: number, joinedBefore: Date, limit = 50) {
@@ -8843,8 +9331,17 @@ export async function getDueInviteRewards(serverId: number, joinedBefore: Date, 
 			AND m.deleted_at IS NULL AND im.deleted_at IS NULL AND i.joined_at <= ${toMySQLDateTime(joinedBefore)}
 		ORDER BY i.joined_at ASC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: number;
+		member_id: number;
+		inviter_member_id: number;
+		code: string | null;
+		joined_at: string;
+		invitee_discord_id: string;
+		invitee_name: string | null;
+		inviter_discord_id: string;
+	}>;
+	return rows ?? [];
 }
 
 export async function getActiveInviterForShare(memberId: number) {
@@ -8856,7 +9353,7 @@ export async function getActiveInviterForShare(memberId: number) {
 		WHERE i.member_id = ${Number(memberId)} AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.source <> 'manual'
 			AND i.rewarded_at IS NOT NULL AND m.deleted_at IS NULL AND m.is_bot = 0
 		LIMIT 1
-	`)) as any;
+	`)) as unknown as SelectResult<{ id: number; inviter_member_id: number; inviter_discord_id: string; inviter_name: string | null }>;
 	return rows?.[0] ?? null;
 }
 
@@ -8896,11 +9393,19 @@ export async function getMemberInviteStats(memberId: number) {
 			COALESCE(SUM(i.share_xp), 0) AS share_xp
 		FROM server_member_invites i
 		WHERE i.inviter_member_id = ${Number(memberId)}
-	`)) as any;
+	`)) as unknown as SelectResult<{
+		joins: string;
+		active: string;
+		left_count: string;
+		fake: string;
+		pending: string;
+		xp: string;
+		share_xp: string;
+	}>;
 	const [bonusRows] = (await db.execute(sql`
 		SELECT COALESCE(SUM(amount), 0) AS bonus FROM server_member_invite_logs WHERE member_id = ${Number(memberId)}
-	`)) as any;
-	const r = rows?.[0] ?? {};
+	`)) as unknown as SelectResult<{ bonus: string }>;
+	const r: Partial<(typeof rows)[number]> = rows?.[0] ?? {};
 	const active = Number(r.active) || 0;
 	const bonus = Number(bonusRows?.[0]?.bonus) || 0;
 	return {
@@ -8929,7 +9434,7 @@ export async function getMemberInviter(memberId: number) {
 		LEFT JOIN server_members m ON m.id = i.inviter_member_id
 		WHERE i.member_id = ${Number(memberId)}
 		LIMIT 1
-	`)) as any;
+	`)) as unknown as SelectResult<Omit<InviteRow, 'share_xp'> & { inviter_discord_id: string | null; inviter_name: string | null; inviter_avatar: string | null }>;
 	const row = rows?.[0];
 	return row ? { ...row, status: inviteStatus(row) } : null;
 }
@@ -8937,7 +9442,7 @@ export async function getMemberInviter(memberId: number) {
 export async function getMemberInvitees(memberId: number, limit = 100) {
 	await initializeDatabase();
 	if (!memberId) {
-		return [] as unknown[];
+		return [];
 	}
 	const [rows] = (await db.execute(sql`
 		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.share_xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
@@ -8947,8 +9452,8 @@ export async function getMemberInvitees(memberId: number, limit = 100) {
 		WHERE i.inviter_member_id = ${Number(memberId)}
 		ORDER BY i.created_at DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
+	`)) as unknown as SelectResult<InviteRow & InviteMemberColumns>;
+	return (rows ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
 }
 
 export async function getServerInviters(serverId: number | string) {
@@ -8984,8 +9489,23 @@ export async function getServerInviters(serverId: number | string) {
 			GROUP BY l.member_id
 		) b ON b.member_id = m.id
 		WHERE m.server_id = ${Number(serverId)} AND m.is_bot = 0 AND (a.inviter_member_id IS NOT NULL OR b.member_id IS NOT NULL)
-	`)) as any;
-	return ((rows as any[]) ?? [])
+	`)) as unknown as SelectResult<
+		InviteMemberColumns & {
+			deleted_at: string | null;
+			joins: string;
+			active: string;
+			left_count: string;
+			fake: string;
+			pending: string;
+			xp: string;
+			share_xp: string;
+			personal: string;
+			discord: string;
+			bonus: string;
+			last_join_at: string | null;
+		}
+	>;
+	return (rows ?? [])
 		.map((r) => {
 			const active = Number(r.active) || 0;
 			const bonus = Number(r.bonus) || 0;
@@ -9023,14 +9543,14 @@ export async function getServerInviteJoins(serverId: number | string, limit = 30
 		WHERE jm.server_id = ${Number(serverId)}
 		ORDER BY i.joined_at DESC, i.id DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
+	`)) as unknown as SelectResult<InviteRow & InviteMemberColumns & { inviter_discord_id: string | null; inviter_name: string | null }>;
+	return (rows ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
 }
 
 export async function getMemberInviteLogs(memberId: number, limit = 50) {
 	await initializeDatabase();
 	if (!memberId) {
-		return [] as any[];
+		return [];
 	}
 	const [rows] = (await db.execute(sql`
 		SELECT l.id, l.amount, l.reason, l.created_at, sa.username AS server_account_username, a.username AS account_username
@@ -9040,8 +9560,15 @@ export async function getMemberInviteLogs(memberId: number, limit = 50) {
 		WHERE l.member_id = ${Number(memberId)}
 		ORDER BY l.id DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: string;
+		amount: number;
+		reason: string | null;
+		created_at: string;
+		server_account_username: string | null;
+		account_username: string | null;
+	}>;
+	return rows ?? [];
 }
 
 export async function addMemberInviteAdjustment(
@@ -9086,13 +9613,27 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 		FROM server_member_invites i
 		JOIN server_members m ON m.id = i.member_id
 		WHERE m.server_id = ${Number(serverId)}
-	`)) as any;
+	`)) as unknown as SelectResult<{
+		tracked: string;
+		active: string;
+		left_count: string;
+		fake: string;
+		unknown_count: string;
+		vanity: string;
+		server_link: string;
+		personal: string;
+		discord: string;
+		pending: string;
+		xp_paid: string;
+		share_xp: string;
+		inviters: string;
+	}>;
 	const [bonusRows] = (await db.execute(sql`
 		SELECT COALESCE(SUM(l.amount), 0) AS bonus
 		FROM server_member_invite_logs l
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${Number(serverId)}
-	`)) as any;
+	`)) as unknown as SelectResult<{ bonus: string }>;
 	const [codeRows] = (await db.execute(sql`
 		SELECT i.code, ${INVITE_NAME} AS inviter_name, m.discord_member_id AS inviter_discord_id, MAX(i.source) AS source,
 			COUNT(*) AS joins, COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active
@@ -9103,8 +9644,15 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 		GROUP BY i.code, m.id, m.discord_member_id, m.server_display_name, m.display_name, m.username
 		ORDER BY active DESC, joins DESC
 		LIMIT ${Number(codeLimit)}
-	`)) as any;
-	const r = (rows as any[])?.[0] ?? {};
+	`)) as unknown as SelectResult<{
+		code: string;
+		inviter_name: string | null;
+		inviter_discord_id: string | null;
+		source: string | null;
+		joins: string;
+		active: string;
+	}>;
+	const r: Partial<(typeof rows)[number]> = rows?.[0] ?? {};
 	return {
 		tracked: Number(r.tracked) || 0,
 		active: Number(r.active) || 0,
@@ -9119,8 +9667,8 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 		xp_paid: Number(r.xp_paid) || 0,
 		share_xp: Number(r.share_xp) || 0,
 		inviters: Number(r.inviters) || 0,
-		bonus: Number((bonusRows as any[])?.[0]?.bonus) || 0,
-		codes: ((codeRows as any[]) ?? []).map((c) => ({
+		bonus: Number(bonusRows?.[0]?.bonus) || 0,
+		codes: (codeRows ?? []).map((c) => ({
 			code: String(c.code),
 			inviter_name: c.inviter_name ?? null,
 			inviter_discord_id: c.inviter_discord_id ?? null,
@@ -9134,7 +9682,7 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 export async function getInvitesLeaderboard(serverId: number | string, since: Date | null) {
 	await initializeDatabase();
 	if (!serverId) {
-		return [] as unknown[];
+		return [];
 	}
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const hideDisguised = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
@@ -9166,8 +9714,19 @@ export async function getInvitesLeaderboard(serverId: number | string, since: Da
 		) inv ON inv.inviter_member_id = sm.id
 		${bonusJoin}
 		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0 ${hideDisguised}
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => {
+	`)) as unknown as SelectResult<{
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		level: number | null;
+		invites_active: string;
+		invites_left: string;
+		invites_fake: string;
+		invites_bonus: string | number;
+	}>;
+	return (rows ?? []).map((r) => {
 		const active = Number(r.invites_active) || 0;
 		const bonus = Number(r.invites_bonus) || 0;
 		return {
@@ -9202,9 +9761,9 @@ export async function getMemberInviteCountsByServer(serverId: number | string) {
 			GROUP BY l.member_id
 		) b ON b.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)} AND (inv.inviter_member_id IS NOT NULL OR b.member_id IS NOT NULL)
-	`)) as any;
+	`)) as unknown as SelectResult<{ member_id: number; invites_total: string }>;
 	const map = new Map<number, number>();
-	for (const r of (rows as Record<string, unknown>[]) ?? []) {
+	for (const r of rows ?? []) {
 		map.set(Number(r.member_id), Number(r.invites_total) || 0);
 	}
 	return map;
@@ -9218,13 +9777,18 @@ export async function serverTracksInvites(serverId: number | string) {
 		JOIN server_members m ON m.id = i.member_id
 		WHERE m.server_id = ${Number(serverId)} AND i.inviter_member_id IS NOT NULL AND i.created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
 		LIMIT 1
-	`)) as any;
-	return ((rows as unknown[]) ?? []).length > 0;
+	`)) as unknown as SelectResult<{ ok: number }>;
+	return (rows ?? []).length > 0;
 }
 
 export async function getMemberInviteLink(memberId: number): Promise<{ code: string; slug: string | null } | null> {
 	await initializeDatabase();
-	const [rows] = (await db.execute(sql`SELECT code, slug FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`)) as any;
+	const [rows] = (await db.execute(
+		sql`SELECT code, slug FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`
+	)) as unknown as SelectResult<{
+		code: string;
+		slug: string | null;
+	}>;
 	const row = rows?.[0];
 	return row ? { code: String(row.code), slug: row.slug ?? null } : null;
 }
@@ -9239,8 +9803,8 @@ export async function getPersonalInviteCodes(codes: string[]): Promise<Set<strin
 			codes.map((c) => sql`${c}`),
 			sql`, `
 		)})
-	`)) as any;
-	return new Set(((rows as Record<string, unknown>[]) ?? []).map((r) => String(r.code)));
+	`)) as unknown as SelectResult<{ code: string }>;
+	return new Set((rows ?? []).map((r) => String(r.code)));
 }
 
 export async function setServerInviteCode(serverId: number, code: string) {
@@ -9271,14 +9835,26 @@ export async function getInviteLinkBySlug(slug: string) {
 		JOIN servers s ON s.id = m.server_id
 		WHERE l.slug = ${slug} AND m.deleted_at IS NULL AND m.is_bot = 0
 		LIMIT 1
-	`)) as any;
+	`)) as unknown as SelectResult<{
+		slug: string;
+		code: string;
+		created_at: string;
+		member_id: number;
+		discord_member_id: string;
+		avatar: string | null;
+		member_name: string | null;
+		server_id: number;
+		server_name: string | null;
+		server_icon: string | null;
+		total_members: number | null;
+	}>;
 	return rows?.[0] ?? null;
 }
 
 export async function listInviteSlugsForServers(serverIds: number[]) {
 	await initializeDatabase();
 	if (serverIds.length === 0) {
-		return [] as { slug: string; created_at: any }[];
+		return [] as { slug: string; created_at: string }[];
 	}
 	const [rows] = (await db.execute(sql`
 		SELECT l.slug, l.created_at, m.id AS member_id, m.server_id
@@ -9288,14 +9864,14 @@ export async function listInviteSlugsForServers(serverIds: number[]) {
 			serverIds.map((id) => sql`${id}`),
 			sql`, `
 		)})
-	`)) as any;
+	`)) as unknown as SelectResult<{ slug: string; created_at: string; member_id: number; server_id: number }>;
 	const hidden = new Set<number>();
 	for (const id of serverIds) {
 		for (const memberId of await getDisguisedMemberIds(id).catch(() => [] as number[])) {
 			hidden.add(Number(memberId));
 		}
 	}
-	return ((rows as any[]) ?? []).filter((r) => !hidden.has(Number(r.member_id))).map((r) => ({ slug: String(r.slug), created_at: r.created_at }));
+	return (rows ?? []).filter((r) => !hidden.has(Number(r.member_id))).map((r) => ({ slug: String(r.slug), created_at: r.created_at }));
 }
 
 export async function setMemberInviteLink(memberId: number, code: string) {
@@ -9314,8 +9890,8 @@ export async function getInviteLinkOwners(serverId: number | string) {
 		FROM server_member_invite_links l
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${Number(serverId)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ code: string; member_id: number; discord_member_id: string }>;
+	return rows ?? [];
 }
 
 export default {

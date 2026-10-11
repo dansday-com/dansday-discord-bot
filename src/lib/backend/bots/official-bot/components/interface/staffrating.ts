@@ -16,9 +16,16 @@ import { textField, checkboxField, checkboxValue, radioField, radioValue, select
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
-import type { Guild, GuildMember, Role } from 'discord.js';
-import type { ButtonInteraction, MessageComponentInteraction, ModalSubmitInteraction, RepliableInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type {
+	Guild,
+	GuildMember,
+	Role,
+	ButtonInteraction,
+	MessageComponentInteraction,
+	ModalSubmitInteraction,
+	RepliableInteraction,
+	MessageActionRowComponentBuilder
+} from 'discord.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 

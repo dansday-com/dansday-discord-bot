@@ -95,7 +95,7 @@ function mapCatalogRow(x: Record<string, unknown>): RobloxCatalogItem | null {
 async function fetchCatalogJson(params: Record<string, unknown>): Promise<{ data: Record<string, unknown>[]; nextPageCursor: string | null }> {
 	while (true) {
 		try {
-			const data = await fetchApi(getSearchItemsDetails, params as any, {
+			const data = await fetchApi(getSearchItemsDetails, params, {
 				throwOnError: true,
 				retries: 0,
 				signal: AbortSignal.timeout(ROBLOX_CATALOG_ABORT_MS)

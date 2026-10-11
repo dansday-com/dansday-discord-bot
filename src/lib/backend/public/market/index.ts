@@ -1,6 +1,7 @@
 import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
 import { loadItemsShared } from '../items/index.js';
+import type { ServerRow } from '../../../schema.js';
 
 const MARKETS_KEY = 'market:usd:markets';
 const MOVERS_KEY = 'market:usd:movers';
@@ -33,7 +34,7 @@ export async function loadMovers(): Promise<{ gainers: any[]; losers: any[] }> {
 	return { gainers: cached?.gainers ?? [], losers: cached?.losers ?? [] };
 }
 
-export async function loadMarketShared(server: Record<string, unknown>, hash: string) {
+export async function loadMarketShared(server: Pick<ServerRow, 'id'>, hash: string) {
 	const shared = await loadItemsShared(server, hash, 'market');
 	if ('notFound' in shared || 'guest' in shared) {
 		return shared;

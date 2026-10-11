@@ -84,7 +84,7 @@
 			tone: 'emerald',
 			rows: [
 				{ icon: 'fa-shield-alt', label: 'Total roles', value: fmt(s.roles_total) },
-				{ icon: 'fa-rocket', label: 'Boost level', value: fmt(o.boost_level ?? s.boost_level) },
+				{ icon: 'fa-rocket', label: 'Boost level', value: fmt(o.boost_level) },
 				{ icon: 'fa-gift', label: 'Total boosts', value: fmt(s.members_boosters) },
 				{ icon: 'fa-folder', label: 'Categories', value: fmt(s.categories_total) },
 				{ icon: 'fa-user-cog', label: 'Custom roles', value: fmt(s.members_with_custom_roles) }

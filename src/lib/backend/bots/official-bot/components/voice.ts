@@ -3,8 +3,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { subscribeVoiceCommands, clearVoiceState } from './voiceControl.js';
 import { createVoiceSession } from './voiceSession.js';
-import type { Client, VoiceBasedChannel } from 'discord.js';
-import type { VoiceState } from 'discord.js';
+import type { Client, VoiceBasedChannel, VoiceState } from 'discord.js';
 import type { VoiceCommand } from './voiceControl.js';
 
 let active: ReturnType<typeof createVoiceSession> | null = null;

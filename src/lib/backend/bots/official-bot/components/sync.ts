@@ -11,10 +11,19 @@ import {
 } from '../../../../utils/index.js';
 import { COMMUNITY_DISCORD_URL, DEFAULT_BOT_NICKNAME, getEmbedConfig, publicSiteOrigin } from '../../../config.js';
 import { translate } from '../i18n.js';
-import type { Client, DMChannel, Guild, GuildBasedChannel, GuildMember, NonThreadGuildBasedChannel, Role, TextChannel } from 'discord.js';
-import type { Collection } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { PartialGuildMember } from 'discord.js';
+import type {
+	Client,
+	DMChannel,
+	Guild,
+	GuildBasedChannel,
+	GuildMember,
+	NonThreadGuildBasedChannel,
+	Role,
+	TextChannel,
+	Collection,
+	MessageActionRowComponentBuilder,
+	PartialGuildMember
+} from 'discord.js';
 
 let client: Client | null = null;
 let botId: number | null = null;

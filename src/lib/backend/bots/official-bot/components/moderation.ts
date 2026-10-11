@@ -5,8 +5,7 @@ import { logger } from '../../../../utils/index.js';
 import { escalationStepFor } from '../../../../moderation-rules.js';
 import { memberTranslator, serverTranslator, type Translator } from '../i18n.js';
 import { parseLocalizedDuration } from '../localizedInput.js';
-import type { APIEmbedField, AuditLogEvent, GuildMember, GuildTextBasedChannel, PartialGuildMember } from 'discord.js';
-import type { Client, Guild, User } from 'discord.js';
+import type { APIEmbedField, AuditLogEvent, GuildMember, GuildTextBasedChannel, PartialGuildMember, Client, Guild, User } from 'discord.js';
 
 export const MODERATION_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'] as const;
 export const BULK_MODERATION_ACTIONS = ['role_add', 'role_remove'] as const;

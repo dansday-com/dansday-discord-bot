@@ -248,6 +248,8 @@
 		return tabs.map((t) => ({ label: t.label, icon: t.icon, href: `${accountBase}/${kind}/${t.id}/${navHash}`, active: activeId === t.id }));
 	}
 
+	let bagPulse = $state(false);
+
 	const sectionTabs: NavTab[] = $derived([
 		{
 			label: 'Profile',
@@ -335,7 +337,6 @@
 	});
 	onDestroy(() => es?.close());
 
-	let bagPulse = $state(false);
 	let burstId = $state<number | null>(null);
 
 	function flyToBag(fromEl: HTMLElement | null, iconClass: string) {

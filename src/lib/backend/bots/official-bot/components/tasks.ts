@@ -18,12 +18,26 @@ import {
 	rarityTierFor,
 	rarityMeta,
 	type RarityTier,
+	type TaskDifficulty,
 	type TaskMetric
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
 import { serverTranslator, type Translator } from '../i18n.js';
-import type { Client } from 'discord.js';
-import type { GuildMember } from 'discord.js';
+import type { Client, GuildMember } from 'discord.js';
+import type { getServerForCurrentBot } from '../../../config.js';
+
+type BotServer = Awaited<ReturnType<typeof getServerForCurrentBot>>;
+type TaskRow = Awaited<ReturnType<typeof db.getMemberTasks>>[number];
+type Milestone = ReturnType<typeof streakMilestone>;
+export type StreakOutcome = {
+	streak?: number;
+	previousStreak?: number;
+	freezeUsed?: number;
+	freezesLeft?: number;
+	daysMissed?: number;
+	reset?: boolean;
+	row?: { longest_streak?: number | null } | null;
+};
 
 const ANNOUNCE_DELAY_MS = 7000;
 
@@ -36,7 +50,7 @@ const COUNTER_METRICS = new Set<TaskMetric>([
 	'voice_minutes_streaming'
 ]);
 
-async function measureProgress(memberId: number | string, row: any, dayStartMs: number) {
+async function measureProgress(memberId: number | string, row: TaskRow, dayStartMs: number) {
 	const def = TASK_BY_ID.get(row.task_type);
 	if (!def) {
 		return 0;
@@ -67,17 +81,17 @@ async function grantXpTo(guildId: string, memberId: number | string, rawXp: numb
 			.catch(() => null);
 	}
 	await finalizeXpChanges(guildId, snaps, `${source}-claim`);
-	return { kind: 'xp', xp };
+	return { kind: 'xp' as const, xp };
 }
 
 async function deliverReward(
 	guildId: string,
 	memberId: number | string,
-	plan: { wantsItem: boolean; itemId: any; fallbackXp: number; source?: 'task' | 'daily' }
+	plan: { wantsItem: boolean; itemId: number | string | null; fallbackXp: number; source?: 'task' | 'daily' }
 ) {
 	const source = plan.source ?? 'task';
 	const item = plan.wantsItem && plan.itemId != null ? await db.getItem(Number(plan.itemId)).catch(() => null) : null;
-	const itemUsable = !!item && (item.enabled as any) !== false && (item.enabled as any) !== 0;
+	const itemUsable = !!item && (item.enabled as boolean | number) !== false && (item.enabled as boolean | number) !== 0;
 
 	if (plan.wantsItem && itemUsable) {
 		await db.ensureMemberLevel(memberId);
@@ -89,7 +103,7 @@ async function deliverReward(
 			xp: 0,
 			outcome: 'success'
 		});
-		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type, cost: Number(item.cost) || 0 };
+		return { kind: 'item' as const, itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type, cost: Number(item.cost) || 0 };
 	}
 
 	if (plan.wantsItem || plan.itemId != null) {
@@ -100,7 +114,7 @@ async function deliverReward(
 	return grantXpTo(guildId, memberId, plan.fallbackXp, source);
 }
 
-export async function handleLoginClaim(client: Client, payload: any) {
+export async function handleLoginClaim(client: Client, payload: { guild_id?: string; actor_discord_id?: string }) {
 	const { guild_id, actor_discord_id } = payload || {};
 	if (!guild_id || !actor_discord_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -108,7 +122,7 @@ export async function handleLoginClaim(client: Client, payload: any) {
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch {
@@ -127,7 +141,7 @@ export async function handleLoginClaim(client: Client, payload: any) {
 	const nowMs = Date.now();
 	const nowKey = minuteKeyFor(nowMs);
 
-	const before = (await db.ensureMemberClaim(memberId)) as any;
+	const before = await db.ensureMemberClaim(memberId);
 	const readyInMs = loginReadyInMs(before?.last_claim_day_key == null ? null : Number(before.last_claim_day_key), nowMs);
 	if (readyInMs > 0) {
 		return { ok: false, error: 'already_claimed', readyInMs };
@@ -148,7 +162,7 @@ export async function handleLoginClaim(client: Client, payload: any) {
 	const dailyEarn = Math.max(0, Number(earned) || 0) / RECENT_WINDOW_DAYS;
 	const reward = loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
 
-	let granted: any = null;
+	let granted: Awaited<ReturnType<typeof deliverReward>> | null = null;
 	try {
 		granted = await deliverReward(guild_id, memberId, {
 			wantsItem: reward.kind === 'item',
@@ -183,7 +197,10 @@ async function loadRewardCatalog(serverId: number) {
 	return all.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0).map((i) => ({ id: Number(i.id), cost: Number(i.cost) || 0 }));
 }
 
-export async function handleTaskClaim(client: Client, payload: any) {
+export async function handleTaskClaim(
+	client: Client,
+	payload: { guild_id?: string; actor_discord_id?: string; slot?: number | string; tz_offset?: unknown; period?: string }
+) {
 	const { guild_id, actor_discord_id, slot, tz_offset } = payload || {};
 	const period: 'daily' | 'weekly' = payload?.period === 'weekly' ? 'weekly' : 'daily';
 	if (!guild_id || !actor_discord_id || slot == null) {
@@ -192,7 +209,7 @@ export async function handleTaskClaim(client: Client, payload: any) {
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch {
@@ -219,7 +236,7 @@ export async function handleTaskClaim(client: Client, payload: any) {
 	}
 	const windowStartMs = periodKey * 60000;
 
-	const rows = (await db.getMemberTasks(memberId, periodKey, period).catch(() => [])) as any[];
+	const rows = await db.getMemberTasks(memberId, periodKey, period).catch(() => []);
 	const row = rows.find((r) => Number(r.slot) === Number(slot));
 	if (!row) {
 		return { ok: false, error: 'task_not_found' };
@@ -242,12 +259,12 @@ export async function handleTaskClaim(client: Client, payload: any) {
 		return { ok: false, error: 'already_claimed' };
 	}
 
-	let granted: any = null;
+	let granted: Awaited<ReturnType<typeof deliverReward>> | null = null;
 	try {
 		granted = await deliverReward(guild_id, memberId, {
 			wantsItem: grantsItem,
 			itemId: row.reward_item_id,
-			fallbackXp: Number(row.xp_reward) || xpRewardFor(row.difficulty, 0, 500)
+			fallbackXp: Number(row.xp_reward) || xpRewardFor(row.difficulty as TaskDifficulty, 0, 500)
 		});
 	} catch (err) {
 		await logger.log(`❌ Task reward grant failed: ${(err as Error).message}`);
@@ -257,8 +274,8 @@ export async function handleTaskClaim(client: Client, payload: any) {
 	const after = dayKey == null ? [] : ((await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as Record<string, unknown>[]);
 	const allClaimed = after.length > 0 && after.every((r) => !!r.claimed_at);
 
-	let streakResult: any = null;
-	let milestone: any = null;
+	let streakResult: Awaited<ReturnType<typeof db.applyStreakDay>> | null = null;
+	let milestone: Milestone = null;
 	if (dayKey != null) {
 		streakResult = await db.applyStreakDay(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
 	}
@@ -297,7 +314,7 @@ function milestoneLabel(tr: Translator, milestone: { at: number; label: string }
 	return label === key ? milestone.label : label;
 }
 
-function streakAnnouncement(tr: Translator, streakResult: any, milestone: any, member: GuildMember) {
+function streakAnnouncement(tr: Translator, streakResult: StreakOutcome, milestone: Milestone, member: GuildMember) {
 	const streak = Number(streakResult.streak) || 0;
 	const freezeUsed = Number(streakResult.freezeUsed) || 0;
 	const daysMissed = Number(streakResult.daysMissed) || 0;
@@ -404,7 +421,7 @@ async function announceLoginItem(
 	}
 }
 
-export async function announceStreak(client: Client, guildId: string, discordMemberId: number | string, streakResult: unknown, milestone: unknown) {
+export async function announceStreak(client: Client, guildId: string, discordMemberId: number | string, streakResult: StreakOutcome, milestone: Milestone) {
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guildId);
 	if (!channelId) {

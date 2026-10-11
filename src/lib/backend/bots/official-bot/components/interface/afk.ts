@@ -6,10 +6,17 @@ import db from '../../../../../database.js';
 import { memberTranslator, translate, translateServer, errorReason } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
-import type { ButtonInteraction, Client, GuildMember, GuildTextBasedChannel, VoiceState } from 'discord.js';
-import type { Message, ModalSubmitInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { MessageComponentInteraction } from 'discord.js';
+import type {
+	ButtonInteraction,
+	Client,
+	GuildMember,
+	GuildTextBasedChannel,
+	VoiceState,
+	Message,
+	ModalSubmitInteraction,
+	MessageActionRowComponentBuilder,
+	MessageComponentInteraction
+} from 'discord.js';
 
 const DEFAULT_AFK_MESSAGE = 'Away';
 

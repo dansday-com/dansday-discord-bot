@@ -7,10 +7,20 @@ import db from '../../../../../database.js';
 import { memberTranslator, translate, errorReason, errorReasonFor } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { imageUploadField, uploadedFiles } from './formFields.js';
-import type { ButtonInteraction, Client, Guild, GuildMember, PartialGuildMember, Role, RoleCreateOptions, RoleEditOptions } from 'discord.js';
-import type { ModalSubmitInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder, ModalActionRowComponentBuilder } from 'discord.js';
-import type { MessageComponentInteraction } from 'discord.js';
+import type {
+	ButtonInteraction,
+	Client,
+	Guild,
+	GuildMember,
+	PartialGuildMember,
+	Role,
+	RoleCreateOptions,
+	RoleEditOptions,
+	ModalSubmitInteraction,
+	MessageActionRowComponentBuilder,
+	ModalActionRowComponentBuilder,
+	MessageComponentInteraction
+} from 'discord.js';
 
 const supporterRoles = new Map();
 

@@ -4,9 +4,8 @@ import { logger } from '../../../../utils/index.js';
 import { resolveStaffRatingAnchor } from './roleAnchor.js';
 import db from '../../../../database.js';
 import { serverTranslator, translate } from '../i18n.js';
-import type { Guild, RoleCreateOptions } from 'discord.js';
+import type { Guild, RoleCreateOptions, GuildMember } from 'discord.js';
 import type { Translator } from '../i18n.js';
-import type { GuildMember } from 'discord.js';
 
 function getRatingColor(rating: number) {
 	const clamped = Math.max(1.0, Math.min(5.0, rating));
@@ -137,7 +136,7 @@ export async function updateStaffRatingRole(
 	serverId: number,
 	staffMemberId: string | number,
 	staffDiscordId: string,
-	stats: { rating?: number; total_reports?: number } | null = null,
+	stats: { rating?: number | string; total_reports?: number } | null = null,
 	options: { channelContext?: RatingChannelContext } = {}
 ) {
 	try {

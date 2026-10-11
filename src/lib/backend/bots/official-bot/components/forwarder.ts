@@ -2,10 +2,9 @@ import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
 import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
 import { serverTranslator } from '../i18n.js';
-import type { APIEmbed, ApplicationEmoji, Client, Collection, MessageCreateOptions } from 'discord.js';
+import type { APIEmbed, ApplicationEmoji, Client, Collection, MessageCreateOptions, GuildTextBasedChannel } from 'discord.js';
 import type { ForwardedMessage } from '../../../../forwarder-settings.js';
 import type { ForwarderTarget } from '../../../config.js';
-import type { GuildTextBasedChannel } from 'discord.js';
 
 function extractCustomEmojis(text: string) {
 	const str = text != null ? String(text) : '';

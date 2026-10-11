@@ -20,6 +20,12 @@ import {
 } from '../../../../color.js';
 import { serverTranslator } from '../i18n.js';
 import type { Client } from 'discord.js';
+import type { getServerForCurrentBot } from '../../../config.js';
+
+type BotServer = Awaited<ReturnType<typeof getServerForCurrentBot>>;
+type PlayContext = { guildId: string; actorDiscordId: string; memberId: number };
+type GambleResult = { outcome: string; won: boolean; wager: number; payout: number; net: number; multiplier: number; chance: number; luckPercent: number };
+type TowerStep = { outcome: string; floor: number; payout: number; lost: number; door?: number; trapDoors?: number[] };
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
@@ -47,7 +53,7 @@ async function resolveServerMemberId(serverId: number | string, discordId: numbe
 	return member?.id ?? null;
 }
 
-export async function handleMinigamePlay(client: Client, payload: any) {
+export async function handleMinigamePlay(client: Client, payload: { guild_id?: string; actor_discord_id?: string; multiplier?: unknown; xp?: unknown }) {
 	const { guild_id, actor_discord_id, multiplier, xp: amount } = payload || {};
 	if (!guild_id || !actor_discord_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -55,7 +61,7 @@ export async function handleMinigamePlay(client: Client, payload: any) {
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch (_) {
@@ -138,7 +144,7 @@ function fmtXp(v: unknown): string {
 	return `${Math.abs(Number(v) || 0).toLocaleString()} XP`;
 }
 
-async function announceMinigame(client: Client, ctx: any) {
+async function announceMinigame(client: Client, ctx: { guildId: string; actorDiscordId: string; result: GambleResult }) {
 	const { guildId, actorDiscordId, result } = ctx;
 	if (!result) {
 		return;
@@ -200,10 +206,10 @@ async function announceMinigame(client: Client, ctx: any) {
 	}
 }
 
-const towerQueues = new Map<number, Promise<any>>();
-const colorQueues = new Map<number, Promise<any>>();
+const towerQueues = new Map<number, Promise<unknown>>();
+const colorQueues = new Map<number, Promise<unknown>>();
 
-type ColorRun = { ctx: any; rounds: ColorRound[]; target: Hsb; timer: ReturnType<typeof setTimeout> | null };
+type ColorRun = { ctx: PlayContext; rounds: ColorRound[]; target: Hsb; timer: ReturnType<typeof setTimeout> | null };
 const colorRuns = new Map<number, ColorRun>();
 
 function queueMember<T>(queues: Map<number, Promise<unknown>>, memberId: number, task: () => Promise<T>): Promise<T> {
@@ -244,7 +250,7 @@ function placeTraps(picked: number, safe: boolean, count: number): number[] {
 	return safe ? others.slice(0, count) : [picked, ...others.slice(0, count - 1)];
 }
 
-export async function handleTowerAction(client: Client, payload: any) {
+export async function handleTowerAction(client: Client, payload: { guild_id?: string; actor_discord_id?: string; action?: string; door?: unknown }) {
 	const { guild_id, actor_discord_id, action, door } = payload || {};
 	if (!guild_id || !actor_discord_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -252,7 +258,7 @@ export async function handleTowerAction(client: Client, payload: any) {
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch (_) {
@@ -339,7 +345,7 @@ export async function handleTowerAction(client: Client, payload: any) {
 	});
 }
 
-async function finishTower(client: Client, ctx: any, state: any, step: any) {
+async function finishTower(client: Client, ctx: PlayContext, state: Awaited<ReturnType<typeof loadTower>>['state'], step: TowerStep) {
 	const { guildId, actorDiscordId, memberId } = ctx;
 	const base = towerBaseChance(step.floor, state.climb);
 	const chance = towerSafeChance(step.floor, state.climb, state.luckPercent);
@@ -377,7 +383,7 @@ async function finishTower(client: Client, ctx: any, state: any, step: any) {
 
 const TOWER_OUTCOME_KEY: Record<string, string> = { cashed: 'cashout', cleared: 'cleared', bust: 'bust' };
 
-async function announceTower(client: Client, ctx: any) {
+async function announceTower(client: Client, ctx: { guildId: string; actorDiscordId: string; result: TowerStep & { base: number; luckPercent: number } }) {
 	const { guildId, actorDiscordId, result } = ctx;
 	if (!result) {
 		return;
@@ -464,7 +470,7 @@ async function endColor(client: Client, memberId: number, run: ColorRun) {
 	return { total, payout, rounds: run.rounds };
 }
 
-export async function handleColorAction(client: Client, payload: any) {
+export async function handleColorAction(client: Client, payload: { guild_id?: string; actor_discord_id?: string; action?: string; [axis: string]: unknown }) {
 	const { guild_id, actor_discord_id, action } = payload || {};
 	if (!guild_id || !actor_discord_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -472,7 +478,7 @@ export async function handleColorAction(client: Client, payload: any) {
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch (_) {
@@ -533,7 +539,7 @@ export async function handleColorAction(client: Client, payload: any) {
 	});
 }
 
-async function finishColor(client: any, ctx: any, result: { total: number; payout: number }, rounds: ColorRound[]) {
+async function finishColor(client: Client, ctx: PlayContext, result: { total: number; payout: number }, rounds: ColorRound[]) {
 	const { guildId, actorDiscordId, memberId } = ctx;
 
 	if (result.payout > 0) {
@@ -565,7 +571,10 @@ async function finishColor(client: any, ctx: any, result: { total: number; payou
 	}, COLOR_ANNOUNCE_DELAY_MS);
 }
 
-async function announceColor(client: Client, ctx: any) {
+async function announceColor(
+	client: Client,
+	ctx: { guildId: string; actorDiscordId: string; result: { total: number; payout: number; best: ColorRound; rounds: number } }
+) {
 	const { guildId, actorDiscordId, result } = ctx;
 	if (!result) {
 		return;

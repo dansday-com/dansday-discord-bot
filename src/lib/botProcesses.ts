@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
-import db from './database.js';
+import db, { type BotRunStatus } from './database.js';
 import { getRedisClient, isRedisConfigured } from './redis.js';
 import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate } from './utils/index.js';
 
@@ -87,6 +87,15 @@ export type RunnerAction = 'start' | 'stop' | 'restart';
 export type RunnerCommand = { requestId: string; action: RunnerAction; kind: BotProcessKind; id: number };
 export type RunnerResult = { success: boolean; error?: string; pid?: number; message?: string };
 
+export type BotProcessRow = {
+	id: number;
+	name?: string | null;
+	token?: string | null;
+	status?: string | null;
+	process_id?: number | null;
+	secret_key?: string | null;
+};
+
 export function botProcessMapKey(kind: BotProcessKind, id: number): string {
 	return `${kind}:${id}`;
 }
@@ -95,11 +104,11 @@ export function botKindOf(bot: unknown): BotProcessKind {
 	return isSelfbot(bot) ? 'selfbot' : 'official';
 }
 
-function processKeyForBot(bot: any): string {
+function processKeyForBot(bot: BotProcessRow): string {
 	return botProcessMapKey(botKindOf(bot), bot.id);
 }
 
-function processKeyForStop(botId: number, bot?: unknown): string {
+function processKeyForStop(botId: number, bot?: BotProcessRow): string {
 	if (bot) {
 		return processKeyForBot(bot);
 	}
@@ -139,11 +148,14 @@ function emitBotStatus(mapKey: string, status: string, process_id: number | null
 	publishRunnerMessage(RUNNER_STATUS_CHANNEL, { key: mapKey, ...event });
 }
 
-function isSelfbot(bot: any): boolean {
-	return !!bot && !('secret_key' in bot);
+function isSelfbot(bot: unknown): boolean {
+	return !!bot && !('secret_key' in (bot as object));
 }
 
-async function updateBotStatus(bot: any, data: { status: string; process_id?: number | null; uptime_started_at?: any; auto_start?: boolean }) {
+async function updateBotStatus(
+	bot: BotProcessRow,
+	data: { status: BotRunStatus; process_id?: number | null; uptime_started_at?: Date | null; auto_start?: boolean }
+) {
 	if (isSelfbot(bot)) {
 		await db.updateSelfbot(bot.id, data);
 	} else {
@@ -159,7 +171,7 @@ async function getConnectedSelfbots(officialBotId: number) {
 	}
 }
 
-function isSelfbotProcessAlive(sb: any): boolean {
+function isSelfbotProcessAlive(sb: { id: number }): boolean {
 	const mapKey = botProcessMapKey('selfbot', sb.id);
 	const info = botProcesses.get(mapKey);
 	if (info?.process && !info.process.killed && info.process.exitCode === null) {
@@ -174,13 +186,13 @@ function isSelfbotProcessAlive(sb: any): boolean {
 	return false;
 }
 
-function startConnectedSelfbotsInBackground(selfbots: Record<string, unknown>[], officialBotId: number): void {
-	const eligible = (selfbots || []).filter((sb: any) => typeof sb.token === 'string' && sb.token.trim() !== '' && !isSelfbotProcessAlive(sb));
+function startConnectedSelfbotsInBackground(selfbots: BotProcessRow[], officialBotId: number): void {
+	const eligible = (selfbots || []).filter((sb) => typeof sb.token === 'string' && sb.token.trim() !== '' && !isSelfbotProcessAlive(sb));
 	if (eligible.length === 0) {
 		return;
 	}
 	logger.log(`🔗 Starting ${eligible.length} selfbot(s) with official bot ${officialBotId}`);
-	Promise.allSettled(eligible.map((sb: any) => startBotById(sb.id, sb))).then((results) => {
+	Promise.allSettled(eligible.map((sb) => startBotById(sb.id, sb))).then((results) => {
 		for (let i = 0; i < results.length; i++) {
 			const sb = eligible[i];
 			const r = results[i];
@@ -193,7 +205,7 @@ function startConnectedSelfbotsInBackground(selfbots: Record<string, unknown>[],
 	});
 }
 
-function isOfficialProcessAlive(bot: any): boolean {
+function isOfficialProcessAlive(bot: { id: number }): boolean {
 	const info = botProcesses.get(botProcessMapKey('official', bot.id));
 	if (info?.process && !info.process.killed && info.process.exitCode === null) {
 		return true;
@@ -231,7 +243,7 @@ async function stopConnectedSelfbots(officialBotId: number): Promise<void> {
 
 export async function startBotById(
 	botId: number,
-	bot: any,
+	bot: BotProcessRow,
 	options: { linkedSelfbots?: boolean } = {}
 ): Promise<{ success: boolean; error?: string; pid?: number }> {
 	const mapKey = processKeyForBot(bot);
@@ -279,7 +291,7 @@ export async function startBotById(
 			detached: false,
 			env: {
 				...process.env,
-				BOT_TOKEN: bot.token,
+				BOT_TOKEN: bot.token as string,
 				BOT_ID: String(botId),
 				BOT_KIND: selfbot ? 'selfbot' : 'official'
 			}
@@ -456,7 +468,7 @@ export async function startBotById(
 	}
 }
 
-export async function stopBotById(botId: number, bot?: unknown): Promise<{ success: boolean; error?: string; message?: string }> {
+export async function stopBotById(botId: number, bot?: BotProcessRow): Promise<{ success: boolean; error?: string; message?: string }> {
 	const mapKey = processKeyForStop(botId, bot);
 
 	cancelScheduledRestart(mapKey);
@@ -604,7 +616,7 @@ async function waitForProcessExit(pid: number, scriptName: string, timeoutMs: nu
 	}
 }
 
-export async function restartBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
+export async function restartBotById(botId: number, bot: BotProcessRow): Promise<{ success: boolean; error?: string; pid?: number }> {
 	const mapKey = processKeyForBot(bot);
 	const scriptName = isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
 	const candidatePid = botProcesses.get(mapKey)?.pid ?? (bot?.process_id ? Number(bot.process_id) : null);
@@ -629,7 +641,7 @@ function hasLiveChildProcess(mapKey: string): boolean {
 	return !!info?.process && !info.process.killed && info.process.exitCode === null;
 }
 
-async function verifyOne(kind: BotProcessKind, row: any, scriptName: string): Promise<void> {
+async function verifyOne(kind: BotProcessKind, row: BotProcessRow, scriptName: string): Promise<void> {
 	const mapKey = botProcessMapKey(kind, row.id);
 	const markStopped = () => updateBotStatus(row, { status: 'stopped', process_id: null, uptime_started_at: null });
 
@@ -917,7 +929,7 @@ export function getBotUptimeMs(bot: Record<string, unknown>): number {
 		return 0;
 	}
 	try {
-		let startTime: any;
+		let startTime: ReturnType<typeof getDateTimeFromJSDate> | null;
 		if (bot.uptime_started_at instanceof Date) {
 			startTime = getDateTimeFromJSDate(bot.uptime_started_at);
 		} else {

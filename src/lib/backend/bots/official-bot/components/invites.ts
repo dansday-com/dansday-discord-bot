@@ -13,7 +13,9 @@ import {
 } from '../../../config.js';
 import { awardInviteXp } from './leveling.js';
 import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
-import type { Client, Guild, GuildBasedChannel, GuildMember } from 'discord.js';
+import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, NewsChannel, PartialGuildMember, TextChannel } from 'discord.js';
+
+type BotServer = Awaited<ReturnType<typeof getServerForCurrentBot>>;
 
 type CachedInvite = { uses: number; inviterId: string | null; maxUses: number; expiresAt: number | null };
 type GuildInviteState = { invites: Map<string, CachedInvite>; vanityCode: string | null; vanityUses: number | null };
@@ -39,7 +41,7 @@ const SERVER_INVITE_CHECK_MS = 30 * 60_000;
 const guildStates = new Map<string, GuildInviteState>();
 const guildQueues = new Map<string, Promise<unknown>>();
 const joinResults = new Map<string, Promise<JoinInviteResult | null>>();
-let clientRef: any = null;
+let clientRef: Client | null = null;
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 let serverInviteTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -57,7 +59,7 @@ export function canReadInvites(guild: Guild): boolean {
 	return guild?.members?.me?.permissions?.has?.(PermissionFlagsBits.ManageGuild) === true;
 }
 
-function toCached(invite: any): CachedInvite {
+function toCached(invite: Invite): CachedInvite {
 	return {
 		uses: Number(invite.uses) || 0,
 		inviterId: invite.inviterId ?? invite.inviter?.id ?? null,
@@ -169,7 +171,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 		guildStates.set(guild.id, after);
 	}
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild.id);
 	} catch (_) {
@@ -250,7 +252,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 	};
 }
 
-function joinKey(member: GuildMember) {
+function joinKey(member: GuildMember | PartialGuildMember) {
 	return `${member.guild.id}:${member.id}:${member.joinedTimestamp ?? 0}`;
 }
 
@@ -272,9 +274,9 @@ export function attributeJoin(member: GuildMember): Promise<JoinInviteResult | n
 	return result;
 }
 
-async function recordLeave(member: GuildMember) {
+async function recordLeave(member: GuildMember | PartialGuildMember) {
 	const guild = member.guild;
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild.id);
 	} catch (_) {
@@ -296,7 +298,7 @@ async function isStaffMember(guildMember: GuildMember): Promise<boolean> {
 	}
 }
 
-export async function inviteRewardFor(guildMember: any): Promise<{ xp: number; multiplier: number }> {
+export async function inviteRewardFor(guildMember: GuildMember): Promise<{ xp: number; multiplier: number }> {
 	const settings = await loadInviteSettings(guildMember.guild.id);
 	const multiplier = (await isStaffMember(guildMember)) ? INVITE_STAFF_MULTIPLIER : 1;
 	return { xp: settings.XP * multiplier, multiplier };
@@ -372,10 +374,10 @@ async function sweepRewards() {
 	}
 }
 
-export function pickInviteChannel(guild: any) {
-	const me = guild.members.me;
+export function pickInviteChannel(guild: Guild) {
+	const me = guild.members.me!;
 	const everyone = guild.roles.everyone;
-	const usable = (channel: GuildBasedChannel) =>
+	const usable = (channel: GuildBasedChannel | null) =>
 		channel &&
 		(channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) &&
 		channel.permissionsFor(me)?.has(PermissionFlagsBits.CreateInstantInvite) &&
@@ -384,7 +386,7 @@ export function pickInviteChannel(guild: any) {
 	if (preferred) {
 		return preferred;
 	}
-	return [...guild.channels.cache.values()].filter(usable).sort((a, b) => a.rawPosition - b.rawPosition)[0] ?? null;
+	return ([...guild.channels.cache.values()].filter(usable) as (TextChannel | NewsChannel)[]).sort((a, b) => a.rawPosition - b.rawPosition)[0] ?? null;
 }
 
 async function ensureServerInvite(guild: Guild) {
@@ -399,7 +401,7 @@ async function ensureServerInvite(guild: Guild) {
 		return;
 	}
 
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild.id);
 	} catch (_) {
@@ -448,23 +450,23 @@ async function checkServerInvites(client: Client) {
 	}
 }
 
-export function rememberCreatedInvite(guildId: string, invite: any) {
+export function rememberCreatedInvite(guildId: string, invite: Invite) {
 	const state = guildStates.get(guildId);
 	if (state && invite?.code) {
 		state.invites.set(invite.code, toCached(invite));
 	}
 }
 
-function init(client: any) {
+function init(client: Client) {
 	clientRef = client;
 
-	client.on('inviteCreate', (invite: any) => {
+	client.on('inviteCreate', (invite) => {
 		if (invite.guild?.id) {
 			rememberCreatedInvite(invite.guild.id, invite);
 		}
 	});
 
-	client.on('inviteDelete', (invite: any) => {
+	client.on('inviteDelete', (invite) => {
 		const guildId = invite.guild?.id;
 		if (!guildId) {
 			return;
@@ -485,7 +487,7 @@ function init(client: any) {
 		attributeJoin(member).catch(() => null);
 	});
 
-	client.on('guildMemberRemove', (member: GuildMember) => {
+	client.on('guildMemberRemove', (member: GuildMember | PartialGuildMember) => {
 		if (!member.guild || member.user?.bot || member.guild.available === false) {
 			return;
 		}

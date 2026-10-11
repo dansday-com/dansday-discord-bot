@@ -47,7 +47,7 @@
 		if (data.category !== 'all') {
 			return [{ key: 'flat', label: '', icon: '', items: list }];
 		}
-		const out: { key: string; label: string; icon: string; items: unknown[] }[] = [];
+		const out: { key: string; label: string; icon: string; items: typeof list }[] = [];
 		const limited = list.filter((i) => i.availableUntil && i.availableUntil > ctx.now);
 		if (limited.length > 0) {
 			out.push({ key: 'limited', label: 'Limited', icon: 'fa-hourglass-half', items: limited });

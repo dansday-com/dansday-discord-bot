@@ -4,6 +4,41 @@ import { getRedisClient } from '../../../../redis.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import type { Client } from 'discord.js';
+import type { getServerForCurrentBot } from '../../../config.js';
+
+type BotServer = Awaited<ReturnType<typeof getServerForCurrentBot>>;
+type CoinGeckoMarket = {
+	id: string;
+	symbol: string;
+	name: string;
+	image?: string | null;
+	current_price?: number | null;
+	price_change_percentage_24h?: number | null;
+	market_cap_rank?: number | null;
+	sparkline_in_7d?: { price?: unknown[] } | null;
+};
+type MarketRow = ReturnType<typeof shapeMarketRow>;
+type PriceMap = Record<string, { price: number; change24h: number }>;
+type AssetSearchResult = {
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	name: string | undefined;
+	image: string | null;
+	market_cap_rank: number | null;
+	price: number;
+	change24h: number;
+};
+type AssetRow = Awaited<ReturnType<typeof db.getOpenAssetPositions>>[number];
+type PortfolioPosition = Pick<AssetRow, 'id' | 'asset_type' | 'asset_id' | 'symbol' | 'asset_name' | 'asset_image'> & {
+	xp_invested: number;
+	buy_price: number;
+	current_price: number;
+	change24h: number;
+	value: number;
+	pnl: number;
+	pnl_percent: number;
+};
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const POLL_INTERVAL_MS = 30 * 60_000;
@@ -33,7 +68,7 @@ function apiHeaders(): Record<string, string> {
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
 let rateLimitedUntil = 0;
 
-async function cgFetch(path: string): Promise<any> {
+async function cgFetch<T = unknown>(path: string): Promise<T> {
 	if (Date.now() < rateLimitedUntil) {
 		throw new Error(`coingecko rate-limited, cooling down ${path}`);
 	}
@@ -46,10 +81,10 @@ async function cgFetch(path: string): Promise<any> {
 	if (!res.ok) {
 		throw new Error(`coingecko ${res.status} ${path}`);
 	}
-	return res.json();
+	return res.json() as Promise<T>;
 }
 
-async function cacheGet(key: string): Promise<any | null> {
+async function cacheGet<T>(key: string): Promise<T | null> {
 	const redis = await getRedisClient().catch(() => null);
 	if (!redis) {
 		return null;
@@ -72,7 +107,7 @@ async function cacheSet(key: string, value: unknown, ttlMs: number): Promise<voi
 	} catch {}
 }
 
-function shapeMarketRow(row: any) {
+function shapeMarketRow(row: CoinGeckoMarket) {
 	return {
 		asset_type: 'crypto',
 		asset_id: String(row.id),
@@ -88,17 +123,17 @@ function shapeMarketRow(row: any) {
 
 async function fetchTopMarkets() {
 	const path = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${MARKETS_PER_PAGE}` + `&page=1&sparkline=true&price_change_percentage=24h`;
-	const rows = await cgFetch(path);
+	const rows = await cgFetch<CoinGeckoMarket[]>(path);
 	return Array.isArray(rows) ? rows.map(shapeMarketRow) : [];
 }
 
 async function fetchUniverse() {
-	const all: any[] = [];
+	const all: MarketRow[] = [];
 	for (let page = 1; page <= UNIVERSE_PAGES; page++) {
 		const sparkline = page === 1 ? 'true' : 'false';
 		const path =
 			`/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}` + `&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
-		const rows = await cgFetch(path).catch(() => null);
+		const rows = await cgFetch<CoinGeckoMarket[]>(path).catch(() => null);
 		if (!Array.isArray(rows) || rows.length === 0) {
 			break;
 		}
@@ -114,7 +149,7 @@ async function fetchPricesFor(assetIds: string[]): Promise<Record<string, { pric
 		return {};
 	}
 	const ids = encodeURIComponent(assetIds.join(','));
-	const data = await cgFetch(`/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
+	const data = await cgFetch<Record<string, Record<string, unknown>> | null>(`/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
 	const out: Record<string, { price: number; change24h: number }> = {};
 	for (const [id, val] of Object.entries<Record<string, unknown>>(data || {})) {
 		out[id] = { price: Number(val?.usd) || 0, change24h: Number(val?.usd_24h_change) || 0 };
@@ -199,8 +234,8 @@ export function stopMarketPoller(): void {
 	}
 }
 
-export async function getMarketsBoard(): Promise<any[]> {
-	const cached = await cacheGet(MARKETS_KEY);
+export async function getMarketsBoard(): Promise<MarketRow[]> {
+	const cached = await cacheGet<{ rows?: MarketRow[] }>(MARKETS_KEY);
 	if (cached?.rows?.length) {
 		return cached.rows;
 	}
@@ -216,7 +251,7 @@ export async function getMarketsBoard(): Promise<any[]> {
 }
 
 export async function getAssetPrice(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {
-	const cached = await cacheGet(PRICES_KEY);
+	const cached = await cacheGet<{ map?: PriceMap }>(PRICES_KEY);
 	const hit = cached?.map?.[`${assetType}:${assetId}`];
 	if (hit && Number(hit.price) > 0) {
 		return { price: Number(hit.price), change24h: Number(hit.change24h) || 0 };
@@ -234,19 +269,21 @@ export async function getAssetPrice(assetType: string, assetId: string): Promise
 	return null;
 }
 
-export async function searchAssets(query: string): Promise<any[]> {
+export async function searchAssets(query: string): Promise<AssetSearchResult[]> {
 	const q = String(query || '').trim();
 	if (!q) {
 		return [];
 	}
-	const cached = await cacheGet(searchKey(q));
+	const cached = await cacheGet<AssetSearchResult[]>(searchKey(q));
 	if (cached) {
 		return cached;
 	}
 	try {
-		const data = await cgFetch(`/search?query=${encodeURIComponent(q)}`);
+		const data = await cgFetch<{
+			coins?: { id: string; symbol?: string; name?: string; thumb?: string | null; large?: string | null; market_cap_rank?: number | null }[];
+		}>(`/search?query=${encodeURIComponent(q)}`);
 		const coins = Array.isArray(data?.coins) ? data.coins : [];
-		const results = coins.slice(0, 25).map((c: Record<string, unknown>) => ({
+		const results = coins.slice(0, 25).map((c) => ({
 			asset_type: 'crypto',
 			asset_id: String(c.id),
 			symbol: String(c.symbol || '').toUpperCase(),
@@ -257,7 +294,7 @@ export async function searchAssets(query: string): Promise<any[]> {
 			change24h: 0
 		}));
 
-		const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
+		const cachedPrices = (await cacheGet<{ map?: PriceMap }>(PRICES_KEY))?.map ?? {};
 		const needFetch: string[] = [];
 		for (const r of results) {
 			const hit = cachedPrices[`crypto:${r.asset_id}`];
@@ -292,7 +329,7 @@ async function resolveServerMemberId(serverId: number | string, discordMemberId:
 	return member?.id ?? null;
 }
 
-async function finalize(guildId: string, memberId: number | string, before: any, reason: string) {
+async function finalize(guildId: string, memberId: number | string, before: { level?: unknown; rank?: unknown; xp?: unknown } | null, reason: string) {
 	await evaluateMemberLevelAndRank(guildId, memberId, {
 		previousLevel: before?.level != null ? Number(before.level) : null,
 		previousRank: before?.rank != null ? Number(before.rank) : null,
@@ -301,14 +338,17 @@ async function finalize(guildId: string, memberId: number | string, before: any,
 	}).catch(() => null);
 }
 
-export async function handleAssetBuy(_client: Client, payload: any) {
+export async function handleAssetBuy(
+	_client: Client,
+	payload: { guild_id?: string; actor_discord_id?: string; asset_type?: string; asset_id?: string | number; xp?: unknown }
+) {
 	const { guild_id, actor_discord_id, asset_type, asset_id, xp } = payload || {};
 	if (!guild_id || !actor_discord_id || !asset_id) {
 		return { ok: false, error: 'missing_fields' };
 	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch {
@@ -387,14 +427,14 @@ export async function handleAssetBuy(_client: Client, payload: any) {
 	return { ok: true, position, price: market.price };
 }
 
-export async function handleAssetSell(_client: Client, payload: any) {
+export async function handleAssetSell(_client: Client, payload: { guild_id?: string; actor_discord_id?: string; position_id?: number | string; xp?: unknown }) {
 	const { guild_id, actor_discord_id, position_id, xp: amount } = payload || {};
 	if (!guild_id || !actor_discord_id || !position_id) {
 		return { ok: false, error: 'missing_fields' };
 	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
-	let server: any;
+	let server: BotServer;
 	try {
 		server = await getServerForCurrentBot(guild_id);
 	} catch {
@@ -465,7 +505,7 @@ async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ s
 	}
 	if (assetType === 'crypto') {
 		try {
-			const data = await cgFetch(
+			const data = await cgFetch<{ symbol?: string; name?: string; image?: { thumb?: string | null } | null }>(
 				`/coins/${encodeURIComponent(assetId)}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false`
 			);
 			return {
@@ -479,13 +519,13 @@ async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ s
 }
 
 export async function getMemberPortfolio(memberId: number | string): Promise<{
-	positions: any[];
+	positions: PortfolioPosition[];
 	totalInvested: number;
 	totalValue: number;
 }> {
-	const rows = ((await db.getOpenAssetPositions(memberId).catch(() => [])) as Record<string, unknown>[]) || [];
+	const rows = (await db.getOpenAssetPositions(memberId).catch(() => [])) || [];
 
-	const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
+	const cachedPrices = (await cacheGet<{ map?: PriceMap }>(PRICES_KEY))?.map ?? {};
 	const marketByKey = new Map<string, { price: number; change24h: number }>();
 	const needFetch = new Set<string>();
 	for (const p of rows) {
@@ -504,7 +544,7 @@ export async function getMemberPortfolio(memberId: number | string): Promise<{
 		}
 	}
 
-	const positions: any[] = [];
+	const positions: PortfolioPosition[] = [];
 	let totalInvested = 0;
 	let totalValue = 0;
 	for (const p of rows) {

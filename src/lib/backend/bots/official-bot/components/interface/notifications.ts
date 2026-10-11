@@ -5,9 +5,13 @@ import { logger } from '../../../../../utils/index.js';
 import { translate } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { featureAvailable } from './availability.js';
-import type { ButtonInteraction, GuildBasedChannel, StringSelectMenuInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { MessageComponentInteraction } from 'discord.js';
+import type {
+	ButtonInteraction,
+	GuildBasedChannel,
+	StringSelectMenuInteraction,
+	MessageActionRowComponentBuilder,
+	MessageComponentInteraction
+} from 'discord.js';
 
 export async function handleNotificationsButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {

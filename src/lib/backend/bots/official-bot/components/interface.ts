@@ -120,9 +120,16 @@ import type {
 	MessageActionRowComponent,
 	RoleSelectMenuInteraction
 } from 'discord.js';
-import type { MessageComponentInteraction, ModalSubmitInteraction, RepliableInteraction } from 'discord.js';
-import type { ButtonInteraction, Client, Interaction, StringSelectMenuInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type {
+	MessageComponentInteraction,
+	ModalSubmitInteraction,
+	RepliableInteraction,
+	ButtonInteraction,
+	Client,
+	Interaction,
+	StringSelectMenuInteraction,
+	MessageActionRowComponentBuilder
+} from 'discord.js';
 
 async function replyIfFeatureDisabled(interaction: RepliableInteraction, component: string): Promise<boolean> {
 	if (!interaction.guild) {
@@ -1043,7 +1050,7 @@ function init(client: Client<true>) {
 				await logger.log(`📋 String select: "${customId}" → [${selectedValues.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
 				if (isMessageComponentId(customId)) {
-					await handleMessageComponent(interaction);
+					await handleMessageComponent(interaction as StringSelectMenuInteraction<'cached'>);
 				} else if (customId.startsWith('moderation_action|')) {
 					await handleModerationActionSelect(interaction as StringSelectMenuInteraction<'cached'>);
 				} else if (customId === 'settings_language_select') {

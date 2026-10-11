@@ -16,9 +16,7 @@ import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 import { menuBackButton } from './menuBack.js';
 import { featureAvailable } from './availability.js';
-import type { Client, Guild, MessageComponentInteraction, ModalSubmitInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { RepliableInteraction } from 'discord.js';
+import type { Client, Guild, MessageComponentInteraction, ModalSubmitInteraction, MessageActionRowComponentBuilder, RepliableInteraction } from 'discord.js';
 
 const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();

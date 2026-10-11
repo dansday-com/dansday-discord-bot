@@ -13,8 +13,7 @@ import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './account
 import { buildKnowledgeTools, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
 import { aiLanguageInstruction, translateServer } from '../i18n.js';
-import type { Client, Guild, GuildTextBasedChannel, Message } from 'discord.js';
-import type { Attachment } from 'discord.js';
+import type { Client, Guild, GuildTextBasedChannel, Message, Attachment } from 'discord.js';
 import type { AiInput } from '../../../../database.js';
 import type { ChatCompletionMessageFunctionToolCall, ChatCompletionMessageParam, ChatCompletionTool } from 'openai/resources/chat/completions';
 

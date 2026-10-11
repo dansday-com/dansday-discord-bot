@@ -14,6 +14,7 @@ import {
 	stopBotById as stopBotInProcess,
 	subscribeBotStatus as subscribeBotStatusInProcess,
 	type BotProcessKind,
+	type BotProcessRow,
 	type BotStatusEvent,
 	type RunnerAction,
 	type RunnerResult
@@ -111,15 +112,15 @@ async function sendRunnerCommand(action: RunnerAction, kind: BotProcessKind, id:
 	});
 }
 
-export function startBotById(botId: number, bot: unknown): Promise<RunnerResult> {
+export function startBotById(botId: number, bot: BotProcessRow): Promise<RunnerResult> {
 	return externalRunner ? sendRunnerCommand('start', botKindOf(bot), botId) : startBotInProcess(botId, bot);
 }
 
-export function stopBotById(botId: number, bot?: unknown): Promise<RunnerResult> {
+export function stopBotById(botId: number, bot?: BotProcessRow): Promise<RunnerResult> {
 	return externalRunner ? sendRunnerCommand('stop', bot ? botKindOf(bot) : 'official', botId) : stopBotInProcess(botId, bot);
 }
 
-export function restartBotById(botId: number, bot: unknown): Promise<RunnerResult> {
+export function restartBotById(botId: number, bot: BotProcessRow): Promise<RunnerResult> {
 	return externalRunner ? sendRunnerCommand('restart', botKindOf(bot), botId) : restartBotInProcess(botId, bot);
 }
 

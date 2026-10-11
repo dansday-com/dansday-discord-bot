@@ -5,9 +5,9 @@ export type PublicSlugServerRow = {
 	id: number;
 	bot_id?: number | null;
 	name: string | null;
-	updated_at: any;
+	updated_at: unknown;
 	server_icon?: string | null;
-	deleted_at?: any;
+	deleted_at?: unknown;
 };
 
 export type SluggedPublicServer = { slug: string; updated_at: unknown; item: PublicSlugServerRow };
@@ -45,7 +45,7 @@ export async function resolvePublicServerBySlug(requestedSlug: string): Promise<
 	return { server: resolved.item, computedSlug: resolved.computedSlug };
 }
 
-export async function listPublicServerSlugs(): Promise<{ id: number; slug: string; updated_at: any }[]> {
+export async function listPublicServerSlugs(): Promise<{ id: number; slug: string; updated_at: unknown }[]> {
 	const rows = await listLivePublicServers();
 	return rows.map((row) => ({
 		id: Number(row.item.id),

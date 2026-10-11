@@ -18,11 +18,19 @@ import { getRedisClient } from '../../../../redis.js';
 import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
 import { serverTranslator } from '../i18n.js';
 import { checkRewardProgress, syncGuildRewards, syncMemberRewards } from './rewards.js';
-import type { Client, Guild, Message, MessageReaction, PartialMessageReaction, PartialUser, User, VoiceState } from 'discord.js';
-import type { GuildMember } from 'discord.js';
-import type { ServerMemberRow } from '../../../../schema.js';
-import type { GuildTextBasedChannel } from 'discord.js';
-import type { ServerRow } from '../../../../schema.js';
+import type {
+	Client,
+	Guild,
+	Message,
+	MessageReaction,
+	PartialMessageReaction,
+	PartialUser,
+	User,
+	VoiceState,
+	GuildMember,
+	GuildTextBasedChannel
+} from 'discord.js';
+import type { ServerMemberRow, ServerRow } from '../../../../schema.js';
 
 type MemberLevel = NonNullable<Awaited<ReturnType<typeof db.getMemberLevel>>>;
 type MemberLike = { id: string; user?: User | null; bot?: boolean };
@@ -560,7 +568,7 @@ async function deriveBaselineLevel(
 
 async function handleLevelEvaluation(
 	server: Pick<ServerRow, 'id' | 'name'>,
-	dbMember: ServerMemberRow,
+	dbMember: Pick<ServerMemberRow, 'id' | 'display_name' | 'username' | 'discord_member_id'>,
 	currentStats: MemberLevel | null,
 	guildId: string,
 	context: LevelContext = {}
@@ -703,7 +711,7 @@ const XP_LOG_SOURCE: Record<string, string> = {
 const disguisedCache = new Map<string, { ids: Set<number>; at: number }>();
 const DISGUISE_CACHE_MS = 10_000;
 
-async function isMemberDisguised(guild: Guild, memberId: number | string): Promise<boolean> {
+async function isMemberDisguised(guild: Guild, memberId: number | string | null | undefined): Promise<boolean> {
 	if (!guild?.id || !memberId) {
 		return false;
 	}
@@ -792,7 +800,7 @@ async function sendXPLogToChannel(guild: Guild, dbMember: ServerMemberRow, xpGai
 }
 
 const SHARE_CACHE_MS = 60_000;
-const inviterShareCache = new Map<number, { at: number; row: any }>();
+const inviterShareCache = new Map<number, { at: number; row: Awaited<ReturnType<typeof db.getActiveInviterForShare>> | null }>();
 const staffCache = new Map<string, { at: number; staff: boolean | null }>();
 
 async function inviterForShare(memberId: number) {

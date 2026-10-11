@@ -4,9 +4,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
 import { serverTranslator, type Translator } from '../i18n.js';
-import type { GuildMember, PartialGuildMember } from 'discord.js';
-import type { GuildTextBasedChannel } from 'discord.js';
-import type { Client } from 'discord.js';
+import type { GuildMember, PartialGuildMember, GuildTextBasedChannel, Client } from 'discord.js';
 
 function timeInServerText(joinedAt: Date | null, tr: Translator): string {
 	if (!joinedAt) {

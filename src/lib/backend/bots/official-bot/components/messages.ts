@@ -20,8 +20,7 @@ import {
 import { isServerLanguage, type ServerLanguage } from '../../../../languages.js';
 import { messageFileUrl, readMessageFile } from '../../../storage/messageFiles.js';
 import { errorReasonFor, translatorFor, type Translator } from '../i18n.js';
-import type { Guild, GuildTextBasedChannel, Message, Role } from 'discord.js';
-import type { Client } from 'discord.js';
+import type { Guild, GuildTextBasedChannel, InteractionReplyOptions, Message, MessageComponentInteraction, Role, Client } from 'discord.js';
 
 type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
@@ -29,6 +28,8 @@ type RoleBlock = 'deleted' | 'managed' | 'unsafe' | 'no_permission' | 'above_bot
 type LoadedFile = { attachment: Buffer; name: string };
 type RenderExtra = { prefix?: string; interactive?: boolean; pinned?: boolean; defaultColor?: number | null; media?: boolean; post?: number | null };
 type Renderer = (lang: ServerLanguage, extra?: RenderExtra) => MessagePayload;
+type ComponentInteraction = MessageComponentInteraction<'cached'> & { values?: string[] };
+type ErrorLike = { code?: unknown; message?: unknown } | null | undefined;
 type SyncResult = { post_id: number; channel_id: string; channel_name: string; ok: boolean; gone?: boolean; error?: string };
 
 const UNKNOWN_CHANNEL = 10003;
@@ -90,7 +91,7 @@ function privateBody(payload: MessagePayload, files: LoadedFile[]): Record<strin
 	return { ...sendBody(payload, files), flags: MessageFlags.Ephemeral | (payload.v2 ? MessageFlags.IsComponentsV2 : 0) };
 }
 
-function editBody(payload: MessagePayload, wasV2: boolean): any {
+function editBody(payload: MessagePayload, wasV2: boolean): Record<string, unknown> {
 	if (!payload.v2) {
 		return { content: payload.content, embeds: payload.embeds, components: payload.components };
 	}
@@ -120,8 +121,8 @@ function prefixFits(payload: MessagePayload, prefix: string): boolean {
 	return (payload.content?.length ?? 0) + prefix.length + 1 <= MESSAGE_LIMITS.text;
 }
 
-function panelReason(error: any, channelName: string): string {
-	const code = error?.code;
+function panelReason(error: unknown, channelName: string): string {
+	const code = (error as ErrorLike)?.code;
 	if (code === 50001) {
 		return `The bot can't see #${channelName}. Give its role View Channel there.`;
 	}
@@ -138,9 +139,9 @@ function panelReason(error: any, channelName: string): string {
 		return 'An uploaded file is missing from storage. Remove it from the message and upload it again.';
 	}
 	if (code === 50035) {
-		return `Discord rejected the message: ${String(error?.message ?? 'invalid content').slice(0, 300)}`;
+		return `Discord rejected the message: ${String((error as ErrorLike)?.message ?? 'invalid content').slice(0, 300)}`;
 	}
-	return `Discord refused it (${String(error?.message ?? 'unknown error').slice(0, 200)}). Try again in a moment.`;
+	return `Discord refused it (${String((error as ErrorLike)?.message ?? 'unknown error').slice(0, 200)}). Try again in a moment.`;
 }
 
 async function resolveGuild(client: Client, guildId: string) {
@@ -207,9 +208,9 @@ async function syncPost(guild: Guild, entry: ServerMessagePost, doc: MessageDoc,
 	try {
 		const channel = await guild.channels
 			.fetch(entry.discord_channel_id)
-			.catch((error: any) => (error?.code === UNKNOWN_CHANNEL ? null : Promise.reject(error)));
+			.catch((error: ErrorLike) => (error?.code === UNKNOWN_CHANNEL ? null : Promise.reject(error)));
 		const posted = channel?.isTextBased()
-			? await channel.messages.fetch(entry.discord_message_id).catch((error: any) => (error?.code === UNKNOWN_MESSAGE ? null : Promise.reject(error)))
+			? await channel.messages.fetch(entry.discord_message_id).catch((error: ErrorLike) => (error?.code === UNKNOWN_MESSAGE ? null : Promise.reject(error)))
 			: null;
 		if (!posted) {
 			return { ...base, ok: true, gone: true };
@@ -253,12 +254,12 @@ async function serverColor(guildId: string): Promise<number | null> {
 	return config && Number.isFinite(config.COLOR) ? config.COLOR : null;
 }
 
-export async function sendServerMessage(client: Client, payload: any) {
+export async function sendServerMessage(client: Client, payload: Record<string, unknown>) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
 	if (!guild) {
 		return { ok: false, error: 'The bot is not in this server.' };
 	}
-	const message = await db.getServerMessage(payload.server_id, payload.message_id);
+	const message = await db.getServerMessage(payload.server_id as number | string, payload.message_id as number | string);
 	if (!message) {
 		return { ok: false, error: 'That message no longer exists.' };
 	}
@@ -297,12 +298,12 @@ export async function sendServerMessage(client: Client, payload: any) {
 	return { ok: true, results };
 }
 
-export async function syncServerMessagePosts(client: Client, payload: any) {
+export async function syncServerMessagePosts(client: Client, payload: Record<string, unknown>) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
 	if (!guild) {
 		return { ok: false, error: 'The bot is not in this server.' };
 	}
-	const message = await db.getServerMessage(payload.server_id, payload.message_id);
+	const message = await db.getServerMessage(payload.server_id as number | string, payload.message_id as number | string);
 	if (!message) {
 		return { ok: false, error: 'That message no longer exists.' };
 	}
@@ -310,14 +311,14 @@ export async function syncServerMessagePosts(client: Client, payload: any) {
 	const refresh = payload.refresh === true;
 	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
-	for (const entry of await db.getServerMessagePosts(payload.server_id, message.id)) {
+	for (const entry of await db.getServerMessagePosts(payload.server_id as number | string, message.id)) {
 		if (wanted && !wanted.has(entry.id)) {
 			continue;
 		}
 		const content = refresh ? message.content : (entry.content ?? message.content);
 		const result = await syncPost(guild, entry, content, renderer('server', { ...message, content }, guild.name), payload.interactive !== false);
 		if (refresh && result.ok && !result.gone) {
-			await db.setServerMessagePostContent(payload.server_id, entry.id, content).catch(() => null);
+			await db.setServerMessagePostContent(payload.server_id as number | string, entry.id, content).catch(() => null);
 		}
 		results.push(result);
 	}
@@ -338,9 +339,9 @@ export async function removeServerMessagePost(client: Client, payload: Record<st
 	}
 }
 
-export async function sendGlobalMessage(client: Client, payload: any) {
+export async function sendGlobalMessage(client: Client, payload: Record<string, unknown>) {
 	const panel = await currentPanelId();
-	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id);
+	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id as number | string);
 	if (!message) {
 		return { ok: false, error: 'That message no longer exists.' };
 	}
@@ -353,12 +354,12 @@ export async function sendGlobalMessage(client: Client, payload: any) {
 		return { ok: false, error: panelReason(error, '') };
 	}
 
-	const results: any[] = [];
+	const results: Record<string, unknown>[] = [];
 	for (const server of await db.getServersForBot(currentBotId())) {
 		const base = { server_id: server.id, server_name: String(server.name ?? 'Server') };
 		try {
 			const row = await db.getServerSettings(server.id, 'main').catch(() => null);
-			const settings: any = (Array.isArray(row) ? row[0]?.settings : row?.settings) ?? {};
+			const settings: Record<string, unknown> = (Array.isArray(row) ? row[0]?.settings : row?.settings) ?? {};
 			const channelId = settings.bot_updates_channel_id ? String(settings.bot_updates_channel_id) : '';
 			const guild = channelId ? await resolveGuild(client, String(server.discord_server_id)) : null;
 			if (!guild) {
@@ -388,9 +389,9 @@ export async function sendGlobalMessage(client: Client, payload: any) {
 	return { ok: true, results };
 }
 
-export async function syncGlobalMessagePosts(client: Client, payload: any) {
+export async function syncGlobalMessagePosts(client: Client, payload: Record<string, unknown>) {
 	const panel = await currentPanelId();
-	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id);
+	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id as number | string);
 	if (!message || panel == null) {
 		return { ok: false, error: 'That message no longer exists.' };
 	}
@@ -457,7 +458,7 @@ export async function listGuildEmojis(client: Client, payload: Record<string, un
 	};
 }
 
-function roleBlock(guild: Guild, role: Role): RoleBlock | null {
+function roleBlock(guild: Guild, role: Role | null): RoleBlock | null {
 	if (!role) {
 		return 'deleted';
 	}
@@ -476,7 +477,7 @@ function roleBlock(guild: Guild, role: Role): RoleBlock | null {
 	return null;
 }
 
-async function applyRoles(interaction: any, actions: RoleAction[], tr: Translator): Promise<string[]> {
+async function applyRoles(interaction: ComponentInteraction, actions: RoleAction[], tr: Translator): Promise<string[]> {
 	if (actions.length === 0) {
 		return [];
 	}
@@ -495,7 +496,7 @@ async function applyRoles(interaction: any, actions: RoleAction[], tr: Translato
 			lines.push(tr(`messages.blocked.${block}`, { role: mention }));
 			continue;
 		}
-		const has = member.roles.cache.has(role.id);
+		const has = member.roles.cache.has(role!.id);
 		const give = action.mode === 'add' || (action.mode === 'toggle' && !has);
 		if (give === has) {
 			lines.push(tr(give ? 'messages.roleAlready' : 'messages.roleNotHeld', { role: mention }));
@@ -503,9 +504,9 @@ async function applyRoles(interaction: any, actions: RoleAction[], tr: Translato
 		}
 		try {
 			if (give) {
-				await member.roles.add(role.id, 'Message button');
+				await member.roles.add(role!.id, 'Message button');
 			} else {
-				await member.roles.remove(role.id, 'Message button');
+				await member.roles.remove(role!.id, 'Message button');
 			}
 			lines.push(tr(give ? 'messages.roleAdded' : 'messages.roleRemoved', { role: mention }));
 		} catch (error) {
@@ -543,7 +544,7 @@ export function isMessageComponentId(customId: string): boolean {
 	return parseMessageCustomId(customId) !== null;
 }
 
-export async function handleMessageComponent(interaction: any) {
+export async function handleMessageComponent(interaction: ComponentInteraction) {
 	const ref = parseMessageCustomId(interaction.customId);
 	if (!ref || !interaction.guild) {
 		return;
@@ -553,7 +554,7 @@ export async function handleMessageComponent(interaction: any) {
 	const server = await getServerForCurrentBot(guild.id);
 	const switching = ref.partId === MESSAGE_LANGUAGE_PART;
 	const fromMenu = Array.isArray(interaction.values);
-	const chosen = switching && fromMenu ? interaction.values[0] : ref.lang;
+	const chosen = switching && fromMenu ? interaction.values![0] : ref.lang;
 	const lang: ServerLanguage = switching
 		? isServerLanguage(chosen)
 			? chosen
@@ -563,7 +564,7 @@ export async function handleMessageComponent(interaction: any) {
 			: await memberLanguage(server.id, interaction.user.id, ref.lang);
 	const pinned = switching || ref.pinned;
 	const tr = translatorFor(lang);
-	const privately = (content: string) => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+	const privately = (content: string): InteractionReplyOptions => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 
 	const panel = ref.scope === 'global' ? await currentPanelId() : null;
 	const load = (id: number) => (ref.scope === 'global' ? (panel == null ? null : db.getGlobalMessage(panel, id)) : db.getServerMessage(server.id, id));
@@ -586,7 +587,7 @@ export async function handleMessageComponent(interaction: any) {
 		return;
 	}
 
-	const picked: string[] = fromMenu ? interaction.values : [];
+	const picked: string[] = fromMenu ? interaction.values! : [];
 	const actions = !component
 		? []
 		: component.kind === 'button'

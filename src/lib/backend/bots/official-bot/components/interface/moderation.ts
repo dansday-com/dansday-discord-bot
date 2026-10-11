@@ -4,9 +4,13 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { getUserLanguage, translate } from '../../i18n.js';
 import { performModerationAction } from '../moderation.js';
 import { menuBackButton } from './menuBack.js';
-import type { ModalSubmitInteraction, RepliableInteraction, StringSelectMenuInteraction } from 'discord.js';
-import type { MessageActionRowComponentBuilder } from 'discord.js';
-import type { ButtonInteraction } from 'discord.js';
+import type {
+	ModalSubmitInteraction,
+	RepliableInteraction,
+	StringSelectMenuInteraction,
+	MessageActionRowComponentBuilder,
+	ButtonInteraction
+} from 'discord.js';
 
 const MENU_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'clearwarns'];
 const TIMED_ACTIONS = ['timeout', 'tempban'];

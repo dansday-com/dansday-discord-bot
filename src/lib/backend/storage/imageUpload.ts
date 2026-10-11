@@ -1,6 +1,7 @@
 import { type ImageFormat, imageExtension, tooLargeMessage, unsupportedFormatMessage } from '../../images.js';
 
-export type ImageUpload = { ok: true; data: Buffer; extension: ImageFormat; form: FormData | null; body: any } | { ok: false; error: string; status: number };
+export type ImageUpload =
+	{ ok: true; data: Buffer; extension: ImageFormat; form: FormData | null; body: unknown } | { ok: false; error: string; status: number };
 
 const DATA_URL_PATTERN = /^data:image\/(\w+);base64,(.+)$/;
 

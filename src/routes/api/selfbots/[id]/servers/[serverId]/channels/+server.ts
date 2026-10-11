@@ -13,14 +13,18 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		const selfbotServerId = Number(params.serverId);
 
 		const selfbot = await db.getSelfbotById(selfbotId);
-		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
+		if (!selfbot) {
+			return json({ error: 'Selfbot not found' }, { status: 404 });
+		}
 
 		if (!(await canReadSelfbotTopology(locals, selfbotId))) {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 
 		const linked = await db.getSelfbotServer(selfbotId, selfbotServerId);
-		if (!linked) return json({ error: 'Server not found' }, { status: 404 });
+		if (!linked) {
+			return json({ error: 'Server not found' }, { status: 404 });
+		}
 
 		const [rawChannels, categories] = await Promise.all([db.getSelfbotChannelsForServer(selfbotServerId), db.getSelfbotCategoriesForServer(selfbotServerId)]);
 
@@ -29,13 +33,13 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			discordCatIdToId.set(cat.discord_category_id, cat.id);
 		}
 
-		const channels = rawChannels.map((ch: any) => ({
+		const channels = rawChannels.map((ch) => ({
 			...ch,
 			category_id: ch.discord_parent_category_id ? (discordCatIdToId.get(ch.discord_parent_category_id) ?? null) : null
 		}));
 
 		return json({ channels, categories });
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };

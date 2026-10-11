@@ -11,7 +11,9 @@ export function serverThemeKey(serverId: any, filename: string): string {
 }
 
 export function serverThemeUrl(key: string | null | undefined): string | null {
-	if (!key || !store.isKey(key)) return null;
+	if (!key || !store.isKey(key)) {
+		return null;
+	}
 	return store.url(key);
 }
 
@@ -28,5 +30,7 @@ export async function readServerTheme(key: string): Promise<Buffer | null> {
 }
 
 export async function removeServerTheme(key: string | null | undefined): Promise<void> {
-	if (key && store.isKey(key)) await store.remove(key);
+	if (key && store.isKey(key)) {
+		await store.remove(key);
+	}
 }

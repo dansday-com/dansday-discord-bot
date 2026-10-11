@@ -14,14 +14,18 @@
 
 	const ALL_DEFAULT_CFG: Record<string, any> = Object.assign({}, ...ITEM_EFFECTS.map((e) => e.defaultConfig));
 
-	function toLocalInput(value: any): string {
-		if (!value) return '';
+	function toLocalInput(value: unknown): string {
+		if (!value) {
+			return '';
+		}
 		const m = String(value).match(/(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
 		return m ? `${m[1]}T${m[2]}` : '';
 	}
 
 	function fromLocalInput(value: string): string | null {
-		if (!value) return null;
+		if (!value) {
+			return null;
+		}
 		return `${value.slice(0, 16).replace('T', ' ')}:00`;
 	}
 
@@ -30,11 +34,13 @@
 	let saving = $state(false);
 
 	const adminGroups = $derived.by(() => {
-		const byCost = (a: any, b: any) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
-		const out: { key: string; label: string; icon: string; items: any[] }[] = [];
+		const byCost = (a: Record<string, unknown>, b: Record<string, unknown>) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
+		const out: { key: string; label: string; icon: string; items: Record<string, unknown>[] }[] = [];
 		for (const eff of ITEM_EFFECTS) {
 			const groupItems = items.filter((i) => i.effect_type === eff.id).sort(byCost);
-			if (groupItems.length > 0) out.push({ key: eff.id, label: eff.label, icon: eff.icon, items: groupItems });
+			if (groupItems.length > 0) {
+				out.push({ key: eff.id, label: eff.label, icon: eff.icon, items: groupItems });
+			}
 		}
 		return out;
 	});
@@ -70,8 +76,11 @@
 		try {
 			const res = await fetch('/api/admin/items', { credentials: 'include' });
 			const d = await res.json();
-			if (d.success) items = d.items ?? [];
-			else showToast(d.error || 'Failed to load', 'error');
+			if (d.success) {
+				items = d.items ?? [];
+			} else {
+				showToast(d.error || 'Failed to load', 'error');
+			}
 		} finally {
 			loading = false;
 		}
@@ -83,9 +92,9 @@
 	});
 
 	function buildConfig() {
-		const c = form.cfg as Record<string, any>;
+		const c = form.cfg as Record<string, unknown>;
 		const defaults = getItemEffect(form.effect_type)?.defaultConfig ?? {};
-		const config: Record<string, any> = {};
+		const config: Record<string, unknown> = {};
 		for (const [key, def] of Object.entries(defaults)) {
 			config[key] = typeof def === 'number' ? Number(c[key]) : c[key];
 		}
@@ -163,7 +172,9 @@
 				showToast('Saved', 'success');
 				editing = null;
 				await loadItems();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
 			saving = false;
 		}
@@ -221,7 +232,9 @@
 
 	async function remove() {
 		const item = confirmDelete;
-		if (!item) return;
+		if (!item) {
+			return;
+		}
 		deleting = true;
 		try {
 			const res = await fetch('/api/admin/items', {
@@ -235,7 +248,9 @@
 				showToast('Deleted', 'success');
 				confirmDelete = null;
 				await loadItems();
-			} else showToast(d.error || 'Failed to delete', 'error');
+			} else {
+				showToast(d.error || 'Failed to delete', 'error');
+			}
 		} finally {
 			deleting = false;
 		}
@@ -256,13 +271,19 @@
 		try {
 			const res = await fetch(`/api/admin/items/gift?q=${encodeURIComponent(giftSearch.trim())}`, { credentials: 'include' });
 			const d = await res.json();
-			if (requestId !== giftRequestId) return;
+			if (requestId !== giftRequestId) {
+				return;
+			}
 			if (d.success) {
 				giftMembers = d.members ?? [];
 				giftLimit = Number(d.limit) || 0;
-			} else showToast(d.error || 'Failed to load members', 'error');
+			} else {
+				showToast(d.error || 'Failed to load members', 'error');
+			}
 		} finally {
-			if (requestId === giftRequestId) giftLoading = false;
+			if (requestId === giftRequestId) {
+				giftLoading = false;
+			}
 		}
 	}
 
@@ -274,7 +295,9 @@
 	}
 
 	function onGiftSearchInput() {
-		if (giftSearchTimer) clearTimeout(giftSearchTimer);
+		if (giftSearchTimer) {
+			clearTimeout(giftSearchTimer);
+		}
 		giftSearchTimer = setTimeout(loadGiftMembers, 300);
 	}
 
@@ -282,7 +305,9 @@
 		const groups = new Map<string, { server: string; members: any[] }>();
 		for (const m of giftMembers) {
 			const key = `${m.server_id}`;
-			if (!groups.has(key)) groups.set(key, { server: m.server_name || 'Unknown server', members: [] });
+			if (!groups.has(key)) {
+				groups.set(key, { server: m.server_name || 'Unknown server', members: [] });
+			}
 			groups.get(key)!.members.push(m);
 		}
 		return [...groups.values()];
@@ -297,7 +322,9 @@
 	}
 
 	async function giveTo(member: any) {
-		if (!giftItem) return;
+		if (!giftItem) {
+			return;
+		}
 		giftingMemberId = member.id;
 		try {
 			const res = await fetch('/api/admin/items/gift', {
@@ -310,7 +337,9 @@
 			if (d.success) {
 				showToast(`Gave "${giftItem.name}" to ${giftMemberName(member)} (${member.server_name})`, 'success');
 				member.inventory_total = Number(member.inventory_total || 0) + 1;
-			} else showToast(d.error || 'Failed to give item', 'error');
+			} else {
+				showToast(d.error || 'Failed to give item', 'error');
+			}
 		} catch {
 			showToast('Failed to give item', 'error');
 		} finally {
@@ -319,9 +348,13 @@
 	}
 
 	$effect(() => {
-		if (!giftItem) return;
+		if (!giftItem) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') giftItem = null;
+			if (e.key === 'Escape') {
+				giftItem = null;
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
@@ -339,17 +372,24 @@
 
 	function toggleDay(v: number) {
 		const set = new Set<number>((form.cfg.recur_days ?? []).map(Number));
-		if (set.has(v)) set.delete(v);
-		else set.add(v);
+		if (set.has(v)) {
+			set.delete(v);
+		} else {
+			set.add(v);
+		}
 		form.cfg.recur_days = [...set].sort((a, b) => a - b);
 	}
 
 	const isTargeted = $derived(isTargetedEffect(form.effect_type));
 
 	$effect(() => {
-		if (!editing) return;
+		if (!editing) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') editing = null;
+			if (e.key === 'Escape') {
+				editing = null;
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);

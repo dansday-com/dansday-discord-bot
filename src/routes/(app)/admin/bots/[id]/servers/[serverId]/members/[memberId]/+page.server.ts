@@ -10,10 +10,14 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const { overview } = await parent();
 	const serverId = Number(params.serverId);
 	const id = params.memberId;
-	if (!/^\d{15,25}$/.test(id)) error(404, 'Member not found');
+	if (!/^\d{15,25}$/.test(id)) {
+		error(404, 'Member not found');
+	}
 
 	const base = await db.getMemberByDiscordId(serverId, id, { includeDeleted: true });
-	if (!base || base.is_bot) error(404, 'Member not found');
+	if (!base || base.is_bot) {
+		error(404, 'Member not found');
+	}
 
 	const [list, cases, roles, tierMap, mainSettings] = await Promise.all([
 		db.getServerMembersList(serverId, { discordMemberId: id }).catch(() => []),
@@ -29,9 +33,9 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const isOwner = !!Number(base.is_owner);
 	const deniedReason = actor ? TIER_DENIED[actor] : 'Access denied';
 
-	const active = (cases as any[]).filter((c) => Number(c.active) === 1);
+	const active = cases.filter((c) => Number(c.active) === 1);
 	const timeout = active.find((c) => c.action === 'timeout' && c.expires_at && !isUtcSqlExpired(c.expires_at));
-	const memberRoles = ((m.roles ?? []) as any[]).map((r) => ({
+	const memberRoles = ((m.roles ?? []) as Record<string, unknown>[]).map((r) => ({
 		id: String(r.id),
 		name: String(r.name || 'Unknown Role'),
 		color: (r.color ?? null) as string | null
@@ -67,8 +71,8 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			timeout_until: (timeout?.expires_at ?? null) as string | null,
 			banned: active.some((c) => c.action === 'ban' || c.action === 'tempban')
 		},
-		roles: (roles as any[])
-			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))
+		roles: roles
+			.filter((r) => String(r.discord_role_id) !== String(overview.discord_server_id))
 			.map((r) => ({
 				id: String(r.discord_role_id),
 				name: String(r.name),

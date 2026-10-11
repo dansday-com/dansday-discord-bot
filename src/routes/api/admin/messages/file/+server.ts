@@ -5,7 +5,9 @@ import { globalPanelAccess, pruneGlobalMessageFiles } from '$lib/frontend/global
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const access = globalPanelAccess(locals);
-	if (access instanceof Response) return access;
+	if (access instanceof Response) {
+		return access;
+	}
 	return receiveMessageUpload(
 		request,
 		{ scope: 'global', id: access.panelId },

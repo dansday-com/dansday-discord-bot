@@ -52,14 +52,21 @@ export function discordMarkdown(source: string, ctx: MarkdownContext): string {
 
 	const lines = text.split('\n').map((raw) => {
 		const heading = raw.match(/^(#{1,3}) +(\S.*)$/);
-		if (heading) return `<div class="dc-h${heading[1].length}">${inline(escapeHtml(heading[2]))}</div>`;
+		if (heading) {
+			return `<div class="dc-h${heading[1].length}">${inline(escapeHtml(heading[2]))}</div>`;
+		}
 		const subtext = raw.match(/^-# +(\S.*)$/);
-		if (subtext) return `<div class="dc-subtext">${inline(escapeHtml(subtext[1]))}</div>`;
+		if (subtext) {
+			return `<div class="dc-subtext">${inline(escapeHtml(subtext[1]))}</div>`;
+		}
 		const quote = raw.match(/^> ?(.*)$/);
-		if (quote) return `<div class="dc-quote">${inline(escapeHtml(quote[1])) || '&nbsp;'}</div>`;
+		if (quote) {
+			return `<div class="dc-quote">${inline(escapeHtml(quote[1])) || '&nbsp;'}</div>`;
+		}
 		const bullet = raw.match(/^(\s*)[-*] +(\S.*)$/);
-		if (bullet)
+		if (bullet) {
 			return `<div class="dc-li" style="margin-left:${Math.min(bullet[1].length, 8) * 8}px"><span>•</span><span>${inline(escapeHtml(bullet[2]))}</span></div>`;
+		}
 		const numbered = raw.match(/^(\s*)(\d{1,3})\. +(\S.*)$/);
 		if (numbered) {
 			return `<div class="dc-li" style="margin-left:${Math.min(numbered[1].length, 8) * 8}px"><span>${numbered[2]}.</span><span>${inline(escapeHtml(numbered[3]))}</span></div>`;

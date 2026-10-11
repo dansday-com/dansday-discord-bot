@@ -8,19 +8,25 @@ import { MESSAGE_LIMITS, isSelfAssignableRole, messageUploadLimit } from '$lib/m
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 
 	const serverId = Number(params.serverId);
-	if (!(await canUseEmbedBuilder(locals, serverId))) redirect(302, DASHBOARD_PATH);
+	if (!(await canUseEmbedBuilder(locals, serverId))) {
+		redirect(302, DASHBOARD_PATH);
+	}
 	const listPath = adminServerSectionPath(params.id, params.serverId, 'messages');
 	const isNew = params.messageId === 'new';
 	const messages = await db.getServerMessages(serverId).catch(() => []);
 	const current = isNew ? null : (messages.find((message) => message.id === Number(params.messageId)) ?? null);
-	if (!isNew && !current) redirect(302, listPath);
+	if (!isNew && !current) {
+		redirect(302, listPath);
+	}
 	const copy = isNew ? (messages.find((message) => message.id === Number(url.searchParams.get('copy'))) ?? null) : null;
 
 	const { overview } = await parent();
-	const guildId = String((overview as any).discord_server_id);
+	const guildId = String(overview.discord_server_id);
 	const [channels, categories, roles, mainRow, posts, server] = await Promise.all([
 		db.getChannelsForServer(serverId).catch(() => []),
 		db.getCategoriesForServer(serverId).catch(() => []),
@@ -29,7 +35,7 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 		current ? db.getServerMessagePosts(serverId, current.id).catch(() => []) : [],
 		db.getServer(serverId).catch(() => null)
 	]);
-	const bot = (overview as any).bot_id != null ? await db.getBot((overview as any).bot_id).catch(() => null) : null;
+	const bot = overview.bot_id != null ? await db.getBot(overview.bot_id).catch(() => null) : null;
 	const emojis = server ? await callMessageBot(server, 'server_message_emojis', {}).catch(() => null) : null;
 	const main = normalizeMainConfigForPanel(mainRow?.settings ?? {});
 	const tagged = [...new Set([...JSON.stringify((current ?? copy)?.content ?? {}).matchAll(/<@!?(\d{5,25})>/g)].map((match) => match[1]))];
@@ -40,8 +46,8 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 		scope: 'server' as const,
 		apiBase: `/api/servers/${serverId}/messages`,
 		listPath,
-		serverName: String((overview as any).name ?? 'Server'),
-		uploadLimit: messageUploadLimit((overview as any).boost_level),
+		serverName: String(overview.name ?? 'Server'),
+		uploadLimit: messageUploadLimit(overview.boost_level),
 		message: current ? { id: current.id, name: current.name, content: current.content } : null,
 		draft: copy ? { name: `${copy.name} copy`.slice(0, MESSAGE_LIMITS.name), content: copy.content } : null,
 		messages: messages.map((message) => ({ id: message.id, name: message.name, content: message.content })),
@@ -58,7 +64,7 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 		})),
 		channels: channels ?? [],
 		categories: categories ?? [],
-		roles: (roles as any[])
+		roles: roles
 			.filter((role) => String(role.discord_role_id) !== guildId)
 			.map((role) => ({
 				id: String(role.discord_role_id),
@@ -73,7 +79,7 @@ export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 			avatar: main.bot_avatar_url || (bot?.bot_icon ? String(bot.bot_icon) : null)
 		},
 		emojis: (Array.isArray(emojis?.body?.emojis) ? emojis.body.emojis : []) as { id: string; name: string; animated: boolean }[],
-		members: (members as any[]).map((member) => ({ id: String(member.discord_member_id), name: String(member.name ?? member.username ?? 'member') })),
+		members: members.map((member) => ({ id: String(member.discord_member_id), name: String(member.name ?? member.username ?? 'member') })),
 		membersUrl: `/api/servers/${serverId}/members`
 	};
 };

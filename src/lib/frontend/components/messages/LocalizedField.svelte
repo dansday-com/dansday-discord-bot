@@ -32,8 +32,11 @@
 	const tone = $derived(current.length >= max ? 'text-red-400' : current.length >= max * 0.9 ? 'text-yellow-400' : 'text-ash-500');
 
 	function set(next: string) {
-		if (next) value[editor.lang] = next;
-		else delete value[editor.lang];
+		if (next) {
+			value[editor.lang] = next;
+		} else {
+			delete value[editor.lang];
+		}
 	}
 </script>
 

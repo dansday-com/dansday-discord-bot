@@ -28,7 +28,7 @@
 
 	const hasLive = $derived((feed.totals?.servers_counted ?? 0) > 0);
 
-	let broken = $state<Record<string, boolean>>({});
+	const broken = $state<Record<string, boolean>>({});
 	let heroText = $state<HTMLElement | null>(null);
 	let heroFoot = $state<HTMLElement | null>(null);
 
@@ -51,19 +51,26 @@
 	});
 
 	function countUp(node: HTMLElement, target: number) {
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
 		const final = node.textContent ?? '';
 		let raf = 0;
 		const io = new IntersectionObserver(
 			(entries) => {
-				if (!entries.some((e) => e.isIntersecting)) return;
+				if (!entries.some((e) => e.isIntersecting)) {
+					return;
+				}
 				io.disconnect();
 				const started = performance.now();
 				const tick = (now: number) => {
 					const t = Math.min(1, (now - started) / 900);
 					node.textContent = fmt(target * (1 - Math.pow(1 - t, 3)));
-					if (t < 1) raf = requestAnimationFrame(tick);
-					else node.textContent = final;
+					if (t < 1) {
+						raf = requestAnimationFrame(tick);
+					} else {
+						node.textContent = final;
+					}
 				};
 				raf = requestAnimationFrame(tick);
 			},

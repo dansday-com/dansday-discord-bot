@@ -15,7 +15,7 @@ export type MessageRequest = { scope: MessageScope; id: unknown; name: unknown; 
 
 type Library = Pick<MessageAgentContext, 'serverName' | 'messages' | 'roles' | 'emojis' | 'defaults'> & { posted: (messageId: number) => Promise<boolean> };
 
-async function serverLibrary(server: any): Promise<Library> {
+async function serverLibrary(server: Record<string, unknown>): Promise<Library> {
 	const serverId = Number(server.id);
 	const [messages, roles, mainRow, emojis] = await Promise.all([
 		db.getServerMessages(serverId).catch(() => []),
@@ -23,12 +23,12 @@ async function serverLibrary(server: any): Promise<Library> {
 		db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
 		callMessageBot(server, 'server_message_emojis', {}).catch(() => null)
 	]);
-	const main = normalizeMainConfigForPanel((mainRow as any)?.settings ?? {});
+	const main = normalizeMainConfigForPanel(mainRow?.settings ?? {});
 
 	return {
 		serverName: String(server.name ?? 'Server'),
 		messages,
-		roles: (roles as any[])
+		roles: roles
 			.filter((role) => String(role.discord_role_id) !== String(server.discord_server_id) && isSelfAssignableRole(role.permissions))
 			.map((role) => ({ id: String(role.discord_role_id), name: String(role.name ?? 'Unnamed role') })),
 		emojis: Array.isArray(emojis?.body?.emojis) ? emojis.body.emojis : [],
@@ -53,12 +53,16 @@ function shape(result: MessageAgentResult): AgentAnswer {
 }
 
 export function messageRequest(raw: any): MessageRequest | null {
-	if (!raw || typeof raw !== 'object') return null;
+	if (!raw || typeof raw !== 'object') {
+		return null;
+	}
 	return raw.scope === 'server' || raw.scope === 'global' ? { scope: raw.scope, id: raw.id, name: raw.name, content: raw.content } : null;
 }
 
 export function canBuildMessage(reach: AgentReach, request: MessageRequest | null): boolean {
-	if (!request) return false;
+	if (!request) {
+		return false;
+	}
 	return request.scope === 'global' ? reach.all : reach.server != null;
 }
 
@@ -129,7 +133,9 @@ export async function builderDoorPack(reach: AgentReach, session: AgentSession):
 						server = other && (await db.getServerPanelId(Number(other.id)).catch(() => null)) === reach.panelId ? other : null;
 						messages = server ? await db.getServerMessages(Number(server.id)).catch(() => []) : [];
 					}
-					if (!server) return { ok: false, reason: 'unknown_server', hint: 'Use a server_id from list_servers, or kind "global".' };
+					if (!server) {
+						return { ok: false, reason: 'unknown_server', hint: 'Use a server_id from list_servers, or kind "global".' };
+					}
 
 					session.navigate = adminServerSectionPath(
 						server.bot_id,
@@ -172,7 +178,9 @@ export async function messageBuilderPack(reach: AgentReach, request: MessageRequ
 		tools: pack.tools,
 		finish: async (answer) => {
 			const verdict = await pack.finish(answer);
-			if (verdict.ok) return { ok: true, result: shape(verdict.result) };
+			if (verdict.ok) {
+				return { ok: true, result: shape(verdict.result) };
+			}
 			return { ok: false, feedback: verdict.feedback, ...(verdict.fallback ? { fallback: shape(verdict.fallback) } : {}) };
 		}
 	};

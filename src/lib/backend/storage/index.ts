@@ -23,7 +23,9 @@ function env(name: string): string {
 }
 
 function s3Settings(): S3Settings | null {
-	if (cachedSettings !== undefined) return cachedSettings;
+	if (cachedSettings !== undefined) {
+		return cachedSettings;
+	}
 
 	const driver = env('STORAGE_DRIVER').toLowerCase();
 	const bucket = env('S3_BUCKET');
@@ -53,7 +55,9 @@ function s3Settings(): S3Settings | null {
 
 export function publicUrl(key: string): string {
 	const settings = s3Settings();
-	if (!settings?.publicUrl) return `/api/uploads/${safeKey(key)}`;
+	if (!settings?.publicUrl) {
+		return `/api/uploads/${safeKey(key)}`;
+	}
 	return `${settings.publicUrl}/${remoteKey(settings, key)}`;
 }
 
@@ -123,7 +127,9 @@ export async function getObject(key: string): Promise<Buffer | null> {
 
 	if (!settings) {
 		const path = localPath(key);
-		if (!existsSync(path)) return null;
+		if (!existsSync(path)) {
+			return null;
+		}
 		try {
 			return readFileSync(path);
 		} catch {
@@ -135,10 +141,14 @@ export async function getObject(key: string): Promise<Buffer | null> {
 	const client = await s3(settings);
 	try {
 		const result = await client.send(new GetObjectCommand({ Bucket: settings.bucket, Key: remoteKey(settings, key) }));
-		if (!result.Body) return null;
+		if (!result.Body) {
+			return null;
+		}
 		return Buffer.from(await result.Body.transformToByteArray());
 	} catch (error) {
-		if (isMissing(error)) return null;
+		if (isMissing(error)) {
+			return null;
+		}
 		throw error;
 	}
 }
@@ -149,7 +159,9 @@ export async function deleteObject(key: string): Promise<void> {
 	if (!settings) {
 		const path = localPath(key);
 		try {
-			if (existsSync(path)) unlinkSync(path);
+			if (existsSync(path)) {
+				unlinkSync(path);
+			}
 		} catch {}
 		return;
 	}
@@ -159,7 +171,9 @@ export async function deleteObject(key: string): Promise<void> {
 	try {
 		await client.send(new DeleteObjectCommand({ Bucket: settings.bucket, Key: remoteKey(settings, key) }));
 	} catch (error) {
-		if (!isMissing(error)) throw error;
+		if (!isMissing(error)) {
+			throw error;
+		}
 	}
 }
 
@@ -175,8 +189,11 @@ function listLocalKeys(dir: string, prefix: string): string[] {
 		const full = join(dir, name);
 		try {
 			const stat = statSync(full);
-			if (stat.isDirectory()) out.push(...listLocalKeys(full, `${prefix}/${name}`));
-			else if (stat.isFile()) out.push(`${prefix}/${name}`);
+			if (stat.isDirectory()) {
+				out.push(...listLocalKeys(full, `${prefix}/${name}`));
+			} else if (stat.isFile()) {
+				out.push(`${prefix}/${name}`);
+			}
 		} catch {}
 	}
 	return out;
@@ -188,7 +205,9 @@ export async function listObjectKeys(folder: string): Promise<string[]> {
 
 	if (!settings) {
 		const dir = localPath(cleaned);
-		if (!existsSync(dir)) return [];
+		if (!existsSync(dir)) {
+			return [];
+		}
 		return listLocalKeys(dir, cleaned);
 	}
 
@@ -202,7 +221,9 @@ export async function listObjectKeys(folder: string): Promise<string[]> {
 	do {
 		const result = await client.send(new ListObjectsV2Command({ Bucket: settings.bucket, Prefix: `${scope}/`, ContinuationToken: token }));
 		for (const item of result.Contents ?? []) {
-			if (!item.Key || item.Key.endsWith('/')) continue;
+			if (!item.Key || item.Key.endsWith('/')) {
+				continue;
+			}
 			keys.push(item.Key.slice(strip));
 		}
 		token = result.IsTruncated ? result.NextContinuationToken : undefined;

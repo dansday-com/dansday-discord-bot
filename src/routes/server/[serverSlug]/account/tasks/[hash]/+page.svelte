@@ -21,7 +21,7 @@
 	let claimingLogin = $state(false);
 	let tab = $state<'daily' | 'weekly'>('daily');
 	let now = $state(Date.now());
-	const at = (ms: any) => (Number(ms) > 0 ? Date.now() + Number(ms) : 0);
+	const at = (ms: unknown) => (Number(ms) > 0 ? Date.now() + Number(ms) : 0);
 	let resetAt = $state(at(data.tasks?.resetsInMs));
 	let weeklyResetAt = $state(at(data.tasks?.weeklyResetsInMs));
 	let loginReadyAt = $state(at(data.tasks?.login?.readyInMs));
@@ -40,13 +40,17 @@
 	const reelPool = $derived<ReelCell[]>(live?.reelPool ?? []);
 
 	$effect(() => {
-		if (!itemRoll) return;
+		if (!itemRoll) {
+			return;
+		}
 		return lockScroll();
 	});
 
 	function decoyCells(n: number): ReelCell[] {
 		const pool = reelPool;
-		if (pool.length === 0) return [];
+		if (pool.length === 0) {
+			return [];
+		}
 		return Array.from({ length: n }, () => pool[Math.floor(Math.random() * pool.length)]);
 	}
 
@@ -54,7 +58,9 @@
 		requestAnimationFrame(() => {
 			const wrapW = reelWrapEl?.clientWidth ?? 360;
 			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
-			if (!cell) return;
+			if (!cell) {
+				return;
+			}
 			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
 		});
 	}
@@ -91,7 +97,9 @@
 	}
 
 	function closeRoll() {
-		if (!reelSettled) return;
+		if (!reelSettled) {
+			return;
+		}
 		sfx.close();
 		itemRoll = null;
 	}
@@ -100,8 +108,12 @@
 
 	$effect(() => {
 		const incoming = data.tasks;
-		if (synced) return;
-		if (!incoming) return;
+		if (synced) {
+			return;
+		}
+		if (!incoming) {
+			return;
+		}
 		live = incoming;
 		resetAt = at(incoming.resetsInMs);
 		weeklyResetAt = at(incoming.weeklyResetsInMs);
@@ -110,7 +122,9 @@
 
 	let ticker: any = null;
 	onMount(async () => {
-		if (data.featureDisabled) return;
+		if (data.featureDisabled) {
+			return;
+		}
 		document.cookie = `tz_offset=${tzOffset()}; path=/; max-age=31536000; SameSite=Lax`;
 		ticker = setInterval(() => (now = Date.now()), 1000);
 		await refresh();
@@ -125,7 +139,9 @@
 				body: JSON.stringify({ card: ctx.hash, tz_offset: tzOffset() })
 			});
 			const body = await res.json();
-			if (body?.success && body.tasks) applyState(body.tasks);
+			if (body?.success && body.tasks) {
+				applyState(body.tasks);
+			}
 		} catch {
 			synced = false;
 		}
@@ -139,10 +155,14 @@
 		loginReadyAt = at(next.login?.readyInMs);
 		ctx.setTaskSummary?.(next.streak ?? null);
 
-		if (!next.streakEarned || !next.streakMilestone) return false;
+		if (!next.streakEarned || !next.streakMilestone) {
+			return false;
+		}
 		celebrate = { streak: next.streak.current, emoji: next.streakMilestone.emoji, label: next.streakMilestone.label };
 		setTimeout(() => (celebrate = null), 6000);
-		if (!quiet) sfx.payout(1);
+		if (!quiet) {
+			sfx.payout(1);
+		}
 		return !quiet;
 	}
 
@@ -169,9 +189,13 @@
 
 	let refreshedFor = 0;
 	$effect(() => {
-		if (!synced) return;
+		if (!synced) {
+			return;
+		}
 		const due = [loginReadyAt, resetAt, weeklyResetAt].filter((t) => t > 0 && t > refreshedFor && t <= now);
-		if (due.length === 0) return;
+		if (due.length === 0) {
+			return;
+		}
 		refreshedFor = Math.max(...due);
 		refresh();
 	});
@@ -189,7 +213,7 @@
 		{ id: 'weekly', label: 'Weekly', icon: 'fa-calendar-week', count: `${weeklyDone}/${weeklyTasks.length}`, active: tab === 'weekly' }
 	]);
 
-	function ringDash(t: any) {
+	function ringDash(t: Record<string, unknown>) {
 		const pct = Math.max(0, Math.min(1, (Number(t.progress) || 0) / Math.max(1, Number(t.goal) || 1)));
 		const c = 2 * Math.PI * 26;
 		return `${(pct * c).toFixed(2)} ${c.toFixed(2)}`;
@@ -199,9 +223,11 @@
 		return d === 'hard' ? '#c0392b' : d === 'medium' ? '#c8911a' : '#1f8a4c';
 	}
 
-	async function claim(t: any) {
+	async function claim(t: Record<string, unknown>) {
 		const key = `${t.period}:${t.slot}`;
-		if (ctx.readOnly || busySlot != null || !t.complete || t.claimed) return;
+		if (ctx.readOnly || busySlot != null || !t.complete || t.claimed) {
+			return;
+		}
 		sfx.press();
 		busySlot = key;
 		try {
@@ -213,7 +239,9 @@
 			const body = await res.json();
 			if (!body?.success) {
 				showToast(body?.error || 'Claim failed.', 'error');
-				if (body?.tasks) applyState(body.tasks);
+				if (body?.tasks) {
+					applyState(body.tasks);
+				}
 				return;
 			}
 
@@ -226,7 +254,9 @@
 				text: item ? g.name : `+${fmt(g?.xp ?? 0)} XP`,
 				item
 			};
-			if (!celebrated) sfx.payout(body.milestone && body.streak ? 1 : t.period === 'weekly' ? 0.6 : 0.35);
+			if (!celebrated) {
+				sfx.payout(body.milestone && body.streak ? 1 : t.period === 'weekly' ? 0.6 : 0.35);
+			}
 			setTimeout(() => (taskWin = null), 3500);
 
 			if (body.milestone && body.streak) {
@@ -243,7 +273,9 @@
 	}
 
 	async function claimLogin() {
-		if (ctx.readOnly || claimingLogin || !login.canClaim) return;
+		if (ctx.readOnly || claimingLogin || !login.canClaim) {
+			return;
+		}
 		sfx.press();
 		claimingLogin = true;
 		try {
@@ -255,7 +287,9 @@
 			const body = await res.json();
 			if (!body?.success) {
 				showToast(body?.error || 'Claim failed.', 'error');
-				if (body?.tasks) applyState(body.tasks);
+				if (body?.tasks) {
+					applyState(body.tasks);
+				}
 				return;
 			}
 
@@ -275,7 +309,9 @@
 				});
 			} else {
 				loginWin = { day: body.day, jackpot: !!body.jackpot, text };
-				if (!celebrated) sfx.payout(body.jackpot ? 1 : 0.5);
+				if (!celebrated) {
+					sfx.payout(body.jackpot ? 1 : 0.5);
+				}
 				setTimeout(() => (loginWin = null), body.jackpot ? 6000 : 3500);
 			}
 

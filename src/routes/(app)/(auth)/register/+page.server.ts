@@ -5,7 +5,9 @@ import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { isUtcSqlExpired } from '$lib/utils/index.js';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (locals.user.authenticated) redirect(302, DASHBOARD_PATH);
+	if (locals.user.authenticated) {
+		redirect(302, DASHBOARD_PATH);
+	}
 
 	const token = url.searchParams.get('token') ?? null;
 
@@ -24,7 +26,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	const canRegister = !locals.user.authenticated && 'can_register' in locals.user && locals.user.can_register;
-	if (!canRegister) redirect(302, '/login');
+	if (!canRegister) {
+		redirect(302, '/login');
+	}
 
 	return { token: null };
 };

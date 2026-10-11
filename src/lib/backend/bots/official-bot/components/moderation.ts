@@ -5,6 +5,8 @@ import { logger } from '../../../../utils/index.js';
 import { escalationStepFor } from '../../../../moderation-rules.js';
 import { memberTranslator, serverTranslator, type Translator } from '../i18n.js';
 import { parseLocalizedDuration } from '../localizedInput.js';
+import type { APIEmbedField, AuditLogEvent, GuildMember, GuildTextBasedChannel, PartialGuildMember } from 'discord.js';
+import type { Client, Guild, User } from 'discord.js';
 
 export const MODERATION_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns'] as const;
 export const BULK_MODERATION_ACTIONS = ['role_add', 'role_remove'] as const;
@@ -34,11 +36,13 @@ const SWEEP_MS = 60 * 1000;
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
 function clip(text: string, max = 1024) {
-	return text.length > max ? text.substring(0, max - 3) + '...' : text;
+	return text.length > max ? `${text.substring(0, max - 3)}...` : text;
 }
 
 export function formatDuration(tr: Translator, seconds: number | null | undefined) {
-	if (!seconds || seconds <= 0) return null;
+	if (!seconds || seconds <= 0) {
+		return null;
+	}
 	const units: [number, string][] = [
 		[86400, 'd'],
 		[3600, 'h'],
@@ -53,7 +57,9 @@ export function formatDuration(tr: Translator, seconds: number | null | undefine
 			rest -= n * size;
 		}
 	}
-	if (parts.length === 0) parts.push(tr('moderation.durationUnits.s', { n: rest }));
+	if (parts.length === 0) {
+		parts.push(tr('moderation.durationUnits.s', { n: rest }));
+	}
 	return parts.join(' ');
 }
 
@@ -62,24 +68,39 @@ export function parseDuration(input: string | null | undefined) {
 }
 
 async function memberLabel(serverId: number, discordId: string | null | undefined) {
-	if (!discordId) return null;
+	if (!discordId) {
+		return null;
+	}
 	const row = await db.getMemberByDiscordId(serverId, discordId, { includeDeleted: true }).catch(() => null);
 	return row ? row.server_display_name || row.display_name || row.username || null : null;
 }
 
-async function resolveMemberRow(serverId: number, guild: any, discordId: string) {
+async function resolveMemberRow(serverId: number, guild: Guild, discordId: string) {
 	let row = await db.getMemberByDiscordId(serverId, discordId, { includeDeleted: true }).catch(() => null);
-	if (row) return row;
+	if (row) {
+		return row;
+	}
 	const live = await guild.members.fetch(discordId).catch(() => null);
 	const source = live ?? (await guild.client.users.fetch(discordId).catch(() => null));
-	if (!source) return null;
+	if (!source) {
+		return null;
+	}
 	await db.upsertMember(serverId, source).catch(() => null);
 	row = await db.getMemberByDiscordId(serverId, discordId, { includeDeleted: true }).catch(() => null);
 	return row;
 }
 
+type ModerationLogEmbed = {
+	title: string;
+	description: string;
+	thumbnail?: string | null;
+	userTag?: string | null;
+	mentionId?: string | null;
+	fields?: APIEmbedField[];
+};
+
 async function recordCase(
-	client: any,
+	client: Client,
 	guild: any,
 	serverId: number,
 	opts: {
@@ -96,7 +117,9 @@ async function recordCase(
 	}
 ) {
 	const memberRow = await resolveMemberRow(serverId, guild, opts.targetId);
-	if (!memberRow) return null;
+	if (!memberRow) {
+		return null;
+	}
 	const staffRow = opts.staffId ? await resolveMemberRow(serverId, guild, opts.staffId) : null;
 	const expiresAt = opts.durationSeconds ? new Date(Date.now() + opts.durationSeconds * 1000) : null;
 	const caseNumber = await db.createModerationLog({
@@ -115,7 +138,7 @@ async function recordCase(
 	const memberName = memberRow.server_display_name || memberRow.display_name || memberRow.username || opts.targetId;
 	const staffName =
 		(staffRow && (staffRow.server_display_name || staffRow.display_name || staffRow.username)) || opts.staffName || tr('moderation.caseLog.unknown');
-	const fields = [
+	const fields: APIEmbedField[] = [
 		{ name: tr('moderation.caseLog.fields.member'), value: `<@${opts.targetId}> (${memberName})`, inline: true },
 		{ name: tr('moderation.caseLog.fields.staff'), value: staffRow ? `<@${opts.staffId}> (${staffName})` : staffName, inline: true },
 		{ name: tr('moderation.caseLog.fields.source'), value: sourceLabel(tr, opts.source), inline: true },
@@ -133,7 +156,9 @@ async function recordCase(
 		const active = await db.countActiveWarnings(Number(memberRow.id)).catch(() => 0);
 		fields.push({ name: tr('moderation.caseLog.fields.activeWarnings'), value: String(active), inline: true });
 	}
-	if (opts.extraFields) fields.push(...opts.extraFields);
+	if (opts.extraFields) {
+		fields.push(...opts.extraFields);
+	}
 
 	await sendModerationLog(
 		client,
@@ -150,15 +175,19 @@ async function recordCase(
 	return { caseNumber, memberRow };
 }
 
-async function notifyMember(user: any, guild: any, action: string, reason: string | null, durationSeconds: number | null) {
-	if (!user || user.bot) return;
+async function notifyMember(user: User, guild: Guild, action: string, reason: string | null, durationSeconds: number | null) {
+	if (!user || user.bot) {
+		return;
+	}
 	const tr = await memberTranslator(guild.id, user.id);
 	const lines = [
 		tr('moderation.memberDm.server', { server: guild.name }),
 		tr('moderation.memberDm.reason', { reason: reason || tr('moderation.caseLog.noReason') })
 	];
 	const duration = formatDuration(tr, durationSeconds);
-	if (duration) lines.push(tr('moderation.memberDm.duration', { duration }));
+	if (duration) {
+		lines.push(tr('moderation.memberDm.duration', { duration }));
+	}
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig?.COLOR ?? 0xc0392b)
@@ -183,14 +212,20 @@ export async function performModerationAction(
 	}
 ) {
 	const action = String(payload.action || '');
-	if (!(MODERATION_ACTIONS as readonly string[]).includes(action)) return { ok: false, error: 'Unknown moderation action' };
+	if (!(MODERATION_ACTIONS as readonly string[]).includes(action)) {
+		return { ok: false, error: 'Unknown moderation action' };
+	}
 
 	const guild = client.guilds.cache.get(String(payload.guild_id));
-	if (!guild) return { ok: false, error: 'Bot is not in this server' };
+	if (!guild) {
+		return { ok: false, error: 'Bot is not in this server' };
+	}
 
 	const botConfig = getBotConfig();
 	const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
-	if (!server) return { ok: false, error: 'Server not found' };
+	if (!server) {
+		return { ok: false, error: 'Server not found' };
+	}
 	const serverId = Number(server.id);
 	const tr = await serverTranslator(guild.id);
 	const source = payload.source || 'panel';
@@ -199,8 +234,12 @@ export async function performModerationAction(
 
 	if (action === 'unwarn') {
 		const row = payload.case_number ? await db.getModerationCase(serverId, Number(payload.case_number)) : null;
-		if (!row || row.action !== 'warn') return { ok: false, error: 'Warning case not found' };
-		if (!(await db.revokeModerationCase(row.id))) return { ok: false, error: 'Warning is already removed' };
+		if (!row || row.action !== 'warn') {
+			return { ok: false, error: 'Warning case not found' };
+		}
+		if (!(await db.revokeModerationCase(row.id))) {
+			return { ok: false, error: 'Warning is already removed' };
+		}
 		const logged = await recordCase(client, guild, serverId, {
 			action,
 			targetId: row.discord_member_id,
@@ -214,15 +253,25 @@ export async function performModerationAction(
 	}
 
 	const targetId = String(payload.target_id || '').trim();
-	if (!/^\d{15,25}$/.test(targetId)) return { ok: false, error: 'Select a member' };
-	if (targetId === client.user.id) return { ok: false, error: 'The bot cannot moderate itself' };
-	if (staffId && staffId === targetId) return { ok: false, error: 'You cannot moderate yourself' };
+	if (!/^\d{15,25}$/.test(targetId)) {
+		return { ok: false, error: 'Select a member' };
+	}
+	if (targetId === client.user.id) {
+		return { ok: false, error: 'The bot cannot moderate itself' };
+	}
+	if (staffId && staffId === targetId) {
+		return { ok: false, error: 'You cannot moderate yourself' };
+	}
 
 	if (action === 'clearwarns') {
 		const memberRow = await resolveMemberRow(serverId, guild, targetId);
-		if (!memberRow) return { ok: false, error: 'Member not found' };
+		if (!memberRow) {
+			return { ok: false, error: 'Member not found' };
+		}
 		const cleared = await db.endActiveModeration(Number(memberRow.id), ['warn'], true);
-		if (!cleared) return { ok: false, error: 'Member has no active warnings' };
+		if (!cleared) {
+			return { ok: false, error: 'Member has no active warnings' };
+		}
 		const logged = await recordCase(client, guild, serverId, {
 			action,
 			targetId,
@@ -237,38 +286,53 @@ export async function performModerationAction(
 
 	const member = await guild.members.fetch(targetId).catch(() => null);
 	const needsMember = ['warn', 'timeout', 'untimeout', 'kick'].includes(action);
-	if (needsMember && !member) return { ok: false, error: 'Member is not in the server' };
+	if (needsMember && !member) {
+		return { ok: false, error: 'Member is not in the server' };
+	}
 
 	if (member) {
-		if (member.id === guild.ownerId) return { ok: false, error: 'The server owner cannot be moderated' };
-		if (member.user?.bot) return { ok: false, error: 'Bots cannot be moderated' };
+		if (member.id === guild.ownerId) {
+			return { ok: false, error: 'The server owner cannot be moderated' };
+		}
+		if (member.user?.bot) {
+			return { ok: false, error: 'Bots cannot be moderated' };
+		}
 		if (staffId) {
 			const staff = await guild.members.fetch(staffId).catch(() => null);
 			if (staff && staff.id !== guild.ownerId && staff.roles.highest.position <= member.roles.highest.position) {
 				return { ok: false, error: 'That member has an equal or higher role than you, so only someone above them can do this' };
 			}
 		}
-		if ((action === 'timeout' || action === 'untimeout') && !member.moderatable)
+		if ((action === 'timeout' || action === 'untimeout') && !member.moderatable) {
 			return { ok: false, error: "The bot's role is too low to time out this member. Move the bot's role above theirs in Server Settings → Roles" };
-		if (action === 'kick' && !member.kickable)
+		}
+		if (action === 'kick' && !member.kickable) {
 			return { ok: false, error: "The bot's role is too low to kick this member. Move the bot's role above theirs in Server Settings → Roles" };
-		if ((action === 'ban' || action === 'tempban') && !member.bannable)
+		}
+		if ((action === 'ban' || action === 'tempban') && !member.bannable) {
 			return { ok: false, error: "The bot's role is too low to ban this member. Move the bot's role above theirs in Server Settings → Roles" };
+		}
 	}
 
 	let durationSeconds = payload.duration_seconds ? Math.floor(Number(payload.duration_seconds)) : null;
 	if (action === 'timeout') {
-		if (!durationSeconds || durationSeconds < 60) return { ok: false, error: 'Timeout needs a duration of at least 1 minute' };
+		if (!durationSeconds || durationSeconds < 60) {
+			return { ok: false, error: 'Timeout needs a duration of at least 1 minute' };
+		}
 		durationSeconds = Math.min(durationSeconds, MAX_TIMEOUT_SECONDS);
 	} else if (action === 'tempban') {
-		if (!durationSeconds || durationSeconds < 60) return { ok: false, error: 'Tempban needs a duration of at least 1 minute' };
+		if (!durationSeconds || durationSeconds < 60) {
+			return { ok: false, error: 'Tempban needs a duration of at least 1 minute' };
+		}
 	} else {
 		durationSeconds = null;
 	}
 
 	const auditReason = clip(`${reason || 'No reason provided'} · by ${payload.staff_name || 'staff'} via ${source}`, 512);
 	const user = member?.user ?? (await client.users.fetch(targetId).catch(() => null));
-	if (user?.bot) return { ok: false, error: 'Bots cannot be moderated' };
+	if (user?.bot) {
+		return { ok: false, error: 'Bots cannot be moderated' };
+	}
 
 	try {
 		if (action === 'warn') {
@@ -285,24 +349,36 @@ export async function performModerationAction(
 			await notifyMember(user, guild, action, reason, null);
 			await member.kick(auditReason);
 		} else if (action === 'ban' || action === 'tempban') {
-			if (member) await notifyMember(user, guild, action, reason, durationSeconds);
+			if (member) {
+				await notifyMember(user, guild, action, reason, durationSeconds);
+			}
 			await guild.members.ban(targetId, { reason: auditReason, deleteMessageSeconds: 0 });
 		} else if (action === 'unban') {
 			const existing = await guild.bans.fetch(targetId).catch(() => null);
-			if (!existing) return { ok: false, error: 'User is not banned' };
+			if (!existing) {
+				return { ok: false, error: 'User is not banned' };
+			}
 			await guild.members.unban(targetId, auditReason);
 		}
-	} catch (err: any) {
-		await logger.log(`❌ Moderation ${action} failed for ${targetId}: ${err.message}`);
-		return { ok: false, error: `Discord rejected the ${action}: ${err.message}` };
+	} catch (err) {
+		await logger.log(`❌ Moderation ${action} failed for ${targetId}: ${(err as Error).message}`);
+		return { ok: false, error: `Discord rejected the ${action}: ${(err as Error).message}` };
 	}
 
 	const memberRow = await resolveMemberRow(serverId, guild, targetId);
 	if (memberRow) {
-		if (action === 'untimeout') await db.endActiveModeration(Number(memberRow.id), ['timeout'], true);
-		if (action === 'unban') await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban'], true);
-		if (action === 'timeout') await db.endActiveModeration(Number(memberRow.id), ['timeout']);
-		if (action === 'ban' || action === 'tempban') await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban']);
+		if (action === 'untimeout') {
+			await db.endActiveModeration(Number(memberRow.id), ['timeout'], true);
+		}
+		if (action === 'unban') {
+			await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban'], true);
+		}
+		if (action === 'timeout') {
+			await db.endActiveModeration(Number(memberRow.id), ['timeout']);
+		}
+		if (action === 'ban' || action === 'tempban') {
+			await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban']);
+		}
 	}
 
 	const logged = await recordCase(client, guild, serverId, {
@@ -319,12 +395,16 @@ export async function performModerationAction(
 	return { ok: true, case_number: logged?.caseNumber ?? null, ...(escalated ? { escalated } : {}) };
 }
 
-async function escalate(client: any, guild: any, serverId: number, targetId: string, memberId: number) {
+async function escalate(client: Client, guild: Guild, serverId: number, targetId: string, memberId: number) {
 	const rules = await MODERATION_CONFIG.getRulesForServer(serverId).catch(() => null);
-	if (!rules || rules.escalation.length === 0) return null;
+	if (!rules || rules.escalation.length === 0) {
+		return null;
+	}
 	const active = await db.countActiveWarnings(memberId).catch(() => 0);
 	const step = escalationStepFor(rules, active);
-	if (!step) return null;
+	if (!step) {
+		return null;
+	}
 	const tr = await serverTranslator(guild.id);
 	const result: any = await performModerationAction(client, {
 		guild_id: guild.id,
@@ -342,16 +422,24 @@ async function escalate(client: any, guild: any, serverId: number, targetId: str
 	return { action: step.action, case_number: result.case_number ?? null };
 }
 
-async function expireOldWarnings(client: any, botId: number) {
-	if (Date.now() - lastWarnExpirySweep < WARN_EXPIRY_SWEEP_MS) return;
+async function expireOldWarnings(client: Client, botId: number) {
+	if (Date.now() - lastWarnExpirySweep < WARN_EXPIRY_SWEEP_MS) {
+		return;
+	}
 	lastWarnExpirySweep = Date.now();
 	const servers = await db.getServersForBot(botId).catch(() => []);
-	for (const server of servers as any[]) {
-		if (!client.guilds.cache.has(String(server.discord_server_id))) continue;
+	for (const server of servers) {
+		if (!client.guilds.cache.has(String(server.discord_server_id))) {
+			continue;
+		}
 		const rules = await MODERATION_CONFIG.getRulesForServer(Number(server.id)).catch(() => null);
-		if (!rules?.warn_expiry_days) continue;
+		if (!rules?.warn_expiry_days) {
+			continue;
+		}
 		const expired = await db.expireModerationWarnings(Number(server.id), rules.warn_expiry_days).catch(() => 0);
-		if (expired > 0) await logger.log(`⌛ Expired ${expired} warning(s) older than ${rules.warn_expiry_days} days in ${server.discord_server_id}`);
+		if (expired > 0) {
+			await logger.log(`⌛ Expired ${expired} warning(s) older than ${rules.warn_expiry_days} days in ${server.discord_server_id}`);
+		}
 	}
 }
 
@@ -368,42 +456,63 @@ export async function startBulkModeration(
 	}
 ) {
 	const action = String(payload.action || '');
-	if (!(BULK_MODERATION_ACTIONS as readonly string[]).includes(action)) return { ok: false, error: 'Unknown bulk action' };
+	if (!(BULK_MODERATION_ACTIONS as readonly string[]).includes(action)) {
+		return { ok: false, error: 'Unknown bulk action' };
+	}
 
 	const guild = client.guilds.cache.get(String(payload.guild_id));
-	if (!guild) return { ok: false, error: 'Bot is not in this server' };
-	if (bulkRunning.has(guild.id)) return { ok: false, error: 'Another bulk action is still running in this server' };
+	if (!guild) {
+		return { ok: false, error: 'Bot is not in this server' };
+	}
+	if (bulkRunning.has(guild.id)) {
+		return { ok: false, error: 'Another bulk action is still running in this server' };
+	}
 
 	const role = guild.roles.cache.get(String(payload.role_id || ''));
-	if (!role || role.id === guild.id) return { ok: false, error: 'Pick a role' };
-	if (role.managed) return { ok: false, error: `${role.name} is managed by an integration and can't be given or removed` };
-	if (!role.editable) return { ok: false, error: `The bot's role must be above ${role.name}` };
+	if (!role || role.id === guild.id) {
+		return { ok: false, error: 'Pick a role' };
+	}
+	if (role.managed) {
+		return { ok: false, error: `${role.name} is managed by an integration and can't be given or removed` };
+	}
+	if (!role.editable) {
+		return { ok: false, error: `The bot's role must be above ${role.name}` };
+	}
 
 	const picked = new Set((payload.target_ids ?? []).map(String));
 	const skip = new Set((payload.skip_ids ?? []).map(String));
-	if (picked.size === 0) return { ok: false, error: 'Select at least one member' };
+	if (picked.size === 0) {
+		return { ok: false, error: 'Select at least one member' };
+	}
 	const members = await guild.members.fetch().catch(() => null);
-	if (!members) return { ok: false, error: 'Could not load the member list' };
+	if (!members) {
+		return { ok: false, error: 'Could not load the member list' };
+	}
 
 	const adding = action === 'role_add';
 	const source = payload.source || 'panel';
 	const staffName = payload.staff_name || 'staff';
 	const auditReason = clip(`${BULK_TITLES[action]} · by ${staffName} via ${source} (bulk)`, 512);
-	const targets = [...members.values()].filter((m: any) => picked.has(m.id) && !m.user?.bot && !skip.has(m.id) && m.roles.cache.has(role.id) !== adding);
-	if (targets.length === 0) return { ok: false, error: adding ? `Everyone selected already has ${role.name}` : `Nobody selected has ${role.name}` };
+	const targets = [...members.values()].filter((m) => picked.has(m.id) && !m.user?.bot && !skip.has(m.id) && m.roles.cache.has(role.id) !== adding);
+	if (targets.length === 0) {
+		return { ok: false, error: adding ? `Everyone selected already has ${role.name}` : `Nobody selected has ${role.name}` };
+	}
 
 	bulkRunning.add(guild.id);
-	void (async () => {
+	(async () => {
 		let done = 0;
 		let failed = 0;
 		for (const member of targets) {
 			try {
-				if (adding) await member.roles.add(role, auditReason);
-				else await member.roles.remove(role, auditReason);
+				if (adding) {
+					await member.roles.add(role, auditReason);
+				} else {
+					await member.roles.remove(role, auditReason);
+				}
 				done++;
-			} catch (err: any) {
+			} catch (err) {
 				failed++;
-				await logger.log(`⚠️ Bulk ${action} failed for ${member.id} in ${guild.id}: ${err.message}`);
+				await logger.log(`⚠️ Bulk ${action} failed for ${member.id} in ${guild.id}: ${(err as Error).message}`);
 			}
 		}
 		await logger.log(`🛡️ Bulk ${action} ${role.id} in ${guild.id} via ${source}: ${done} done, ${failed} failed`);
@@ -427,15 +536,19 @@ export async function startBulkModeration(
 	return { ok: true, queued: targets.length };
 }
 
-async function sweepModeration(client: any) {
+async function sweepModeration(client: Client) {
 	const botConfig = getBotConfig();
-	if (!botConfig?.id) return;
+	if (!botConfig?.id) {
+		return;
+	}
 	await db.expireModerationTimeouts().catch(() => null);
 	await expireOldWarnings(client, Number(botConfig.id)).catch(() => null);
 	const due = await db.getDueTempbans(Number(botConfig.id)).catch(() => []);
 	for (const row of due) {
 		const guild = client.guilds.cache.get(String(row.discord_server_id));
-		if (!guild) continue;
+		if (!guild) {
+			continue;
+		}
 		await guild.members.unban(String(row.discord_member_id), `Tempban case #${row.case_number} expired`).catch(() => null);
 		await db.revokeModerationCase(row.id).catch(() => null);
 		const tr = await serverTranslator(guild.id);
@@ -451,38 +564,54 @@ async function sweepModeration(client: any) {
 	}
 }
 
-export function initModerationSweeper(client: any) {
-	if (sweepTimer) clearInterval(sweepTimer);
+export function initModerationSweeper(client: Client) {
+	if (sweepTimer) {
+		clearInterval(sweepTimer);
+	}
 	sweepTimer = setInterval(() => {
 		sweepModeration(client).catch((err) => logger.log(`❌ Moderation sweep failed: ${err.message}`));
 	}, SWEEP_MS);
 }
 
 export function stopModerationSweeper() {
-	if (sweepTimer) clearInterval(sweepTimer);
+	if (sweepTimer) {
+		clearInterval(sweepTimer);
+	}
 	sweepTimer = null;
 }
 
 async function recordNativeCase(
-	client: any,
-	guild: any,
+	client: Client<true>,
+	guild: Guild,
 	action: string,
 	targetId: string,
 	executorId: string | null,
 	reason: string | null,
 	durationSeconds: number | null = null
 ) {
-	if (executorId && executorId === client.user.id) return;
+	if (executorId && executorId === client.user.id) {
+		return;
+	}
 	const botConfig = getBotConfig();
-	if (!botConfig?.id) return;
+	if (!botConfig?.id) {
+		return;
+	}
 	const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-	if (!server) return;
+	if (!server) {
+		return;
+	}
 	const serverId = Number(server.id);
 	const memberRow = await resolveMemberRow(serverId, guild, targetId);
 	if (memberRow) {
-		if (action === 'unban') await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban'], true);
-		if (action === 'untimeout') await db.endActiveModeration(Number(memberRow.id), ['timeout'], true);
-		if (action === 'timeout') await db.endActiveModeration(Number(memberRow.id), ['timeout']);
+		if (action === 'unban') {
+			await db.endActiveModeration(Number(memberRow.id), ['ban', 'tempban'], true);
+		}
+		if (action === 'untimeout') {
+			await db.endActiveModeration(Number(memberRow.id), ['timeout'], true);
+		}
+		if (action === 'timeout') {
+			await db.endActiveModeration(Number(memberRow.id), ['timeout']);
+		}
 	}
 	await recordCase(client, guild, serverId, {
 		action,
@@ -495,11 +624,15 @@ async function recordNativeCase(
 	});
 }
 
-async function sendModerationLog(client, embedData, guildId = null) {
-	if (!guildId) return;
+async function sendModerationLog(client: Client, embedData: ModerationLogEmbed, guildId: string | null = null) {
+	if (!guildId) {
+		return;
+	}
 	const logChannelId = await MODERATION_CONFIG.getLogChannel(guildId);
-	if (!logChannelId) return;
-	const channel = client.channels.cache.get(logChannelId);
+	if (!logChannelId) {
+		return;
+	}
+	const channel = client.channels.cache.get(logChannelId) as GuildTextBasedChannel | undefined;
 	if (!channel) {
 		await logger.log(`❌ Moderation log channel not found: ${logChannelId}`);
 		return;
@@ -538,11 +671,15 @@ async function sendModerationLog(client, embedData, guildId = null) {
 
 		await logger.log(`✅ Sent moderation log: ${embedData.title} for ${embedData.userTag || 'unknown'}`);
 	} catch (err) {
-		await logger.log(`❌ Failed to send moderation log: ${err.message}`);
+		await logger.log(`❌ Failed to send moderation log: ${(err as Error).message}`);
 	}
 }
 
-async function getAuditLogEntry(guild, action, targetId) {
+async function getAuditLogEntry(
+	guild: Guild,
+	action: AuditLogEvent.MemberKick | AuditLogEvent.MemberBanAdd | AuditLogEvent.MemberBanRemove | AuditLogEvent.MemberUpdate,
+	targetId: string
+) {
 	try {
 		const auditLogs = await guild.fetchAuditLogs({
 			limit: 1,
@@ -550,24 +687,24 @@ async function getAuditLogEntry(guild, action, targetId) {
 		});
 
 		const entry = auditLogs.entries.first();
-		if (entry && entry.target.id === targetId) {
+		if (entry && entry.target!.id === targetId) {
 			return entry;
 		}
 		return null;
 	} catch (err) {
-		await logger.log(`⚠️ Could not fetch audit log for ${action}: ${err.message}`);
+		await logger.log(`⚠️ Could not fetch audit log for ${action}: ${(err as Error).message}`);
 		return null;
 	}
 }
 
-function init(client) {
+function init(client: Client<true>) {
 	client.on('guildBanAdd', async (ban) => {
 		try {
 			const { guild, user } = ban;
 			const auditEntry = await getAuditLogEntry(guild, 22, user.id);
 			await recordNativeCase(client, guild, 'ban', user.id, auditEntry?.executor?.id ?? null, ban.reason || auditEntry?.reason || null);
 		} catch (err) {
-			await logger.log(`❌ Error handling ban: ${err.message}`);
+			await logger.log(`❌ Error handling ban: ${(err as Error).message}`);
 		}
 	});
 
@@ -577,19 +714,23 @@ function init(client) {
 			const auditEntry = await getAuditLogEntry(guild, 23, user.id);
 			await recordNativeCase(client, guild, 'unban', user.id, auditEntry?.executor?.id ?? null, auditEntry?.reason || null);
 		} catch (err) {
-			await logger.log(`❌ Error handling unban: ${err.message}`);
+			await logger.log(`❌ Error handling unban: ${(err as Error).message}`);
 		}
 	});
 
-	client.on('guildMemberUpdate', async (oldMember, newMember) => {
+	client.on('guildMemberUpdate', async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) => {
 		try {
 			const before = oldMember.communicationDisabledUntilTimestamp ?? null;
 			const after = newMember.communicationDisabledUntilTimestamp ?? null;
-			if (before === after) return;
+			if (before === after) {
+				return;
+			}
 			const now = Date.now();
 			const timedOut = after !== null && after > now;
 			const wasTimedOut = before !== null && before > now;
-			if (!timedOut && !wasTimedOut) return;
+			if (!timedOut && !wasTimedOut) {
+				return;
+			}
 			const auditEntry = await getAuditLogEntry(newMember.guild, 24, newMember.id);
 			if (timedOut) {
 				await recordNativeCase(
@@ -605,19 +746,23 @@ function init(client) {
 				await recordNativeCase(client, newMember.guild, 'untimeout', newMember.id, auditEntry?.executor?.id ?? null, auditEntry?.reason || null);
 			}
 		} catch (err) {
-			await logger.log(`❌ Error handling timeout change: ${err.message}`);
+			await logger.log(`❌ Error handling timeout change: ${(err as Error).message}`);
 		}
 	});
 
-	client.on('guildMemberRemove', async (member) => {
+	client.on('guildMemberRemove', async (member: GuildMember | PartialGuildMember) => {
 		try {
 			const banEntry = await getAuditLogEntry(member.guild, 22, member.user.id);
-			if (banEntry && Date.now() - banEntry.createdTimestamp < 5000) return;
+			if (banEntry && Date.now() - banEntry.createdTimestamp < 5000) {
+				return;
+			}
 			const kickEntry = await getAuditLogEntry(member.guild, 20, member.user.id);
-			if (!kickEntry || Date.now() - kickEntry.createdTimestamp > 10000) return;
+			if (!kickEntry || Date.now() - kickEntry.createdTimestamp > 10000) {
+				return;
+			}
 			await recordNativeCase(client, member.guild, 'kick', member.user.id, kickEntry.executor?.id ?? null, kickEntry.reason || null);
 		} catch (err) {
-			await logger.log(`❌ Error handling member remove: ${err.message}`);
+			await logger.log(`❌ Error handling member remove: ${(err as Error).message}`);
 		}
 	});
 }

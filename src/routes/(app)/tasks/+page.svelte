@@ -20,9 +20,13 @@
 
 	const filtered = $derived(
 		data.tasks.filter((task) => {
-			if (module !== 'all' && task.requires !== module) return false;
+			if (module !== 'all' && task.requires !== module) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${task.label} ${task.example} ${task.unit}`.toLowerCase().includes(needle);
 		})
 	);

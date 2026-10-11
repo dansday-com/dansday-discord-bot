@@ -16,29 +16,36 @@ import { textField, checkboxField, checkboxValue, radioField, radioValue, select
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
+import type { Guild, GuildMember, Role } from 'discord.js';
+import type { ButtonInteraction, MessageComponentInteraction, ModalSubmitInteraction, RepliableInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 
-async function getCategoryLabel(guildId, userId, category) {
+async function getCategoryLabel(guildId: string, userId: string, category: unknown) {
 	const key = `staffRating.categories.${category}`;
 	return await translate(key, guildId, userId);
 }
 
-function getCategoryLabelFor(tr: Translator, category) {
+function getCategoryLabelFor(tr: Translator, category: string) {
 	const key = `staffRating.categories.${category}`;
 	return tr(key) || category;
 }
 
-async function onRatingCooldown(serverId, reporterDbId, staffDiscordId: string, cooldownDays: number) {
-	if (!Number.isFinite(cooldownDays) || cooldownDays <= 0) return false;
+async function onRatingCooldown(serverId: number, reporterDbId: number, staffDiscordId: string, cooldownDays: number | null) {
+	if (!Number.isFinite(cooldownDays) || cooldownDays! <= 0) {
+		return false;
+	}
 	const staffDbMember = await db.getMemberByDiscordId(serverId, staffDiscordId).catch(() => null);
-	if (!staffDbMember) return false;
+	if (!staffDbMember) {
+		return false;
+	}
 	const lastReport = await db.getLastStaffRatingReport(serverId, reporterDbId, staffDbMember.id).catch(() => null);
 	const lastRated = lastReport ? parseMySQLDateTimeUtc(lastReport.reported_at) : null;
-	return !!lastRated && (Date.now() - lastRated.getTime()) / (1000 * 60 * 60 * 24) < cooldownDays;
+	return !!lastRated && (Date.now() - lastRated.getTime()) / (1000 * 60 * 60 * 24) < cooldownDays!;
 }
 
-async function buildStaffOptions(interaction) {
+async function buildStaffOptions(interaction: RepliableInteraction<'cached'>) {
 	const guild = interaction.guild;
 
 	try {
@@ -53,8 +60,10 @@ async function buildStaffOptions(interaction) {
 
 		for (const roleId of staffRoleIds) {
 			const role = guild.roles.cache.get(roleId);
-			if (!role) continue;
-			role.members.forEach((member) => {
+			if (!role) {
+				continue;
+			}
+			role.members.forEach((member: GuildMember) => {
 				if (!member.user.bot) {
 					staffMembers.set(member.id, member);
 				}
@@ -63,9 +72,11 @@ async function buildStaffOptions(interaction) {
 
 		if (staffMembers.size === 0) {
 			await guild.members.fetch({ withPresences: false }).catch(() => null);
-			guild.members.cache.forEach((member) => {
-				if (member.user.bot) return;
-				if (member.roles.cache.some((role) => staffRoleIds.includes(role.id))) {
+			guild.members.cache.forEach((member: GuildMember) => {
+				if (member.user.bot) {
+					return;
+				}
+				if (member.roles.cache.some((role: Role) => staffRoleIds.includes(role.id))) {
 					staffMembers.set(member.id, member);
 				}
 			});
@@ -93,12 +104,12 @@ async function buildStaffOptions(interaction) {
 
 		return { options, reason: null };
 	} catch (error) {
-		await logger.log(`❌ Failed to build staff options: ${error.message}`);
+		await logger.log(`❌ Failed to build staff options: ${(error as Error).message}`);
 		return { options: [], reason: 'error' };
 	}
 }
 
-function truncateDescription(text) {
+function truncateDescription(text: string | null | undefined) {
 	if (!text) {
 		return '—';
 	}
@@ -198,7 +209,7 @@ function buildReportLogEmbed({
 	return embed;
 }
 
-export async function handleStaffRatingButton(interaction) {
+export async function handleStaffRatingButton(interaction: ButtonInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 
@@ -236,7 +247,7 @@ export async function handleStaffRatingButton(interaction) {
 			return;
 		}
 
-		const server = await db.getServerByDiscordId(getBotConfig().id, interaction.guild.id);
+		const server = await db.getServerByDiscordId(getBotConfig()!.id, interaction.guild.id);
 		const reporterDbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
 		const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
 		const blocked = await Promise.all(
@@ -287,7 +298,7 @@ export async function handleStaffRatingButton(interaction) {
 
 		await logger.log(`📋 Staff rating form shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error showing staff report selection: ${error.message}`);
+		await logger.log(`❌ Error showing staff report selection: ${(error as Error).message}`);
 		const errorMsg = await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -300,7 +311,7 @@ export async function handleStaffRatingButton(interaction) {
 	}
 }
 
-export async function handleStaffRatingModal(interaction) {
+export async function handleStaffRatingModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -342,7 +353,7 @@ export async function handleStaffRatingModal(interaction) {
 			return;
 		}
 
-		if (!VALID_CATEGORIES.includes(category)) {
+		if (!VALID_CATEGORIES.includes(category as string)) {
 			const errorMsg = await translate('staffRating.errors.invalidCategory', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({
 				content: errorMsg
@@ -362,7 +373,7 @@ export async function handleStaffRatingModal(interaction) {
 		const isAnonymous = checkboxValue(interaction.fields, 'anonymous', false);
 
 		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		const server = await db.getServerByDiscordId(botConfig!.id, guild.id);
 
 		const reporterDbMember = await db.upsertMember(server.id, member);
 		const staffMember = await guild.members.fetch(staffUserId).catch(() => null);
@@ -401,8 +412,8 @@ export async function handleStaffRatingModal(interaction) {
 			const now = Date.now();
 			const daysPassed = (now - lastRatedTime) / (1000 * 60 * 60 * 24);
 
-			if (Number.isFinite(cooldownDays) && cooldownDays > 0 && daysPassed < cooldownDays) {
-				const daysRemaining = Math.ceil(cooldownDays - daysPassed);
+			if (Number.isFinite(cooldownDays) && cooldownDays! > 0 && daysPassed < cooldownDays!) {
+				const daysRemaining = Math.ceil(cooldownDays! - daysPassed);
 				const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
 
 				const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
@@ -420,7 +431,7 @@ export async function handleStaffRatingModal(interaction) {
 			}
 		}
 
-		const reportId = await db.createStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id, rating, category, description, isAnonymous);
+		const reportId = await db.createStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id, rating, category!, description, isAnonymous);
 
 		const embedConfig = await getEmbedConfig(interaction.guild.id);
 		const successTitle = await translate('staffRating.submitted.title', interaction.guild.id, interaction.user.id);
@@ -447,7 +458,7 @@ export async function handleStaffRatingModal(interaction) {
 			const reportChannel = guild.channels.cache.get(reportChannelId) || (await guild.channels.fetch(reportChannelId).catch(() => null));
 			if (reportChannel && reportChannel.isTextBased()) {
 				const tr = await serverTranslator(guild.id);
-				const categoryLabel = getCategoryLabelFor(tr, category);
+				const categoryLabel = getCategoryLabelFor(tr, category!);
 				const reporterDisplay = isAnonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${interaction.user.id}>`;
 				const pendingTitle = tr('staffRating.channelEmbed.pendingTitle');
 				const pendingStatus = tr('staffRating.channelEmbed.pendingStatus');
@@ -473,13 +484,13 @@ export async function handleStaffRatingModal(interaction) {
 				const rejectButton = new ButtonBuilder().setCustomId(`staff_rating_reject|${reportId}`).setLabel(rejectLabel).setStyle(ButtonStyle.Danger);
 
 				const pendingRoleId = await STAFF_RATING.getPendingRole(guild.id);
-				const content = pendingRoleId ? `<@&${pendingRoleId}>` : null;
+				const content = pendingRoleId ? `<@&${pendingRoleId}>` : undefined;
 
 				await reportChannel
 					.send({
 						content,
 						embeds: [logEmbed],
-						components: [new ActionRowBuilder().addComponents(approveButton, rejectButton)]
+						components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(approveButton, rejectButton)]
 					})
 					.catch(() => null);
 			}
@@ -489,8 +500,8 @@ export async function handleStaffRatingModal(interaction) {
 			`✅ Staff report #${reportId} submitted by ${user.tag} (${user.id}) for staff ${staffMember.user.tag} (${staffUserId}) - Rating: ${rating}, Category: ${category}`
 		);
 	} catch (error) {
-		await logger.log(`❌ Error processing staff report: ${error.message}`);
-		await logger.log(`❌ Stack: ${error.stack}`);
+		await logger.log(`❌ Error processing staff report: ${(error as Error).message}`);
+		await logger.log(`❌ Stack: ${(error as Error).stack}`);
 		const errorMsg = await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -500,7 +511,13 @@ export async function handleStaffRatingModal(interaction) {
 	}
 }
 
-async function notifyReporterOfDecision(guild, report, translationKey, categoryLabel, reviewReason) {
+async function notifyReporterOfDecision(
+	guild: Guild,
+	report: NonNullable<Awaited<ReturnType<typeof db.getStaffReportById>>>,
+	translationKey: string,
+	categoryLabel: string,
+	reviewReason: string
+) {
 	if (!report?.reporter_discord_id) {
 		await logger.log(`⚠️ Cannot send DM notification: reporter_discord_id is missing`);
 		return;
@@ -528,13 +545,13 @@ async function notifyReporterOfDecision(guild, report, translationKey, categoryL
 		await reporterUser.send({ embeds: [embed] });
 		await logger.log(`✅ Sent DM notification (${translationKey}) to reporter ${report.reporter_discord_id} for report #${report.id}`);
 	} catch (error) {
-		await logger.log(`⚠️ Failed to send DM notification (${translationKey}) to reporter ${report.reporter_discord_id}: ${error.message}`);
+		await logger.log(`⚠️ Failed to send DM notification (${translationKey}) to reporter ${report.reporter_discord_id}: ${(error as Error).message}`);
 	}
 }
 
 const REVIEW_DECISION_REASON_INPUT = 'review_decision_reason';
 
-export async function handleStaffRatingDecisionModal(interaction) {
+export async function handleStaffRatingDecisionModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -588,7 +605,7 @@ export async function handleStaffRatingDecisionModal(interaction) {
 		}
 
 		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		const server = await db.getServerByDiscordId(botConfig!.id, guild.id);
 		if (!server) {
 			await interaction
 				.editReply({
@@ -617,7 +634,7 @@ export async function handleStaffRatingDecisionModal(interaction) {
 				sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
 			}
 		} catch (fetchErr) {
-			await logger.log(`⚠️ Could not fetch staff report log message: ${fetchErr.message}`);
+			await logger.log(`⚠️ Could not fetch staff report log message: ${(fetchErr as Error).message}`);
 		}
 
 		if (report.status !== 'pending') {
@@ -709,7 +726,7 @@ export async function handleStaffRatingDecisionModal(interaction) {
 			`${decisionRaw === 'approve' ? '✅' : '⛔'} Staff report #${report.id} ${decisionRaw} by ${interaction.user.tag} (${interaction.user.id})`
 		);
 	} catch (error) {
-		await logger.log(`❌ Error handling staff report decision modal: ${error.message}`);
+		await logger.log(`❌ Error handling staff report decision modal: ${(error as Error).message}`);
 		await interaction
 			.editReply({
 				content: await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, {
@@ -720,7 +737,7 @@ export async function handleStaffRatingDecisionModal(interaction) {
 	}
 }
 
-async function showStaffRatingReviewModal(interaction, decision) {
+async function showStaffRatingReviewModal(interaction: MessageComponentInteraction<'cached'>, decision: string) {
 	const guild = interaction.guild;
 	const [, reportIdStr] = interaction.customId.split('|');
 	const messageId = interaction.message?.id;
@@ -750,18 +767,18 @@ async function showStaffRatingReviewModal(interaction, decision) {
 	await interaction.showModal(modal);
 }
 
-export async function handleStaffRatingApprove(interaction) {
+export async function handleStaffRatingApprove(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		await showStaffRatingReviewModal(interaction, 'approve');
 	} catch (error) {
-		await logger.log(`❌ Error opening staff report approve modal: ${error.message}`);
+		await logger.log(`❌ Error opening staff report approve modal: ${(error as Error).message}`);
 	}
 }
 
-export async function handleStaffRatingReject(interaction) {
+export async function handleStaffRatingReject(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		await showStaffRatingReviewModal(interaction, 'reject');
 	} catch (error) {
-		await logger.log(`❌ Error opening staff report reject modal: ${error.message}`);
+		await logger.log(`❌ Error opening staff report reject modal: ${(error as Error).message}`);
 	}
 }

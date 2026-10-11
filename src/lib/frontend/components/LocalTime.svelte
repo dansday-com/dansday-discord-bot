@@ -12,7 +12,9 @@
 	let { value, includeSeconds = false, fallback = '—', class: className = '' }: Props = $props();
 
 	const utcText = $derived.by(() => {
-		if (value == null || value === '') return fallback;
+		if (value == null || value === '') {
+			return fallback;
+		}
 		const s = formatDbDateTime(value, includeSeconds);
 		return s === '—' ? fallback : s;
 	});

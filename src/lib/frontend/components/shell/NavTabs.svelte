@@ -22,14 +22,18 @@
 
 	function update() {
 		const el = strip;
-		if (!el) return;
+		if (!el) {
+			return;
+		}
 		canLeft = el.scrollLeft > 1;
 		canRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
 	}
 
 	function nudge(dir: -1 | 1) {
 		const el = strip;
-		if (!el) return;
+		if (!el) {
+			return;
+		}
 		el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: 'smooth' });
 	}
 
@@ -59,7 +63,7 @@
 	<div
 		bind:this={strip}
 		onscroll={update}
-		class="flex overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {variant === 'segment'
+		class="flex [scrollbar-width:none] overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden {variant === 'segment'
 			? 'border-base-300 bg-base-200 min-w-0 flex-auto gap-[3px] rounded-xl border p-[3px]'
 			: 'gap-2'}"
 	>

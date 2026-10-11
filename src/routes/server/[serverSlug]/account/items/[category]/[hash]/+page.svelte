@@ -29,17 +29,17 @@
 
 	const tzOffset = () => -new Date().getTimezoneOffset();
 
-	const byCost = (a: any, b: any) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
+	const byCost = (a: Record<string, unknown>, b: Record<string, unknown>) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
 
 	const shopItems = $derived(
 		(data.visibleItems ?? [])
-			.map((item: any) => {
+			.map((item) => {
 				const a = itemAvailability(item, ctx.now, tzOffset());
 				const buyable = item.enabled !== false && (a.state === 'always' || a.state === 'active');
 				return { ...item, availableUntil: a.availableUntil, _state: a.state, _startsAt: a.startsAt, _buyable: buyable };
 			})
-			.filter((item: any) => item.enabled !== false || item.usable !== false)
-			.filter((item: any) => item._state === 'active' || item._state === 'upcoming' || item._buyable || (Number(item.owned_quantity) || 0) > 0)
+			.filter((item) => item.enabled !== false || item.usable !== false)
+			.filter((item) => item._state === 'active' || item._state === 'upcoming' || item._buyable || (Number(item.owned_quantity) || 0) > 0)
 	);
 
 	const groups = $derived.by(() => {
@@ -47,12 +47,16 @@
 		if (data.category !== 'all') {
 			return [{ key: 'flat', label: '', icon: '', items: list }];
 		}
-		const out: { key: string; label: string; icon: string; items: any[] }[] = [];
+		const out: { key: string; label: string; icon: string; items: unknown[] }[] = [];
 		const limited = list.filter((i) => i.availableUntil && i.availableUntil > ctx.now);
-		if (limited.length > 0) out.push({ key: 'limited', label: 'Limited', icon: 'fa-hourglass-half', items: limited });
+		if (limited.length > 0) {
+			out.push({ key: 'limited', label: 'Limited', icon: 'fa-hourglass-half', items: limited });
+		}
 		for (const eff of ITEM_EFFECTS) {
 			const items = list.filter((i) => i.effect_type === eff.id);
-			if (items.length > 0) out.push({ key: eff.id, label: eff.label, icon: eff.icon, items });
+			if (items.length > 0) {
+				out.push({ key: eff.id, label: eff.label, icon: eff.icon, items });
+			}
 		}
 		return out;
 	});
@@ -84,7 +88,9 @@
 				ctx.setLiveXp(optimistic);
 				ctx.flyToBag(medallion, effectIcon(item.effect_type));
 				await ctx.invalidateAll();
-			} else showToast(d.error || 'Purchase failed', 'error');
+			} else {
+				showToast(d.error || 'Purchase failed', 'error');
+			}
 		} catch {
 			showToast('Purchase failed', 'error');
 		} finally {
@@ -99,42 +105,64 @@
 	let discardingId = $state<number | null>(null);
 
 	$effect(() => {
-		if (pickingTargetFor === null && outcome === null) return;
+		if (pickingTargetFor === null && outcome === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
-	function showOutcome(effectType: string, result: any) {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+	function showOutcome(effectType: string, result: unknown) {
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = describeItemOutcome(effectType, result);
-		if (!outcome.spyReport) outcomeTimer = setTimeout(() => (outcome = null), 3500);
+		if (!outcome.spyReport) {
+			outcomeTimer = setTimeout(() => (outcome = null), 3500);
+		}
 	}
 	function showFailOutcome(title: string, line: string) {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = { tone: 'lose', icon: 'fa-triangle-exclamation', title, line, deltaXp: null, untilMs: null };
 		outcomeTimer = setTimeout(() => (outcome = null), 3500);
 	}
 	function dismissOutcome() {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = null;
 	}
 
 	function untilLabel(ms: number | null): string {
-		if (!ms) return '';
+		if (!ms) {
+			return '';
+		}
 		return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 	}
 	function relUntil(ms: number): string {
 		const mins = Math.max(0, Math.round((ms - Date.now()) / 60000));
-		if (mins <= 0) return 'now';
+		if (mins <= 0) {
+			return 'now';
+		}
 		return formatDuration(mins);
 	}
 	function effectLine(e: any): string {
-		if (e.effect_type === 'boost') return `${e.effect_value || 2}× Boost`;
+		if (e.effect_type === 'boost') {
+			return `${e.effect_value || 2}× Boost`;
+		}
 		if (e.effect_type === 'leech') {
-			if (e.leechRole === 'victim') return `Leeched by ${e.leechWith} (${e.effect_value || 0}%)`;
+			if (e.leechRole === 'victim') {
+				return `Leeched by ${e.leechWith} (${e.effect_value || 0}%)`;
+			}
 			return `Leeching ${e.leechWith} (${e.effect_value || 0}%)`;
 		}
-		if (e.effect_type === 'insurance') return `Insurance (${e.effect_value || 0}% refund)`;
-		if (e.effect_type === 'luck') return `+${e.effect_value || 0}% Luck`;
+		if (e.effect_type === 'insurance') {
+			return `Insurance (${e.effect_value || 0}% refund)`;
+		}
+		if (e.effect_type === 'luck') {
+			return `+${e.effect_value || 0}% Luck`;
+		}
 		return effectLabel(e.effect_type);
 	}
 	const cooldownLabels: Record<string, string> = {
@@ -156,7 +184,9 @@
 			if (d.success) {
 				await ctx.invalidateAll();
 				showOutcome(item.effect_type, d.result ?? { outcome: d.outcome });
-			} else showFailOutcome(`${item.name} failed`, d.error || 'Please try again.');
+			} else {
+				showFailOutcome(`${item.name} failed`, d.error || 'Please try again.');
+			}
 		} finally {
 			ctx.setBusy(null);
 		}
@@ -174,7 +204,9 @@
 		if (TARGETED.has(item.effect_type)) {
 			targetSearch = '';
 			pickingTargetFor = item;
-		} else useItem(item);
+		} else {
+			useItem(item);
+		}
 	}
 
 	async function pickTarget(item: any, targetDiscordId: string) {
@@ -183,8 +215,12 @@
 	}
 
 	function poof(fromEl: HTMLElement | null, iconClass: string) {
-		if (!fromEl || typeof document === 'undefined') return;
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (!fromEl || typeof document === 'undefined') {
+			return;
+		}
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
 		const start = fromEl.getBoundingClientRect();
 		const clone = document.createElement('div');
 		clone.className = 'fixed z-9999 pointer-events-none text-[26px] leading-none text-base-content/45';
@@ -221,7 +257,9 @@
 				poof(medallion, effectIcon(item.effect_type));
 				showToast(`Removed one ${item.name}`, 'success');
 				await ctx.invalidateAll();
-			} else showToast(d.error || 'Failed to remove item', 'error');
+			} else {
+				showToast(d.error || 'Failed to remove item', 'error');
+			}
 		} catch {
 			showToast('Failed to remove item', 'error');
 		} finally {

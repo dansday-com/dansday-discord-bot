@@ -7,12 +7,18 @@ import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
 export const load: PageServerLoad = async ({ parent, params, cookies }) => {
 	const { server, serverBasePath, itemsEnabled, minigamesEnabled, marketEnabled, tasksEnabled } = await parent();
 
-	if (!tasksEnabled) return { featureDisabled: true, server, hash: itemsCardTokenFromUrl(params.hash), tasks: null };
+	if (!tasksEnabled) {
+		return { featureDisabled: true, hash: itemsCardTokenFromUrl(params.hash), tasks: null };
+	}
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, apexHome());
-	if ('guest' in shared || !shared.member) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(303, apexHome());
+	}
+	if ('guest' in shared || !shared.member) {
+		redirect(303, serverBasePath || '/');
+	}
 
 	const rawTz = cookies.get('tz_offset');
 	const knownTz = rawTz != null && rawTz !== '' && Number.isFinite(Number(rawTz));

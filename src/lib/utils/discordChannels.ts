@@ -1,33 +1,63 @@
+type SyncableChannel = {
+	id: string;
+	name?: string | null;
+	type: number | string;
+	parentId?: string | null;
+	position?: number | null;
+	viewable?: boolean;
+	isThread?: () => boolean;
+};
+
 export function separateChannelsAndCategories(guildChannels: Map<string, any>) {
 	const channelsArray = Array.from(guildChannels.values());
 
-	const isThreadType = (type: any) => {
-		if (typeof type === 'number') return type === 10 || type === 11 || type === 12;
-		if (typeof type === 'string') return type === 'GUILD_NEWS_THREAD' || type === 'GUILD_PUBLIC_THREAD' || type === 'GUILD_PRIVATE_THREAD';
+	const isThreadType = (type: unknown) => {
+		if (typeof type === 'number') {
+			return type === 10 || type === 11 || type === 12;
+		}
+		if (typeof type === 'string') {
+			return type === 'GUILD_NEWS_THREAD' || type === 'GUILD_PUBLIC_THREAD' || type === 'GUILD_PRIVATE_THREAD';
+		}
 		return false;
 	};
 
-	const isCategoryType = (type: any) => {
-		if (typeof type === 'number') return type === 4;
-		if (typeof type === 'string') return type === 'GUILD_CATEGORY';
+	const isCategoryType = (type: unknown) => {
+		if (typeof type === 'number') {
+			return type === 4;
+		}
+		if (typeof type === 'string') {
+			return type === 'GUILD_CATEGORY';
+		}
 		return false;
 	};
 
-	const isTextOrNewsType = (type: any) => {
-		if (typeof type === 'number') return type === 0 || type === 5;
-		if (typeof type === 'string') return type === 'GUILD_TEXT' || type === 'GUILD_NEWS';
+	const isTextOrNewsType = (type: unknown) => {
+		if (typeof type === 'number') {
+			return type === 0 || type === 5;
+		}
+		if (typeof type === 'string') {
+			return type === 'GUILD_TEXT' || type === 'GUILD_NEWS';
+		}
 		return false;
 	};
 
-	const isVoiceType = (type: any) => {
-		if (typeof type === 'number') return type === 2;
-		if (typeof type === 'string') return type === 'GUILD_VOICE';
+	const isVoiceType = (type: unknown) => {
+		if (typeof type === 'number') {
+			return type === 2;
+		}
+		if (typeof type === 'string') {
+			return type === 'GUILD_VOICE';
+		}
 		return false;
 	};
 
-	const isStageType = (type: any) => {
-		if (typeof type === 'number') return type === 13;
-		if (typeof type === 'string') return type === 'GUILD_STAGE_VOICE';
+	const isStageType = (type: unknown) => {
+		if (typeof type === 'number') {
+			return type === 13;
+		}
+		if (typeof type === 'string') {
+			return type === 'GUILD_STAGE_VOICE';
+		}
 		return false;
 	};
 
@@ -46,17 +76,27 @@ export function separateChannelsAndCategories(guildChannels: Map<string, any>) {
 const SYNCED_CHANNEL_TYPES = new Set([0, 2, 4, 5, 13]);
 const SYNCED_CHANNEL_TYPE_NAMES = new Set(['GUILD_TEXT', 'GUILD_VOICE', 'GUILD_CATEGORY', 'GUILD_NEWS', 'GUILD_STAGE_VOICE']);
 
-export function isSyncedChannelType(channel: any): boolean {
-	if (!channel) return false;
-	if (channel.isThread ? channel.isThread() : false) return false;
-	if (typeof channel.type === 'number') return SYNCED_CHANNEL_TYPES.has(channel.type);
-	if (typeof channel.type === 'string') return SYNCED_CHANNEL_TYPE_NAMES.has(channel.type);
+export function isSyncedChannelType(channel: SyncableChannel): boolean {
+	if (!channel) {
+		return false;
+	}
+	if (channel.isThread ? channel.isThread() : false) {
+		return false;
+	}
+	if (typeof channel.type === 'number') {
+		return SYNCED_CHANNEL_TYPES.has(channel.type);
+	}
+	if (typeof channel.type === 'string') {
+		return SYNCED_CHANNEL_TYPE_NAMES.has(channel.type);
+	}
 	return false;
 }
 
-export function channelSyncSignature(channel: any): string {
-	if (!channel) return '';
-	let viewable: any = null;
+export function channelSyncSignature(channel: SyncableChannel): string {
+	if (!channel) {
+		return '';
+	}
+	let viewable: unknown = null;
 	try {
 		viewable = channel.viewable;
 	} catch (_) {

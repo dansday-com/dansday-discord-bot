@@ -22,7 +22,9 @@ export const DURATION_UNITS = [
 ];
 
 export function formatDuration(seconds: number | null | undefined): string | null {
-	if (!seconds) return null;
+	if (!seconds) {
+		return null;
+	}
 	const d = Math.floor(seconds / 86400);
 	const h = Math.floor((seconds % 86400) / 3600);
 	const m = Math.floor((seconds % 3600) / 60);
@@ -31,8 +33,12 @@ export function formatDuration(seconds: number | null | undefined): string | nul
 
 export function splitDuration(seconds: number | null | undefined): { amount: number; unit: string } {
 	const s = Number(seconds) || 0;
-	if (s > 0 && s % 86400 === 0) return { amount: s / 86400, unit: '86400' };
-	if (s > 0 && s % 3600 === 0) return { amount: s / 3600, unit: '3600' };
+	if (s > 0 && s % 86400 === 0) {
+		return { amount: s / 86400, unit: '86400' };
+	}
+	if (s > 0 && s % 3600 === 0) {
+		return { amount: s / 3600, unit: '3600' };
+	}
 	return { amount: Math.max(1, Math.round(s / 60)), unit: '60' };
 }
 
@@ -55,7 +61,9 @@ export async function moderateEach(
 			const out = await res.json().catch(() => ({}));
 			if (res.ok && out.ok) {
 				result.done++;
-				if (out.escalated) result.escalated++;
+				if (out.escalated) {
+					result.escalated++;
+				}
 			} else {
 				result.failed++;
 				result.failedIds.push(targetId);

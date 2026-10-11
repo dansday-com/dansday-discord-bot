@@ -36,7 +36,9 @@
 	}
 
 	function saveModal() {
-		if (!draftText.trim()) return;
+		if (!draftText.trim()) {
+			return;
+		}
 		if (editIndex !== null) {
 			const next = [...values];
 			next[editIndex] = draftText;
@@ -128,7 +130,7 @@
 					<div class="grid grid-cols-2 gap-2 text-xs">
 						{#each placeholders as p}
 							<div class="text-ash-300 flex items-center gap-2">
-								<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{' + p.code + '}'}</code>
+								<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{`{${p.code}}`}</code>
 								<span>{p.desc}</span>
 							</div>
 						{/each}

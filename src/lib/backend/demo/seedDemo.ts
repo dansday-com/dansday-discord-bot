@@ -75,7 +75,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 		.where(sql`${schema.accounts.username} = ${sessionUsername}`)
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
-	if (!demoAdmin?.id) throw new Error('Failed to ensure demo superadmin');
+	if (!demoAdmin?.id) {
+		throw new Error('Failed to ensure demo superadmin');
+	}
 
 	await db
 		.insert(schema.panel)
@@ -88,7 +90,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 		.where(sql`${schema.panel.account_id} = ${demoAdmin.id}`)
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
-	if (!demoPanel?.id) throw new Error('Failed to ensure demo panel');
+	if (!demoPanel?.id) {
+		throw new Error('Failed to ensure demo panel');
+	}
 
 	await db
 		.insert(schema.bots)
@@ -117,11 +121,13 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 	const botRow = await db
 		.select()
 		.from(schema.bots)
-		.where(sql`${schema.bots.application_id} = ${'demo_app_' + sessionSlug}`)
+		.where(sql`${schema.bots.application_id} = ${`demo_app_${sessionSlug}`}`)
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 
-	if (!botRow?.id) throw new Error('Failed to ensure demo bot');
+	if (!botRow?.id) {
+		throw new Error('Failed to ensure demo bot');
+	}
 
 	const seededItems: { id: number; effect: string }[] = [];
 	for (let idx = 0; idx < ITEM_EFFECTS.length; idx++) {
@@ -147,7 +153,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.where(sql`${schema.items.panel_id} = ${demoPanel.id} AND ${schema.items.effect_type} = ${effect.id}`)
 			.limit(1)
 			.then((r: any[]) => r[0] ?? null);
-		if (itemRow?.id) seededItems.push({ id: itemRow.id, effect: effect.id });
+		if (itemRow?.id) {
+			seededItems.push({ id: itemRow.id, effect: effect.id });
+		}
 	}
 	const ownableItems = seededItems;
 
@@ -203,7 +211,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.where(sql`${schema.servers.discord_server_id} = ${discordServerId}`)
 			.limit(1)
 			.then((r: any[]) => r[0] ?? null);
-		if (!serverRow?.id) throw new Error(`Failed to ensure demo server ${s}`);
+		if (!serverRow?.id) {
+			throw new Error(`Failed to ensure demo server ${s}`);
+		}
 		serverIds.push(serverRow.id);
 
 		const slug = slugifySimple(`${sessionSlug}-${s}`);
@@ -278,13 +288,13 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.select()
 			.from(schema.serverRoles)
 			.where(sql`${schema.serverRoles.server_id} = ${serverRow.id}`);
-		const roleId = (key: string) => seededRoles.find((r: any) => r.discord_role_id === `${pfx}_role_${key}`)?.id ?? null;
+		const roleId = (key: string) => seededRoles.find((r) => r.discord_role_id === `${pfx}_role_${key}`)?.id ?? null;
 
 		const categories = await db
 			.select()
 			.from(schema.serverCategories)
 			.where(sql`${schema.serverCategories.server_id} = ${serverRow.id}`);
-		const catId = (discordId: string) => categories.find((c: any) => c.discord_category_id === discordId)?.id ?? null;
+		const catId = (discordId: string) => categories.find((c) => c.discord_category_id === discordId)?.id ?? null;
 
 		await db
 			.insert(schema.serverChannels)
@@ -390,10 +400,10 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				display_name: `Demo ${username}`,
 				server_display_name: n % 5 === 0 ? `[AFK] ${firstNames[(i + 3) % firstNames.length]}-${n}` : `${firstNames[(i + 3) % firstNames.length]}-${n}`,
 				avatar: null,
-				profile_created_at: toMySQLDateTime(new Date(base - n * 86400000)) as any,
-				member_since: toMySQLDateTime(new Date(base - n * 43200000)) as any,
+				profile_created_at: toMySQLDateTime(new Date(base - n * 86400000)),
+				member_since: toMySQLDateTime(new Date(base - n * 43200000)),
 				is_booster: n % 9 === 0,
-				booster_since: n % 9 === 0 ? (toMySQLDateTime(new Date(base - n * 22200000)) as any) : (null as any),
+				booster_since: n % 9 === 0 ? toMySQLDateTime(new Date(base - n * 22200000)) : null,
 				language: null,
 				created_at: nowDb,
 				updated_at: nowDb,
@@ -457,7 +467,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				.limit(1)
 				.then((r: any[]) => r[0] ?? null);
 
-			if (!memberRow?.id) continue;
+			if (!memberRow?.id) {
+				continue;
+			}
 			seededMemberIds.push(Number(memberRow.id));
 
 			await db
@@ -493,7 +505,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				for (let b = 0; b < bagSize; b++) {
 					const it = ownableItems[(mi + b) % ownableItems.length];
 					const qty = 1 + ((mi + b) % 5);
-					if (bagTotal + qty > 50) break;
+					if (bagTotal + qty > 50) {
+						break;
+					}
 					bagTotal += qty;
 					const acquiredAt = toMySQLDateTime(new Date(base - (mi + b) * 3_600_000)) as any;
 					await db

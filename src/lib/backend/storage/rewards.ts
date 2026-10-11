@@ -10,12 +10,14 @@ export function rewardImageKey(serverId: any, filename: string): string {
 	return store.key([serverId], filename);
 }
 
-export function rewardImageBelongsTo(key: unknown, serverId: any): boolean {
+export function rewardImageBelongsTo(key: string, serverId: number | string): boolean {
 	return store.belongsTo(key, serverId);
 }
 
 export function rewardImageUrl(key: string | null | undefined): string | null {
-	if (!key || !store.isKey(key)) return null;
+	if (!key || !store.isKey(key)) {
+		return null;
+	}
 	return store.url(key);
 }
 
@@ -32,5 +34,7 @@ export async function readRewardImage(key: string): Promise<Buffer | null> {
 }
 
 export async function removeRewardImage(key: string | null | undefined): Promise<void> {
-	if (key && store.isKey(key)) await store.remove(key);
+	if (key && store.isKey(key)) {
+		await store.remove(key);
+	}
 }

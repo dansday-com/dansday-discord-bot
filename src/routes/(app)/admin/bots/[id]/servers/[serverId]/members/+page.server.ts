@@ -25,12 +25,15 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		string,
 		{ name: string | null; avatar: string | null; action: string; reason: string | null; expires_at: string | null; created_at: string }
 	>();
-	for (const c of cases as any[]) {
+	for (const c of cases) {
 		const id = String(c.discord_member_id);
 		if (c.action === 'warn' || c.action === 'timeout') {
 			const entry = standing.get(id) ?? { warnings: 0, timeout_until: null };
-			if (c.action === 'warn') entry.warnings++;
-			else entry.timeout_until ??= c.expires_at ?? null;
+			if (c.action === 'warn') {
+				entry.warnings++;
+			} else {
+				entry.timeout_until ??= c.expires_at ?? null;
+			}
 			standing.set(id, entry);
 		} else if (!bans.has(id)) {
 			bans.set(id, {
@@ -60,7 +63,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			locked: !!m?.is_owner || !canActOn(actor, tierMap.tiers[id] ?? 'member'),
 			is_booster: !!Number(m?.is_booster),
 			is_afk: !!m?.is_afk,
-			role_ids: ((m?.roles ?? []) as any[]).map((r) => String(r.id)),
+			role_ids: ((m?.roles ?? []) as Record<string, unknown>[]).map((r) => String(r.id)),
 			rank: m?.rank == null ? null : Number(m.rank),
 			level: Number(m?.level) || 1,
 			xp: Number(m?.xp) || 0,
@@ -80,15 +83,19 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		};
 	}
 
-	const rows = (members as any[]).map((m) => row(String(m.discord_member_id), m, null));
+	const rows = members.map((m) => row(String(m.discord_member_id), m, null));
 	const listed = new Set(rows.map((r) => r.id));
 	for (const [id, ban] of bans) {
-		if (listed.has(id)) continue;
+		if (listed.has(id)) {
+			continue;
+		}
 		listed.add(id);
 		rows.push(row(id, null, ban));
 	}
 	for (const inviter of inviters) {
-		if (!inviter.left_server || listed.has(inviter.discord_member_id)) continue;
+		if (!inviter.left_server || listed.has(inviter.discord_member_id)) {
+			continue;
+		}
 		listed.add(inviter.discord_member_id);
 		rows.push(row(inviter.discord_member_id, null, inviter));
 	}
@@ -102,7 +109,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			admin: tierMap.adminRoleIds,
 			creator: (((creatorSettings as any)?.settings?.content_creator_roles ?? []) as unknown[]).map(String)
 		},
-		roles: (roles as any[])
+		roles: (roles as Record<string, unknown>[])
 			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))
 			.map((r) => ({
 				id: String(r.discord_role_id),

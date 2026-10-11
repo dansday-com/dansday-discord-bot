@@ -22,7 +22,9 @@ export function settingsPack(reach: AgentReach, session: AgentSession): AgentPac
 					required: ['auto_quest_enrollment']
 				},
 				run: async (args) => {
-					if (typeof args.auto_quest_enrollment !== 'boolean') return { ok: false, reason: 'auto_quest_enrollment must be true or false' };
+					if (typeof args.auto_quest_enrollment !== 'boolean') {
+						return { ok: false, reason: 'auto_quest_enrollment must be true or false' };
+					}
 					await setAutoQuest(reach.panelId, args.auto_quest_enrollment);
 					session.changed.add('settings');
 					logger.log(`${session.actor} set auto quest enrollment to ${args.auto_quest_enrollment} for panel ${reach.panelId} through the assistant`);

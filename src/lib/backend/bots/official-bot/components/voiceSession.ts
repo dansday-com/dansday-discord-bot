@@ -26,6 +26,24 @@ import { buildKnowledgeDeclarations, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } fr
 import { appendAiMessage } from './aiSession.js';
 import { aiLanguageInstruction } from '../i18n.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
+import type { AiInput, Wiki } from '../../../../database.js';
+import type { FunctionDeclaration, FunctionResponse, Session } from '@google/genai';
+import type { AudioPlayer, AudioReceiveStream } from '@discordjs/voice';
+import type { Client, SendableChannels, VoiceBasedChannel } from 'discord.js';
+
+type VoiceSessionOptions = {
+	client: Client;
+	config: AiInput;
+	botId: number;
+	guildId: string;
+	channelId: string;
+	channelName: string;
+	inviterId: string;
+	textChannelId: string | null;
+	onEnded?: (reason: string) => void;
+};
+type VadState = { active: boolean; onset: number; lastVoiceAt: number; floor: number; frames: number; startedAt: number; barge: number };
+type LiveToolCall = { id?: string; name: string; args?: Record<string, unknown> };
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -90,36 +108,48 @@ const LOOKUP_TIMEOUT_HINT =
 const WAKE_ACK_PROMPT =
 	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
 
-function splitForChat(text) {
+function splitForChat(text: string) {
 	const chunks = [];
 	let remaining = text;
 
 	while (remaining.length > CHAT_MESSAGE_LIMIT) {
 		let cut = remaining.lastIndexOf('\n', CHAT_MESSAGE_LIMIT);
-		if (cut < CHAT_MESSAGE_LIMIT * 0.5) cut = remaining.lastIndexOf(' ', CHAT_MESSAGE_LIMIT);
-		if (cut < CHAT_MESSAGE_LIMIT * 0.5) cut = CHAT_MESSAGE_LIMIT;
+		if (cut < CHAT_MESSAGE_LIMIT * 0.5) {
+			cut = remaining.lastIndexOf(' ', CHAT_MESSAGE_LIMIT);
+		}
+		if (cut < CHAT_MESSAGE_LIMIT * 0.5) {
+			cut = CHAT_MESSAGE_LIMIT;
+		}
 
 		chunks.push(remaining.slice(0, cut).trim());
 		remaining = remaining.slice(cut).trim();
 	}
 
-	if (remaining) chunks.push(remaining);
+	if (remaining) {
+		chunks.push(remaining);
+	}
 	return chunks;
 }
 
 function thinkingLevelFor(level: string | null | undefined) {
-	if (level === 'medium') return ThinkingLevel.MEDIUM;
-	if (level === 'high') return ThinkingLevel.HIGH;
+	if (level === 'medium') {
+		return ThinkingLevel.MEDIUM;
+	}
+	if (level === 'high') {
+		return ThinkingLevel.HIGH;
+	}
 	return ThinkingLevel.LOW;
 }
 
-function isExtendedThinking(model) {
+function isExtendedThinking(model: string | null) {
 	return (model ?? '').toLowerCase().includes('live-extended-thinking');
 }
 
-function rmsOf(pcm) {
+function rmsOf(pcm: Buffer) {
 	const samples = Math.floor(pcm.length / 2);
-	if (!samples) return 0;
+	if (!samples) {
+		return 0;
+	}
 	let sum = 0;
 	for (let i = 0; i < samples; i++) {
 		const s = pcm.readInt16LE(i * 2);
@@ -128,15 +158,19 @@ function rmsOf(pcm) {
 	return Math.sqrt(sum / samples);
 }
 
-function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
+function downmixAndResample(pcm: Buffer, fromRate: number, toRate: number, fromChannels: number, toChannels: number) {
 	const inSamples = Math.floor(pcm.length / 2 / fromChannels);
 	const outSamples = Math.floor((inSamples * toRate) / fromRate);
 	const out = Buffer.alloc(outSamples * 2 * toChannels);
-	if (!outSamples) return out;
+	if (!outSamples) {
+		return out;
+	}
 
-	const monoAt = (index) => {
+	const monoAt = (index: number) => {
 		let sample = 0;
-		for (let c = 0; c < fromChannels; c++) sample += pcm.readInt16LE((index * fromChannels + c) * 2);
+		for (let c = 0; c < fromChannels; c++) {
+			sample += pcm.readInt16LE((index * fromChannels + c) * 2);
+		}
 		return sample / fromChannels;
 	};
 
@@ -164,7 +198,9 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 		}
 
 		const sample = Math.max(-32768, Math.min(32767, Math.round(value)));
-		for (let c = 0; c < toChannels; c++) out.writeInt16LE(sample, (i * toChannels + c) * 2);
+		for (let c = 0; c < toChannels; c++) {
+			out.writeInt16LE(sample, (i * toChannels + c) * 2);
+		}
 	}
 	return out;
 }
@@ -177,36 +213,36 @@ When a lookup is running, say at most one short line about it, and only if you h
 
 The get_my_* tools only ever read the account of the person talking to you. Never call one to answer a question about somebody else. If they ask what another member has in their bag, their history or their tasks, say plainly that it is private to that member, and offer their public level, rank and roles instead.`;
 
-export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
-	const speaking = new Map();
+export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }: VoiceSessionOptions) {
+	const speaking = new Map<string, { opus: AudioReceiveStream; decoder: prism.opus.Decoder }>();
 	const endpoint = aiVoiceEndpoint(config);
-	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
+	const genai = new GoogleGenAI({ apiKey: endpoint.api_key! });
 	const extendedThinking = isExtendedThinking(config.voice_model);
 	const toolBehavior = extendedThinking ? Behavior.NON_BLOCKING : Behavior.BLOCKING;
 	let systemInstruction = '';
 
-	let wikis: any[] = [];
+	let wikis: Wiki[] = [];
 
 	let connection: any = null;
-	let player = null;
-	let outputStream = null;
-	let outputEncoder = null;
-	let session = null;
-	let resumeHandle = null;
+	let player: AudioPlayer | null = null;
+	let outputStream: Readable | null = null;
+	let outputEncoder: prism.opus.Encoder | null = null;
+	let session: Session | null = null;
+	let resumeHandle: string | null = null;
 	let closed = false;
-	let goodbyePending = false;
+	const goodbyePending = false;
 
-	let heartbeat = null;
+	let heartbeat: ReturnType<typeof setInterval> | null = null;
 
-	const playbackQueue = [];
-	let pending = EMPTY;
+	const playbackQueue: Buffer[] = [];
+	let pending: Buffer = EMPTY;
 	let pendingOffset = 0;
 	let lastAudioAt = 0;
 	let turnOpen = false;
 	let turnOpenedAt = 0;
 	let turnTimer: ReturnType<typeof setTimeout> | null = null;
 	let reconnecting = false;
-	let closeWaiter = null;
+	let closeWaiter: (() => void) | null = null;
 	let leaveRequested = false;
 	let lastSpeakerId = '';
 	let lockedSpeakerId = '';
@@ -219,11 +255,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let bargeInDeafUntil = 0;
 	let offWakeDetected: (() => void) | null = null;
 
-	const names = new Map();
-	const ignoredBots = new Set();
-	const voiceState = new Map();
-	const wikiInflight = new Map();
-	const activeLookups = new Set();
+	const names = new Map<string, string>();
+	const ignoredBots = new Set<string>();
+	const voiceState = new Map<string, VadState>();
+	const wikiInflight = new Map<string, Promise<Record<string, unknown>>>();
+	const activeLookups = new Set<string>();
 	let toolBusyUntil = 0;
 	let modelThinking = false;
 
@@ -251,7 +287,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function finishConversation() {
-		if (closed || goodbyePending) return;
+		if (closed || goodbyePending) {
+			return;
+		}
 
 		if (lookupBusy()) {
 			logger.log('🔎 Voice AI ignoring done request, a lookup is still running');
@@ -261,11 +299,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		awake = false;
 
-		if (muteTimer) clearTimeout(muteTimer);
+		if (muteTimer) {
+			clearTimeout(muteTimer);
+		}
 		muteTimer = null;
 
 		afterSpeaking('muting', () => {
-			if (closed || isAddressed()) return;
+			if (closed || isAddressed()) {
+				return;
+			}
 			if (lookupBusy()) {
 				logger.log('🔎 Voice AI cancelled muting, a lookup is still running');
 				keepAwakeForTool();
@@ -285,7 +327,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		let best = '';
 		let bestAt = 0;
 		for (const [userId, vad] of voiceState) {
-			if (!vad.active || isBotUser(userId)) continue;
+			if (!vad.active || isBotUser(userId)) {
+				continue;
+			}
 			if (vad.startedAt >= bestAt) {
 				bestAt = vad.startedAt;
 				best = userId;
@@ -308,19 +352,27 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function releaseSpeakerLock() {
-		if (!lockedSpeakerId) return;
+		if (!lockedSpeakerId) {
+			return;
+		}
 		logger.log(`🔓 Voice AI released lock on ${nameOf(lockedSpeakerId)}, open to anyone`);
 		lockedSpeakerId = '';
 	}
 
-	function micIsOpenFor(userId) {
-		if (!lockedSpeakerId) return true;
-		if (userId === lockedSpeakerId) return true;
+	function micIsOpenFor(userId: string) {
+		if (!lockedSpeakerId) {
+			return true;
+		}
+		if (userId === lockedSpeakerId) {
+			return true;
+		}
 		return !isAddressed();
 	}
 
 	function announceWakePhrase() {
-		if (closed || goodbyePending) return;
+		if (closed || goodbyePending) {
+			return;
+		}
 
 		const announcedAt = Date.now();
 		const chunksAtAnnounce = stats.chunksPlayed;
@@ -332,7 +384,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		muteTimer = setTimeout(function settleGreeting() {
 			muteTimer = null;
-			if (closed || selfMuted || isAddressed()) return;
+			if (closed || selfMuted || isAddressed()) {
+				return;
+			}
 
 			if (toolBusy()) {
 				muteTimer = setTimeout(settleGreeting, SPEAK_GUARD_MS);
@@ -348,13 +402,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				return;
 			}
 
-			if (expired && !spoke) logger.log('⚠️ Voice AI never spoke its greeting, muting anyway');
+			if (expired && !spoke) {
+				logger.log('⚠️ Voice AI never spoke its greeting, muting anyway');
+			}
 			setSelfMute(true);
 		}, MUTE_NOTICE_GRACE_MS);
 	}
 
-	function nameOf(userId) {
-		if (names.has(userId)) return names.get(userId);
+	function nameOf(userId: string) {
+		if (names.has(userId)) {
+			return names.get(userId);
+		}
 		const member = client.guilds.cache.get(guildId)?.members?.cache?.get(userId);
 		const name = member?.displayName || member?.user?.username || 'Unknown';
 		names.set(userId, name);
@@ -362,15 +420,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function rosterText() {
-		const channel = client.guilds.cache.get(guildId)?.channels?.cache?.get(channelId);
+		const channel = client.guilds.cache.get(guildId)?.channels?.cache?.get(channelId) as VoiceBasedChannel | undefined;
 		const people = [...(channel?.members ?? [])]
 			.filter(([id, m]) => !m.user.bot && id !== client.user?.id)
 			.map(([id]) => (id === inviterId ? `${nameOf(id)} (invited you)` : nameOf(id)));
 		return people.length ? people.join(', ') : 'nobody';
 	}
 
-	function sendSystemNote(text) {
-		if (!session || closed || goodbyePending) return;
+	function sendSystemNote(text: string) {
+		if (!session || closed || goodbyePending) {
+			return;
+		}
 		try {
 			session.sendRealtimeInput({ text });
 		} catch {}
@@ -400,40 +460,54 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	};
 
 	function clearTimers() {
-		for (const t of [turnTimer, muteTimer, muteRetryTimer]) if (t) clearTimeout(t);
+		for (const t of [turnTimer, muteTimer, muteRetryTimer]) {
+			if (t) {
+				clearTimeout(t);
+			}
+		}
 		turnTimer = muteTimer = muteRetryTimer = null;
-		if (heartbeat) clearInterval(heartbeat);
+		if (heartbeat) {
+			clearInterval(heartbeat);
+		}
 		heartbeat = null;
 	}
 
-	const transcriptBuffer = { user: '', assistant: '' };
+	const transcriptBuffer: Record<'user' | 'assistant', string> = { user: '', assistant: '' };
 
-	function flushTranscript(role) {
+	function flushTranscript(role: 'user' | 'assistant') {
 		const text = transcriptBuffer[role].trim();
 		transcriptBuffer[role] = '';
-		if (text.length < 2) return;
+		if (text.length < 2) {
+			return;
+		}
 		logger.log(`${role === 'user' ? '💬' : '🗨️'} Voice AI ${role}: ${text.slice(0, 300)}`);
 		appendAiMessage(botId, guildId, inviterId, role, text).catch(() => {});
 	}
 
-	function collectTranscript(role, fragment) {
+	function collectTranscript(role: 'user' | 'assistant', fragment: string) {
 		const other = role === 'user' ? 'assistant' : 'user';
-		if (transcriptBuffer[other].trim()) flushTranscript(other);
+		if (transcriptBuffer[other].trim()) {
+			flushTranscript(other);
+		}
 
 		transcriptBuffer[role] += fragment;
-		if (/[.!?]\s*$/.test(fragment) || transcriptBuffer[role].length > 1500) flushTranscript(role);
+		if (/[.!?]\s*$/.test(fragment) || transcriptBuffer[role].length > 1500) {
+			flushTranscript(role);
+		}
 	}
 
 	function botIsSpeaking() {
 		return playbackQueue.length > 0 || pendingOffset < pending.length || Date.now() - lastAudioAt < SPEECH_TAIL_MS;
 	}
 
-	function afterSpeaking(label, run, { graceMs = 0, maxWaitMs = SPEECH_DRAIN_MAX_MS } = {}) {
+	function afterSpeaking(label: string, run: () => void, { graceMs = 0, maxWaitMs = SPEECH_DRAIN_MAX_MS } = {}) {
 		const startedAt = Date.now();
 		const chunksAtStart = stats.chunksPlayed;
 
 		(function wait() {
-			if (closed) return;
+			if (closed) {
+				return;
+			}
 
 			const elapsed = Date.now() - startedAt;
 			const spoke = stats.chunksPlayed > chunksAtStart;
@@ -452,18 +526,22 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function openTurn() {
-		if (turnOpen) return;
+		if (turnOpen) {
+			return;
+		}
 		turnOpen = true;
 		turnOpenedAt = Date.now();
 		stats.turns++;
 		try {
-			session.sendRealtimeInput({ activityStart: {} });
+			session!.sendRealtimeInput({ activityStart: {} });
 		} catch {}
 		logger.log(`🎙️ Voice AI turn start (#${stats.turns})`);
 	}
 
 	function closeTurn() {
-		if (!turnOpen || !session) return;
+		if (!turnOpen || !session) {
+			return;
+		}
 		turnOpen = false;
 		turnOwnerId = '';
 		if (turnTimer) {
@@ -478,13 +556,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function anyoneSpeaking() {
 		for (const [userId, vad] of voiceState) {
-			if (vad.active && micIsOpenFor(userId) && (!turnOwnerId || userId === turnOwnerId)) return true;
+			if (vad.active && micIsOpenFor(userId) && (!turnOwnerId || userId === turnOwnerId)) {
+				return true;
+			}
 		}
 		return false;
 	}
 
-	function claimTurnFor(userId) {
-		if (!isAddressed()) return true;
+	function claimTurnFor(userId: string) {
+		if (!isAddressed()) {
+			return true;
+		}
 		if (!turnOwnerId || turnOwnerId === userId) {
 			turnOwnerId = userId;
 			return true;
@@ -500,9 +582,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function voiceSilenceMs() {
 		let latest = 0;
 		for (const [userId, vad] of voiceState) {
-			if (!micIsOpenFor(userId)) continue;
-			if (turnOwnerId && userId !== turnOwnerId) continue;
-			if (vad.lastVoiceAt > latest) latest = vad.lastVoiceAt;
+			if (!micIsOpenFor(userId)) {
+				continue;
+			}
+			if (turnOwnerId && userId !== turnOwnerId) {
+				continue;
+			}
+			if (vad.lastVoiceAt > latest) {
+				latest = vad.lastVoiceAt;
+			}
 		}
 		return latest ? Date.now() - latest : TURN_SILENCE_MS;
 	}
@@ -517,9 +605,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (anyoneSpeaking()) {
-			if (elapsed >= MAX_TURN_MS) logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
+			if (elapsed >= MAX_TURN_MS) {
+				logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
+			}
 			for (const [userId, vad] of voiceState) {
-				if (!micIsOpenFor(userId)) continue;
+				if (!micIsOpenFor(userId)) {
+					continue;
+				}
 				vad.active = false;
 				vad.onset = 0;
 			}
@@ -528,19 +620,22 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function bumpTurn() {
-		if (turnTimer) clearTimeout(turnTimer);
+		if (turnTimer) {
+			clearTimeout(turnTimer);
+		}
 		turnTimer = setTimeout(settleTurn, Math.max(TURN_SETTLE_MIN_MS, TURN_SILENCE_MS - voiceSilenceMs()));
 	}
 
-	function playChunk(pcm24k) {
+	function playChunk(pcm24k: Buffer) {
 		if (closed || selfMuted || Date.now() < bargeInDeafUntil) {
 			stats.chunksDropped++;
 			return;
 		}
 		if (playbackQueue.length >= MAX_QUEUED_CHUNKS) {
 			stats.chunksDropped++;
-			if (stats.chunksDropped % 25 === 1)
+			if (stats.chunksDropped % 25 === 1) {
 				logger.log(`⚠️ Voice AI playback queue full at ${MAX_QUEUED_CHUNKS}, dropping the newest audio (high=${stats.queueHigh})`);
+			}
 			return;
 		}
 
@@ -548,7 +643,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		stats.chunksPlayed++;
 		lastAudioAt = Date.now();
 
-		if (playbackQueue.length > stats.queueHigh) stats.queueHigh = playbackQueue.length;
+		if (playbackQueue.length > stats.queueHigh) {
+			stats.queueHigh = playbackQueue.length;
+		}
 	}
 
 	function handleInterrupt() {
@@ -560,13 +657,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		logger.log(`🔊 Voice AI interrupted (cleared=${cleared} played=${stats.chunksPlayed})`);
 	}
 
-	function bargeInAllowed(userId) {
-		if (!isAddressed() || goodbyePending || selfMuted) return false;
-		if (Date.now() < speakAllowedUntil) return false;
+	function bargeInAllowed(userId: string) {
+		if (!isAddressed() || goodbyePending || selfMuted) {
+			return false;
+		}
+		if (Date.now() < speakAllowedUntil) {
+			return false;
+		}
 		return micIsOpenFor(userId);
 	}
 
-	function tryBargeIn(userId, vad, rms) {
+	function tryBargeIn(userId: string, vad: VadState, rms: number) {
 		const openAt = Math.min(VOICE_RMS_CEILING, Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN));
 		const bargeAt = Math.max(BARGE_IN_RMS_MIN, openAt * BARGE_IN_RMS_MARGIN);
 
@@ -575,7 +676,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			return false;
 		}
 
-		if (++vad.barge < BARGE_IN_FRAMES) return false;
+		if (++vad.barge < BARGE_IN_FRAMES) {
+			return false;
+		}
 
 		const now = Date.now();
 		vad.barge = 0;
@@ -609,7 +712,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		while (filled < FRAME_BYTES) {
 			if (pendingOffset >= pending.length) {
 				const next = playbackQueue.shift();
-				if (!next) break;
+				if (!next) {
+					break;
+				}
 				pending = next;
 				pendingOffset = 0;
 			}
@@ -655,7 +760,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			}
 		});
 		outputStream.on('error', (err) => {
-			if (closed) return;
+			if (closed) {
+				return;
+			}
 			logger.log(`❌ Voice AI output stream error: ${err?.message || err}`);
 		});
 
@@ -665,14 +772,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			frameSize: 960,
 			readableHighWaterMark: OUTPUT_ENCODER_FRAMES,
 			writableHighWaterMark: FRAME_BYTES
-		});
+		} as prism.opus.OpusOptions);
 		outputEncoder.on('error', (err) => {
-			if (closed) return;
+			if (closed) {
+				return;
+			}
 			logger.log(`❌ Voice AI output encoder error: ${err?.message || err}`);
 		});
 
 		outputStream.pipe(outputEncoder);
-		player.play(createAudioResource(outputEncoder, { inputType: StreamType.Opus }));
+		player!.play(createAudioResource(outputEncoder, { inputType: StreamType.Opus }));
 
 		if (previousStream) {
 			previousStream.unpipe(previousEncoder ?? undefined);
@@ -684,8 +793,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		logger.log(`🔊 Voice AI output stream started (pipeline=${pipelineMs}ms)`);
 	}
 
-	function sendToolResponses(responses) {
-		if (!responses.length || !session || closed) return;
+	function sendToolResponses(responses: FunctionResponse[]) {
+		if (!responses.length || !session || closed) {
+			return;
+		}
 		try {
 			session.sendToolResponse({ functionResponses: responses });
 		} catch (err) {
@@ -695,11 +806,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
 
-	function withToolBehavior(declaration) {
+	function withToolBehavior(declaration: object): FunctionDeclaration {
 		return { ...declaration, behavior: toolBehavior };
 	}
 
-	function toolResponse(call, response) {
+	function toolResponse(call: LiveToolCall, response: Record<string, unknown>) {
 		return { id: call.id, name: call.name, response };
 	}
 
@@ -723,20 +834,26 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		];
 	}
 
-	async function sendChatMessage(text) {
+	async function sendChatMessage(text: unknown) {
 		const body = String(text ?? '')
 			.trim()
 			.slice(0, MAX_CHAT_MESSAGE_CHARS);
-		if (!body) return { ok: false, reason: 'nothing_to_send' };
+		if (!body) {
+			return { ok: false, reason: 'nothing_to_send' };
+		}
 
 		for (const [label, target] of chatTargets()) {
-			if (!target) continue;
+			if (!target) {
+				continue;
+			}
 			try {
 				const channel = await client.channels.fetch(target).catch(() => null);
-				if (!channel?.isTextBased?.()) continue;
+				if (!channel?.isTextBased?.()) {
+					continue;
+				}
 
 				for (const chunk of splitForChat(body)) {
-					await channel.send({ content: chunk, allowedMentions: { parse: [] } });
+					await (channel as SendableChannels).send({ content: chunk, allowedMentions: { parse: [] } });
 				}
 
 				logger.log(`💬 Voice AI wrote to the ${label} (${body.length} chars)`);
@@ -749,18 +866,24 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return { ok: false, reason: 'could_not_post' };
 	}
 
-	async function sendImageTo(targetChannelId, buffer) {
-		if (!targetChannelId) return false;
+	async function sendImageTo(targetChannelId: string | null, buffer: Buffer) {
+		if (!targetChannelId) {
+			return false;
+		}
 
 		const channel = await client.channels.fetch(targetChannelId).catch(() => null);
-		if (!channel?.isTextBased?.()) return false;
+		if (!channel?.isTextBased?.()) {
+			return false;
+		}
 
-		await channel.send({ files: [new AttachmentBuilder(buffer, { name: 'image-1.png' })] });
+		await (channel as SendableChannels).send({ files: [new AttachmentBuilder(buffer, { name: 'image-1.png' })] });
 		return true;
 	}
 
-	async function postGeneratedImage(result) {
-		if (!result?.ok || !result.buffer) return false;
+	async function postGeneratedImage(result: Awaited<ReturnType<typeof runImageTool>>) {
+		if (!result?.ok || !result.buffer) {
+			return false;
+		}
 
 		for (const [label, target] of chatTargets()) {
 			try {
@@ -776,35 +899,59 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return false;
 	}
 
-	function runLookup(call) {
+	function runLookup(call: LiveToolCall) {
 		const toolContext = { botId, guildId, callerDiscordId: lockedSpeakerId || lastSpeakerId || inviterId, voice: true };
-		if (SERVER_TOOL_NAMES.has(call.name)) return runServerTool(call.name, call.args ?? {}, toolContext);
-		if (ACCOUNT_TOOL_NAMES.has(call.name)) return runAccountTool(call.name, call.args ?? {}, toolContext);
-		if (KNOWLEDGE_TOOL_NAMES.has(call.name)) return runKnowledgeTool(call.name, call.args ?? {}, toolContext);
-		if (call.name === 'send_to_chat') return sendChatMessage(call.args?.text);
-		if (call.name === 'search_web') return runSearchTool(config, call.args ?? {});
-		if (call.name === 'fetch_web_page') return runFetchTool(config, call.args ?? {});
+		if (SERVER_TOOL_NAMES.has(call.name)) {
+			return runServerTool(call.name, call.args ?? {}, toolContext);
+		}
+		if (ACCOUNT_TOOL_NAMES.has(call.name)) {
+			return runAccountTool(call.name, call.args ?? {}, toolContext);
+		}
+		if (KNOWLEDGE_TOOL_NAMES.has(call.name)) {
+			return runKnowledgeTool(call.name, call.args ?? {}, toolContext);
+		}
+		if (call.name === 'send_to_chat') {
+			return sendChatMessage(call.args?.text);
+		}
+		if (call.name === 'search_web') {
+			return runSearchTool(config, call.args ?? {});
+		}
+		if (call.name === 'fetch_web_page') {
+			return runFetchTool(config, call.args ?? {});
+		}
 		if (call.name === 'generate_image') {
 			return runImageTool(config, call.args ?? {}).then(async (result) => {
 				const posted = await postGeneratedImage(result);
 				const { buffer, ...summary } = result;
-				if (!summary.ok) return summary;
+				if (!summary.ok) {
+					return summary;
+				}
 				return posted ? { ...summary, posted_to_chat: true } : { ok: false, reason: 'could_not_post_image' };
 			});
 		}
 		return runWikiTool(wikis, call.args ?? {}, { sessionKey: `${botId}:${guildId}:${channelId}` });
 	}
 
-	function lookupLabel(call) {
-		if (call.name === 'send_to_chat') return 'chat message';
-		if (SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name) || KNOWLEDGE_TOOL_NAMES.has(call.name)) return `server lookup ${call.name}`;
-		if (call.name === 'search_web') return `web search "${call.args?.query ?? ''}"`;
-		if (call.name === 'fetch_web_page') return `web fetch ${call.args?.url ?? ''}`;
-		if (call.name === 'generate_image') return `image generation "${call.args?.prompt ?? ''}"`;
+	function lookupLabel(call: LiveToolCall) {
+		if (call.name === 'send_to_chat') {
+			return 'chat message';
+		}
+		if (SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name) || KNOWLEDGE_TOOL_NAMES.has(call.name)) {
+			return `server lookup ${call.name}`;
+		}
+		if (call.name === 'search_web') {
+			return `web search "${call.args?.query ?? ''}"`;
+		}
+		if (call.name === 'fetch_web_page') {
+			return `web fetch ${call.args?.url ?? ''}`;
+		}
+		if (call.name === 'generate_image') {
+			return `image generation "${call.args?.prompt ?? ''}"`;
+		}
 		return `wiki lookup "${call.args?.query ?? ''}" (${call.args?.wiki ?? 'default'})`;
 	}
 
-	function handleToolCall(calls) {
+	function handleToolCall(calls: LiveToolCall[]) {
 		const lookupCalls = calls.filter((call) => LOOKUP_TOOLS.has(call.name));
 		const responses = calls
 			.filter((call) => !LOOKUP_TOOLS.has(call.name) && !SILENT_TOOLS.has(call.name))
@@ -835,10 +982,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			let settled = false;
 			let settledFailureSpoken = false;
-			let resolveInflight;
+			let resolveInflight: ((value: Record<string, unknown>) => void) | undefined;
 			wikiInflight.set(
 				dedupeKey,
-				new Promise((resolve) => {
+				new Promise<Record<string, unknown>>((resolve) => {
 					resolveInflight = resolve;
 				})
 			);
@@ -855,8 +1002,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				keepAwakeForTool();
 			}, SPEAK_GUARD_MS * 2);
 
-			const finish = (response) => {
-				if (settled) return;
+			const finish = (response: Record<string, unknown>) => {
+				if (settled) {
+					return;
+				}
 				settled = true;
 				clearInterval(keepAwake);
 				wikiInflight.delete(dedupeKey);
@@ -865,20 +1014,30 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				resolveInflight?.(response);
 				keepAwakeForTool();
 
-				if (response?.ok === false) logger.log(`❌ Voice AI ${lookupLabel(call)} unusable: ${response.reason}`);
+				if (response?.ok === false) {
+					logger.log(`❌ Voice AI ${lookupLabel(call)} unusable: ${response.reason}`);
+				}
 
 				const send = () => {
-					if (closed) return;
+					if (closed) {
+						return;
+					}
 					keepAwakeForTool();
 					sendToolResponses([toolResponse(call, response)]);
 
-					if (response?.ok !== false) return;
+					if (response?.ok !== false) {
+						return;
+					}
 
 					const failedAt = Date.now();
 					const chunksAtFailure = stats.chunksPlayed;
 					setTimeout(function nudgeFailure() {
-						if (closed || goodbyePending || settledFailureSpoken) return;
-						if (stats.chunksPlayed > chunksAtFailure) return;
+						if (closed || goodbyePending || settledFailureSpoken) {
+							return;
+						}
+						if (stats.chunksPlayed > chunksAtFailure) {
+							return;
+						}
 						if (Date.now() - failedAt >= WIKI_FAILED_MAX_WAIT_MS) {
 							logger.log('❌ Voice AI never spoke the lookup failure, giving up');
 							return;
@@ -900,7 +1059,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const lookupTimeoutMs =
 				call.name === 'generate_image' ? IMAGE_LOOKUP_TIMEOUT_MS : call.name === 'fetch_web_page' ? FETCH_LOOKUP_TIMEOUT_MS : WIKI_TIMEOUT_MS;
 			const timeoutTimer = setTimeout(() => {
-				if (settled) return;
+				if (settled) {
+					return;
+				}
 				logger.log(`⏱️ Voice AI ${lookupLabel(call)} timed out after ${lookupTimeoutMs / 1000}s`);
 				finish({ ok: false, reason: 'timeout', next_step: LOOKUP_TIMEOUT_HINT });
 			}, lookupTimeoutMs);
@@ -960,19 +1121,27 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		wikis = await getEnabledWikis(botId).catch(() => []);
 		const wikiDeclaration = buildWikiDeclaration(wikis);
-		if (wikiDeclaration) logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);
+		if (wikiDeclaration) {
+			logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);
+		}
 
 		const toolFeatures = await resolveToolFeatures(botId, guildId).catch(() => null);
 
 		const searchDeclaration = buildSearchDeclaration(config);
 		const fetchDeclaration = buildFetchDeclaration(config);
 		const imageDeclaration = buildImageDeclaration(config);
-		if (searchDeclaration) logger.log('🌐 Voice AI web search available');
-		if (fetchDeclaration) logger.log('🌐 Voice AI web fetch available');
-		if (imageDeclaration) logger.log('🖼️ Voice AI image generation available');
+		if (searchDeclaration) {
+			logger.log('🌐 Voice AI web search available');
+		}
+		if (fetchDeclaration) {
+			logger.log('🌐 Voice AI web fetch available');
+		}
+		if (imageDeclaration) {
+			logger.log('🖼️ Voice AI image generation available');
+		}
 
 		session = await genai.live.connect({
-			model: config.voice_model,
+			model: config.voice_model!,
 			config: {
 				responseModalities: [Modality.AUDIO],
 				...(config.voice_name ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice_name } } } } : {}),
@@ -1057,7 +1226,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			callbacks: {
 				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model}${extendedThinking ? ` thinking=${config.voice_thinking}` : ''})`),
 				onmessage: (msg) => {
-					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
+					if (msg.sessionResumptionUpdate?.newHandle) {
+						resumeHandle = msg.sessionResumptionUpdate.newHandle;
+					}
 					if (msg.goAway) {
 						logger.log(`⚠️ Voice AI goAway, timeLeft=${msg.goAway.timeLeft ?? '?'}`);
 						reconnect().catch(() => {});
@@ -1065,7 +1236,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					if (msg.toolCall?.functionCalls?.length) {
 						logger.log(`🧰 Voice AI tool call: ${msg.toolCall.functionCalls.map((c) => c.name).join(', ')}`);
-						handleToolCall(msg.toolCall.functionCalls);
+						handleToolCall(msg.toolCall.functionCalls as LiveToolCall[]);
 						return;
 					}
 
@@ -1074,10 +1245,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					}
 
 					const unknown = Object.keys(msg).filter((k) => !KNOWN_SERVER_KEYS.has(k));
-					if (unknown.length) logger.log(`📩 Voice AI server message: ${unknown.join(', ')} ${JSON.stringify(msg).slice(0, 400)}`);
+					if (unknown.length) {
+						logger.log(`📩 Voice AI server message: ${unknown.join(', ')} ${JSON.stringify(msg).slice(0, 400)}`);
+					}
 
 					const sc = msg.serverContent;
-					if (!sc) return;
+					if (!sc) {
+						return;
+					}
 
 					if (sc.turnCompleteReason && sc.turnCompleteReason !== TurnCompleteReason.NEED_MORE_INPUT) {
 						logger.log(`📩 Voice AI turn complete reason: ${sc.turnCompleteReason}`);
@@ -1089,19 +1264,25 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							modelThinking = thinking;
 							logger.log(thinking ? '🧠 Voice AI reasoning in the background' : '🧠 Voice AI finished reasoning');
 						}
-						if (thinking) keepAwakeForTool();
+						if (thinking) {
+							keepAwakeForTool();
+						}
 					}
 
-					const inlineCalls = (sc.modelTurn?.parts ?? []).filter((p) => p.functionCall).map((p) => p.functionCall);
+					const inlineCalls = (sc.modelTurn?.parts ?? []).filter((p) => p.functionCall).map((p) => p.functionCall) as LiveToolCall[];
 					if (inlineCalls.length) {
 						logger.log(`🧰 Voice AI tool call (inline part): ${inlineCalls.map((c) => c.name).join(', ')}`);
 						handleToolCall(inlineCalls);
 						return;
 					}
 
-					if (sc.interrupted) handleInterrupt();
+					if (sc.interrupted) {
+						handleInterrupt();
+					}
 
-					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
+					if (sc.inputTranscription?.text) {
+						collectTranscript('user', sc.inputTranscription.text);
+					}
 
 					if (!isAddressed() && !toolBusy() && Date.now() > speakAllowedUntil) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
@@ -1114,10 +1295,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					}
 
 					for (const part of sc.modelTurn?.parts ?? []) {
-						if (part.inlineData?.data) playChunk(Buffer.from(part.inlineData.data, 'base64'));
+						if (part.inlineData?.data) {
+							playChunk(Buffer.from(part.inlineData.data, 'base64'));
+						}
 					}
 
-					if (sc.outputTranscription?.text) collectTranscript('assistant', sc.outputTranscription.text);
+					if (sc.outputTranscription?.text) {
+						collectTranscript('assistant', sc.outputTranscription.text);
+					}
 				},
 				onerror: (err) => logger.log(`❌ Voice AI session error: ${err?.message || String(err)}`),
 				onclose: (e) => {
@@ -1126,14 +1311,18 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						closeWaiter();
 						return;
 					}
-					if (!closed && !goodbyePending) reconnect().catch(() => {});
+					if (!closed && !goodbyePending) {
+						reconnect().catch(() => {});
+					}
 				}
 			}
 		});
 	}
 
 	async function reconnect() {
-		if (closed || goodbyePending || reconnecting) return;
+		if (closed || goodbyePending || reconnecting) {
+			return;
+		}
 		reconnecting = true;
 		stats.reconnects++;
 		logger.log(`🔊 Voice AI reconnecting (attempt=${stats.reconnects} resume=${resumeHandle ? 'yes' : 'no'})`);
@@ -1183,15 +1372,21 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
-	function isBotUser(userId) {
-		if (userId === client.user?.id) return true;
+	function isBotUser(userId: string) {
+		if (userId === client.user?.id) {
+			return true;
+		}
 		const member = client.guilds.cache.get(guildId)?.members?.cache?.get(userId);
-		if (member) return Boolean(member.user?.bot);
+		if (member) {
+			return Boolean(member.user?.bot);
+		}
 		return Boolean(client.users.cache.get(userId)?.bot);
 	}
 
-	function subscribeUser(userId) {
-		if (speaking.has(userId)) return;
+	function subscribeUser(userId: string) {
+		if (speaking.has(userId)) {
+			return;
+		}
 		if (isBotUser(userId)) {
 			if (!ignoredBots.has(userId)) {
 				ignoredBots.add(userId);
@@ -1226,10 +1421,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			pushWakeAudio(userId, mono16k);
 
 			if (!vad.active && !discordSpeaking) {
-				if (!vad.floor) vad.floor = Math.min(rms, NOISE_FLOOR_MAX);
-				else if (rms < vad.floor) vad.floor += NOISE_FLOOR_FALL_ALPHA * (rms - vad.floor);
-				else if (rms < NOISE_FLOOR_MAX) vad.floor += NOISE_FLOOR_ALPHA * (rms - vad.floor);
-				if (vad.floor > NOISE_FLOOR_MAX) vad.floor = NOISE_FLOOR_MAX;
+				if (!vad.floor) {
+					vad.floor = Math.min(rms, NOISE_FLOOR_MAX);
+				} else if (rms < vad.floor) {
+					vad.floor += NOISE_FLOOR_FALL_ALPHA * (rms - vad.floor);
+				} else if (rms < NOISE_FLOOR_MAX) {
+					vad.floor += NOISE_FLOOR_ALPHA * (rms - vad.floor);
+				}
+				if (vad.floor > NOISE_FLOOR_MAX) {
+					vad.floor = NOISE_FLOOR_MAX;
+				}
 			}
 
 			if (!isAddressed()) {
@@ -1285,10 +1486,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			try {
 				if (userId !== lastSpeakerId) {
 					lastSpeakerId = userId;
-					if (isAddressed()) sendSystemNote(`[System] ${nameOf(userId)} is now speaking.`);
+					if (isAddressed()) {
+						sendSystemNote(`[System] ${nameOf(userId)} is now speaking.`);
+					}
 				}
 				openTurn();
-				session.sendRealtimeInput({ audio: { data: mono16k.toString('base64'), mimeType: `audio/pcm;rate=${INPUT_RATE}` } });
+				session!.sendRealtimeInput({ audio: { data: mono16k.toString('base64'), mimeType: `audio/pcm;rate=${INPUT_RATE}` } });
 				stats.framesIn++;
 				stats.bytesIn += mono16k.length;
 				bumpTurn();
@@ -1299,7 +1502,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				}
 			} catch (err) {
 				stats.framesDropped++;
-				if (stats.framesDropped % 100 === 1) logger.log(`⚠️ Voice AI input dropped: ${String(err)}`);
+				if (stats.framesDropped % 100 === 1) {
+					logger.log(`⚠️ Voice AI input dropped: ${String(err)}`);
+				}
 			}
 		});
 		decoder.on('error', () => {});
@@ -1308,19 +1513,25 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		speaking.set(userId, { opus, decoder });
 	}
 
-	function unsubscribeUser(userId) {
+	function unsubscribeUser(userId: string) {
 		voiceState.delete(userId);
 		dropWakeUser(userId);
-		if (turnOwnerId === userId) turnOwnerId = '';
+		if (turnOwnerId === userId) {
+			turnOwnerId = '';
+		}
 		const entry = speaking.get(userId);
-		if (!entry) return;
+		if (!entry) {
+			return;
+		}
 		entry.opus.destroy();
 		entry.decoder.destroy();
 		speaking.delete(userId);
 	}
 
-	async function stop(reason) {
-		if (closed) return;
+	async function stop(reason: string) {
+		if (closed) {
+			return;
+		}
 		closed = true;
 		clearTimers();
 
@@ -1335,7 +1546,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		toolBusyUntil = 0;
 		modelThinking = false;
 
-		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
+		for (const userId of [...speaking.keys()]) {
+			unsubscribeUser(userId);
+		}
 
 		try {
 			session?.close();
@@ -1356,7 +1569,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	async function start() {
 		const guild = client.guilds.cache.get(guildId);
-		if (!guild) throw new Error('Guild not available');
+		if (!guild) {
+			throw new Error('Guild not available');
+		}
 
 		connection = joinVoiceChannel({
 			channelId,
@@ -1372,7 +1587,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		connection.subscribe(player);
 		player.on('error', (err) => logger.log(`❌ Voice AI player error: ${err?.message || err}`));
 		player.on('stateChange', (oldState, newState) => {
-			if (closed || oldState.status === newState.status) return;
+			if (closed || oldState.status === newState.status) {
+				return;
+			}
 			logger.log(
 				`🔊 Voice AI player ${oldState.status} -> ${newState.status} (frames=${stats.framesOut} silence=${stats.silenceOut} queued=${playbackQueue.length})`
 			);
@@ -1386,7 +1603,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const wakePending = wakeModelAvailable() ? warmWakeModel().catch(() => false) : Promise.resolve(false);
 
 		offWakeDetected = onWakeDetected((userId, score) => {
-			if (closed || isAddressed() || isBotUser(userId)) return;
+			if (closed || isAddressed() || isBotUser(userId)) {
+				return;
+			}
 			lastSpeakerId = userId;
 			logger.log(`👋 Voice AI woken by ${nameOf(userId)} ("hey stupid" ${score.toFixed(2)})`);
 			markAddressed({ verified: true });
@@ -1395,13 +1614,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await connectLive();
 
-		connection.receiver.speaking.on('start', (userId) => {
-			if (userId !== client.user?.id) subscribeUser(userId);
+		connection.receiver.speaking.on('start', (userId: string) => {
+			if (userId !== client.user?.id) {
+				subscribeUser(userId);
+			}
 		});
 
-		const channel = guild.channels.cache.get(channelId);
+		const channel = guild.channels.cache.get(channelId) as VoiceBasedChannel | undefined;
 		for (const [memberId, member] of channel?.members ?? []) {
-			if (!member.user.bot && memberId !== client.user?.id) subscribeUser(memberId);
+			if (!member.user.bot && memberId !== client.user?.id) {
+				subscribeUser(memberId);
+			}
 		}
 
 		await ensureUnmuted();
@@ -1416,40 +1639,52 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const startedAt = Date.now();
 		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });
 		heartbeat = setInterval(() => {
-			if (!closed) writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt }).catch(() => {});
+			if (!closed) {
+				writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt }).catch(() => {});
+			}
 		}, HEARTBEAT_MS);
 
 		await logger.log(`🔊 Voice AI joined ${channelName || channelId}`);
 	}
 
 	async function ensureUnmuted() {
-		if (closed) return;
+		if (closed) {
+			return;
+		}
 		const me = client.guilds.cache.get(guildId)?.members?.me;
-		if (!me?.voice?.serverMute) return;
+		if (!me?.voice?.serverMute) {
+			return;
+		}
 
 		try {
 			await me.voice.setMute(false, 'Voice AI needs to speak');
 			logger.log('🔊 Voice AI self-unmuted after server mute');
 		} catch (err) {
-			logger.log(`⚠️ Voice AI is server muted and cannot unmute itself (needs Mute Members): ${err?.message || err}`);
+			logger.log(`⚠️ Voice AI is server muted and cannot unmute itself (needs Mute Members): ${(err as Error)?.message || err}`);
 		}
 	}
 
 	async function ensureUndeafened() {
-		if (closed) return;
+		if (closed) {
+			return;
+		}
 		const me = client.guilds.cache.get(guildId)?.members?.me;
-		if (!me?.voice?.serverDeaf) return;
+		if (!me?.voice?.serverDeaf) {
+			return;
+		}
 
 		try {
 			await me.voice.setDeaf(false, 'Voice AI needs to hear');
 			logger.log('👂 Voice AI self-undeafened after server deafen');
 		} catch (err) {
-			logger.log(`⚠️ Voice AI is server deafened and cannot undeafen itself (needs Deafen Members): ${err?.message || err}`);
+			logger.log(`⚠️ Voice AI is server deafened and cannot undeafen itself (needs Deafen Members): ${(err as Error)?.message || err}`);
 		}
 	}
 
 	function setSelfMute(muted: boolean) {
-		if (closed || selfMuted === muted) return;
+		if (closed || selfMuted === muted) {
+			return;
+		}
 		if (muted) {
 			playbackQueue.length = 0;
 			pending = EMPTY;
@@ -1477,7 +1712,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	async function retrySelfMute(muted: boolean) {
-		if (closed || selfMuted === muted) return;
+		if (closed || selfMuted === muted) {
+			return;
+		}
 
 		if (connection.state.status !== VoiceConnectionStatus.Ready) {
 			try {
@@ -1487,7 +1724,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				logger.log(`🔗 Voice AI recovered the voice connection and is now ${muted ? 'muted' : 'live'}`);
 				return;
 			} catch (err) {
-				logger.log(`❌ Voice AI lost the voice connection while trying to ${muted ? 'mute' : 'unmute'}: ${err?.message || err}`);
+				logger.log(`❌ Voice AI lost the voice connection while trying to ${muted ? 'mute' : 'unmute'}: ${(err as Error)?.message || err}`);
 				await stop('mute_failed');
 				return;
 			}
@@ -1503,8 +1740,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		await stop('mute_failed');
 	}
 
-	async function moveTo(nextChannelId, nextChannelName) {
-		if (closed || nextChannelId === channelId) return;
+	async function moveTo(nextChannelId: string, nextChannelName: string | undefined) {
+		if (closed || nextChannelId === channelId) {
+			return;
+		}
 
 		channelId = nextChannelId;
 		channelName = nextChannelName || nextChannelId;
@@ -1513,36 +1752,50 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			connection.rejoin({ channelId: nextChannelId, selfDeaf: false, selfMute: selfMuted });
 			await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 		} catch (err) {
-			logger.log(`❌ Voice AI failed to return to inviter: ${err?.message || err}`);
+			logger.log(`❌ Voice AI failed to return to inviter: ${(err as Error)?.message || err}`);
 			await stop('rejoin_failed');
 			return;
 		}
 
-		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
-		const channel = client.guilds.cache.get(guildId)?.channels?.cache?.get(nextChannelId);
+		for (const userId of [...speaking.keys()]) {
+			unsubscribeUser(userId);
+		}
+		const channel = client.guilds.cache.get(guildId)?.channels?.cache?.get(nextChannelId) as VoiceBasedChannel | undefined;
 		for (const [memberId, member] of channel?.members ?? []) {
-			if (!member.user.bot && memberId !== client.user?.id) subscribeUser(memberId);
+			if (!member.user.bot && memberId !== client.user?.id) {
+				subscribeUser(memberId);
+			}
 		}
 
 		await ensureUnmuted();
 		await ensureUndeafened();
-		if (lockedSpeakerId && !speaking.has(lockedSpeakerId)) releaseSpeakerLock();
+		if (lockedSpeakerId && !speaking.has(lockedSpeakerId)) {
+			releaseSpeakerLock();
+		}
 		announceRoster();
 		logger.log(`🔊 Voice AI followed inviter back to ${channelName}`);
 	}
 
-	function noteJoined(userId) {
-		if (closed || isBotUser(userId)) return;
+	function noteJoined(userId: string) {
+		if (closed || isBotUser(userId)) {
+			return;
+		}
 		names.delete(userId);
 		sendSystemNote(`[System] ${nameOf(userId)} joined the voice channel.`);
 	}
 
-	function noteLeft(userId) {
-		if (closed || isBotUser(userId)) return;
+	function noteLeft(userId: string) {
+		if (closed || isBotUser(userId)) {
+			return;
+		}
 		const name = nameOf(userId);
 		names.delete(userId);
-		if (lastSpeakerId === userId) lastSpeakerId = '';
-		if (lockedSpeakerId === userId) releaseSpeakerLock();
+		if (lastSpeakerId === userId) {
+			lastSpeakerId = '';
+		}
+		if (lockedSpeakerId === userId) {
+			releaseSpeakerLock();
+		}
 		sendSystemNote(`[System] ${name} left the voice channel.`);
 	}
 

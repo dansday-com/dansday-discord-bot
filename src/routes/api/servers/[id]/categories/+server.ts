@@ -6,7 +6,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	try {
 		const categories = await db.getCategoriesForServer(params.id);
 		return json(categories);
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };

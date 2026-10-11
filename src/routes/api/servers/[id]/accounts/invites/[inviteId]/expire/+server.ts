@@ -6,7 +6,9 @@ import { logger, isUtcSqlExpired } from '$lib/utils/index.js';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 
 async function canManageInvites(locals: App.Locals, serverId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
+	if (!locals.user.authenticated) {
+		return false;
+	}
 	if (locals.user.account_source === 'accounts') {
 		const { accountOwnsServer } = await import('$lib/backend/panelServer.js');
 		return accountOwnsServer(locals, serverId);
@@ -36,7 +38,9 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Invite not found' }, { status: 404 });
 	}
 	const denied = guardAccountAction(locals, invite.account_type);
-	if (denied) return denied;
+	if (denied) {
+		return denied;
+	}
 	if (invite.used_by != null || invite.used_at) {
 		return json({ success: false, error: 'This invite was already used' }, { status: 400 });
 	}

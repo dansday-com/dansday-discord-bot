@@ -28,7 +28,9 @@ let cursor = 0;
 let lastEventId = 0;
 
 async function listServers() {
-	if (serverList.length && Date.now() - serverListAt < SERVER_LIST_TTL_MS) return serverList;
+	if (serverList.length && Date.now() - serverListAt < SERVER_LIST_TTL_MS) {
+		return serverList;
+	}
 
 	let rows: Awaited<ReturnType<typeof listLivePublicServers>> = [];
 	try {
@@ -56,7 +58,9 @@ async function refresh(ids: number[]) {
 		ids.map(async (id) => {
 			try {
 				const snapshot = await resolvePublicStatisticsSnapshot(id);
-				if (!snapshot?.stats) return;
+				if (!snapshot?.stats) {
+					return;
+				}
 				latest.set(id, snapshot.stats);
 				stamps.set(id, Date.now());
 			} catch (_) {}
@@ -71,7 +75,9 @@ async function collectGains(): Promise<number[]> {
 			return [];
 		}
 		const events = await listPublicXpEventsAfter(lastEventId, MAX_GAINS);
-		if (!events.length) return [];
+		if (!events.length) {
+			return [];
+		}
 		lastEventId = events[events.length - 1].id;
 		return events.map((event) => event.xp);
 	} catch (_) {
@@ -89,10 +95,14 @@ export async function resolveGlobalStatistics(): Promise<GlobalStatisticsSnapsho
 		const due: number[] = [];
 		for (let n = 0; n < servers.length && due.length < REFRESH_PER_POLL; n++) {
 			const server = servers[(cursor + n) % servers.length];
-			if (Date.now() - (stamps.get(server.id) || 0) >= SNAPSHOT_FRESH_MS) due.push(server.id);
+			if (Date.now() - (stamps.get(server.id) || 0) >= SNAPSHOT_FRESH_MS) {
+				due.push(server.id);
+			}
 		}
 		cursor = (cursor + Math.max(1, due.length)) % servers.length;
-		if (due.length) await refresh(due);
+		if (due.length) {
+			await refresh(due);
+		}
 	}
 
 	const stats = servers.map((s) => latest.get(s.id) ?? null);
@@ -114,7 +124,9 @@ function emit(snapshot: GlobalStatisticsSnapshot) {
 }
 
 async function poll() {
-	if (listeners.size === 0) return;
+	if (listeners.size === 0) {
+		return;
+	}
 	let snapshot: GlobalStatisticsSnapshot;
 	try {
 		snapshot = await resolveGlobalStatistics();
@@ -123,7 +135,9 @@ async function poll() {
 	}
 	const json = JSON.stringify(snapshot.totals);
 	lastSnapshot = snapshot;
-	if (json === lastJson && snapshot.gains.length === 0) return;
+	if (json === lastJson && snapshot.gains.length === 0) {
+		return;
+	}
 	lastJson = json;
 	emit(snapshot);
 }
@@ -145,7 +159,11 @@ export function subscribeGlobalStatistics(fn: Listener): () => void {
 			.catch(() => {});
 	}
 
-	if (!timer) timer = setInterval(() => void poll(), POLL_MS);
+	if (!timer) {
+		timer = setInterval(() => {
+			poll();
+		}, POLL_MS);
+	}
 
 	return () => {
 		listeners.delete(fn);

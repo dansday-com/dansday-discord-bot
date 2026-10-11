@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		return new Response(JSON.stringify({ error: 'File not found' }), { status: 404 });
 	}
 
-	return new Response(data, {
+	return new Response(data as Uint8Array<ArrayBuffer>, {
 		headers: {
 			'Content-Type': memberThemeContentType(filename),
 			'Cache-Control': 'public, max-age=31536000, immutable',

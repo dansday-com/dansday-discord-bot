@@ -14,12 +14,16 @@ export function registerScroller(instance: Scroller): () => void {
 		}
 	}
 	return () => {
-		if (scroller === instance) scroller = null;
+		if (scroller === instance) {
+			scroller = null;
+		}
 	};
 }
 
 export function lockScroll(): () => void {
-	if (typeof document === 'undefined') return () => {};
+	if (typeof document === 'undefined') {
+		return () => {};
+	}
 
 	if (++locks === 1) {
 		if (scroller) {
@@ -32,7 +36,9 @@ export function lockScroll(): () => void {
 
 	let released = false;
 	return () => {
-		if (released) return;
+		if (released) {
+			return;
+		}
 		released = true;
 		locks = Math.max(0, locks - 1);
 		if (locks === 0) {

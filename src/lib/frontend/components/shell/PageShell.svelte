@@ -24,7 +24,9 @@
 	} = $props();
 
 	$effect(() => {
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
 
 		let lenis: {
 			destroy: () => void;
@@ -44,18 +46,27 @@
 			clock += last < 0 ? 16 : Math.min(34, time - last);
 			last = time;
 			lenis?.raf(clock);
-			if (lenis?.isScrolling === 'smooth') frame = requestAnimationFrame(tick);
-			else last = -1;
+			if (lenis?.isScrolling === 'smooth') {
+				frame = requestAnimationFrame(tick);
+			} else {
+				last = -1;
+			}
 		};
 		const run = () => {
-			if (!frame && !stopped) frame = requestAnimationFrame(tick);
+			if (!frame && !stopped) {
+				frame = requestAnimationFrame(tick);
+			}
 		};
 
 		const onAnchor = (e: MouseEvent) => {
 			const link = (e.target as HTMLElement | null)?.closest('a[href^="#"]') as HTMLAnchorElement | null;
-			if (!link || !link.hash || link.hash === '#') return;
+			if (!link || !link.hash || link.hash === '#') {
+				return;
+			}
 			const target = document.querySelector(link.hash);
-			if (!target) return;
+			if (!target) {
+				return;
+			}
 			e.preventDefault();
 			lenis?.scrollTo(target, { offset: -80 });
 			run();
@@ -63,7 +74,9 @@
 
 		const stopWaiting = onFirstInteraction(() =>
 			import('lenis').then(({ default: Lenis }) => {
-				if (stopped) return;
+				if (stopped) {
+					return;
+				}
 				lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false }) as unknown as NonNullable<typeof lenis>;
 				unregister = registerScroller(lenis as unknown as { stop: () => void; start: () => void });
 				lenis.on('virtual-scroll', run);
@@ -74,7 +87,9 @@
 		return () => {
 			stopped = true;
 			stopWaiting();
-			if (frame) cancelAnimationFrame(frame);
+			if (frame) {
+				cancelAnimationFrame(frame);
+			}
 			document.removeEventListener('click', onAnchor);
 			unregister?.();
 			unregister = null;

@@ -5,7 +5,9 @@ import { subscribePublicMembersList } from '$lib/frontend/public/members/index.j
 export const GET: RequestHandler = async ({ params }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(serverSlug);
-	if (!resolved) return new Response('Not found', { status: 404 });
+	if (!resolved) {
+		return new Response('Not found', { status: 404 });
+	}
 
 	const serverId = resolved.server.id;
 

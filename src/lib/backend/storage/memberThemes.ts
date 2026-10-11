@@ -24,7 +24,9 @@ function isLegacyKey(value: string): boolean {
 
 export function memberThemeStorageKey(stored: string): string {
 	const value = String(stored ?? '');
-	if (isLegacyKey(value)) return `${LEGACY_FOLDER}/${value}`;
+	if (isLegacyKey(value)) {
+		return `${LEGACY_FOLDER}/${value}`;
+	}
 	return store.assertKey(value);
 }
 
@@ -35,8 +37,12 @@ export function memberThemeUrl(stored: string): string {
 
 export function resolveMemberThemeForClient(row: MemberThemeRow | null | undefined): MemberTheme | null {
 	const theme = resolveMemberTheme(row);
-	if (!theme) return null;
-	if (!theme.image) return theme;
+	if (!theme) {
+		return null;
+	}
+	if (!theme.image) {
+		return theme;
+	}
 	try {
 		return { ...theme, image: memberThemeUrl(theme.image) };
 	} catch {
@@ -50,7 +56,9 @@ export async function saveMemberTheme(key: string, data: Buffer): Promise<void> 
 
 export async function readMemberTheme(stored: string): Promise<Buffer | null> {
 	const key = memberThemeStorageKey(stored);
-	if (store.isKey(key)) return store.read(key);
+	if (store.isKey(key)) {
+		return store.read(key);
+	}
 	const { getObject } = await import('./index.js');
 	try {
 		return await getObject(key);

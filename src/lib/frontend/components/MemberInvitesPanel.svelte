@@ -59,7 +59,7 @@
 			amount = 1;
 			reason = '';
 			assignTo = '';
-			void load(member.id);
+			load(member.id);
 		} else {
 			stats = null;
 			inviter = null;
@@ -87,7 +87,9 @@
 	}
 
 	async function post(payload: Record<string, unknown>) {
-		if (!member) return null;
+		if (!member) {
+			return null;
+		}
 		busy = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/invites`, {
@@ -108,12 +110,22 @@
 	}
 
 	async function adjust(sign: 1 | -1) {
-		if (!member) return;
+		if (!member) {
+			return;
+		}
 		const value = Math.trunc(Number(amount)) * sign;
-		if (!value) return showToast('Enter an amount', 'error');
-		if (!reason.trim()) return showToast('Enter a reason', 'error');
+		if (!value) {
+			showToast('Enter an amount', 'error');
+			return;
+		}
+		if (!reason.trim()) {
+			showToast('Enter a reason', 'error');
+			return;
+		}
 		const out = await post({ action: 'adjust', amount: value, reason: reason.trim() });
-		if (!out) return;
+		if (!out) {
+			return;
+		}
 		showToast(`${sign > 0 ? 'Added' : 'Removed'} ${Math.abs(value)} invite${Math.abs(value) === 1 ? '' : 's'}`, 'success');
 		reason = '';
 		await load(member.id);
@@ -121,9 +133,13 @@
 	}
 
 	async function assign() {
-		if (!member || !assignTo) return;
+		if (!member || !assignTo) {
+			return;
+		}
 		const out = await post({ action: 'assign', inviter: assignTo });
-		if (!out) return;
+		if (!out) {
+			return;
+		}
 		showToast('Inviter saved', 'success');
 		await load(member.id);
 		await onchange?.();

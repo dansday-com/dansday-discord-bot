@@ -22,15 +22,21 @@
 	const position = $derived(part && part.list.length > 1 ? ` ${part.index + 1} of ${part.list.length}` : '');
 
 	$effect(() => {
-		if (selection && selection.id !== 'text' && !part) selection = null;
+		if (selection && selection.id !== 'text' && !part) {
+			selection = null;
+		}
 	});
 
 	function setColor(next: string) {
-		if (part && (next === '' || /^#[0-9a-f]{6}$/i.test(next))) part.item.color = next.toLowerCase();
+		if (part && (next === '' || /^#[0-9a-f]{6}$/i.test(next))) {
+			part.item.color = next.toLowerCase();
+		}
 	}
 
 	function remove() {
-		if (part) removePart(part);
+		if (part) {
+			removePart(part);
+		}
 		selection = null;
 	}
 </script>

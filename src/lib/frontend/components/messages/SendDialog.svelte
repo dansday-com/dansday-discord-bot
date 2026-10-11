@@ -49,8 +49,13 @@
 	const busy = $derived(removing !== null || updating !== null);
 
 	async function send() {
-		if (!global && channelIds.length === 0) return showToast('Pick at least one channel to send it to.', 'error');
-		if (!(await onsend({ channelIds, mentionIds, language: postLanguage }))) return;
+		if (!global && channelIds.length === 0) {
+			showToast('Pick at least one channel to send it to.', 'error');
+			return;
+		}
+		if (!(await onsend({ channelIds, mentionIds, language: postLanguage }))) {
+			return;
+		}
 		channelIds = [];
 		mentionIds = [];
 	}
@@ -65,7 +70,9 @@
 		aria-label="Send message"
 		tabindex="-1"
 		onkeydown={(event) => {
-			if (event.key === 'Escape') open = false;
+			if (event.key === 'Escape') {
+				open = false;
+			}
 		}}
 	>
 		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 sm:p-6">

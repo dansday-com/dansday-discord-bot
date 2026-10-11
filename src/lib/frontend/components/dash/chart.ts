@@ -15,9 +15,15 @@ export const FILL = {
 
 export function compact(value: number): string {
 	const n = Math.abs(Number(value) || 0);
-	if (n >= 1e9) return (value / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B';
-	if (n >= 1e6) return (value / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M';
-	if (n >= 1e3) return (value / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K';
+	if (n >= 1e9) {
+		return `${(value / 1e9).toFixed(n >= 1e10 ? 0 : 1)}B`;
+	}
+	if (n >= 1e6) {
+		return `${(value / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`;
+	}
+	if (n >= 1e3) {
+		return `${(value / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
+	}
 	return String(Math.round(value || 0));
 }
 
@@ -28,9 +34,13 @@ function polar(cx: number, cy: number, r: number, pctPoint: number) {
 
 export function buildPie(items: PieItem[]): { total: number; segments: PieSegment[] } {
 	const total = items.reduce((s, x) => s + x.value, 0);
-	if (total <= 0) return { total: 0, segments: [] };
+	if (total <= 0) {
+		return { total: 0, segments: [] };
+	}
 	const visible = items.filter((it) => (it.value / total) * 100 >= 0.5);
-	if (visible.length === 1) return { total, segments: [{ ...visible[0], pct: 100, d: '' }] };
+	if (visible.length === 1) {
+		return { total, segments: [{ ...visible[0], pct: 100, d: '' }] };
+	}
 	let offset = 0;
 	const segments = visible.map((it) => {
 		const pct = (it.value / total) * 100;
@@ -54,7 +64,9 @@ export function sharePct(value: number, rows: number[], floor = 4): number {
 }
 
 export function buildArea(values: number[], width = 300, height = 90) {
-	if (values.length < 2) return null;
+	if (values.length < 2) {
+		return null;
+	}
 	const min = Math.min(0, ...values);
 	const max = Math.max(0, ...values);
 	const span = max - min || 1;

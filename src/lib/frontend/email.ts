@@ -8,9 +8,15 @@ function getTransporter() {
 
 	if (!host || !username || !password) {
 		const missing = [];
-		if (!host) missing.push('MAIL_HOST');
-		if (!username) missing.push('MAIL_USERNAME');
-		if (!password) missing.push('MAIL_PASSWORD');
+		if (!host) {
+			missing.push('MAIL_HOST');
+		}
+		if (!username) {
+			missing.push('MAIL_USERNAME');
+		}
+		if (!password) {
+			missing.push('MAIL_PASSWORD');
+		}
 		throw new Error(`Missing email configuration: ${missing.join(', ')}. Please set these in your .env file.`);
 	}
 
@@ -128,8 +134,8 @@ export async function sendAccountFrozenEmail(email: string, username: string) {
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
+	} catch (error) {
+		throw new Error(`Failed to send email: ${(error as Error).message}`);
 	}
 }
 
@@ -160,8 +166,8 @@ export async function sendAccountUnfrozenEmail(email: string, username: string) 
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
+	} catch (error) {
+		throw new Error(`Failed to send email: ${(error as Error).message}`);
 	}
 }
 
@@ -192,8 +198,8 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
+	} catch (error) {
+		throw new Error(`Failed to send email: ${(error as Error).message}`);
 	}
 }
 

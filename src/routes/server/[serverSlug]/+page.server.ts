@@ -5,7 +5,9 @@ import { resolvePublicStatisticsSnapshot } from '$lib/frontend/public/statistics
 export const load: PageServerLoad = async ({ parent }) => {
 	const { server } = await parent();
 	const payload = await resolvePublicStatisticsSnapshot(server.id);
-	if (!payload) error(404, 'Not found');
+	if (!payload) {
+		error(404, 'Not found');
+	}
 
 	return {
 		stats: payload.stats,

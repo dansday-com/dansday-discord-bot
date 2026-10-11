@@ -11,10 +11,12 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	try {
 		const overview = await db.getServerOverview(serverId);
-		if (!overview) return json({ error: 'Not found' }, { status: 404 });
+		if (!overview) {
+			return json({ error: 'Not found' }, { status: 404 });
+		}
 		return json(overview);
-	} catch (err: any) {
-		logger.log(`❌ Error fetching server overview: ${err.message}`);
+	} catch (err) {
+		logger.log(`❌ Error fetching server overview: ${(err as Error).message}`);
 		return json({ error: 'Internal error' }, { status: 500 });
 	}
 };

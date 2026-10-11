@@ -31,10 +31,16 @@
 
 	const filtered = $derived(
 		data.logs.filter((l) => {
-			if (filterComponent !== 'all' && l.component !== filterComponent) return false;
-			if (filterRole !== 'all' && l.role !== filterRole) return false;
+			if (filterComponent !== 'all' && l.component !== filterComponent) {
+				return false;
+			}
+			if (filterRole !== 'all' && l.role !== filterRole) {
+				return false;
+			}
 			const q = search.trim().toLowerCase();
-			if (!q) return true;
+			if (!q) {
+				return true;
+			}
 			return (
 				(l.who ?? '').toLowerCase().includes(q) ||
 				l.component_label.toLowerCase().includes(q) ||
@@ -48,9 +54,9 @@
 	const pageLogs = $derived(filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE));
 
 	$effect(() => {
-		void search;
-		void filterComponent;
-		void filterRole;
+		search;
+		filterComponent;
+		filterRole;
 		page = 1;
 	});
 

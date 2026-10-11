@@ -16,6 +16,9 @@ import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 import { menuBackButton } from './menuBack.js';
 import { featureAvailable } from './availability.js';
+import type { Client, Guild, MessageComponentInteraction, ModalSubmitInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type { RepliableInteraction } from 'discord.js';
 
 const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();
@@ -38,8 +41,12 @@ function normalizeTikTokUsername(raw: string) {
 }
 
 function truncateReason(text: string) {
-	if (!text) return '—';
-	if (text.length > 1024) return `${text.slice(0, 1021)}...`;
+	if (!text) {
+		return '—';
+	}
+	if (text.length > 1024) {
+		return `${text.slice(0, 1021)}...`;
+	}
 	return text;
 }
 
@@ -62,12 +69,18 @@ async function runDuplicateContentCreatorAutoReject(opts: {
 	try {
 		const { client, botId, guildId, channelId, messageId, serverId, appId, applicantDiscordId, username, conflict } = opts;
 		const guild = await client.guilds.fetch(guildId).catch(() => null);
-		if (!guild) return;
+		if (!guild) {
+			return;
+		}
 		const server = await db.getServerByDiscordId(Number(botId), guildId).catch(() => null);
-		if (!server || Number(server.id) !== Number(serverId)) return;
+		if (!server || Number(server.id) !== Number(serverId)) {
+			return;
+		}
 
 		const app = await db.getContentCreatorApplicationById(server.id, appId);
-		if (!app || app.status !== 'pending') return;
+		if (!app || app.status !== 'pending') {
+			return;
+		}
 
 		const tr = await serverTranslator(guild.id);
 		const systemReason = tr('contentCreator.channelEmbed.autoRejectReviewReason');
@@ -134,8 +147,8 @@ async function runDuplicateContentCreatorAutoReject(opts: {
 		await logger.log(
 			`⛔ Content creator duplicate auto-reject: @${username} applicant ${applicantDiscordId} vs ${conflict.discordId} (${conflict.kind}) guild ${guildId} app #${appId}`
 		);
-	} catch (e: any) {
-		await logger.log(`❌ Content creator duplicate auto-reject failed: ${e.message}`);
+	} catch (e) {
+		await logger.log(`❌ Content creator duplicate auto-reject failed: ${(e as Error).message}`);
 	}
 }
 
@@ -187,7 +200,9 @@ async function showContentCreatorApplyModal(interaction: any) {
 }
 
 async function loadTikTokModule() {
-	if (tiktokModule || tiktokLoadFailed) return tiktokModule;
+	if (tiktokModule || tiktokLoadFailed) {
+		return tiktokModule;
+	}
 	try {
 		const lib: any = await import('tiktok-live-connector');
 		const Ctor = lib?.WebcastPushConnection || lib?.default?.WebcastPushConnection || null;
@@ -200,9 +215,9 @@ async function loadTikTokModule() {
 			WebcastEvent: lib.WebcastEvent || {},
 			ControlEvent: lib.ControlEvent || {}
 		};
-	} catch (error: any) {
+	} catch (error) {
 		tiktokLoadFailed = true;
-		await logger.log(`⚠️ TikTok connector unavailable: ${error.message}`);
+		await logger.log(`⚠️ TikTok connector unavailable: ${(error as Error).message}`);
 		return null;
 	}
 	return tiktokModule;
@@ -213,7 +228,9 @@ function liveKey(guildId: string, discordMemberId: string) {
 }
 
 function noteLiveDigest(key: string, field: 'chat' | 'like' | 'gift' | 'follow' | 'share', amount = 1) {
-	if (!liveSessionMeta.has(key)) return;
+	if (!liveSessionMeta.has(key)) {
+		return;
+	}
 	const cur = liveDigest.get(key) || { chat: 0, like: 0, gift: 0, follow: 0, share: 0 };
 	cur[field] += amount;
 	liveDigest.set(key, cur);
@@ -223,41 +240,61 @@ function guessViewerCount(data: any): number | null {
 	const candidates = [data?.viewerCount, data?.userCount, data?.totalUser, data?.total, data?.memberCount, data?.data?.viewerCount];
 	for (const c of candidates) {
 		const n = Number(c);
-		if (Number.isFinite(n) && n >= 0) return Math.floor(n);
+		if (Number.isFinite(n) && n >= 0) {
+			return Math.floor(n);
+		}
 	}
 	return null;
 }
 
-async function flushLiveDigest(client: any, key: string) {
+async function flushLiveDigest(client: Client, key: string) {
 	const meta = liveSessionMeta.get(key);
 	if (!meta) {
 		liveDigest.delete(key);
 		return;
 	}
 	const d = liveDigest.get(key);
-	if (!d || (d.chat === 0 && d.like === 0 && d.gift === 0 && d.follow === 0 && d.share === 0)) return;
+	if (!d || (d.chat === 0 && d.like === 0 && d.gift === 0 && d.follow === 0 && d.share === 0)) {
+		return;
+	}
 
 	liveDigest.set(key, { chat: 0, like: 0, gift: 0, follow: 0, share: 0 });
 
 	const guildId = key.split(':')[0];
 	const guild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
-	if (!guild) return;
+	if (!guild) {
+		return;
+	}
 	const targetChannelId = await CONTENT_CREATOR.getTargetChannel(guild.id).catch(() => null);
-	if (!targetChannelId) return;
+	if (!targetChannelId) {
+		return;
+	}
 	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
-	if (!channel || !channel.isTextBased()) return;
+	if (!channel || !channel.isTextBased()) {
+		return;
+	}
 
 	const tr = await serverTranslator(guild.id);
 	const parts = [tr('contentCreator.live.digest', { mention: `<@${meta.discordMemberId}>`, tiktok: meta.tiktokUsername, streamId: meta.streamId })];
-	if (d.chat) parts.push(`💬 +${d.chat}`);
-	if (d.like) parts.push(`❤️ +${d.like}`);
-	if (d.gift) parts.push(`🎁 +${d.gift}`);
-	if (d.follow) parts.push(`➕ +${d.follow}`);
-	if (d.share) parts.push(`🔁 +${d.share}`);
+	if (d.chat) {
+		parts.push(`💬 +${d.chat}`);
+	}
+	if (d.like) {
+		parts.push(`❤️ +${d.like}`);
+	}
+	if (d.gift) {
+		parts.push(`🎁 +${d.gift}`);
+	}
+	if (d.follow) {
+		parts.push(`➕ +${d.follow}`);
+	}
+	if (d.share) {
+		parts.push(`🔁 +${d.share}`);
+	}
 	await channel.send({ content: parts.join(' · ').slice(0, 2000) }).catch(() => null);
 }
 
-async function finalizeLiveStream(client: any, key: string, status: 'ended' | 'error', errorMessage: string | null = null) {
+async function finalizeLiveStream(client: Client, key: string, status: 'ended' | 'error', errorMessage: string | null = null) {
 	const meta = liveSessionMeta.get(key);
 	if (!meta) {
 		liveDigest.delete(key);
@@ -274,18 +311,24 @@ async function finalizeLiveStream(client: any, key: string, status: 'ended' | 'e
 			status,
 			errorMessage: errorMessage || undefined
 		});
-	} catch (e: any) {
-		await logger.log(`❌ finalizeLiveStream DB: ${e.message}`);
+	} catch (e) {
+		await logger.log(`❌ finalizeLiveStream DB: ${(e as Error).message}`);
 	}
 	const guild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
-	if (guild) await broadcastLiveEnd(guild, meta.discordMemberId, meta.tiktokUsername, meta.streamId, status);
+	if (guild) {
+		await broadcastLiveEnd(guild, meta.discordMemberId, meta.tiktokUsername, meta.streamId, status);
+	}
 }
 
-async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUsername: string, streamId: number) {
+async function broadcastLiveStart(guild: Guild, discordMemberId: string, tiktokUsername: string, streamId: number) {
 	const targetChannelId = await CONTENT_CREATOR.getTargetChannel(guild.id).catch(() => null);
-	if (!targetChannelId) return;
+	if (!targetChannelId) {
+		return;
+	}
 	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
-	if (!channel || !channel.isTextBased()) return;
+	if (!channel || !channel.isTextBased()) {
+		return;
+	}
 
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 	const tr = await serverTranslator(guild.id);
@@ -297,8 +340,11 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 		.setDescription(tr('contentCreator.channelEmbed.liveDescription', { mention }))
 		.setTimestamp();
 	const streamFooter = tr('contentCreator.live.streamFooter', { streamId });
-	if (embedConfig?.FOOTER) embed.setFooter({ text: `${embedConfig.FOOTER} · ${streamFooter}`.slice(0, 2048) });
-	else embed.setFooter({ text: streamFooter });
+	if (embedConfig?.FOOTER) {
+		embed.setFooter({ text: `${embedConfig.FOOTER} · ${streamFooter}`.slice(0, 2048) });
+	} else {
+		embed.setFooter({ text: streamFooter });
+	}
 	const watchButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(liveUrl).setLabel(tr('contentCreator.channelEmbed.liveWatchButton'));
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(watchButton);
 
@@ -318,11 +364,15 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 	}
 }
 
-async function broadcastLiveEnd(guild: any, discordMemberId: string, tiktokUsername: string, streamId: number, status: 'ended' | 'error') {
+async function broadcastLiveEnd(guild: Guild, discordMemberId: string, tiktokUsername: string, streamId: number, status: 'ended' | 'error') {
 	const targetChannelId = await CONTENT_CREATOR.getTargetChannel(guild.id).catch(() => null);
-	if (!targetChannelId) return;
+	if (!targetChannelId) {
+		return;
+	}
 	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
-	if (!channel || !channel.isTextBased()) return;
+	if (!channel || !channel.isTextBased()) {
+		return;
+	}
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 	const tr = await serverTranslator(guild.id);
 	const mention = `<@${discordMemberId}>`;
@@ -332,7 +382,9 @@ async function broadcastLiveEnd(guild: any, discordMemberId: string, tiktokUsern
 		.setTitle(title)
 		.setDescription(`${mention} · @${tiktokUsername}\n${tr('contentCreator.live.sessionLine', { streamId })}`)
 		.setTimestamp();
-	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+	if (embedConfig?.FOOTER) {
+		embed.setFooter({ text: embedConfig.FOOTER });
+	}
 	await channel.send({ embeds: [embed] }).catch(() => null);
 }
 
@@ -342,11 +394,13 @@ async function handleStreamTikTokEvent(key: string, eventType: string, data: any
 		return;
 	}
 	const meta = liveSessionMeta.get(key);
-	if (!meta) return;
+	if (!meta) {
+		return;
+	}
 	try {
 		await db.insertContentCreatorStreamLog(meta.streamId, eventType, data);
-	} catch (e: any) {
-		await logger.log(`⚠️ stream log: ${e.message}`);
+	} catch (e) {
+		await logger.log(`⚠️ stream log: ${(e as Error).message}`);
 	}
 	try {
 		if (eventType === 'chat') {
@@ -367,19 +421,23 @@ async function handleStreamTikTokEvent(key: string, eventType: string, data: any
 			await db.incrementContentCreatorStreamCounters(meta.streamId, { share: 1 });
 			noteLiveDigest(key, 'share');
 		}
-	} catch (e: any) {
-		await logger.log(`⚠️ stream counters: ${e.message}`);
+	} catch (e) {
+		await logger.log(`⚠️ stream counters: ${(e as Error).message}`);
 	}
 	if (eventType === 'roomUser') {
 		const pv = guessViewerCount(data);
-		if (pv != null) await db.updateContentCreatorStreamPeakViewers(meta.streamId, pv).catch(() => null);
+		if (pv != null) {
+			await db.updateContentCreatorStreamPeakViewers(meta.streamId, pv).catch(() => null);
+		}
 	}
 }
 
-async function teardownContentCreatorLiveForGuild(client: any, guildId: string) {
+async function teardownContentCreatorLiveForGuild(client: Client, guildId: string) {
 	const prefix = `${guildId}:`;
 	for (const [key, conn] of [...liveWatchers.entries()]) {
-		if (!key.startsWith(prefix)) continue;
+		if (!key.startsWith(prefix)) {
+			continue;
+		}
 		if (liveSessionMeta.has(key)) {
 			await finalizeLiveStream(client, key, 'ended');
 		}
@@ -394,7 +452,7 @@ async function teardownContentCreatorLiveForGuild(client: any, guildId: string) 
 
 type TikTokModBundle = NonNullable<Awaited<ReturnType<typeof loadTikTokModule>>>;
 
-async function syncLiveWatchersForGuild(client: any, guild: any, mod: TikTokModBundle) {
+async function syncLiveWatchersForGuild(client: Client, guild: Guild, mod: TikTokModBundle) {
 	const { Ctor, WebcastEvent: WE, ControlEvent: CE } = mod;
 	const chatEv = WE.CHAT || 'chat';
 	const likeEv = WE.LIKE || 'like';
@@ -411,24 +469,34 @@ async function syncLiveWatchersForGuild(client: any, guild: any, mod: TikTokModB
 	const disconnectedEv = CE.DISCONNECTED || 'disconnected';
 
 	const botConfig = getBotConfig();
-	if (!botConfig) return;
+	if (!botConfig) {
+		return;
+	}
 	const server = await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null);
-	if (!server) return;
+	if (!server) {
+		return;
+	}
 	const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
 	const activeKeys = new Set<string>();
 
 	for (const creator of creators) {
 		const username = normalizeTikTokUsername(creator.tiktok_username || '');
-		if (!username || !creator.discord_member_id) continue;
+		if (!username || !creator.discord_member_id) {
+			continue;
+		}
 		const key = liveKey(guild.id, String(creator.discord_member_id));
 		activeKeys.add(key);
-		if (liveWatchers.has(key)) continue;
+		if (liveWatchers.has(key)) {
+			continue;
+		}
 
 		try {
 			const conn = new Ctor(username, { processInitialData: false });
 
-			conn.on(connectedEv, async (state: any) => {
-				if (liveSessionMeta.has(key)) return;
+			conn.on(connectedEv, async (state: Record<string, unknown>) => {
+				if (liveSessionMeta.has(key)) {
+					return;
+				}
 				try {
 					const roomId = state?.roomId != null ? String(state.roomId) : null;
 					const streamId = await db.createContentCreatorStream(Number(creator.member_id), roomId);
@@ -445,8 +513,8 @@ async function syncLiveWatchersForGuild(client: any, guild: any, mod: TikTokModB
 					liveDigest.set(key, { chat: 0, like: 0, gift: 0, follow: 0, share: 0 });
 					liveStatus.set(key, true);
 					await broadcastLiveStart(guild, String(creator.discord_member_id), username, streamId);
-				} catch (e: any) {
-					await logger.log(`❌ TikTok CONNECTED: ${e.message}`);
+				} catch (e) {
+					await logger.log(`❌ TikTok CONNECTED: ${(e as Error).message}`);
 				}
 			});
 
@@ -459,16 +527,36 @@ async function syncLiveWatchersForGuild(client: any, guild: any, mod: TikTokModB
 				await finalizeLiveStream(client, key, 'ended');
 			});
 
-			conn.on(chatEv, (data: any) => void handleStreamTikTokEvent(key, 'chat', data));
-			conn.on(likeEv, (data: any) => void handleStreamTikTokEvent(key, 'like', data));
-			conn.on(giftEv, (data: any) => void handleStreamTikTokEvent(key, 'gift', data));
-			conn.on(followEv, (data: any) => void handleStreamTikTokEvent(key, 'follow', data));
-			conn.on(shareEv, (data: any) => void handleStreamTikTokEvent(key, 'share', data));
-			conn.on(roomUserEv, (data: any) => void handleStreamTikTokEvent(key, 'roomUser', data));
-			conn.on(memberEv, (data: any) => void handleStreamTikTokEvent(key, 'member', data));
-			conn.on(socialEv, (data: any) => void handleStreamTikTokEvent(key, 'social', data));
-			conn.on(questionEv, (data: any) => void handleStreamTikTokEvent(key, 'questionNew', data));
-			conn.on(introEv, (data: any) => void handleStreamTikTokEvent(key, 'liveIntro', data));
+			conn.on(chatEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'chat', data);
+			});
+			conn.on(likeEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'like', data);
+			});
+			conn.on(giftEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'gift', data);
+			});
+			conn.on(followEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'follow', data);
+			});
+			conn.on(shareEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'share', data);
+			});
+			conn.on(roomUserEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'roomUser', data);
+			});
+			conn.on(memberEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'member', data);
+			});
+			conn.on(socialEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'social', data);
+			});
+			conn.on(questionEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'questionNew', data);
+			});
+			conn.on(introEv, (data: unknown) => {
+				handleStreamTikTokEvent(key, 'liveIntro', data);
+			});
 
 			try {
 				await conn.connect();
@@ -482,8 +570,12 @@ async function syncLiveWatchersForGuild(client: any, guild: any, mod: TikTokModB
 	}
 
 	for (const [key, conn] of liveWatchers.entries()) {
-		if (!key.startsWith(`${guild.id}:`) || activeKeys.has(key)) continue;
-		if (liveSessionMeta.has(key)) await finalizeLiveStream(client, key, 'ended');
+		if (!key.startsWith(`${guild.id}:`) || activeKeys.has(key)) {
+			continue;
+		}
+		if (liveSessionMeta.has(key)) {
+			await finalizeLiveStream(client, key, 'ended');
+		}
 		try {
 			await conn.disconnect?.();
 		} catch (_) {}
@@ -493,8 +585,10 @@ async function syncLiveWatchersForGuild(client: any, guild: any, mod: TikTokModB
 	}
 }
 
-async function syncLiveWatchers(client: any) {
-	if (syncLiveWatchersInFlight) return;
+async function syncLiveWatchers(client: Client) {
+	if (syncLiveWatchersInFlight) {
+		return;
+	}
 	syncLiveWatchersInFlight = true;
 	try {
 		for (const guild of client.guilds.cache.values()) {
@@ -504,10 +598,14 @@ async function syncLiveWatchers(client: any) {
 		}
 
 		const mod = await loadTikTokModule();
-		if (!mod) return;
+		if (!mod) {
+			return;
+		}
 
 		for (const guild of client.guilds.cache.values()) {
-			if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.content_creator))) continue;
+			if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.content_creator))) {
+				continue;
+			}
 			await syncLiveWatchersForGuild(client, guild, mod);
 		}
 	} finally {
@@ -515,8 +613,10 @@ async function syncLiveWatchers(client: any) {
 	}
 }
 
-export async function syncContentCreatorRuntime(client: any, guildDiscordId: string, enabled: boolean) {
-	if (!client || !guildDiscordId) return;
+export async function syncContentCreatorRuntime(client: Client, guildDiscordId: string, enabled: boolean) {
+	if (!client || !guildDiscordId) {
+		return;
+	}
 	if (!enabled) {
 		await teardownContentCreatorLiveForGuild(client, guildDiscordId);
 		await logger.log(`🔇 Content creator module off: TikTok live watchers stopped for guild ${guildDiscordId}`);
@@ -526,13 +626,19 @@ export async function syncContentCreatorRuntime(client: any, guildDiscordId: str
 		await logger.log(`⏳ Content creator sync skipped (watcher sync already running) for guild ${guildDiscordId}`);
 		return;
 	}
-	let guild = client.guilds.cache.get(guildDiscordId) || (await client.guilds.fetch(guildDiscordId).catch(() => null));
-	if (!guild) return;
+	const guild = client.guilds.cache.get(guildDiscordId) || (await client.guilds.fetch(guildDiscordId).catch(() => null));
+	if (!guild) {
+		return;
+	}
 	syncLiveWatchersInFlight = true;
 	try {
 		const mod = await loadTikTokModule();
-		if (!mod) return;
-		if (!(await isComponentFeatureEnabled(guildDiscordId, serverSettingsComponent.content_creator))) return;
+		if (!mod) {
+			return;
+		}
+		if (!(await isComponentFeatureEnabled(guildDiscordId, serverSettingsComponent.content_creator))) {
+			return;
+		}
 		await syncLiveWatchersForGuild(client, guild, mod);
 		await logger.log(`📥 Content creator module on: TikTok live watchers synced for guild ${guildDiscordId}`);
 	} finally {
@@ -542,7 +648,7 @@ export async function syncContentCreatorRuntime(client: any, guildDiscordId: str
 
 type ContentCreatorListOptions = { bannerNote?: string };
 
-async function buildContentCreatorListView(guild: any, actingMember: any, localeUserId: string, options: ContentCreatorListOptions = {}) {
+async function buildContentCreatorListView(guild: Guild, actingMember: any, localeUserId: string, options: ContentCreatorListOptions = {}) {
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 	const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
 	const alreadyCreator = creatorRoleId ? actingMember?.roles?.cache?.has(creatorRoleId) : false;
@@ -561,7 +667,7 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 	const lastApplication = dbMember ? await db.getLastContentCreatorApplication(server.id, dbMember.id).catch(() => null) : null;
 
 	const pending = await db.getPendingContentCreatorApplications(server.id).catch(() => []);
-	const pendingLines = pending.slice(0, 10).map((p: any) => {
+	const pendingLines = pending.slice(0, 10).map((p) => {
 		const submitted = parseMySQLDateTimeUtc(p.submitted_at);
 		const when = submitted ? ` • <t:${Math.floor(submitted.getTime() / 1000)}:R>` : '';
 		return `🕒 <@${p.discord_member_id}> — **@${normalizeTikTokUsername(String(p.tiktok_username || ''))}**${when}`;
@@ -574,7 +680,9 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 		.setTitle(await translate('contentCreator.modal.title', guild.id, localeUserId))
 		.setDescription(options.bannerNote ? `${options.bannerNote}\n\n${pendingText}` : pendingText)
 		.setTimestamp();
-	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+	if (embedConfig?.FOOTER) {
+		embed.setFooter({ text: embedConfig.FOOTER });
+	}
 
 	const row = new ActionRowBuilder<ButtonBuilder>();
 	row.addComponents(await menuBackButton(guild.id, localeUserId, 'perks'));
@@ -601,7 +709,7 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 	return { embed, components: [row] };
 }
 
-async function buildContentCreatorRoster(guild: any, localeUserId: string): Promise<string> {
+async function buildContentCreatorRoster(guild: Guild, localeUserId: string): Promise<string> {
 	const botConfig = getBotConfig();
 	const server = botConfig ? await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null) : null;
 	const creators = server ? await db.getApprovedContentCreators(server.id).catch(() => []) : [];
@@ -611,7 +719,9 @@ async function buildContentCreatorRoster(guild: any, localeUserId: string): Prom
 	for (const c of creators) {
 		const discordId = String(c.discord_member_id || '');
 		const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
-		if (!discordId || !username) continue;
+		if (!discordId || !username) {
+			continue;
+		}
 		const live = isLive(guild.id, discordId);
 		rows.push({
 			live,
@@ -620,7 +730,9 @@ async function buildContentCreatorRoster(guild: any, localeUserId: string): Prom
 		});
 	}
 	rows.sort((a, b) => {
-		if (a.live !== b.live) return a.live ? -1 : 1;
+		if (a.live !== b.live) {
+			return a.live ? -1 : 1;
+		}
 		return a.username.localeCompare(b.username, undefined, { sensitivity: 'base' });
 	});
 	const lines = rows.slice(0, 10).map((r) => r.line);
@@ -630,7 +742,7 @@ async function buildContentCreatorRoster(guild: any, localeUserId: string): Prom
 	return `${desc}\n\n${creatorListText}`;
 }
 
-export async function handleContentCreatorHubButton(interaction: any) {
+export async function handleContentCreatorHubButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const guildId = interaction.guild.id;
 		const userId = interaction.user.id;
@@ -644,7 +756,9 @@ export async function handleContentCreatorHubButton(interaction: any) {
 			.setTitle(await translate('contentCreator.list.title', guildId, userId))
 			.setDescription(await buildContentCreatorRoster(interaction.guild, userId))
 			.setTimestamp();
-		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+		if (embedConfig?.FOOTER) {
+			embed.setFooter({ text: embedConfig.FOOTER });
+		}
 
 		const buttons = [
 			new ButtonBuilder()
@@ -671,12 +785,12 @@ export async function handleContentCreatorHubButton(interaction: any) {
 		} else {
 			await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 		}
-	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator hub: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error opening content creator hub: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorButton(interaction: any) {
+export async function handleContentCreatorButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const guild = interaction.guild;
 		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
@@ -699,12 +813,12 @@ export async function handleContentCreatorButton(interaction: any) {
 		} else {
 			await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 		}
-	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator view: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error opening content creator view: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorDismissRequest(interaction: any) {
+export async function handleContentCreatorDismissRequest(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const guild = interaction.guild;
 		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
@@ -732,7 +846,9 @@ export async function handleContentCreatorDismissRequest(interaction: any) {
 			.setTitle(await translate('contentCreator.dismiss.confirmTitle', guild.id, interaction.user.id))
 			.setDescription(await translate('contentCreator.dismiss.confirmDescription', guild.id, interaction.user.id))
 			.setTimestamp();
-		if (embedConfig?.FOOTER) confirmEmbed.setFooter({ text: embedConfig.FOOTER });
+		if (embedConfig?.FOOTER) {
+			confirmEmbed.setFooter({ text: embedConfig.FOOTER });
+		}
 
 		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()
@@ -746,12 +862,12 @@ export async function handleContentCreatorDismissRequest(interaction: any) {
 		);
 
 		await interaction.update({ embeds: [confirmEmbed], components: [row] }).catch(() => null);
-	} catch (error: any) {
-		await logger.log(`❌ Content creator dismiss request error: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Content creator dismiss request error: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorDismissNo(interaction: any) {
+export async function handleContentCreatorDismissNo(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const guild = interaction.guild;
 		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
@@ -768,12 +884,12 @@ export async function handleContentCreatorDismissNo(interaction: any) {
 			return;
 		}
 		await interaction.update({ embeds: [built.embed], components: built.components }).catch(() => null);
-	} catch (error: any) {
-		await logger.log(`❌ Content creator dismiss cancel error: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Content creator dismiss cancel error: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorDismissYes(interaction: any) {
+export async function handleContentCreatorDismissYes(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const guild = interaction.guild;
 		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
@@ -817,7 +933,7 @@ export async function handleContentCreatorDismissYes(interaction: any) {
 			const roleIdsAfter = Array.from(member.roles.cache.keys()).filter((id: string) => id !== guild.id);
 			await db.clearMemberContentCreatorRole(server.id, dbMember.id, roleIdsAfter).catch(() => null);
 		}
-		void syncLiveWatchers(guild.client).catch(() => null);
+		syncLiveWatchers(guild.client).catch(() => null);
 
 		const refreshedMember = await guild.members.fetch(interaction.user.id).catch(() => member);
 		const bannerNote = await translate('contentCreator.dismiss.removed', guild.id, interaction.user.id);
@@ -827,20 +943,20 @@ export async function handleContentCreatorDismissYes(interaction: any) {
 			return;
 		}
 		await interaction.update({ embeds: [built.embed], components: built.components }).catch(() => null);
-	} catch (error: any) {
-		await logger.log(`❌ Content creator dismiss confirm error: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Content creator dismiss confirm error: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorApplyButton(interaction: any) {
+export async function handleContentCreatorApplyButton(interaction: RepliableInteraction<'cached'>) {
 	try {
 		await showContentCreatorApplyModal(interaction);
-	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator apply modal: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error opening content creator apply modal: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorModal(interaction: any) {
+export async function handleContentCreatorModal(interaction: ModalSubmitInteraction<'cached'>) {
 	await interaction.deferReply({ flags: 64 });
 	try {
 		const guild = interaction.guild;
@@ -935,7 +1051,7 @@ export async function handleContentCreatorModal(interaction: any) {
 				.send({
 					content: pendingRole ? `<@&${pendingRole}>` : undefined,
 					embeds: [embed],
-					components: [new ActionRowBuilder().addComponents(approveButton, rejectButton)]
+					components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(approveButton, rejectButton)]
 				})
 				.catch(() => null);
 			if (sent) {
@@ -946,7 +1062,7 @@ export async function handleContentCreatorModal(interaction: any) {
 
 		if (conflict) {
 			setTimeout(() => {
-				void runDuplicateContentCreatorAutoReject({
+				runDuplicateContentCreatorAutoReject({
 					client: guild.client,
 					botId,
 					guildId: guild.id,
@@ -962,8 +1078,8 @@ export async function handleContentCreatorModal(interaction: any) {
 		}
 
 		await interaction.editReply({ content: await translate('contentCreator.submitted', guild.id, interaction.user.id, { username: `@${username}` }) });
-	} catch (error: any) {
-		await logger.log(`❌ Error processing content creator application: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error processing content creator application: ${(error as Error).message}`);
 		await interaction.editReply({
 			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, {
 				error: await errorReason(error, interaction.guild.id, interaction.user.id)
@@ -974,7 +1090,7 @@ export async function handleContentCreatorModal(interaction: any) {
 
 const REVIEW_DECISION_REASON_INPUT = 'review_decision_reason';
 
-export async function handleContentCreatorDecisionModal(interaction: any) {
+export async function handleContentCreatorDecisionModal(interaction: ModalSubmitInteraction<'cached'>) {
 	await interaction.deferReply({ flags: 64 });
 	try {
 		const guild = interaction.guild;
@@ -1031,13 +1147,15 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 			if (ch && ch.isTextBased()) {
 				sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
 			}
-		} catch (fetchErr: any) {
-			await logger.log(`⚠️ Could not fetch content creator application message: ${fetchErr.message}`);
+		} catch (fetchErr) {
+			await logger.log(`⚠️ Could not fetch content creator application message: ${(fetchErr as Error).message}`);
 		}
 
 		if (app.status !== 'pending') {
 			await interaction.editReply({ content: await translate('contentCreator.review.alreadyProcessed', guild.id, interaction.user.id) });
-			if (sourceMessage) await sourceMessage.edit({ components: [] }).catch(() => null);
+			if (sourceMessage) {
+				await sourceMessage.edit({ components: [] }).catch(() => null);
+			}
 			return;
 		}
 
@@ -1060,7 +1178,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 				const roleIds = Array.from(applicantMember.roles.cache.keys()).filter((id: string) => id !== guild.id);
 				await db.markMemberContentCreatorRole(server.id, app.member_id, roleIds).catch(() => null);
 			}
-			void syncLiveWatchers(guild.client).catch(() => null);
+			syncLiveWatchers(guild.client).catch(() => null);
 			if (applicantUser) {
 				const dmBody = await translate('contentCreator.dm.approved', guild.id, applicantUser.id, {
 					server: guild.name,
@@ -1126,8 +1244,8 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 			}
 			await sourceMessage.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);
 		}
-	} catch (error: any) {
-		await logger.log(`❌ Error handling content creator decision modal: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error handling content creator decision modal: ${(error as Error).message}`);
 		await interaction.editReply({
 			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, {
 				error: await errorReason(error, interaction.guild.id, interaction.user.id)
@@ -1166,25 +1284,29 @@ async function showContentCreatorReviewModal(interaction: any, decision: 'approv
 	await interaction.showModal(modal);
 }
 
-export async function handleContentCreatorApprove(interaction: any) {
+export async function handleContentCreatorApprove(interaction: RepliableInteraction<'cached'>) {
 	try {
 		await showContentCreatorReviewModal(interaction, 'approve');
-	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator approve modal: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error opening content creator approve modal: ${(error as Error).message}`);
 	}
 }
 
-export async function handleContentCreatorReject(interaction: any) {
+export async function handleContentCreatorReject(interaction: RepliableInteraction<'cached'>) {
 	try {
 		await showContentCreatorReviewModal(interaction, 'reject');
-	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator reject modal: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error opening content creator reject modal: ${(error as Error).message}`);
 	}
 }
 
-export function init(client: any) {
-	if (watchInterval) clearInterval(watchInterval);
-	if (digestInterval) clearInterval(digestInterval);
+export function init(client: Client) {
+	if (watchInterval) {
+		clearInterval(watchInterval);
+	}
+	if (digestInterval) {
+		clearInterval(digestInterval);
+	}
 	watchInterval = setInterval(() => {
 		syncLiveWatchers(client).catch(() => null);
 	}, LIVE_WATCHER_RESYNC_MS);

@@ -5,10 +5,13 @@ import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
 import { translate, getAvailableLanguages, getUserLanguage, getServerLanguage, errorReason } from '../../i18n.js';
 import { isServerLanguage, serverLanguageLabel } from '../../../../../languages.js';
+import type { ButtonInteraction, RepliableInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type { StringSelectMenuInteraction } from 'discord.js';
 
 const SERVER_DEFAULT_VALUE = 'server';
 
-async function buildLanguagePanel(interaction, server) {
+async function buildLanguagePanel(interaction: RepliableInteraction<'cached'>, server: { id: number }) {
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 	const member = await db.getMemberByDiscordId(server.id, u).catch(() => null);
@@ -58,11 +61,14 @@ async function buildLanguagePanel(interaction, server) {
 
 	return {
 		embeds: [languageEmbed],
-		components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(backButton)]
+		components: [
+			new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(selectMenu),
+			new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(backButton)
+		]
 	};
 }
 
-export async function handleLanguageButton(interaction) {
+export async function handleLanguageButton(interaction: ButtonInteraction<'cached'>) {
 	try {
 		if (!(await hasPermission(interaction.member, 'settings'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'settings', interaction.user.id);
@@ -70,8 +76,7 @@ export async function handleLanguageButton(interaction) {
 				.update({
 					content: errorMessage,
 					components: [],
-					embeds: [],
-					flags: 64
+					embeds: []
 				})
 				.catch(() =>
 					interaction
@@ -90,8 +95,7 @@ export async function handleLanguageButton(interaction) {
 			await interaction
 				.update({
 					content: errorMsg,
-					components: [],
-					flags: 64
+					components: []
 				})
 				.catch(() =>
 					interaction.reply({
@@ -103,24 +107,22 @@ export async function handleLanguageButton(interaction) {
 		}
 
 		await interaction.update({
-			...(await buildLanguagePanel(interaction, server)),
-			flags: 64
+			...(await buildLanguagePanel(interaction, server))
 		});
 	} catch (error) {
-		await logger.log(`❌ Language button error: ${error.message}`);
+		await logger.log(`❌ Language button error: ${(error as Error).message}`);
 		await interaction
 			.update({
 				content: await translate('settings.language.failed', interaction.guild.id, interaction.user.id, {
 					error: await errorReason(error, interaction.guild.id, interaction.user.id)
 				}),
-				components: [],
-				flags: 64
+				components: []
 			})
 			.catch(() => null);
 	}
 }
 
-export async function handleLanguageSelect(interaction) {
+export async function handleLanguageSelect(interaction: StringSelectMenuInteraction<'cached'>) {
 	try {
 		await interaction.deferUpdate();
 
@@ -180,7 +182,7 @@ export async function handleLanguageSelect(interaction) {
 			})
 			.catch(() => null);
 	} catch (error) {
-		await logger.log(`❌ Language select error: ${error.message}`);
+		await logger.log(`❌ Language select error: ${(error as Error).message}`);
 		const errorMsg = await translate('settings.language.failed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -202,12 +204,12 @@ export async function handleLanguageSelect(interaction) {
 					.catch(() => null);
 			}
 		} catch (err) {
-			await logger.log(`❌ Failed to send language select error: ${err.message}`);
+			await logger.log(`❌ Failed to send language select error: ${(err as Error).message}`);
 		}
 	}
 }
 
-async function getServerForInteraction(interaction) {
+async function getServerForInteraction(interaction: RepliableInteraction<'cached'>) {
 	const botConfig = getBotConfig();
 	if (!botConfig || !botConfig.id) {
 		return null;

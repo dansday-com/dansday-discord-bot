@@ -49,9 +49,15 @@
 				showToast(d.error || 'Could not reach that wiki', 'error');
 				return;
 			}
-			if (!draft.name.trim() && d.sitename) draft.name = String(d.sitename).slice(0, 64);
-			if (!draft.site_url.trim() && d.site_url) draft.site_url = new URL(d.site_url).origin;
-			if (!draft.description.trim() && d.description) draft.description = String(d.description).slice(0, 255);
+			if (!draft.name.trim() && d.sitename) {
+				draft.name = String(d.sitename).slice(0, 64);
+			}
+			if (!draft.site_url.trim() && d.site_url) {
+				draft.site_url = new URL(d.site_url).origin;
+			}
+			if (!draft.description.trim() && d.description) {
+				draft.description = String(d.description).slice(0, 255);
+			}
 			showToast(d.via_relay ? `Connected to ${d.sitename} through the relay` : `Connected to ${d.sitename}`, 'success');
 		} finally {
 			testing = false;
@@ -114,7 +120,9 @@
 	}
 
 	async function confirmDelete() {
-		if (!pendingDelete) return;
+		if (!pendingDelete) {
+			return;
+		}
 		deleting = true;
 		try {
 			const res = await fetch('/api/admin/wikis', {
@@ -128,7 +136,9 @@
 				showToast(d.error || 'Failed to delete wiki', 'error');
 				return;
 			}
-			if (draft.id === pendingDelete.id) resetDraft();
+			if (draft.id === pendingDelete.id) {
+				resetDraft();
+			}
 			showToast('Wiki removed', 'success');
 			await invalidateAll();
 		} finally {

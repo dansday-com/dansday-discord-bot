@@ -19,7 +19,9 @@ async function buildSnapshotFromDb(serverId: number): Promise<PublicStatisticsSn
 	const priceMap = await loadAssetPriceMap().catch(() => ({}));
 	const overview = await db.getServerOverview(serverId, { forPublicPage: true, priceMap });
 	const shaped = shapePublicStatisticsFromOverview(overview as Record<string, unknown>);
-	if (!shaped) return null;
+	if (!shaped) {
+		return null;
+	}
 	const snap: PublicStatisticsSnapshot = { ...shaped, updated_at: Date.now() };
 	setCachedPublicStatistics(serverId, snap).catch(() => {});
 	return snap;
@@ -54,35 +56,53 @@ export function subscribePublicServerStatistics(serverId: number, fn: Listener):
 		const pollMs = 10_000;
 		state.timer = setInterval(async () => {
 			const current = streams.get(serverId);
-			if (!current || current.listeners.size === 0) return;
+			if (!current || current.listeners.size === 0) {
+				return;
+			}
 			try {
 				const payload = await resolvePublicStatisticsSnapshot(serverId, { bypassCache: true });
-				if (!payload) return;
+				if (!payload) {
+					return;
+				}
 				const json = JSON.stringify(payload);
-				if (json === current.lastJson) return;
+				if (json === current.lastJson) {
+					return;
+				}
 				current.lastJson = json;
-				for (const l of current.listeners) l(payload);
+				for (const l of current.listeners) {
+					l(payload);
+				}
 			} catch (_) {}
 		}, pollMs);
 
 		(async () => {
 			const current = streams.get(serverId);
-			if (!current || current.listeners.size === 0) return;
+			if (!current || current.listeners.size === 0) {
+				return;
+			}
 			try {
 				const payload = await resolvePublicStatisticsSnapshot(serverId, { bypassCache: true });
-				if (!payload) return;
+				if (!payload) {
+					return;
+				}
 				current.lastJson = JSON.stringify(payload);
-				for (const l of current.listeners) l(payload);
+				for (const l of current.listeners) {
+					l(payload);
+				}
 			} catch (_) {}
 		})();
 	}
 
 	return () => {
 		const current = streams.get(serverId);
-		if (!current) return;
+		if (!current) {
+			return;
+		}
 		current.listeners.delete(fn);
 		if (current.listeners.size === 0) {
-			if (current.timer) clearInterval(current.timer);
+			if (current.timer) {
+				clearInterval(current.timer);
+			}
 			streams.delete(serverId);
 		}
 	};

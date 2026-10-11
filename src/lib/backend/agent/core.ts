@@ -92,7 +92,7 @@ async function runTool(tools: AgentTool[], call: any): Promise<string> {
 export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask<T>, turns: AgentTurn[]): Promise<AgentOutcome<T>> {
 	const tools = task.tools ?? [];
 	const specs = tools.map((tool) => ({ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.parameters } }));
-	const messages: any[] = [{ role: 'system', content: task.system }, ...turns.map((turn) => ({ role: turn.role, content: turn.text }))];
+	const messages: unknown[] = [{ role: 'system', content: task.system }, ...turns.map((turn) => ({ role: turn.role, content: turn.text }))];
 	const deadline = Date.now() + RUN_BUDGET_MS;
 	let fallback: { result: T } | null = null;
 	let cutOff = false;
@@ -100,7 +100,9 @@ export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask
 
 	while (steps < MAX_STEPS) {
 		const remaining = deadline - Date.now();
-		if (remaining < MIN_STEP_MS) break;
+		if (remaining < MIN_STEP_MS) {
+			break;
+		}
 		steps++;
 		const offerTools = specs.length > 0 && steps < MAX_STEPS;
 		const request = { messages, tools: offerTools ? specs : null };
@@ -111,13 +113,17 @@ export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask
 			);
 			reply = longer ?? reply;
 		}
-		if (!reply) break;
+		if (!reply) {
+			break;
+		}
 		const { message } = reply;
 
 		if (offerTools && Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
 			messages.push(message);
-			const results = await Promise.all(message.tool_calls.map((call: any) => runTool(tools, call)));
-			message.tool_calls.forEach((call: any, index: number) => messages.push({ role: 'tool', tool_call_id: call.id, content: results[index] }));
+			const results = await Promise.all(message.tool_calls.map((call: unknown) => runTool(tools, call)));
+			message.tool_calls.forEach((call: Record<string, unknown>, index: number) =>
+				messages.push({ role: 'tool', tool_call_id: call.id, content: results[index] })
+			);
 			continue;
 		}
 		if (reply.cutOff) {
@@ -127,8 +133,12 @@ export async function runAgentLoop<T>(complete: AgentCompletion, task: AgentTask
 
 		const answer = stripReasoning(typeof message.content === 'string' ? message.content : '');
 		const verdict = await task.finish(answer);
-		if (verdict.ok) return { ok: true, result: verdict.result, steps };
-		if (verdict.fallback !== undefined) fallback = { result: verdict.fallback };
+		if (verdict.ok) {
+			return { ok: true, result: verdict.result, steps };
+		}
+		if (verdict.fallback !== undefined) {
+			fallback = { result: verdict.fallback };
+		}
 		messages.push({ role: 'assistant', content: answer || '{}' }, { role: 'user', content: verdict.feedback });
 	}
 

@@ -30,7 +30,9 @@ async function validateRegistrationInputs(username: string, email: string, passw
 		errors.push('Username can only contain uppercase and lowercase letters');
 	} else {
 		const r = validateInputLength(sanitizedUsername, 'Username', 3, 50);
-		if (!r.valid) errors.push(r.error);
+		if (!r.valid) {
+			errors.push(r.error);
+		}
 	}
 
 	const sanitizedEmail = sanitizeEmail(email);
@@ -38,14 +40,18 @@ async function validateRegistrationInputs(username: string, email: string, passw
 		errors.push('Valid email is required');
 	} else {
 		const r = validateInputLength(sanitizedEmail, 'Email', 5, 255);
-		if (!r.valid) errors.push(r.error);
+		if (!r.valid) {
+			errors.push(r.error);
+		}
 	}
 
 	if (!password || typeof password !== 'string') {
 		errors.push('Password is required');
 	} else {
 		const r = validateInputLength(password, 'Password', 6, 128);
-		if (!r.valid) errors.push(r.error);
+		if (!r.valid) {
+			errors.push(r.error);
+		}
 	}
 
 	return { valid: errors.length === 0, errors, sanitizedUsername: sanitizedUsername || '', sanitizedEmail: sanitizedEmail || '' };
@@ -134,7 +140,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
 		);
-	} catch (error: any) {
-		return json({ success: false, error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ success: false, error: (error as Error).message }, { status: 500 });
 	}
 };

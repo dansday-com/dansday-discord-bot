@@ -6,19 +6,25 @@ import db from '../../../../../database.js';
 import { memberTranslator, translate, translateServer, errorReason } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
+import type { ButtonInteraction, Client, GuildMember, GuildTextBasedChannel, VoiceState } from 'discord.js';
+import type { Message, ModalSubmitInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type { MessageComponentInteraction } from 'discord.js';
 
 const DEFAULT_AFK_MESSAGE = 'Away';
 
-async function afkMessageLabel(message, guildId, userId) {
+async function afkMessageLabel(message: string, guildId: string, userId: string) {
 	return message === DEFAULT_AFK_MESSAGE ? await translate('afk.messages.away', guildId, userId) : message;
 }
 
-function stripAfkPrefix(name) {
-	if (!name || typeof name !== 'string') return '';
+function stripAfkPrefix(name: string) {
+	if (!name || typeof name !== 'string') {
+		return '';
+	}
 	return name.replace(/^\s*(\[AFK\]\s*)+/gi, '').trim();
 }
 
-async function getAFKStatus(userId, guildId) {
+async function getAFKStatus(userId: string, guildId: string) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -36,7 +42,7 @@ async function getAFKStatus(userId, guildId) {
 	}
 }
 
-async function setAFK(member, message, shouldDeafen = true) {
+async function setAFK(member: GuildMember, message: string, shouldDeafen = true) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -66,7 +72,7 @@ async function setAFK(member, message, shouldDeafen = true) {
 				await member.voice.setMute(true);
 				await logger.log(`🔇 Muted ${member.id} in voice channel (AFK)`);
 			} catch (err) {
-				await logger.log(`⚠️ Could not mute ${member.id} in voice channel: ${err.message}`);
+				await logger.log(`⚠️ Could not mute ${member.id} in voice channel: ${(err as Error).message}`);
 			}
 
 			if (shouldDeafen) {
@@ -74,7 +80,7 @@ async function setAFK(member, message, shouldDeafen = true) {
 					await member.voice.setDeaf(true);
 					await logger.log(`🔇 Deafened ${member.id} in voice channel (AFK)`);
 				} catch (err) {
-					await logger.log(`⚠️ Could not deafen ${member.id} in voice channel: ${err.message}`);
+					await logger.log(`⚠️ Could not deafen ${member.id} in voice channel: ${(err as Error).message}`);
 				}
 			}
 		}
@@ -90,14 +96,14 @@ async function setAFK(member, message, shouldDeafen = true) {
 			}
 			await db.upsertMember(serverData.id, member);
 		} catch (err) {
-			await logger.log(`⚠️ Could not update nickname for ${member.id}: ${err.message}`);
+			await logger.log(`⚠️ Could not update nickname for ${member.id}: ${(err as Error).message}`);
 		}
 	} catch (error) {
-		await logger.log(`❌ Error setting AFK: ${error.message}`);
+		await logger.log(`❌ Error setting AFK: ${(error as Error).message}`);
 	}
 }
 
-async function removeAFK(member, reason = '') {
+async function removeAFK(member: GuildMember, reason = '') {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -121,14 +127,14 @@ async function removeAFK(member, reason = '') {
 				await member.voice.setMute(false);
 				await logger.log(`🔊 Unmuted ${member.id} in voice channel (AFK removed)`);
 			} catch (err) {
-				await logger.log(`⚠️ Could not unmute ${member.id} in voice channel: ${err.message}`);
+				await logger.log(`⚠️ Could not unmute ${member.id} in voice channel: ${(err as Error).message}`);
 			}
 
 			try {
 				await member.voice.setDeaf(false);
 				await logger.log(`🔊 Undeafened ${member.id} in voice channel (AFK removed)`);
 			} catch (err) {
-				await logger.log(`⚠️ Could not undeafen ${member.id} in voice channel: ${err.message}`);
+				await logger.log(`⚠️ Could not undeafen ${member.id} in voice channel: ${(err as Error).message}`);
 			}
 		}
 
@@ -149,7 +155,7 @@ async function removeAFK(member, reason = '') {
 				await member.setNickname(null);
 				await db.upsertMember(serverData.id, member);
 			} catch (err2) {
-				await logger.log(`⚠️ Could not restore nickname for ${member.id}: ${err2.message}`);
+				await logger.log(`⚠️ Could not restore nickname for ${member.id}: ${(err2 as Error).message}`);
 			}
 		}
 
@@ -172,12 +178,12 @@ async function removeAFK(member, reason = '') {
 
 		return true;
 	} catch (error) {
-		await logger.log(`❌ Error removing AFK: ${error.message}`);
+		await logger.log(`❌ Error removing AFK: ${(error as Error).message}`);
 		return false;
 	}
 }
 
-export async function handleAFKButton(interaction) {
+export async function handleAFKButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 
@@ -206,7 +212,7 @@ export async function handleAFKButton(interaction) {
 
 			const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'me');
 
-			const buttonRow = new ActionRowBuilder().addComponents(removeButton, menuButton);
+			const buttonRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(removeButton, menuButton);
 
 			const duration = Math.floor((Date.now() - afkData.timestamp) / 1000);
 			const minutes = Math.floor(duration / 60);
@@ -265,7 +271,7 @@ export async function handleAFKButton(interaction) {
 		await interaction.showModal(modal);
 		await logger.log(`⏸️ AFK modal shown to ${member.id}`);
 	} catch (error) {
-		await logger.log(`❌ Error showing AFK modal: ${error.message}`);
+		await logger.log(`❌ Error showing AFK modal: ${(error as Error).message}`);
 		const errorMsg = await translate('afk.errors.failed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -276,7 +282,7 @@ export async function handleAFKButton(interaction) {
 	}
 }
 
-export async function handleAFKModal(interaction) {
+export async function handleAFKModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -339,7 +345,7 @@ export async function handleAFKModal(interaction) {
 
 		await logger.log(`✅ AFK status set for ${member.id}: "${afkMessage}"${shouldDeafen ? ' (will be deafened)' : ' (not deafened)'}`);
 	} catch (error) {
-		await logger.log(`❌ Error setting AFK: ${error.message}`);
+		await logger.log(`❌ Error setting AFK: ${(error as Error).message}`);
 		const errorMsg = await translate('afk.errors.setFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -349,7 +355,7 @@ export async function handleAFKModal(interaction) {
 	}
 }
 
-export async function handleRemoveAFKButton(interaction) {
+export async function handleRemoveAFKButton(interaction: ButtonInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 
@@ -359,8 +365,7 @@ export async function handleRemoveAFKButton(interaction) {
 				.update({
 					content: errorMessage,
 					components: [],
-					embeds: [],
-					flags: 64
+					embeds: []
 				})
 				.catch(() =>
 					interaction
@@ -396,13 +401,15 @@ export async function handleRemoveAFKButton(interaction) {
 
 		const payload = {
 			embeds: [embed],
-			components: [new ActionRowBuilder().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'me'))]
+			components: [
+				new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'me'))
+			]
 		};
 		await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 
 		await logger.log(`✅ AFK manually removed by ${member.id}`);
 	} catch (error) {
-		await logger.log(`❌ Error removing AFK: ${error.message}`);
+		await logger.log(`❌ Error removing AFK: ${(error as Error).message}`);
 		const errorMsg = await translate('afk.errors.removeFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -413,8 +420,8 @@ export async function handleRemoveAFKButton(interaction) {
 	}
 }
 
-export function init(client) {
-	client.on('messageCreate', async (message) => {
+export function init(client: Client) {
+	client.on('messageCreate', async (message: Message) => {
 		if (message.author.bot || !message.guild) {
 			return;
 		}
@@ -457,7 +464,7 @@ export function init(client) {
 
 				try {
 					const welcomeMsgText = await translateServer('afk.messages.welcomeBack', member.guild.id, { member: member.toString() });
-					const welcomeMsg = await message.channel.send(welcomeMsgText);
+					const welcomeMsg = await (message.channel as GuildTextBasedChannel).send(welcomeMsgText);
 					setTimeout(() => welcomeMsg.delete().catch(() => {}), 5000);
 				} catch (err) {}
 			}
@@ -503,7 +510,7 @@ export function init(client) {
 								const dmMessageText = await translate('afk.messages.dmMentioned', member.guild.id, mentionedMember.id, {
 									sender: senderDisplayName,
 									server: message.guild.name,
-									channel: message.channel.name,
+									channel: (message.channel as GuildTextBasedChannel).name,
 									message: message.content.substring(0, 200) + (message.content.length > 200 ? '...' : '')
 								});
 								const embedConfig = await getEmbedConfig(member.guild.id);
@@ -515,20 +522,20 @@ export function init(client) {
 									.setFooter({ text: embedConfig.FOOTER });
 								await mentionedMember.send({ embeds: [embed] });
 							} catch (dmErr) {
-								await logger.log(`⚠️ Could not DM ${mentionedMember.id} about mention: ${dmErr.message}`);
+								await logger.log(`⚠️ Could not DM ${mentionedMember.id} about mention: ${(dmErr as Error).message}`);
 							}
 						} catch (err) {
-							await logger.log(`⚠️ Could not send AFK notice for ${mentionedMember.id}: ${err.message}`);
+							await logger.log(`⚠️ Could not send AFK notice for ${mentionedMember.id}: ${(err as Error).message}`);
 						}
 					}
 				}
 			}
 		} catch (err) {
-			await logger.log(`❌ Error checking AFK in messageCreate: ${err.message}`);
+			await logger.log(`❌ Error checking AFK in messageCreate: ${(err as Error).message}`);
 		}
 	});
 
-	client.on('voiceStateUpdate', async (oldState, newState) => {
+	client.on('voiceStateUpdate', async (oldState: VoiceState, newState) => {
 		if (!newState.guild || newState.member?.user.bot) {
 			return;
 		}
@@ -545,13 +552,13 @@ export function init(client) {
 			const isSelfUndeafened = !newState.deaf && !newState.serverDeaf;
 
 			if ((wasSelfMuted && isSelfUnmuted) || (wasSelfDeafened && isSelfUndeafened)) {
-				const afkData = await getAFKStatus(newState.member.id, newState.guild.id);
+				const afkData = await getAFKStatus(newState.member!.id, newState.guild.id);
 				if (afkData) {
-					await removeAFK(newState.member, 'Self-unmuted/undeafened in voice channel');
+					await removeAFK(newState.member!, 'Self-unmuted/undeafened in voice channel');
 				}
 			}
 		} catch (err) {
-			await logger.log(`❌ Error checking AFK in voiceStateUpdate: ${err.message}`);
+			await logger.log(`❌ Error checking AFK in voiceStateUpdate: ${(err as Error).message}`);
 		}
 	});
 }

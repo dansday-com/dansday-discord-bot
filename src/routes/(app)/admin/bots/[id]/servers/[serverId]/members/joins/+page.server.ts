@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	return {
 		joinLimit: JOIN_LIMIT,
-		joins: (joins as any[]).map((j) => ({
+		joins: joins.map((j) => ({
 			id: String(j.id),
 			discord_member_id: String(j.discord_member_id),
 			name: (j.name ?? null) as string | null,

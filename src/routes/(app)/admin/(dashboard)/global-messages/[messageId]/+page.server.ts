@@ -7,22 +7,28 @@ import { ADMIN_TAB_PATHS, DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MESSAGE_LIMITS, messageUploadLimit } from '$lib/messages.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
-	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') redirect(302, DASHBOARD_PATH);
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
+	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
+		redirect(302, DASHBOARD_PATH);
+	}
 
 	const panelId = Number(locals.user.panel_id);
 	const listPath = ADMIN_TAB_PATHS.globalMessages;
 	const isNew = params.messageId === 'new';
 	const messages = await db.getGlobalMessages(panelId).catch(() => []);
 	const current = isNew ? null : (messages.find((message) => message.id === Number(params.messageId)) ?? null);
-	if (!isNew && !current) redirect(302, listPath);
+	if (!isNew && !current) {
+		redirect(302, listPath);
+	}
 	const copy = isNew ? (messages.find((message) => message.id === Number(url.searchParams.get('copy'))) ?? null) : null;
 
 	const [posts, bots] = await Promise.all([
 		current ? db.getGlobalMessagePosts(panelId, current.id).catch(() => []) : [],
 		db.getAllBots(panelId).catch(() => [])
 	]);
-	const bot = (bots as any[])[0] ?? null;
+	const bot = bots[0] ?? null;
 
 	return {
 		key: current ? `message-${current.id}` : `new-${copy?.id ?? ''}`,

@@ -10,10 +10,12 @@ import { getEffectiveMainEmbedAppearance } from '$lib/utils/mainConfig.js';
 export const load: LayoutServerLoad = async ({ params, url }) => {
 	const slug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(slug);
-	if (!resolved) redirect(303, apexHome());
+	if (!resolved) {
+		redirect(303, apexHome());
+	}
 
 	const settingsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.public);
-	const settings = (settingsRow as any)?.settings || {};
+	const settings = settingsRow?.settings || {};
 
 	const itemsEnabled = publicSubfeatureEnabled(settings, 'items');
 	const marketEnabled = publicSubfeatureEnabled(settings, 'market');
@@ -26,7 +28,7 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 		db.getServer(server.id).catch(() => null),
 		db.getServerSettings(server.id, SERVER_SETTINGS.component.main).catch(() => null)
 	]);
-	const accent = parseInt(getEffectiveMainEmbedAppearance((mainRow as any)?.settings).color.replace('#', ''), 16);
+	const accent = parseInt(getEffectiveMainEmbedAppearance(mainRow?.settings).color.replace('#', ''), 16);
 	const onSubdomain = publicServerSlugFromHost(url.hostname) === resolved.computedSlug;
 	const canonicalBase = publicServerPath(resolved.computedSlug);
 	const pathname = url.pathname.replace(/\/+$/, '');

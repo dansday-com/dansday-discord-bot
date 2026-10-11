@@ -37,7 +37,9 @@ function authorize(locals: App.Locals) {
 
 export const GET: RequestHandler = async ({ locals }) => {
 	const auth = authorize(locals);
-	if (auth.error) return auth.error;
+	if (auth.error) {
+		return auth.error;
+	}
 
 	const row = await db.getAi(auth.panelId!);
 	return json({ ai: maskConfig(aiFromDbRow(row)) });
@@ -45,7 +47,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 export const PATCH: RequestHandler = async ({ locals, request }) => {
 	const auth = authorize(locals);
-	if (auth.error) return auth.error;
+	if (auth.error) {
+		return auth.error;
+	}
 	const panelId = auth.panelId!;
 
 	let body: Record<string, unknown>;

@@ -14,16 +14,22 @@
 	let outcome = $state<{ tone: 'win' | 'lose' | 'neutral'; icon: string; title: string; line: string; deltaXp: number | null } | null>(null);
 	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
 	function showOutcome(o: { tone: 'win' | 'lose' | 'neutral'; icon: string; title: string; line: string; deltaXp: number | null }) {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = o;
 		outcomeTimer = setTimeout(() => (outcome = null), 3500);
 	}
 	function dismissOutcome() {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = null;
 	}
 	$effect(() => {
-		if (outcome === null) return;
+		if (outcome === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
@@ -49,7 +55,9 @@
 
 	const priceMap = $derived.by(() => {
 		const m = new Map<string, { price: number; change24h: number }>();
-		for (const r of [...board, ...gainers, ...losers]) m.set(`${r.asset_type}:${r.asset_id}`, { price: r.price, change24h: r.change24h });
+		for (const r of [...board, ...gainers, ...losers]) {
+			m.set(`${r.asset_type}:${r.asset_id}`, { price: r.price, change24h: r.change24h });
+		}
 		return m;
 	});
 
@@ -81,7 +89,9 @@
 
 	function fmtPrice(n: number): string {
 		const v = Number(n) || 0;
-		if (v >= 1) return v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+		if (v >= 1) {
+			return v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+		}
 		return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumSignificantDigits: 4 });
 	}
 	function pctText(n: number): string {
@@ -90,19 +100,31 @@
 	}
 	function fmtUnits(qty: number): string {
 		const v = Number(qty) || 0;
-		if (v <= 0) return '0';
-		if (v >= 1) return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
-		if (v >= 0.0001) return v.toFixed(6);
+		if (v <= 0) {
+			return '0';
+		}
+		if (v >= 1) {
+			return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+		}
+		if (v >= 0.0001) {
+			return v.toFixed(6);
+		}
 		return v.toFixed(8);
 	}
 	function dirColor(n: number): string {
-		if (n > 0) return '#1a7f57';
-		if (n < 0) return '#b23b2e';
+		if (n > 0) {
+			return '#1a7f57';
+		}
+		if (n < 0) {
+			return '#b23b2e';
+		}
 		return 'var(--color-base-content)';
 	}
 
 	function sparkPath(prices: number[], w = 72, h = 24): string {
-		if (!prices || prices.length < 2) return '';
+		if (!prices || prices.length < 2) {
+			return '';
+		}
 		const min = Math.min(...prices);
 		const max = Math.max(...prices);
 		const span = max - min || 1;
@@ -116,7 +138,9 @@
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function onSearchInput() {
-		if (searchTimer) clearTimeout(searchTimer);
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+		}
 		const q = searchQuery.trim();
 		if (!q) {
 			searchResults = [];
@@ -128,7 +152,9 @@
 				const res = await fetch(`/api/market/${encodeURIComponent(ctx.serverSlug)}/search?q=${encodeURIComponent(q)}`);
 				const d = await res.json();
 				searchResults = d.success ? d.results : [];
-				if (!d.success && d.error) showToast(d.error, 'error');
+				if (!d.success && d.error) {
+					showToast(d.error, 'error');
+				}
 			} catch {
 				searchResults = [];
 			} finally {
@@ -149,20 +175,24 @@
 		buyPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(buyCustom) || 0)), ctx.liveXp) : Math.floor((ctx.liveXp * (buyPercent as number)) / 100)
 	);
 
-	function openBuy(asset: any) {
+	function openBuy(asset: unknown) {
 		buyAsset = asset;
 		buyPercent = 25;
 		buyCustom = null;
 	}
 
 	$effect(() => {
-		if (buyAsset === null) return;
+		if (buyAsset === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
 	async function confirmBuy() {
 		const asset = buyAsset;
-		if (!asset || buyBusy) return;
+		if (!asset || buyBusy) {
+			return;
+		}
 		const amount = Math.floor(buyAmount || 0);
 		if (amount < MIN_BUY) {
 			showToast(`Minimum is ${fmt(MIN_BUY)} XP`, 'error');
@@ -191,7 +221,9 @@
 					deltaXp: -amount
 				});
 				await ctx.invalidateAll();
-			} else showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: d.error || 'Please try again.', deltaXp: null });
+			} else {
+				showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: d.error || 'Please try again.', deltaXp: null });
+			}
 		} catch {
 			showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: 'Please try again.', deltaXp: null });
 		} finally {
@@ -217,20 +249,24 @@
 		sellPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(sellCustom) || 0)), sellMax) : Math.floor((sellMax * (sellPercent as number)) / 100)
 	);
 
-	function openSell(p: any) {
+	function openSell(p: unknown) {
 		sellPos = p;
 		sellPercent = 25;
 		sellCustom = null;
 	}
 
 	$effect(() => {
-		if (sellPos === null) return;
+		if (sellPos === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
 	async function confirmSell() {
 		const p = sellPos;
-		if (!p || sellBusy) return;
+		if (!p || sellBusy) {
+			return;
+		}
 		const amount = Math.floor(sellAmount || 0);
 		if (amount <= 0) {
 			showToast('Enter an XP amount', 'error');
@@ -257,7 +293,9 @@
 					deltaXp: net
 				});
 				await ctx.invalidateAll();
-			} else showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: d.error || 'Please try again.', deltaXp: null });
+			} else {
+				showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: d.error || 'Please try again.', deltaXp: null });
+			}
 		} catch {
 			showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: 'Please try again.', deltaXp: null });
 		} finally {

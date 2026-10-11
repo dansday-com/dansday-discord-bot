@@ -31,7 +31,7 @@ function log(message: string, meta?: object) {
 }
 
 function init(_client: unknown) {
-	void _client;
+	_client;
 }
 
 export default { init, log, info, debug, warn, error };

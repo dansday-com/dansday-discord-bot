@@ -29,7 +29,9 @@ export const GET: RequestHandler = async () => {
 	const toLastmod = (d: unknown) => {
 		try {
 			const dt = d instanceof Date ? d : parseMySQLDateTimeUtc(d);
-			if (!dt || Number.isNaN(dt.getTime())) return undefined;
+			if (!dt || Number.isNaN(dt.getTime())) {
+				return undefined;
+			}
 			return dt.toISOString();
 		} catch {
 			return undefined;
@@ -53,7 +55,7 @@ export const GET: RequestHandler = async () => {
 		await Promise.all(
 			servers.map(async (s) => {
 				const row = await db.getServerSettings(Number(s.id), SERVER_SETTINGS.component.public).catch(() => null);
-				return publicSubfeatureEnabled((row as any)?.settings, 'invite') ? s : null;
+				return publicSubfeatureEnabled(row?.settings, 'invite') ? s : null;
 			})
 		)
 	).filter((s): s is (typeof servers)[number] => s != null);

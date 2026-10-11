@@ -4,7 +4,9 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.discord_quest_notifier).catch(() => null);
 	const raw = row && !Array.isArray(row) ? row.settings : null;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};

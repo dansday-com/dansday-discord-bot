@@ -12,7 +12,9 @@ function inviteTheme(settings: Record<string, any> | null | undefined): MemberTh
 	const image = serverThemeUrl(settings?.invite_theme_image);
 	const accent = normalizeAccent(settings?.invite_theme_accent);
 	const effect = normalizeEffect(settings?.invite_theme_effect);
-	if (!image && !accent && effect === 'none') return null;
+	if (!image && !accent && effect === 'none') {
+		return null;
+	}
 	return {
 		image,
 		accent: accent ?? DEFAULT_ACCENT,
@@ -29,8 +31,12 @@ export const load: PageServerLoad = async ({ params }) => {
 	const publicServer = await resolvePublicServerBySlug(raw.toLowerCase()).catch(() => null);
 	if (publicServer) {
 		const settingsRow = await db.getServerSettings(publicServer.server.id, SERVER_SETTINGS.component.public).catch(() => null);
-		if (!publicSubfeatureEnabled((settingsRow as any)?.settings, 'invite')) error(404, 'Invite not found');
-		if (publicServer.computedSlug !== raw) redirect(301, inviteJoinPath(publicServer.computedSlug));
+		if (!publicSubfeatureEnabled(settingsRow?.settings, 'invite')) {
+			error(404, 'Invite not found');
+		}
+		if (publicServer.computedSlug !== raw) {
+			redirect(301, inviteJoinPath(publicServer.computedSlug));
+		}
 		const slug = publicServer.computedSlug;
 		const server = await db.getServer(publicServer.server.id);
 		const code = server?.vanity_url_code || server?.invite_code || null;
@@ -50,11 +56,17 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	const slug = normalizeInviteSlug(raw);
-	if (!isValidInviteSlug(slug)) error(404, 'Invite not found');
-	if (slug !== raw) redirect(301, inviteJoinPath(slug));
+	if (!isValidInviteSlug(slug)) {
+		error(404, 'Invite not found');
+	}
+	if (slug !== raw) {
+		redirect(301, inviteJoinPath(slug));
+	}
 
 	const link = await db.getInviteLinkBySlug(slug);
-	if (!link) error(404, 'Invite not found');
+	if (!link) {
+		error(404, 'Invite not found');
+	}
 
 	const serverSlug = await computePublicServerSlugForServerId(Number(link.server_id)).catch(() => null);
 

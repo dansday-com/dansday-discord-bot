@@ -95,7 +95,9 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 	stats: PublicPageStats;
 	boost_level: number;
 } | null {
-	if (!overview) return null;
+	if (!overview) {
+		return null;
+	}
 	const s = (overview.stats as Record<string, unknown>) ?? {};
 	const boostLevel = (overview.boost_level as number | undefined) ?? (s.boost_level as number | undefined) ?? 0;
 

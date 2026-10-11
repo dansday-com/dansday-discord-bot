@@ -6,16 +6,24 @@ import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { ADMIN_TAB_PATHS } from '$lib/frontend/redirect.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 
 	const selfbotId = Number(params.selfbotId);
-	if (!selfbotId) redirect(302, ADMIN_TAB_PATHS.selfbots);
+	if (!selfbotId) {
+		redirect(302, ADMIN_TAB_PATHS.selfbots);
+	}
 
 	const panelId = locals.user.account_source === 'accounts' ? (locals.user.panel_id ?? null) : null;
-	if (panelId == null) redirect(302, ADMIN_TAB_PATHS.selfbots);
+	if (panelId == null) {
+		redirect(302, ADMIN_TAB_PATHS.selfbots);
+	}
 
 	let bot = await db.getSelfbotById(selfbotId);
-	if (!bot || bot.panel_id !== panelId) redirect(302, ADMIN_TAB_PATHS.selfbots);
+	if (!bot || bot.panel_id !== panelId) {
+		redirect(302, ADMIN_TAB_PATHS.selfbots);
+	}
 
 	if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 		try {
@@ -23,7 +31,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		} catch (_) {
 			await db.updateSelfbot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 			const refreshed = await db.getSelfbotById(selfbotId);
-			if (refreshed) bot = refreshed;
+			if (refreshed) {
+				bot = refreshed;
+			}
 		}
 	}
 
@@ -33,7 +43,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const selfbotPresence = presenceFromDbRow(statusRow);
 
 	const { token: _token, ...botPublic } = bot as typeof bot & { token?: string };
-	void _token;
+	_token;
 
 	return {
 		bot: {

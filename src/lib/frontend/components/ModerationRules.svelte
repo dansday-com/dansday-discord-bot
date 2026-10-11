@@ -44,8 +44,13 @@
 
 	function addPreset() {
 		const text = newPreset.trim();
-		if (!text) return;
-		if (presets.some((p) => p.toLowerCase() === text.toLowerCase())) return showToast('That reason is already saved', 'error');
+		if (!text) {
+			return;
+		}
+		if (presets.some((p) => p.toLowerCase() === text.toLowerCase())) {
+			showToast('That reason is already saved', 'error');
+			return;
+		}
 		presets = [...presets, text];
 		newPreset = '';
 	}
@@ -67,7 +72,10 @@
 				})
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not save the rules', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not save the rules', 'error');
+				return;
+			}
 			showToast('Rules saved', 'success');
 			await onsaved?.();
 		} finally {

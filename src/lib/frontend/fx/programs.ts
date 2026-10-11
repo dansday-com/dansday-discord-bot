@@ -46,7 +46,9 @@ import {
 const P = 6;
 
 function seedParticles(s: FxScene, spawn: (s: FxScene, i: number) => void) {
-	for (let i = 0; i < s.n; i++) spawn(s, i);
+	for (let i = 0; i < s.n; i++) {
+		spawn(s, i);
+	}
 }
 
 function fieldPalette(s: FxScene, steps: number) {
@@ -62,14 +64,16 @@ function fieldPalette(s: FxScene, steps: number) {
 function makeFire(rows: number, decay: number, feed: number, reach: number): FxProgram {
 	const step = (s: FxScene) => {
 		const { w, h, buf } = s;
-		const top = (s as any).levels as number;
-		const coals = (s as any).coals as number[][];
+		const top = s.levels as number;
+		const coals = s.coals as number[][];
 		const fuel = feed * (0.82 + s.v.speed * 0.18);
 		const lean = s.v.dir > 0 ? 1 : 2;
 		const idle = Math.max(1, Math.round(top * (0.6 + s.v.drift * 0.14)));
 		for (let x = 0; x < w; x++) {
 			let bed = 0;
-			for (const [cx, cw, cs] of coals) bed = Math.max(bed, cs * Math.max(0, 1 - Math.abs(x / w - cx) / cw));
+			for (const [cx, cw, cs] of coals) {
+				bed = Math.max(bed, cs * Math.max(0, 1 - Math.abs(x / w - cx) / cw));
+			}
 			buf[(h - 1) * w + x] = s.rnd() < fuel * (0.35 + bed * 0.65) ? top : Math.round(idle * (0.4 + bed * 0.6));
 		}
 		for (let x = 0; x < w; x++) {
@@ -82,7 +86,9 @@ function makeFire(rows: number, decay: number, feed: number, reach: number): FxP
 				}
 				const r = (s.rnd() * 4) | 0;
 				const dst = src - w - r + lean + (s.v.tilt > 0.25 ? 1 : 0);
-				if (dst >= 0 && dst < w * h) buf[dst] = Math.max(0, v - (r < decay ? 1 : 0));
+				if (dst >= 0 && dst < w * h) {
+					buf[dst] = Math.max(0, v - (r < decay ? 1 : 0));
+				}
 			}
 		}
 	};
@@ -98,38 +104,50 @@ function makeFire(rows: number, decay: number, feed: number, reach: number): FxP
 				const cx = 0.08 + r() * 0.84;
 				const cw = 0.1 + r() * 0.22;
 				const cs = 0.45 + r() * 0.55;
-				if (keep) coals.push([cx, cw, cs]);
+				if (keep) {
+					coals.push([cx, cw, cs]);
+				}
 			}
-			(s as any).coals = coals;
+			s.coals = coals;
 			const levels = Math.max(6, Math.round(s.h * reach * (0.82 + s.v.drift * 0.24)));
-			(s as any).levels = levels;
-			(s as any).pal = fieldPalette(s, levels);
-			(s as any).sparks = [] as number[][];
-			(s as any).tips = new Float32Array(s.w);
+			s.levels = levels;
+			s.pal = fieldPalette(s, levels);
+			s.sparks = [] as number[][];
+			s.tips = new Float32Array(s.w);
 			const { w, h, buf } = s;
 			for (let y = 0; y < h; y++) {
 				const heat = levels * (y / (h - 1));
-				for (let x = 0; x < w; x++) buf[y * w + x] = Math.max(0, Math.min(levels, Math.round(heat * (0.45 + s.rnd() * 0.9))));
+				for (let x = 0; x < w; x++) {
+					buf[y * w + x] = Math.max(0, Math.min(levels, Math.round(heat * (0.45 + s.rnd() * 0.9))));
+				}
 			}
-			for (let i = 0; i < 14; i++) step(s);
+			for (let i = 0; i < 14; i++) {
+				step(s);
+			}
 		},
 		frame(s) {
 			const { w, h, buf } = s;
-			const pal = (s as any).pal as [number, number, number, number][];
-			const levels = (s as any).levels as number;
-			const coals = (s as any).coals as number[][];
-			const tips = (s as any).tips as Float32Array;
+			const pal = s.pal as [number, number, number, number][];
+			const levels = s.levels as number;
+			const coals = s.coals as number[][];
+			const tips = s.tips as Float32Array;
 			step(s);
 			clear(s);
 
-			for (let x = 0; x < w; x++) tips[x] = h;
+			for (let x = 0; x < w; x++) {
+				tips[x] = h;
+			}
 			for (let y = 0; y < h; y++) {
 				for (let x = 0; x < w; x++) {
 					const v = buf[y * w + x];
-					if (!v) continue;
+					if (!v) {
+						continue;
+					}
 					const c = pal[v < pal.length ? v : pal.length - 1];
 					plot(s, x, y, c[0], c[1], c[2], c[3]);
-					if (v > levels * 0.2 && y < tips[x]) tips[x] = y;
+					if (v > levels * 0.2 && y < tips[x]) {
+						tips[x] = y;
+					}
 				}
 			}
 
@@ -137,11 +155,15 @@ function makeFire(rows: number, decay: number, feed: number, reach: number): FxP
 			const lift = Math.sin(s.t * 0.05 * s.v.speed) * 0.5 + 0.5;
 			for (let x = 0; x < w; x++) {
 				const tip = tips[x];
-				if (tip >= h) continue;
+				if (tip >= h) {
+					continue;
+				}
 				const span = h * 0.24;
 				for (let k = 1; k < span; k++) {
 					const y = tip - k;
-					if (y < 0) break;
+					if (y < 0) {
+						break;
+					}
 					const f = 1 - k / span;
 					const swirl = 0.6 + 0.4 * Math.sin(x * 0.2 + s.t * 0.06 * s.v.dir + k * 0.3);
 					plot(s, x + Math.sin(k * 0.4 + s.t * 0.03) * s.v.drift, y, hr, hg, hb, f * f * swirl * 0.12 * (0.7 + lift * 0.3));
@@ -156,24 +178,30 @@ function makeFire(rows: number, decay: number, feed: number, reach: number): FxP
 				const glow = cs * (0.62 + 0.38 * Math.sin(s.t * 0.07 * s.v.speed + cx * 9));
 				for (let dx = -half; dx <= half; dx++) {
 					const u = Math.abs(dx) / half;
-					if (u > 1) continue;
+					if (u > 1) {
+						continue;
+					}
 					const body = 1 - u * u;
 					for (let k = 0; k < 3; k++) {
 						const y = h - 1 - k;
 						const a = body * glow * (1 - k / 3);
 						plot(s, px + dx, y, cr, cg, cb, a * 0.8);
-						if (k === 0 && body > 0.55) plot(s, px + dx, y, gr2, gg2, gb2, (body - 0.55) * glow * 0.9);
+						if (k === 0 && body > 0.55) {
+							plot(s, px + dx, y, gr2, gg2, gb2, (body - 0.55) * glow * 0.9);
+						}
 					}
 				}
 			}
 
-			const sparks = (s as any).sparks as number[][];
+			const sparks = s.sparks as number[][];
 			for (let k = 0; k < 3; k++) {
 				const sx = (s.rnd() * w) | 0;
 				const lim = levels * 0.72;
 				for (let y = 1; y < h; y++) {
 					if (buf[y * w + sx] > lim && buf[(y - 1) * w + sx] <= levels * 0.12) {
-						if (s.rnd() < 0.25) sparks.push([sx, y, 0, 0.3 + s.rnd() * 0.7]);
+						if (s.rnd() < 0.25) {
+							sparks.push([sx, y, 0, 0.3 + s.rnd() * 0.7]);
+						}
 						break;
 					}
 				}
@@ -191,10 +219,14 @@ function makeFire(rows: number, decay: number, feed: number, reach: number): FxP
 				const c = pal[Math.min(pal.length - 1, ((0.55 + life * 0.45) * levels) | 0)];
 				plot(s, sp[0], sp[1], c[0], c[1], c[2], life * 0.9);
 			}
-			if (sparks.length > 40) sparks.splice(0, sparks.length - 40);
+			if (sparks.length > 40) {
+				sparks.splice(0, sparks.length - 40);
+			}
 
 			let heat = 0;
-			for (let x = 0; x < w; x++) heat += 1 - tips[x] / h;
+			for (let x = 0; x < w; x++) {
+				heat += 1 - tips[x] / h;
+			}
 			s.out = Math.min(1, (heat / w) * 1.6);
 			blit(s);
 		}
@@ -234,20 +266,28 @@ function makeFall(
 				if (p[o + 1] > s.h) {
 					if (opts.splash) {
 						splashes.push([p[o], 0]);
-						if (splashes.length > 14) splashes.shift();
+						if (splashes.length > 14) {
+							splashes.shift();
+						}
 					}
 					p[o + 1] = (opts.from ?? 0) * s.h - 2;
 					p[o] = s.rnd() * s.w;
 				}
-				if (p[o] > s.w + 2) p[o] = -2;
-				if (p[o] < -2) p[o] = s.w + 2;
+				if (p[o] > s.w + 2) {
+					p[o] = -2;
+				}
+				if (p[o] < -2) {
+					p[o] = s.w + 2;
+				}
 				const a = p[o + 4] * edge(p[o + 1], (opts.from ?? 0) * s.h - 3, s.h + 1, s.h * 0.16);
 				const size = opts.size * p[o + 2];
 				for (let k = 0; k < opts.len; k++) {
 					const t = k / Math.max(1, opts.len);
 					plot(s, p[o] - wind * p[o + 2] * k, p[o + 1] - p[o + 2] * s.v.speed * rate * k, r, g, b, a * (1 - t) * 0.9);
 				}
-				if (size > 0.8) plot(s, p[o] + 1, p[o + 1], r, g, b, a * 0.55);
+				if (size > 0.8) {
+					plot(s, p[o] + 1, p[o + 1], r, g, b, a * 0.55);
+				}
 			}
 			for (let k = splashes.length - 1; k >= 0; k--) {
 				const sp = splashes[k];
@@ -258,7 +298,9 @@ function makeFall(
 				}
 				const f = sp[1] / 12;
 				const w2 = f * (opts.splash ?? 3);
-				for (let d = -w2; d <= w2; d++) plot(s, sp[0] + d, s.h - 1 - Math.sin((1 - Math.abs(d) / (w2 + 0.5)) * 2) * 1.5, r, g, b, (1 - f) * 0.7);
+				for (let d = -w2; d <= w2; d++) {
+					plot(s, sp[0] + d, s.h - 1 - Math.sin((1 - Math.abs(d) / (w2 + 0.5)) * 2) * 1.5, r, g, b, (1 - f) * 0.7);
+				}
 			}
 			blit(s);
 		}
@@ -306,7 +348,9 @@ function makeFountain(rows: number, stride: number, gravity: number, spread: num
 				p[o] += p[o + 2];
 				p[o + 1] += p[o + 3];
 				p[o + 5] += 1;
-				if (p[o + 1] > s.h || p[o] < -3 || p[o] > s.w + 3) spawn(s, i);
+				if (p[o + 1] > s.h || p[o] < -3 || p[o] > s.w + 3) {
+					spawn(s, i);
+				}
 				const life = Math.max(0, 1 - p[o + 5] / 90);
 				const [r, g, b] = hsl(s.v.hue + (1 - life) * 26, s.v.sat, 52 + life * 42);
 				plot(s, p[o], p[o + 1], r, g, b, p[o + 4] * life);
@@ -322,11 +366,11 @@ function makeCurtain(rows: number): FxProgram {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).ph = [s.rnd() * 9, s.rnd() * 9, s.rnd() * 9];
+			s.ph = [s.rnd() * 9, s.rnd() * 9, s.rnd() * 9];
 		},
 		frame(s) {
 			clear(s);
-			const ph = (s as any).ph as number[];
+			const ph = s.ph as number[];
 			const t = s.t * 0.012 * s.v.speed * s.v.dir;
 			for (let band = 0; band < 3; band++) {
 				const hue = s.v.hue + band * 34 + (s.v.hue2 - s.v.hue) * 0.3;
@@ -339,7 +383,9 @@ function makeCurtain(rows: number): FxProgram {
 					for (let y = 0; y < len; y++) {
 						const f = y / len;
 						const a = (1 - f) * (0.16 + 0.1 * Math.sin(u * 15 + t * 2)) * (1 - band * 0.18);
-						if (a > 0.004) plot(s, x, top + y, r, g, b, a);
+						if (a > 0.004) {
+							plot(s, x, top + y, r, g, b, a);
+						}
 					}
 				}
 			}
@@ -373,7 +419,9 @@ function makeSpiral(rows: number, stride: number, inward: number): FxProgram {
 				const p = s.parts;
 				p[o] += 0.035 * p[o + 2] * s.v.dir;
 				p[o + 1] -= inward * p[o + 2];
-				if (p[o + 1] <= 0.06) spawn(s, i);
+				if (p[o + 1] <= 0.06) {
+					spawn(s, i);
+				}
 				const heat = 1 - p[o + 1];
 				const [r, g, b] = hsl(s.v.hue + heat * 50, s.v.sat, 46 + heat * 46);
 				const a = p[o + 3] * (0.35 + heat * 0.65) * edge(p[o + 1], 0.06, 1.25, 0.24);
@@ -446,7 +494,9 @@ function makeTwinkle(rows: number, stride: number, rise: number): FxProgram {
 					p[o] = s.rnd() * s.w;
 				}
 				const rest = s.h * 0.82;
-				if (p[o + 1] > rest) p[o + 1] -= (p[o + 1] - rest) * 0.06;
+				if (p[o + 1] > rest) {
+					p[o + 1] -= (p[o + 1] - rest) * 0.06;
+				}
 				const tw = Math.max(0, Math.sin(p[o + 3]));
 				const [r, g, b] = hsl(s.v.hue + (s.v.hue2 - s.v.hue) * p[o + 2], s.v.sat, 62 + tw * 30);
 				const fe = edge(p[o + 1], -2, s.h + 2, s.h * 0.18);

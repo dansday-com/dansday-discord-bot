@@ -3,7 +3,9 @@ declare const __APP_URL__: string;
 
 function requiredEnv(key: string): string {
 	const value = typeof process === 'undefined' ? '' : (process.env[key]?.trim() ?? '');
-	if (!value) throw new Error(`Missing ${key} environment variable`);
+	if (!value) {
+		throw new Error(`Missing ${key} environment variable`);
+	}
 	return value;
 }
 
@@ -213,63 +215,101 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 
 let dbCache: (typeof import('../database.js'))['default'] | null = null;
 async function getDb() {
-	if (!dbCache) dbCache = (await import('../database.js')).default;
+	if (!dbCache) {
+		dbCache = (await import('../database.js')).default;
+	}
 	return dbCache;
 }
 
 function getPanelId(locals: App.Locals): number | null {
-	if (!locals.user.authenticated) return null;
-	if (locals.user.account_source === 'accounts') return locals.user.panel_id ?? null;
+	if (!locals.user.authenticated) {
+		return null;
+	}
+	if (locals.user.account_source === 'accounts') {
+		return locals.user.panel_id ?? null;
+	}
 	return null;
 }
 
 export async function accountOwnsServer(locals: App.Locals, serverId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'server_accounts') return locals.user.server_id === serverId;
+	if (!locals.user.authenticated) {
+		return false;
+	}
+	if (locals.user.account_source === 'server_accounts') {
+		return locals.user.server_id === serverId;
+	}
 	const panelId = getPanelId(locals);
-	if (panelId == null) return false;
+	if (panelId == null) {
+		return false;
+	}
 	const db = await getDb();
 	const serverPanelId = await db.getServerPanelId(serverId);
 	return serverPanelId === panelId;
 }
 
 export async function accountOwnsBot(locals: App.Locals, botId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'server_accounts') return false;
+	if (!locals.user.authenticated) {
+		return false;
+	}
+	if (locals.user.account_source === 'server_accounts') {
+		return false;
+	}
 	const panelId = getPanelId(locals);
-	if (panelId == null) return false;
+	if (panelId == null) {
+		return false;
+	}
 	const db = await getDb();
 	const botPanelId = await db.getBotPanelId(botId);
 	return botPanelId === panelId;
 }
 
 export async function canEditServerSettings(locals: App.Locals, serverId: string | number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return accountOwnsServer(locals, Number(serverId));
-	if (locals.user.account_source === 'server_accounts') return locals.user.server_id === Number(serverId);
+	if (!locals.user.authenticated) {
+		return false;
+	}
+	if (locals.user.account_source === 'accounts') {
+		return accountOwnsServer(locals, Number(serverId));
+	}
+	if (locals.user.account_source === 'server_accounts') {
+		return locals.user.server_id === Number(serverId);
+	}
 	return false;
 }
 
 export async function canUseEmbedBuilder(locals: App.Locals, serverId: string | number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return accountOwnsServer(locals, Number(serverId));
+	if (!locals.user.authenticated) {
+		return false;
+	}
+	if (locals.user.account_source === 'accounts') {
+		return accountOwnsServer(locals, Number(serverId));
+	}
 	if (locals.user.account_source === 'server_accounts') {
-		if (locals.user.server_id !== Number(serverId)) return false;
+		if (locals.user.server_id !== Number(serverId)) {
+			return false;
+		}
 		return locals.user.account_type === 'owner' || locals.user.account_type === 'staff';
 	}
 	return false;
 }
 
 export async function canReadSelfbotTopology(locals: App.Locals, selfbotId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
+	if (!locals.user.authenticated) {
+		return false;
+	}
 	const db = await getDb();
 	const sb = await db.getSelfbotById(selfbotId);
-	if (!sb) return false;
+	if (!sb) {
+		return false;
+	}
 
 	const selfbotPanelId = sb.panel_id;
-	if (selfbotPanelId == null) return false;
+	if (selfbotPanelId == null) {
+		return false;
+	}
 
-	if (locals.user.account_source === 'accounts') return locals.user.panel_id === selfbotPanelId;
+	if (locals.user.account_source === 'accounts') {
+		return locals.user.panel_id === selfbotPanelId;
+	}
 	if (locals.user.account_source === 'server_accounts') {
 		return (await db.getServerPanelId(locals.user.server_id)) === selfbotPanelId;
 	}
@@ -278,10 +318,14 @@ export async function canReadSelfbotTopology(locals: App.Locals, selfbotId: numb
 
 export async function canManagePanelSelfbots(locals: App.Locals, selfbotId: number): Promise<boolean> {
 	const panelId = getPanelId(locals);
-	if (panelId == null) return false;
+	if (panelId == null) {
+		return false;
+	}
 	const db = await getDb();
 	const sb = await db.getSelfbotById(selfbotId);
-	if (!sb) return false;
+	if (!sb) {
+		return false;
+	}
 	return sb.panel_id === panelId;
 }
 
@@ -305,10 +349,14 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/selfbots\/(\d+)(\/.*)?$/,
 		check: async (locals, match) => {
 			const panelId = getPanelId(locals);
-			if (panelId == null) return false;
+			if (panelId == null) {
+				return false;
+			}
 			const db = await getDb();
 			const sb = await db.getSelfbotById(Number(match[1]));
-			if (!sb) return false;
+			if (!sb) {
+				return false;
+			}
 			return sb.panel_id === panelId;
 		},
 		superadminOnly: true
@@ -323,7 +371,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/servers\/(\d+)\/categories/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
-			if (!locals.user.authenticated) return false;
+			if (!locals.user.authenticated) {
+				return false;
+			}
 			return locals.user.account_source === 'accounts'
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
@@ -333,7 +383,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/servers\/(\d+)\/channels/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
-			if (!locals.user.authenticated) return false;
+			if (!locals.user.authenticated) {
+				return false;
+			}
 			return locals.user.account_source === 'accounts'
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
@@ -343,7 +395,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/servers\/(\d+)\/source-servers/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
-			if (!locals.user.authenticated) return false;
+			if (!locals.user.authenticated) {
+				return false;
+			}
 			return locals.user.account_source === 'accounts'
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
@@ -353,7 +407,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/servers\/(\d+)\/roles/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
-			if (!locals.user.authenticated) return false;
+			if (!locals.user.authenticated) {
+				return false;
+			}
 			return locals.user.account_source === 'accounts'
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
@@ -367,7 +423,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/servers\/(\d+)\/members/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
-			if (!locals.user.authenticated) return false;
+			if (!locals.user.authenticated) {
+				return false;
+			}
 			return locals.user.account_source === 'accounts'
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
@@ -397,7 +455,9 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		pattern: /^\/api\/servers\/(\d+)\/accounts/,
 		check: async (locals, match) => {
 			const id = Number(match[1]);
-			if (!locals.user.authenticated) return false;
+			if (!locals.user.authenticated) {
+				return false;
+			}
 			return locals.user.account_source === 'accounts'
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
@@ -428,11 +488,17 @@ const PUBLIC_EXACT = new Set([
 ]);
 
 export async function guardApiRoute(locals: App.Locals, pathname: string): Promise<Response | null> {
-	if (!pathname.startsWith('/api/')) return null;
+	if (!pathname.startsWith('/api/')) {
+		return null;
+	}
 
-	if (PUBLIC_EXACT.has(pathname)) return null;
+	if (PUBLIC_EXACT.has(pathname)) {
+		return null;
+	}
 	for (const prefix of PUBLIC_PREFIXES) {
-		if (pathname.startsWith(prefix)) return null;
+		if (pathname.startsWith(prefix)) {
+			return null;
+		}
 	}
 
 	if (!locals.user.authenticated) {
@@ -444,7 +510,9 @@ export async function guardApiRoute(locals: App.Locals, pathname: string): Promi
 
 	for (const guard of ROUTE_GUARDS) {
 		const match = pathname.match(guard.pattern);
-		if (!match) continue;
+		if (!match) {
+			continue;
+		}
 
 		if (guard.superadminOnly && locals.user.account_source !== 'accounts') {
 			return new Response(JSON.stringify({ error: 'Access denied' }), {

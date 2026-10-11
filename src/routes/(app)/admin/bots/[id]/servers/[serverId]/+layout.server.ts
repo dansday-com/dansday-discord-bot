@@ -5,8 +5,12 @@ import { webBotHome, adminServerPath } from '$lib/frontend/redirect.js';
 import { accountOwnsServer } from '$lib/backend/panelServer.js';
 import { loadAssetPriceMap } from '$lib/backend/public/market/index.js';
 
+type AdminServerOverview = Extract<NonNullable<Awaited<ReturnType<typeof db.getServerOverview>>>, { sync: unknown }>;
+
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 
 	const botId = Number(params.id);
 	const serverIdNum = Number(params.serverId);
@@ -16,7 +20,7 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	}
 
 	const priceMap = await loadAssetPriceMap().catch(() => ({}));
-	const overview = await db.getServerOverview(params.serverId, { priceMap });
+	const overview = (await db.getServerOverview(params.serverId, { priceMap })) as AdminServerOverview | null;
 	if (!overview) {
 		redirect(302, webBotHome(url.pathname));
 	}

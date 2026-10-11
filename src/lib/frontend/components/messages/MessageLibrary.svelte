@@ -42,7 +42,10 @@
 		try {
 			const res = await fetch(`${apiBase}/${message.id}`, { method: 'DELETE' });
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not delete the message', 'error', 8000);
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not delete the message', 'error', 8000);
+				return;
+			}
 			showToast(
 				out.stripped ? 'Message deleted.' : 'Message deleted. A bot is offline, so some posted copies keep their buttons until it is back.',
 				out.stripped ? 'success' : 'info',

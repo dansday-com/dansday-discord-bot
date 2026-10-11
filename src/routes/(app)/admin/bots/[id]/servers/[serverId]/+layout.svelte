@@ -29,7 +29,9 @@
 	]);
 
 	function isActive(href: string) {
-		if (href === base) return page.url.pathname === base;
+		if (href === base) {
+			return page.url.pathname === base;
+		}
 		return page.url.pathname.startsWith(href);
 	}
 </script>

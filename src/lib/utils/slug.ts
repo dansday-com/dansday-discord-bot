@@ -88,13 +88,21 @@ function foldMathAlphanumeric(code: number): string | null {
 		[0x1d670, 0x1d6a3, 'Aa']
 	];
 	for (const [start, end] of blocks) {
-		if (code < start || code > end) continue;
+		if (code < start || code > end) {
+			continue;
+		}
 		const offset = code - start;
-		if (offset < 26) return String.fromCharCode(0x41 + offset);
-		if (offset < 52) return String.fromCharCode(0x61 + (offset - 26));
+		if (offset < 26) {
+			return String.fromCharCode(0x41 + offset);
+		}
+		if (offset < 52) {
+			return String.fromCharCode(0x61 + (offset - 26));
+		}
 		return null;
 	}
-	if (code >= 0x1d7ce && code <= 0x1d7ff) return String.fromCharCode(0x30 + ((code - 0x1d7ce) % 10));
+	if (code >= 0x1d7ce && code <= 0x1d7ff) {
+		return String.fromCharCode(0x30 + ((code - 0x1d7ce) % 10));
+	}
 	return null;
 }
 
@@ -116,17 +124,25 @@ export function parseIndexedSlug(slug: string): { base: string; index: number } 
 		.trim()
 		.toLowerCase()
 		.normalize('NFC');
-	if (!s) return { base: '', index: 1 };
+	if (!s) {
+		return { base: '', index: 1 };
+	}
 	const m = s.match(/^(.*?)(?:_(\d+))$/);
-	if (!m) return { base: s, index: 1 };
+	if (!m) {
+		return { base: s, index: 1 };
+	}
 	const base = (m[1] || '').trim();
 	const idx = Number(m[2]);
-	if (!base || !Number.isFinite(idx) || idx < 1) return { base: s, index: 1 };
+	if (!base || !Number.isFinite(idx) || idx < 1) {
+		return { base: s, index: 1 };
+	}
 	return { base, index: idx + 1 };
 }
 
 export function formatIndexedSlug(base: string, index: number): string {
-	if (index <= 1) return base;
+	if (index <= 1) {
+		return base;
+	}
 	return `${base}_${index - 1}`;
 }
 
@@ -138,23 +154,31 @@ export function resolveIndexedSlugToItem<T extends WithId>(
 	slugKey: (row: T) => string
 ): { item: T; computedSlug: string } | null {
 	const { base, index } = parseIndexedSlug(requestedSlug);
-	if (!base) return null;
+	if (!base) {
+		return null;
+	}
 	const matches = items
 		.map((row) => ({ row, base: slugifyDisplayName(slugKey(row), 'item') }))
 		.filter((x) => x.base === base)
 		.sort((a, b) => Number(a.row.id) - Number(b.row.id));
 	const picked = matches[index - 1];
-	if (!picked) return null;
+	if (!picked) {
+		return null;
+	}
 	return { item: picked.row, computedSlug: formatIndexedSlug(base, index) };
 }
 
 export function computeIndexedSlugForItemId<T extends WithId>(itemId: number, items: T[], slugKey: (row: T) => string): string | null {
 	const current = items.find((s) => Number(s.id) === Number(itemId));
-	if (!current) return null;
+	if (!current) {
+		return null;
+	}
 	const base = slugifyDisplayName(slugKey(current), 'item');
 	const matches = items.filter((s) => slugifyDisplayName(slugKey(s), 'item') === base).sort((a, b) => Number(a.id) - Number(b.id));
 	const idx = matches.findIndex((s) => Number(s.id) === Number(itemId));
-	if (idx < 0) return null;
+	if (idx < 0) {
+		return null;
+	}
 	return formatIndexedSlug(base, idx + 1);
 }
 
@@ -166,7 +190,9 @@ export function listIndexedSlugsForItems<T extends WithId>(
 	const groups = new Map<string, T[]>();
 	for (const row of items) {
 		const base = slugifyDisplayName(slugKey(row), 'item');
-		if (!groups.has(base)) groups.set(base, []);
+		if (!groups.has(base)) {
+			groups.set(base, []);
+		}
 		groups.get(base)!.push(row);
 	}
 	const out: { slug: string; updated_at: unknown; item: T }[] = [];

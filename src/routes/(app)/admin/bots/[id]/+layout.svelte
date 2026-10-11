@@ -18,7 +18,9 @@
 	]);
 
 	function isActive(href: string) {
-		if (href === base) return page.url.pathname.replace(/\/$/, '') === base;
+		if (href === base) {
+			return page.url.pathname.replace(/\/$/, '') === base;
+		}
 		return page.url.pathname.startsWith(href);
 	}
 
@@ -34,7 +36,9 @@
 	const displayUptime = $derived(liveBot.status === 'running' ? uptimeBase + uptimeTick : 0);
 
 	function startTick() {
-		if (tickInterval) return;
+		if (tickInterval) {
+			return;
+		}
 		const base = Date.now();
 		tickInterval = setInterval(() => {
 			uptimeTick = Date.now() - base;
@@ -50,7 +54,9 @@
 	}
 
 	onMount(() => {
-		if (!isBotSection) return;
+		if (!isBotSection) {
+			return;
+		}
 
 		_liveBotOverride = { ...data.bot };
 		if (data.bot.status === 'running') {
@@ -78,27 +84,43 @@
 		stopTick();
 	});
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
-	function statusTextColor(status: string) {
-		if (status === 'running') return 'text-green-400';
-		if (status === 'starting' || status === 'stopping') return 'text-yellow-400';
+	function statusTextColor(status: string | null) {
+		if (status === 'running') {
+			return 'text-green-400';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'text-yellow-400';
+		}
 		return 'text-ash-400';
 	}
 
 	function formatUptime(ms: number): string {
-		if (!ms) return '—';
+		if (!ms) {
+			return '—';
+		}
 		const s = Math.floor(ms / 1000);
 		const m = Math.floor(s / 60);
 		const h = Math.floor(m / 60);
 		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
+		if (d > 0) {
+			return `${d}d ${h % 24}h`;
+		}
+		if (h > 0) {
+			return `${h}h ${m % 60}m`;
+		}
+		if (m > 0) {
+			return `${m}m ${s % 60}s`;
+		}
 		return `${s}s`;
 	}
 

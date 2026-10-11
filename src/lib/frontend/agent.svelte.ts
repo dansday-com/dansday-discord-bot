@@ -20,12 +20,16 @@ export const agentDock = {
 };
 
 export function announceAgentChanges(kinds: string[]) {
-	if (kinds.length > 0) window.dispatchEvent(new CustomEvent(AGENT_CHANGED_EVENT, { detail: kinds }));
+	if (kinds.length > 0) {
+		window.dispatchEvent(new CustomEvent(AGENT_CHANGED_EVENT, { detail: kinds }));
+	}
 }
 
 export function onAgentChange(kind: string, run: () => void): () => void {
 	const listener = (event: Event) => {
-		if (((event as CustomEvent).detail as string[]).includes(kind)) run();
+		if (((event as CustomEvent).detail as string[]).includes(kind)) {
+			run();
+		}
 	};
 	window.addEventListener(AGENT_CHANGED_EVENT, listener);
 	return () => window.removeEventListener(AGENT_CHANGED_EVENT, listener);

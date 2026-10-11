@@ -16,9 +16,13 @@ function normalizePresenceStatus(s: string): PresenceStatusData {
 }
 
 function normalizeStoredUrl(u: string | undefined): string | undefined {
-	if (!u) return undefined;
+	if (!u) {
+		return undefined;
+	}
 	const t = u.trim();
-	if (!t) return undefined;
+	if (!t) {
+		return undefined;
+	}
 	return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 }
 
@@ -35,7 +39,9 @@ export type PresenceSetter = {
 };
 
 export async function applyPresenceFromFields(user: PresenceSetter | null, row: PresenceFields | null | undefined, logContext: string): Promise<void> {
-	if (!user) return;
+	if (!user) {
+		return;
+	}
 
 	try {
 		const discord_status = row?.discord_status ?? 'online';
@@ -85,7 +91,7 @@ export async function applyPresenceFromFields(user: PresenceSetter | null, row: 
 		}
 
 		await user.setPresence({ status, activities: [activity] });
-	} catch (err: any) {
-		logger.log(`⚠️  Could not apply Discord presence ${logContext}: ${err?.message ?? err}`);
+	} catch (err) {
+		logger.log(`⚠️  Could not apply Discord presence ${logContext}: ${(err as Error)?.message ?? err}`);
 	}
 }

@@ -4,7 +4,9 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
-	const settings = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.notifications).catch(() => ({}));
-	return { settings: settings?.settings ?? {} };
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
+	const settings = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.notifications).catch((): { settings?: undefined } => ({}));
+	return { settings: (settings?.settings ?? {}) as { enabled?: boolean; channel_ids?: string[] } };
 };

@@ -7,15 +7,23 @@ import db from '../../../../../database.js';
 import { memberTranslator, translate, errorReason, errorReasonFor } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { imageUploadField, uploadedFiles } from './formFields.js';
+import type { ButtonInteraction, Client, Guild, GuildMember, PartialGuildMember, Role, RoleCreateOptions, RoleEditOptions } from 'discord.js';
+import type { ModalSubmitInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder, ModalActionRowComponentBuilder } from 'discord.js';
+import type { MessageComponentInteraction } from 'discord.js';
 
 const supporterRoles = new Map();
 
-async function getOwnedSupporterRoleIds(guild) {
+async function getOwnedSupporterRoleIds(guild: Guild) {
 	try {
 		const botConfig = getBotConfig();
-		if (!botConfig?.id) return null;
+		if (!botConfig?.id) {
+			return null;
+		}
 		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-		if (!server) return null;
+		if (!server) {
+			return null;
+		}
 		const owned = await db.listCustomSupporterRoles(server.id);
 		return new Map(owned.map((r) => [r.discord_role_id, r.discord_member_id]));
 	} catch (err) {
@@ -23,15 +31,17 @@ async function getOwnedSupporterRoleIds(guild) {
 	}
 }
 
-async function forgetSupporterRole(guild, discordRoleId) {
+async function forgetSupporterRole(guild: Guild, discordRoleId: string) {
 	try {
 		const botConfig = getBotConfig();
 		const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
-		if (server) await db.clearMemberCustomSupporterRole(server.id, discordRoleId);
+		if (server) {
+			await db.clearMemberCustomSupporterRole(server.id, discordRoleId);
+		}
 	} catch (err) {}
 }
 
-async function cleanupInvalidRole(role, ownedRoleIds) {
+async function cleanupInvalidRole(role: Role, ownedRoleIds: Awaited<ReturnType<typeof getOwnedSupporterRoleIds>>) {
 	try {
 		if (!ownedRoleIds || !ownedRoleIds.has(role.id)) {
 			return;
@@ -61,11 +71,11 @@ async function cleanupInvalidRole(role, ownedRoleIds) {
 			}
 		}
 	} catch (err) {
-		await logger.log(`⚠️ Could not cleanup invalid role ${role.name} (${role.id}): ${err.message}`);
+		await logger.log(`⚠️ Could not cleanup invalid role ${role.name} (${role.id}): ${(err as Error).message}`);
 	}
 }
 
-async function hasSupporterRole(member) {
+async function hasSupporterRole(member: GuildMember | PartialGuildMember) {
 	try {
 		if (supporterRoles.has(member.id)) {
 			const roleId = supporterRoles.get(member.id);
@@ -91,7 +101,7 @@ async function hasSupporterRole(member) {
 		const result = await db.memberHasCustomSupporterRole(discordMemberId, server.id);
 
 		if (result.has && result.role) {
-			const roleIdToFind = result.role.discord_role_id || result.role.role_id;
+			const roleIdToFind = result.role.discord_role_id;
 			const role = roleIdToFind ? member.guild.roles.cache.get(roleIdToFind) : null;
 			if (role) {
 				supporterRoles.set(member.id, role.id);
@@ -105,8 +115,10 @@ async function hasSupporterRole(member) {
 	}
 }
 
-function isValidImageUrl(url) {
-	if (!url || typeof url !== 'string') return false;
+function isValidImageUrl(url: unknown) {
+	if (!url || typeof url !== 'string') {
+		return false;
+	}
 
 	const trimmed = url.trim();
 
@@ -132,9 +144,11 @@ function isValidImageUrl(url) {
 	return true;
 }
 
-async function uploadedRoleIcon(fields): Promise<Buffer | string | null> {
+async function uploadedRoleIcon(fields: unknown): Promise<Buffer | string | null> {
 	const [file] = uploadedFiles(fields, 'role_icon_upload');
-	if (!file) return null;
+	if (!file) {
+		return null;
+	}
 	try {
 		const res = await fetch(file.attachment);
 		const sharp = (await import('sharp')).default;
@@ -147,11 +161,15 @@ async function uploadedRoleIcon(fields): Promise<Buffer | string | null> {
 	}
 }
 
-function parseColor(colorInput) {
+function parseColor(colorInput: string) {
 	const input = String(colorInput ?? '').trim();
 	const hex = input.replace(/^#/, '');
-	if (/^[0-9A-Fa-f]{6}$/.test(hex)) return parseInt(hex, 16);
-	if (/^\d+$/.test(input) && Number(input) <= 0xffffff) return Number(input);
+	if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+		return parseInt(hex, 16);
+	}
+	if (/^\d+$/.test(input) && Number(input) <= 0xffffff) {
+		return Number(input);
+	}
 	return null;
 }
 
@@ -159,14 +177,14 @@ class AnchorError extends Error {
 	key: string;
 	params: Record<string, any>;
 
-	constructor(message: string, key: string, params: Record<string, any> = {}) {
+	constructor(message: string, key: string, params: Record<string, unknown> = {}) {
 		super(message);
 		this.key = key;
 		this.params = params;
 	}
 }
 
-async function getRolePosition(guild) {
+async function getRolePosition(guild: Guild) {
 	const anchor = resolveSupporterAnchor(guild);
 
 	if (!anchor.ok) {
@@ -187,7 +205,7 @@ async function getRolePosition(guild) {
 	return anchor.basePosition;
 }
 
-export async function handleCustomSupporterRoleButton(interaction) {
+export async function handleCustomSupporterRoleButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 
@@ -217,7 +235,7 @@ export async function handleCustomSupporterRoleButton(interaction) {
 
 			const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'perks');
 
-			const buttonRow = new ActionRowBuilder().addComponents(editButton, deleteButton, menuButton);
+			const buttonRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(editButton, deleteButton, menuButton);
 
 			const embedConfig = await getEmbedConfig(interaction.guild.id);
 			const title = await translate('customSupporterRole.existing.title', interaction.guild.id, interaction.user.id);
@@ -277,9 +295,9 @@ export async function handleCustomSupporterRoleButton(interaction) {
 			.setRequired(false)
 			.setMaxLength(500);
 
-		const nameRow = new ActionRowBuilder().addComponents(nameInput);
-		const colorRow = new ActionRowBuilder().addComponents(colorInput);
-		const iconRow = new ActionRowBuilder().addComponents(iconInput);
+		const nameRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(nameInput);
+		const colorRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(colorInput);
+		const iconRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(iconInput);
 
 		modal.addComponents(nameRow, colorRow, iconRow);
 		modal.addLabelComponents(
@@ -288,8 +306,8 @@ export async function handleCustomSupporterRoleButton(interaction) {
 
 		await interaction.showModal(modal);
 		await logger.log(`💎 Supporter role creation modal shown to ${member.user.tag} (${member.user.id})`);
-	} catch (error: any) {
-		await logger.log(`❌ Error showing supporter role modal: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error showing supporter role modal: ${(error as Error).message}`);
 		const errorMsg = await translate('customSupporterRole.errors.failed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -300,7 +318,7 @@ export async function handleCustomSupporterRoleButton(interaction) {
 	}
 }
 
-export async function handleEditCustomSupporterRole(interaction) {
+export async function handleEditCustomSupporterRole(interaction: ButtonInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 
@@ -310,8 +328,7 @@ export async function handleEditCustomSupporterRole(interaction) {
 				.update({
 					content: errorMessage,
 					components: [],
-					embeds: [],
-					flags: 64
+					embeds: []
 				})
 				.catch(() =>
 					interaction
@@ -360,7 +377,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 			.setRequired(true)
 			.setMaxLength(100);
 
-		if (currentName) nameInput.setValue(currentName);
+		if (currentName) {
+			nameInput.setValue(currentName);
+		}
 
 		const colorInput = new TextInputBuilder()
 			.setCustomId('role_color')
@@ -370,7 +389,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 			.setRequired(false)
 			.setMaxLength(20);
 
-		if (currentColor) colorInput.setValue(currentColor);
+		if (currentColor) {
+			colorInput.setValue(currentColor);
+		}
 
 		const iconInput = new TextInputBuilder()
 			.setCustomId('role_icon')
@@ -380,11 +401,13 @@ export async function handleEditCustomSupporterRole(interaction) {
 			.setRequired(false)
 			.setMaxLength(500);
 
-		if (currentIcon) iconInput.setValue(currentIcon);
+		if (currentIcon) {
+			iconInput.setValue(currentIcon);
+		}
 
-		const nameRow = new ActionRowBuilder().addComponents(nameInput);
-		const colorRow = new ActionRowBuilder().addComponents(colorInput);
-		const iconRow = new ActionRowBuilder().addComponents(iconInput);
+		const nameRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(nameInput);
+		const colorRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(colorInput);
+		const iconRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(iconInput);
 
 		modal.addComponents(nameRow, colorRow, iconRow);
 		modal.addLabelComponents(imageUploadField(tr('customSupporterRole.create.iconUploadLabel'), 'role_icon_upload', 1));
@@ -392,7 +415,7 @@ export async function handleEditCustomSupporterRole(interaction) {
 		await interaction.showModal(modal);
 		await logger.log(`💎 Supporter role edit modal shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error showing edit modal: ${error.message}`);
+		await logger.log(`❌ Error showing edit modal: ${(error as Error).message}`);
 		const errorMsg = await translate('customSupporterRole.errors.editFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -403,7 +426,7 @@ export async function handleEditCustomSupporterRole(interaction) {
 	}
 }
 
-export async function handleDeleteCustomSupporterRole(interaction) {
+export async function handleDeleteCustomSupporterRole(interaction: MessageComponentInteraction<'cached'> | ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferUpdate();
 
@@ -457,12 +480,14 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 
 		await interaction.editReply({
 			embeds: [successEmbed],
-			components: [new ActionRowBuilder().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'perks'))]
+			components: [
+				new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'perks'))
+			]
 		});
 
 		await logger.log(`🗑️ Deleted custom supporter role "${roleName}" (${roleId}) for ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error deleting supporter role: ${error.message}`);
+		await logger.log(`❌ Error deleting supporter role: ${(error as Error).message}`);
 		const errorMsg = await translate('customSupporterRole.errors.deleteFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -473,7 +498,7 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 	}
 }
 
-export async function handleCustomSupporterRoleEditModal(interaction) {
+export async function handleCustomSupporterRoleEditModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -514,7 +539,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 
 			const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 			const roleColor = parseColor(colorInput);
-			const updateData: any = {
+			const updateData: RoleEditOptions = {
 				name: roleName,
 				reason: `Custom supporter role updated for ${member.user.tag} (${member.user.id})`
 			};
@@ -542,7 +567,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 							iconError = tr('customSupporterRole.iconErrors.boost');
 							await logger.log(`⚠️ Cannot set custom icon: Server needs Level 2 boost (current: ${premiumTier})`);
 						} else if (uploadedIcon || isValidImageUrl(iconImage)) {
-							await existingRole.setIcon(iconImage, { reason: updateData.reason });
+							await existingRole.setIcon(iconImage, updateData.reason);
 							await logger.log(`✅ Set role icon to ${uploadedIcon ? 'uploaded image' : `image URL: ${iconImage}`}`);
 							iconStatus = 'updated';
 						} else {
@@ -558,13 +583,13 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 						await logger.log(`✅ Set role icon to emoji: ${trimmedIconInput}`);
 						iconStatus = 'updated';
 					}
-				} catch (err: any) {
-					await logger.log(`⚠️ Could not set role icon: ${err.message}`);
+				} catch (err) {
+					await logger.log(`⚠️ Could not set role icon: ${(err as Error).message}`);
 
-					if (err.message && err.message.includes('boost')) {
+					if ((err as Error).message && (err as Error).message.includes('boost')) {
 						iconError = tr('customSupporterRole.iconErrors.boost');
 					} else {
-						iconError = err.message;
+						iconError = (err as Error).message;
 					}
 					iconStatus = 'failed';
 				}
@@ -576,8 +601,8 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 						reason: updateData.reason
 					});
 					iconStatus = 'cleared';
-				} catch (err: any) {
-					await logger.log(`⚠️ Could not clear role icon: ${err.message}`);
+				} catch (err) {
+					await logger.log(`⚠️ Could not clear role icon: ${(err as Error).message}`);
 				}
 			}
 
@@ -630,9 +655,9 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 
 			await logger.log(`✅ Updated custom supporter role "${roleName}" (${existingRole.id}) for ${member.user.tag} (${member.user.id})`);
 			return;
-		} catch (err: any) {
-			await logger.log(`❌ Error updating supporter role: ${err.message}`);
-			await logger.log(`❌ Stack: ${err.stack}`);
+		} catch (err) {
+			await logger.log(`❌ Error updating supporter role: ${(err as Error).message}`);
+			await logger.log(`❌ Stack: ${(err as Error).stack}`);
 
 			try {
 				const errorMsg = await translate('customSupporterRole.errors.updateFailed', interaction.guild.id, interaction.user.id, {
@@ -644,12 +669,12 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			} catch (editErr) {}
 			return;
 		}
-	} catch (error: any) {
-		await logger.log(`❌ Error handling custom supporter role edit modal: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Error handling custom supporter role edit modal: ${(error as Error).message}`);
 	}
 }
 
-export async function handleCustomSupporterRoleModal(interaction) {
+export async function handleCustomSupporterRoleModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -716,7 +741,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			}
 		}
 
-		const roleData: any = {
+		const roleData: RoleCreateOptions = {
 			name: roleName,
 			mentionable: false,
 			hoist: true,
@@ -728,7 +753,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		}
 
 		if (isEmojiIcon && iconToSet) {
-			roleData.unicodeEmoji = iconToSet;
+			roleData.unicodeEmoji = iconToSet as string;
 		}
 
 		const position = await getRolePosition(guild);
@@ -738,7 +763,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		try {
 			await newRole.setPosition(position, { reason: roleData.reason });
 		} catch (err) {
-			await logger.log(`⚠️ Could not set role position: ${err.message}`);
+			await logger.log(`⚠️ Could not set role position: ${(err as Error).message}`);
 		}
 
 		try {
@@ -754,13 +779,13 @@ export async function handleCustomSupporterRoleModal(interaction) {
 				});
 			}
 		} catch (err) {
-			await logger.log(`⚠️ Could not record supporter role ownership: ${err.message}`);
+			await logger.log(`⚠️ Could not record supporter role ownership: ${(err as Error).message}`);
 		}
 
 		if (iconToSet && !isEmojiIcon) {
 			try {
 				if (uploadedIcon || isValidImageUrl(iconToSet)) {
-					await newRole.setIcon(iconToSet, { reason: roleData.reason });
+					await newRole.setIcon(iconToSet, roleData.reason);
 					await logger.log(`✅ Set role icon to ${uploadedIcon ? 'uploaded image' : `image URL: ${iconToSet}`}`);
 					iconStatus = 'success';
 				} else {
@@ -769,12 +794,12 @@ export async function handleCustomSupporterRoleModal(interaction) {
 					iconError = 'Invalid URL format or file type';
 				}
 			} catch (err) {
-				await logger.log(`⚠️ Could not set role icon: ${err.message}`);
+				await logger.log(`⚠️ Could not set role icon: ${(err as Error).message}`);
 
-				if (err.message && err.message.includes('boost')) {
+				if ((err as Error).message && (err as Error).message.includes('boost')) {
 					iconError = 'This server needs Level 2 Server Boost to use custom role icons. You can use an emoji instead!';
 				} else {
-					iconError = err.message;
+					iconError = (err as Error).message;
 				}
 				await logger.log(`⚠️ Note: Role created successfully without icon. Icon requires server boost level 2+ and accessible JPG/PNG image.`);
 				iconStatus = 'failed';
@@ -789,9 +814,13 @@ export async function handleCustomSupporterRoleModal(interaction) {
 		supporterRoles.set(member.id, newRole.id);
 
 		let iconStatusKey = 'customSupporterRole.created.iconStatusNone';
-		if (iconStatus === 'success') iconStatusKey = 'customSupporterRole.created.iconStatusSet';
-		else if (iconStatus === 'failed') iconStatusKey = 'customSupporterRole.created.iconStatusFailed';
-		else if (iconStatus === 'invalid') iconStatusKey = 'customSupporterRole.created.iconStatusInvalid';
+		if (iconStatus === 'success') {
+			iconStatusKey = 'customSupporterRole.created.iconStatusSet';
+		} else if (iconStatus === 'failed') {
+			iconStatusKey = 'customSupporterRole.created.iconStatusFailed';
+		} else if (iconStatus === 'invalid') {
+			iconStatusKey = 'customSupporterRole.created.iconStatusInvalid';
+		}
 		const iconStatusText = await translate(iconStatusKey, interaction.guild.id, interaction.user.id);
 
 		let iconWarningText = '';
@@ -842,8 +871,8 @@ export async function handleCustomSupporterRoleModal(interaction) {
 
 		await logger.log(`✅ Created custom supporter role "${roleName}" (${newRole.id}) for ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error creating supporter role: ${error.message}`);
-		await logger.log(`❌ Stack: ${error.stack}`);
+		await logger.log(`❌ Error creating supporter role: ${(error as Error).message}`);
+		await logger.log(`❌ Stack: ${(error as Error).stack}`);
 
 		try {
 			const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
@@ -851,7 +880,10 @@ export async function handleCustomSupporterRoleModal(interaction) {
 
 			if (error instanceof AnchorError) {
 				errorMessage = tr('customSupporterRole.errors.createFailedReason', { reason: tr(error.key, error.params) });
-			} else if (error.message && (error.message.includes('boost') || error.message.includes('Boost') || error.message.includes('more boosts'))) {
+			} else if (
+				(error as Error).message &&
+				((error as Error).message.includes('boost') || (error as Error).message.includes('Boost') || (error as Error).message.includes('more boosts'))
+			) {
 				errorMessage = tr('customSupporterRole.errors.boostRequiredCreate');
 			} else {
 				errorMessage = tr('customSupporterRole.errors.createFailed', { error: errorReasonFor(tr, error) });
@@ -861,12 +893,12 @@ export async function handleCustomSupporterRoleModal(interaction) {
 				content: errorMessage
 			});
 		} catch (err) {
-			await logger.log(`❌ Failed to send error response: ${err.message}`);
+			await logger.log(`❌ Failed to send error response: ${(err as Error).message}`);
 		}
 	}
 }
 
-async function removeCustomRoleIfNoPermission(member) {
+async function removeCustomRoleIfNoPermission(member: GuildMember) {
 	const { has, role } = await hasSupporterRole(member);
 	if (!has || !role) {
 		return;
@@ -886,11 +918,11 @@ async function removeCustomRoleIfNoPermission(member) {
 
 		await logger.log(`🗑️ Removed custom role ${role.name} (${role.id}) from ${member.user.tag} (${member.user.id}) - no longer has permission`);
 	} catch (err) {
-		await logger.log(`⚠️ Could not remove custom role for ${member.user.tag}: ${err.message}`);
+		await logger.log(`⚠️ Could not remove custom role for ${member.user.tag}: ${(err as Error).message}`);
 	}
 }
 
-async function cleanupCustomRoles(client) {
+async function cleanupCustomRoles(client: Client) {
 	try {
 		await logger.log(`🧹 Checking for custom roles to clean up...`);
 
@@ -946,16 +978,16 @@ async function cleanupCustomRoles(client) {
 									supporterRoles.delete(ownerId);
 									cleanedCount++;
 								} catch (err) {
-									await logger.log(`⚠️ Could not delete role ${role.name} (${role.id}): ${err.message}`);
+									await logger.log(`⚠️ Could not delete role ${role.name} (${role.id}): ${(err as Error).message}`);
 								}
 							}
 						}
 					} catch (err) {
-						await logger.log(`⚠️ Error checking role ${roleId}: ${err.message}`);
+						await logger.log(`⚠️ Error checking role ${roleId}: ${(err as Error).message}`);
 					}
 				}
 			} catch (err) {
-				await logger.log(`⚠️ Error checking guild ${guild.name} for cleanup: ${err.message}`);
+				await logger.log(`⚠️ Error checking guild ${guild.name} for cleanup: ${(err as Error).message}`);
 			}
 		}
 
@@ -965,11 +997,11 @@ async function cleanupCustomRoles(client) {
 			await logger.log(`✅ Cleanup complete: No roles to remove`);
 		}
 	} catch (err) {
-		await logger.log(`❌ Error during custom role cleanup: ${err.message}`);
+		await logger.log(`❌ Error during custom role cleanup: ${(err as Error).message}`);
 	}
 }
 
-async function adoptLegacyCustomRoles(guild) {
+async function adoptLegacyCustomRoles(guild: Guild) {
 	let adopted = 0;
 
 	let constraints;
@@ -979,17 +1011,23 @@ async function adoptLegacyCustomRoles(guild) {
 		return adopted;
 	}
 
-	if (!constraints?.ROLE_START || !constraints?.ROLE_END) return adopted;
+	if (!constraints?.ROLE_START || !constraints?.ROLE_END) {
+		return adopted;
+	}
 
 	const startRole = guild.roles.cache.get(constraints.ROLE_START);
 	const endRole = guild.roles.cache.get(constraints.ROLE_END);
-	if (!startRole || !endRole) return adopted;
+	if (!startRole || !endRole) {
+		return adopted;
+	}
 
 	const botConfig = getBotConfig();
 	const server = botConfig?.id ? await db.getServerByDiscordId(botConfig.id, guild.id) : null;
-	if (!server) return adopted;
+	if (!server) {
+		return adopted;
+	}
 
-	const legacyRoles = guild.roles.cache.filter((role) => role.position < startRole.position && role.position > endRole.position && !role.managed);
+	const legacyRoles = guild.roles.cache.filter((role: Role) => role.position < startRole.position && role.position > endRole.position && !role.managed);
 
 	for (const role of legacyRoles.values()) {
 		if (role.members.size !== 1) {
@@ -998,7 +1036,9 @@ async function adoptLegacyCustomRoles(guild) {
 		}
 
 		const owner = role.members.first();
-		if (!owner) continue;
+		if (!owner) {
+			continue;
+		}
 
 		try {
 			await db.setMemberCustomSupporterRole(server.id, owner.id, {
@@ -1020,14 +1060,14 @@ async function adoptLegacyCustomRoles(guild) {
 
 			await logger.log(`✅ Adopted legacy custom role: ${role.name} (${role.id}) for ${owner.user.tag} (${owner.id})`);
 		} catch (err) {
-			await logger.log(`⚠️ Could not adopt legacy custom role ${role.name} (${role.id}): ${err.message}`);
+			await logger.log(`⚠️ Could not adopt legacy custom role ${role.name} (${role.id}): ${(err as Error).message}`);
 		}
 	}
 
 	return adopted;
 }
 
-async function scanAndValidateCustomRoles(client) {
+async function scanAndValidateCustomRoles(client: Client) {
 	try {
 		await logger.log(`🔍 Scanning for existing custom roles...`);
 
@@ -1041,7 +1081,9 @@ async function scanAndValidateCustomRoles(client) {
 				adoptedCount += await adoptLegacyCustomRoles(guild);
 
 				const ownedRoleIds = await getOwnedSupporterRoleIds(guild);
-				if (!ownedRoleIds || ownedRoleIds.size === 0) continue;
+				if (!ownedRoleIds || ownedRoleIds.size === 0) {
+					continue;
+				}
 
 				for (const [roleId, ownerMemberId] of ownedRoleIds.entries()) {
 					try {
@@ -1061,22 +1103,22 @@ async function scanAndValidateCustomRoles(client) {
 							await cleanupInvalidRole(role, ownedRoleIds);
 						}
 					} catch (err) {
-						await logger.log(`⚠️ Error validating role ${roleId}: ${err.message}`);
+						await logger.log(`⚠️ Error validating role ${roleId}: ${(err as Error).message}`);
 					}
 				}
 			} catch (err) {
-				await logger.log(`⚠️ Error scanning guild ${guild.name}: ${err.message}`);
+				await logger.log(`⚠️ Error scanning guild ${guild.name}: ${(err as Error).message}`);
 			}
 		}
 
 		await logger.log(`✅ Scan complete: Validated ${validatedCount} custom role(s), adopted ${adoptedCount} legacy role(s)`);
 	} catch (err) {
-		await logger.log(`❌ Error scanning custom roles: ${err.message}`);
+		await logger.log(`❌ Error scanning custom roles: ${(err as Error).message}`);
 	}
 }
 
-export function init(client) {
-	client.on('guildMemberUpdate', async (oldMember, newMember) => {
+export function init(client: Client) {
+	client.on('guildMemberUpdate', async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) => {
 		try {
 			const oldRoles = oldMember.roles.cache;
 			const newRoles = newMember.roles.cache;
@@ -1089,11 +1131,11 @@ export function init(client) {
 
 			await removeCustomRoleIfNoPermission(newMember);
 		} catch (err) {
-			await logger.log(`❌ Error checking custom role permissions on member update: ${err.message}`);
+			await logger.log(`❌ Error checking custom role permissions on member update: ${(err as Error).message}`);
 		}
 	});
 
-	client.on('guildMemberRemove', async (member) => {
+	client.on('guildMemberRemove', async (member: GuildMember | PartialGuildMember) => {
 		try {
 			const { has, role } = await hasSupporterRole(member);
 			if (has && role) {
@@ -1110,7 +1152,7 @@ export function init(client) {
 				}, 5000);
 			}
 		} catch (err) {
-			await logger.log(`❌ Error checking custom role on member leave: ${err.message}`);
+			await logger.log(`❌ Error checking custom role on member leave: ${(err as Error).message}`);
 		}
 	});
 

@@ -36,7 +36,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Username/Email and password are required' }, { status: 400 });
 		}
 
-		let sanitizedInput = sanitizeString(username_or_email, 255);
+		const sanitizedInput = sanitizeString(username_or_email, 255);
 		let account: any = null;
 		let accountSource: 'accounts' | 'server_accounts' = 'accounts';
 
@@ -46,7 +46,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				account = await db.getAccountByEmail(sanitizedEmail);
 				if (!account) {
 					account = await db.getServerAccountByEmail(sanitizedEmail);
-					if (account) accountSource = 'server_accounts';
+					if (account) {
+						accountSource = 'server_accounts';
+					}
 				}
 			}
 		}
@@ -57,7 +59,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				account = await db.getAccountByUsername(sanitizedUsername);
 				if (!account) {
 					account = await db.getServerAccountByUsername(sanitizedUsername);
-					if (account) accountSource = 'server_accounts';
+					if (account) {
+						accountSource = 'server_accounts';
+					}
 				}
 			}
 		}
@@ -107,8 +111,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			{ success: true, message: 'Login successful', account_type: account.account_type, account_source: accountSource },
 			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
 		);
-	} catch (error: any) {
-		logger.log(`❌ Panel login error: ${error.message}`);
-		return json({ success: false, error: error.message }, { status: 500 });
+	} catch (error) {
+		logger.log(`❌ Panel login error: ${(error as Error).message}`);
+		return json({ success: false, error: (error as Error).message }, { status: 500 });
 	}
 };

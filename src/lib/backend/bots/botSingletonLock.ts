@@ -92,8 +92,8 @@ export async function acquireBotSingletonLock(kind: string, botId: string): Prom
 			clearInterval(timer);
 			try {
 				await redis.eval(releaseScript, { keys: [key], arguments: [token] });
-			} catch (err: any) {
-				logger.warn('Bot singleton lock release failed', { kind, botId, error: String(err?.message || err) });
+			} catch (err) {
+				logger.warn('Bot singleton lock release failed', { kind, botId, error: String((err as Error)?.message || err) });
 			}
 		}
 	};

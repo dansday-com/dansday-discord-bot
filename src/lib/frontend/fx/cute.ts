@@ -41,15 +41,21 @@ function cakeIdent(s: FxScene): Cake {
 	const slab = r();
 	const tiles = 5 + ((r() * 4) | 0);
 	const jars: number[][] = [];
-	for (let i = 0; i < 5; i++) jars.push([0.06 + r() * 0.88, 0.05 + r() * 0.04, 0.09 + r() * 0.08, r()]);
+	for (let i = 0; i < 5; i++) {
+		jars.push([0.06 + r() * 0.88, 0.05 + r() * 0.04, 0.09 + r() * 0.08, r()]);
+	}
 	const side = r() < 0.5 ? -1 : 1;
 	const sprPal: number[] = [];
-	for (let i = 0; i < 4; i++) sprPal.push(r() * 360);
+	for (let i = 0; i < 4; i++) {
+		sprPal.push(r() * 360);
+	}
 	const period = 440 + ((r() * 210) | 0);
 	const grain = (r() * 9999) | 0;
 	const topper = (r() * 3) | 0;
 	const veins: number[][] = [];
-	for (let i = 0; i < 6; i++) veins.push([r(), r(), r(), r()]);
+	for (let i = 0; i < 6; i++) {
+		veins.push([r(), r(), r(), r()]);
+	}
 	const fi = (r() * FROSTS.length) | 0;
 	const fhue = FROSTS[fi];
 	const chue = FROSTS[(fi + 3 + ((r() * 3) | 0)) % FROSTS.length];
@@ -62,27 +68,27 @@ export function makeCupcake(rows: number): FxProgram {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).id = cakeIdent(s);
-			(s as any).top = new Float32Array(s.w);
-			(s as any).fall = [] as number[][];
-			(s as any).stuck = [] as number[][];
-			(s as any).spill = [] as number[][];
-			(s as any).lastc = 2;
+			s.id = cakeIdent(s);
+			s.top = new Float32Array(s.w);
+			s.fall = [] as number[][];
+			s.stuck = [] as number[][];
+			s.spill = [] as number[][];
+			s.lastc = 2;
 		},
 		frame(s) {
 			clear(s);
-			const id = (s as any).id as Cake;
-			const top = (s as any).top as Float32Array;
-			const fall = (s as any).fall as number[][];
-			const stuck = (s as any).stuck as number[][];
-			const spill = (s as any).spill as number[][];
+			const id = s.id as Cake;
+			const top = s.top as Float32Array;
+			const fall = s.fall as number[][];
+			const stuck = s.stuck as number[][];
+			const spill = s.spill as number[][];
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
 			if (cyc < (s as any).lastc) {
 				fall.length = 0;
 				stuck.length = 0;
 				spill.length = 0;
 			}
-			(s as any).lastc = cyc;
+			s.lastc = cyc;
 
 			const fhue = id.fhue;
 			const pipe = cyc < 0.14 ? 0 : Math.min(1, (cyc - 0.14) / 0.3);
@@ -126,26 +132,34 @@ export function makeCupcake(rows: number): FxProgram {
 
 			const [gr2, gg2, gb2] = hsl(38, 74, 60);
 			const poolR = half * 5.2;
-			for (let dy = -poolR * 0.62; dy <= poolR * 0.62; dy++)
+			for (let dy = -poolR * 0.62; dy <= poolR * 0.62; dy++) {
 				for (let dx = -poolR; dx <= poolR; dx++) {
 					const d = Math.hypot(dx / poolR, dy / (poolR * 0.62));
-					if (d > 1) continue;
+					if (d > 1) {
+						continue;
+					}
 					plot(s, cx + dx, caseBot - s.h * 0.08 + dy, gr2, gg2, gb2, (1 - d) * (1 - d) * (0.26 + done * 0.16));
 				}
+			}
 
 			const dry = half * 2.6;
 			const drx = half * 1.7;
-			for (let dy = -3.2; dy <= 3.2; dy++)
+			for (let dy = -3.2; dy <= 3.2; dy++) {
 				for (let dx = -drx; dx <= drx; dx++) {
 					const d = Math.hypot(dx / drx, dy / 3.2);
-					if (d > 1) continue;
+					if (d > 1) {
+						continue;
+					}
 					const ang = Math.atan2(dy * 2.4, dx);
 					const scallop = 1 - Math.max(0, d - 0.82) * (2.4 + Math.sin(ang * id.doily) * 2.6);
-					if (scallop <= 0) continue;
+					if (scallop <= 0) {
+						continue;
+					}
 					const lace = d > 0.5 && chip((dx * 2) | 0, (dy * 3) | 0, id.grain + 9) < 28 ? 0.6 : 1;
 					paint(s, cx + dx, caseBot - 1 + dy * 0.5, 210 * lace, 202 * lace, 196 * lace, Math.min(1, scallop * 1.4) * 0.85);
 				}
-			void dry;
+			}
+			dry;
 
 			const [lr2, lg2, lb2] = hsl(id.chue, 46 + s.v.sat * 0.2, 52);
 			for (let y = caseTop; y <= caseBot; y++) {
@@ -197,10 +211,12 @@ export function makeCupcake(rows: number): FxProgram {
 					const px2 = cx + Math.cos(ang) * rad;
 					const py2 = domeY - t2 * rise + Math.sin(ang) * rad * 0.2;
 					const blob = 2.5 + (1 - t2) * 2.3;
-					for (let dy = -blob; dy <= blob; dy++)
+					for (let dy = -blob; dy <= blob; dy++) {
 						for (let dx = -blob; dx <= blob; dx++) {
 							const d = Math.hypot(dx, dy) / blob;
-							if (d > 1) continue;
+							if (d > 1) {
+								continue;
+							}
 							const nx = dx / blob;
 							const ny = dy / blob;
 							const nz = Math.sqrt(Math.max(0, 1 - d * d));
@@ -211,9 +227,14 @@ export function makeCupcake(rows: number): FxProgram {
 							const yy = py2 + dy;
 							paint(s, px2 + dx, yy, fr2 * k, fg2 * k, fb2 * k, 1);
 							const xi = Math.round(px2 + dx);
-							if (xi >= 0 && xi < s.w && yy < top[xi]) top[xi] = yy;
+							if (xi >= 0 && xi < s.w && yy < top[xi]) {
+								top[xi] = yy;
+							}
 						}
-					if (py2 - blob < crest) crest = py2 - blob;
+					}
+					if (py2 - blob < crest) {
+						crest = py2 - blob;
+					}
 					nozX = px2;
 					nozY = py2;
 					tipR = blob;
@@ -249,7 +270,7 @@ export function makeCupcake(rows: number): FxProgram {
 				const sh2 = s.h * 0.17;
 				const ca = Math.cos(tilt);
 				const sa = Math.sin(tilt);
-				for (let v = -sh2 * 0.5; v <= sh2 * 0.5; v += 0.5)
+				for (let v = -sh2 * 0.5; v <= sh2 * 0.5; v += 0.5) {
 					for (let u = -sw; u <= sw; u += 0.5) {
 						const px2 = shX + u * ca - v * sa;
 						const py2 = shY + u * sa + v * ca;
@@ -260,6 +281,7 @@ export function makeCupcake(rows: number): FxProgram {
 						const [mr, mg, mb] = cap ? hsl(46, 22, 78) : hsl(id.fhue + 170, 26, 62);
 						paint(s, px2, py2, mr * k, mg * k, mb * k, 1);
 					}
+				}
 				if (s.rnd() < shake * 0.95) {
 					const mx = shX + sa * sh2 * 0.5 + (s.rnd() - 0.5) * 3;
 					const my = shY + ca * sh2 * 0.5 + 1;
@@ -286,7 +308,9 @@ export function makeCupcake(rows: number): FxProgram {
 				const xi = Math.round(f[0]);
 				if (xi >= 0 && xi < s.w && top[xi] < 1e8 && f[1] >= top[xi] - 0.4) {
 					stuck.push([f[0] - cx, top[xi] - 0.2, f[4], f[5]]);
-					if (stuck.length > 80) stuck.shift();
+					if (stuck.length > 80) {
+						stuck.shift();
+					}
 					fall.splice(i, 1);
 					continue;
 				}
@@ -294,7 +318,9 @@ export function makeCupcake(rows: number): FxProgram {
 					if (Math.abs(f[0] - cx) > half * 0.9) {
 						const roll = f[2] * (2 + s.rnd() * 5);
 						spill.push([f[0] - cx + roll, caseBot + 0.5 + s.rnd() * 3.5, f[4], f[5]]);
-						if (spill.length > 44) spill.shift();
+						if (spill.length > 44) {
+							spill.shift();
+						}
 					}
 					fall.splice(i, 1);
 					continue;
@@ -304,7 +330,9 @@ export function makeCupcake(rows: number): FxProgram {
 					continue;
 				}
 				const [hr2, hg2, hb2] = hsl(id.sprPal[f[4]], 88, 70);
-				for (let k = -1.1; k <= 1.1; k += 0.55) plot(s, f[0] + Math.cos(f[5]) * k, f[1] + Math.sin(f[5]) * k, hr2, hg2, hb2, 0.95);
+				for (let k = -1.1; k <= 1.1; k += 0.55) {
+					plot(s, f[0] + Math.cos(f[5]) * k, f[1] + Math.sin(f[5]) * k, hr2, hg2, hb2, 0.95);
+				}
 			}
 
 			if (dropT > 0 && dropT < 1) {
@@ -367,12 +395,15 @@ export function makeCupcake(rows: number): FxProgram {
 			if (done > 0) {
 				const gy = crest + (caseBot - crest) * 0.4;
 				const rr = half * 3.2;
-				for (let dy = -rr * 0.8; dy <= rr * 0.8; dy++)
+				for (let dy = -rr * 0.8; dy <= rr * 0.8; dy++) {
 					for (let dx = -rr; dx <= rr; dx++) {
 						const d = Math.hypot(dx / rr, dy / (rr * 0.8));
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						plot(s, cx + dx, gy + dy, 255, 226, 178, (1 - d) ** 2 * done * 0.22);
 					}
+				}
 				for (let k = 0; k < 9; k++) {
 					const ph = k * 1.7 + id.swirlPh;
 					const t3 = (s.t * 0.012 + k * 0.11) % 1;
@@ -390,17 +421,22 @@ export function makeCupcake(rows: number): FxProgram {
 
 function drawTopper(s: FxScene, cx: number, cy: number, r: number, kind: number, fhue: number, dir: number) {
 	if (kind === 0) {
-		for (let dy = -r; dy <= r; dy++)
+		for (let dy = -r; dy <= r; dy++) {
 			for (let dx = -r; dx <= r; dx++) {
 				const d = Math.hypot(dx, dy) / r;
-				if (d > 1) continue;
+				if (d > 1) {
+					continue;
+				}
 				const nz = Math.sqrt(Math.max(0, 1 - d * d));
 				const lam = Math.max(0, -(dy / r) * 0.7 - (dx / r) * dir * 0.5);
 				const k = 0.36 + lam * 0.6 + nz * 0.3;
 				paint(s, cx + dx, cy + dy, 196 * k, 34 * k, 52 * k, 1);
 			}
+		}
 		plot(s, cx - dir * r * 0.4, cy - r * 0.42, 255, 232, 232, 0.85);
-		for (let k = 0; k < 5; k++) paint(s, cx + dir * k * 0.5, cy - r - k * 0.8, 92, 132, 58, 1);
+		for (let k = 0; k < 5; k++) {
+			paint(s, cx + dir * k * 0.5, cy - r - k * 0.8, 92, 132, 58, 1);
+		}
 	} else if (kind === 1) {
 		for (let a = 0; a < 6.283; a += 0.12) {
 			const spike = 1 + Math.cos(a * 5) * 0.55;
@@ -427,7 +463,11 @@ function drawTopper(s: FxScene, cx: number, cy: number, r: number, kind: number,
 				const [wr3, wg3, wb3] = dip ? hsl(24, 52, 26) : hsl(38, 42, 74);
 				paint(s, px2 + q, py2, wr3 * kk, wg3 * kk, wb3 * kk, 1);
 			}
-			if (f < 0.46 && f > 0.36) for (let q = -hw - 0.6; q <= hw + 0.6; q += 0.5) paint(s, px2 + q, py2, 46, 28, 20, 1);
+			if (f < 0.46 && f > 0.36) {
+				for (let q = -hw - 0.6; q <= hw + 0.6; q += 0.5) {
+					paint(s, px2 + q, py2, 46, 28, 20, 1);
+				}
+			}
 		}
 		for (let k = 0; k < 4; k++) {
 			const a = k * 1.57 + 0.4;
@@ -472,7 +512,9 @@ function gemIdent(s: FxScene): Jewel {
 		dep.push(r());
 	}
 	const jag: number[] = [];
-	for (let i = 0; i < 16; i++) jag.push(r());
+	for (let i = 0; i < 16; i++) {
+		jag.push(r());
+	}
 	const wood = 16 + r() * 18;
 	const felt = FELTS[(r() * FELTS.length) | 0];
 	const lamp = 32 + r() * 16;
@@ -492,18 +534,22 @@ export function makeGem(rows: number): FxProgram {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).id = gemIdent(s);
-			(s as any).spark = [] as number[][];
-			(s as any).dust = new Float32Array(s.w);
+			s.id = gemIdent(s);
+			s.spark = [] as number[][];
+			s.dust = new Float32Array(s.w);
 		},
 		frame(s) {
-			const id = (s as any).id as Jewel;
-			const spark = (s as any).spark as number[][];
-			const dust = (s as any).dust as Float32Array;
+			const id = s.id as Jewel;
+			const spark = s.spark as number[][];
+			const dust = s.dust as Float32Array;
 			clear(s);
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
-			if (cyc > 0.94) for (let x = 0; x < s.w; x++) dust[x] *= 0.9;
+			if (cyc > 0.94) {
+				for (let x = 0; x < s.w; x++) {
+					dust[x] *= 0.9;
+				}
+			}
 
 			const nf = id.facets;
 			const g0 = 0.08;
@@ -530,7 +576,9 @@ export function makeGem(rows: number): FxProgram {
 			const ly = s.h * 0.08;
 
 			const woodPal: number[][] = [];
-			for (let i = 0; i < 22; i++) woodPal.push(hsl(id.wood, 40, 5 + i * 1.1));
+			for (let i = 0; i < 22; i++) {
+				woodPal.push(hsl(id.wood, 40, 5 + i * 1.1));
+			}
 			const ph = Math.max(4, Math.round((s.h - benchY) / id.planks));
 			for (let y = benchY; y < s.h; y++) {
 				const dp = (y - benchY) / Math.max(1, s.h - benchY);
@@ -547,7 +595,9 @@ export function makeGem(rows: number): FxProgram {
 			const padY = benchY + 3;
 			const padH = Math.max(5, (s.h - benchY) * 0.62);
 			const feltPal: number[][] = [];
-			for (let i = 0; i < 22; i++) feltPal.push(hsl(id.felt, 26, 8 + i * 1.5));
+			for (let i = 0; i < 22; i++) {
+				feltPal.push(hsl(id.felt, 26, 8 + i * 1.5));
+			}
 			for (let y = padY; y < padY + padH; y++) {
 				const v = (y - padY) / padH;
 				const hw = s.w * (0.17 + v * 0.11);
@@ -556,13 +606,21 @@ export function makeGem(rows: number): FxProgram {
 				for (let x = px0; x < px1; x++) {
 					const u = (x - cx) / hw;
 					const ex = Math.min(1, (hw - Math.abs(x - cx)) / 2.2);
-					if (ex <= 0) continue;
+					if (ex <= 0) {
+						continue;
+					}
 					const n = chip(x, y, 57) % 100;
 					const nap = (chip((x / 2) | 0, (y / 2) | 0, 91) % 100) / 100;
 					let l = 10 + n * 0.05 + nap * 5 + v * 7 + (1 - u * u) * 6;
-					if (v > 0.82) l -= 8 + (v - 0.82) * 22;
-					if (v < 0.1) l += 7 - v * 30;
-					if (Math.abs(u) > 0.84) l -= (Math.abs(u) - 0.84) * 34;
+					if (v > 0.82) {
+						l -= 8 + (v - 0.82) * 22;
+					}
+					if (v < 0.1) {
+						l += 7 - v * 30;
+					}
+					if (Math.abs(u) > 0.84) {
+						l -= (Math.abs(u) - 0.84) * 34;
+					}
 					const sh = Math.max(0, 1 - Math.abs(x - cx) / 9) * Math.max(0, 1 - v * 2.4);
 					l -= sh * 7;
 					const c = feltPal[Math.max(0, Math.min(21, Math.round((l - 8) / 1.5)))];
@@ -598,13 +656,17 @@ export function makeGem(rows: number): FxProgram {
 				const px1 = Math.min(s.w, Math.ceil(mxc + hw));
 				for (let x = px0; x < px1; x++) {
 					const u = 1 - Math.abs(x - mxc) / hw;
-					if (u <= 0) continue;
+					if (u <= 0) {
+						continue;
+					}
 					plot(s, x, y, cnr, cng, cnb, u * u * 0.075 * flick * (1 - t * 0.4));
 				}
 			}
 
 			const steel: number[][] = [];
-			for (let i = 0; i < 48; i++) steel.push(hsl(206, 9, 3 + i * 1.1));
+			for (let i = 0; i < 48; i++) {
+				steel.push(hsl(206, 9, 3 + i * 1.1));
+			}
 			const sid = (l: number) => steel[Math.max(0, Math.min(47, Math.round((l - 3) / 1.1)))];
 
 			const ca = id.side > 0 ? -0.2 : Math.PI + 0.2;
@@ -619,7 +681,9 @@ export function makeGem(rows: number): FxProgram {
 					const dx = x + 0.5 - wcx;
 					const dy = y + 0.5 - wcy;
 					const d = Math.hypot(dx, dy);
-					if (d > Rw) continue;
+					if (d > Rw) {
+						continue;
+					}
 					const a2 = Math.atan2(dy, dx) + whA;
 					let l;
 					if (d > Rw - rimW) {
@@ -639,7 +703,9 @@ export function makeGem(rows: number): FxProgram {
 			const rodTop = cy + R * 0.78;
 			const mastTop = Math.max(0, Math.floor(gy + R * 0.78));
 			for (let y = mastTop; y < benchY; y++) {
-				for (let dx = -1; dx <= 1; dx++) paint(s, cx + dx, y, ...(sid(dx === -1 ? 28 : dx === 0 ? 18 : 10) as [number, number, number]), 1);
+				for (let dx = -1; dx <= 1; dx++) {
+					paint(s, cx + dx, y, ...(sid(dx === -1 ? 28 : dx === 0 ? 18 : 10) as [number, number, number]), 1);
+				}
 			}
 			for (let dx = -6; dx <= 6; dx++) {
 				for (let dy = -2; dy <= 3; dy++) {
@@ -660,14 +726,17 @@ export function makeGem(rows: number): FxProgram {
 
 			const laF = (i: number) => (i / nf) * 6.28318 + (id.ang[i] - 0.5) * 0.4 + id.tilt + s.v.tilt * 0.4;
 			let rot;
-			if (cur < 0) rot = ca - laF(cyc < g0 ? 0 : nf - 1);
-			else {
+			if (cur < 0) {
+				rot = ca - laF(cyc < g0 ? 0 : nf - 1);
+			} else {
 				const e = sub < 0.32 ? sub / 0.32 : 1;
 				const sm = e * e * (3 - 2 * e);
 				const from = cur === 0 ? laF(0) : laF(cur - 1);
 				rot = ca - (from + (laF(cur) - from) * sm);
 			}
-			if (cyc >= g1) rot += (cyc - g1) * 9 * s.v.dir;
+			if (cyc >= g1) {
+				rot += (cyc - g1) * 9 * s.v.dir;
+			}
 
 			const lightA = Math.atan2(ly - cy, lx - cx);
 			const dpF = (i: number) => 0.58 + id.dep[i] * 0.28;
@@ -680,7 +749,9 @@ export function makeGem(rows: number): FxProgram {
 					const dx = (x + 0.5 - cx) / R;
 					const dy = (y + 0.5 - cy) / (R * 0.94);
 					const rr = Math.hypot(dx, dy);
-					if (rr > 1.6) continue;
+					if (rr > 1.6) {
+						continue;
+					}
 					const th = Math.atan2(dy, dx);
 					const k = (((((th - rot) / 6.28318) % 1) + 1) % 1) * 16;
 					const k0 = k | 0;
@@ -691,17 +762,25 @@ export function makeGem(rows: number): FxProgram {
 					let best = -1;
 					for (let i = 0; i < nf; i++) {
 						const d = i < cutN ? dpF(i) : i === cur ? 1.35 + (dpF(i) - 1.35) * cutT : 9;
-						if (d > 1.6) continue;
+						if (d > 1.6) {
+							continue;
+						}
 						const c2 = Math.cos(th - (laF(i) + rot));
-						if (c2 < 0.14) continue;
+						if (c2 < 0.14) {
+							continue;
+						}
 						const v = d / c2;
 						if (v < lim) {
 							lim2 = lim;
 							lim = v;
 							best = i;
-						} else if (v < lim2) lim2 = v;
+						} else if (v < lim2) {
+							lim2 = v;
+						}
 					}
-					if (rr > lim) continue;
+					if (rr > lim) {
+						continue;
+					}
 					let hue = id.hue;
 					let sat = 60;
 					let l;
@@ -727,9 +806,15 @@ export function makeGem(rows: number): FxProgram {
 						l = Math.max(l, 32 + flash * 32 + Math.max(0, Math.cos(th - lightA)) * 12);
 						sat *= 0.66;
 					}
-					if (rr > lim - 0.1) l *= 0.58;
-					if (best < 0 && rr > lim - 0.22) l += 14;
-					if (best >= 0 && lim2 - lim < 0.07) l += 28;
+					if (rr > lim - 0.1) {
+						l *= 0.58;
+					}
+					if (best < 0 && rr > lim - 0.22) {
+						l += 14;
+					}
+					if (best >= 0 && lim2 - lim < 0.07) {
+						l += 28;
+					}
 					const c = hsl(hue, Math.min(92, sat), Math.max(2, Math.min(96, l)));
 					paint(s, x, y, c[0], c[1], c[2], 1);
 				}
@@ -740,7 +825,9 @@ export function makeGem(rows: number): FxProgram {
 			for (let y = Math.max(0, Math.floor(cy - hR)); y < Math.min(s.h, Math.ceil(cy + hR)); y++) {
 				for (let x = Math.max(0, Math.floor(cx - hR)); x < Math.min(s.w, Math.ceil(cx + hR)); x++) {
 					const d = Math.hypot((x + 0.5 - cx) / R, (y + 0.5 - cy) / (R * 0.94));
-					if (d < 0.96 || d > 1.72) continue;
+					if (d < 0.96 || d > 1.72) {
+						continue;
+					}
 					const f = 1 - (d - 0.96) / 0.76;
 					plot(s, x, y, hlr, hlg, hlb, f * f * (0.2 + flash * 0.5));
 				}
@@ -781,7 +868,9 @@ export function makeGem(rows: number): FxProgram {
 				p[2] *= 0.985;
 				if (p[1] >= benchY - 0.5 && p[3] > 0) {
 					const xi = Math.round(p[0]);
-					if (xi >= 0 && xi < s.w) dust[xi] = Math.min(3.3, dust[xi] + 0.45);
+					if (xi >= 0 && xi < s.w) {
+						dust[xi] = Math.min(3.3, dust[xi] + 0.45);
+					}
 					if (s.rnd() < 0.55 || p[4] > 30) {
 						spark.splice(i, 1);
 						continue;
@@ -800,11 +889,15 @@ export function makeGem(rows: number): FxProgram {
 				plot(s, p[0], p[1], c[0], c[1], c[2], (0.3 + lf * 0.65) * Math.min(1, lf * 5));
 				plot(s, p[0] - p[2] * 0.7, p[1] - p[3] * 0.7, c[0], c[1], c[2], lf * 0.34);
 			}
-			if (spark.length > 130) spark.splice(0, spark.length - 130);
+			if (spark.length > 130) {
+				spark.splice(0, spark.length - 130);
+			}
 
 			for (let x = 0; x < s.w; x++) {
 				const d = dust[x];
-				if (d < 0.1) continue;
+				if (d < 0.1) {
+					continue;
+				}
 				const hgt = Math.min(3.2, d);
 				for (let k = 0; k < hgt; k++) {
 					const c = hsl(id.hue, 26, 30 + k * 6);
@@ -816,10 +909,14 @@ export function makeGem(rows: number): FxProgram {
 				for (let i = 0; i < nf; i++) {
 					const ra = laF(i) + rot;
 					const sy = Math.sin(ra);
-					if (sy < 0.14) continue;
+					if (sy < 0.14) {
+						continue;
+					}
 					const sx = Math.cos(ra);
 					const len = (benchY + 3 - cy) / sy;
-					if (len <= R) continue;
+					if (len <= R) {
+						continue;
+					}
 					const [br, bg, bb] = hsl((i / nf) * 320 + 10, 92, 62);
 					for (let t = R * 0.9; t < len; t += 0.7) {
 						const px = cx + sx * t;
@@ -841,7 +938,9 @@ export function makeGem(rows: number): FxProgram {
 				for (let y = benchY; y < s.h; y++) {
 					for (let x = 0; x < s.w; x++) {
 						const d = Math.hypot((x - cx) / (s.w * 0.3), (y - benchY) / Math.max(2, s.h - benchY));
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						plot(s, x, y, pr, pg, pb, (1 - d) * (1 - d) * 0.28 * flash);
 					}
 				}
@@ -882,7 +981,9 @@ function crownIdent(s: FxScene): Regalia {
 	const r = mulberry32(s.v.seed + 29317);
 	const points = 3 + ((r() * 3) | 0);
 	const stones: number[][] = [];
-	for (let i = 0; i < 6; i++) stones.push([JEWELS[(r() * JEWELS.length) | 0], r() * 6.28318, 0.8 + r() * 0.5]);
+	for (let i = 0; i < 6; i++) {
+		stones.push([JEWELS[(r() * JEWELS.length) | 0], r() * 6.28318, 0.8 + r() * 0.5]);
+	}
 	return {
 		points,
 		stones,
@@ -907,13 +1008,13 @@ export function makeCrown(rows: number): FxProgram {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).id = crownIdent(s);
-			(s as any).motes = [] as number[][];
-			(s as any).squash = 0;
+			s.id = crownIdent(s);
+			s.motes = [] as number[][];
+			s.squash = 0;
 		},
 		frame(s) {
-			const id = (s as any).id as Regalia;
-			const motes = (s as any).motes as number[][];
+			const id = s.id as Regalia;
+			const motes = s.motes as number[][];
 			clear(s);
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
@@ -930,7 +1031,9 @@ export function makeCrown(rows: number): FxProgram {
 				const sd = k % 2 === 0 ? -1 : 1;
 				const idx = k >> 1;
 				const bx = cx + sd * s.w * (0.27 + idx * 0.19);
-				if (bx < -2 || bx > s.w + 2) continue;
+				if (bx < -2 || bx > s.w + 2) {
+					continue;
+				}
 				const bw = Math.max(1.6, s.w * 0.022);
 				const by = s.h * 0.04;
 				const bl = s.h * (0.3 + ((chip(idx, k, id.grain) % 30) / 100) * 0.22);
@@ -941,7 +1044,9 @@ export function makeCrown(rows: number): FxProgram {
 					const notch = f > 0.78 ? (f - 0.78) / 0.22 : 0;
 					for (let x = -bw; x <= bw; x++) {
 						const u = x / bw;
-						if (notch > 0 && 1 - Math.abs(u) < notch) continue;
+						if (notch > 0 && 1 - Math.abs(u) < notch) {
+							continue;
+						}
 						const fold = 0.58 + 0.42 * Math.cos(u * 2.6 + wv * 0.4);
 						const l = 7 + fold * 15 + reign * 5 + (1 - f) * 4;
 						const c = hsl(hue, 46, l);
@@ -949,24 +1054,34 @@ export function makeCrown(rows: number): FxProgram {
 					}
 					if (y < by + 2) {
 						const c = hsl(id.gold, 62, 38);
-						for (let x = -bw - 1; x <= bw + 1; x++) paint(s, bx + x, y, c[0], c[1], c[2], 1);
+						for (let x = -bw - 1; x <= bw + 1; x++) {
+							paint(s, bx + x, y, c[0], c[1], c[2], 1);
+						}
 					}
 					if (f > 0.3 && f < 0.62 && Math.abs(bw) > 1.4) {
 						const c = hsl(id.gold, 58, 34 + reign * 8);
 						const em = Math.max(0, 1 - Math.abs(f - 0.46) / 0.16);
-						for (let x = -bw * em; x <= bw * em; x++) if (Math.abs(x) > bw * em - 1.1) paint(s, bx + x + wv, y, c[0], c[1], c[2], 0.9);
+						for (let x = -bw * em; x <= bw * em; x++) {
+							if (Math.abs(x) > bw * em - 1.1) {
+								paint(s, bx + x + wv, y, c[0], c[1], c[2], 0.9);
+							}
+						}
 					}
 				}
 			}
 
 			const flPal: number[][] = [];
-			for (let i = 0; i < 18; i++) flPal.push(hsl(id.stone, 10, 4 + i * 1.3));
+			for (let i = 0; i < 18; i++) {
+				flPal.push(hsl(id.stone, 10, 4 + i * 1.3));
+			}
 			for (let y = floorY; y < s.h; y++) {
 				const dp = (y - floorY) / Math.max(1, s.h - floorY);
 				const hwf = s.w * (0.42 + dp * 0.16);
 				for (let x = Math.max(0, Math.floor(cx - hwf)); x < Math.min(s.w, Math.ceil(cx + hwf)); x++) {
 					const ex = Math.min(1, (hwf - Math.abs(x - cx)) / 3.2);
-					if (ex <= 0) continue;
+					if (ex <= 0) {
+						continue;
+					}
 					const tile = (((x + (y - floorY) * 3) / 9) | 0) % 2;
 					const seam = (x + (y - floorY) * 3) % 9 === 0 ? -3 : 0;
 					const l = 5 + tile * 3 + dp * 3 + seam + reign * Math.max(0, 1 - Math.abs(x - cx) / (s.w * 0.4)) * 6;
@@ -984,7 +1099,9 @@ export function makeCrown(rows: number): FxProgram {
 				for (let y = y0; y < y0 + stepH; y++) {
 					for (let x = Math.max(0, Math.floor(cx - hw)); x < Math.min(s.w, Math.ceil(cx + hw)); x++) {
 						const ex = Math.min(1, (hw - Math.abs(x - cx)) / 1.6);
-						if (ex <= 0) continue;
+						if (ex <= 0) {
+							continue;
+						}
 						const face = y === y0 ? 10 : 4 - (y - y0) * 0.5;
 						const l = face + reign * 5 + (chip(x, y, 47) % 4) * 0.3;
 						const c = flPal[Math.max(0, Math.min(17, Math.round(l / 1.3)))];
@@ -1002,9 +1119,12 @@ export function makeCrown(rows: number): FxProgram {
 				}
 			}
 
-			const sq = (s as any).squash as number;
-			if (hit) (s as any).squash = 1;
-			else if (sq > 0) (s as any).squash = Math.max(0, sq - 0.055);
+			const sq = s.squash as number;
+			if (hit) {
+				s.squash = 1;
+			} else if (sq > 0) {
+				s.squash = Math.max(0, sq - 0.055);
+			}
 			const cushH = Math.max(3, s.h * 0.075) * (1 - sq * 0.34);
 			const cushW = Math.min(s.w, s.h) * 0.3;
 			const cushTop = daisTop - cushH;
@@ -1018,7 +1138,9 @@ export function makeCrown(rows: number): FxProgram {
 					const lift = Math.max(0, -Math.cos(v * 3.14159)) * 0.3;
 					let l = 10 + dome * 12 + (1 - v) * 7 + lift * 6 + reign * 7;
 					l -= dent;
-					if (v > 0.84) l -= 7;
+					if (v > 0.84) {
+						l -= 7;
+					}
 					const nap = (chip(x | 0, y | 0, 71) % 100) / 100;
 					const c = hsl(id.velvet, 48, Math.max(3, l + nap * 3));
 					paint(s, cx + x, y - dent * 0.22, c[0], c[1], c[2], 1);
@@ -1029,7 +1151,9 @@ export function makeCrown(rows: number): FxProgram {
 				const ty = daisTop - 1;
 				const c = hsl(id.gold, 66, 46);
 				for (let k = 0; k < 4; k++) {
-					for (let q = -1; q <= 1; q++) paint(s, tx + q + sd * k * 0.3, ty + k, c[0], c[1], c[2], 1 - k * 0.12);
+					for (let q = -1; q <= 1; q++) {
+						paint(s, tx + q + sd * k * 0.3, ty + k, c[0], c[1], c[2], 1 - k * 0.12);
+					}
 				}
 			}
 
@@ -1047,7 +1171,9 @@ export function makeCrown(rows: number): FxProgram {
 					const hw = halfW * (0.3 + t2 * 0.85);
 					for (let x = Math.max(0, Math.floor(cx - hw)); x < Math.min(s.w, Math.ceil(cx + hw)); x++) {
 						const u = 1 - Math.abs(x - cx) / hw;
-						if (u <= 0) continue;
+						if (u <= 0) {
+							continue;
+						}
 						plot(s, x, y, lr, lg, lb, u * u * 0.1 * Math.max(fall, rise));
 					}
 				}
@@ -1086,14 +1212,21 @@ export function makeCrown(rows: number): FxProgram {
 				}
 			}
 			const rimC = hsl(id.gold + 6, 50, 74 + reign * 12);
-			for (let ox = -halfW; ox <= halfW; ox++) put(ox, -bandH, rimC[0], rimC[1], rimC[2]);
+			for (let ox = -halfW; ox <= halfW; ox++) {
+				put(ox, -bandH, rimC[0], rimC[1], rimC[2]);
+			}
 			for (let k = 0; k < id.points + 1; k++) {
 				const u = id.points === 0 ? 0 : (k / id.points) * 2 - 1;
 				const st = id.stones[k % 6];
 				const ox = u * halfW * 0.84;
 				const c = hsl(st[0], 74, 42 + Math.max(0, Math.sin(s.t * 0.12 + st[1])) * 16 + reign * 10);
-				for (let dy = -1; dy <= 1; dy++)
-					for (let dx = -1; dx <= 1; dx++) if (Math.abs(dx) + Math.abs(dy) < 2) put(ox + dx, -bandH * 0.5 + dy, c[0], c[1], c[2]);
+				for (let dy = -1; dy <= 1; dy++) {
+					for (let dx = -1; dx <= 1; dx++) {
+						if (Math.abs(dx) + Math.abs(dy) < 2) {
+							put(ox + dx, -bandH * 0.5 + dy, c[0], c[1], c[2]);
+						}
+					}
+				}
 			}
 
 			const n = id.points;
@@ -1119,7 +1252,9 @@ export function makeCrown(rows: number): FxProgram {
 				for (let dy = -rr; dy <= rr; dy++) {
 					for (let dx = -rr; dx <= rr; dx++) {
 						const d = Math.hypot(dx, dy) / rr;
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						const fac = Math.max(0, 1 - Math.hypot(dx / rr + 0.4, dy / rr + 0.45) * 1.8);
 						const c = hsl(st[0], 78, Math.min(96, 44 + (1 - d) * 16 + fac * 34 + glint * 18 + reign * 10 + land * 20));
 						put(ox0 + dx, sy + dy, c[0], c[1], c[2]);
@@ -1184,7 +1319,9 @@ export function makeCrown(rows: number): FxProgram {
 				const c = hsl(q[6], 70, 62 + lf * 30);
 				plot(s, q[0], q[1], c[0], c[1], c[2], lf * (0.45 + land * 0.5));
 			}
-			if (motes.length > 150) motes.splice(0, motes.length - 150);
+			if (motes.length > 150) {
+				motes.splice(0, motes.length - 150);
+			}
 
 			if (land > 0) {
 				const [gr2, gg2, gb2] = hsl(id.gold + 6, 82, 88);
@@ -1208,7 +1345,9 @@ export function makeCrown(rows: number): FxProgram {
 				for (let y = Math.max(0, Math.floor(baseY - R2)); y < Math.min(s.h, Math.ceil(cushTop + R2 * 0.5)); y++) {
 					for (let x = Math.max(0, Math.floor(cx - R2)); x < Math.min(s.w, Math.ceil(cx + R2)); x++) {
 						const d = Math.hypot((x - cx) / R2, (y - (baseY - bandH * 0.6)) / (R2 * 0.8));
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						plot(s, x, y, hr2, hg2, hb2, (1 - d) * (1 - d) * 0.24 * reign);
 					}
 				}

@@ -91,7 +91,7 @@
 	let leaveTo = $state<URL | null>(null);
 	let leaving = false;
 	let beforeAgent: { name: string; doc: MessageDoc } | null = null;
-	let memberNames = $state<Record<string, string>>(Object.fromEntries(initial().members));
+	const memberNames = $state<Record<string, string>>(Object.fromEntries(initial().members));
 
 	const EVERYONE_MENTIONS = [
 		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: Number.MAX_SAFE_INTEGER },
@@ -125,7 +125,7 @@
 	const flagged = $derived(new Set(issues.flatMap((issue) => (issue.part ? [issue.part] : []))));
 	const markdownContext = $derived<MarkdownContext>({
 		roles: new Map(data.roles.map((role) => [role.id, { name: role.name, color: role.color }])),
-		channels: new Map(data.channels.map((channel: any) => [String(channel.discord_channel_id), String(channel.name ?? '')])),
+		channels: new Map(data.channels.map((channel) => [String(channel.discord_channel_id), String(channel.name ?? '')])),
 		members: new Map(Object.entries(memberNames))
 	});
 	const servers = $derived(new Set(data.posts.map((post) => post.guild_id)).size);
@@ -181,28 +181,38 @@
 	setMessageEditor(editorContext);
 
 	beforeNavigate((navigation) => {
-		if (!dirty || leaving) return;
+		if (!dirty || leaving) {
+			return;
+		}
 		navigation.cancel();
-		if (!navigation.willUnload && navigation.to) leaveTo = navigation.to.url;
+		if (!navigation.willUnload && navigation.to) {
+			leaveTo = navigation.to.url;
+		}
 	});
 
 	async function select(id: string, focus = '') {
 		mode = 'edit';
 		selection = { id, focus };
 		nonce++;
-		if (!window.matchMedia('(max-width: 1023px)').matches) return;
+		if (!window.matchMedia('(max-width: 1023px)').matches) {
+			return;
+		}
 		await tick();
 		document.querySelector('.dc-selected')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
 	}
 
 	function resolveMessage(id: number): MessageDoc | null {
-		if (id === messageId) return doc;
+		if (id === messageId) {
+			return doc;
+		}
 		return data.messages.find((message) => message.id === id)?.content ?? null;
 	}
 
 	function removeLanguage(code: ServerLanguage) {
 		doc = removeMessageLanguage($state.snapshot(doc) as MessageDoc, code, data.scope);
-		if (lang === code) lang = doc.language;
+		if (lang === code) {
+			lang = doc.language;
+		}
 		confirmLanguage = null;
 	}
 
@@ -215,7 +225,9 @@
 	function addButton(rowId: string) {
 		const rows = doc.layout === 'standard' ? doc.rows : doc.blocks.flatMap((block) => (block.type === 'container' ? block.blocks : [block]));
 		const row = rows.find((block) => block.id === rowId);
-		if (row?.type === 'buttons' && row.buttons.length < MESSAGE_LIMITS.buttons) addButtonTo(row);
+		if (row?.type === 'buttons' && row.buttons.length < MESSAGE_LIMITS.buttons) {
+			addButtonTo(row);
+		}
 	}
 
 	function add(type: 'embed' | MessageBlockType) {
@@ -227,29 +239,39 @@
 			}
 			if (type === 'buttons') {
 				const last = doc.rows[doc.rows.length - 1];
-				if (last?.type === 'buttons' && last.buttons.length < MESSAGE_LIMITS.buttons) return addButtonTo(last);
+				if (last?.type === 'buttons' && last.buttons.length < MESSAGE_LIMITS.buttons) {
+					return addButtonTo(last);
+				}
 			}
-			if (type !== 'buttons' && type !== 'select') return;
+			if (type !== 'buttons' && type !== 'select') {
+				return;
+			}
 			const row = newMessageBlock(type) as ButtonsBlock;
 			doc.rows.push(row);
 			return select(type === 'buttons' ? row.buttons[0].id : row.id);
 		}
 
-		const target: any[] = box && type !== 'container' ? box.blocks : doc.blocks;
+		const target: unknown[] = box && type !== 'container' ? box.blocks : doc.blocks;
 		if (target.length >= (target === doc.blocks ? MESSAGE_LIMITS.blocks : MESSAGE_LIMITS.innerBlocks)) {
 			return showToast('That is as many parts as fit here. Remove one first.', 'error');
 		}
 		const block: any = newMessageBlock(type as MessageBlockType, data.defaults.color);
 		target.push(block);
-		if (block.type === 'buttons') select(block.buttons[0].id);
-		else if (block.type === 'container') select(block.blocks[0].id);
-		else select(block.id);
+		if (block.type === 'buttons') {
+			select(block.buttons[0].id);
+		} else if (block.type === 'container') {
+			select(block.blocks[0].id);
+		} else {
+			select(block.id);
+		}
 	}
 
 	async function addFile(file: File) {
 		try {
 			const key = await uploadMedia(editorContext, file, true, (fraction) => (uploading = fraction));
-			if (!key) return;
+			if (!key) {
+				return;
+			}
 			const attachment = { id: newMessagePartId(), file: key, spoiler: false };
 			doc.attachments.push(attachment);
 			select(attachment.id);
@@ -259,12 +281,18 @@
 	}
 
 	function applyAgent(result: { name: string | null; content: MessageDoc | null } | null): boolean {
-		if (!result?.content && !result?.name) return false;
+		if (!result?.content && !result?.name) {
+			return false;
+		}
 		beforeAgent = { name, doc: $state.snapshot(doc) as MessageDoc };
-		if (result.name) name = result.name;
+		if (result.name) {
+			name = result.name;
+		}
 		if (result.content) {
 			doc = normalizeMessageDoc(result.content, undefined, data.scope);
-			if (!doc.languages.includes(lang)) lang = doc.language;
+			if (!doc.languages.includes(lang)) {
+				lang = doc.language;
+			}
 			selection = null;
 			mode = 'edit';
 		}
@@ -272,10 +300,14 @@
 	}
 
 	function undoAgent() {
-		if (!beforeAgent) return;
+		if (!beforeAgent) {
+			return;
+		}
 		name = beforeAgent.name;
 		doc = beforeAgent.doc;
-		if (!doc.languages.includes(lang)) lang = doc.language;
+		if (!doc.languages.includes(lang)) {
+			lang = doc.language;
+		}
 		selection = null;
 		beforeAgent = null;
 	}
@@ -290,13 +322,19 @@
 	onMount(() => {
 		agentDock.editor = dockEditor;
 		return () => {
-			if (agentDock.editor === dockEditor) agentDock.editor = null;
+			if (agentDock.editor === dockEditor) {
+				agentDock.editor = null;
+			}
 		};
 	});
 
 	function openIssue(issue: MessageIssue) {
-		if (issue.part === 'name') return nameInput?.focus();
-		if (issue.part) select(issue.part);
+		if (issue.part === 'name') {
+			return nameInput?.focus();
+		}
+		if (issue.part) {
+			select(issue.part);
+		}
 	}
 
 	async function save(thenSend = false): Promise<boolean> {
@@ -320,7 +358,9 @@
 			}
 			saved = serialize(name, doc);
 			if (messageId === null) {
-				if (!thenSend) showToast('Message saved. Press Send to post it.', 'success');
+				if (!thenSend) {
+					showToast('Message saved. Press Send to post it.', 'success');
+				}
 				leaving = true;
 				await goto(`${data.listPath}/${out.id}${thenSend ? '?send=1' : ''}`, { replaceState: true });
 				return true;
@@ -334,8 +374,12 @@
 	}
 
 	async function openSend() {
-		if ((dirty || messageId === null) && !(await save(true))) return;
-		if (messageId !== null) sendOpen = true;
+		if ((dirty || messageId === null) && !(await save(true))) {
+			return;
+		}
+		if (messageId !== null) {
+			sendOpen = true;
+		}
 	}
 
 	async function send(target: { channelIds: string[]; mentionIds: string[]; language: string }): Promise<boolean> {
@@ -368,15 +412,24 @@
 	}
 
 	async function updatePost(target: PostedCopy | 'all') {
-		if (dirty && !(await save())) return;
+		if (dirty && !(await save())) {
+			return;
+		}
 		updating = target === 'all' ? 'all' : target.id;
 		try {
 			const res = await fetch(`${data.apiBase}/${messageId}/posts/${target === 'all' ? 'all' : target.id}`, { method: 'POST' });
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not update it', 'error', 7000);
-			if (out.failed?.length > 0) showToast(`Updated ${out.updated}, but ${out.failed[0]}`, 'error', 9000);
-			else if (out.unreached > 0) showToast(`Updated ${out.updated}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
-			else showToast(out.updated === 1 ? 'Posted copy updated.' : `Updated ${out.updated} posted copies.`, 'success');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not update it', 'error', 7000);
+				return;
+			}
+			if (out.failed?.length > 0) {
+				showToast(`Updated ${out.updated}, but ${out.failed[0]}`, 'error', 9000);
+			} else if (out.unreached > 0) {
+				showToast(`Updated ${out.updated}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
+			} else {
+				showToast(out.updated === 1 ? 'Posted copy updated.' : `Updated ${out.updated} posted copies.`, 'success');
+			}
 			await invalidateAll();
 		} finally {
 			updating = null;
@@ -388,10 +441,17 @@
 		try {
 			const res = await fetch(`${data.apiBase}/${messageId}/posts/${target === 'all' ? 'all' : target.id}`, { method: 'DELETE' });
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not remove it', 'error', 7000);
-			if (out.failed?.length > 0) showToast(`Removed ${out.removed}, but ${out.failed[0]}`, 'error', 9000);
-			else if (out.unreached > 0) showToast(`Removed ${out.removed}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
-			else showToast(target === 'all' ? 'Removed from every server.' : `Removed from #${target.channel_name}.`, 'success');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not remove it', 'error', 7000);
+				return;
+			}
+			if (out.failed?.length > 0) {
+				showToast(`Removed ${out.removed}, but ${out.failed[0]}`, 'error', 9000);
+			} else if (out.unreached > 0) {
+				showToast(`Removed ${out.removed}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
+			} else {
+				showToast(target === 'all' ? 'Removed from every server.' : `Removed from #${target.channel_name}.`, 'success');
+			}
 			await invalidateAll();
 		} finally {
 			removing = null;
@@ -404,7 +464,10 @@
 		try {
 			const res = await fetch(`${data.apiBase}/${messageId}`, { method: 'DELETE' });
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not delete the message', 'error', 8000);
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not delete the message', 'error', 8000);
+				return;
+			}
 			showToast(
 				out.stripped ? 'Message deleted.' : 'Message deleted. A bot is offline, so some posted copies keep their buttons until it is back.',
 				out.stripped ? 'success' : 'info',
@@ -421,7 +484,9 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape' && selection && !sendOpen) selection = null;
+		if (event.key === 'Escape' && selection && !sendOpen) {
+			selection = null;
+		}
 	}}
 />
 
@@ -547,7 +612,9 @@
 		() => sendOpen,
 		(next) => {
 			sendOpen = next;
-			if (!next && page.url.searchParams.has('send')) goto(page.url.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+			if (!next && page.url.searchParams.has('send')) {
+				goto(page.url.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+			}
 		}
 	}
 	{global}
@@ -613,7 +680,9 @@
 		const target = leaveTo;
 		leaveTo = null;
 		leaving = true;
-		if (target) goto(target);
+		if (target) {
+			goto(target);
+		}
 	}}
 	oncancel={() => (leaveTo = null)}
 />

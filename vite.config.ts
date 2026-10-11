@@ -4,7 +4,9 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 function required(env: Record<string, string>, key: string): string {
 	const value = env[key]?.trim();
-	if (!value) throw new Error(`Missing ${key} environment variable`);
+	if (!value) {
+		throw new Error(`Missing ${key} environment variable`);
+	}
 	return value;
 }
 

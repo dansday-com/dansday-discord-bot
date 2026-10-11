@@ -11,12 +11,18 @@ import { memberThemeFilename, memberThemeKey, removeMemberTheme, resolveMemberTh
 import { normalizeAccent } from '$lib/themes.js';
 import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
 
-async function resolveActor(serverSlug: string, card: any) {
+async function resolveActor(serverSlug: string, card: unknown) {
 	const resolved = await resolvePublicServerBySlug(String(serverSlug || '').trim());
-	if (!resolved) return { error: 'Not found', status: 404 } as const;
-	if (!card) return { error: 'Missing card', status: 400 } as const;
+	if (!resolved) {
+		return { error: 'Not found', status: 404 } as const;
+	}
+	if (!card) {
+		return { error: 'Missing card', status: 400 } as const;
+	}
 	const member = await resolveMemberByCardToken(resolved.server.id, String(card));
-	if (!member) return { error: 'Member not found', status: 404 } as const;
+	if (!member) {
+		return { error: 'Member not found', status: 404 } as const;
+	}
 	return { member, serverId: resolved.server.id } as const;
 }
 
@@ -26,18 +32,26 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 		if (!contentType.includes('multipart/form-data')) {
 			const body = await request.json().catch(() => null);
-			if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
+			if (!body) {
+				return json({ success: false, error: 'Invalid body' }, { status: 400 });
+			}
 
 			const actor = await resolveActor(params.serverSlug ?? '', body.card);
-			if ('error' in actor) return json({ success: false, error: actor.error }, { status: actor.status });
+			if ('error' in actor) {
+				return json({ success: false, error: actor.error }, { status: actor.status });
+			}
 
 			const updates: { image?: string | null; accentColor?: string; accentAuto?: boolean; effect?: string; effectSeed?: number; effectEnabled?: boolean } = {};
 
-			if (body.image === null) updates.image = null;
+			if (body.image === null) {
+				updates.image = null;
+			}
 
 			if (body.accent !== undefined) {
 				const accent = normalizeAccent(body.accent);
-				if (!accent) return json({ success: false, error: 'Invalid colour' }, { status: 400 });
+				if (!accent) {
+					return json({ success: false, error: 'Invalid colour' }, { status: 400 });
+				}
 				updates.accentColor = accent;
 				updates.accentAuto = body.accent_auto === true;
 			}
@@ -51,20 +65,28 @@ export const POST: RequestHandler = async ({ params, request }) => {
 				updates.effectEnabled = body.effect_enabled === true;
 			}
 
-			if (Object.keys(updates).length === 0) return json({ success: false, error: 'Nothing to update' }, { status: 400 });
+			if (Object.keys(updates).length === 0) {
+				return json({ success: false, error: 'Nothing to update' }, { status: 400 });
+			}
 
 			const cleared = updates.image === null ? await db.getMemberTheme(actor.member.id).catch(() => null) : null;
 			const row = await db.setMemberTheme(actor.member.id, updates);
-			if (cleared?.image) await removeMemberTheme(cleared.image);
+			if (cleared?.image) {
+				await removeMemberTheme(cleared.image);
+			}
 
 			return json({ success: true, theme: resolveMemberThemeForClient(row) });
 		}
 
 		const upload = await readUploadedImage(request, MEMBER_THEME_MAX_BYTES);
-		if (!upload.ok) return json({ success: false, error: upload.error }, { status: upload.status });
+		if (!upload.ok) {
+			return json({ success: false, error: upload.error }, { status: upload.status });
+		}
 
 		const actor = await resolveActor(params.serverSlug ?? '', upload.form?.get('card'));
-		if ('error' in actor) return json({ success: false, error: actor.error }, { status: actor.status });
+		if ('error' in actor) {
+			return json({ success: false, error: actor.error }, { status: actor.status });
+		}
 
 		const accent = normalizeAccent(upload.form?.get('accent'));
 		const previous = await db.getMemberTheme(actor.member.id).catch(() => null);
@@ -81,11 +103,13 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			...(formEffect != null ? { effect: normalizeEffect(formEffect), effectSeed: normalizeSeed(upload.form?.get('effect_seed')) } : {})
 		});
 
-		if (previous?.image && previous.image !== key) await removeMemberTheme(previous.image);
+		if (previous?.image && previous.image !== key) {
+			await removeMemberTheme(previous.image);
+		}
 
 		return json({ success: true, theme: resolveMemberThemeForClient(row) });
-	} catch (error: any) {
-		logger.log(`❌ Error saving member theme: ${error.message}`);
+	} catch (error) {
+		logger.log(`❌ Error saving member theme: ${(error as Error).message}`);
 		return json({ success: false, error: 'Could not save your theme.' }, { status: 500 });
 	}
 };
@@ -93,19 +117,25 @@ export const POST: RequestHandler = async ({ params, request }) => {
 export const DELETE: RequestHandler = async ({ params, request }) => {
 	try {
 		const body = await request.json().catch(() => null);
-		if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
+		if (!body) {
+			return json({ success: false, error: 'Invalid body' }, { status: 400 });
+		}
 
 		const actor = await resolveActor(params.serverSlug ?? '', body.card);
-		if ('error' in actor) return json({ success: false, error: actor.error }, { status: actor.status });
+		if ('error' in actor) {
+			return json({ success: false, error: actor.error }, { status: actor.status });
+		}
 
 		const previous = await db.getMemberTheme(actor.member.id).catch(() => null);
 		await db.clearMemberTheme(actor.member.id);
-		if (previous?.image) await removeMemberTheme(previous.image);
+		if (previous?.image) {
+			await removeMemberTheme(previous.image);
+		}
 
 		const remaining = await db.getMemberTheme(actor.member.id).catch(() => null);
 		return json({ success: true, theme: remaining ?? null });
-	} catch (error: any) {
-		logger.log(`❌ Error clearing member theme: ${error.message}`);
+	} catch (error) {
+		logger.log(`❌ Error clearing member theme: ${(error as Error).message}`);
 		return json({ success: false, error: 'Could not reset your theme.' }, { status: 500 });
 	}
 };

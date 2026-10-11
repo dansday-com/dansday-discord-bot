@@ -7,15 +7,21 @@ import { logMessageAction, messagePanelAccess, pruneMessageFiles, syncMessagePos
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const access = await messagePanelAccess(locals, params.id);
-	if (access instanceof Response) return access;
+	if (access instanceof Response) {
+		return access;
+	}
 	const { serverId, server } = access;
 	const messageId = parseInt(params.messageId ?? '');
-	if (isNaN(messageId)) return json({ ok: false, error: 'Invalid message ID' }, { status: 400 });
+	if (isNaN(messageId)) {
+		return json({ ok: false, error: 'Invalid message ID' }, { status: 400 });
+	}
 
 	try {
 		const messages = await db.getServerMessages(serverId);
 		const message = messages.find((m) => m.id === messageId);
-		if (!message) return json({ ok: true, stripped: true });
+		if (!message) {
+			return json({ ok: true, stripped: true });
+		}
 
 		const usedBy = messages.find((m) => m.id !== messageId && messageShownIds(m.content).includes(messageId));
 		if (usedBy) {
@@ -38,8 +44,8 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		]);
 
 		return json({ ok: true, stripped: posts.length === 0 || (sync.running && sync.failed.length === 0) });
-	} catch (error: any) {
-		logger.log(`❌ Error deleting message: ${error.message}`);
+	} catch (error) {
+		logger.log(`❌ Error deleting message: ${(error as Error).message}`);
 		return json({ ok: false, error: 'Could not delete the message. Try again in a moment.' }, { status: 500 });
 	}
 };

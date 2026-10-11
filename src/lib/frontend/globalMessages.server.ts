@@ -14,23 +14,29 @@ export function globalPanelAccess(locals: App.Locals): { panelId: number } | Res
 		return json({ ok: false, error: 'Only the panel admin can use global messages.' }, { status: 401 });
 	}
 	const panelId = Number(locals.user.panel_id);
-	if (!Number.isFinite(panelId) || panelId <= 0) return json({ ok: false, error: 'No panel available' }, { status: 404 });
+	if (!Number.isFinite(panelId) || panelId <= 0) {
+		return json({ ok: false, error: 'No panel available' }, { status: 404 });
+	}
 	return { panelId };
 }
 
 async function callBots(panelId: number, type: string, payload: Record<string, unknown>) {
-	const bots = ((await db.getAllBots(panelId)) ?? []) as any[];
+	const bots = (await db.getAllBots(panelId)) ?? [];
 	const running = bots.filter((bot) => bot.status === 'running' && bot.port && bot.secret_key);
-	const bodies: any[] = [];
+	const bodies: Record<string, unknown>[] = [];
 	for (const bot of running) {
 		const result = await postBotWebhook(bot, { type, ...payload });
-		if (result.body?.ok) bodies.push(result.body);
+		if (result.body?.ok) {
+			bodies.push(result.body);
+		}
 	}
 	return { total: bots.length, offline: bots.length - bodies.length, results: bodies.flatMap((body) => (Array.isArray(body.results) ? body.results : [])) };
 }
 
 export async function logGlobalMessageAction(locals: App.Locals, action: string, entries: { serverId: number; changes: Change[] }[]) {
-	for (const entry of entries) await db.createServerPanelLog(entry.serverId, panelActorIds(locals), action, entry.changes).catch(() => null);
+	for (const entry of entries) {
+		await db.createServerPanelLog(entry.serverId, panelActorIds(locals), action, entry.changes).catch(() => null);
+	}
 }
 
 export async function sendGlobalMessage(locals: App.Locals, panelId: number, message: ServerMessage, groups: string[]) {
@@ -92,12 +98,17 @@ export async function syncGlobalMessagePosts(
 	let removed = 0;
 	for (const result of call.results) {
 		const post = byId.get(Number(result.post_id));
-		if (!post) continue;
+		if (!post) {
+			continue;
+		}
 		if (result.gone) {
 			await db.deleteGlobalMessagePost(panelId, post.id).catch(() => null);
 			removed++;
-		} else if (result.ok) updated.push(post);
-		else failed.push(`${post.server_name}: ${result.error ?? 'could not update the copy.'}`);
+		} else if (result.ok) {
+			updated.push(post);
+		} else {
+			failed.push(`${post.server_name}: ${result.error ?? 'could not update the copy.'}`);
+		}
 	}
 	if (refresh !== null) {
 		await logGlobalMessageAction(
@@ -113,14 +124,18 @@ export async function syncGlobalMessagePosts(
 }
 
 export async function removeGlobalMessagePosts(locals: App.Locals, panelId: number, message: ServerMessage, posts: GlobalMessagePost[]) {
-	if (posts.length === 0) return { removed: 0, failed: [] as string[], unreached: 0 };
+	if (posts.length === 0) {
+		return { removed: 0, failed: [] as string[], unreached: 0 };
+	}
 	const byId = new Map(posts.map((post) => [post.id, post]));
 	const call = await callBots(panelId, 'global_message_remove_posts', { message_id: message.id, post_ids: posts.map((post) => post.id) });
 	const removed: GlobalMessagePost[] = [];
 	const failed: string[] = [];
 	for (const result of call.results) {
 		const post = byId.get(Number(result.post_id));
-		if (!post) continue;
+		if (!post) {
+			continue;
+		}
 		if (!result.ok) {
 			failed.push(String(result.error ?? `${post.server_name}: could not remove the copy.`));
 			continue;
@@ -142,7 +157,9 @@ export async function removeGlobalMessagePosts(locals: App.Locals, panelId: numb
 export async function pruneGlobalMessageFiles(panelId: number, messages?: ServerMessage[]) {
 	const all = messages ?? (await db.getGlobalMessages(panelId).catch(() => null));
 	const posts = await db.getGlobalMessagePosts(panelId).catch(() => null);
-	if (!all || !posts) return;
+	if (!all || !posts) {
+		return;
+	}
 	const kept = new Set(all.map((message) => message.id));
 	const used = [...all.map((message) => message.content), ...posts.flatMap((post) => (post.content && kept.has(post.message_id) ? [post.content] : []))];
 	await pruneMessageFiles({ scope: 'global', id: panelId }, new Set(used.flatMap((content) => messageUploadKeys(content)))).catch(() => null);

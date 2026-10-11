@@ -34,32 +34,46 @@ function wholeNumber(value: unknown, min: number, max: number): number {
 }
 
 export function normalizeEscalation(raw: unknown): EscalationStep[] {
-	if (!Array.isArray(raw)) return [];
+	if (!Array.isArray(raw)) {
+		return [];
+	}
 	const byWarns = new Map<number, EscalationStep>();
 	for (const item of raw) {
-		if (!item || typeof item !== 'object') continue;
+		if (!item || typeof item !== 'object') {
+			continue;
+		}
 		const step = item as Record<string, unknown>;
 		const action = String(step.action) as EscalationAction;
-		if (!ESCALATION_ACTIONS.includes(action)) continue;
+		if (!ESCALATION_ACTIONS.includes(action)) {
+			continue;
+		}
 		const warns = wholeNumber(step.warns, 0, 100);
-		if (warns < 1) continue;
+		if (warns < 1) {
+			continue;
+		}
 		const timed = ESCALATION_TIMED_ACTIONS.includes(action);
 		const duration = timed ? wholeNumber(step.duration_seconds, 0, action === 'timeout' ? MAX_TIMEOUT_SECONDS : 10 * 365 * 86400) : null;
-		if (timed && (!duration || duration < 60)) continue;
+		if (timed && (!duration || duration < 60)) {
+			continue;
+		}
 		byWarns.set(warns, { warns, action, duration_seconds: duration });
 	}
 	return [...byWarns.values()].sort((a, b) => a.warns - b.warns).slice(0, MAX_ESCALATION_STEPS);
 }
 
 export function normalizeReasonPresets(raw: unknown): string[] {
-	if (!Array.isArray(raw)) return [];
+	if (!Array.isArray(raw)) {
+		return [];
+	}
 	const seen = new Set<string>();
 	const out: string[] = [];
 	for (const item of raw) {
 		const text = String(item ?? '')
 			.trim()
 			.slice(0, MAX_REASON_PRESET_LENGTH);
-		if (!text || seen.has(text.toLowerCase())) continue;
+		if (!text || seen.has(text.toLowerCase())) {
+			continue;
+		}
 		seen.add(text.toLowerCase());
 		out.push(text);
 	}

@@ -12,10 +12,14 @@ function findModelDir() {
 	let dir = path.dirname(fileURLToPath(import.meta.url));
 	for (let i = 0; i < 24; i++) {
 		const candidate = path.join(dir, 'static', 'wakeword');
-		if (hasModels(candidate)) return candidate;
+		if (hasModels(candidate)) {
+			return candidate;
+		}
 
 		const parent = path.dirname(dir);
-		if (parent === dir) break;
+		if (parent === dir) {
+			break;
+		}
 		dir = parent;
 	}
 
@@ -42,10 +46,14 @@ let reportedUnavailable = false;
 const listeners = new Set<(userId: string, score: number) => void>();
 
 export function wakeModelAvailable() {
-	if (workerFailed) return false;
+	if (workerFailed) {
+		return false;
+	}
 
 	const missing = [MEL_PATH, EMB_PATH, WAKE_PATH].filter((p) => !fs.existsSync(p));
-	if (!missing.length) return true;
+	if (!missing.length) {
+		return true;
+	}
 
 	if (!reportedUnavailable) {
 		reportedUnavailable = true;
@@ -55,8 +63,12 @@ export function wakeModelAvailable() {
 }
 
 function getWorker() {
-	if (worker || workerFailed) return worker;
-	if (!wakeModelAvailable()) return null;
+	if (worker || workerFailed) {
+		return worker;
+	}
+	if (!wakeModelAvailable()) {
+		return null;
+	}
 
 	const file = workerPath();
 	if (!fs.existsSync(file)) {
@@ -81,7 +93,9 @@ function getWorker() {
 
 		worker.on('message', (msg) => {
 			if (msg?.type === 'detected') {
-				for (const listener of listeners) listener(msg.userId, msg.score);
+				for (const listener of listeners) {
+					listener(msg.userId, msg.score);
+				}
 				return;
 			}
 			if (msg?.type === 'debug') {
@@ -93,7 +107,7 @@ function getWorker() {
 			}
 		});
 
-		worker.on('error', (error: any) => {
+		worker.on('error', (error: Record<string, unknown>) => {
 			workerFailed = true;
 			worker = null;
 			logger.log(`❌ Wake word worker crashed: ${error?.message ?? String(error)}`);
@@ -101,12 +115,14 @@ function getWorker() {
 
 		worker.on('exit', (code) => {
 			worker = null;
-			if (code !== 0) logger.log(`⚠️ Wake word worker exited with code ${code}`);
+			if (code !== 0) {
+				logger.log(`⚠️ Wake word worker exited with code ${code}`);
+			}
 		});
-	} catch (error: any) {
+	} catch (error) {
 		workerFailed = true;
 		worker = null;
-		logger.log(`❌ Wake word worker failed to start: ${error.message}`);
+		logger.log(`❌ Wake word worker failed to start: ${(error as Error).message}`);
 	}
 
 	return worker;
@@ -114,7 +130,9 @@ function getWorker() {
 
 export async function warmWakeModel() {
 	const active = getWorker();
-	if (!active) return false;
+	if (!active) {
+		return false;
+	}
 	const target = active;
 
 	return new Promise<boolean>((resolve) => {
@@ -123,8 +141,10 @@ export async function warmWakeModel() {
 			resolve(false);
 		}, 15_000);
 
-		function onMessage(msg: any) {
-			if (msg?.type !== 'ready' && msg?.type !== 'error') return;
+		function onMessage(msg: Record<string, unknown>) {
+			if (msg?.type !== 'ready' && msg?.type !== 'error') {
+				return;
+			}
 			clearTimeout(timer);
 			target.off('message', onMessage);
 			if (msg.type === 'error') {
@@ -149,11 +169,15 @@ export function onWakeDetected(listener: (userId: string, score: number) => void
 
 export function pushWakeAudio(userId: string, pcm: Buffer) {
 	const active = getWorker();
-	if (!active) return;
+	if (!active) {
+		return;
+	}
 
 	const count = Math.floor(pcm.length / 2);
 	const samples = new Float32Array(count);
-	for (let i = 0; i < count; i++) samples[i] = pcm.readInt16LE(i * 2);
+	for (let i = 0; i < count; i++) {
+		samples[i] = pcm.readInt16LE(i * 2);
+	}
 
 	active.postMessage({ type: 'audio', userId, samples: samples.buffer }, [samples.buffer]);
 }

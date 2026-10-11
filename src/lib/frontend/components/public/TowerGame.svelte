@@ -116,7 +116,9 @@
 	const carried = $derived(verdict ? (verdict.payout > 0 ? verdict.payout : verdict.lost) : towerPrize(cleared));
 	const resetsIn = $derived.by(() => {
 		const ms = resetAt - now;
-		if (!tower || tower.climbsUsed < 1 || resetAt <= 0 || ms <= 0) return '';
+		if (!tower || tower.climbsUsed < 1 || resetAt <= 0 || ms <= 0) {
+			return '';
+		}
 		const m = Math.ceil(ms / 60000);
 		return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
 	});
@@ -127,9 +129,11 @@
 	});
 
 	$effect(() => {
-		if (!tower || tower.active || busy || resetAt <= 0 || now < resetAt) return;
+		if (!tower || tower.active || busy || resetAt <= 0 || now < resetAt) {
+			return;
+		}
 		resetAt = 0;
-		void refresh();
+		refresh();
 	});
 
 	function fmtPct(n: number): string {
@@ -137,16 +141,28 @@
 	}
 
 	function oddsTone(chance: number): string {
-		if (chance >= 60) return 'text-success';
-		if (chance >= 40) return 'text-warning';
+		if (chance >= 60) {
+			return 'text-success';
+		}
+		if (chance >= 40) {
+			return 'text-warning';
+		}
 		return 'text-error';
 	}
 
 	function rowStatus(floor: number): RowStatus {
-		if (verdict?.outcome === 'bust' && floor === verdict.floor) return 'trap';
-		if (verdict?.outcome === 'cleared' && floor === TOWER_FLOORS) return 'crown';
-		if (!verdict && tower?.active && floor === cleared + 1) return 'active';
-		if (!verdict && !tower?.active) return 'next';
+		if (verdict?.outcome === 'bust' && floor === verdict.floor) {
+			return 'trap';
+		}
+		if (verdict?.outcome === 'cleared' && floor === TOWER_FLOORS) {
+			return 'crown';
+		}
+		if (!verdict && tower?.active && floor === cleared + 1) {
+			return 'active';
+		}
+		if (!verdict && !tower?.active) {
+			return 'next';
+		}
 		return 'cleared';
 	}
 
@@ -163,7 +179,9 @@
 
 	function flipDelay(floor: number, door: number): number {
 		const r = path[floor];
-		if (!r || door === r.door) return 0;
+		if (!r || door === r.door) {
+			return 0;
+		}
 		return 240 + DOORS.filter((d) => d !== r.door).indexOf(door) * 70;
 	}
 
@@ -181,7 +199,9 @@
 			});
 			const d = await res.json();
 			if (!d.success) {
-				if (d.state) apply(d.state);
+				if (d.state) {
+					apply(d.state);
+				}
 				showToast(d.error || 'Play failed', 'error');
 				return null;
 			}
@@ -194,11 +214,15 @@
 
 	async function refresh() {
 		const d = await send('state');
-		if (d) apply(d.state);
+		if (d) {
+			apply(d.state);
+		}
 	}
 
 	function settle(d: TowerReply) {
-		if (!d.step) return;
+		if (!d.step) {
+			return;
+		}
 		verdictClimb = tower?.climb ?? climb;
 		verdict = d.step;
 		apply(d.state);
@@ -222,7 +246,9 @@
 	});
 
 	async function start() {
-		if (busy) return;
+		if (busy) {
+			return;
+		}
 		sfx.press();
 		busy = true;
 		const d = await send('start');
@@ -236,7 +262,9 @@
 	}
 
 	async function pick(door: number) {
-		if (busy || !tower?.active || verdict) return;
+		if (busy || !tower?.active || verdict) {
+			return;
+		}
 		busy = true;
 		pending = door;
 		sfx.knock();
@@ -264,11 +292,15 @@
 	}
 
 	async function cashout() {
-		if (busy || !tower?.active || cleared < 1 || verdict) return;
+		if (busy || !tower?.active || cleared < 1 || verdict) {
+			return;
+		}
 		sfx.press();
 		busy = true;
 		const d = await send('cashout');
-		if (d) settle(d);
+		if (d) {
+			settle(d);
+		}
 		busy = false;
 	}
 </script>

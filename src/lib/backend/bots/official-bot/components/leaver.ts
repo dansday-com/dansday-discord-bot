@@ -4,16 +4,25 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
 import { serverTranslator, type Translator } from '../i18n.js';
+import type { GuildMember, PartialGuildMember } from 'discord.js';
+import type { GuildTextBasedChannel } from 'discord.js';
+import type { Client } from 'discord.js';
 
 function timeInServerText(joinedAt: Date | null, tr: Translator): string {
-	if (!joinedAt) return tr('leaver.timeInServer.unknown');
+	if (!joinedAt) {
+		return tr('leaver.timeInServer.unknown');
+	}
 	const days = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
-	if (days < 1) return tr('leaver.timeInServer.lessThanDay');
-	if (days === 1) return tr('leaver.timeInServer.oneDay');
+	if (days < 1) {
+		return tr('leaver.timeInServer.lessThanDay');
+	}
+	if (days === 1) {
+		return tr('leaver.timeInServer.oneDay');
+	}
 	return tr('leaver.timeInServer.days', { days });
 }
 
-function replacePlaceholders(message, memberId, username, serverName, memberCount, timeInServer) {
+function replacePlaceholders(message: string, memberId: string, username: string, serverName: string, memberCount: number, timeInServer: string) {
 	return message
 		.replace(/{username}/g, () => username)
 		.replace(/{user}/g, `<@${memberId}>`)
@@ -22,7 +31,7 @@ function replacePlaceholders(message, memberId, username, serverName, memberCoun
 		.replace(/{timeInServer}/g, timeInServer);
 }
 
-async function farewellUser(member, client) {
+async function farewellUser(member: GuildMember, client: Client) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -99,7 +108,7 @@ async function farewellUser(member, client) {
 			.setTimestamp();
 
 		for (const channelId of leaveChannelIds) {
-			const leaveChannel = client.channels.cache.get(channelId);
+			const leaveChannel = client.channels.cache.get(channelId) as GuildTextBasedChannel | undefined;
 			if (leaveChannel) {
 				try {
 					const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(member.guild.id, channelId).catch(() => null);
@@ -116,22 +125,26 @@ async function farewellUser(member, client) {
 
 					await logger.log(`✅ Said goodbye to ${username} (${member.user.id}) in ${serverData.name} to channel ${leaveChannel.name}`);
 				} catch (err) {
-					await logger.log(`❌ Failed to send leave message to channel ${channelId}: ${err.message}`);
+					await logger.log(`❌ Failed to send leave message to channel ${channelId}: ${(err as Error).message}`);
 				}
 			} else {
 				await logger.log(`❌ Leave channel not found: ${channelId}`);
 			}
 		}
 	} catch (err) {
-		await logger.log(`❌ Failed to say goodbye to ${member.user.id}: ${err.message}`);
+		await logger.log(`❌ Failed to say goodbye to ${member.user.id}: ${(err as Error).message}`);
 	}
 }
 
-function init(client) {
-	client.on('guildMemberRemove', async (member) => {
-		if (member.user?.bot) return;
-		if (!member.guild || member.guild.available === false) return;
-		await farewellUser(member, client);
+function init(client: Client) {
+	client.on('guildMemberRemove', async (member: GuildMember | PartialGuildMember) => {
+		if (member.user?.bot) {
+			return;
+		}
+		if (!member.guild || member.guild.available === false) {
+			return;
+		}
+		await farewellUser(member as GuildMember, client);
 	});
 }
 

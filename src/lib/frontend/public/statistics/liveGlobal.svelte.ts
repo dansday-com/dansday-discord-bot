@@ -16,18 +16,24 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 	let retry: ReturnType<typeof setTimeout> | null = null;
 
 	function apply(payload: { totals?: AggregatedPanelStats; gains?: number[]; updated_at?: number }) {
-		if (!payload?.totals) return;
+		if (!payload?.totals) {
+			return;
+		}
 
 		totals = payload.totals;
 		updatedAt = Number(payload.updated_at) || Date.now();
 		live = true;
 
 		const items = (Array.isArray(payload.gains) ? payload.gains : []).map((xp) => Number(xp) || 0).filter((xp) => xp > 0);
-		if (items.length) gains = { id: ++seq, items };
+		if (items.length) {
+			gains = { id: ++seq, items };
+		}
 	}
 
 	function open() {
-		if (typeof EventSource === 'undefined') return;
+		if (typeof EventSource === 'undefined') {
+			return;
+		}
 		source = new EventSource(ENDPOINT);
 		source.onmessage = (event) => {
 			try {
@@ -38,7 +44,9 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 			live = false;
 			source?.close();
 			source = null;
-			if (!retry) retry = setTimeout(() => ((retry = null), open()), RETRY_MS);
+			if (!retry) {
+				retry = setTimeout(() => ((retry = null), open()), RETRY_MS);
+			}
 		};
 	}
 
@@ -58,7 +66,9 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 		connect() {
 			open();
 			return () => {
-				if (retry) clearTimeout(retry);
+				if (retry) {
+					clearTimeout(retry);
+				}
 				retry = null;
 				source?.close();
 				source = null;

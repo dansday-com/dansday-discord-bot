@@ -96,10 +96,18 @@
 	const banked = $derived(colorXp(colorTotal(rounds.slice(0, landed).map((r) => r.score))));
 	const won = $derived(phase === 'summary' && !!result && result.payout > 0);
 	const spoken = $derived.by(() => {
-		if (phase === 'memorize') return 'Memorize this color.';
-		if (phase === 'dial') return 'Rebuild the color with the hue, saturation and brightness sliders.';
-		if (phase === 'reveal' && settled && last) return `Round ${last.round} scored ${last.score.toFixed(2)}. ${remark(last.score)}`;
-		if (phase === 'summary' && settled && result) return `Final score ${result.total.toFixed(2)}. You won ${result.payout} XP.`;
+		if (phase === 'memorize') {
+			return 'Memorize this color.';
+		}
+		if (phase === 'dial') {
+			return 'Rebuild the color with the hue, saturation and brightness sliders.';
+		}
+		if (phase === 'reveal' && settled && last) {
+			return `Round ${last.round} scored ${last.score.toFixed(2)}. ${remark(last.score)}`;
+		}
+		if (phase === 'summary' && settled && result) {
+			return `Final score ${result.total.toFixed(2)}. You won ${result.payout} XP.`;
+		}
 		return '';
 	});
 
@@ -113,8 +121,12 @@
 	}
 
 	function scoreTone(score: number, max = COLOR_MAX_SCORE): string {
-		if (score >= max * 0.8) return 'text-success';
-		if (score >= max * 0.5) return 'text-warning';
+		if (score >= max * 0.8) {
+			return 'text-success';
+		}
+		if (score >= max * 0.5) {
+			return 'text-warning';
+		}
 		return 'text-error';
 	}
 
@@ -132,7 +144,9 @@
 	}
 
 	function gradient(axis: ColorAxis, c: Hsb): string {
-		if (axis === 'h') return `linear-gradient(to bottom, ${HUE_STOPS})`;
+		if (axis === 'h') {
+			return `linear-gradient(to bottom, ${HUE_STOPS})`;
+		}
 		const top = axis === 's' ? { ...c, s: 100 } : { ...c, b: 100 };
 		const bottom = axis === 's' ? { ...c, s: 0 } : { ...c, b: 0 };
 		return `linear-gradient(to bottom, ${hsbToCss(top)}, ${hsbToCss(bottom)})`;
@@ -143,7 +157,9 @@
 	}
 
 	function setAxis(axis: ColorAxis, value: number) {
-		if (guess[axis] === value) return;
+		if (guess[axis] === value) {
+			return;
+		}
 		guess = { ...guess, [axis]: value };
 		sfx.tick(axis, ratio(axis, value));
 	}
@@ -154,27 +170,38 @@
 	}
 
 	function grab(e: PointerEvent, axis: ColorAxis) {
-		if (phase !== 'dial' || busy) return;
+		if (phase !== 'dial' || busy) {
+			return;
+		}
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		dragging = axis;
 		setAxis(axis, pointerValue(e, axis));
 	}
 
 	function drag(e: PointerEvent, axis: ColorAxis) {
-		if (dragging !== axis || phase !== 'dial' || busy) return;
+		if (dragging !== axis || phase !== 'dial' || busy) {
+			return;
+		}
 		setAxis(axis, pointerValue(e, axis));
 	}
 
 	function nudge(e: KeyboardEvent, axis: ColorAxis) {
-		if (phase !== 'dial' || busy) return;
+		if (phase !== 'dial' || busy) {
+			return;
+		}
 		const max = COLOR_AXIS_MAX[axis];
 		const up = axis === 'h' ? -1 : 1;
 		const steps: Record<string, number> = { ArrowUp: up, ArrowDown: -up, PageUp: up * 10, PageDown: -up * 10 };
 		let value: number;
-		if (steps[e.key]) value = Math.min(max, Math.max(0, guess[axis] + steps[e.key]));
-		else if (e.key === 'Home') value = axis === 'h' ? 0 : max;
-		else if (e.key === 'End') value = axis === 'h' ? max : 0;
-		else return;
+		if (steps[e.key]) {
+			value = Math.min(max, Math.max(0, guess[axis] + steps[e.key]));
+		} else if (e.key === 'Home') {
+			value = axis === 'h' ? 0 : max;
+		} else if (e.key === 'End') {
+			value = axis === 'h' ? max : 0;
+		} else {
+			return;
+		}
 		e.preventDefault();
 		setAxis(axis, value);
 	}
@@ -200,7 +227,9 @@
 			});
 			const d = await res.json();
 			if (!d.success) {
-				if (d.state) game = d.state;
+				if (d.state) {
+					game = d.state;
+				}
 				showToast(d.error || 'Play failed', 'error');
 				return null;
 			}
@@ -218,7 +247,9 @@
 		target = null;
 		last = null;
 		result = { total: ended.total, payout: ended.payout };
-		if (ended.payout > 0) onpayout(ended.payout);
+		if (ended.payout > 0) {
+			onpayout(ended.payout);
+		}
 		settled = false;
 		phase = 'summary';
 		countTo(ended.total, COLOR_MAX_TOTAL, () => {
@@ -230,19 +261,29 @@
 
 	async function settle(): Promise<boolean> {
 		const d = await send('end');
-		if (!d) return false;
+		if (!d) {
+			return false;
+		}
 		game = d.state;
-		if (d.ended) showResult(d.ended);
+		if (d.ended) {
+			showResult(d.ended);
+		}
 		return !!d.ended;
 	}
 
 	async function quit() {
-		if (busy) return;
-		if (!game?.active) return onclose();
+		if (busy) {
+			return;
+		}
+		if (!game?.active) {
+			return onclose();
+		}
 		busy = true;
 		const shown = await settle();
 		busy = false;
-		if (!shown) onclose();
+		if (!shown) {
+			onclose();
+		}
 	}
 
 	function countTo(value: number, max: number, onLand: () => void) {
@@ -274,7 +315,9 @@
 	}
 
 	function startRound() {
-		if (!target) return;
+		if (!target) {
+			return;
+		}
 		cancelAnimationFrame(countdown);
 		guess = colorOpeningGuess(target);
 		last = null;
@@ -303,12 +346,16 @@
 	}
 
 	async function begin() {
-		if (busy || !game) return;
+		if (busy || !game) {
+			return;
+		}
 		sfx.press();
 		busy = true;
 		const d = await send('start');
 		busy = false;
-		if (!d?.target) return;
+		if (!d?.target) {
+			return;
+		}
 		game = d.state;
 		resync();
 		target = d.target;
@@ -316,7 +363,9 @@
 	}
 
 	async function lockIn() {
-		if (busy || phase !== 'dial') return;
+		if (busy || phase !== 'dial') {
+			return;
+		}
 		busy = true;
 		dragging = null;
 		sfx.lock();
@@ -325,7 +374,9 @@
 		busy = false;
 		const step = d?.step;
 		if (!d || !step) {
-			if (game !== before) resync();
+			if (game !== before) {
+				resync();
+			}
 			return;
 		}
 		last = step;
@@ -335,7 +386,9 @@
 		game = d.state;
 		if (step.done) {
 			result = { total: step.total ?? colorTotal(rounds.map((r) => r.score)), payout: step.payout ?? 0 };
-			if (result.payout > 0) onpayout(result.payout);
+			if (result.payout > 0) {
+				onpayout(result.payout);
+			}
 		}
 		phase = 'reveal';
 		countTo(step.score, COLOR_MAX_SCORE, () => {
@@ -346,7 +399,9 @@
 	}
 
 	function advance() {
-		if (phase !== 'reveal' || !settled) return;
+		if (phase !== 'reveal' || !settled) {
+			return;
+		}
 		sfx.press();
 		const final = result;
 		if (!final) {

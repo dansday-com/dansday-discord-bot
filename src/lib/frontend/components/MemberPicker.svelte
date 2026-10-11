@@ -39,7 +39,9 @@
 	function rememberMember(m: Member) {
 		const id = m.discord_member_id;
 		const l = label(m);
-		if (labelById[id] === l) return;
+		if (labelById[id] === l) {
+			return;
+		}
 		labelById = { ...labelById, [id]: l };
 	}
 
@@ -47,8 +49,12 @@
 
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	function scheduleSearch() {
-		if (timer) clearTimeout(timer);
-		timer = setTimeout(() => void runSearch(), 250);
+		if (timer) {
+			clearTimeout(timer);
+		}
+		timer = setTimeout(() => {
+			runSearch();
+		}, 250);
 	}
 
 	async function runSearch() {
@@ -71,7 +77,7 @@
 		}
 		open = true;
 		search = '';
-		void runSearch();
+		runSearch();
 	}
 
 	function pickSingle(m: Member | null) {

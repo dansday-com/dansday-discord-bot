@@ -11,18 +11,28 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, apexHome());
-	if ('guest' in shared || !shared.member) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(303, apexHome());
+	}
+	if ('guest' in shared || !shared.member) {
+		redirect(303, serverBasePath || '/');
+	}
 
 	const tabParam = String(params.category || 'all');
 	const allowed = new Set(['all', 'level']);
-	if (itemsEnabled) allowed.add('items');
-	if (marketEnabled) allowed.add('market');
-	if (minigamesEnabled) allowed.add('minigames');
+	if (itemsEnabled) {
+		allowed.add('items');
+	}
+	if (marketEnabled) {
+		allowed.add('market');
+	}
+	if (minigamesEnabled) {
+		allowed.add('minigames');
+	}
 	const tab = allowed.has(tabParam) ? tabParam : 'all';
 
 	const itemRows = itemsEnabled ? await db.getMemberItemHistory(shared.member.id, 0).catch(() => []) : [];
-	const itemEvents = (itemRows as any[]).map((h) => ({
+	const itemEvents = itemRows.map((h) => ({
 		id: `i-${h.id}`,
 		kind: 'item' as const,
 		action: h.action,
@@ -43,7 +53,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	}));
 
 	const levelRows = await db.getMemberLevelHistory(shared.member.id, 0).catch(() => []);
-	const levelEvents = (levelRows as any[]).map((x) => ({
+	const levelEvents = levelRows.map((x) => ({
 		id: `l-${x.id}`,
 		kind: 'level' as const,
 		source: x.source,
@@ -59,7 +69,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	}));
 
 	const assetRows = marketEnabled ? await db.getMemberAssetHistory(shared.member.id, 0).catch(() => []) : [];
-	const assetEvents = (assetRows as any[]).map((r) => ({
+	const assetEvents = assetRows.map((r) => ({
 		id: `a-${r.id}`,
 		kind: 'asset' as const,
 		action: r.action,
@@ -73,7 +83,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	}));
 
 	const minigameRows = minigamesEnabled ? await db.getMemberMinigameHistory(shared.member.id, 0).catch(() => []) : [];
-	const minigameEvents = (minigameRows as any[]).map((h) => ({
+	const minigameEvents = minigameRows.map((h) => ({
 		id: `m-${h.id}`,
 		kind: 'minigame' as const,
 		game: h.game,

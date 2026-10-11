@@ -5,25 +5,39 @@ const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';
 
 function retryAfterHeaderValue(headers: unknown): string | undefined {
-	if (!headers || typeof headers !== 'object') return undefined;
+	if (!headers || typeof headers !== 'object') {
+		return undefined;
+	}
 	const h = headers as Record<string, unknown> & { get?: (name: string) => string | undefined };
 	if (typeof h.get === 'function') {
 		const v = h.get('retry-after');
-		if (typeof v === 'string') return v;
+		if (typeof v === 'string') {
+			return v;
+		}
 	}
 	const raw = h['retry-after'] ?? h['Retry-After'];
-	if (typeof raw === 'string') return raw;
-	if (Array.isArray(raw) && typeof raw[0] === 'string') return raw[0];
+	if (typeof raw === 'string') {
+		return raw;
+	}
+	if (Array.isArray(raw) && typeof raw[0] === 'string') {
+		return raw[0];
+	}
 	return undefined;
 }
 
 function retryAfterMs(headers: unknown): number {
 	const ra = retryAfterHeaderValue(headers);
-	if (!ra) return 2000;
+	if (!ra) {
+		return 2000;
+	}
 	const sec = Number(ra);
-	if (Number.isFinite(sec)) return Math.min(120_000, Math.max(1000, sec * 1000));
+	if (Number.isFinite(sec)) {
+		return Math.min(120_000, Math.max(1000, sec * 1000));
+	}
 	const d = Date.parse(ra);
-	if (Number.isFinite(d)) return Math.min(120_000, Math.max(1000, d - Date.now()));
+	if (Number.isFinite(d)) {
+		return Math.min(120_000, Math.max(1000, d - Date.now()));
+	}
 	return 2000;
 }
 
@@ -121,22 +135,32 @@ export type DiscordQuestSummary = {
 
 function taskConfigV2Tasks(cfg: Record<string, unknown>): Record<string, unknown> | null {
 	const v2 = cfg.task_config_v2;
-	if (!v2 || typeof v2 !== 'object') return null;
+	if (!v2 || typeof v2 !== 'object') {
+		return null;
+	}
 	const tasks = (v2 as Record<string, unknown>).tasks;
-	if (!tasks || typeof tasks !== 'object') return null;
+	if (!tasks || typeof tasks !== 'object') {
+		return null;
+	}
 	return tasks as Record<string, unknown>;
 }
 
 function primaryTaskKeyFromConfig(cfg: Record<string, unknown>): string {
 	const tasks = taskConfigV2Tasks(cfg);
-	if (!tasks) return '';
+	if (!tasks) {
+		return '';
+	}
 	for (const k of TASK_KEY_PRIORITY) {
 		const t = tasks[k];
-		if (t != null && typeof t === 'object') return k;
+		if (t != null && typeof t === 'object') {
+			return k;
+		}
 	}
 	for (const k of Object.keys(tasks)) {
 		const t = tasks[k];
-		if (t != null && typeof t === 'object') return k;
+		if (t != null && typeof t === 'object') {
+			return k;
+		}
 	}
 	return '';
 }
@@ -146,8 +170,12 @@ export function questTaskLabel(key: string): string {
 }
 
 function labelForTaskKey(key: string): string {
-	if (!key) return 'Quest';
-	if (TASK_KEY_LABELS[key]) return TASK_KEY_LABELS[key];
+	if (!key) {
+		return 'Quest';
+	}
+	if (TASK_KEY_LABELS[key]) {
+		return TASK_KEY_LABELS[key];
+	}
 	return key
 		.split('_')
 		.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -159,8 +187,12 @@ function asStr(v: unknown): string {
 }
 
 function asNum(v: unknown): number | null {
-	if (typeof v === 'number' && Number.isFinite(v)) return v;
-	if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+	if (typeof v === 'number' && Number.isFinite(v)) {
+		return v;
+	}
+	if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) {
+		return Number(v);
+	}
 	return null;
 }
 
@@ -168,42 +200,64 @@ const HTTPS_IMAGE_RE = /^https?:\/\/[^\s]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s]*)?$
 const DISCORD_CDN_RE = /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/\S+$/i;
 
 function collectHttpsImageUrls(obj: unknown, depth: number, out: Set<string>): void {
-	if (depth > 7 || obj == null) return;
+	if (depth > 7 || obj == null) {
+		return;
+	}
 	if (typeof obj === 'string') {
 		const s = obj.trim();
-		if (HTTPS_IMAGE_RE.test(s) || DISCORD_CDN_RE.test(s)) out.add(s);
+		if (HTTPS_IMAGE_RE.test(s) || DISCORD_CDN_RE.test(s)) {
+			out.add(s);
+		}
 		return;
 	}
-	if (typeof obj !== 'object') return;
+	if (typeof obj !== 'object') {
+		return;
+	}
 	if (Array.isArray(obj)) {
-		for (const x of obj) collectHttpsImageUrls(x, depth + 1, out);
+		for (const x of obj) {
+			collectHttpsImageUrls(x, depth + 1, out);
+		}
 		return;
 	}
-	for (const v of Object.values(obj as Record<string, unknown>)) collectHttpsImageUrls(v, depth + 1, out);
+	for (const v of Object.values(obj as Record<string, unknown>)) {
+		collectHttpsImageUrls(v, depth + 1, out);
+	}
 }
 
 function discordAppIconUrl(applicationId: string, iconHash: string): string | null {
-	if (!applicationId || !iconHash) return null;
+	if (!applicationId || !iconHash) {
+		return null;
+	}
 	const h = iconHash.trim();
-	if (!h || h.startsWith('http')) return h.startsWith('http') ? h : null;
+	if (!h || h.startsWith('http')) {
+		return h.startsWith('http') ? h : null;
+	}
 	const ext = h.startsWith('a_') ? 'gif' : 'png';
 	return `https://cdn.discordapp.com/app-icons/${applicationId}/${h}.${ext}?size=256`;
 }
 
 function discordAppCoverUrl(applicationId: string, hash: string): string | null {
-	if (!applicationId || !hash) return null;
+	if (!applicationId || !hash) {
+		return null;
+	}
 	const h = hash.trim();
-	if (!h || h.startsWith('http')) return h.startsWith('http') ? h : null;
+	if (!h || h.startsWith('http')) {
+		return h.startsWith('http') ? h : null;
+	}
 	const ext = h.startsWith('a_') ? 'gif' : 'png';
 	return `https://cdn.discordapp.com/app-assets/${applicationId}/${h}.${ext}?size=600`;
 }
 
 function resolveApplicationId(cfg: Record<string, unknown>): string {
 	const raw = cfg.application;
-	if (typeof raw === 'string' && raw.trim()) return raw.trim();
+	if (typeof raw === 'string' && raw.trim()) {
+		return raw.trim();
+	}
 	if (raw && typeof raw === 'object') {
 		const id = asStr((raw as Record<string, unknown>).id);
-		if (id) return id;
+		if (id) {
+			return id;
+		}
 	}
 	return asStr(cfg.application_id) || asStr(cfg.target_application_id);
 }
@@ -211,26 +265,33 @@ function resolveApplicationId(cfg: Record<string, unknown>): string {
 function readApplicationIconHash(app: Record<string, unknown> | null, cfg: Record<string, unknown>): string {
 	if (app) {
 		const h = asStr(app.icon) || asStr(app.icon_hash);
-		if (h) return h;
+		if (h) {
+			return h;
+		}
 	}
 	return asStr(cfg.application_icon) || asStr(cfg.icon);
 }
 
 function mediaFromApplication(cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
 	const appId = resolveApplicationId(cfg);
-	if (!appId) return { thumb: null, banner: null };
+	if (!appId) {
+		return { thumb: null, banner: null };
+	}
 
 	const app = cfg.application;
 	const appObj = app && typeof app === 'object' ? (app as Record<string, unknown>) : null;
 
 	let thumb: string | null = null;
 	const iconHash = readApplicationIconHash(appObj, cfg);
-	if (iconHash) thumb = discordAppIconUrl(appId, iconHash);
+	if (iconHash) {
+		thumb = discordAppIconUrl(appId, iconHash);
+	}
 
 	let banner: string | null = null;
 	const cover = (appObj?.cover_image ?? cfg.cover_image) as unknown;
-	if (typeof cover === 'string' && cover) banner = discordAppCoverUrl(appId, cover);
-	else if (cover && typeof cover === 'object') {
+	if (typeof cover === 'string' && cover) {
+		banner = discordAppCoverUrl(appId, cover);
+	} else if (cover && typeof cover === 'object') {
 		const u = asStr((cover as Record<string, unknown>).url);
 		const h = asStr((cover as Record<string, unknown>).hash);
 		banner = u || (h ? discordAppCoverUrl(appId, h) : null);
@@ -245,16 +306,26 @@ function mediaFromApplication(cfg: Record<string, unknown>): { thumb: string | n
 
 function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
 	const s = raw.trim();
-	if (!s) return null;
-	if (s.startsWith('http://') || s.startsWith('https://')) return s;
-	if (!applicationId || /\s/.test(s)) return null;
+	if (!s) {
+		return null;
+	}
+	if (s.startsWith('http://') || s.startsWith('https://')) {
+		return s;
+	}
+	if (!applicationId || /\s/.test(s)) {
+		return null;
+	}
 	if (kind === 'banner') {
 		const cover = discordAppCoverUrl(applicationId, s);
-		if (cover) return cover;
+		if (cover) {
+			return cover;
+		}
 		return discordAppIconUrl(applicationId, s);
 	}
 	const icon = discordAppIconUrl(applicationId, s);
-	if (icon) return icon;
+	if (icon) {
+		return icon;
+	}
 	return discordAppCoverUrl(applicationId, s);
 }
 
@@ -262,19 +333,31 @@ const QUEST_ASSET_PATH_RE = /^quests\/[0-9]{5,}\//;
 
 function questAssetPath(questId: string, raw: string): string | null {
 	const s = raw.trim().replace(/^\/+/, '').replace(/\?.*$/, '');
-	if (!s || /\s/.test(s) || s === 'PLACEHOLDER') return null;
-	if (QUEST_ASSET_PATH_RE.test(s)) return s;
-	if (!questId) return null;
+	if (!s || /\s/.test(s) || s === 'PLACEHOLDER') {
+		return null;
+	}
+	if (QUEST_ASSET_PATH_RE.test(s)) {
+		return s;
+	}
+	if (!questId) {
+		return null;
+	}
 	const file = s.replace(/^(?:quests\/)?[0-9]{5,}\//, '');
 	return file ? `quests/${questId}/${file}` : null;
 }
 
 function questAssetUrl(questId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
 	const s = raw.trim().replace(/^\/+/, '');
-	if (!s) return null;
-	if (s.startsWith('http://') || s.startsWith('https://')) return s;
+	if (!s) {
+		return null;
+	}
+	if (s.startsWith('http://') || s.startsWith('https://')) {
+		return s;
+	}
 	const path = questAssetPath(questId, s);
-	if (!path) return null;
+	if (!path) {
+		return null;
+	}
 	const query = kind === 'banner' ? '?format=webp&width=1320&height=370' : '?size=256';
 	return `https://cdn.discordapp.com/${path}${query}`;
 }
@@ -287,9 +370,15 @@ const DISCORD_CONTENT_ASSET_RE = /^[0-9a-f]{32,}$/i;
 
 function questRewardAssetUrl(questId: string, raw: string): string | null {
 	const s = raw.trim().replace(/^\/+/, '');
-	if (!s) return null;
-	if (s.startsWith('http://') || s.startsWith('https://')) return rewardMediaAsImage(s);
-	if (/\s/.test(s)) return null;
+	if (!s) {
+		return null;
+	}
+	if (s.startsWith('http://') || s.startsWith('https://')) {
+		return rewardMediaAsImage(s);
+	}
+	if (/\s/.test(s)) {
+		return null;
+	}
 
 	const bare = s.replace(/\?.*$/, '');
 	const stem = bare.replace(/\.[a-z0-9]+$/i, '');
@@ -299,37 +388,55 @@ function questRewardAssetUrl(questId: string, raw: string): string | null {
 	}
 
 	const path = questAssetPath(questId, bare);
-	if (!path) return null;
+	if (!path) {
+		return null;
+	}
 	return `https://cdn.discordapp.com/${path}?format=webp&width=256&height=256`;
 }
 
 function rewardMediaAsImage(url: string): string {
-	if (!QUEST_VIDEO_RE.test(url)) return url;
+	if (!QUEST_VIDEO_RE.test(url)) {
+		return url;
+	}
 	const [path, query = ''] = url.split('?');
 	const params = new URLSearchParams(query);
 	params.set('format', 'webp');
-	if (!params.has('width')) params.set('width', '256');
-	if (!params.has('height')) params.set('height', '256');
+	if (!params.has('width')) {
+		params.set('width', '256');
+	}
+	if (!params.has('height')) {
+		params.set('height', '256');
+	}
 	return `${path}?${params.toString()}`;
 }
 
 const REWARD_ASSET_KEY_RE = /^(?:asset|assets|image|images|icon|tile|hero|art|artwork|thumbnail|asset_url|image_url|reward_tile|platforms_asset)$/i;
 
 function collectRewardAssetStrings(value: unknown, depth: number, out: string[], keyed = false): void {
-	if (depth > 4 || value == null) return;
+	if (depth > 4 || value == null) {
+		return;
+	}
 	if (typeof value === 'string') {
 		const v = value.trim();
-		if (v) out.push(v);
+		if (v) {
+			out.push(v);
+		}
 		return;
 	}
 	if (Array.isArray(value)) {
-		for (const item of value) collectRewardAssetStrings(item, depth + 1, out, keyed);
+		for (const item of value) {
+			collectRewardAssetStrings(item, depth + 1, out, keyed);
+		}
 		return;
 	}
-	if (typeof value !== 'object') return;
+	if (typeof value !== 'object') {
+		return;
+	}
 	for (const [k, val] of Object.entries(value as Record<string, unknown>)) {
 		if (typeof val === 'string') {
-			if (keyed || REWARD_ASSET_KEY_RE.test(k)) collectRewardAssetStrings(val, depth + 1, out, keyed);
+			if (keyed || REWARD_ASSET_KEY_RE.test(k)) {
+				collectRewardAssetStrings(val, depth + 1, out, keyed);
+			}
 			continue;
 		}
 		collectRewardAssetStrings(val, depth + 1, out, keyed);
@@ -341,7 +448,9 @@ function rewardTileFromQuest(questId: string, quest: Record<string, unknown>, cf
 
 	for (const r of rewardListFromQuest(quest)) {
 		const rec = r as Record<string, unknown>;
-		if (!rec || typeof rec !== 'object') continue;
+		if (!rec || typeof rec !== 'object') {
+			continue;
+		}
 		for (const k of ['asset', 'assets', 'image', 'icon', 'tile', 'asset_url', 'image_url', 'orb_asset', 'reward_asset', 'tile_asset']) {
 			collectRewardAssetStrings(rec[k], 0, candidates, true);
 		}
@@ -355,42 +464,60 @@ function rewardTileFromQuest(questId: string, quest: Record<string, unknown>, cf
 
 	const assets = (cfg.assets ?? {}) as Record<string, unknown>;
 	for (const [k, val] of Object.entries(assets)) {
-		if (!/reward/i.test(k)) continue;
+		if (!/reward/i.test(k)) {
+			continue;
+		}
 		collectRewardAssetStrings(val, 0, candidates, true);
 	}
 
 	for (const c of candidates) {
 		const bare = c.replace(/\?.*$/, '').replace(/\.[a-z0-9]+$/i, '');
-		if (!QUEST_REWARD_ASSET_FILE_RE.test(c) && !c.startsWith('http') && !DISCORD_CONTENT_ASSET_RE.test(bare)) continue;
+		if (!QUEST_REWARD_ASSET_FILE_RE.test(c) && !c.startsWith('http') && !DISCORD_CONTENT_ASSET_RE.test(bare)) {
+			continue;
+		}
 		const u = questRewardAssetUrl(questId, c);
-		if (u) return u;
+		if (u) {
+			return u;
+		}
 	}
 	return null;
 }
 
 function mediaFromQuestAssets(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
 	const raw = cfg.assets;
-	if (!raw || typeof raw !== 'object') return { thumb: null, banner: null };
+	if (!raw || typeof raw !== 'object') {
+		return { thumb: null, banner: null };
+	}
 	const assets = raw as Record<string, unknown>;
 
 	const usable = (v: string) => v && !QUEST_VIDEO_RE.test(v) && (QUEST_ASSET_FILE_RE.test(v) || v.startsWith('http'));
 	const pick = (kind: 'thumb' | 'banner', ...keys: string[]) => {
 		for (const k of keys) {
 			const v = asStr(assets[k]);
-			if (!usable(v)) continue;
+			if (!usable(v)) {
+				continue;
+			}
 			const u = questAssetUrl(questId, v, kind);
-			if (u) return u;
+			if (u) {
+				return u;
+			}
 		}
 		return null;
 	};
 
 	const byKey = (kind: 'thumb' | 'banner', re: RegExp, skip: string | null) => {
 		for (const [k, val] of Object.entries(assets)) {
-			if (!re.test(k)) continue;
+			if (!re.test(k)) {
+				continue;
+			}
 			const v = asStr(val);
-			if (!usable(v) || v === skip) continue;
+			if (!usable(v) || v === skip) {
+				continue;
+			}
 			const u = questAssetUrl(questId, v, kind);
-			if (u) return u;
+			if (u) {
+				return u;
+			}
 		}
 		return null;
 	};
@@ -412,9 +539,13 @@ function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown
 	const tryMsg = (kind: 'thumb' | 'banner', ...keys: string[]) => {
 		for (const k of keys) {
 			const raw = asStr(m?.[k]);
-			if (!raw) continue;
+			if (!raw) {
+				continue;
+			}
 			const u = messageMediaUrl(appId, raw, kind);
-			if (u) return u;
+			if (u) {
+				return u;
+			}
 		}
 		return '';
 	};
@@ -427,13 +558,17 @@ function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown
 
 	const rankBanner = (u: string) => {
 		let s = 0;
-		if (/banner|hero|splash|artwork|cover|wide|game_art|quest_art/i.test(u)) s += 100;
+		if (/banner|hero|splash|artwork|cover|wide|game_art|quest_art/i.test(u)) {
+			s += 100;
+		}
 		return s + Math.min(u.length, 200) / 1000;
 	};
 	const rankThumb = (u: string) => {
 		let s = 0;
 		const questAssetTokenInUrl = new RegExp(`${String.fromCharCode(111)}${String.fromCharCode(114)}${String.fromCharCode(98)}`, 'i');
-		if (/icon|logo|thumb|avatar|character|bar/i.test(u) || questAssetTokenInUrl.test(u)) s += 100;
+		if (/icon|logo|thumb|avatar|character|bar/i.test(u) || questAssetTokenInUrl.test(u)) {
+			s += 100;
+		}
 		return s;
 	};
 
@@ -463,25 +598,41 @@ function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown
 
 function primaryTaskObject(cfg: Record<string, unknown>): { key: string; obj: Record<string, unknown> } | null {
 	const tasks = taskConfigV2Tasks(cfg);
-	if (!tasks) return null;
+	if (!tasks) {
+		return null;
+	}
 	const key = primaryTaskKeyFromConfig(cfg);
-	if (!key) return null;
+	if (!key) {
+		return null;
+	}
 	const obj = tasks[key];
-	if (!obj || typeof obj !== 'object') return null;
+	if (!obj || typeof obj !== 'object') {
+		return null;
+	}
 	return { key, obj: obj as Record<string, unknown> };
 }
 
 function taskTargetFromTaskObj(taskKey: string, taskObj: Record<string, unknown>): { target: number | null; unit: string } {
 	const sec = asNum(taskObj.target_seconds) ?? asNum(taskObj.duration_seconds) ?? asNum(taskObj.seconds_to_watch) ?? asNum(taskObj.watch_time_seconds);
-	if (sec != null) return { target: sec, unit: 'seconds' };
+	if (sec != null) {
+		return { target: sec, unit: 'seconds' };
+	}
 	const min = asNum(taskObj.target_minutes) ?? asNum(taskObj.duration_minutes) ?? asNum(taskObj.minutes);
-	if (min != null) return { target: min * 60, unit: 'seconds' };
+	if (min != null) {
+		return { target: min * 60, unit: 'seconds' };
+	}
 	const generic = asNum(taskObj.target) ?? asNum(taskObj.goal) ?? asNum(taskObj.max);
 	if (generic != null) {
 		const unitRaw = asStr(taskObj.target_unit).toLowerCase();
-		if (unitRaw.includes('minute')) return { target: generic * 60, unit: 'seconds' };
-		if (unitRaw.includes('hour')) return { target: generic * 3600, unit: 'seconds' };
-		if (unitRaw.includes('second')) return { target: generic, unit: 'seconds' };
+		if (unitRaw.includes('minute')) {
+			return { target: generic * 60, unit: 'seconds' };
+		}
+		if (unitRaw.includes('hour')) {
+			return { target: generic * 3600, unit: 'seconds' };
+		}
+		if (unitRaw.includes('second')) {
+			return { target: generic, unit: 'seconds' };
+		}
 		return { target: generic, unit: taskKey.includes('VIDEO') || taskKey.includes('WATCH') ? 'seconds' : 'steps' };
 	}
 	return { target: null, unit: 'seconds' };
@@ -490,7 +641,9 @@ function taskTargetFromTaskObj(taskKey: string, taskObj: Record<string, unknown>
 function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record<string, unknown>): string {
 	const messages = taskObj.messages as Record<string, unknown> | undefined;
 	const custom = asStr(messages?.title) || asStr(messages?.body) || asStr(messages?.description) || asStr(messages?.subtitle) || asStr(messages?.cta);
-	if (custom && custom.length <= 200) return custom;
+	if (custom && custom.length <= 200) {
+		return custom;
+	}
 
 	const { target, unit } = taskTargetFromTaskObj(taskKey, taskObj);
 	if (target != null && unit === 'seconds') {
@@ -503,7 +656,9 @@ function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record
 		}
 		return `${taskLabel} · ${target} seconds`;
 	}
-	if (target != null) return `${taskLabel} · target ${target}`;
+	if (target != null) {
+		return `${taskLabel} · target ${target}`;
+	}
 	return taskLabel;
 }
 
@@ -517,7 +672,9 @@ export function parseQuestRewardLine(line: unknown): QuestRewardPart[] {
 	const text = String(line ?? '')
 		.replace(/^•\s*/, '')
 		.trim();
-	if (!text || text === QUEST_REWARD_FALLBACK) return [];
+	if (!text || text === QUEST_REWARD_FALLBACK) {
+		return [];
+	}
 	const currency = new RegExp(`^(\\d+)× ${QUEST_CURRENCY_LABEL}$`);
 	return text.split(' · ').map((part) => {
 		const m = currency.exec(part);
@@ -536,7 +693,9 @@ export type QuestTaskLine =
 export function parseQuestTaskLine(line: unknown, taskKey: string): QuestTaskLine {
 	const label = labelForTaskKey(taskKey);
 	const text = String(line ?? '').trim();
-	if (!text || text === label) return { kind: 'label' };
+	if (!text || text === label) {
+		return { kind: 'label' };
+	}
 	const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	const shapes: [QuestTaskLine['kind'], RegExp][] = [
 		['minutes', new RegExp(`^${esc} for (\\d+) minutes?$`)],
@@ -546,14 +705,18 @@ export function parseQuestTaskLine(line: unknown, taskKey: string): QuestTaskLin
 	];
 	for (const [kind, re] of shapes) {
 		const m = re.exec(text);
-		if (m) return { kind, value: Number(m[1]) } as QuestTaskLine;
+		if (m) {
+			return { kind, value: Number(m[1]) } as QuestTaskLine;
+		}
 	}
 	return { kind: 'custom', text };
 }
 
 function rewardLineFromQuest(quest: Record<string, unknown>): string {
 	const rewards = rewardListFromQuest(quest);
-	if (rewards.length === 0) return QUEST_REWARD_FALLBACK;
+	if (rewards.length === 0) {
+		return QUEST_REWARD_FALLBACK;
+	}
 	const parts: string[] = [];
 	for (const r of rewards) {
 		const rec = r as Record<string, unknown>;
@@ -575,7 +738,9 @@ function rewardLineFromQuest(quest: Record<string, unknown>): string {
 					: typeof rec.rewardType === 'string'
 						? rec.rewardType
 						: '';
-		if (typeStr) parts.push(typeStr);
+		if (typeStr) {
+			parts.push(typeStr);
+		}
 	}
 	return parts.length ? [...new Set(parts)].join(' · ') : QUEST_REWARD_FALLBACK;
 }
@@ -584,18 +749,26 @@ function rewardListFromQuest(quest: Record<string, unknown>): unknown[] {
 	const cfg = quest.config as Record<string, unknown> | undefined;
 	const fromConfig = cfg?.rewards_config as Record<string, unknown> | undefined;
 	const a = fromConfig?.rewards;
-	if (Array.isArray(a)) return a;
+	if (Array.isArray(a)) {
+		return a;
+	}
 	const top = quest.rewards_config as Record<string, unknown> | undefined;
 	const b = top?.rewards;
-	if (Array.isArray(b)) return b;
+	if (Array.isArray(b)) {
+		return b;
+	}
 	const direct = cfg?.rewards;
-	if (Array.isArray(direct)) return direct;
+	if (Array.isArray(direct)) {
+		return direct;
+	}
 	return [];
 }
 
 function questExpired(quest: Record<string, unknown>): boolean {
 	const expires = (quest.config as Record<string, unknown> | undefined)?.expires_at;
-	if (typeof expires !== 'string') return false;
+	if (typeof expires !== 'string') {
+		return false;
+	}
 	const t = Date.parse(expires);
 	return Number.isFinite(t) && t < Date.now();
 }
@@ -648,15 +821,25 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 }
 
 export function extractDiscordQuestSummaries(payload: unknown): DiscordQuestSummary[] {
-	if (!payload || typeof payload !== 'object') return [];
+	if (!payload || typeof payload !== 'object') {
+		return [];
+	}
 	const quests = (payload as Record<string, unknown>).quests;
-	if (!Array.isArray(quests)) return [];
+	if (!Array.isArray(quests)) {
+		return [];
+	}
 	const out: DiscordQuestSummary[] = [];
 	for (const q of quests) {
-		if (!q || typeof q !== 'object') continue;
+		if (!q || typeof q !== 'object') {
+			continue;
+		}
 		const rec = q as Record<string, unknown>;
-		if (rec.preview === true) continue;
-		if (questExpired(rec)) continue;
+		if (rec.preview === true) {
+			continue;
+		}
+		if (questExpired(rec)) {
+			continue;
+		}
 		out.push(toDiscordQuestSummary(rec));
 	}
 	out.sort((a, b) => (b.startsAt || '').localeCompare(a.startsAt || ''));
@@ -720,9 +903,13 @@ export async function fetchQuestsMe(userToken: string): Promise<unknown> {
 }
 
 function findQuestByIdInPayload(payload: unknown, questId: string): Record<string, unknown> | null {
-	if (!payload || typeof payload !== 'object') return null;
+	if (!payload || typeof payload !== 'object') {
+		return null;
+	}
 	const quests = (payload as Record<string, unknown>).quests;
-	if (!Array.isArray(quests)) return null;
+	if (!Array.isArray(quests)) {
+		return null;
+	}
 	for (const q of quests) {
 		if (q && typeof q === 'object' && String((q as Record<string, unknown>).id) === String(questId)) {
 			return q as Record<string, unknown>;
@@ -740,16 +927,24 @@ function getQuestUserStatus(quest: Record<string, unknown>): Record<string, unkn
 
 function readProgressSeconds(quest: Record<string, unknown>, taskKey: string): number {
 	const us = getQuestUserStatus(quest);
-	if (!us) return 0;
+	if (!us) {
+		return 0;
+	}
 	const p = us.progress as Record<string, unknown> | undefined;
-	if (!p || typeof p !== 'object') return 0;
+	if (!p || typeof p !== 'object') {
+		return 0;
+	}
 	const t = p[taskKey] as Record<string, unknown> | undefined;
-	if (t && typeof t.value === 'number') return t.value;
+	if (t && typeof t.value === 'number') {
+		return t.value;
+	}
 	return 0;
 }
 
 function extractProgressFromHeartbeatPayload(data: unknown, taskKey: string): { value: number; completed: boolean } {
-	if (!data || typeof data !== 'object') return { value: 0, completed: false };
+	if (!data || typeof data !== 'object') {
+		return { value: 0, completed: false };
+	}
 	const d = data as Record<string, unknown>;
 	const p = d.progress;
 	if (p && typeof p === 'object') {
@@ -765,28 +960,44 @@ function extractProgressFromHeartbeatPayload(data: unknown, taskKey: string): { 
 }
 
 function heartbeatResponseOk(data: unknown): boolean {
-	if (!data || typeof data !== 'object') return false;
+	if (!data || typeof data !== 'object') {
+		return false;
+	}
 	return (data as Record<string, unknown>).user_id != null;
 }
 
 function heartbeatDurationTargetSec(taskKey: string, taskObj: Record<string, unknown>): number | null {
 	const explicit = asNum(taskObj.target_seconds) ?? asNum(taskObj.duration_seconds) ?? asNum(taskObj.seconds_to_watch) ?? asNum(taskObj.watch_time_seconds);
-	if (explicit != null && explicit > 0) return explicit;
+	if (explicit != null && explicit > 0) {
+		return explicit;
+	}
 	const min = asNum(taskObj.target_minutes) ?? asNum(taskObj.duration_minutes) ?? asNum(taskObj.minutes);
-	if (min != null && min > 0) return min * 60;
+	if (min != null && min > 0) {
+		return min * 60;
+	}
 	const generic = asNum(taskObj.target) ?? asNum(taskObj.goal) ?? asNum(taskObj.max);
-	if (generic == null || generic <= 0) return null;
+	if (generic == null || generic <= 0) {
+		return null;
+	}
 	const unitRaw = asStr(taskObj.target_unit).toLowerCase();
-	if (unitRaw.includes('minute')) return generic * 60;
-	if (unitRaw.includes('hour')) return generic * 3600;
-	if (unitRaw.includes('second')) return generic;
+	if (unitRaw.includes('minute')) {
+		return generic * 60;
+	}
+	if (unitRaw.includes('hour')) {
+		return generic * 3600;
+	}
+	if (unitRaw.includes('second')) {
+		return generic;
+	}
 	const durationish =
 		taskKey === 'WATCH_VIDEO' ||
 		taskKey === 'WATCH_VIDEO_ON_MOBILE' ||
 		taskKey.startsWith('PLAY_ON_') ||
 		taskKey.startsWith('STREAM_') ||
 		taskKey === 'PLAY_ACTIVITY';
-	if (durationish) return generic;
+	if (durationish) {
+		return generic;
+	}
 	return null;
 }
 
@@ -797,7 +1008,9 @@ function achievementProgressTarget(taskObj: Record<string, unknown>): number | n
 
 function discordUserIdFromToken(userToken: string): string | null {
 	const parts = userToken.trim().split('.');
-	if (parts.length < 2) return null;
+	if (parts.length < 2) {
+		return null;
+	}
 	try {
 		let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
 		const pad = (4 - (b64.length % 4)) % 4;
@@ -812,9 +1025,13 @@ function discordUserIdFromToken(userToken: string): string | null {
 
 async function discordUserIdFromUserToken(userToken: string): Promise<string | null> {
 	const fromJwt = discordUserIdFromToken(userToken);
-	if (fromJwt) return fromJwt;
+	if (fromJwt) {
+		return fromJwt;
+	}
 	const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.usersMe);
-	if (res.status !== 200 || !res.data || typeof res.data !== 'object') return null;
+	if (res.status !== 200 || !res.data || typeof res.data !== 'object') {
+		return null;
+	}
 	const id = (res.data as Record<string, unknown>).id;
 	return typeof id === 'string' ? id : null;
 }
@@ -910,7 +1127,9 @@ async function completeAchievementViaDiscordSays(userToken: string, applicationI
 	let saysToken: string | null = null;
 	if (saysAuth.status >= 200 && saysAuth.status < 300 && saysAuth.data && typeof saysAuth.data === 'object') {
 		const t = (saysAuth.data as Record<string, unknown>).token;
-		if (typeof t === 'string') saysToken = t;
+		if (typeof t === 'string') {
+			saysToken = t;
+		}
 	}
 	if (!saysToken) {
 		return { ok: false, error: `Discord Says authorize failed (HTTP ${saysAuth.status}).` };
@@ -931,7 +1150,9 @@ async function completeAchievementViaDiscordSays(userToken: string, applicationI
 	const tokensRes = await questApiRequest(userToken, 'GET', '/oauth2/tokens');
 	if (tokensRes.status === 200 && Array.isArray(tokensRes.data)) {
 		const tokenInfo = (tokensRes.data as Record<string, unknown>[]).find((t) => {
-			if (!t || typeof t !== 'object') return false;
+			if (!t || typeof t !== 'object') {
+				return false;
+			}
 			const app = t.application as Record<string, unknown> | undefined;
 			return app != null && String(app.id) === String(applicationId);
 		});
@@ -946,21 +1167,35 @@ async function completeAchievementViaDiscordSays(userToken: string, applicationI
 
 function userQuestCompleted(quest: Record<string, unknown>): boolean {
 	const us = getQuestUserStatus(quest);
-	if (!us) return false;
-	if (us.completed_at != null || us.completedAt != null) return true;
+	if (!us) {
+		return false;
+	}
+	if (us.completed_at != null || us.completedAt != null) {
+		return true;
+	}
 	return false;
 }
 
 function userQuestRewardClaimed(quest: Record<string, unknown>): boolean {
 	const us = getQuestUserStatus(quest);
-	if (!us) return false;
-	if (us.reward_claimed === true || us.rewardClaimed === true) return true;
-	if (us.reward_claimed_at != null || us.rewardClaimedAt != null) return true;
-	if (us.claimed_at != null || us.claimedAt != null) return true;
+	if (!us) {
+		return false;
+	}
+	if (us.reward_claimed === true || us.rewardClaimed === true) {
+		return true;
+	}
+	if (us.reward_claimed_at != null || us.rewardClaimedAt != null) {
+		return true;
+	}
+	if (us.claimed_at != null || us.claimedAt != null) {
+		return true;
+	}
 	const rew = us.reward;
 	if (rew && typeof rew === 'object') {
 		const r = rew as Record<string, unknown>;
-		if (r.claimed === true || r.claimed_at != null || r.claimedAt != null) return true;
+		if (r.claimed === true || r.claimed_at != null || r.claimedAt != null) {
+			return true;
+		}
 	}
 	return false;
 }
@@ -969,20 +1204,32 @@ export type QuestEnrollmentPrecheck = { ok: true } | { ok: false; code: 'not_fou
 
 export function precheckQuestPayloadForEnrollment(payload: unknown, questId: string): QuestEnrollmentPrecheck {
 	const quest = findQuestByIdInPayload(payload, questId);
-	if (!quest) return { ok: false, code: 'not_found' };
-	if (questExpired(quest)) return { ok: false, code: 'expired' };
-	if (userQuestRewardClaimed(quest)) return { ok: false, code: 'reward_claimed' };
-	if (userQuestCompleted(quest)) return { ok: false, code: 'completed' };
+	if (!quest) {
+		return { ok: false, code: 'not_found' };
+	}
+	if (questExpired(quest)) {
+		return { ok: false, code: 'expired' };
+	}
+	if (userQuestRewardClaimed(quest)) {
+		return { ok: false, code: 'reward_claimed' };
+	}
+	if (userQuestCompleted(quest)) {
+		return { ok: false, code: 'completed' };
+	}
 	return { ok: true };
 }
 
 function enrolledAtMsFromQuest(quest: Record<string, unknown>): number {
 	const us = getQuestUserStatus(quest);
-	if (!us) return Date.now();
+	if (!us) {
+		return Date.now();
+	}
 	const e = us.enrolled_at ?? us.enrolledAt;
 	if (typeof e === 'string') {
 		const t = Date.parse(e);
-		if (Number.isFinite(t)) return t;
+		if (Number.isFinite(t)) {
+			return t;
+		}
 	}
 	return Date.now();
 }
@@ -1290,7 +1537,9 @@ export async function runQuestUserAutomation(userToken: string, questId: string)
 				if (vp.status >= 400) {
 					lastError = `HTTP ${vp.status}`;
 					const m = body?.message;
-					if (typeof m === 'string') lastError += `: ${m}`;
+					if (typeof m === 'string') {
+						lastError += `: ${m}`;
+					}
 				} else {
 					secondsDone = timestamp;
 				}

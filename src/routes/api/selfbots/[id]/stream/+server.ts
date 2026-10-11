@@ -6,8 +6,12 @@ import { canManagePanelSelfbots } from '$lib/backend/panelServer.js';
 export const GET: RequestHandler = async ({ locals, params }) => {
 	const selfbotId = Number(params.id);
 	const sb = await db.getSelfbotById(selfbotId);
-	if (!sb) return new Response('Not found', { status: 404 });
-	if (!(await canManagePanelSelfbots(locals, selfbotId))) return new Response('Access denied', { status: 403 });
+	if (!sb) {
+		return new Response('Not found', { status: 404 });
+	}
+	if (!(await canManagePanelSelfbots(locals, selfbotId))) {
+		return new Response('Access denied', { status: 403 });
+	}
 
 	let cleanup: (() => void) | null = null;
 
@@ -21,7 +25,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 			db.getSelfbotById(selfbotId)
 				.then((row) => {
-					if (!row) return;
+					if (!row) {
+						return;
+					}
 					send({ status: row.status, process_id: row.process_id ?? null, uptime_ms: getBotUptimeMs(row) });
 				})
 				.catch((_) => {});

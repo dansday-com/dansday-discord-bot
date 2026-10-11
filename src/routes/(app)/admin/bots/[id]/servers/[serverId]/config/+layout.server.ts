@@ -5,7 +5,9 @@ import { DASHBOARD_PATH, adminServerPath } from '$lib/frontend/redirect.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 
 	const serverId = Number(params.serverId);
 

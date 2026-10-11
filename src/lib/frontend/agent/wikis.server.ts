@@ -2,6 +2,7 @@ import db from '$lib/database.js';
 import { parseWikiInput, testWiki } from '$lib/frontend/wikis.server.js';
 import { logger } from '$lib/utils/index.js';
 import type { AgentPack, AgentReach, AgentSession } from './runtime.server.js';
+import type { Wiki } from '$lib/database.js';
 
 const WIKI_FIELDS = {
 	name: { type: 'string', description: 'Short name of the wiki, 64 characters at most. Leave out to take it from the wiki itself.' },
@@ -13,7 +14,7 @@ const WIKI_FIELDS = {
 	enabled: { type: 'boolean', description: 'Off keeps the wiki saved but the AI ignores it.' }
 };
 
-function shown(wiki: any) {
+function shown(wiki: Wiki) {
 	return {
 		id: wiki.id,
 		name: wiki.name,
@@ -63,15 +64,21 @@ export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
 				parameters: { type: 'object', properties: WIKI_FIELDS, required: ['api_url'] },
 				run: async (args) => {
 					const test = await testWiki(args);
-					if (!test.ok) return { ok: false, reason: test.error };
+					if (!test.ok) {
+						return { ok: false, reason: test.error };
+					}
 					const parsed = parseWikiInput({
 						...args,
 						name: given(args, 'name') || test.sitename.slice(0, 64),
 						site_url: given(args, 'site_url') || test.site_url || '',
 						description: given(args, 'description') || test.description || ''
 					});
-					if ('error' in parsed) return { ok: false, reason: parsed.error };
-					if (await nameTaken(parsed.value.name, null)) return { ok: false, reason: 'A wiki with that name already exists' };
+					if ('error' in parsed) {
+						return { ok: false, reason: parsed.error };
+					}
+					if (await nameTaken(parsed.value.name, null)) {
+						return { ok: false, reason: 'A wiki with that name already exists' };
+					}
 
 					const wiki = await db.createWiki(panelId, parsed.value);
 					session.changed.add('wikis');
@@ -89,10 +96,16 @@ export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
 				},
 				run: async ({ id, ...changes }) => {
 					const current = await db.getWiki(panelId, Number(id));
-					if (!current) return { ok: false, reason: 'not_found' };
+					if (!current) {
+						return { ok: false, reason: 'not_found' };
+					}
 					const parsed = parseWikiInput({ ...current, relay_url: current.relay_url ?? '', relay_key: current.relay_key ?? '', ...changes });
-					if ('error' in parsed) return { ok: false, reason: parsed.error };
-					if (await nameTaken(parsed.value.name, current.id)) return { ok: false, reason: 'A wiki with that name already exists' };
+					if ('error' in parsed) {
+						return { ok: false, reason: parsed.error };
+					}
+					if (await nameTaken(parsed.value.name, current.id)) {
+						return { ok: false, reason: 'A wiki with that name already exists' };
+					}
 
 					const wiki = await db.updateWiki(panelId, current.id, parsed.value);
 					session.changed.add('wikis');

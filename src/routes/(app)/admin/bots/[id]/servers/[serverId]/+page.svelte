@@ -14,12 +14,16 @@
 	const inv = $derived(data.invites);
 
 	function fmt(val: number | null | undefined): string {
-		if (val == null) return '0';
+		if (val == null) {
+			return '0';
+		}
 		return val.toLocaleString();
 	}
 
 	function fmtDec(val: number | null | undefined): string {
-		if (val == null) return '0';
+		if (val == null) {
+			return '0';
+		}
 		return Number(val).toFixed(2);
 	}
 

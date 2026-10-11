@@ -7,26 +7,38 @@ import { BOT_OFFLINE, callMessageBot, logMessageAction, messagePanelAccess } fro
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const access = await messagePanelAccess(locals, params.id);
-	if (access instanceof Response) return access;
+	if (access instanceof Response) {
+		return access;
+	}
 	const { serverId, server } = access;
 	const messageId = parseInt(params.messageId ?? '');
-	if (isNaN(messageId)) return json({ ok: false, error: 'Invalid message ID' }, { status: 400 });
+	if (isNaN(messageId)) {
+		return json({ ok: false, error: 'Invalid message ID' }, { status: 400 });
+	}
 
 	try {
 		const message = await db.getServerMessage(serverId, messageId);
-		if (!message) return json({ ok: false, error: 'That message no longer exists. It may have been deleted.' }, { status: 404 });
+		if (!message) {
+			return json({ ok: false, error: 'That message no longer exists. It may have been deleted.' }, { status: 404 });
+		}
 
 		const body = await request.json().catch(() => null);
 		const channels = await db.getChannelsForServer(serverId);
-		const channelName = new Map((channels as any[]).map((c) => [String(c.discord_channel_id), String(c.name ?? c.discord_channel_id)]));
+		const channelName = new Map(channels.map((c) => [String(c.discord_channel_id), String(c.name ?? c.discord_channel_id)]));
 		const channelIds = [...new Set<string>((Array.isArray(body?.channel_ids) ? body.channel_ids : []).map(String))].filter((id) => channelName.has(id));
-		if (channelIds.length === 0) return json({ ok: false, error: 'Pick at least one channel to send it to.' }, { status: 400 });
+		if (channelIds.length === 0) {
+			return json({ ok: false, error: 'Pick at least one channel to send it to.' }, { status: 400 });
+		}
 		const roleIds: string[] = (Array.isArray(body?.role_ids) ? body.role_ids : []).map(String).filter(Boolean);
 		const language = message.content.languages.includes(body?.language) ? String(body.language) : message.content.language;
 
 		const call = await callMessageBot(server, 'server_message_send', { message_id: messageId, channel_ids: channelIds, role_ids: roleIds, language });
-		if (!call.running) return json({ ok: false, error: BOT_OFFLINE }, { status: 400 });
-		if (!call.body?.ok) return json({ ok: false, error: call.body?.error ?? 'The bot could not send it. Try again in a moment.' }, { status: 400 });
+		if (!call.running) {
+			return json({ ok: false, error: BOT_OFFLINE }, { status: 400 });
+		}
+		if (!call.body?.ok) {
+			return json({ ok: false, error: call.body?.error ?? 'The bot could not send it. Try again in a moment.' }, { status: 400 });
+		}
 
 		const results: any[] = call.body.results ?? [];
 		const sent = results.filter((r) => r.ok);
@@ -45,10 +57,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 
 		const failed = results.filter((r) => !r.ok).map((r) => `#${channelName.get(String(r.channel_id)) ?? r.channel_id}: ${r.error}`);
-		if (sent.length === 0) return json({ ok: false, error: failed[0] ?? 'Nothing was sent.' }, { status: 400 });
+		if (sent.length === 0) {
+			return json({ ok: false, error: failed[0] ?? 'Nothing was sent.' }, { status: 400 });
+		}
 		return json({ ok: true, sent: sent.length, failed });
-	} catch (error: any) {
-		logger.log(`❌ Error sending message: ${error.message}`);
+	} catch (error) {
+		logger.log(`❌ Error sending message: ${(error as Error).message}`);
 		return json({ ok: false, error: 'Could not send the message. Try again in a moment.' }, { status: 500 });
 	}
 };

@@ -61,7 +61,9 @@
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return options;
+		if (!q) {
+			return options;
+		}
 		return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
 	});
 
@@ -70,7 +72,9 @@
 	const titleId = $derived(id ? `${id}-labeled-picker-title` : undefined);
 
 	function openModal() {
-		if (disabled || options.length === 0) return;
+		if (disabled || options.length === 0) {
+			return;
+		}
 		search = '';
 		open = true;
 	}
@@ -86,16 +90,22 @@
 	}
 
 	$effect(() => {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') close();
+			if (e.key === 'Escape') {
+				close();
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
 	$effect(() => {
-		if (disabled) open = false;
+		if (disabled) {
+			open = false;
+		}
 	});
 </script>
 

@@ -163,7 +163,9 @@ function context(ctx: MessageAgentContext): string {
 function parseAnswer(answer: string): Record<string, unknown> | null {
 	const start = answer.indexOf('{');
 	const end = answer.lastIndexOf('}');
-	if (start < 0 || end <= start) return null;
+	if (start < 0 || end <= start) {
+		return null;
+	}
 	try {
 		const parsed = JSON.parse(answer.slice(start, end + 1));
 		return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
@@ -198,7 +200,9 @@ export function messagePack(ctx: MessageAgentContext): MessagePack {
 		async finish(answer) {
 			const parsed = parseAnswer(answer);
 			if (!parsed) {
-				if (answer && !answer.includes('{')) return { ok: true, result: { reply: answer.slice(0, MAX_REPLY_LENGTH), name: null, content: null } };
+				if (answer && !answer.includes('{')) {
+					return { ok: true, result: { reply: answer.slice(0, MAX_REPLY_LENGTH), name: null, content: null } };
+				}
 				return {
 					ok: false,
 					feedback:

@@ -14,7 +14,9 @@ function normalizeRedisUrl(url: string) {
 
 function buildRedisUrl(): string | null {
 	const raw = process.env.REDIS_URL;
-	if (!raw || raw.trim() === '') return null;
+	if (!raw || raw.trim() === '') {
+		return null;
+	}
 	const s = raw.trim();
 	if (s.includes('://') || s.includes('@')) {
 		return normalizeRedisUrl(s);
@@ -23,9 +25,13 @@ function buildRedisUrl(): string | null {
 }
 
 export async function getRedisClient(): Promise<RedisClientType | null> {
-	if (client) return client;
+	if (client) {
+		return client;
+	}
 	const url = buildRedisUrl();
-	if (!url) return null;
+	if (!url) {
+		return null;
+	}
 	try {
 		const { createClient } = await import('redis');
 		const c = createClient({ url }) as RedisClientType;
@@ -33,8 +39,8 @@ export async function getRedisClient(): Promise<RedisClientType | null> {
 		await c.connect();
 		client = c;
 		return client;
-	} catch (err: any) {
-		logger.error('Redis connection failed', { error: String(err?.message || err) });
+	} catch (err) {
+		logger.error('Redis connection failed', { error: String((err as Error)?.message || err) });
 		return null;
 	}
 }

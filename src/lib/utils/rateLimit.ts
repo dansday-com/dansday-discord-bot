@@ -14,10 +14,14 @@ export async function checkRateLimit(
 	if (redisClient) {
 		const key = `dansday:ratelimit:${ip}:${endpoint}`;
 		const count = await redisClient.incr(key);
-		if (count === 1) await redisClient.pExpire(key, windowMs);
+		if (count === 1) {
+			await redisClient.pExpire(key, windowMs);
+		}
 		const ttl = await redisClient.pTTL(key);
 		const resetTime = Date.now() + (ttl > 0 ? ttl : windowMs);
-		if (count > maxAttempts) return { allowed: false, remaining: 0, resetTime };
+		if (count > maxAttempts) {
+			return { allowed: false, remaining: 0, resetTime };
+		}
 		return { allowed: true, remaining: maxAttempts - count, resetTime };
 	}
 
@@ -39,7 +43,9 @@ export async function checkRateLimit(
 
 	if (Math.random() < 0.01) {
 		for (const [k, v] of rateLimitStore.entries()) {
-			if (now > v.resetTime) rateLimitStore.delete(k);
+			if (now > v.resetTime) {
+				rateLimitStore.delete(k);
+			}
 		}
 	}
 

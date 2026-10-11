@@ -6,7 +6,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	try {
 		const roles = await db.getRoles(params.id);
 		return json(roles);
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };

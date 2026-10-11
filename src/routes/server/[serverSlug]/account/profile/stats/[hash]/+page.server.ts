@@ -11,13 +11,21 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, apexHome());
-	if ('guest' in shared || !shared.member) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(303, apexHome());
+	}
+	if ('guest' in shared || !shared.member) {
+		redirect(303, serverBasePath || '/');
+	}
 
 	const toSql = (v: any) => {
-		if (!v) return null;
+		if (!v) {
+			return null;
+		}
 		const d = v instanceof Date ? v : new Date(v);
-		if (Number.isNaN(d.getTime())) return null;
+		if (Number.isNaN(d.getTime())) {
+			return null;
+		}
 		return d.toISOString().slice(0, 19).replace('T', ' ');
 	};
 
@@ -70,7 +78,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		xpSources,
 		invites: inviteStats,
 		invitedBy: inviter?.inviter_name ?? null,
-		roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
+		roles: (m.roles ?? []).map((r: Record<string, unknown>) => ({ name: r.name, color: r.color }))
 	};
 
 	const priceMap = marketEnabled ? await loadAssetPriceMap().catch(() => ({})) : {};
@@ -82,7 +90,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	]);
 
 	const holdingMap = new Map<string, any>();
-	for (const pos of (positionRows as any[]) || []) {
+	for (const pos of (positionRows as Record<string, unknown>[]) || []) {
 		const key = `${pos.asset_type}:${pos.asset_id}`;
 		const invested = Number(pos.xp_invested) || 0;
 		const buyPrice = Number(pos.buy_price) || 0;

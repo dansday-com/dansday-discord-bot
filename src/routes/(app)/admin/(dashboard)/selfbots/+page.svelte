@@ -10,28 +10,40 @@
 
 	let showAdd = $state(false);
 
-	type LiveBot = { status: string; process_id: number | null; uptime_ms: number };
-	let liveData = $state<Record<number, LiveBot>>({});
-	let uptimeTicks = $state<Record<number, number>>({});
-	let tickBase: Record<number, number> = {};
-	let intervals: Record<number, ReturnType<typeof setInterval>> = {};
-	let streams: Record<number, EventSource> = {};
+	type LiveBot = { status: string | null; process_id: number | null; uptime_ms: number };
+	const liveData = $state<Record<number, LiveBot>>({});
+	const uptimeTicks = $state<Record<number, number>>({});
+	const tickBase: Record<number, number> = {};
+	const intervals: Record<number, ReturnType<typeof setInterval>> = {};
+	const streams: Record<number, EventSource> = {};
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
 	function formatUptime(ms: number): string {
-		if (!ms) return '—';
+		if (!ms) {
+			return '—';
+		}
 		const s = Math.floor(ms / 1000);
 		const m = Math.floor(s / 60);
 		const h = Math.floor(m / 60);
 		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
+		if (d > 0) {
+			return `${d}d ${h % 24}h`;
+		}
+		if (h > 0) {
+			return `${h}h ${m % 60}m`;
+		}
+		if (m > 0) {
+			return `${m}m ${s % 60}s`;
+		}
 		return `${s}s`;
 	}
 
@@ -53,7 +65,9 @@
 	}
 
 	function subscribeBot(id: number) {
-		if (streams[id]) return;
+		if (streams[id]) {
+			return;
+		}
 		const es = new EventSource(`/api/selfbots/${id}/stream`);
 		es.onmessage = (e) => {
 			const d = JSON.parse(e.data);
@@ -75,8 +89,12 @@
 	});
 
 	onDestroy(() => {
-		for (const es of Object.values(streams)) es.close();
-		for (const id of Object.keys(intervals)) clearInterval(intervals[Number(id)]);
+		for (const es of Object.values(streams)) {
+			es.close();
+		}
+		for (const id of Object.keys(intervals)) {
+			clearInterval(intervals[Number(id)]);
+		}
 	});
 
 	function getDisplayUptime(id: number): number {

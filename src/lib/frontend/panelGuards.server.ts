@@ -8,12 +8,16 @@ function denied(locals: App.Locals) {
 }
 
 export function panelActorIds(locals: App.Locals): { server_account_id?: number; account_id?: number } {
-	if (!locals.user.authenticated) return {};
+	if (!locals.user.authenticated) {
+		return {};
+	}
 	return locals.user.account_source === 'server_accounts' ? { server_account_id: locals.user.account_id } : { account_id: locals.user.account_id };
 }
 
 export async function guardMemberAction(locals: App.Locals, serverId: number | string, discordMemberId: string): Promise<Response | null> {
-	if (canActOn(panelActorOf(locals.user), await db.getMemberTier(serverId, discordMemberId))) return null;
+	if (canActOn(panelActorOf(locals.user), await db.getMemberTier(serverId, discordMemberId))) {
+		return null;
+	}
 	return denied(locals);
 }
 

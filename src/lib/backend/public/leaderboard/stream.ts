@@ -51,7 +51,9 @@ export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[],
 	const sorted = [...members].sort((a, b) => {
 		const vb = memberSortValue(b, metric);
 		const va = memberSortValue(a, metric);
-		if (vb !== va) return vb - va;
+		if (vb !== va) {
+			return vb - va;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -74,14 +76,18 @@ export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[],
 }
 
 function periodSince(period: LeaderboardPeriod): Date | null {
-	if (period === 'week') return DateTime.utc().startOf('week').toJSDate();
-	if (period === 'month') return DateTime.utc().startOf('month').toJSDate();
+	if (period === 'week') {
+		return DateTime.utc().startOf('week').toJSDate();
+	}
+	if (period === 'month') {
+		return DateTime.utc().startOf('month').toJSDate();
+	}
 	return null;
 }
 
 function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
-	const value = (e: any): number => {
+	const value = (e: Record<string, unknown>): number => {
 		switch (metric) {
 			case 'chat':
 				return Number(e.chat_count ?? 0);
@@ -103,7 +109,9 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 	const sorted = [...entries].sort((a, b) => {
 		const vb = value(b);
 		const va = value(a);
-		if (vb !== va) return vb - va;
+		if (vb !== va) {
+			return vb - va;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -131,12 +139,14 @@ const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigam
 
 function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
-	const ratio = (e: any): number => {
+	const ratio = (e: Record<string, unknown>): number => {
 		const total = Number(e.minigame_total ?? 0);
-		if (total <= 0) return 0;
+		if (total <= 0) {
+			return 0;
+		}
 		return (Number(e.minigame_wins ?? 0) / total) * 100;
 	};
-	const value = (e: any): number => {
+	const value = (e: Record<string, unknown>): number => {
 		switch (metric) {
 			case 'minigames_gamble_ratio':
 			case 'minigames_tower_ratio':
@@ -154,17 +164,21 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 	};
 	const tower = TOWER_METRICS.includes(metric);
 	const color = COLOR_METRICS.includes(metric);
-	const tieBreak = (e: any): number => (tower || color ? Number(e.minigame_net ?? 0) : 0);
+	const tieBreak = (e: Record<string, unknown>): number => (tower || color ? Number(e.minigame_net ?? 0) : 0);
 
 	const pool = entries;
 
 	const sorted = [...pool].sort((a, b) => {
 		const vb = value(b);
 		const va = value(a);
-		if (vb !== va) return vb - va;
+		if (vb !== va) {
+			return vb - va;
+		}
 		const tb = tieBreak(b);
 		const ta = tieBreak(a);
-		if (tb !== ta) return tb - ta;
+		if (tb !== ta) {
+			return tb - ta;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -202,7 +216,7 @@ const BOUNTY_METRICS: LeaderboardMetric[] = ['items_bounty_total', 'items_bounty
 
 function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
-	const value = (e: any): number => {
+	const value = (e: Record<string, unknown>): number => {
 		switch (metric) {
 			case 'items_bounty_claimer':
 				return Number(e.bounty_collected ?? 0);
@@ -216,7 +230,9 @@ function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 	const sorted = [...entries].sort((a, b) => {
 		const vb = value(b);
 		const va = value(a);
-		if (vb !== va) return vb - va;
+		if (vb !== va) {
+			return vb - va;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -248,21 +264,29 @@ function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 	const safe = Math.max(1, Math.min(100, limit));
 	const isRate = metric.endsWith('_rate');
 	const isBig = metric.endsWith('_big');
-	const rate = (e: any): number => {
+	const rate = (e: Record<string, unknown>): number => {
 		const attempts = Number(e.attack_attempts ?? 0);
-		if (attempts <= 0) return 0;
+		if (attempts <= 0) {
+			return 0;
+		}
 		return (Number(e.attack_success ?? 0) / attempts) * 100;
 	};
-	const value = (e: any): number => {
-		if (isRate) return rate(e);
-		if (isBig) return Number(e.attack_big ?? 0);
+	const value = (e: Record<string, unknown>): number => {
+		if (isRate) {
+			return rate(e);
+		}
+		if (isBig) {
+			return Number(e.attack_big ?? 0);
+		}
 		return Number(e.attack_total ?? 0);
 	};
 
 	const sorted = [...entries].sort((a, b) => {
 		const vb = value(b);
 		const va = value(a);
-		if (vb !== va) return vb - va;
+		if (vb !== va) {
+			return vb - va;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -293,12 +317,14 @@ const GIFT_METRICS: LeaderboardMetric[] = ['items_gift_give', 'items_gift_receiv
 
 function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
-	const value = (e: any): number => (metric === 'items_gift_receive' ? Number(e.gift_received ?? 0) : Number(e.gift_given ?? 0));
+	const value = (e: Record<string, unknown>): number => (metric === 'items_gift_receive' ? Number(e.gift_received ?? 0) : Number(e.gift_given ?? 0));
 
 	const sorted = [...entries].sort((a, b) => {
 		const vb = value(b);
 		const va = value(a);
-		if (vb !== va) return vb - va;
+		if (vb !== va) {
+			return vb - va;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -326,7 +352,9 @@ function buildInviteRows(entries: any[], limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
 	const sorted = [...entries].sort((a, b) => {
 		const diff = Number(b.invites_total ?? 0) - Number(a.invites_total ?? 0);
-		if (diff !== 0) return diff;
+		if (diff !== 0) {
+			return diff;
+		}
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
@@ -398,7 +426,7 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 		rows = buildPeriodRows(entries, metric, limit);
 	} else {
 		const disguisedIds = new Set((await db.getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
-		const members = (await db.getServerMembersList(serverId)).filter((m: any) => !disguisedIds.has(Number(m.id)));
+		const members = (await db.getServerMembersList(serverId)).filter((m) => !disguisedIds.has(Number(m.id)));
 		rows = buildLeaderboardRowsFromMembersList(members, metric, limit);
 	}
 	const snap: LeaderboardSnapshot = { metric, period, limit, updated_at: Date.now(), rows: await attachMemberThemes(serverId, rows) };
@@ -442,33 +470,47 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 		const pollMs = 10_000;
 		state.timer = setInterval(async () => {
 			const current = streams.get(k);
-			if (!current || current.listeners.size === 0) return;
+			if (!current || current.listeners.size === 0) {
+				return;
+			}
 			try {
 				const snap = await resolveLeaderboardSnapshot(serverId, metric, period, limit, { bypassCache: true });
 				const json = JSON.stringify(snap);
-				if (json === current.lastJson) return;
+				if (json === current.lastJson) {
+					return;
+				}
 				current.lastJson = json;
-				for (const l of current.listeners) l(snap);
+				for (const l of current.listeners) {
+					l(snap);
+				}
 			} catch (_) {}
 		}, pollMs);
 
 		(async () => {
 			const current = streams.get(k);
-			if (!current || current.listeners.size === 0) return;
+			if (!current || current.listeners.size === 0) {
+				return;
+			}
 			try {
 				const snap = await resolveLeaderboardSnapshot(serverId, metric, period, limit, { bypassCache: true });
 				current.lastJson = JSON.stringify(snap);
-				for (const l of current.listeners) l(snap);
+				for (const l of current.listeners) {
+					l(snap);
+				}
 			} catch (_) {}
 		})();
 	}
 
 	return () => {
 		const current = streams.get(k);
-		if (!current) return;
+		if (!current) {
+			return;
+		}
 		current.listeners.delete(fn);
 		if (current.listeners.size === 0) {
-			if (current.timer) clearInterval(current.timer);
+			if (current.timer) {
+				clearInterval(current.timer);
+			}
 			streams.delete(k);
 		}
 	};

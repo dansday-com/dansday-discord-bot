@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "オーナー登録",
 			"setupNotOwnerTitle": "権限がありません",
 			"setupNotOwnerBody": "`/setup`を使えるのは**サーバーオーナー**だけです。",
-			"setupNotTextChannelTitle": "無効なチャンネル",
-			"setupNotTextChannelBody": "**テキストチャンネル**を選んでください。",
 			"joinTitle": "{botName}を追加してくれてありがとう！",
 			"joinBody": "`/setup`を実行して、チャンネルを作成しセットアップを完了してください。",
 			"joinAskAi": "何から始めればいいか迷ったら、{botMention}をメンションして聞いてみてください — ドキュメントを読んで、セットアップを案内してくれます。",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ このサーバーでは公開ページがオフになっています。サーバー管理者にBot設定パネルで有効にしてもらってください。"
 		},
 		"errors": {
-			"notRegistered": "⚠️ このサーバーはまだBotと完全に接続されていません。数分後にもう一度試し、続く場合はサーバー管理者にBot設定パネルを確認してもらってください。",
-			"createRecordFailed": "❌ メンバー記録の作成に失敗しました。もう一度試してください。"
+			"notRegistered": "⚠️ このサーバーはまだBotと完全に接続されていません。数分後にもう一度試し、続く場合はサーバー管理者にBot設定パネルを確認してもらってください。"
 		},
 		"fields": {
 			"level": "⭐ レベル",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "スタッフを報告",
 			"ratingLabel": "評価（星1〜5）",
-			"ratingPlaceholder": "1 = とても悪い、5 = とても良い",
 			"categoryLabel": "カテゴリー",
 			"descriptionLabel": "内容",
 			"descriptionPlaceholder": "このスタッフとのやり取りについて教えてください...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ 報告を送信しました",
 			"description": "報告は正常に送信され、管理者の承認待ちになっています。審査が終わったらお知らせします。",
-			"anonymous": "\\n\\n🔒 報告は匿名で送信されました。",
-			"roleUpdated": "\\n\\n⭐ **スタッフ評価が更新されました**\\n{roleName}\\n評価：{rating}/5.00（報告{totalReports}件）"
+			"anonymous": "\\n\\n🔒 報告は匿名で送信されました。"
 		},
 		"dm": {
 			"approved": "**{server}**での{staff}に関するあなたの報告が承認されました。\\n\\n**評価：** {rating}/5\\n**カテゴリー：** {category}\\n**フィードバック：** {description}\\n\\n**スタッフからのメモ：** {reason}\\n\\nチームの健全さを保つためのご協力、ありがとうございます。",
@@ -458,7 +453,6 @@
 			"rude": "😠 失礼な態度"
 		},
 		"errors": {
-			"noStaffSelected": "❌ 報告するスタッフを選んでください。",
 			"invalidRating": "❌ **無効な評価**\\n\\n評価は1〜5の数字で入力してください。",
 			"invalidCategory": "❌ **無効なカテゴリー**\\n\\nリストからカテゴリーを選んでください。",
 			"emptyDescription": "❌ **内容の入力が必要です**\\n\\nやり取りの内容を記入してください。",

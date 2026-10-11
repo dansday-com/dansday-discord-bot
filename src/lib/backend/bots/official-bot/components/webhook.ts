@@ -2,18 +2,21 @@ import { COMMUNICATION, getEmbedConfig, isComponentFeatureEnabled, serverSetting
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, RateLimitError } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
+import type { Client, Guild } from 'discord.js';
+import type { ForwardedMessage } from '../../../../forwarder-settings.js';
+import type { IncomingMessage, Server, ServerResponse } from 'http';
 
-let webhookServer = null;
-let client = null;
-let currentBotId = null;
+let webhookServer: Server | null = null;
+let client!: Client<true>;
+let currentBotId: number | null = null;
 
 const FORWARD_MAX_CONCURRENT = 4;
 const FORWARD_QUEUE_MAX = 500;
-const forwardQueue = [];
+const forwardQueue: { messageData: ForwardedMessage; deliveryClient: Client; queuedAt: number }[] = [];
 let forwardActive = 0;
 let forwardDropped = 0;
 
-function enqueueForwardDelivery(messageData, deliveryClient) {
+function enqueueForwardDelivery(messageData: ForwardedMessage, deliveryClient: Client) {
 	if (forwardQueue.length >= FORWARD_QUEUE_MAX) {
 		forwardQueue.shift();
 		forwardDropped++;
@@ -28,7 +31,7 @@ function enqueueForwardDelivery(messageData, deliveryClient) {
 
 function drainForwardQueue() {
 	while (forwardActive < FORWARD_MAX_CONCURRENT && forwardQueue.length > 0) {
-		const job = forwardQueue.shift();
+		const job = forwardQueue.shift()!;
 		forwardActive++;
 
 		(async () => {
@@ -47,19 +50,19 @@ function drainForwardQueue() {
 	}
 }
 
-function getClientIp(req) {
+function getClientIp(req: IncomingMessage) {
 	const address = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
 	return address.startsWith('::ffff:') ? address.slice(7) : address || 'unknown';
 }
 
-function botProfileErrorMessage(err) {
+function botProfileErrorMessage(err: unknown) {
 	if (err instanceof RateLimitError) {
 		return `Discord is rate limiting profile changes. Try again in ${Math.max(1, Math.ceil(err.retryAfter / 1000))}s.`;
 	}
-	return err?.message || 'Unknown error';
+	return (err as Error | null)?.message || 'Unknown error';
 }
 
-async function handleWebhookRequest(req, res) {
+async function handleWebhookRequest(req: IncomingMessage, res: ServerResponse) {
 	try {
 		if (req.method !== 'POST') {
 			res.writeHead(405, { 'Content-Type': 'application/json' });
@@ -92,7 +95,7 @@ async function handleWebhookRequest(req, res) {
 				} else if (typeof payload.type === 'string' && /^(server|global)_message_/.test(payload.type)) {
 					try {
 						const messages = await import('./messages.js');
-						const handlers = {
+						const handlers: Record<string, ((client: Client, payload: Record<string, unknown>) => Promise<unknown>) | undefined> = {
 							server_message_send: messages.sendServerMessage,
 							server_message_sync: messages.syncServerMessagePosts,
 							server_message_remove_post: messages.removeServerMessagePost,
@@ -105,10 +108,10 @@ async function handleWebhookRequest(req, res) {
 						const result = handler ? await handler(client, payload) : { ok: false, error: 'Unknown message action' };
 						res.writeHead(handler ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (messageErr: any) {
-						await logger.log(`❌ ${payload.type} failed: ${messageErr.message}`);
+					} catch (messageErr) {
+						await logger.log(`❌ ${payload.type} failed: ${(messageErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: `${payload.type} failed`, details: messageErr.message }));
+						res.end(JSON.stringify({ ok: false, error: `${payload.type} failed`, details: (messageErr as Error).message }));
 					}
 				} else if (payload.type === 'agent_tools' || payload.type === 'agent_tool') {
 					try {
@@ -116,8 +119,8 @@ async function handleWebhookRequest(req, res) {
 						const result = payload.type === 'agent_tools' ? await agentTools.listAgentTools(payload) : await agentTools.runAgentTool(payload);
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (agentErr: any) {
-						await logger.log(`❌ ${payload.type} failed: ${agentErr.message}`);
+					} catch (agentErr) {
+						await logger.log(`❌ ${payload.type} failed: ${(agentErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, reason: 'tool_failed' }));
 					}
@@ -180,9 +183,9 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));
 					} catch (qnErr) {
-						await logger.log(`❌ send_quest_notification failed: ${qnErr.message}`);
+						await logger.log(`❌ send_quest_notification failed: ${(qnErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to send quest notification', details: qnErr.message }));
+						res.end(JSON.stringify({ error: 'Failed to send quest notification', details: (qnErr as Error).message }));
 					}
 				} else if (payload.type === 'send_dm') {
 					try {
@@ -203,17 +206,25 @@ async function handleWebhookRequest(req, res) {
 							return;
 						}
 
-						let guild = client.guilds.cache.get(guildId);
-						if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
-						if (!guild) throw new Error('Guild not found');
+						let guild: Guild | null | undefined = client.guilds.cache.get(guildId);
+						if (!guild) {
+							guild = await client.guilds.fetch(guildId).catch(() => null);
+						}
+						if (!guild) {
+							throw new Error('Guild not found');
+						}
 
 						if (currentBotId) {
 							const server = await db.getServerByDiscordId(currentBotId, guildId);
-							if (!server) throw new Error('Guild not found');
+							if (!server) {
+								throw new Error('Guild not found');
+							}
 						}
 
 						const user = await client.users.fetch(String(userId)).catch(() => null);
-						if (!user) throw new Error('User not found');
+						if (!user) {
+							throw new Error('User not found');
+						}
 
 						const embedConfig = await getEmbedConfig(guildId);
 						const embed = new EmbedBuilder()
@@ -227,7 +238,7 @@ async function handleWebhookRequest(req, res) {
 						const linkLabel = (linkLabelRaw || 'Open link').slice(0, 80);
 						const dmComponents =
 							linkUrl && /^https?:\/\//i.test(linkUrl)
-								? [new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(linkUrl).setLabel(linkLabel))]
+								? [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(linkUrl).setLabel(linkLabel))]
 								: [];
 						await user.send({
 							embeds: [embed],
@@ -237,9 +248,9 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));
 					} catch (dmErr) {
-						await logger.log(`❌ Failed to send DM via webhook: ${dmErr.message}`);
+						await logger.log(`❌ Failed to send DM via webhook: ${(dmErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to send DM', details: dmErr.message }));
+						res.end(JSON.stringify({ error: 'Failed to send DM', details: (dmErr as Error).message }));
 					}
 				} else if (payload.type === 'sync_bot_profile' || payload.type === 'sync_bot_nickname') {
 					try {
@@ -250,15 +261,21 @@ async function handleWebhookRequest(req, res) {
 							return;
 						}
 
-						let guild = client.guilds.cache.get(guildId);
-						if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
-						if (!guild) throw new Error('Guild not found');
+						let guild: Guild | null | undefined = client.guilds.cache.get(guildId);
+						if (!guild) {
+							guild = await client.guilds.fetch(guildId).catch(() => null);
+						}
+						if (!guild) {
+							throw new Error('Guild not found');
+						}
 
 						const me = guild.members.me || (await guild.members.fetchMe().catch(() => null));
-						if (!me) throw new Error('Bot member not found in guild');
+						if (!me) {
+							throw new Error('Bot member not found in guild');
+						}
 
 						const failures = [];
-						const result = { success: true };
+						const result: { success: boolean; profile?: { avatar_url: string; banner_url: string }; error?: string } = { success: true };
 
 						const nickname = typeof payload.nickname === 'string' && payload.nickname.trim() ? payload.nickname.trim() : null;
 						if ('nickname' in payload && (me.nickname ?? null) !== nickname) {
@@ -270,9 +287,11 @@ async function handleWebhookRequest(req, res) {
 							}
 						}
 
-						const profile = {};
+						const profile: Record<string, string | null> = {};
 						for (const key of ['avatar', 'banner', 'bio']) {
-							if (key in payload) profile[key] = payload[key] || null;
+							if (key in payload) {
+								profile[key] = payload[key] || null;
+							}
 						}
 						if (Object.keys(profile).length > 0) {
 							try {
@@ -296,9 +315,9 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(failures.length > 0 ? 500 : 200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
 					} catch (err) {
-						await logger.log(`❌ Failed to sync bot profile: ${err.message}`);
+						await logger.log(`❌ Failed to sync bot profile: ${(err as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to sync bot profile', details: err.message }));
+						res.end(JSON.stringify({ error: 'Failed to sync bot profile', details: (err as Error).message }));
 					}
 				} else if (payload.type === 'sync_component_runtime') {
 					try {
@@ -322,9 +341,9 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));
 					} catch (runtimeErr) {
-						await logger.log(`❌ sync_component_runtime failed: ${runtimeErr.message}`);
+						await logger.log(`❌ sync_component_runtime failed: ${(runtimeErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
+						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: (runtimeErr as Error).message }));
 					}
 				} else if (payload.type === 'sync_server_menu') {
 					try {
@@ -336,14 +355,16 @@ async function handleWebhookRequest(req, res) {
 						}
 						const { rememberServerLanguage } = await import('../i18n.js');
 						const { syncServerMenu } = await import('./commands/admin/setup.js');
-						if (payload.language) rememberServerLanguage(guildId, payload.language);
+						if (payload.language) {
+							rememberServerLanguage(guildId, payload.language);
+						}
 						syncServerMenu(client, guildId).catch((err) => logger.log(`❌ sync_server_menu failed: ${err.message}`));
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));
 					} catch (menuErr) {
-						await logger.log(`❌ sync_server_menu failed: ${menuErr.message}`);
+						await logger.log(`❌ sync_server_menu failed: ${(menuErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'sync_server_menu failed', details: menuErr.message }));
+						res.end(JSON.stringify({ error: 'sync_server_menu failed', details: (menuErr as Error).message }));
 					}
 				} else if (payload.type === 'moderation_action') {
 					try {
@@ -351,10 +372,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await performModerationAction(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (modErr: any) {
-						await logger.log(`❌ moderation_action failed: ${modErr.message}`);
+					} catch (modErr) {
+						await logger.log(`❌ moderation_action failed: ${(modErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'moderation_action failed', details: modErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'moderation_action failed', details: (modErr as Error).message }));
 					}
 				} else if (payload.type === 'moderation_bulk') {
 					try {
@@ -362,10 +383,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await startBulkModeration(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (bulkErr: any) {
-						await logger.log(`❌ moderation_bulk failed: ${bulkErr.message}`);
+					} catch (bulkErr) {
+						await logger.log(`❌ moderation_bulk failed: ${(bulkErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'moderation_bulk failed', details: bulkErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'moderation_bulk failed', details: (bulkErr as Error).message }));
 					}
 				} else if (payload.type === 'sync_rewards') {
 					try {
@@ -373,10 +394,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await syncGuildRewards(client, payload.guild_id);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (rewardErr: any) {
-						await logger.log(`❌ sync_rewards failed: ${rewardErr.message}`);
+					} catch (rewardErr) {
+						await logger.log(`❌ sync_rewards failed: ${(rewardErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'sync_rewards failed', details: rewardErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'sync_rewards failed', details: (rewardErr as Error).message }));
 					}
 				} else if (payload.type === 'use_item') {
 					try {
@@ -384,10 +405,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleItemUse(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (shopErr: any) {
-						await logger.log(`❌ use_item failed: ${shopErr.message}`);
+					} catch (shopErr) {
+						await logger.log(`❌ use_item failed: ${(shopErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'use_item failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'use_item failed', details: (shopErr as Error).message }));
 					}
 				} else if (payload.type === 'claim_login') {
 					try {
@@ -395,10 +416,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleLoginClaim(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (loginErr: any) {
-						await logger.log(`❌ claim_login failed: ${loginErr.message}`);
+					} catch (loginErr) {
+						await logger.log(`❌ claim_login failed: ${(loginErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'claim_login failed', details: loginErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'claim_login failed', details: (loginErr as Error).message }));
 					}
 				} else if (payload.type === 'claim_task') {
 					try {
@@ -406,10 +427,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleTaskClaim(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (taskErr: any) {
-						await logger.log(`❌ claim_task failed: ${taskErr.message}`);
+					} catch (taskErr) {
+						await logger.log(`❌ claim_task failed: ${(taskErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'claim_task failed', details: taskErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'claim_task failed', details: (taskErr as Error).message }));
 					}
 				} else if (payload.type === 'buy_item') {
 					try {
@@ -417,10 +438,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleItemBuy(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (shopErr: any) {
-						await logger.log(`❌ buy_item failed: ${shopErr.message}`);
+					} catch (shopErr) {
+						await logger.log(`❌ buy_item failed: ${(shopErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'buy_item failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'buy_item failed', details: (shopErr as Error).message }));
 					}
 				} else if (payload.type === 'discard_item') {
 					try {
@@ -428,10 +449,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleItemDiscard(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (shopErr: any) {
-						await logger.log(`❌ discard_item failed: ${shopErr.message}`);
+					} catch (shopErr) {
+						await logger.log(`❌ discard_item failed: ${(shopErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'discard_item failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'discard_item failed', details: (shopErr as Error).message }));
 					}
 				} else if (payload.type === 'minigame_play') {
 					try {
@@ -439,10 +460,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleMinigamePlay(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (shopErr: any) {
-						await logger.log(`❌ minigame_play failed: ${shopErr.message}`);
+					} catch (shopErr) {
+						await logger.log(`❌ minigame_play failed: ${(shopErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'minigame_play failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'minigame_play failed', details: (shopErr as Error).message }));
 					}
 				} else if (payload.type === 'minigame_tower') {
 					try {
@@ -450,10 +471,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleTowerAction(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (towerErr: any) {
-						await logger.log(`❌ minigame_tower failed: ${towerErr.message}`);
+					} catch (towerErr) {
+						await logger.log(`❌ minigame_tower failed: ${(towerErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'minigame_tower failed', details: towerErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'minigame_tower failed', details: (towerErr as Error).message }));
 					}
 				} else if (payload.type === 'minigame_color') {
 					try {
@@ -461,10 +482,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleColorAction(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (colorErr: any) {
-						await logger.log(`❌ minigame_color failed: ${colorErr.message}`);
+					} catch (colorErr) {
+						await logger.log(`❌ minigame_color failed: ${(colorErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'minigame_color failed', details: colorErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'minigame_color failed', details: (colorErr as Error).message }));
 					}
 				} else if (payload.type === 'theme_effect_spin') {
 					try {
@@ -472,10 +493,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleThemeEffectSpin(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (spinErr: any) {
-						await logger.log(`❌ theme_effect_spin failed: ${spinErr.message}`);
+					} catch (spinErr) {
+						await logger.log(`❌ theme_effect_spin failed: ${(spinErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'theme_effect_spin failed', details: spinErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'theme_effect_spin failed', details: (spinErr as Error).message }));
 					}
 				} else if (payload.type === 'theme_effect_set') {
 					try {
@@ -483,10 +504,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleThemeEffectSet(payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (setErr: any) {
-						await logger.log(`❌ theme_effect_set failed: ${setErr.message}`);
+					} catch (setErr) {
+						await logger.log(`❌ theme_effect_set failed: ${(setErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'theme_effect_set failed', details: setErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'theme_effect_set failed', details: (setErr as Error).message }));
 					}
 				} else if (payload.type === 'gift_item_announce') {
 					try {
@@ -494,10 +515,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleAdminGiftAnnounce(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (shopErr: any) {
-						await logger.log(`❌ gift_item_announce failed: ${shopErr.message}`);
+					} catch (shopErr) {
+						await logger.log(`❌ gift_item_announce failed: ${(shopErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'gift_item_announce failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'gift_item_announce failed', details: (shopErr as Error).message }));
 					}
 				} else if (payload.type === 'asset_buy') {
 					try {
@@ -505,10 +526,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleAssetBuy(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (assetErr: any) {
-						await logger.log(`❌ asset_buy failed: ${assetErr.message}`);
+					} catch (assetErr) {
+						await logger.log(`❌ asset_buy failed: ${(assetErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'asset_buy failed', details: assetErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'asset_buy failed', details: (assetErr as Error).message }));
 					}
 				} else if (payload.type === 'asset_sell') {
 					try {
@@ -516,10 +537,10 @@ async function handleWebhookRequest(req, res) {
 						const result = await handleAssetSell(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
-					} catch (assetErr: any) {
-						await logger.log(`❌ asset_sell failed: ${assetErr.message}`);
+					} catch (assetErr) {
+						await logger.log(`❌ asset_sell failed: ${(assetErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'asset_sell failed', details: assetErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'asset_sell failed', details: (assetErr as Error).message }));
 					}
 				} else if (payload.type === 'asset_search') {
 					try {
@@ -527,10 +548,10 @@ async function handleWebhookRequest(req, res) {
 						const results = await searchAssets(String(payload.query || ''));
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: true, results }));
-					} catch (assetErr: any) {
-						await logger.log(`❌ asset_search failed: ${assetErr.message}`);
+					} catch (assetErr) {
+						await logger.log(`❌ asset_search failed: ${(assetErr as Error).message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'asset_search failed', details: assetErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'asset_search failed', details: (assetErr as Error).message }));
 					}
 				} else {
 					await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);
@@ -538,20 +559,20 @@ async function handleWebhookRequest(req, res) {
 					res.end(JSON.stringify({ error: 'Invalid payload format' }));
 				}
 			} catch (parseErr) {
-				await logger.log(`❌ Webhook parse error: ${parseErr.message}`);
+				await logger.log(`❌ Webhook parse error: ${(parseErr as Error).message}`);
 				await logger.log(`❌ Raw body: ${body}`);
 				res.writeHead(400, { 'Content-Type': 'application/json' });
 				res.end(JSON.stringify({ error: 'Invalid JSON' }));
 			}
 		});
 	} catch (err) {
-		await logger.log(`❌ Webhook error: ${err.message}`);
+		await logger.log(`❌ Webhook error: ${(err as Error).message}`);
 		res.writeHead(500, { 'Content-Type': 'application/json' });
 		res.end(JSON.stringify({ error: 'Internal server error' }));
 	}
 }
 
-function startWebhookServer(discordClient, botId) {
+function startWebhookServer(discordClient: Client<true>, botId: number | null) {
 	client = discordClient;
 	currentBotId = botId ?? null;
 
@@ -567,9 +588,9 @@ function startWebhookServer(discordClient, botId) {
 			});
 
 			webhookServer.on('error', (err) => {
-				if (err.code === 'EADDRINUSE') {
+				if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
 					logger.log(`❌ Port ${port} is already in use. Trying port ${port + 1}...`);
-					webhookServer.listen(port + 1, () => {
+					webhookServer!.listen(port + 1, () => {
 						logger.log(`🌐 Webhook server started on port ${port + 1}`);
 						logger.log(`📡 Listening for messages at ${COMMUNICATION.WEBHOOK_URL}`);
 					});

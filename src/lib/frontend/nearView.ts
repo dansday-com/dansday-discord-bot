@@ -1,7 +1,9 @@
 export function nearView(node: HTMLElement, onNear: () => void) {
 	const io = new IntersectionObserver(
 		(entries) => {
-			if (!entries.some((entry) => entry.isIntersecting)) return;
+			if (!entries.some((entry) => entry.isIntersecting)) {
+				return;
+			}
 			io.disconnect();
 			onNear();
 		},

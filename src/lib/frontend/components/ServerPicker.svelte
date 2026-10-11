@@ -25,7 +25,9 @@
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return servers;
+		if (!q) {
+			return servers;
+		}
 		return servers.filter((s) => s.name?.toLowerCase().includes(q) || String(s.discord_server_id).includes(q));
 	});
 

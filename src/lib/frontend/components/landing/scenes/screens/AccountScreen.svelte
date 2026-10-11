@@ -11,7 +11,9 @@
 	const MULTIPLIER = 1.2;
 	const levelAt = (xp: number) => {
 		let lv = 1;
-		while (xp >= xpForLevel(lv + 1, BASE_XP, MULTIPLIER)) lv++;
+		while (xp >= xpForLevel(lv + 1, BASE_XP, MULTIPLIER)) {
+			lv++;
+		}
 		return lv;
 	};
 	const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -33,8 +35,12 @@
 	const PUSH = 9800;
 
 	const xp = $derived.by(() => {
-		if (t < COUNT.from) return START_XP;
-		if (t >= COUNT.to) return START_XP + STOLEN;
+		if (t < COUNT.from) {
+			return START_XP;
+		}
+		if (t >= COUNT.to) {
+			return START_XP + STOLEN;
+		}
 		const p = (t - COUNT.from) / (COUNT.to - COUNT.from);
 		return START_XP + STOLEN * (1 - Math.pow(1 - p, 3));
 	});

@@ -10,9 +10,13 @@
 
 	const filtered = $derived(
 		data.wikis.filter((w) => {
-			if (activeOnly && !w.active) return false;
+			if (activeOnly && !w.active) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${w.name} ${w.description ?? ''} ${w.site_host ?? ''}`.toLowerCase().includes(needle);
 		})
 	);

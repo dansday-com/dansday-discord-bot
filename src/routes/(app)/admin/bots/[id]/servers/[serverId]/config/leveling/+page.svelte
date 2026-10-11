@@ -68,7 +68,9 @@
 			if (d.success) {
 				showToast('Saved', 'success');
 				invalidateAll();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
 			saving = false;
 		}

@@ -6,28 +6,46 @@ import { aiGreetingMessages } from './aiGreeting.js';
 import { attributeJoin, type JoinInviteResult } from './invites.js';
 import { INVITE_SOURCE_LABEL } from '../../../../invites.js';
 import { serverTranslator, type Translator } from '../i18n.js';
+import type { Client, GuildMember } from 'discord.js';
+import type { GuildTextBasedChannel } from 'discord.js';
 
 const INVITE_WAIT_MS = 5_000;
 
-async function waitForInvite(member): Promise<JoinInviteResult | null> {
+async function waitForInvite(member: GuildMember): Promise<JoinInviteResult | null> {
 	return Promise.race([attributeJoin(member), new Promise<null>((resolve) => setTimeout(() => resolve(null), INVITE_WAIT_MS))]).catch(() => null);
 }
 
 function inviterText(invite: JoinInviteResult | null, tr: Translator): string {
-	if (invite?.inviterDiscordId) return `<@${invite.inviterDiscordId}>`;
-	if (invite?.source === 'vanity') return tr('welcomer.inviter.vanity');
-	if (invite?.source === 'server') return tr('welcomer.inviter.server');
+	if (invite?.inviterDiscordId) {
+		return `<@${invite.inviterDiscordId}>`;
+	}
+	if (invite?.source === 'vanity') {
+		return tr('welcomer.inviter.vanity');
+	}
+	if (invite?.source === 'server') {
+		return tr('welcomer.inviter.server');
+	}
 	return tr('welcomer.inviter.someone');
 }
 
 function invitedByText(invite: JoinInviteResult, tr: Translator): string {
-	if (!invite.inviterDiscordId) return inviterText(invite, tr);
+	if (!invite.inviterDiscordId) {
+		return inviterText(invite, tr);
+	}
 	const link = INVITE_SOURCE_LABEL[invite.source] ? tr(`welcomer.inviteSources.${invite.source}`) : null;
 	const inviter = tr('welcomer.inviterCount', { inviter: `<@${invite.inviterDiscordId}>`, count: invite.inviterTotal ?? 0 });
 	return `${inviter}${link ? `\n${link}` : ''}`;
 }
 
-function replacePlaceholders(message, memberId, serverData, memberData, memberCount, tr: Translator, invite: JoinInviteResult | null = null) {
+function replacePlaceholders(
+	message: string,
+	memberId: string,
+	serverData: { name?: string | null } | null,
+	memberData: Record<string, unknown>,
+	memberCount: number,
+	tr: Translator,
+	invite: JoinInviteResult | null = null
+) {
 	const now = new Date();
 	let profileCreatedAt = null;
 	if (memberData?.profile_created_at) {
@@ -54,7 +72,7 @@ function replacePlaceholders(message, memberId, serverData, memberData, memberCo
 		.replace(/{inviteCount}/g, (invite?.inviterTotal ?? 0).toString());
 }
 
-async function welcomeUser(member, client) {
+async function welcomeUser(member: GuildMember, client: Client) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -76,7 +94,7 @@ async function welcomeUser(member, client) {
 		try {
 			await member.guild.fetch();
 		} catch (fetchError) {
-			await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before welcome: ${fetchError.message}`);
+			await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before welcome: ${(fetchError as Error).message}`);
 		}
 
 		const serverData = await db.upsertOfficialServer(botConfig.id, member.guild);
@@ -152,7 +170,7 @@ async function welcomeUser(member, client) {
 			.setTimestamp();
 
 		for (const channelId of welcomeChannelIds) {
-			const welcomeChannel = client.channels.cache.get(channelId);
+			const welcomeChannel = client.channels.cache.get(channelId) as GuildTextBasedChannel | undefined;
 			if (welcomeChannel) {
 				try {
 					const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(member.guild.id, channelId).catch(() => null);
@@ -170,20 +188,22 @@ async function welcomeUser(member, client) {
 					const memberName = memberData.display_name || memberData.username || `User ${member.user.id}`;
 					await logger.log(`✅ Welcomed ${memberName} (${member.user.id}) in ${serverData.name} to channel ${welcomeChannel.name}`);
 				} catch (err) {
-					await logger.log(`❌ Failed to send welcome message to channel ${channelId}: ${err.message}`);
+					await logger.log(`❌ Failed to send welcome message to channel ${channelId}: ${(err as Error).message}`);
 				}
 			} else {
 				await logger.log(`❌ Welcome channel not found: ${channelId}`);
 			}
 		}
 	} catch (err) {
-		await logger.log(`❌ Failed to welcome ${member.user.id}: ${err.message}`);
+		await logger.log(`❌ Failed to welcome ${member.user.id}: ${(err as Error).message}`);
 	}
 }
 
-function init(client) {
-	client.on('guildMemberAdd', async (member) => {
-		if (member.user?.bot) return;
+function init(client: Client) {
+	client.on('guildMemberAdd', async (member: GuildMember) => {
+		if (member.user?.bot) {
+			return;
+		}
 
 		const botConfig = getBotConfig();
 		if (botConfig && botConfig.id) {

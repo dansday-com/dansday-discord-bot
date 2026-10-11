@@ -33,9 +33,13 @@
 
 	$effect(() => {
 		title;
-		if (tone === 'win') sfx.payout(0.6);
-		else if (tone === 'lose') sfx.bust();
-		else sfx.buy();
+		if (tone === 'win') {
+			sfx.payout(0.6);
+		} else if (tone === 'lose') {
+			sfx.bust();
+		} else {
+			sfx.buy();
+		}
 	});
 
 	function close() {

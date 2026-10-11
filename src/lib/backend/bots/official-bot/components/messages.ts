@@ -20,6 +20,8 @@ import {
 import { isServerLanguage, type ServerLanguage } from '../../../../languages.js';
 import { messageFileUrl, readMessageFile } from '../../../storage/messageFiles.js';
 import { errorReasonFor, translatorFor, type Translator } from '../i18n.js';
+import type { Guild, GuildTextBasedChannel, Message, Role } from 'discord.js';
+import type { Client } from 'discord.js';
 
 type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
@@ -50,7 +52,9 @@ function currentPanelId(): Promise<number | null> {
 }
 
 function imageUrl(value: string): string {
-	if (!isMessageUploadKey(value)) return value;
+	if (!isMessageUploadKey(value)) {
+		return value;
+	}
 	const url = messageFileUrl(value);
 	return url.startsWith('/') ? publicSiteOrigin() + url : url;
 }
@@ -63,7 +67,9 @@ async function loadFiles(payload: MessagePayload): Promise<LoadedFile[]> {
 	const files: LoadedFile[] = [];
 	for (const file of payload.files) {
 		const data = await readMessageFile(file.key);
-		if (!data) throw Object.assign(new Error(`Uploaded file ${file.key} is missing from storage`), { code: FILE_MISSING });
+		if (!data) {
+			throw Object.assign(new Error(`Uploaded file ${file.key} is missing from storage`), { code: FILE_MISSING });
+		}
 		files.push({ attachment: data, name: file.name });
 	}
 	return files;
@@ -73,29 +79,37 @@ function postLanguage(doc: MessageDoc, value: unknown): ServerLanguage {
 	return isServerLanguage(value) && doc.languages.includes(value) ? value : doc.language;
 }
 
-function sendBody(payload: MessagePayload, files: LoadedFile[]): any {
-	if (payload.v2) return { components: payload.components, flags: MessageFlags.IsComponentsV2, files };
+function sendBody(payload: MessagePayload, files: LoadedFile[]): Record<string, unknown> {
+	if (payload.v2) {
+		return { components: payload.components, flags: MessageFlags.IsComponentsV2, files };
+	}
 	return { ...(payload.content ? { content: payload.content } : {}), embeds: payload.embeds, components: payload.components, files };
 }
 
-function privateBody(payload: MessagePayload, files: LoadedFile[]): any {
+function privateBody(payload: MessagePayload, files: LoadedFile[]): Record<string, unknown> {
 	return { ...sendBody(payload, files), flags: MessageFlags.Ephemeral | (payload.v2 ? MessageFlags.IsComponentsV2 : 0) };
 }
 
 function editBody(payload: MessagePayload, wasV2: boolean): any {
-	if (!payload.v2) return { content: payload.content, embeds: payload.embeds, components: payload.components };
+	if (!payload.v2) {
+		return { content: payload.content, embeds: payload.embeds, components: payload.components };
+	}
 	const body = { components: payload.components, flags: MessageFlags.IsComponentsV2 };
 	return wasV2 ? body : { ...body, content: null, embeds: [] };
 }
 
-function sameFiles(message: any, payload: MessagePayload): boolean {
-	const current = [...message.attachments.values()].map((attachment: any) => String(attachment.name));
+function sameFiles(message: Message, payload: MessagePayload): boolean {
+	const current = [...message.attachments.values()].map((attachment) => String(attachment.name));
 	return current.length === payload.files.length && payload.files.every((file, i) => file.name === current[i]);
 }
 
-function showsMedia(message: any): boolean {
-	if (message.attachments.size > 0) return true;
-	if (message.embeds.some((embed: any) => embed.image || embed.thumbnail)) return true;
+function showsMedia(message: Message): boolean {
+	if (message.attachments.size > 0) {
+		return true;
+	}
+	if (message.embeds.some((embed) => embed.image || embed.thumbnail)) {
+		return true;
+	}
 	return /"type":1[12][,}]/.test(JSON.stringify(message.components));
 }
 
@@ -108,59 +122,87 @@ function prefixFits(payload: MessagePayload, prefix: string): boolean {
 
 function panelReason(error: any, channelName: string): string {
 	const code = error?.code;
-	if (code === 50001) return `The bot can't see #${channelName}. Give its role View Channel there.`;
-	if (code === 50013) return `The bot can't post in #${channelName}. Give its role Send Messages, Embed Links and Attach Files there.`;
-	if (code === UNKNOWN_CHANNEL) return `#${channelName} no longer exists.`;
-	if (code === FILE_TOO_LARGE) return `A file is over this server's upload limit. Discord sets it from the server's boost level. Use a smaller file.`;
-	if (code === FILE_MISSING) return 'An uploaded file is missing from storage. Remove it from the message and upload it again.';
-	if (code === 50035) return `Discord rejected the message: ${String(error?.message ?? 'invalid content').slice(0, 300)}`;
+	if (code === 50001) {
+		return `The bot can't see #${channelName}. Give its role View Channel there.`;
+	}
+	if (code === 50013) {
+		return `The bot can't post in #${channelName}. Give its role Send Messages, Embed Links and Attach Files there.`;
+	}
+	if (code === UNKNOWN_CHANNEL) {
+		return `#${channelName} no longer exists.`;
+	}
+	if (code === FILE_TOO_LARGE) {
+		return `A file is over this server's upload limit. Discord sets it from the server's boost level. Use a smaller file.`;
+	}
+	if (code === FILE_MISSING) {
+		return 'An uploaded file is missing from storage. Remove it from the message and upload it again.';
+	}
+	if (code === 50035) {
+		return `Discord rejected the message: ${String(error?.message ?? 'invalid content').slice(0, 300)}`;
+	}
 	return `Discord refused it (${String(error?.message ?? 'unknown error').slice(0, 200)}). Try again in a moment.`;
 }
 
-async function resolveGuild(client: any, guildId: string) {
+async function resolveGuild(client: Client, guildId: string) {
 	return client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId).catch(() => null));
 }
 
-function roleMentions(guild: any, roleIds: unknown): string {
+function roleMentions(guild: Guild, roleIds: unknown): string {
 	const out: string[] = [];
 	for (const id of Array.isArray(roleIds) ? roleIds.map(String) : []) {
-		if (id === 'everyone') out.push('@everyone');
-		else if (id === 'here') out.push('@here');
-		else if (guild.roles.cache.has(id)) out.push(`<@&${id}>`);
+		if (id === 'everyone') {
+			out.push('@everyone');
+		} else if (id === 'here') {
+			out.push('@here');
+		} else if (guild.roles.cache.has(id)) {
+			out.push(`<@&${id}>`);
+		}
 	}
 	return out.join(' ');
 }
 
-function groupMentions(guild: any, groups: unknown, staffRoles: unknown): string {
+function groupMentions(guild: Guild, groups: unknown, staffRoles: unknown): string {
 	const wanted = Array.isArray(groups) ? groups.map(String) : [];
 	const out: string[] = [];
-	if (wanted.includes('everyone')) out.push('@everyone');
-	if (wanted.includes('here')) out.push('@here');
+	if (wanted.includes('everyone')) {
+		out.push('@everyone');
+	}
+	if (wanted.includes('here')) {
+		out.push('@here');
+	}
 	const roleIds = new Set<string>();
 	if (wanted.includes('admin')) {
 		for (const role of guild.roles.cache.values()) {
-			if (role.id !== guild.id && !role.managed && role.permissions?.has?.(PermissionFlagsBits.Administrator)) roleIds.add(String(role.id));
+			if (role.id !== guild.id && !role.managed && role.permissions?.has?.(PermissionFlagsBits.Administrator)) {
+				roleIds.add(String(role.id));
+			}
 		}
 	}
 	if (wanted.includes('staff')) {
-		for (const id of Array.isArray(staffRoles) ? staffRoles : []) if (id) roleIds.add(String(id));
+		for (const id of Array.isArray(staffRoles) ? staffRoles : []) {
+			if (id) {
+				roleIds.add(String(id));
+			}
+		}
 	}
 	return [...out, ...[...roleIds].map((id) => `<@&${id}>`)].join(' ');
 }
 
-async function post(channel: any, render: Renderer, lang: ServerLanguage, files: LoadedFile[], mentions: string) {
+async function post(channel: GuildTextBasedChannel, render: Renderer, lang: ServerLanguage, files: LoadedFile[], mentions: string) {
 	const chunks = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(channel.guild.id, channel.id).catch(() => null)) ?? [];
 	const prefix = [mentions, chunks[0]].filter(Boolean).join(' ');
 	const plain = render(lang);
 	const inline = prefix !== '' && prefixFits(plain, prefix);
 	const sent = await channel.send(sendBody(inline ? render(lang, { prefix }) : plain, files));
 	for (const extra of inline ? chunks.slice(1) : [prefix, ...chunks.slice(1)]) {
-		if (extra) await channel.send({ content: extra }).catch(() => null);
+		if (extra) {
+			await channel.send({ content: extra }).catch(() => null);
+		}
 	}
 	return { message_id: String(sent.id), mentions: inline ? prefix : null };
 }
 
-async function syncPost(guild: any, entry: ServerMessagePost, doc: MessageDoc, render: Renderer, interactive: boolean): Promise<SyncResult> {
+async function syncPost(guild: Guild, entry: ServerMessagePost, doc: MessageDoc, render: Renderer, interactive: boolean): Promise<SyncResult> {
 	const base = { post_id: entry.id, channel_id: entry.discord_channel_id, channel_name: entry.channel_name };
 	try {
 		const channel = await guild.channels
@@ -169,12 +211,16 @@ async function syncPost(guild: any, entry: ServerMessagePost, doc: MessageDoc, r
 		const posted = channel?.isTextBased()
 			? await channel.messages.fetch(entry.discord_message_id).catch((error: any) => (error?.code === UNKNOWN_MESSAGE ? null : Promise.reject(error)))
 			: null;
-		if (!posted) return { ...base, ok: true, gone: true };
+		if (!posted) {
+			return { ...base, ok: true, gone: true };
+		}
 
 		const wasV2 = posted.flags.has(MessageFlags.IsComponentsV2);
 		const rendered = render(postLanguage(doc, entry.language), { prefix: entry.mentions ?? '', interactive });
 		if (rendered.empty) {
-			if (interactive) return { ...base, ok: false, error: 'This message has nothing left to show. Add something to it, or remove the posted copies.' };
+			if (interactive) {
+				return { ...base, ok: false, error: 'This message has nothing left to show. Add something to it, or remove the posted copies.' };
+			}
 			await posted.delete();
 			return { ...base, ok: true, gone: true };
 		}
@@ -188,16 +234,18 @@ async function syncPost(guild: any, entry: ServerMessagePost, doc: MessageDoc, r
 		const body = editBody(rendered, wasV2);
 		await posted.edit(sameFiles(posted, rendered) ? body : { ...body, files: await loadFiles(rendered), attachments: [] });
 		return { ...base, ok: true };
-	} catch (error: any) {
-		await logger.log(`❌ Failed to update posted message ${entry.discord_message_id}: ${error?.message}`);
+	} catch (error) {
+		await logger.log(`❌ Failed to update posted message ${entry.discord_message_id}: ${(error as Error)?.message}`);
 		return { ...base, ok: false, error: panelReason(error, entry.channel_name) };
 	}
 }
 
-async function removePosted(guild: any, channelId: string, discordMessageId: string) {
+async function removePosted(guild: Guild, channelId: string, discordMessageId: string) {
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
 	const posted = channel?.isTextBased() ? await channel.messages.fetch(discordMessageId).catch(() => null) : null;
-	if (posted) await posted.delete();
+	if (posted) {
+		await posted.delete();
+	}
 }
 
 async function serverColor(guildId: string): Promise<number | null> {
@@ -205,21 +253,27 @@ async function serverColor(guildId: string): Promise<number | null> {
 	return config && Number.isFinite(config.COLOR) ? config.COLOR : null;
 }
 
-export async function sendServerMessage(client: any, payload: any) {
+export async function sendServerMessage(client: Client, payload: any) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
-	if (!guild) return { ok: false, error: 'The bot is not in this server.' };
+	if (!guild) {
+		return { ok: false, error: 'The bot is not in this server.' };
+	}
 	const message = await db.getServerMessage(payload.server_id, payload.message_id);
-	if (!message) return { ok: false, error: 'That message no longer exists.' };
+	if (!message) {
+		return { ok: false, error: 'That message no longer exists.' };
+	}
 
 	const lang = postLanguage(message.content, payload.language);
 	const render = renderer('server', message, guild.name);
-	if (render(lang).empty) return { ok: false, error: 'This message has nothing to send yet.' };
+	if (render(lang).empty) {
+		return { ok: false, error: 'This message has nothing to send yet.' };
+	}
 
 	let files: LoadedFile[];
 	try {
 		files = await loadFiles(render(lang));
-	} catch (error: any) {
-		await logger.log(`❌ Failed to load files for message ${message.id}: ${error?.message}`);
+	} catch (error) {
+		await logger.log(`❌ Failed to load files for message ${message.id}: ${(error as Error)?.message}`);
 		return { ok: false, error: panelReason(error, '') };
 	}
 
@@ -234,8 +288,8 @@ export async function sendServerMessage(client: any, payload: any) {
 		try {
 			results.push({ channel_id: channelId, ok: true, ...(await post(channel, render, lang, files, mentions)) });
 			await logger.log(`📤 Message "${message.name}" sent to #${channel.name} (${channel.id}) in ${guild.name} (${guild.id})`);
-		} catch (error: any) {
-			await logger.log(`❌ Failed to send message ${message.id} to channel ${channelId}: ${error?.message}`);
+		} catch (error) {
+			await logger.log(`❌ Failed to send message ${message.id} to channel ${channelId}: ${(error as Error)?.message}`);
 			results.push({ channel_id: channelId, ok: false, error: panelReason(error, channel.name ?? channelId) });
 		}
 	}
@@ -243,47 +297,59 @@ export async function sendServerMessage(client: any, payload: any) {
 	return { ok: true, results };
 }
 
-export async function syncServerMessagePosts(client: any, payload: any) {
+export async function syncServerMessagePosts(client: Client, payload: any) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
-	if (!guild) return { ok: false, error: 'The bot is not in this server.' };
+	if (!guild) {
+		return { ok: false, error: 'The bot is not in this server.' };
+	}
 	const message = await db.getServerMessage(payload.server_id, payload.message_id);
-	if (!message) return { ok: false, error: 'That message no longer exists.' };
+	if (!message) {
+		return { ok: false, error: 'That message no longer exists.' };
+	}
 
 	const refresh = payload.refresh === true;
 	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
 	for (const entry of await db.getServerMessagePosts(payload.server_id, message.id)) {
-		if (wanted && !wanted.has(entry.id)) continue;
+		if (wanted && !wanted.has(entry.id)) {
+			continue;
+		}
 		const content = refresh ? message.content : (entry.content ?? message.content);
 		const result = await syncPost(guild, entry, content, renderer('server', { ...message, content }, guild.name), payload.interactive !== false);
-		if (refresh && result.ok && !result.gone) await db.setServerMessagePostContent(payload.server_id, entry.id, content).catch(() => null);
+		if (refresh && result.ok && !result.gone) {
+			await db.setServerMessagePostContent(payload.server_id, entry.id, content).catch(() => null);
+		}
 		results.push(result);
 	}
 	return { ok: true, results };
 }
 
-export async function removeServerMessagePost(client: any, payload: any) {
+export async function removeServerMessagePost(client: Client, payload: Record<string, unknown>) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
-	if (!guild) return { ok: false, error: 'The bot is not in this server.' };
+	if (!guild) {
+		return { ok: false, error: 'The bot is not in this server.' };
+	}
 	try {
 		await removePosted(guild, String(payload.channel_id), String(payload.discord_message_id));
 		return { ok: true };
-	} catch (error: any) {
-		await logger.log(`❌ Failed to delete posted message ${payload.discord_message_id}: ${error?.message}`);
+	} catch (error) {
+		await logger.log(`❌ Failed to delete posted message ${payload.discord_message_id}: ${(error as Error)?.message}`);
 		return { ok: false, error: panelReason(error, String(payload.channel_name ?? payload.channel_id)) };
 	}
 }
 
-export async function sendGlobalMessage(client: any, payload: any) {
+export async function sendGlobalMessage(client: Client, payload: any) {
 	const panel = await currentPanelId();
 	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id);
-	if (!message) return { ok: false, error: 'That message no longer exists.' };
+	if (!message) {
+		return { ok: false, error: 'That message no longer exists.' };
+	}
 
 	let files: LoadedFile[];
 	try {
 		files = await loadFiles(renderer('global', message, '')(message.content.language));
-	} catch (error: any) {
-		await logger.log(`❌ Failed to load files for global message ${message.id}: ${error?.message}`);
+	} catch (error) {
+		await logger.log(`❌ Failed to load files for global message ${message.id}: ${(error as Error)?.message}`);
 		return { ok: false, error: panelReason(error, '') };
 	}
 
@@ -313,8 +379,8 @@ export async function sendGlobalMessage(client: any, payload: any) {
 			const sent = await post(channel, render, lang, files, groupMentions(guild, payload.mention_groups, settings.staff_roles));
 			results.push({ ...base, ok: true, channel_id: channelId, language: lang, ...sent });
 			await logger.log(`📤 Global message "${message.name}" sent to #${channel.name} in ${guild.name} (${guild.id})`);
-		} catch (error: any) {
-			await logger.log(`❌ Failed to send global message ${message.id} to server ${server.id}: ${error?.message}`);
+		} catch (error) {
+			await logger.log(`❌ Failed to send global message ${message.id} to server ${server.id}: ${(error as Error)?.message}`);
 			results.push({ ...base, ok: false, error: panelReason(error, 'bot-updates') });
 		}
 	}
@@ -322,16 +388,20 @@ export async function sendGlobalMessage(client: any, payload: any) {
 	return { ok: true, results };
 }
 
-export async function syncGlobalMessagePosts(client: any, payload: any) {
+export async function syncGlobalMessagePosts(client: Client, payload: any) {
 	const panel = await currentPanelId();
 	const message = panel == null ? null : await db.getGlobalMessage(panel, payload.message_id);
-	if (!message || panel == null) return { ok: false, error: 'That message no longer exists.' };
+	if (!message || panel == null) {
+		return { ok: false, error: 'That message no longer exists.' };
+	}
 
 	const refresh = payload.refresh === true;
 	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
 	for (const entry of await db.getGlobalMessagePosts(panel, message.id, currentBotId())) {
-		if (wanted && !wanted.has(entry.id)) continue;
+		if (wanted && !wanted.has(entry.id)) {
+			continue;
+		}
 		const guild = await resolveGuild(client, entry.discord_server_id);
 		if (!guild) {
 			results.push({ post_id: entry.id, channel_id: entry.discord_channel_id, channel_name: entry.channel_name, ok: true, gone: true });
@@ -340,57 +410,81 @@ export async function syncGlobalMessagePosts(client: any, payload: any) {
 		const content = refresh ? message.content : (entry.content ?? message.content);
 		const render = renderer('global', { ...message, content }, guild.name, { defaultColor: await serverColor(guild.id) });
 		const result = await syncPost(guild, entry, content, render, payload.interactive !== false);
-		if (refresh && result.ok && !result.gone) await db.setGlobalMessagePostContent(panel, entry.id, content).catch(() => null);
+		if (refresh && result.ok && !result.gone) {
+			await db.setGlobalMessagePostContent(panel, entry.id, content).catch(() => null);
+		}
 		results.push(result);
 	}
 	return { ok: true, results };
 }
 
-export async function removeGlobalMessagePosts(client: any, payload: any) {
+export async function removeGlobalMessagePosts(client: Client, payload: Record<string, unknown>) {
 	const panel = await currentPanelId();
-	if (panel == null) return { ok: false, error: 'This bot has no panel.' };
+	if (panel == null) {
+		return { ok: false, error: 'This bot has no panel.' };
+	}
 	const wanted = new Set((Array.isArray(payload.post_ids) ? payload.post_ids : []).map(Number));
 	const results: { post_id: number; ok: boolean; error?: string }[] = [];
 	for (const entry of await db.getGlobalMessagePosts(panel, Number(payload.message_id), currentBotId())) {
-		if (!wanted.has(entry.id)) continue;
+		if (!wanted.has(entry.id)) {
+			continue;
+		}
 		try {
 			const guild = await resolveGuild(client, entry.discord_server_id);
-			if (guild) await removePosted(guild, entry.discord_channel_id, entry.discord_message_id);
+			if (guild) {
+				await removePosted(guild, entry.discord_channel_id, entry.discord_message_id);
+			}
 			results.push({ post_id: entry.id, ok: true });
-		} catch (error: any) {
-			await logger.log(`❌ Failed to delete global posted message ${entry.discord_message_id}: ${error?.message}`);
+		} catch (error) {
+			await logger.log(`❌ Failed to delete global posted message ${entry.discord_message_id}: ${(error as Error)?.message}`);
 			results.push({ post_id: entry.id, ok: false, error: `${entry.server_name}: ${panelReason(error, entry.channel_name)}` });
 		}
 	}
 	return { ok: true, results };
 }
 
-export async function listGuildEmojis(client: any, payload: any) {
+export async function listGuildEmojis(client: Client, payload: Record<string, unknown>) {
 	const guild = await resolveGuild(client, String(payload.guild_id));
-	if (!guild) return { ok: false, emojis: [] };
+	if (!guild) {
+		return { ok: false, emojis: [] };
+	}
 	const emojis = (await guild.emojis.fetch().catch(() => null)) ?? guild.emojis.cache;
 	return {
 		ok: true,
 		emojis: [...emojis.values()]
-			.filter((emoji: any) => emoji.available !== false && emoji.name)
-			.map((emoji: any) => ({ id: String(emoji.id), name: String(emoji.name), animated: emoji.animated === true }))
+			.filter((emoji) => emoji.available !== false && emoji.name)
+			.map((emoji) => ({ id: String(emoji.id), name: String(emoji.name), animated: emoji.animated === true }))
 	};
 }
 
-function roleBlock(guild: any, role: any): RoleBlock | null {
-	if (!role) return 'deleted';
-	if (role.managed) return 'managed';
-	if (!isSelfAssignableRole(role.permissions?.bitfield)) return 'unsafe';
-	if (!guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return 'no_permission';
-	if (!role.editable) return 'above_bot';
+function roleBlock(guild: Guild, role: Role): RoleBlock | null {
+	if (!role) {
+		return 'deleted';
+	}
+	if (role.managed) {
+		return 'managed';
+	}
+	if (!isSelfAssignableRole(role.permissions?.bitfield)) {
+		return 'unsafe';
+	}
+	if (!guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) {
+		return 'no_permission';
+	}
+	if (!role.editable) {
+		return 'above_bot';
+	}
 	return null;
 }
 
 async function applyRoles(interaction: any, actions: RoleAction[], tr: Translator): Promise<string[]> {
-	if (actions.length === 0) return [];
+	if (actions.length === 0) {
+		return [];
+	}
 	const guild = interaction.guild;
 	const member = await guild.members.fetch(interaction.user.id).catch(() => null);
-	if (!member) return [tr('common.errors.memberNotFound')];
+	if (!member) {
+		return [tr('common.errors.memberNotFound')];
+	}
 
 	const lines: string[] = [];
 	for (const action of actions) {
@@ -408,11 +502,14 @@ async function applyRoles(interaction: any, actions: RoleAction[], tr: Translato
 			continue;
 		}
 		try {
-			if (give) await member.roles.add(role.id, 'Message button');
-			else await member.roles.remove(role.id, 'Message button');
+			if (give) {
+				await member.roles.add(role.id, 'Message button');
+			} else {
+				await member.roles.remove(role.id, 'Message button');
+			}
 			lines.push(tr(give ? 'messages.roleAdded' : 'messages.roleRemoved', { role: mention }));
-		} catch (error: any) {
-			await logger.log(`❌ Message button could not change role ${action.role_id} for ${interaction.user.id}: ${error?.message}`);
+		} catch (error) {
+			await logger.log(`❌ Message button could not change role ${action.role_id} for ${interaction.user.id}: ${(error as Error)?.message}`);
 			lines.push(tr('messages.roleFailed', { role: mention, reason: errorReasonFor(tr, error) }));
 		}
 	}
@@ -423,9 +520,15 @@ function roleCooldownLeft(guildId: string, userId: string): number {
 	const key = `${guildId}:${userId}`;
 	const now = Date.now();
 	const until = roleCooldowns.get(key) ?? 0;
-	if (until > now) return until - now;
+	if (until > now) {
+		return until - now;
+	}
 	if (roleCooldowns.size >= ROLE_COOLDOWN_SWEEP_AT) {
-		for (const [entry, expires] of roleCooldowns) if (expires <= now) roleCooldowns.delete(entry);
+		for (const [entry, expires] of roleCooldowns) {
+			if (expires <= now) {
+				roleCooldowns.delete(entry);
+			}
+		}
 	}
 	roleCooldowns.set(key, now + ROLE_COOLDOWN_MS);
 	return 0;
@@ -436,13 +539,15 @@ async function memberLanguage(serverId: number, userId: string, fallback: Server
 	return isServerLanguage(member?.language) ? member.language : fallback;
 }
 
-export function isMessageComponentId(customId: unknown): boolean {
+export function isMessageComponentId(customId: string): boolean {
 	return parseMessageCustomId(customId) !== null;
 }
 
 export async function handleMessageComponent(interaction: any) {
 	const ref = parseMessageCustomId(interaction.customId);
-	if (!ref || !interaction.guild) return;
+	if (!ref || !interaction.guild) {
+		return;
+	}
 
 	const guild = interaction.guild;
 	const server = await getServerForCurrentBot(guild.id);
@@ -510,13 +615,20 @@ export async function handleMessageComponent(interaction: any) {
 
 	if (inPlace && shown) {
 		const slow = shown.files.length > 0;
-		if (slow) await interaction.deferUpdate();
+		if (slow) {
+			await interaction.deferUpdate();
+		}
 		const files = await loadFiles(shown).catch(() => null);
 		if (files) {
 			const body = { ...editBody(shown, sourceV2), files, attachments: [] };
-			if (slow) await interaction.editReply(body);
-			else await interaction.update(body);
-		} else lines.push(tr('messages.unavailable'));
+			if (slow) {
+				await interaction.editReply(body);
+			} else {
+				await interaction.update(body);
+			}
+		} else {
+			lines.push(tr('messages.unavailable'));
+		}
 		acknowledged = true;
 	} else if (fromMenu) {
 		const prefix = ref.post == null ? (post?.mentions ?? '') : '';
@@ -531,18 +643,28 @@ export async function handleMessageComponent(interaction: any) {
 			pendingReply = true;
 		}
 		const files = await loadFiles(payload).catch(() => null);
-		if (!files) lines.push(tr('messages.unavailable'));
-		else if (pendingReply) {
+		if (!files) {
+			lines.push(tr('messages.unavailable'));
+		} else if (pendingReply) {
 			await interaction.editReply(sendBody(payload, files));
 			pendingReply = false;
-		} else if (acknowledged) await interaction.followUp(privateBody(payload, files));
-		else await interaction.reply(privateBody(payload, files));
+		} else if (acknowledged) {
+			await interaction.followUp(privateBody(payload, files));
+		} else {
+			await interaction.reply(privateBody(payload, files));
+		}
 		acknowledged = true;
 	};
 
-	if ((show || switching) && !shown) lines.push(tr('messages.unavailable'));
-	if (shown && !inPlace) await sendPrivately(shown);
-	if (written) await sendPrivately(renderer(ref.scope, { ...message, content: written }, guild.name)(lang, { interactive: false }));
+	if ((show || switching) && !shown) {
+		lines.push(tr('messages.unavailable'));
+	}
+	if (shown && !inPlace) {
+		await sendPrivately(shown);
+	}
+	if (written) {
+		await sendPrivately(renderer(ref.scope, { ...message, content: written }, guild.name)(lang, { interactive: false }));
+	}
 	if (!acknowledged) {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		pendingReply = true;
@@ -552,9 +674,16 @@ export async function handleMessageComponent(interaction: any) {
 	if (wait > 0) {
 		const time = new Intl.NumberFormat(lang, { style: 'unit', unit: 'second', unitDisplay: 'long' }).format(Math.ceil(wait / 1000));
 		lines.push(tr('messages.cooldown', { time }));
-	} else lines.push(...(await applyRoles(interaction, roles, tr)));
-	if (lines.length === 0) return;
+	} else {
+		lines.push(...(await applyRoles(interaction, roles, tr)));
+	}
+	if (lines.length === 0) {
+		return;
+	}
 	const result = { content: lines.join('\n'), allowedMentions: { parse: [] } };
-	if (pendingReply) await interaction.editReply(result);
-	else await interaction.followUp({ ...result, flags: MessageFlags.Ephemeral });
+	if (pendingReply) {
+		await interaction.editReply(result);
+	} else {
+		await interaction.followUp({ ...result, flags: MessageFlags.Ephemeral });
+	}
 }

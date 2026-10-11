@@ -2,6 +2,7 @@ import { Type } from '@google/genai';
 import { aiImageEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { postJson, resolveToolUrl } from './aiToolHttp.js';
+import type { AiInput } from '../../../../database.js';
 
 const IMAGE_PATH = '/images/generations';
 
@@ -22,17 +23,21 @@ Do not use this to look something up — search_web finds real photos and pages,
 
 One image per call. Write the prompt in English even when the user wrote another language, and describe subject, style and setting concretely.`;
 
-export function imageConfigured(config) {
+export function imageConfigured(config: AiInput) {
 	const endpoint = aiImageEndpoint(config);
 	return Boolean(endpoint.api_url && endpoint.api_key && endpoint.model);
 }
 
-export async function runImageTool(config, args) {
+export async function runImageTool(config: AiInput, args: Record<string, unknown>) {
 	const endpoint = aiImageEndpoint(config);
-	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'image_generation_not_configured' };
+	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) {
+		return { ok: false, reason: 'image_generation_not_configured' };
+	}
 
 	const prompt = String(args?.prompt ?? '').trim();
-	if (!prompt) return { ok: false, reason: 'missing_prompt' };
+	if (!prompt) {
+		return { ok: false, reason: 'missing_prompt' };
+	}
 
 	try {
 		const payload = await postJson(
@@ -43,24 +48,34 @@ export async function runImageTool(config, args) {
 		);
 
 		const entry = Array.isArray(payload?.data) ? payload.data[0] : null;
-		if (!entry) return { ok: false, reason: 'no_image_returned' };
+		if (!entry) {
+			return { ok: false, reason: 'no_image_returned' };
+		}
 
 		if (entry.b64_json) {
 			const buffer = Buffer.from(entry.b64_json, 'base64');
-			if (!buffer.byteLength) return { ok: false, reason: 'no_image_returned' };
-			if (buffer.byteLength > MAX_IMAGE_BYTES) return { ok: false, reason: 'image_too_large' };
+			if (!buffer.byteLength) {
+				return { ok: false, reason: 'no_image_returned' };
+			}
+			if (buffer.byteLength > MAX_IMAGE_BYTES) {
+				return { ok: false, reason: 'image_too_large' };
+			}
 			return { ok: true, prompt, buffer };
 		}
 
-		if (entry.url) return { ok: true, prompt, url: entry.url };
+		if (entry.url) {
+			return { ok: true, prompt, url: entry.url };
+		}
 
 		return { ok: false, reason: 'no_image_returned' };
-	} catch (error: any) {
-		await logger.log(`❌ Image generation failed: ${error.message}`);
+	} catch (error) {
+		await logger.log(`❌ Image generation failed: ${(error as Error).message}`);
 
-		if (error.name === 'AbortError') return { ok: false, reason: 'timeout', tell_the_user: RETRY_ADVICE };
+		if ((error as Error).name === 'AbortError') {
+			return { ok: false, reason: 'timeout', tell_the_user: RETRY_ADVICE };
+		}
 
-		if (FLAGGED_RE.test(String(error.body ?? '')) || FLAGGED_RE.test(String(error.message ?? ''))) {
+		if (FLAGGED_RE.test(String((error as { body?: unknown }).body ?? '')) || FLAGGED_RE.test(String((error as Error).message ?? ''))) {
 			return { ok: false, reason: 'content_flagged', tell_the_user: FLAGGED_ADVICE };
 		}
 
@@ -68,8 +83,10 @@ export async function runImageTool(config, args) {
 	}
 }
 
-export function buildImageTool(config) {
-	if (!imageConfigured(config)) return null;
+export function buildImageTool(config: AiInput) {
+	if (!imageConfigured(config)) {
+		return null;
+	}
 
 	return {
 		type: 'function',
@@ -94,8 +111,10 @@ If it comes back not ok, read "reason" and "tell_the_user" and say what actually
 	};
 }
 
-export function buildImageDeclaration(config) {
-	if (!imageConfigured(config)) return null;
+export function buildImageDeclaration(config: AiInput) {
+	if (!imageConfigured(config)) {
+		return null;
+	}
 
 	return {
 		name: 'generate_image',

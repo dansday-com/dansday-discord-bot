@@ -19,7 +19,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const result = await testWiki(body);
-	if (!result.ok) return json({ success: false, error: result.error }, { status: 400 });
+	if (!result.ok) {
+		return json({ success: false, error: result.error }, { status: 400 });
+	}
 
 	const { ok, ...site } = result;
 	return json({ success: true, ...site });

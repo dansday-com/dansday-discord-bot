@@ -12,25 +12,39 @@ const MAX_SETS = 120;
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
 	const rate = await checkRateLimit(ip, 'theme_effect_set', MAX_SETS, RATE_WINDOW_MS);
-	if (!rate.allowed) return json({ success: false, error: 'Slow down.' }, { status: 429 });
+	if (!rate.allowed) {
+		return json({ success: false, error: 'Slow down.' }, { status: 429 });
+	}
 
 	const resolved = await resolvePublicServerBySlug(String(params.serverSlug || '').trim());
-	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
+	if (!resolved) {
+		return json({ success: false, error: 'Not found' }, { status: 404 });
+	}
 	const server = resolved.server;
 
 	const body = await request.json().catch(() => null);
-	if (!body?.card) return json({ success: false, error: 'Missing card' }, { status: 400 });
+	if (!body?.card) {
+		return json({ success: false, error: 'Missing card' }, { status: 400 });
+	}
 
 	const effect = String(body.effect || '');
-	if (!(EFFECT_FAMILIES as readonly string[]).includes(effect)) return json({ success: false, error: 'Unknown effect.' }, { status: 400 });
+	if (!(EFFECT_FAMILIES as readonly string[]).includes(effect)) {
+		return json({ success: false, error: 'Unknown effect.' }, { status: 400 });
+	}
 
 	const actor = await resolveMemberByCardToken(server.id, String(body.card));
-	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
+	if (!actor) {
+		return json({ success: false, error: 'Member not found' }, { status: 404 });
+	}
 
 	const fullServer = await db.getServer(server.id);
-	if (!fullServer?.discord_server_id) return json({ success: false, error: 'Server unavailable.' }, { status: 500 });
+	if (!fullServer?.discord_server_id) {
+		return json({ success: false, error: 'Server unavailable.' }, { status: 500 });
+	}
 	const bot = await resolveActiveBotForServer(fullServer);
-	if (!bot?.port || !bot.secret_key) return json({ success: false, error: 'Bot not available.' }, { status: 500 });
+	if (!bot?.port || !bot.secret_key) {
+		return json({ success: false, error: 'Bot not available.' }, { status: 500 });
+	}
 
 	const webhookResult = await postBotWebhook(bot, {
 		type: 'theme_effect_set',

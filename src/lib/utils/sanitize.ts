@@ -1,13 +1,19 @@
 export function sanitizeString(input: unknown, maxLength = 255) {
-	if (typeof input !== 'string') return '';
+	if (typeof input !== 'string') {
+		return '';
+	}
 	let sanitized = input.replace(/[\x00-\x1F\x7F]/g, '');
 	sanitized = sanitized.trim();
-	if (sanitized.length > maxLength) sanitized = sanitized.substring(0, maxLength);
+	if (sanitized.length > maxLength) {
+		sanitized = sanitized.substring(0, maxLength);
+	}
 	return sanitized;
 }
 
 export function sanitizeUsername(username: unknown) {
-	if (typeof username !== 'string') return '';
+	if (typeof username !== 'string') {
+		return '';
+	}
 	return username
 		.trim()
 		.replace(/[^a-zA-Z]/g, '')
@@ -15,13 +21,26 @@ export function sanitizeUsername(username: unknown) {
 }
 
 export function sanitizeEmail(email: unknown) {
-	if (typeof email !== 'string') return '';
+	if (typeof email !== 'string') {
+		return '';
+	}
 	return email.trim().toLowerCase().substring(0, 255);
 }
 
-export function validateInputLength(input: unknown, fieldName: string, minLength: number, maxLength: number) {
-	if (typeof input !== 'string') return { valid: false, error: `${fieldName} must be a string` };
-	if (input.length < minLength) return { valid: false, error: `${fieldName} must be at least ${minLength} characters long` };
-	if (input.length > maxLength) return { valid: false, error: `${fieldName} must not exceed ${maxLength} characters` };
+export function validateInputLength(
+	input: unknown,
+	fieldName: string,
+	minLength: number,
+	maxLength: number
+): { valid: true; error?: undefined } | { valid: false; error: string } {
+	if (typeof input !== 'string') {
+		return { valid: false, error: `${fieldName} must be a string` };
+	}
+	if (input.length < minLength) {
+		return { valid: false, error: `${fieldName} must be at least ${minLength} characters long` };
+	}
+	if (input.length > maxLength) {
+		return { valid: false, error: `${fieldName} must not exceed ${maxLength} characters` };
+	}
 	return { valid: true };
 }

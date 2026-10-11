@@ -51,7 +51,9 @@ function payload(server: LinkEmbedServer, url: string, subtitle: string, lines: 
 export function serverLinkEmbed(server: LinkEmbedServer, url: string, subtitle: string, lines: string[]): string {
 	for (let n = lines.length; n >= 0; n--) {
 		const json = serialize(payload(server, url, subtitle, lines.slice(0, n)));
-		if (new TextEncoder().encode(json).length <= MAX_BYTES) return `<script id="discord:component-embed" type="application/json">${json}</script>`;
+		if (new TextEncoder().encode(json).length <= MAX_BYTES) {
+			return `<script id="discord:component-embed" type="application/json">${json}</script>`;
+		}
 	}
 	return '';
 }

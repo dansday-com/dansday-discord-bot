@@ -12,7 +12,7 @@
 
 	let query = $state('');
 	let sortBy = $state<'members' | 'name'>('members');
-	let broken = $state<Record<string, boolean>>({});
+	const broken = $state<Record<string, boolean>>({});
 
 	const filtered = $derived(
 		[...data.sources.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))].sort((a, b) =>

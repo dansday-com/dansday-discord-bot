@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "擁有者註冊",
 			"setupNotOwnerTitle": "權限不足",
 			"setupNotOwnerBody": "只有 **伺服器擁有者** 才能使用 `/setup`。",
-			"setupNotTextChannelTitle": "頻道無效",
-			"setupNotTextChannelBody": "請選擇一個 **文字頻道**。",
 			"joinTitle": "感謝你將 {botName} 加入伺服器！",
 			"joinBody": "執行 `/setup` 來建立頻道並完成設定。",
 			"joinAskAi": "不知道從哪裡開始？直接提及 {botMention} 發問就好，它會閱讀說明文件，一步步帶你完成設定。",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ 這個伺服器已關閉公開頁面。請伺服器管理員在機器人設定面板中開啟。"
 		},
 		"errors": {
-			"notRegistered": "⚠️ 這個伺服器尚未與機器人完全連線。請幾分鐘後再試，如果一直發生，請伺服器管理員檢查機器人設定面板。",
-			"createRecordFailed": "❌ 建立成員紀錄失敗，請再試一次。"
+			"notRegistered": "⚠️ 這個伺服器尚未與機器人完全連線。請幾分鐘後再試，如果一直發生，請伺服器管理員檢查機器人設定面板。"
 		},
 		"fields": {
 			"level": "⭐ 等級",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "評價工作人員",
 			"ratingLabel": "評分（1-5 顆星）",
-			"ratingPlaceholder": "1 = 非常差，5 = 非常好",
 			"categoryLabel": "類別",
 			"descriptionLabel": "說明",
 			"descriptionPlaceholder": "請描述你與這位工作人員互動的經驗……",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ 評價已提交",
 			"description": "你的評價已成功提交，正在等待管理員審核。審核完成後我們會通知你。",
-			"anonymous": "\\n\\n🔒 你的評價已匿名提交。",
-			"roleUpdated": "\\n\\n⭐ **工作人員評分已更新**\\n{roleName}\\n評分：{rating}/5.00（共 {totalReports} 則評價）"
+			"anonymous": "\\n\\n🔒 你的評價已匿名提交。"
 		},
 		"dm": {
 			"approved": "你在 **{server}** 對 {staff} 的評價已核准。\\n\\n**評分：** {rating}/5\\n**類別：** {category}\\n**意見內容：** {description}\\n\\n**管理備註：** {reason}\\n\\n感謝你協助我們督促團隊負起責任。",
@@ -458,7 +453,6 @@
 			"rude": "😠 態度惡劣"
 		},
 		"errors": {
-			"noStaffSelected": "❌ 請選擇要評價的工作人員。",
 			"invalidRating": "❌ **評分無效**\\n\\n評分必須是 1 到 5 之間的數字。",
 			"invalidCategory": "❌ **類別無效**\\n\\n請從清單中選擇一個類別。",
 			"emptyDescription": "❌ **必須填寫說明**\\n\\n請描述一下你的經驗。",

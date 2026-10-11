@@ -9,22 +9,30 @@ import { publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(serverSlug);
-	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
+	if (!resolved) {
+		return json({ success: false, error: 'Not found' }, { status: 404 });
+	}
 	const server = resolved.server;
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);
-	const psSettings = (psRow as any)?.settings || {};
+	const psSettings = psRow?.settings || {};
 	if (!publicSubfeatureEnabled(psSettings, 'items')) {
 		return json({ success: false, error: 'The items shop is disabled for this server.' }, { status: 403 });
 	}
 
 	const body = await request.json().catch(() => null);
-	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
+	if (!body) {
+		return json({ success: false, error: 'Invalid body' }, { status: 400 });
+	}
 	const { card, item_id, quantity, tz_offset } = body;
-	if (!card || !item_id) return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	if (!card || !item_id) {
+		return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	}
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
-	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
+	if (!actor) {
+		return json({ success: false, error: 'Member not found' }, { status: 404 });
+	}
 
 	const fullServer = await db.getServer(server.id);
 	if (!fullServer?.discord_server_id) {

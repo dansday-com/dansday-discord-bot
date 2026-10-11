@@ -19,11 +19,13 @@
 
 	const ctx = getContext('items') as any;
 
-	const guideItems = $derived.by(() => buildGuideItems((data.items ?? []) as any[]));
+	const guideItems = $derived.by(() => buildGuideItems(data.items ?? []));
 
 	function fmtCost(n: number | null): string {
-		if (n == null) return '';
-		return (ctx?.fmt ? ctx.fmt(n) : Number(n).toLocaleString()) + ' XP';
+		if (n == null) {
+			return '';
+		}
+		return `${ctx?.fmt ? ctx.fmt(n) : Number(n).toLocaleString()} XP`;
 	}
 </script>
 

@@ -11,18 +11,26 @@ const SERVER_LANGUAGE_TTL_MS = 60_000;
 const serverLanguageCache = new Map<string, { lang: ServerLanguage; at: number }>();
 
 export function rememberServerLanguage(guildId: string, lang: unknown) {
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 	serverLanguageCache.set(guildId, { lang: normalizeServerLanguage(lang), at: Date.now() });
 }
 
 export async function getServerLanguage(guildId: string): Promise<ServerLanguage> {
-	if (!guildId) return defaultLang;
+	if (!guildId) {
+		return defaultLang;
+	}
 	const cached = serverLanguageCache.get(guildId);
-	if (cached && Date.now() - cached.at < SERVER_LANGUAGE_TTL_MS) return cached.lang;
+	if (cached && Date.now() - cached.at < SERVER_LANGUAGE_TTL_MS) {
+		return cached.lang;
+	}
 
 	try {
 		const botConfig = getBotConfig();
-		if (!botConfig?.id) return defaultLang;
+		if (!botConfig?.id) {
+			return defaultLang;
+		}
 		const server = await db.getServerByDiscordId(botConfig.id, guildId);
 		const row = server ? await db.getServerSettings(server.id, SERVER_SETTINGS.component.main) : null;
 		const settings = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
@@ -35,16 +43,24 @@ export async function getServerLanguage(guildId: string): Promise<ServerLanguage
 
 export async function getUserLanguage(guildId: string, userId: string): Promise<string> {
 	try {
-		if (!guildId) return defaultLang;
-		if (!userId || userId === '0') return getServerLanguage(guildId);
+		if (!guildId) {
+			return defaultLang;
+		}
+		if (!userId || userId === '0') {
+			return getServerLanguage(guildId);
+		}
 
 		const botConfig = getBotConfig();
-		if (!botConfig || !botConfig.id) return defaultLang;
+		if (!botConfig || !botConfig.id) {
+			return defaultLang;
+		}
 
 		const server = await db.getServerByDiscordId(botConfig.id, guildId);
 		if (server) {
 			const member = await db.getMemberByDiscordId(server.id, userId);
-			if (isServerLanguage(member?.language)) return member.language;
+			if (isServerLanguage(member?.language)) {
+				return member.language;
+			}
 		}
 
 		return getServerLanguage(guildId);
@@ -53,19 +69,19 @@ export async function getUserLanguage(guildId: string, userId: string): Promise<
 	}
 }
 
-export async function translate(key: string, guildId: string, userId: string, params: Record<string, any> = {}) {
+export async function translate(key: string, guildId: string, userId: string, params: Record<string, unknown> = {}) {
 	const lang = await getUserLanguage(guildId, userId);
 	return t(key, lang, params);
 }
 
-export async function translateServer(key: string, guildId: string, params: Record<string, any> = {}) {
+export async function translateServer(key: string, guildId: string, params: Record<string, unknown> = {}) {
 	return t(key, await getServerLanguage(guildId), params);
 }
 
 export type Translator = ((key: string, params?: Record<string, any>) => string) & { lang: string };
 
 export function translatorFor(lang: string): Translator {
-	const tr = ((key: string, params: Record<string, any> = {}) => t(key, lang, params)) as Translator;
+	const tr = ((key: string, params: Record<string, unknown> = {}) => t(key, lang, params)) as Translator;
 	tr.lang = lang;
 	return tr;
 }
@@ -92,7 +108,7 @@ export function errorReasonFor(tr: Translator, error: any): string {
 	return tr(`common.errors.reasons.${API_ERROR_REASONS[error?.code] ?? 'unexpected'}`);
 }
 
-export async function errorReason(error: any, guildId: string, userId: string): Promise<string> {
+export async function errorReason(error: unknown, guildId: string, userId: string): Promise<string> {
 	return errorReasonFor(await memberTranslator(guildId, userId), error);
 }
 

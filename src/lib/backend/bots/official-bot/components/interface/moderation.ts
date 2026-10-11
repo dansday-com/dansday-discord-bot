@@ -4,6 +4,9 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { getUserLanguage, translate } from '../../i18n.js';
 import { performModerationAction } from '../moderation.js';
 import { menuBackButton } from './menuBack.js';
+import type { ModalSubmitInteraction, RepliableInteraction, StringSelectMenuInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type { ButtonInteraction } from 'discord.js';
 
 const MENU_ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'clearwarns'];
 const TIMED_ACTIONS = ['timeout', 'tempban'];
@@ -29,17 +32,24 @@ async function backRow(g: string, u: string) {
 	return new ActionRowBuilder<ButtonBuilder>().addComponents(await menuBackButton(g, u, 'staff'));
 }
 
-async function ensureStaff(interaction: any) {
+async function ensureStaff(interaction: RepliableInteraction<'cached'>) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
-	if (member && (await hasPermission(member, 'staff_only'))) return true;
+	if (member && (await hasPermission(member, 'staff_only'))) {
+		return true;
+	}
 	const content = await getPermissionDeniedMessage(interaction.guild, 'staff_only', interaction.user.id);
-	if (interaction.replied || interaction.deferred) await interaction.editReply({ content, embeds: [], components: [] }).catch(() => null);
-	else await interaction.reply({ content, flags: 64 }).catch(() => null);
+	if (interaction.replied || interaction.deferred) {
+		await interaction.editReply({ content, embeds: [], components: [] }).catch(() => null);
+	} else {
+		await interaction.reply({ content, flags: 64 }).catch(() => null);
+	}
 	return false;
 }
 
-export async function handleModerationButton(interaction: any) {
-	if (!(await ensureStaff(interaction))) return;
+export async function handleModerationButton(interaction: ButtonInteraction<'cached'>) {
+	if (!(await ensureStaff(interaction))) {
+		return;
+	}
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 	const select = new UserSelectMenuBuilder()
@@ -50,13 +60,15 @@ export async function handleModerationButton(interaction: any) {
 	const payload = {
 		content: await translate('moderation.selectUser', g, u),
 		embeds: [],
-		components: [new ActionRowBuilder().addComponents(select), await backRow(g, u)]
+		components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(select), await backRow(g, u)]
 	};
 	await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 }
 
 export async function handleModerationUserSelect(interaction: any) {
-	if (!(await ensureStaff(interaction))) return;
+	if (!(await ensureStaff(interaction))) {
+		return;
+	}
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 	const targetId = interaction.values[0];
@@ -75,17 +87,21 @@ export async function handleModerationUserSelect(interaction: any) {
 		.addOptions(options);
 	await interaction.update({
 		content: await translate('moderation.selectAction', g, u, { member: `<@${targetId}>` }),
-		components: [new ActionRowBuilder().addComponents(select), await backRow(g, u)]
+		components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(select), await backRow(g, u)]
 	});
 }
 
-export async function handleModerationActionSelect(interaction: any) {
-	if (!(await ensureStaff(interaction))) return;
+export async function handleModerationActionSelect(interaction: StringSelectMenuInteraction<'cached'>) {
+	if (!(await ensureStaff(interaction))) {
+		return;
+	}
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 	const targetId = interaction.customId.split('|')[1];
 	const action = interaction.values[0];
-	if (!MENU_ACTIONS.includes(action) || !targetId) return;
+	if (!MENU_ACTIONS.includes(action) || !targetId) {
+		return;
+	}
 
 	const modal = new ModalBuilder()
 		.setCustomId(`moderation_modal|${action}|${targetId}`)
@@ -108,10 +124,12 @@ export async function handleModerationActionSelect(interaction: any) {
 	await interaction.showModal(modal);
 }
 
-export async function handleModerationModal(interaction: any) {
+export async function handleModerationModal(interaction: ModalSubmitInteraction<'cached'>) {
 	const [, action, targetId] = interaction.customId.split('|');
 	await interaction.deferReply({ flags: 64 });
-	if (!(await ensureStaff(interaction))) return;
+	if (!(await ensureStaff(interaction))) {
+		return;
+	}
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 
@@ -124,7 +142,7 @@ export async function handleModerationModal(interaction: any) {
 		}
 	}
 
-	const result: any = await performModerationAction(interaction.client, {
+	const result: Record<string, unknown> = await performModerationAction(interaction.client, {
 		guild_id: g,
 		action,
 		target_id: targetId,

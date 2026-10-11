@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
@@ -15,32 +15,42 @@ import { isServerLanguage } from '$lib/languages.js';
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
 		const component = url.searchParams.get('component');
-		let serverId = params.id;
+		let serverId: string | number = params.id;
 
 		if (component === SERVER_SETTINGS.component.notifications) {
 			const officialServerId = await db.getOfficialBotServerIdForServer(params.id);
-			if (officialServerId) serverId = officialServerId;
+			if (officialServerId) {
+				serverId = officialServerId;
+			}
 		}
 
 		const settings = await db.getServerSettings(serverId, component);
 		return json(settings);
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };
 
 const LOG_VALUE_MAX = 1000;
 
 function logValue(value: unknown): string | null {
-	if (value === undefined) return null;
+	if (value === undefined) {
+		return null;
+	}
 	const text = typeof value === 'string' ? value : JSON.stringify(value);
 	return text.length > LOG_VALUE_MAX ? `${text.slice(0, LOG_VALUE_MAX)}…` : text;
 }
 
 function canonical(value: unknown): unknown {
-	if (value === undefined || value === null || value === '') return null;
-	if (typeof value === 'number') return String(value);
-	if (typeof value === 'string') return value.trim() === '' ? null : value;
+	if (value === undefined || value === null || value === '') {
+		return null;
+	}
+	if (typeof value === 'number') {
+		return String(value);
+	}
+	if (typeof value === 'string') {
+		return value.trim() === '' ? null : value;
+	}
 	if (Array.isArray(value)) {
 		const items = value.map(canonical);
 		return items.length === 0 ? null : items;
@@ -49,7 +59,9 @@ function canonical(value: unknown): unknown {
 		const out: Record<string, unknown> = {};
 		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
 			const v = canonical((value as Record<string, unknown>)[key]);
-			if (v !== null) out[key] = v;
+			if (v !== null) {
+				out[key] = v;
+			}
 		}
 		return Object.keys(out).length === 0 ? null : out;
 	}
@@ -61,8 +73,12 @@ function diffSettings(before: Record<string, unknown>, after: Record<string, unk
 	const changes: { key: string; before: string | null; after: string | null }[] = [];
 	for (const key of [...keys].sort()) {
 		const next = canonical(after[key]);
-		if (before[key] === undefined && (next === null || next === false)) continue;
-		if (JSON.stringify(canonical(before[key])) === JSON.stringify(next)) continue;
+		if (before[key] === undefined && (next === null || next === false)) {
+			continue;
+		}
+		if (JSON.stringify(canonical(before[key])) === JSON.stringify(next)) {
+			continue;
+		}
 		changes.push({ key, before: logValue(before[key]), after: logValue(after[key]) });
 	}
 	return changes;
@@ -72,7 +88,9 @@ async function postOfficialBotWebhook(
 	bot: { port: number | null; secret_key: string | null } | null | undefined,
 	payload: Record<string, unknown>
 ): Promise<void> {
-	if (!bot?.port || !bot.secret_key) return;
+	if (!bot?.port || !bot.secret_key) {
+		return;
+	}
 	const { request } = await import('http');
 	const body = JSON.stringify(payload);
 	const options = {
@@ -98,22 +116,26 @@ async function callOfficialBotWebhook(
 	bot: { port: number | null; secret_key: string | null; status?: string | null } | null | undefined,
 	payload: Record<string, unknown>
 ): Promise<{ status: number; body: unknown }> {
-	if (!bot || bot.status !== 'running') return { status: 503, body: { error: 'Bot is not running' } };
-	if (!bot.port || !bot.secret_key) return { status: 503, body: { error: 'Bot webhook not configured' } };
+	if (!bot || bot.status !== 'running') {
+		return { status: 503, body: { error: 'Bot is not running' } };
+	}
+	if (!bot.port || !bot.secret_key) {
+		return { status: 503, body: { error: 'Bot webhook not configured' } };
+	}
 	const { request } = await import('http');
 	const body = JSON.stringify(payload);
 	return new Promise((resolve) => {
 		const req = request(
 			{
 				hostname: 'localhost',
-				port: bot.port,
+				port: bot.port!,
 				path: '/',
 				method: 'POST',
 				timeout: 30_000,
 				headers: {
 					'Content-Type': 'application/json',
 					'Content-Length': Buffer.byteLength(body),
-					'X-Secret-Key': bot.secret_key
+					'X-Secret-Key': bot.secret_key!
 				}
 			},
 			(res) => {
@@ -136,15 +158,25 @@ async function callOfficialBotWebhook(
 }
 
 function parseBotProfileImage(kind: BotProfileImageKind, value: unknown): string | null | undefined {
-	if (value === undefined) return undefined;
-	if (value === null || value === '') return null;
+	if (value === undefined) {
+		return undefined;
+	}
+	if (value === null || value === '') {
+		return null;
+	}
 	const spec = BOT_PROFILE_IMAGE[kind];
 	const match = typeof value === 'string' ? /^data:image\/[\w+.-]+;base64,(.+)$/.exec(value) : null;
-	if (!match) throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
+	if (!match) {
+		throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
+	}
 	const bytes = Buffer.from(match[1], 'base64');
 	const type = sniffBotProfileImage(bytes);
-	if (!type) throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
-	if (bytes.length > spec.maxBytes) throw new Error(`${spec.label}: ${tooLargeMessage(spec.maxBytes)}`);
+	if (!type) {
+		throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
+	}
+	if (bytes.length > spec.maxBytes) {
+		throw new Error(`${spec.label}: ${tooLargeMessage(spec.maxBytes)}`);
+	}
 	return `data:${type};base64,${bytes.toString('base64')}`;
 }
 
@@ -176,13 +208,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			);
 		}
 
-		let targetServerId = panelServerId;
+		let targetServerId: string | number = panelServerId;
 		if (component === SERVER_SETTINGS.component.notifications) {
 			const officialServerId = await db.getOfficialBotServerIdForServer(panelServerId);
-			if (officialServerId) targetServerId = officialServerId;
+			if (officialServerId) {
+				targetServerId = officialServerId;
+			}
 		}
 
-		const previousRow = await db.getServerSettings(targetServerId, component).catch(() => null);
+		const previousRow = await db.getServerSettings(targetServerId, component as string).catch(() => null);
 		const previous =
 			previousRow?.settings && typeof previousRow.settings === 'object'
 				? { ...(previousRow.settings as Record<string, unknown>) }
@@ -200,8 +234,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			try {
 				avatar = parseBotProfileImage('avatar', bot_avatar);
 				banner = parseBotProfileImage('banner', bot_banner);
-			} catch (err: any) {
-				return json({ error: err.message }, { status: 400 });
+			} catch (err) {
+				return json({ error: (err as Error).message }, { status: 400 });
 			}
 			const bio = typeof rest.bot_bio === 'string' ? rest.bot_bio.trim() : '';
 			if (bio.length > BOT_BIO_MAX_LENGTH) {
@@ -211,15 +245,21 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				return json({ error: 'Unsupported server language' }, { status: 400 });
 			}
 
-			const existing = await db.getServerSettings(targetServerId, component).catch(() => null);
+			const existing = await db.getServerSettings(targetServerId, component as string).catch(() => null);
 			const existingRaw = existing?.settings && typeof existing.settings === 'object' ? (existing.settings as Record<string, unknown>) : {};
 			const prev = normalizeMainConfigForPanel(existingRaw);
 			const next = { ...existingRaw, ...rest, bot_bio: prev.bot_bio, bot_avatar_url: prev.bot_avatar_url, bot_banner_url: prev.bot_banner_url };
 
 			const profile: Record<string, string | null> = {};
-			if (avatar !== undefined) profile.avatar = avatar;
-			if (banner !== undefined) profile.banner = banner;
-			if (bio !== prev.bot_bio) profile.bio = bio || null;
+			if (avatar !== undefined) {
+				profile.avatar = avatar;
+			}
+			if (banner !== undefined) {
+				profile.banner = banner;
+			}
+			if (bio !== prev.bot_bio) {
+				profile.bio = bio || null;
+			}
 			const nickname = typeof rest.bot_nickname === 'string' ? rest.bot_nickname : '';
 
 			if (panelServer?.discord_server_id) {
@@ -232,9 +272,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				});
 				const reply = (synced.body ?? {}) as { success?: boolean; profile?: { avatar_url?: string; banner_url?: string } };
 				if (reply.profile) {
-					if ('bio' in profile) next.bot_bio = bio;
-					if ('avatar' in profile) next.bot_avatar_url = reply.profile.avatar_url ?? '';
-					if ('banner' in profile) next.bot_banner_url = reply.profile.banner_url ?? '';
+					if ('bio' in profile) {
+						next.bot_bio = bio;
+					}
+					if ('avatar' in profile) {
+						next.bot_avatar_url = reply.profile.avatar_url ?? '';
+					}
+					if ('banner' in profile) {
+						next.bot_banner_url = reply.profile.banner_url ?? '';
+					}
 				}
 				if (hasProfile && (synced.status !== 200 || reply.success !== true)) {
 					profileError = messageFromBotWebhookPayload(synced.body);
@@ -253,7 +299,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			const changes = diffSettings(previous, settings as Record<string, unknown>);
 			await db
 				.createServerPanelLog(Number(targetServerId), panelActorIds(locals), component, changes)
-				.catch((err: any) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
+				.catch((err) => logger.log(`⚠️ Could not record settings change log: ${err.message}`));
 		}
 
 		let menuError = '';
@@ -268,7 +314,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				language: normalizeMainConfigForPanel(settings).language
 			});
 			const reply = (synced.body ?? {}) as { success?: boolean };
-			if (synced.status !== 200 || reply.success !== true) menuError = messageFromBotWebhookPayload(synced.body);
+			if (synced.status !== 200 || reply.success !== true) {
+				menuError = messageFromBotWebhookPayload(synced.body);
+			}
 		}
 
 		if (component === SERVER_SETTINGS.component.notifications) {
@@ -308,7 +356,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			});
 		}
 		return json({ success: true, data: result });
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };

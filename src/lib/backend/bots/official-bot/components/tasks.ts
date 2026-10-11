@@ -22,6 +22,8 @@ import {
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
 import { serverTranslator, type Translator } from '../i18n.js';
+import type { Client } from 'discord.js';
+import type { GuildMember } from 'discord.js';
 
 const ANNOUNCE_DELAY_MS = 7000;
 
@@ -34,19 +36,21 @@ const COUNTER_METRICS = new Set<TaskMetric>([
 	'voice_minutes_streaming'
 ]);
 
-async function measureProgress(memberId: any, row: any, dayStartMs: number) {
+async function measureProgress(memberId: number | string, row: any, dayStartMs: number) {
 	const def = TASK_BY_ID.get(row.task_type);
-	if (!def) return 0;
+	if (!def) {
+		return 0;
+	}
 
 	if (COUNTER_METRICS.has(def.metric)) {
 		const levels = await db.getMemberLevel(memberId).catch(() => null);
-		const current = Number((levels as any)?.[def.metric]) || 0;
+		const current = Number((levels as Record<string, unknown>)?.[def.metric]) || 0;
 		return Math.max(0, current - (Number(row.baseline) || 0));
 	}
 	return db.countMemberEventsSince(memberId, def.metric, dayStartMs, row.target_item_id ?? null).catch(() => 0);
 }
 
-async function grantXpTo(guildId: any, memberId: any, rawXp: number, source: 'task' | 'daily' = 'task') {
+async function grantXpTo(guildId: string, memberId: number | string, rawXp: number, source: 'task' | 'daily' = 'task') {
 	const xp = Math.max(0, Math.round(rawXp) || 0);
 	await db.ensureMemberLevel(memberId);
 	const snaps = await snapshotMembers([memberId]);
@@ -66,7 +70,11 @@ async function grantXpTo(guildId: any, memberId: any, rawXp: number, source: 'ta
 	return { kind: 'xp', xp };
 }
 
-async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boolean; itemId: any; fallbackXp: number; source?: 'task' | 'daily' }) {
+async function deliverReward(
+	guildId: string,
+	memberId: number | string,
+	plan: { wantsItem: boolean; itemId: any; fallbackXp: number; source?: 'task' | 'daily' }
+) {
 	const source = plan.source ?? 'task';
 	const item = plan.wantsItem && plan.itemId != null ? await db.getItem(Number(plan.itemId)).catch(() => null) : null;
 	const itemUsable = !!item && (item.enabled as any) !== false && (item.enabled as any) !== 0;
@@ -92,9 +100,11 @@ async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boo
 	return grantXpTo(guildId, memberId, plan.fallbackXp, source);
 }
 
-export async function handleLoginClaim(client: any, payload: any) {
+export async function handleLoginClaim(client: Client, payload: any) {
 	const { guild_id, actor_discord_id } = payload || {};
-	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
@@ -105,23 +115,31 @@ export async function handleLoginClaim(client: any, payload: any) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
-	if (!(await isPublicSubFeatureEnabled(guild_id, 'tasks'))) return { ok: false, error: 'tasks_disabled' };
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'tasks'))) {
+		return { ok: false, error: 'tasks_disabled' };
+	}
 
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!memberId) return { ok: false, error: 'member_not_found' };
+	if (!memberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const nowMs = Date.now();
 	const nowKey = minuteKeyFor(nowMs);
 
 	const before = (await db.ensureMemberClaim(memberId)) as any;
 	const readyInMs = loginReadyInMs(before?.last_claim_day_key == null ? null : Number(before.last_claim_day_key), nowMs);
-	if (readyInMs > 0) return { ok: false, error: 'already_claimed', readyInMs };
+	if (readyInMs > 0) {
+		return { ok: false, error: 'already_claimed', readyInMs };
+	}
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const catalog = itemsAllowed ? await loadRewardCatalog(server.id) : [];
 
 	const applied = await db.applyMemberClaim(memberId, nowKey, LOGIN_CYCLE_DAYS);
-	if (!applied.changed) return { ok: false, error: 'already_claimed' };
+	if (!applied.changed) {
+		return { ok: false, error: 'already_claimed' };
+	}
 
 	const day = Number(applied.row?.cycle_day) || 1;
 	const cycleIndex = Number(applied.row?.cycles_completed) || 0;
@@ -138,8 +156,8 @@ export async function handleLoginClaim(client: any, payload: any) {
 			fallbackXp: reward.kind === 'xp' ? reward.xp : 200,
 			source: 'daily'
 		});
-	} catch (err: any) {
-		await logger.log(`❌ Login claim grant failed: ${err.message}`);
+	} catch (err) {
+		await logger.log(`❌ Login claim grant failed: ${(err as Error).message}`);
 		return { ok: false, error: 'grant_failed' };
 	}
 
@@ -156,17 +174,21 @@ export async function handleLoginClaim(client: any, payload: any) {
 	return { ok: true, granted, day, jackpot: reward.jackpot, cycleDays: LOGIN_CYCLE_DAYS };
 }
 
-async function loadRewardCatalog(serverId: any) {
+async function loadRewardCatalog(serverId: number) {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
-	if (panelId == null) return [];
-	const all = (await db.listItems(panelId).catch(() => [])) as any[];
+	if (panelId == null) {
+		return [];
+	}
+	const all = (await db.listItems(panelId).catch(() => [])) as Record<string, unknown>[];
 	return all.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0).map((i) => ({ id: Number(i.id), cost: Number(i.cost) || 0 }));
 }
 
-export async function handleTaskClaim(client: any, payload: any) {
+export async function handleTaskClaim(client: Client, payload: any) {
 	const { guild_id, actor_discord_id, slot, tz_offset } = payload || {};
 	const period: 'daily' | 'weekly' = payload?.period === 'weekly' ? 'weekly' : 'daily';
-	if (!guild_id || !actor_discord_id || slot == null) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id || slot == null) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
@@ -182,7 +204,9 @@ export async function handleTaskClaim(client: any, payload: any) {
 	}
 
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!memberId) return { ok: false, error: 'member_not_found' };
+	if (!memberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const tzOffsetMin = Number(tz_offset) || 0;
 	await db.ensureMemberStreak(memberId, tzOffsetMin).catch(() => null);
@@ -190,23 +214,33 @@ export async function handleTaskClaim(client: any, payload: any) {
 	const [latestDaily, latestWeekly] = await Promise.all([db.getLatestTaskKey(memberId, 'daily'), db.getLatestTaskKey(memberId, 'weekly')]);
 	const dayKey = periodOpen(latestDaily, 'daily', nowMs) ? latestDaily : null;
 	const periodKey = period === 'weekly' ? (periodOpen(latestWeekly, 'weekly', nowMs) ? latestWeekly : null) : dayKey;
-	if (periodKey == null) return { ok: false, error: 'task_not_found' };
+	if (periodKey == null) {
+		return { ok: false, error: 'task_not_found' };
+	}
 	const windowStartMs = periodKey * 60000;
 
 	const rows = (await db.getMemberTasks(memberId, periodKey, period).catch(() => [])) as any[];
 	const row = rows.find((r) => Number(r.slot) === Number(slot));
-	if (!row) return { ok: false, error: 'task_not_found' };
-	if (row.claimed_at) return { ok: false, error: 'already_claimed' };
+	if (!row) {
+		return { ok: false, error: 'task_not_found' };
+	}
+	if (row.claimed_at) {
+		return { ok: false, error: 'already_claimed' };
+	}
 
 	const goal = Number(row.goal) || 1;
 	const progress = await measureProgress(memberId, row, windowStartMs);
-	if (progress < goal) return { ok: false, error: 'task_incomplete', progress, goal };
+	if (progress < goal) {
+		return { ok: false, error: 'task_incomplete', progress, goal };
+	}
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const grantsItem = row.reward_kind === 'item' && row.reward_item_id != null && itemsAllowed;
 
 	const claimed = await db.claimMemberTask(memberId, periodKey, Number(slot), period);
-	if (!claimed) return { ok: false, error: 'already_claimed' };
+	if (!claimed) {
+		return { ok: false, error: 'already_claimed' };
+	}
 
 	let granted: any = null;
 	try {
@@ -215,17 +249,19 @@ export async function handleTaskClaim(client: any, payload: any) {
 			itemId: row.reward_item_id,
 			fallbackXp: Number(row.xp_reward) || xpRewardFor(row.difficulty, 0, 500)
 		});
-	} catch (err: any) {
-		await logger.log(`❌ Task reward grant failed: ${err.message}`);
+	} catch (err) {
+		await logger.log(`❌ Task reward grant failed: ${(err as Error).message}`);
 		return { ok: false, error: 'grant_failed' };
 	}
 
-	const after = dayKey == null ? [] : ((await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as any[]);
+	const after = dayKey == null ? [] : ((await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as Record<string, unknown>[]);
 	const allClaimed = after.length > 0 && after.every((r) => !!r.claimed_at);
 
 	let streakResult: any = null;
 	let milestone: any = null;
-	if (dayKey != null) streakResult = await db.applyStreakDay(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
+	if (dayKey != null) {
+		streakResult = await db.applyStreakDay(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
+	}
 	if (streakResult?.changed) {
 		milestone = streakMilestone(Number(streakResult.streak) || 0);
 		await announceStreak(client, guild_id, actor_discord_id, streakResult, milestone).catch(() => null);
@@ -261,7 +297,7 @@ function milestoneLabel(tr: Translator, milestone: { at: number; label: string }
 	return label === key ? milestone.label : label;
 }
 
-function streakAnnouncement(tr: Translator, streakResult: any, milestone: any, member: any) {
+function streakAnnouncement(tr: Translator, streakResult: any, milestone: any, member: GuildMember) {
 	const streak = Number(streakResult.streak) || 0;
 	const freezeUsed = Number(streakResult.freezeUsed) || 0;
 	const daysMissed = Number(streakResult.daysMissed) || 0;
@@ -316,19 +352,32 @@ function streakAnnouncement(tr: Translator, streakResult: any, milestone: any, m
 	return null;
 }
 
-async function announceLoginItem(client: any, guildId: any, discordMemberId: any, ctx: { day: number; jackpot: boolean; item: any; tier: RarityTier }) {
+async function announceLoginItem(
+	client: Client,
+	guildId: string,
+	discordMemberId: number | string,
+	ctx: { day: number; jackpot: boolean; item: Record<string, unknown>; tier: RarityTier }
+) {
 	try {
 		const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 		const channelId = await getItemsChannelId(guildId);
-		if (!channelId) return;
+		if (!channelId) {
+			return;
+		}
 
 		const guild = client?.guilds?.cache?.get(guildId);
-		if (!guild) return;
+		if (!guild) {
+			return;
+		}
 		const channel = await guild.channels.fetch(channelId).catch(() => null);
-		if (!channel || !channel.isTextBased()) return;
+		if (!channel || !channel.isTextBased()) {
+			return;
+		}
 
 		const member = await guild.members.fetch(String(discordMemberId)).catch(() => null);
-		if (!member) return;
+		if (!member) {
+			return;
+		}
 
 		const { EmbedBuilder } = await import('discord.js');
 		const tr = await serverTranslator(guildId);
@@ -350,27 +399,37 @@ async function announceLoginItem(client: any, guildId: any, discordMemberId: any
 			.setTimestamp();
 
 		await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
-	} catch (err: any) {
-		await logger.log(`⚠️ Login item announce failed: ${err?.message || String(err)}`);
+	} catch (err) {
+		await logger.log(`⚠️ Login item announce failed: ${(err as Error)?.message || String(err)}`);
 	}
 }
 
-export async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {
+export async function announceStreak(client: Client, guildId: string, discordMemberId: number | string, streakResult: unknown, milestone: unknown) {
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guildId);
-	if (!channelId) return;
+	if (!channelId) {
+		return;
+	}
 
 	const guild = client?.guilds?.cache?.get(guildId);
-	if (!guild) return;
+	if (!guild) {
+		return;
+	}
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
-	if (!channel || !channel.isTextBased()) return;
+	if (!channel || !channel.isTextBased()) {
+		return;
+	}
 
 	const member = await guild.members.fetch(String(discordMemberId)).catch(() => null);
-	if (!member) return;
+	if (!member) {
+		return;
+	}
 
 	const tr = await serverTranslator(String(guildId));
 	const plan = streakAnnouncement(tr, streakResult, milestone, member);
-	if (!plan) return;
+	if (!plan) {
+		return;
+	}
 
 	const { EmbedBuilder } = await import('discord.js');
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
@@ -382,19 +441,23 @@ export async function announceStreak(client: any, guildId: any, discordMemberId:
 		.setFooter({ text: embedConfig.FOOTER || tr('tasks.footer') })
 		.setTimestamp();
 
-	if (plan.fields.length > 0) embed.addFields(plan.fields);
+	if (plan.fields.length > 0) {
+		embed.addFields(plan.fields);
+	}
 
 	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
 }
 
-export async function sweepBrokenStreaks(client: any) {
-	const stale = (await db.listStaleStreaks(500).catch(() => [])) as any[];
+export async function sweepBrokenStreaks(client: Client) {
+	const stale = await db.listStaleStreaks(500).catch(() => []);
 	const nowKey = minuteKeyFor(Date.now());
 
 	for (const row of stale) {
 		const last = Number(row.last_claim_day_key);
 		const missed = Math.floor((nowKey - last) / DAY_MINUTES) - 1;
-		if (missed < 1) continue;
+		if (missed < 1) {
+			continue;
+		}
 
 		const streak = Number(row.current_streak) || 0;
 		const freezes = Number(row.freezes_available) || 0;

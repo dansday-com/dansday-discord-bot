@@ -76,36 +76,54 @@
 	}
 
 	function toGo(r: RewardItem): string {
-		if (r.goal_type === 'level') return `${fmt(Math.max(0, xpForLevel(r.goal, levelReq.baseXp, levelReq.multiplier) - xp))} XP to go`;
+		if (r.goal_type === 'level') {
+			return `${fmt(Math.max(0, xpForLevel(r.goal, levelReq.baseXp, levelReq.multiplier) - xp))} XP to go`;
+		}
 		const left = Math.max(0, r.goal - r.current);
-		if (r.goal_type === 'chat') return `${fmt(left)} to go`;
+		if (r.goal_type === 'chat') {
+			return `${fmt(left)} to go`;
+		}
 		return left >= 60 ? `${fmt(Math.ceil(left / 60))} h to go` : `${left} min to go`;
 	}
 
 	function progress(r: RewardItem): string {
-		if (r.goal_type === 'level') return `${fmt(xp)} / ${fmt(xpForLevel(r.goal, levelReq.baseXp, levelReq.multiplier))} XP`;
-		if (r.goal_type === 'chat') return `${fmt(r.current)} / ${fmt(r.goal)} messages`;
+		if (r.goal_type === 'level') {
+			return `${fmt(xp)} / ${fmt(xpForLevel(r.goal, levelReq.baseXp, levelReq.multiplier))} XP`;
+		}
+		if (r.goal_type === 'chat') {
+			return `${fmt(r.current)} / ${fmt(r.goal)} messages`;
+		}
 		return `${hours(r.current)} / ${hours(r.goal)}`;
 	}
 
 	function pct(r: RewardItem): number {
-		if (r.goal_type !== 'level') return Math.max(0, Math.min(100, (r.current / Math.max(1, r.goal)) * 100));
+		if (r.goal_type !== 'level') {
+			return Math.max(0, Math.min(100, (r.current / Math.max(1, r.goal)) * 100));
+		}
 		const to = xpForLevel(r.goal, levelReq.baseXp, levelReq.multiplier);
 		return Math.max(0, Math.min(100, (xp / Math.max(1, to)) * 100));
 	}
 
 	function status(r: RewardItem): { icon: string; tone: string; line: string } {
-		if (r.state === 'delivered') return { icon: 'fa-circle-check', tone: 'text-success', line: 'Delivered. Staff handed this over to you.' };
-		if (r.state === 'earned') return { icon: 'fa-circle-check', tone: 'text-success', line: EARNED_LINE[r.kind] };
-		if (r.state === 'replaced') return { icon: 'fa-layer-group', tone: 'text-base-content/60', line: 'A higher reward on the same goal took its place.' };
-		if (r.state === 'gone')
+		if (r.state === 'delivered') {
+			return { icon: 'fa-circle-check', tone: 'text-success', line: 'Delivered. Staff handed this over to you.' };
+		}
+		if (r.state === 'earned') {
+			return { icon: 'fa-circle-check', tone: 'text-success', line: EARNED_LINE[r.kind] };
+		}
+		if (r.state === 'replaced') {
+			return { icon: 'fa-layer-group', tone: 'text-base-content/60', line: 'A higher reward on the same goal took its place.' };
+		}
+		if (r.state === 'gone') {
 			return { icon: 'fa-hourglass-end', tone: 'text-base-content/60', line: `All ${fmt(r.limit ?? 0)} were taken before you got there.` };
-		if (r.state === 'passed')
+		}
+		if (r.state === 'passed') {
 			return {
 				icon: 'fa-forward',
 				tone: 'text-base-content/60',
 				line: 'You were already past this goal when it opened. It goes to members who reach it from now on.'
 			};
+		}
 		return { icon: 'fa-lock', tone: 'text-warning', line: `Reach ${r.goal_label} to unlock it. ${toGo(r)}.` };
 	}
 </script>

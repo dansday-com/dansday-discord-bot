@@ -59,7 +59,9 @@ const ID_FIELD = { type: 'integer', description: 'The id of the item, from list_
 type Parsed<T> = { value: T } | { error: string };
 
 function parseJson(value: unknown): any {
-	if (typeof value !== 'string') return value ?? null;
+	if (typeof value !== 'string') {
+		return value ?? null;
+	}
 	try {
 		return JSON.parse(value);
 	} catch {
@@ -91,7 +93,9 @@ function settingsFor(effectType: string, args: Record<string, unknown>, current:
 	for (const [key, fallback] of Object.entries(defaults)) {
 		const value = args[key] ?? current[key] ?? fallback;
 		if (key === 'scope') {
-			if (!BOOST_SCOPES.includes(String(value))) return { error: `scope must be one of ${BOOST_SCOPES.join(', ')}` };
+			if (!BOOST_SCOPES.includes(String(value))) {
+				return { error: `scope must be one of ${BOOST_SCOPES.join(', ')}` };
+			}
 			settings[key] = String(value);
 			continue;
 		}
@@ -102,50 +106,77 @@ function settingsFor(effectType: string, args: Record<string, unknown>, current:
 		}
 		settings[key] = number;
 	}
-	if (Number(settings.min_percent) > Number(settings.max_percent)) return { error: 'min_percent cannot be higher than max_percent' };
+	if (Number(settings.min_percent) > Number(settings.max_percent)) {
+		return { error: 'min_percent cannot be higher than max_percent' };
+	}
 	return { value: settings };
 }
 
 function wallClock(value: unknown, key: string): Parsed<string | null> {
-	if (value === null || String(value).trim() === '') return { value: null };
+	if (value === null || String(value).trim() === '') {
+		return { value: null };
+	}
 	const match = String(value).match(WALL_CLOCK);
 	return match ? { value: `${match[1]} ${match[2]}:00` } : { error: `${key} must look like "YYYY-MM-DD HH:MM"` };
 }
 
 function weekly(args: Record<string, unknown>, current: any): Parsed<{ days: number[]; from: string; to: string } | null> {
-	if (!('recurring_days' in args) && !('recurring_from' in args) && !('recurring_to' in args)) return { value: current ?? null };
+	if (!('recurring_days' in args) && !('recurring_from' in args) && !('recurring_to' in args)) {
+		return { value: current ?? null };
+	}
 	const days = Array.isArray(args.recurring_days)
 		? [...new Set(args.recurring_days.map(Number))].sort((a, b) => a - b)
 		: ((current?.days ?? []) as number[]).map(Number);
-	if (days.length === 0) return { value: null };
-	if (days.some((day) => !Number.isInteger(day) || day < 0 || day > 6))
+	if (days.length === 0) {
+		return { value: null };
+	}
+	if (days.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) {
 		return { error: 'recurring_days takes whole numbers from 0 for Sunday to 6 for Saturday' };
+	}
 	const from = String(args.recurring_from ?? current?.from ?? '').trim();
 	const to = String(args.recurring_to ?? current?.to ?? '').trim();
-	if (!CLOCK.test(from) || !CLOCK.test(to)) return { error: 'A weekly schedule needs recurring_from and recurring_to as "HH:MM"' };
+	if (!CLOCK.test(from) || !CLOCK.test(to)) {
+		return { error: 'A weekly schedule needs recurring_from and recurring_to as "HH:MM"' };
+	}
 	return { value: { days, from, to } };
 }
 
 function itemData(args: Record<string, unknown>, current: any | null): Parsed<Record<string, unknown>> {
 	const name = String(args.name ?? current?.name ?? '').trim();
-	if (!name) return { error: 'The item needs a name' };
-	if (name.length > MAX_NAME_LENGTH) return { error: `The name must be at most ${MAX_NAME_LENGTH} characters` };
+	if (!name) {
+		return { error: 'The item needs a name' };
+	}
+	if (name.length > MAX_NAME_LENGTH) {
+		return { error: `The name must be at most ${MAX_NAME_LENGTH} characters` };
+	}
 
 	const effectType = String(args.effect_type ?? current?.effect_type ?? '');
-	if (!EFFECT_TYPE_IDS.includes(effectType)) return { error: `effect_type must be one of ${EFFECT_TYPE_IDS.join(', ')}` };
+	if (!EFFECT_TYPE_IDS.includes(effectType)) {
+		return { error: `effect_type must be one of ${EFFECT_TYPE_IDS.join(', ')}` };
+	}
 
 	const cost = args.cost ?? (current && current.effect_type === effectType ? current.cost : effectDefaultCost(effectType));
-	if (!Number.isInteger(Number(cost)) || Number(cost) < 0) return { error: 'cost must be a whole number of 0 or more' };
+	if (!Number.isInteger(Number(cost)) || Number(cost) < 0) {
+		return { error: 'cost must be a whole number of 0 or more' };
+	}
 
 	const settings = settingsFor(effectType, args, current && current.effect_type === effectType ? (parseJson(current.config) ?? {}) : {});
-	if ('error' in settings) return settings;
+	if ('error' in settings) {
+		return settings;
+	}
 
 	const from = 'available_from' in args ? wallClock(args.available_from, 'available_from') : { value: current?.available_from ?? null };
-	if ('error' in from) return from;
+	if ('error' in from) {
+		return from;
+	}
 	const to = 'available_to' in args ? wallClock(args.available_to, 'available_to') : { value: current?.available_to ?? null };
-	if ('error' in to) return to;
+	if ('error' in to) {
+		return to;
+	}
 	const recurring = weekly(args, current ? parseJson(current.recurring_schedule) : null);
-	if ('error' in recurring) return recurring;
+	if ('error' in recurring) {
+		return recurring;
+	}
 
 	return {
 		value: {
@@ -193,7 +224,9 @@ export function itemsPack(reach: AgentReach, session: AgentSession): AgentPack {
 				parameters: { type: 'object', properties: ITEM_FIELDS, required: ['name', 'effect_type'] },
 				run: async (args) => {
 					const data = itemData(args, null);
-					if ('error' in data) return { ok: false, reason: data.error };
+					if ('error' in data) {
+						return { ok: false, reason: data.error };
+					}
 					const item = await db.createItem(panelId, data.value);
 					session.changed.add('items');
 					logger.log(`${session.actor} created item "${data.value.name}" (${data.value.effect_type}) through the assistant`);
@@ -206,11 +239,17 @@ export function itemsPack(reach: AgentReach, session: AgentSession): AgentPack {
 				parameters: { type: 'object', properties: { id: ID_FIELD, ...ITEM_FIELDS }, required: ['id'] },
 				run: async ({ id, ...changes }) => {
 					const current = await owned(id);
-					if (!current) return { ok: false, reason: 'not_found' };
+					if (!current) {
+						return { ok: false, reason: 'not_found' };
+					}
 					const unknown = Object.keys(changes).filter((key) => !BASE_KEYS.includes(key) && !SETTING_KEYS.includes(key));
-					if (unknown.length > 0) return { ok: false, reason: `Unknown fields: ${unknown.join(', ')}` };
+					if (unknown.length > 0) {
+						return { ok: false, reason: `Unknown fields: ${unknown.join(', ')}` };
+					}
 					const data = itemData(changes, current);
-					if ('error' in data) return { ok: false, reason: data.error };
+					if ('error' in data) {
+						return { ok: false, reason: data.error };
+					}
 					const item = await db.updateItem(current.id, data.value);
 					session.changed.add('items');
 					logger.log(`${session.actor} updated item ${current.id} through the assistant`);

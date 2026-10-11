@@ -27,10 +27,14 @@
 	async function pick(input: HTMLInputElement) {
 		const file = input.files?.[0];
 		input.value = '';
-		if (!file) return;
+		if (!file) {
+			return;
+		}
 		try {
 			const key = await uploadMedia(editor, file, video, (fraction) => (progress = fraction));
-			if (key) value = key;
+			if (key) {
+				value = key;
+			}
 		} finally {
 			progress = null;
 		}

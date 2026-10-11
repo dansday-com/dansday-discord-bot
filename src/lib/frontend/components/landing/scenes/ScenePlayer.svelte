@@ -27,8 +27,11 @@
 	const clock = untrack(() => new SceneClock(scenes[0].duration, scenes[0].rest));
 	let startedFromRest = true;
 	clock.onend = () => {
-		if (startedFromRest) startedFromRest = false;
-		else select((index + 1) % scenes.length);
+		if (startedFromRest) {
+			startedFromRest = false;
+		} else {
+			select((index + 1) % scenes.length);
+		}
 	};
 
 	function select(i: number) {
@@ -77,10 +80,18 @@
 		let embed = e.embed;
 		let rows = e.rows;
 		for (const p of scene.patches ?? []) {
-			if (p.id !== e.id || now < p.at) continue;
-			if (p.text !== undefined) text = p.text;
-			if (p.embed !== undefined) embed = p.embed ?? undefined;
-			if (p.rows !== undefined) rows = p.rows;
+			if (p.id !== e.id || now < p.at) {
+				continue;
+			}
+			if (p.text !== undefined) {
+				text = p.text;
+			}
+			if (p.embed !== undefined) {
+				embed = p.embed ?? undefined;
+			}
+			if (p.rows !== undefined) {
+				rows = p.rows;
+			}
 		}
 		return { text, embed, rows };
 	}

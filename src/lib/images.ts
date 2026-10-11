@@ -21,12 +21,16 @@ export function imageContentType(filename: string): string {
 	return CONTENT_TYPES[ext] ?? 'application/octet-stream';
 }
 
-export function imageExtension(value: any): ImageFormat | null {
+export function imageExtension(value: unknown): ImageFormat | null {
 	let ext = String(value ?? '')
 		.toLowerCase()
 		.trim();
-	if (ext.startsWith('image/')) ext = ext.slice(6);
-	if (ext === 'jpeg') ext = 'jpg';
+	if (ext.startsWith('image/')) {
+		ext = ext.slice(6);
+	}
+	if (ext === 'jpeg') {
+		ext = 'jpg';
+	}
 	return (IMAGE_FORMATS as readonly string[]).includes(ext) ? (ext as ImageFormat) : null;
 }
 
@@ -101,11 +105,15 @@ async function cropBotProfileImage(file: File, kind: BotProfileImageKind, type: 
 		canvas.width = Math.max(1, Math.round(Math.min(spec.width, cropW)));
 		canvas.height = Math.max(1, Math.round(canvas.width / aspect));
 		const ctx = canvas.getContext('2d');
-		if (!ctx) throw new Error('Could not read the image');
+		if (!ctx) {
+			throw new Error('Could not read the image');
+		}
 		ctx.drawImage(img, (srcW - cropW) / 2, (srcH - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
 		const outType = type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
 		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, outType, 0.9));
-		if (!blob) throw new Error('Could not read the image');
+		if (!blob) {
+			throw new Error('Could not read the image');
+		}
 		return blob;
 	} finally {
 		URL.revokeObjectURL(url);
@@ -115,9 +123,15 @@ async function cropBotProfileImage(file: File, kind: BotProfileImageKind, type: 
 export async function prepareBotProfileImage(file: File, kind: BotProfileImageKind): Promise<string> {
 	const spec = BOT_PROFILE_IMAGE[kind];
 	const type = sniffBotProfileImage(new Uint8Array(await file.slice(0, 8).arrayBuffer()));
-	if (!type) throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
-	if (type === 'image/gif' && file.size <= spec.maxBytes) return readDataUrl(new Blob([file], { type }));
+	if (!type) {
+		throw new Error(`${spec.label} must be ${BOT_PROFILE_IMAGE_FORMATS_LABEL}`);
+	}
+	if (type === 'image/gif' && file.size <= spec.maxBytes) {
+		return readDataUrl(new Blob([file], { type }));
+	}
 	const blob = await cropBotProfileImage(file, kind, type);
-	if (blob.size > spec.maxBytes) throw new Error(`${spec.label}: ${tooLargeMessage(spec.maxBytes)}`);
+	if (blob.size > spec.maxBytes) {
+		throw new Error(`${spec.label}: ${tooLargeMessage(spec.maxBytes)}`);
+	}
 	return readDataUrl(blob);
 }

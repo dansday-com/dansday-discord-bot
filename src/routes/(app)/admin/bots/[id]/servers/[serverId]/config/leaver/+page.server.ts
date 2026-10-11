@@ -5,12 +5,14 @@ import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { greetingMessagesFor } from '$lib/localizedDefaults.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 	const [row, mainRow] = await Promise.all([
-		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.leaver).catch(() => ({})),
+		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.leaver).catch((): { settings?: undefined } => ({})),
 		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.main).catch(() => null)
 	]);
-	const settings = row?.settings && typeof row.settings === 'object' ? row.settings : {};
+	const settings = (row?.settings && typeof row.settings === 'object' ? row.settings : {}) as { enabled?: boolean; channels?: string[]; messages?: string[] };
 
 	const mergedSettings = {
 		...settings,

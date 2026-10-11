@@ -60,10 +60,12 @@ const client = new Client({
 
 let initialized = false;
 
-client.on('clientReady', async () => {
-	logger.info('Official bot logged in', { userTag: client.user?.tag });
+client.on('clientReady', async (readyClient) => {
+	logger.info('Official bot logged in', { userTag: readyClient.user?.tag });
 
-	if (initialized) return;
+	if (initialized) {
+		return;
+	}
 	initialized = true;
 
 	if (!BOT_TOKEN) {
@@ -71,26 +73,28 @@ client.on('clientReady', async () => {
 		BOT_TOKEN = getBotToken('official');
 	}
 
-	if (!BOT_TOKEN) throw new Error('Bot token not available. Cannot proceed.');
+	if (!BOT_TOKEN) {
+		throw new Error('Bot token not available. Cannot proceed.');
+	}
 
 	await commands.deployCommands(false);
 
-	logger.init(client);
+	logger.init(readyClient);
 	forwarder.init();
-	welcomer.init(client);
-	leaver.init(client);
-	booster.init(client);
-	moderation.init(client);
-	commands.init(client);
-	interfaceComponent.init(client);
-	customSupporterRole.init(client);
-	afk.init(client);
-	giveaway.init(client);
-	leveling.init(client);
-	invites.init(client);
-	ai.init(client);
-	voice.init(client).catch(() => {});
-	contentCreator.init(client);
+	welcomer.init(readyClient);
+	leaver.init(readyClient);
+	booster.init(readyClient);
+	moderation.init(readyClient);
+	commands.init(readyClient);
+	interfaceComponent.init(readyClient);
+	customSupporterRole.init(readyClient);
+	afk.init(readyClient);
+	giveaway.init(readyClient);
+	leveling.init(readyClient);
+	invites.init(readyClient);
+	ai.init(readyClient);
+	voice.init(readyClient).catch(() => {});
+	contentCreator.init(readyClient);
 
 	if (wakeModelAvailable()) {
 		const wakeWarmStartedAt = Date.now();
@@ -103,25 +107,27 @@ client.on('clientReady', async () => {
 			.catch(() => {});
 	}
 
-	await sync.init(client, BOT_TOKEN);
-	syncAllServerMenus(client).catch(() => {});
+	await sync.init(readyClient, BOT_TOKEN);
+	syncAllServerMenus(readyClient).catch(() => {});
 	const officialBotId = sync.getBotId();
 	const presenceBotId = officialBotId ?? (process.env.BOT_ID ? Number(process.env.BOT_ID) : NaN);
 	if (Number.isFinite(presenceBotId)) {
-		await applyDiscordPresenceFromDb(client, presenceBotId);
-		if (presencePollTimer) clearInterval(presencePollTimer);
+		await applyDiscordPresenceFromDb(readyClient, presenceBotId);
+		if (presencePollTimer) {
+			clearInterval(presencePollTimer);
+		}
 		presencePollTimer = setInterval(() => {
-			applyDiscordPresenceFromDb(client, presenceBotId).catch(() => {});
+			applyDiscordPresenceFromDb(readyClient, presenceBotId).catch(() => {});
 		}, PRESENCE_POLL_MS);
 	}
-	questNotifier.initQuestNotifier(client, officialBotId);
-	initRobloxCatalogNotifier(client, officialBotId);
-	initCreatorAlerts(client, officialBotId);
-	initExpirySweeper(client);
-	initModerationSweeper(client);
-	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(client, guildId, discordMemberId, streakResult, milestone));
+	questNotifier.initQuestNotifier(readyClient, officialBotId);
+	initRobloxCatalogNotifier(readyClient, officialBotId);
+	initCreatorAlerts(readyClient, officialBotId);
+	initExpirySweeper(readyClient);
+	initModerationSweeper(readyClient);
+	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(readyClient, guildId, discordMemberId, streakResult, milestone));
 	startMarketPoller(String(officialBotId));
-	webhook.startWebhookServer(client, officialBotId);
+	webhook.startWebhookServer(readyClient, officialBotId);
 });
 
 async function shutdown() {
@@ -155,7 +161,9 @@ process.on('SIGTERM', shutdown);
 		BOT_TOKEN = getBotToken('official');
 	}
 
-	if (!BOT_TOKEN) throw new Error('Bot token not available. Cannot login.');
+	if (!BOT_TOKEN) {
+		throw new Error('Bot token not available. Cannot login.');
+	}
 
 	const botId = process.env.BOT_ID ?? 'unknown';
 	singletonLock = await acquireBotSingletonLock('official', botId);

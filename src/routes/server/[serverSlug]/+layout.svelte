@@ -14,9 +14,13 @@
 
 	$effect(() => {
 		const newest = getToasts().at(-1);
-		if (!newest || newest.id <= heardToast) return;
+		if (!newest || newest.id <= heardToast) {
+			return;
+		}
 		heardToast = newest.id;
-		if (newest.type === 'error') sfx.nope();
+		if (newest.type === 'error') {
+			sfx.nope();
+		}
 	});
 </script>
 

@@ -46,7 +46,9 @@
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ error: 'Registration failed' }));
 				showToast(err.error || 'Registration failed', 'error');
-				if (err.redirect_to) setTimeout(() => goto(err.redirect_to), 1500);
+				if (err.redirect_to) {
+					setTimeout(() => goto(err.redirect_to), 1500);
+				}
 				return;
 			}
 

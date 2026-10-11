@@ -18,11 +18,15 @@ async function readPublicSettings(serverId: number): Promise<Record<string, any>
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!(await canEditServerSettings(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canEditServerSettings(locals, serverId))) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
 
 	try {
 		const upload = await readUploadedImage(request, MEMBER_THEME_MAX_BYTES);
-		if (!upload.ok) return json({ success: false, error: upload.error }, { status: upload.status });
+		if (!upload.ok) {
+			return json({ success: false, error: upload.error }, { status: upload.status });
+		}
 
 		const converted = await themeImageToWebp(upload.data, upload.extension);
 		const key = serverThemeKey(serverId, serverThemeFilename(converted.extension));
@@ -33,7 +37,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const accent = normalizeAccent(upload.form?.get('accent'));
 		const next = { ...settings, invite_theme_image: key, ...(accent ? { invite_theme_accent: accent } : {}) };
 		await db.upsertServerSettings(serverId, SERVER_SETTINGS.component.public, next);
-		if (previous && previous !== key) await removeServerTheme(previous);
+		if (previous && previous !== key) {
+			await removeServerTheme(previous);
+		}
 
 		await db
 			.createServerPanelLog(serverId, panelActorIds(locals), SERVER_SETTINGS.component.public, [
@@ -43,19 +49,23 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			.catch(() => null);
 
 		return json({ success: true, key, image: serverThemeUrl(key), accent: next.invite_theme_accent ?? null });
-	} catch (error: any) {
-		logger.log(`❌ Error saving invite page background: ${error.message}`);
+	} catch (error) {
+		logger.log(`❌ Error saving invite page background: ${(error as Error).message}`);
 		return json({ success: false, error: 'Could not save the background.' }, { status: 500 });
 	}
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (!(await canEditServerSettings(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canEditServerSettings(locals, serverId))) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
 
 	const settings = await readPublicSettings(serverId);
 	const previous = settings.invite_theme_image ?? null;
-	if (!previous) return json({ success: true });
+	if (!previous) {
+		return json({ success: true });
+	}
 
 	delete settings.invite_theme_image;
 	await db.upsertServerSettings(serverId, SERVER_SETTINGS.component.public, settings);

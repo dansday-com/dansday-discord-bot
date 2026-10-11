@@ -18,9 +18,15 @@
 
 	function compact(val: unknown): string {
 		const v = n(val);
-		if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(v >= 10_000_000_000 ? 0 : 1)}B`;
-		if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
-		if (v >= 10_000) return `${(v / 1_000).toFixed(0)}K`;
+		if (v >= 1_000_000_000) {
+			return `${(v / 1_000_000_000).toFixed(v >= 10_000_000_000 ? 0 : 1)}B`;
+		}
+		if (v >= 1_000_000) {
+			return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
+		}
+		if (v >= 10_000) {
+			return `${(v / 1_000).toFixed(0)}K`;
+		}
 		return v.toLocaleString();
 	}
 
@@ -30,22 +36,34 @@
 	}
 
 	function formatUptime(ms: number): string {
-		if (!ms || ms <= 0) return '0s';
+		if (!ms || ms <= 0) {
+			return '0s';
+		}
 		const s = Math.floor(ms / 1000);
 		const m = Math.floor(s / 60);
 		const h = Math.floor(m / 60);
 		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
+		if (d > 0) {
+			return `${d}d ${h % 24}h`;
+		}
+		if (h > 0) {
+			return `${h}h ${m % 60}m`;
+		}
+		if (m > 0) {
+			return `${m}m ${s % 60}s`;
+		}
 		return `${s}s`;
 	}
 
 	function formatMinutes(minutes: unknown): string {
 		const m = n(minutes);
-		if (m < 60) return `${m}m`;
+		if (m < 60) {
+			return `${m}m`;
+		}
 		const h = Math.floor(m / 60);
-		if (h < 24) return `${h}h ${m % 60}m`;
+		if (h < 24) {
+			return `${h}h ${m % 60}m`;
+		}
 		const d = Math.floor(h / 24);
 		return `${fmt(d)}d ${h % 24}h`;
 	}

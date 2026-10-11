@@ -1422,7 +1422,7 @@ export const messages = mysqlTable(
 		id: int('id').primaryKey().autoincrement(),
 		panel_id: int('panel_id')
 			.notNull()
-			.references(() => panels.id, { onDelete: 'cascade' }),
+			.references(() => panel.id, { onDelete: 'cascade' }),
 		name: varchar('name', { length: 100 }).notNull(),
 		content: json('content').notNull(),
 		created_at: datetime('created_at').notNull(),
@@ -1450,3 +1450,10 @@ export const messagePosts = mysqlTable(
 	},
 	(t) => [uniqueIndex('unique_global_message_post').on(t.discord_message_id), index('idx_message_posts_message').on(t.message_id)]
 );
+
+export type BotRow = typeof bots.$inferSelect;
+export type ServerRow = typeof servers.$inferSelect;
+export type ServerRoleRow = typeof serverRoles.$inferSelect;
+export type ServerChannelRow = typeof serverChannels.$inferSelect;
+export type ServerMemberRow = typeof serverMembers.$inferSelect;
+export type ServerMemberLevelRow = typeof serverMemberLevels.$inferSelect;

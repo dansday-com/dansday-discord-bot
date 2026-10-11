@@ -81,10 +81,14 @@ function introduction(locals: App.Locals, reach: AgentReach): string {
 }
 
 async function scopeFor(locals: App.Locals, rawServerId: unknown, message: MessageRequest | null): Promise<Scope | null> {
-	if (!locals.user.authenticated) return null;
+	if (!locals.user.authenticated) {
+		return null;
+	}
 	const serverId = locals.user.account_source === 'server_accounts' ? locals.user.server_id : Math.trunc(Number(rawServerId));
 	const server = serverId > 0 ? await db.getServer(serverId).catch(() => null) : null;
-	if (serverId > 0 && !server) return null;
+	if (serverId > 0 && !server) {
+		return null;
+	}
 
 	const reach = await agentReach(locals, server);
 	return reach ? { reach, session: agentSession(locals), message } : null;
@@ -92,7 +96,9 @@ async function scopeFor(locals: App.Locals, rawServerId: unknown, message: Messa
 
 export async function describeAssistant(locals: App.Locals, url: URL): Promise<Response> {
 	const scope = await scopeFor(locals, url.searchParams.get('server_id'), messageRequest({ scope: url.searchParams.get('message') }));
-	if (!scope) return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	if (!scope) {
+		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	}
 
 	return json({
 		ok: true,
@@ -101,12 +107,16 @@ export async function describeAssistant(locals: App.Locals, url: URL): Promise<R
 	});
 }
 
-export async function answerAssistant(locals: App.Locals, body: any): Promise<Response> {
+export async function answerAssistant(locals: App.Locals, body: Record<string, unknown>): Promise<Response> {
 	const scope = await scopeFor(locals, body?.server_id, messageRequest(body?.message));
-	if (!scope) return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	if (!scope) {
+		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	}
 
 	const turns = agentTurns(body?.history, body?.prompt);
-	if (!turns) return json({ ok: false, error: 'Tell the assistant what you need.' }, { status: 400 });
+	if (!turns) {
+		return json({ ok: false, error: 'Tell the assistant what you need.' }, { status: 400 });
+	}
 
 	const capabilities = CAPABILITIES.filter((capability) => capability.available(scope));
 	const packs = await Promise.all(capabilities.map((capability) => capability.pack(scope)));
@@ -129,7 +139,9 @@ export async function answerAssistant(locals: App.Locals, body: any): Promise<Re
 	const reply = await runPanelAgent(scope.reach, task, turns, `${scope.session.actor} asked the assistant${where}`);
 	const effects = { changed: [...scope.session.changed], navigate: scope.session.navigate };
 
-	if (reply.ok) return json({ ok: true, reply: reply.result.reply, message: reply.result.message ?? null, ...effects });
+	if (reply.ok) {
+		return json({ ok: true, reply: reply.result.reply, message: reply.result.message ?? null, ...effects });
+	}
 	if (effects.changed.length > 0 || effects.navigate) {
 		return json({
 			ok: true,

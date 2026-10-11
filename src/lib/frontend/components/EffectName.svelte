@@ -22,7 +22,9 @@
 
 	$effect(() => {
 		const el = node;
-		if (!el || family === 'none') return;
+		if (!el || family === 'none') {
+			return;
+		}
 		return observeVisibility(el, (visible) => {
 			live = visible;
 		});

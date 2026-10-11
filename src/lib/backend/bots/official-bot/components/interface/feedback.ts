@@ -5,8 +5,9 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { memberTranslator, translate, serverTranslator, errorReason } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue, imageUploadField, uploadedFiles } from './formFields.js';
 import db from '../../../../../database.js';
+import type { GuildTextBasedChannel, MessageComponentInteraction, ModalSubmitInteraction } from 'discord.js';
 
-export async function handleFeedbackButton(interaction) {
+export async function handleFeedbackButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 
@@ -41,7 +42,7 @@ export async function handleFeedbackButton(interaction) {
 		await interaction.showModal(modal);
 		await logger.log(`💬 Feedback modal shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error showing feedback modal: ${error.message}`);
+		await logger.log(`❌ Error showing feedback modal: ${(error as Error).message}`);
 		const errorMsg = await translate('feedback.errors.failed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -52,7 +53,7 @@ export async function handleFeedbackButton(interaction) {
 	}
 }
 
-export async function handleFeedbackModal(interaction) {
+export async function handleFeedbackModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -87,7 +88,7 @@ export async function handleFeedbackModal(interaction) {
 		try {
 			feedbackChannelId = await FEEDBACK.getChannel(guild.id);
 		} catch (err) {
-			await logger.log(`❌ Error getting feedback channel: ${err.message}`);
+			await logger.log(`❌ Error getting feedback channel: ${(err as Error).message}`);
 			const errorMsg = await translate('feedback.errors.channelError', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({
 				content: errorMsg
@@ -104,7 +105,7 @@ export async function handleFeedbackModal(interaction) {
 			return;
 		}
 
-		const feedbackChannel = guild.channels.cache.get(feedbackChannelId);
+		const feedbackChannel = guild.channels.cache.get(feedbackChannelId) as GuildTextBasedChannel | undefined;
 		if (!feedbackChannel) {
 			await logger.log(`❌ Feedback channel not found: ${feedbackChannelId}`);
 			const errorMsg = await translate('feedback.errors.channelNotFound', interaction.guild.id, interaction.user.id);
@@ -115,7 +116,7 @@ export async function handleFeedbackModal(interaction) {
 		}
 
 		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		const server = await db.getServerByDiscordId(botConfig!.id, guild.id);
 		const dbMember = await db.upsertMember(server.id, member);
 
 		const feedbackId = await db.createFeedback(server.id, dbMember.id, feedbackMessage, isAnonymous);
@@ -130,8 +131,8 @@ export async function handleFeedbackModal(interaction) {
 		const feedbackEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(feedbackEmbedTitle)
-			.setDescription(feedbackMessage.length > 4096 ? feedbackMessage.substring(0, 4093) + '...' : feedbackMessage)
-			.setThumbnail(isAnonymous ? undefined : user.displayAvatarURL({ dynamic: true, size: 256 }))
+			.setDescription(feedbackMessage.length > 4096 ? `${feedbackMessage.substring(0, 4093)}...` : feedbackMessage)
+			.setThumbnail(isAnonymous ? null : user.displayAvatarURL({ size: 256 }))
 			.addFields([
 				{
 					name: fromLabel,
@@ -154,12 +155,14 @@ export async function handleFeedbackModal(interaction) {
 				staffMentions = `<@&${feedbackRoleId}>`;
 			}
 		} catch (err) {
-			await logger.log(`⚠️  Error getting feedback role: ${err.message}`);
+			await logger.log(`⚠️  Error getting feedback role: ${(err as Error).message}`);
 		}
 
 		const feedbackPost = { content: staffMentions || undefined, embeds: [feedbackEmbed] };
-		await feedbackChannel.send({ ...feedbackPost, files: screenshots }).catch(async (err) => {
-			if (screenshots.length === 0) throw err;
+		await feedbackChannel.send({ ...feedbackPost, files: screenshots }).catch(async (err: Record<string, unknown>) => {
+			if (screenshots.length === 0) {
+				throw err;
+			}
 			await logger.log(`⚠️  Feedback screenshots could not be attached: ${err.message}`);
 			await feedbackChannel.send(feedbackPost);
 		});
@@ -186,8 +189,8 @@ export async function handleFeedbackModal(interaction) {
 
 		await logger.log(`✅ Feedback submitted by ${user.tag} (${user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error processing feedback: ${error.message}`);
-		await logger.log(`❌ Stack: ${error.stack}`);
+		await logger.log(`❌ Error processing feedback: ${(error as Error).message}`);
+		await logger.log(`❌ Stack: ${(error as Error).stack}`);
 		const errorMsg = await translate('feedback.errors.submitFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});

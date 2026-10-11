@@ -34,29 +34,39 @@
 
 	function remember(place: GlobePlace): GlobePlace {
 		recent.push(place.name);
-		if (recent.length > 8) recent.shift();
+		if (recent.length > 8) {
+			recent.shift();
+		}
 		return place;
 	}
 
 	function pickPlace(): GlobePlace {
 		const facing = pickFacing?.(recent);
-		if (facing) return remember(facing);
+		if (facing) {
+			return remember(facing);
+		}
 		for (let i = 0; i < 12; i++) {
 			const place = GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
-			if (!recent.includes(place.name)) return remember(place);
+			if (!recent.includes(place.name)) {
+				return remember(place);
+			}
 		}
 		return GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
 	}
 
 	function spawn(xp: number, delay = 0) {
-		if (!(xp > 0)) return;
+		if (!(xp > 0)) {
+			return;
+		}
 		pulses = [...pulses, { id: ++seq, place: pickPlace(), xp, born: performance.now() + delay }].slice(-MAX_RIGS);
 		requestFrame?.();
 	}
 
 	$effect(() => {
 		const batch = gains;
-		if (!batch?.items.length) return;
+		if (!batch?.items.length) {
+			return;
+		}
 		untrack(() => {
 			batch.items.slice(-MAX_PER_BATCH).forEach((xp, index) => spawn(xp, index * 260 + Math.random() * 180));
 		});
@@ -70,8 +80,11 @@
 
 		await new Promise<void>((resolve) => {
 			if (reduced) {
-				if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: 2500 });
-				else setTimeout(resolve, 300);
+				if ('requestIdleCallback' in window) {
+					requestIdleCallback(() => resolve(), { timeout: 2500 });
+				} else {
+					setTimeout(resolve, 300);
+				}
 				return;
 			}
 			dispose = onFirstInteraction(resolve);
@@ -89,7 +102,9 @@
 			startFallback();
 			return;
 		}
-		if (!canvasHost) return;
+		if (!canvasHost) {
+			return;
+		}
 
 		let renderer: import('three').WebGLRenderer;
 		try {
@@ -205,7 +220,9 @@
 		fetch('/geo/coastlines.json')
 			.then((res) => (res.ok ? res.json() : null))
 			.then((arcs: number[][] | null) => {
-				if (!arcs?.length) return;
+				if (!arcs?.length) {
+					return;
+				}
 				const positions: number[] = [];
 				for (const arc of arcs) {
 					for (let i = 0; i + 3 < arc.length; i += 2) {
@@ -231,9 +248,13 @@
 		window.addEventListener('pointermove', onPointer, { passive: true });
 
 		const resize = () => {
-			if (!canvasHost) return;
+			if (!canvasHost) {
+				return;
+			}
 			const { clientWidth: w, clientHeight: h } = canvasHost;
-			if (!w || !h) return;
+			if (!w || !h) {
+				return;
+			}
 			renderer.setSize(w, h, false);
 			camera.aspect = w / h;
 			const half = Math.tan((camera.fov * Math.PI) / 360);
@@ -251,7 +272,9 @@
 		const io = new IntersectionObserver(
 			(entries) => {
 				onScreen = entries.some((entry) => entry.isIntersecting);
-				if (onScreen) requestFrame?.();
+				if (onScreen) {
+					requestFrame?.();
+				}
 			},
 			{ threshold: 0 }
 		);
@@ -269,10 +292,14 @@
 		pickFacing = (exclude: string[]) => {
 			const candidates: GlobePlace[] = [];
 			for (const place of GLOBE_PLACES) {
-				if (exclude.includes(place.name)) continue;
+				if (exclude.includes(place.name)) {
+					continue;
+				}
 				facingPoint.copy(toVec(place.lat, place.lon, 1)).applyQuaternion(globe.quaternion);
 				facingToCamera.copy(camera.position).sub(facingPoint).normalize();
-				if (facingPoint.normalize().dot(facingToCamera) > 0.38) candidates.push(place);
+				if (facingPoint.normalize().dot(facingToCamera) > 0.38) {
+					candidates.push(place);
+				}
 			}
 			return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : null;
 		};
@@ -287,7 +314,9 @@
 
 		let boxes: Box[] = [];
 		const measure = (now: number) => {
-			if (!stage || now - boxesAt < 1000) return;
+			if (!stage || now - boxesAt < 1000) {
+				return;
+			}
 			boxesAt = now;
 			const origin = stage.getBoundingClientRect();
 			boxes = avoid
@@ -309,9 +338,13 @@
 			}
 
 			for (const pulse of active) {
-				if (rigs.some((rig) => rig.pulseId === pulse.id)) continue;
+				if (rigs.some((rig) => rig.pulseId === pulse.id)) {
+					continue;
+				}
 				const free = rigs.find((rig) => !rig.pulseId);
-				if (!free) continue;
+				if (!free) {
+					continue;
+				}
 				free.pulseId = pulse.id;
 				free.group.position.copy(toVec(pulse.place.lat, pulse.place.lon, 1.004));
 				normal.copy(free.group.position).normalize();
@@ -329,16 +362,22 @@
 			}
 
 			for (const rig of rigs) {
-				if (!rig.pulseId) continue;
+				if (!rig.pulseId) {
+					continue;
+				}
 				const pulse = active.find((item) => item.id === rig.pulseId);
-				if (!pulse) continue;
+				if (!pulse) {
+					continue;
+				}
 				const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
 				if (life >= 1) {
 					expired.push(pulse.id);
 					continue;
 				}
 				rig.group.visible = life >= 0;
-				if (life < 0) continue;
+				if (life < 0) {
+					continue;
+				}
 				const fade = Math.pow(1 - life, 1.5);
 				const exit = Math.min(1, (1 - life) / 0.25);
 				rig.ring.scale.setScalar(0.4 + life * 1.5);
@@ -365,7 +404,9 @@
 					const pulse = active[i];
 					const el = labelEls[pulse.id];
 					const rig = rigs.find((item) => item.pulseId === pulse.id);
-					if (!el) continue;
+					if (!el) {
+						continue;
+					}
 					if (!rig) {
 						hidden.push(el);
 						continue;
@@ -397,7 +438,9 @@
 					let slot = -1;
 					for (const offset of [0, -step, step]) {
 						const candidate = Math.min(Math.max(y + offset, floor), ceiling);
-						if (Math.abs(candidate - y) > step) continue;
+						if (Math.abs(candidate - y) > step) {
+							continue;
+						}
 						if (!clashes(x, candidate - size.h, size.w, size.h)) {
 							slot = candidate;
 							break;
@@ -417,18 +460,24 @@
 			} else {
 				for (const pulse of active) {
 					const el = labelEls[pulse.id];
-					if (el) hidden.push(el);
+					if (el) {
+						hidden.push(el);
+					}
 				}
 			}
 
-			for (const el of hidden) el.style.opacity = '0';
+			for (const el of hidden) {
+				el.style.opacity = '0';
+			}
 			for (const place of placements) {
 				place.el.style.transform = `translate(${Math.round(place.x)}px, ${Math.round(place.y)}px) translateY(-100%)`;
 				place.el.style.opacity = String(place.opacity);
 			}
 
 			if (expired.length) {
-				for (const id of expired) labelSizes.delete(id);
+				for (const id of expired) {
+					labelSizes.delete(id);
+				}
 				pulses = pulses.filter((pulse) => !expired.includes(pulse.id));
 			}
 		};
@@ -438,7 +487,9 @@
 
 		if (reduced) {
 			requestFrame = () => {
-				if (pending) return;
+				if (pending) {
+					return;
+				}
 				pending = true;
 				requestAnimationFrame((now) => {
 					pending = false;
@@ -462,7 +513,9 @@
 			const minGap = narrow.matches ? 32 : 0;
 			const tick = (now: number) => {
 				raf = requestAnimationFrame(tick);
-				if (!onScreen || document.hidden || now - last < minGap) return;
+				if (!onScreen || document.hidden || now - last < minGap) {
+					return;
+				}
 				last = now;
 				frame(now);
 			};

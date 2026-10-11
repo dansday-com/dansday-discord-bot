@@ -14,7 +14,9 @@
 	let sentinel: HTMLDivElement | null = $state(null);
 
 	async function loadMore() {
-		if (loading || exhausted) return;
+		if (loading || exhausted) {
+			return;
+		}
 		loading = true;
 		try {
 			const res = await fetch(`/api/public-catalog/roblox?offset=${loaded.length}`);
@@ -23,7 +25,9 @@
 			const seen = new Set(loaded.map((item) => item.asset_id));
 			const fresh = batch.filter((item) => !seen.has(item.asset_id));
 			loaded = [...loaded, ...fresh];
-			if (fresh.length === 0 || batch.length < (payload.limit ?? batch.length)) exhausted = true;
+			if (fresh.length === 0 || batch.length < (payload.limit ?? batch.length)) {
+				exhausted = true;
+			}
 		} catch (_) {
 			exhausted = true;
 		} finally {
@@ -33,9 +37,13 @@
 
 	$effect(() => {
 		const node = sentinel;
-		if (!node || exhausted) return;
+		if (!node || exhausted) {
+			return;
+		}
 		const io = new IntersectionObserver((entries) => {
-			if (entries.some((entry) => entry.isIntersecting)) loadMore();
+			if (entries.some((entry) => entry.isIntersecting)) {
+				loadMore();
+			}
 		});
 		io.observe(node);
 		return () => io.disconnect();
@@ -50,7 +58,7 @@
 
 	let query = $state('');
 	let limitedOnly = $state(false);
-	let broken = $state<Record<string, boolean>>({});
+	const broken = $state<Record<string, boolean>>({});
 
 	const initials = (n: string) =>
 		n
@@ -67,10 +75,16 @@
 
 	const filtered = $derived(
 		loaded.filter((item) => {
-			if (limitedOnly && !item.limited) return false;
-			if (category && item.category !== category) return false;
+			if (limitedOnly && !item.limited) {
+				return false;
+			}
+			if (category && item.category !== category) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${item.name} ${item.creator_name ?? ''}`.toLowerCase().includes(needle);
 		})
 	);

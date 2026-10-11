@@ -39,7 +39,9 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T,
 	const workers = new Array(Math.max(1, Math.min(limit, items.length))).fill(null).map(async () => {
 		for (;;) {
 			const i = cursor++;
-			if (i >= items.length) return;
+			if (i >= items.length) {
+				return;
+			}
 			results[i] = await fn(items[i], i);
 		}
 	});
@@ -48,17 +50,25 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T,
 }
 
 function discordTs(iso: string | undefined | null, style: 'R'): string {
-	if (!iso) return '—';
+	if (!iso) {
+		return '—';
+	}
 	const t = Date.parse(iso);
-	if (!Number.isFinite(t)) return '—';
+	if (!Number.isFinite(t)) {
+		return '—';
+	}
 	return `<t:${Math.floor(t / 1000)}:${style}>`;
 }
 
 export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: DiscordQuestSummary, opts?: { test?: boolean }) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
-	if (!guild) throw new Error('Guild not found');
+	if (!guild) {
+		throw new Error('Guild not found');
+	}
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
-	if (!channel || !channel.isTextBased()) throw new Error('Channel not found or not text-based');
+	if (!channel || !channel.isTextBased()) {
+		throw new Error('Channel not found or not text-based');
+	}
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const tr = await serverTranslator(guildId);
@@ -77,7 +87,9 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 		}
 	];
 	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
-	if (pub) fields.push({ name: tr('questNotifier.fields.publisher'), value: pub.slice(0, 1024), inline: true });
+	if (pub) {
+		fields.push({ name: tr('questNotifier.fields.publisher'), value: pub.slice(0, 1024), inline: true });
+	}
 
 	fields.push({ name: tr('questNotifier.fields.expires'), value: expiresBlock.slice(0, 1024), inline: true });
 
@@ -85,8 +97,12 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 
 	const thumb = quest.thumbnailUrl?.trim();
 	const banner = quest.bannerUrl?.trim();
-	if (thumb?.startsWith('http')) embed.setThumbnail(thumb);
-	if (banner?.startsWith('http')) embed.setImage(banner);
+	if (thumb?.startsWith('http')) {
+		embed.setThumbnail(thumb);
+	}
+	if (banner?.startsWith('http')) {
+		embed.setImage(banner);
+	}
 
 	const footerParts = [quest.publisher, embedConfig.FOOTER].filter((x) => typeof x === 'string' && x.trim().length > 0) as string[];
 	embed.setFooter({ text: footerParts.join(' · ').slice(0, 2048) });
@@ -127,8 +143,8 @@ async function prefetchBotWideQuests(officialBotId: number): Promise<Map<string,
 	const fetched = await mapWithConcurrency(selfbots, QUEST_FETCH_CONCURRENCY, async (selfbot) => {
 		try {
 			return { selfbot, payload: await fetchQuestsMe(selfbot.token as string), error: null as string | null };
-		} catch (accErr: any) {
-			return { selfbot, payload: null as unknown, error: String(accErr?.message || accErr) };
+		} catch (accErr) {
+			return { selfbot, payload: null as unknown, error: String((accErr as Error)?.message || accErr) };
 		}
 	});
 
@@ -143,7 +159,9 @@ async function prefetchBotWideQuests(officialBotId: number): Promise<Map<string,
 		okAccounts++;
 
 		for (const q of extractDiscordQuestSummaries(payload)) {
-			if (mergedById.has(q.id)) continue;
+			if (mergedById.has(q.id)) {
+				continue;
+			}
 			mergedById.set(q.id, q);
 			sourceByQuestId.set(q.id, `#${selfbot.id} ${selfbot.name}`);
 		}
@@ -182,12 +200,18 @@ async function runTick(client: Client, officialBotId: number) {
 
 	for (const server of servers) {
 		const discordGuildId = server.discord_server_id;
-		if (!discordGuildId) continue;
-		if (!(await isComponentFeatureEnabled(discordGuildId, serverSettingsComponent.discord_quest_notifier))) continue;
+		if (!discordGuildId) {
+			continue;
+		}
+		if (!(await isComponentFeatureEnabled(discordGuildId, serverSettingsComponent.discord_quest_notifier))) {
+			continue;
+		}
 
 		const s = settingsByServerId.get(server.id) ?? {};
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
-		if (!channelId) continue;
+		if (!channelId) {
+			continue;
+		}
 
 		if (questSummaries.length === 0) {
 			await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no stored active quests yet — nothing to post for server ${server.id} (${server.name})`);
@@ -207,7 +231,9 @@ async function runTick(client: Client, officialBotId: number) {
 			);
 
 			for (const q of questSummaries) {
-				if (!unpostedIds.has(q.id)) continue;
+				if (!unpostedIds.has(q.id)) {
+					continue;
+				}
 				const targetKey = `${discordGuildId}:${channelId}:${q.id}`;
 				if (postedTargets.has(targetKey)) {
 					await db.claimServerDiscordQuestForPost(server.id, q.id).catch(() => null);
@@ -226,14 +252,14 @@ async function runTick(client: Client, officialBotId: number) {
 					await logger.log(
 						`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name}) discovered via ${sourceByQuestId.get(q.id) ?? 'bot-wide stored quest'}`
 					);
-				} catch (sendErr: any) {
+				} catch (sendErr) {
 					postedTargets.delete(targetKey);
 					await db.releaseServerDiscordQuestClaim(server.id, q.id).catch(() => null);
-					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);
+					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${(sendErr as Error)?.message || sendErr}`);
 				}
 			}
-		} catch (e: any) {
-			await logger.log(`⚠️ Quest notifier tick failed for server ${server.id} (${server.name}): ${e?.message || e}`);
+		} catch (e) {
+			await logger.log(`⚠️ Quest notifier tick failed for server ${server.id} (${server.name}): ${(e as Error)?.message || e}`);
 		}
 	}
 }

@@ -7,7 +7,7 @@
 	let { data }: PageProps = $props();
 
 	onMount(() => {
-		const base = (data as any).serverBasePath ?? publicServerPath(data.server.slug);
+		const base = data.serverBasePath ?? publicServerPath(data.server.slug);
 		let stored = '';
 		try {
 			stored = sessionStorage.getItem(`items_card_${data.server.slug}`) || '';

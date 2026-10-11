@@ -8,10 +8,14 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, apexHome());
-	if ('guest' in shared) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(303, apexHome());
+	}
+	if ('guest' in shared) {
+		redirect(303, serverBasePath || '/');
+	}
 
-	const isPlatformOwner = MAINTAINER_DISCORD_ID.length > 0 && String((shared as any).memberDiscordId || '') === MAINTAINER_DISCORD_ID;
+	const isPlatformOwner = MAINTAINER_DISCORD_ID.length > 0 && String(shared.memberDiscordId || '') === MAINTAINER_DISCORD_ID;
 
 	return { ...shared, isPlatformOwner };
 };

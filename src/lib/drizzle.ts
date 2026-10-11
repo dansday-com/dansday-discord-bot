@@ -1,4 +1,5 @@
 import { drizzle } from 'drizzle-orm/mysql2';
+import type { MySql2Database } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import * as schema from './schema.js';
 
@@ -16,11 +17,21 @@ function getConnectionConfig() {
 		};
 	}
 
-	if (!process.env.DB_HOST) throw new Error('Missing DB_HOST environment variable');
-	if (!process.env.DB_PORT) throw new Error('Missing DB_PORT environment variable');
-	if (!process.env.DB_USER) throw new Error('Missing DB_USER environment variable');
-	if (!process.env.DB_PASSWORD) throw new Error('Missing DB_PASSWORD environment variable');
-	if (!process.env.DB_NAME) throw new Error('Missing DB_NAME environment variable');
+	if (!process.env.DB_HOST) {
+		throw new Error('Missing DB_HOST environment variable');
+	}
+	if (!process.env.DB_PORT) {
+		throw new Error('Missing DB_PORT environment variable');
+	}
+	if (!process.env.DB_USER) {
+		throw new Error('Missing DB_USER environment variable');
+	}
+	if (!process.env.DB_PASSWORD) {
+		throw new Error('Missing DB_PASSWORD environment variable');
+	}
+	if (!process.env.DB_NAME) {
+		throw new Error('Missing DB_NAME environment variable');
+	}
 
 	return {
 		host: process.env.DB_HOST,
@@ -33,7 +44,7 @@ function getConnectionConfig() {
 
 const tzOffset = 'Z';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: (MySql2Database<typeof schema> & { $client: mysql.Pool }) | null = null;
 
 function getDb() {
 	if (!_db) {

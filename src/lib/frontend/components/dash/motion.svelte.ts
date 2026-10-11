@@ -11,10 +11,14 @@ export function countUp(node: HTMLElement, target: number) {
 	let start = 0;
 	let raf = 0;
 	const tick = (now: number) => {
-		if (!start) start = now;
+		if (!start) {
+			start = now;
+		}
 		const t = Math.min(1, (now - start) / 900);
 		render((target || 0) * (1 - Math.pow(1 - t, 3)));
-		if (t < 1) raf = requestAnimationFrame(tick);
+		if (t < 1) {
+			raf = requestAnimationFrame(tick);
+		}
 	};
 	render(0);
 	raf = requestAnimationFrame(tick);
@@ -35,7 +39,9 @@ export function growOnMount() {
 		});
 		return () => {
 			cancelAnimationFrame(outer);
-			if (inner) cancelAnimationFrame(inner);
+			if (inner) {
+				cancelAnimationFrame(inner);
+			}
 		};
 	});
 

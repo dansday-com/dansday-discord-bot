@@ -13,7 +13,9 @@
 	});
 
 	async function saveAutoQuest(next: boolean) {
-		if (savingAutoQuest) return;
+		if (savingAutoQuest) {
+			return;
+		}
 		savingAutoQuest = true;
 		try {
 			const res = await fetch('/api/panel/settings', {

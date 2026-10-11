@@ -17,15 +17,21 @@
 	$effect(() => {
 		nonce;
 		const target = focus ? root?.querySelector<HTMLElement>(`[data-part="${focus}"]`) : null;
-		if (!target) return;
+		if (!target) {
+			return;
+		}
 		const group = target.closest('details');
-		if (group) group.open = true;
+		if (group) {
+			group.open = true;
+		}
 		target.querySelector<HTMLElement>('input:not([type="file"]):not([type="color"]), textarea')?.focus({ preventScroll: true });
 		target.scrollIntoView({ block: 'nearest' });
 	});
 
 	function setColor(next: string) {
-		if (next === '' || /^#[0-9a-f]{6}$/i.test(next)) embed.color = next.toLowerCase();
+		if (next === '' || /^#[0-9a-f]{6}$/i.test(next)) {
+			embed.color = next.toLowerCase();
+		}
 	}
 </script>
 

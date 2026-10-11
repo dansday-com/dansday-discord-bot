@@ -56,7 +56,9 @@ export function createUploadStore(root: string, scopePatterns: RegExp[]): Upload
 			}
 			const parts = scopes.map((scope, index) => {
 				const value = String(scope);
-				if (!exactScopes[index].test(value)) throw new Error(`Invalid ${root} scope: ${value}`);
+				if (!exactScopes[index].test(value)) {
+					throw new Error(`Invalid ${root} scope: ${value}`);
+				}
 				return value;
 			});
 			if (!UPLOAD_FILENAME_PATTERN.test(filename)) {
@@ -76,7 +78,9 @@ export function createUploadStore(root: string, scopePatterns: RegExp[]): Upload
 		scopesOf,
 		belongsTo(key, ...scopes) {
 			const owner = scopesOf(key);
-			if (!owner || owner.length !== scopes.length) return false;
+			if (!owner || owner.length !== scopes.length) {
+				return false;
+			}
 			return owner.every((value, index) => value === String(scopes[index]));
 		},
 		url(key) {

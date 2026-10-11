@@ -94,10 +94,14 @@ export async function getCachedLeaderboard(
 	limit: number
 ): Promise<LeaderboardSnapshot | null> {
 	const redis = await getRedisClient();
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(key(serverId, metric, period, limit));
-		if (!raw) return null;
+		if (!raw) {
+			return null;
+		}
 		return JSON.parse(raw) as LeaderboardSnapshot;
 	} catch (_) {
 		return null;
@@ -113,7 +117,9 @@ export async function setCachedLeaderboard(
 	ttlSeconds = 20
 ) {
 	const redis = await getRedisClient();
-	if (!redis) return false;
+	if (!redis) {
+		return false;
+	}
 	try {
 		await redis.set(key(serverId, metric, period, limit), JSON.stringify(snapshot), { EX: ttlSeconds });
 		return true;

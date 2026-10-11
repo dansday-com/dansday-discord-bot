@@ -1,20 +1,20 @@
-<script lang="ts">
+<script lang="ts" generics="V extends string | string[]">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { ROLE_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
 
 	interface Role {
 		discord_role_id: string;
-		name: string;
-		color: string;
+		name: string | null;
+		color: string | null;
 		position: number | null;
 	}
 
 	interface Props {
 		roles: Role[];
-		value: string | string[];
+		value: V;
 		placeholder?: string;
 		single?: boolean;
-		onchange: (value: string | string[]) => void;
+		onchange: (value: V) => void;
 	}
 
 	let { roles, value, placeholder = 'Select roles...', single = false, onchange }: Props = $props();
@@ -26,7 +26,7 @@
 	const sortedRoles = $derived([...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)));
 	const filtered = $derived(search.trim() ? sortedRoles.filter((r) => r.name?.toLowerCase().includes(search.toLowerCase())) : sortedRoles);
 
-	function roleColor(hex: string) {
+	function roleColor(hex: string | null) {
 		return !hex || hex === '#000000' ? '#6b7280' : hex;
 	}
 
@@ -46,16 +46,19 @@
 				pending = [id];
 			}
 		} else {
-			if (pending.includes(id)) pending = pending.filter((r) => r !== id);
-			else pending = [...pending, id];
+			if (pending.includes(id)) {
+				pending = pending.filter((r) => r !== id);
+			} else {
+				pending = [...pending, id];
+			}
 		}
 	}
 
 	function confirm() {
 		if (single) {
-			onchange(pending[0] ?? '');
+			onchange((pending[0] ?? '') as V);
 		} else {
-			onchange([...pending]);
+			onchange([...pending] as V);
 		}
 		open = false;
 		search = '';
@@ -63,9 +66,9 @@
 
 	function remove(id: string) {
 		if (single) {
-			onchange('');
+			onchange('' as V);
 		} else {
-			onchange((value as string[]).filter((r) => r !== id));
+			onchange((value as string[]).filter((r) => r !== id) as V);
 		}
 	}
 

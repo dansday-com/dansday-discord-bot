@@ -11,14 +11,24 @@ import {
 } from '../../../../utils/index.js';
 import { COMMUNITY_DISCORD_URL, DEFAULT_BOT_NICKNAME, getEmbedConfig, publicSiteOrigin } from '../../../config.js';
 import { translate } from '../i18n.js';
+import type { Client, DMChannel, Guild, GuildBasedChannel, GuildMember, NonThreadGuildBasedChannel, Role, TextChannel } from 'discord.js';
+import type { Collection } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type { PartialGuildMember } from 'discord.js';
 
-let client = null;
-let botId = null;
+let client: Client | null = null;
+let botId: number | null = null;
 
-function channelLabel(channel) {
-	if (channel.type === 4 || channel.type === 'GUILD_CATEGORY') return 'Category';
-	if (channel.type === 0 || channel.type === 'GUILD_TEXT') return 'Text Channel';
-	if (channel.type === 5 || channel.type === 'GUILD_NEWS') return 'News Channel';
+function channelLabel(channel: { type: number | string }) {
+	if (channel.type === 4 || channel.type === 'GUILD_CATEGORY') {
+		return 'Category';
+	}
+	if (channel.type === 0 || channel.type === 'GUILD_TEXT') {
+		return 'Text Channel';
+	}
+	if (channel.type === 5 || channel.type === 'GUILD_NEWS') {
+		return 'News Channel';
+	}
 	return 'Channel';
 }
 
@@ -31,7 +41,7 @@ const EVENT_SYNC_MAX_WAIT_MS = 2 * 60 * 1000;
 
 let syncRunning = false;
 
-async function findBotByToken(token) {
+async function findBotByToken(token: string) {
 	try {
 		if (process.env.BOT_ID) {
 			const bot = await db.getBot(process.env.BOT_ID);
@@ -44,12 +54,12 @@ async function findBotByToken(token) {
 		const bot = bots.find((b) => b.token === token);
 		return bot;
 	} catch (error) {
-		logger.log(`❌ Error finding bot: ${error.message}`);
+		logger.log(`❌ Error finding bot: ${(error as Error).message}`);
 		return null;
 	}
 }
 
-async function syncGuildData(guild) {
+async function syncGuildData(guild: Guild) {
 	try {
 		if (!botId) {
 			logger.log(`⚠️  Bot ID not set, skipping sync for guild: ${guild.name}`);
@@ -63,7 +73,9 @@ async function syncGuildData(guild) {
 			await guild.members.fetch();
 		} catch (memberFetchError) {
 			membersFetched = false;
-			logger.log(`⚠️  Could not fetch all members for ${guild.name}: ${memberFetchError.message}. Continuing with member count: ${guild.memberCount}`);
+			logger.log(
+				`⚠️  Could not fetch all members for ${guild.name}: ${(memberFetchError as Error).message}. Continuing with member count: ${guild.memberCount}`
+			);
 		}
 
 		if (membersFetched) {
@@ -130,7 +142,7 @@ async function syncGuildData(guild) {
 		);
 		return true;
 	} catch (error) {
-		logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
+		logger.log(`❌ Error syncing guild data for ${guild.name}: ${(error as Error).message}`);
 		return false;
 	}
 }
@@ -138,7 +150,9 @@ async function syncGuildData(guild) {
 const queueGuildSync = createGuildSyncDebouncer(syncGuildData, EVENT_SYNC_DEBOUNCE_MS, EVENT_SYNC_MAX_WAIT_MS);
 
 async function syncAllGuilds() {
-	if (!client || syncRunning) return;
+	if (!client || syncRunning) {
+		return;
+	}
 	syncRunning = true;
 
 	try {
@@ -149,8 +163,11 @@ async function syncAllGuilds() {
 		let failed = 0;
 		for (const [, guild] of guilds) {
 			const ok = await syncGuildData(guild);
-			if (ok) completed++;
-			else failed++;
+			if (ok) {
+				completed++;
+			} else {
+				failed++;
+			}
 		}
 
 		logger.log(`✅ Official bot sync completed: ${completed}/${guilds.size} server(s)`);
@@ -163,14 +180,16 @@ async function syncAllGuilds() {
 
 		await runRetentionPurge();
 	} catch (error) {
-		logger.log(`❌ Error syncing all guilds: ${error.message}`);
+		logger.log(`❌ Error syncing all guilds: ${(error as Error).message}`);
 	} finally {
 		syncRunning = false;
 	}
 }
 
-async function reapDepartedGuilds(guilds) {
-	if (!botId) return;
+async function reapDepartedGuilds(guilds: Collection<string, Guild>) {
+	if (!botId) {
+		return;
+	}
 
 	if (guilds.size === 0) {
 		logger.log('⏸️  No guilds in cache, skipping stale server cleanup to avoid deleting live data');
@@ -191,7 +210,7 @@ async function reapDepartedGuilds(guilds) {
 			);
 		}
 	} catch (error) {
-		logger.log(`❌ Error scheduling stale server deletion: ${error.message}`);
+		logger.log(`❌ Error scheduling stale server deletion: ${(error as Error).message}`);
 	}
 }
 
@@ -202,7 +221,7 @@ async function runRetentionPurge() {
 			logger.log(`🗑️  Retention purge: removed ${purged.servers} server(s) and ${purged.members} member(s) past ${db.DELETION_RETENTION_DAYS} days`);
 		}
 	} catch (error) {
-		logger.log(`❌ Error running retention purge: ${error.message}`);
+		logger.log(`❌ Error running retention purge: ${(error as Error).message}`);
 	}
 }
 
@@ -212,7 +231,7 @@ async function updateBotInfo() {
 	}
 
 	try {
-		const avatarUrl = client.user.displayAvatarURL({ dynamic: true, size: 256 });
+		const avatarUrl = client.user.displayAvatarURL({ size: 256 });
 
 		const displayName = client.user.globalName || client.user.username;
 		await db.updateBot(botId, {
@@ -221,30 +240,40 @@ async function updateBotInfo() {
 		});
 		logger.log(`✅ Updated bot name and icon from Discord: ${displayName}`);
 	} catch (error) {
-		logger.log(`⚠️  Failed to update bot info: ${error.message}`);
+		logger.log(`⚠️  Failed to update bot info: ${(error as Error).message}`);
 	}
 }
 
-async function findGreetingChannel(guild) {
+async function findGreetingChannel(guild: Guild) {
 	const me = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
-	if (!me) return null;
+	if (!me) {
+		return null;
+	}
 
-	const canSend = (channel) => {
-		if (!channel || channel.type !== ChannelType.GuildText) return false;
+	const canSend = (channel: GuildBasedChannel | null): channel is TextChannel => {
+		if (!channel || channel.type !== ChannelType.GuildText) {
+			return false;
+		}
 		const perms = channel.permissionsFor(me);
 		return Boolean(perms?.has(PermissionFlagsBits.ViewChannel) && perms?.has(PermissionFlagsBits.SendMessages));
 	};
 
-	if (canSend(guild.systemChannel)) return guild.systemChannel;
+	if (canSend(guild.systemChannel)) {
+		return guild.systemChannel;
+	}
 
 	const channels = await guild.channels.fetch().catch(() => null);
-	if (!channels) return null;
+	if (!channels) {
+		return null;
+	}
 
 	return [...channels.values()].filter(canSend).sort((a, b) => a.position - b.position)[0] || null;
 }
 
 async function isAiChatReady() {
-	if (!botId) return false;
+	if (!botId) {
+		return false;
+	}
 	try {
 		const config = db.aiFromDbRow(await db.getAiByBotId(botId));
 		return !!(config.enabled && config.api_url && config.api_key && config.model);
@@ -253,9 +282,9 @@ async function isAiChatReady() {
 	}
 }
 
-async function sendJoinGreeting(guild) {
+async function sendJoinGreeting(guild: Guild) {
 	try {
-		if (!(await db.claimGuildGreeting(botId, guild.id))) {
+		if (!(await db.claimGuildGreeting(botId!, guild.id))) {
 			logger.log(`↩️  Greeting already sent for ${guild.name} by another bot, skipping`);
 			return;
 		}
@@ -297,16 +326,16 @@ async function sendJoinGreeting(guild) {
 
 		await channel.send({
 			embeds: [embed],
-			components: [new ActionRowBuilder().addComponents(...buttons)]
+			components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(...buttons)]
 		});
 		logger.log(`👋 Sent join greeting in ${guild.name} (#${channel.name})`);
 	} catch (error) {
-		logger.log(`⚠️  Failed to send join greeting: ${error.message}`);
+		logger.log(`⚠️  Failed to send join greeting: ${(error as Error).message}`);
 		await db.resetGuildGreeting(guild.id).catch(() => null);
 	}
 }
 
-async function init(discordClient, botToken) {
+async function init(discordClient: Client, botToken: string) {
 	client = discordClient;
 
 	const bot = await findBotByToken(botToken);
@@ -324,7 +353,9 @@ async function init(discordClient, botToken) {
 	}
 
 	setTimeout(async () => {
-		if (!botId) return;
+		if (!botId) {
+			return;
+		}
 
 		logger.log('🔄 Official bot startup guild sync...');
 		await syncAllGuilds();
@@ -342,25 +373,31 @@ async function init(discordClient, botToken) {
 	}, 2000);
 
 	setInterval(() => {
-		if (!botId) return;
+		if (!botId) {
+			return;
+		}
 		runRetentionPurge();
 	}, RETENTION_PURGE_INTERVAL_MS);
 
 	setInterval(() => {
-		if (!botId) return;
+		if (!botId) {
+			return;
+		}
 		logger.log('🔄 Official bot periodic guild re-sync...');
 		syncAllGuilds().catch((error) => logger.log(`❌ Periodic guild re-sync failed: ${error.message}`));
 	}, FULL_RESYNC_INTERVAL_MS);
 
-	client.on('guildCreate', async (guild) => {
+	client.on('guildCreate', async (guild: Guild) => {
 		logger.log(`🆕 Bot joined new guild: ${guild.name}`);
 		await syncGuildData(guild);
 		await sendJoinGreeting(guild);
 	});
 
 	client.on('guildDelete', async (guild) => {
-		if (!botId) return;
-		if (guild.available === false || guild.unavailable === true) {
+		if (!botId) {
+			return;
+		}
+		if (guild.available === false) {
 			logger.log(`⏸️  Guild unavailable (Discord outage), keeping data: ${guild.name || guild.id}`);
 			return;
 		}
@@ -371,21 +408,27 @@ async function init(discordClient, botToken) {
 				logger.log(`🕗 Bot removed from guild, data scheduled for deletion in ${db.DELETION_RETENTION_DAYS} days: ${guild.name || guild.id}`);
 			}
 		} catch (error) {
-			logger.log(`❌ Failed to schedule deletion for ${guild.name || guild.id}: ${error.message}`);
+			logger.log(`❌ Failed to schedule deletion for ${guild.name || guild.id}: ${(error as Error).message}`);
 		}
 	});
 
-	client.on('channelCreate', async (channel) => {
-		if (!channel.guild || !isSyncedChannelType(channel)) return;
+	client.on('channelCreate', async (channel: NonThreadGuildBasedChannel) => {
+		if (!channel.guild || !isSyncedChannelType(channel)) {
+			return;
+		}
 		await logger.log(`📁 ${channelLabel(channel)} created: **${channel.name || 'Unknown'}** (${channel.id})`);
 		queueGuildSync(channel.guild);
 	});
 
 	client.on('channelUpdate', async (oldChannel, newChannel) => {
-		if (!newChannel.guild || !isSyncedChannelType(newChannel)) return;
-		if (channelSyncSignature(oldChannel) === channelSyncSignature(newChannel)) return;
+		if (newChannel.isDMBased() || !isSyncedChannelType(newChannel)) {
+			return;
+		}
+		if (channelSyncSignature(oldChannel) === channelSyncSignature(newChannel)) {
+			return;
+		}
 
-		const oldName = oldChannel.name || 'Unknown';
+		const oldName = (oldChannel as NonThreadGuildBasedChannel).name || 'Unknown';
 		const newName = newChannel.name || 'Unknown';
 
 		if (oldName !== newName) {
@@ -396,13 +439,15 @@ async function init(discordClient, botToken) {
 		queueGuildSync(newChannel.guild);
 	});
 
-	client.on('channelDelete', async (channel) => {
-		if (!channel.guild || !isSyncedChannelType(channel)) return;
+	client.on('channelDelete', async (channel: DMChannel | NonThreadGuildBasedChannel) => {
+		if (channel.isDMBased() || !isSyncedChannelType(channel)) {
+			return;
+		}
 		await logger.log(`🗑️ ${channelLabel(channel)} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
 		queueGuildSync(channel.guild);
 	});
 
-	client.on('roleCreate', async (role) => {
+	client.on('roleCreate', async (role: Role) => {
 		if (role.guild) {
 			const roleName = role.name || 'Unknown';
 			const roleColor = role.hexColor !== '#000000' ? role.hexColor : 'No color';
@@ -410,7 +455,7 @@ async function init(discordClient, botToken) {
 		}
 	});
 
-	client.on('roleUpdate', async (oldRole, newRole) => {
+	client.on('roleUpdate', async (oldRole: Role, newRole: Role) => {
 		if (newRole.guild) {
 			const oldName = oldRole.name || 'Unknown';
 			const newName = newRole.name || 'Unknown';
@@ -427,7 +472,7 @@ async function init(discordClient, botToken) {
 		}
 	});
 
-	client.on('roleDelete', async (role) => {
+	client.on('roleDelete', async (role: Role) => {
 		if (role.guild) {
 			const roleName = role.name || 'Unknown';
 			await logger.log(`🗑️ Role deleted: **${roleName}** (${role.id})`);
@@ -435,7 +480,7 @@ async function init(discordClient, botToken) {
 		}
 	});
 
-	client.on('guildMemberAdd', async (member) => {
+	client.on('guildMemberAdd', async (member: GuildMember) => {
 		if (member.guild && botId) {
 			try {
 				const serverData = await db.getServerByDiscordId(botId, member.guild.id);
@@ -447,13 +492,13 @@ async function init(discordClient, botToken) {
 					}
 				}
 			} catch (error) {
-				await logger.log(`⚠️ Failed to upsert member ${member.id} on join: ${error.message}`);
+				await logger.log(`⚠️ Failed to upsert member ${member.id} on join: ${(error as Error).message}`);
 			}
 			queueGuildSync(member.guild);
 		}
 	});
 
-	client.on('guildMemberRemove', async (member) => {
+	client.on('guildMemberRemove', async (member: GuildMember | PartialGuildMember) => {
 		if (member.guild && botId) {
 			if (member.guild.available === false) {
 				logger.log(`⏸️  Guild unavailable, not marking member ${member.id} deleted`);
@@ -478,21 +523,23 @@ async function init(discordClient, botToken) {
 							return;
 						}
 
-						const serverData = await db.getServerByDiscordId(botId, member.guild.id);
-						if (!serverData) return;
+						const serverData = await db.getServerByDiscordId(botId!, member.guild.id);
+						if (!serverData) {
+							return;
+						}
 						const marked = await db.markMemberDeletedByDiscordId(serverData.id, member.id);
 						if (marked) {
 							logger.log(`🕗 Member left, data scheduled for deletion in ${db.DELETION_RETENTION_DAYS} days: ${memberTag} in ${guildName}`);
 						}
 					} catch (error) {
-						await logger.log(`⚠️ Failed to delete member ${member.id} on leave: ${error.message}`);
+						await logger.log(`⚠️ Failed to delete member ${member.id} on leave: ${(error as Error).message}`);
 					}
 				}, MEMBER_LEAVE_DELETE_DELAY_MS);
 			}
 		}
 	});
 
-	client.on('guildMemberUpdate', async (oldMember, newMember) => {
+	client.on('guildMemberUpdate', async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) => {
 		if (newMember.guild && botId && newMember.user && !newMember.user.bot) {
 			try {
 				const serverData = await db.getServerByDiscordId(botId, newMember.guild.id);
@@ -504,12 +551,12 @@ async function init(discordClient, botToken) {
 					}
 				}
 			} catch (error) {
-				logger.log(`❌ Error syncing member on update: ${error.message}`);
+				logger.log(`❌ Error syncing member on update: ${(error as Error).message}`);
 			}
 		}
 	});
 
-	client.on('guildUpdate', async (oldGuild, newGuild) => {
+	client.on('guildUpdate', async (oldGuild: Guild, newGuild: Guild) => {
 		if (botId) {
 			queueGuildSync(newGuild);
 		}

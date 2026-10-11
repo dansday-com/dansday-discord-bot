@@ -6,7 +6,9 @@ import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 import { defaultMainEmbedFooters } from '$lib/localizedDefaults.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.main).catch(() => null);
 	return { settings: normalizeMainConfigForPanel(row?.settings ?? {}), defaultFooters: defaultMainEmbedFooters() };
 };

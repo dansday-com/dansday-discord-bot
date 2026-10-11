@@ -60,8 +60,12 @@ function questIdFromButtonCustomId(customId: string): string | null {
 }
 
 function questIdFromModalCustomId(customId: string): string {
-	if (customId.startsWith(QUEST_ENROLL_MODAL_PREFIX)) return customId.slice(QUEST_ENROLL_MODAL_PREFIX.length).trim();
-	if (customId.startsWith(LEGACY_ENROLL_MODAL_PREFIX)) return customId.slice(LEGACY_ENROLL_MODAL_PREFIX.length).trim();
+	if (customId.startsWith(QUEST_ENROLL_MODAL_PREFIX)) {
+		return customId.slice(QUEST_ENROLL_MODAL_PREFIX.length).trim();
+	}
+	if (customId.startsWith(LEGACY_ENROLL_MODAL_PREFIX)) {
+		return customId.slice(LEGACY_ENROLL_MODAL_PREFIX.length).trim();
+	}
 	return '';
 }
 
@@ -71,7 +75,9 @@ function tokenFromModal(interaction: ModalSubmitInteraction): string {
 
 async function isAutoQuestEnrollmentEnabled(serverId: number): Promise<boolean> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
-	if (!panelId) return false;
+	if (!panelId) {
+		return false;
+	}
 	const row = await db.getPanelSettings(panelId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 	const raw = row?.settings;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
@@ -89,7 +95,9 @@ async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest:
 }
 
 async function announceTargetLine(guildId: string, userId: string, channelId: string | null): Promise<string> {
-	if (!channelId) return translate('questEnroll.announceDisabled', guildId, userId);
+	if (!channelId) {
+		return translate('questEnroll.announceDisabled', guildId, userId);
+	}
 	return translate('questEnroll.announceInChannel', guildId, userId, { channel: `<#${channelId}>` });
 }
 
@@ -121,7 +129,9 @@ async function autoQuestDisabledReply(interaction: ButtonInteraction | ModalSubm
 
 function questExpiresLine(quest: DiscordQuestSummary): string {
 	const t = quest.expiresAt ? Date.parse(quest.expiresAt) : NaN;
-	if (!Number.isFinite(t)) return '';
+	if (!Number.isFinite(t)) {
+		return '';
+	}
 	return `<t:${Math.floor(t / 1000)}:R>`;
 }
 
@@ -135,11 +145,17 @@ function sortQuestsByExpiry(quests: DiscordQuestSummary[]): DiscordQuestSummary[
 
 async function harvestQuestsFromMemberPayload(serverId: number, questsPayload: unknown): Promise<void> {
 	const botConfig = getBotConfig();
-	if (!botConfig) return;
+	if (!botConfig) {
+		return;
+	}
 	const discovered = extractDiscordQuestSummaries(questsPayload);
-	if (discovered.length === 0) return;
+	if (discovered.length === 0) {
+		return;
+	}
 	const added = await db.addMissingBotDiscordQuests(botConfig.id, discovered).catch(() => [] as DiscordQuestSummary[]);
-	if (added.length === 0) return;
+	if (added.length === 0) {
+		return;
+	}
 	await db
 		.linkServerToBotDiscordQuests(
 			serverId,
@@ -182,8 +198,12 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 	const lines = unclaimed.map(({ quest }, index) => {
 		const expires = questExpiresLine(quest);
 		const parts = [`[${quest.questName}](${quest.questUrl})`];
-		if (quest.reward?.trim()) parts.push(quest.reward.trim().replace(/\s+/g, ' ').slice(0, 120));
-		if (expires) parts.push(expires);
+		if (quest.reward?.trim()) {
+			parts.push(quest.reward.trim().replace(/\s+/g, ' ').slice(0, 120));
+		}
+		if (expires) {
+			parts.push(expires);
+		}
 		return `**${index + 1}.** ${parts.join(' · ')}`;
 	});
 
@@ -272,7 +292,7 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 	try {
 		questsPayload = await fetchQuestsMe(token);
 	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
+		const msg = e instanceof Error ? (e as Error).message : String(e);
 		const invalidEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(await translate('questEnroll.invalidTokenTitle', guildId, interaction.user.id))
@@ -426,7 +446,7 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 	try {
 		questsPayload = await fetchQuestsMe(token);
 	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
+		const msg = e instanceof Error ? (e as Error).message : String(e);
 		const embedConfig = await getEmbedConfig(interaction.guild!.id);
 		const invalidEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)

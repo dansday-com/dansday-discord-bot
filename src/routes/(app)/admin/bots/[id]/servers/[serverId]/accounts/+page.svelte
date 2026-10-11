@@ -88,15 +88,16 @@
 	}
 
 	async function copyLink() {
-		if (!generatedLink) return;
+		if (!generatedLink) {
+			return;
+		}
 		await navigator.clipboard.writeText(generatedLink);
 		copyIcon = 'fa-check';
 		setTimeout(() => (copyIcon = 'fa-copy'), 2000);
 	}
 
 	type PendingAction =
-		| { kind: 'account'; accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string }
-		| { kind: 'invite'; inviteId: number; label: string };
+		{ kind: 'account'; accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string } | { kind: 'invite'; inviteId: number; label: string };
 	let pending = $state<PendingAction | null>(null);
 	let confirming = $state(false);
 
@@ -104,7 +105,7 @@
 		pending = { kind: 'account', accountId, type: 'delete', label: name };
 	}
 
-	function confirmFreeze(accountId: number, currentlyFrozen: boolean, name: string) {
+	function confirmFreeze(accountId: number, currentlyFrozen: boolean | null, name: string) {
 		pending = { kind: 'account', accountId, type: currentlyFrozen ? 'unfreeze' : 'freeze', label: name };
 	}
 
@@ -113,7 +114,9 @@
 	}
 
 	async function executeConfirmed() {
-		if (!pending) return;
+		if (!pending) {
+			return;
+		}
 		confirming = true;
 		try {
 			if (pending.kind === 'invite') {
@@ -125,7 +128,9 @@
 				if (d.success) {
 					showToast('Invite link expired', 'success');
 					invalidateAll();
-				} else showToast(d.error || 'Failed to expire invite', 'error');
+				} else {
+					showToast(d.error || 'Failed to expire invite', 'error');
+				}
 			} else if (pending.type === 'delete') {
 				const res = await fetch(`/api/servers/${data.serverId}/accounts/${pending.accountId}`, {
 					method: 'DELETE',
@@ -135,7 +140,9 @@
 				if (d.success) {
 					showToast('Account removed', 'success');
 					invalidateAll();
-				} else showToast(d.error || 'Failed to remove account', 'error');
+				} else {
+					showToast(d.error || 'Failed to remove account', 'error');
+				}
 			} else {
 				const res = await fetch(`/api/servers/${data.serverId}/accounts/${pending.accountId}`, {
 					method: 'PATCH',
@@ -147,7 +154,9 @@
 				if (d.success) {
 					showToast(pending.type === 'freeze' ? 'Account frozen' : 'Account unfrozen', 'success');
 					invalidateAll();
-				} else showToast(d.error || 'Failed to update account', 'error');
+				} else {
+					showToast(d.error || 'Failed to update account', 'error');
+				}
 			}
 		} finally {
 			confirming = false;
@@ -159,7 +168,9 @@
 
 	function maskEmail(email: string) {
 		const at = email.indexOf('@');
-		if (at <= 0) return email.slice(0, 3) + '***';
+		if (at <= 0) {
+			return `${email.slice(0, 3)}***`;
+		}
 		const local = email.slice(0, at);
 		const domain = email.slice(at + 1);
 		const prefix = local.slice(0, 3);
@@ -167,7 +178,9 @@
 	}
 
 	function typeBadgeClass(type: string) {
-		if (type === 'owner') return 'bg-blue-900 text-blue-300';
+		if (type === 'owner') {
+			return 'bg-blue-900 text-blue-300';
+		}
 		return 'bg-ash-700 text-ash-300';
 	}
 </script>

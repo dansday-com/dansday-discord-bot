@@ -13,6 +13,10 @@ import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './account
 import { buildKnowledgeTools, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
 import { aiLanguageInstruction, translateServer } from '../i18n.js';
+import type { Client, Guild, GuildTextBasedChannel, Message } from 'discord.js';
+import type { Attachment } from 'discord.js';
+import type { AiInput } from '../../../../database.js';
+import type { ChatCompletionMessageFunctionToolCall, ChatCompletionMessageParam, ChatCompletionTool } from 'openai/resources/chat/completions';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
@@ -23,16 +27,16 @@ const MAX_GENERATED_IMAGES = 2;
 
 const inFlight = new Set();
 
-function sessionKey(guildId, memberId) {
+function sessionKey(guildId: string, memberId: number | string) {
 	return `${guildId}:${memberId}`;
 }
 
-function normalizeBaseUrl(rawUrl) {
+function normalizeBaseUrl(rawUrl: string) {
 	const trimmed = rawUrl.trim().replace(/\/+$/, '');
 	return trimmed.endsWith('/chat/completions') ? trimmed.slice(0, -'/chat/completions'.length) : trimmed;
 }
 
-function stripReasoning(text) {
+function stripReasoning(text: string) {
 	return text
 		.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
 		.replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -40,22 +44,32 @@ function stripReasoning(text) {
 		.trim();
 }
 
-function buildCompletionParams(config) {
+function buildCompletionParams(config: AiInput) {
 	const useThinking = config.reasoning !== 'none';
 	const modelLower = (config.model ?? '').toLowerCase();
 	const isGemini = modelLower.includes('gemini');
 
 	const thinkingKwargs = (() => {
-		if (!useThinking) return {};
-		if (modelLower.includes('glm')) return { chat_template_kwargs: { enable_thinking: true, clear_thinking: false } };
-		if (modelLower.includes('nemotron')) return { chat_template_kwargs: { enable_thinking: true }, reasoning_budget: -1 };
-		if (modelLower.includes('qwen')) return { chat_template_kwargs: { enable_thinking: true } };
-		if (modelLower.includes('deepseek') || modelLower.includes('kimi')) return { chat_template_kwargs: { thinking: true } };
+		if (!useThinking) {
+			return {};
+		}
+		if (modelLower.includes('glm')) {
+			return { chat_template_kwargs: { enable_thinking: true, clear_thinking: false } };
+		}
+		if (modelLower.includes('nemotron')) {
+			return { chat_template_kwargs: { enable_thinking: true }, reasoning_budget: -1 };
+		}
+		if (modelLower.includes('qwen')) {
+			return { chat_template_kwargs: { enable_thinking: true } };
+		}
+		if (modelLower.includes('deepseek') || modelLower.includes('kimi')) {
+			return { chat_template_kwargs: { thinking: true } };
+		}
 		return {};
 	})();
 
 	return {
-		model: config.model,
+		model: config.model!,
 		...(useThinking ? { reasoning_effort: isGemini && config.reasoning === 'xhigh' ? 'high' : config.reasoning } : {}),
 		...(!isGemini ? { frequency_penalty: 0.3 } : {}),
 		...thinkingKwargs
@@ -87,21 +101,23 @@ const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024;
 const ATTACHMENT_FETCH_TIMEOUT_MS = 20_000;
 
 const ATTACHMENT_KINDS = [
-	{ kind: 'image', test: (type, name) => type.startsWith('image/') || /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(name) },
-	{ kind: 'pdf', test: (type, name) => type === 'application/pdf' || /\.pdf$/i.test(name) },
-	{ kind: 'audio', test: (type, name) => type.startsWith('audio/') || /\.(mp3|wav|ogg|oga|m4a|aac|flac)$/i.test(name) },
-	{ kind: 'video', test: (type, name) => type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi)$/i.test(name) }
+	{ kind: 'image', test: (type: string, name: string) => type.startsWith('image/') || /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(name) },
+	{ kind: 'pdf', test: (type: string, name: string) => type === 'application/pdf' || /\.pdf$/i.test(name) },
+	{ kind: 'audio', test: (type: string, name: string) => type.startsWith('audio/') || /\.(mp3|wav|ogg|oga|m4a|aac|flac)$/i.test(name) },
+	{ kind: 'video', test: (type: string, name: string) => type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi)$/i.test(name) }
 ];
 
-function classifyAttachment(attachment) {
+function classifyAttachment(attachment: Attachment) {
 	const type = (attachment.contentType ?? '').split(';')[0].trim().toLowerCase();
 	const name = attachment.name ?? '';
 	return ATTACHMENT_KINDS.find((entry) => entry.test(type, name))?.kind ?? null;
 }
 
-function mimeFor(attachment, kind) {
+function mimeFor(attachment: Attachment, kind: string) {
 	const declared = (attachment.contentType ?? '').split(';')[0].trim().toLowerCase();
-	if (declared) return declared;
+	if (declared) {
+		return declared;
+	}
 
 	const ext = (attachment.name ?? '').split('.').pop()?.toLowerCase() ?? '';
 	const fallback = {
@@ -124,9 +140,11 @@ function mimeFor(attachment, kind) {
 	return fallback ?? (kind === 'image' ? 'image/png' : 'application/octet-stream');
 }
 
-async function fetchAttachmentPart(attachment) {
+async function fetchAttachmentPart(attachment: Attachment) {
 	const kind = classifyAttachment(attachment);
-	if (!kind) return null;
+	if (!kind) {
+		return null;
+	}
 	if (attachment.size && attachment.size > MAX_ATTACHMENT_BYTES) {
 		await logger.log(`📎 AI skipping ${attachment.name ?? 'attachment'} (${attachment.size} bytes over limit)`);
 		return null;
@@ -137,36 +155,46 @@ async function fetchAttachmentPart(attachment) {
 
 	try {
 		const res = await fetch(attachment.url, { signal: controller.signal });
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		if (!res.ok) {
+			throw new Error(`HTTP ${res.status}`);
+		}
 
 		const buffer = Buffer.from(await res.arrayBuffer());
-		if (buffer.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`${buffer.byteLength} bytes over limit`);
+		if (buffer.byteLength > MAX_ATTACHMENT_BYTES) {
+			throw new Error(`${buffer.byteLength} bytes over limit`);
+		}
 
 		const mime = mimeFor(attachment, kind);
 		const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
 
-		if (kind === 'image') return { type: 'image_url', image_url: { url: dataUrl } };
+		if (kind === 'image') {
+			return { type: 'image_url', image_url: { url: dataUrl } };
+		}
 		return { type: 'input_file', input_file: { filename: attachment.name ?? `file.${mime.split('/')[1] ?? 'bin'}`, file_data: dataUrl } };
 	} catch (error) {
-		await logger.log(`📎 AI could not read ${attachment.name ?? 'attachment'}: ${error.message}`);
+		await logger.log(`📎 AI could not read ${attachment.name ?? 'attachment'}: ${(error as Error).message}`);
 		return null;
 	} finally {
 		clearTimeout(timer);
 	}
 }
 
-async function buildAttachmentParts(messages) {
+async function buildAttachmentParts(messages: unknown) {
 	const list = (Array.isArray(messages) ? messages : [messages]).filter(Boolean);
 
 	const supported = [];
 	for (const entry of list) {
 		for (const attachment of entry.attachments?.values?.() ?? []) {
-			if (classifyAttachment(attachment)) supported.push(attachment);
+			if (classifyAttachment(attachment)) {
+				supported.push(attachment);
+			}
 		}
 	}
 
 	const capped = supported.slice(0, MAX_ATTACHMENTS);
-	if (!capped.length) return { parts: [], kinds: [] };
+	if (!capped.length) {
+		return { parts: [], kinds: [] };
+	}
 
 	const settled = await Promise.all(capped.map((attachment) => fetchAttachmentPart(attachment)));
 	const parts = settled.filter(Boolean);
@@ -181,15 +209,17 @@ async function buildAttachmentParts(messages) {
 
 const TOOL_RETRY_HINT = 'This is the final result for this tool. Do not call it again — reply to the user in words.';
 
-function finalToolResult(payload) {
+function finalToolResult(payload: Record<string, unknown>) {
 	return JSON.stringify({ ...payload, final: true, next_step: TOOL_RETRY_HINT });
 }
 
-async function executeVoiceTool(name, message, botId) {
+async function executeVoiceTool(name: string, message: Message<true>, botId: number) {
 	const state = await readVoiceState(botId);
 
 	if (name === 'leave_voice') {
-		if (!state) return finalToolResult({ ok: false, reason: 'not_in_voice_channel' });
+		if (!state) {
+			return finalToolResult({ ok: false, reason: 'not_in_voice_channel' });
+		}
 
 		if (state.inviterId && message.author.id !== state.inviterId) {
 			const inviter = message.guild?.members?.cache?.get(state.inviterId);
@@ -224,7 +254,7 @@ async function executeVoiceTool(name, message, botId) {
 		cmd: 'join',
 		guildId: message.guild.id,
 		channelId,
-		channelName: message.member.voice.channel?.name ?? '',
+		channelName: message.member!.voice.channel?.name ?? '',
 		inviterId: message.author.id,
 		textChannelId: message.channel.id
 	});
@@ -233,7 +263,7 @@ async function executeVoiceTool(name, message, botId) {
 		return finalToolResult({ ok: false, reason: 'voice_worker_unavailable' });
 	}
 
-	return finalToolResult({ ok: true, joining: true, channel_name: message.member.voice.channel?.name ?? '' });
+	return finalToolResult({ ok: true, joining: true, channel_name: message.member!.voice.channel?.name ?? '' });
 }
 
 const SERVER_DATA_NOTE = `[System] You can read this server's own live data with your tools: its public statistics, leaderboards, a member's public profile, staff ratings, running giveaways, active Discord Quests, the XP item shop with prices and timings, the "How the XP Game Works" guide, and the account of the person you are talking to. Use them instead of guessing or answering from memory whenever someone asks about this server, this game, the shop, their level, their bag or their tasks — the numbers change constantly and only the tools are current.
@@ -246,58 +276,77 @@ const PING_NOTE =
 const MENTION_RE = /<@!?(\d{17,20})>/g;
 const MAX_PINGS_PER_MESSAGE = 5;
 
-async function resolveMentionedMembers(guild, content) {
-	if (!guild) return [];
+async function resolveMentionedMembers(guild: Guild, content: string) {
+	if (!guild) {
+		return [];
+	}
 
 	const ids = [...new Set([...String(content).matchAll(MENTION_RE)].map((match) => match[1]))].slice(0, MAX_PINGS_PER_MESSAGE);
-	if (!ids.length) return [];
+	if (!ids.length) {
+		return [];
+	}
 
 	const allowed = [];
 	for (const id of ids) {
 		const member = guild.members.cache.get(id) ?? (await guild.members.fetch(id).catch(() => null));
-		if (member && !member.user?.bot) allowed.push(id);
+		if (member && !member.user?.bot) {
+			allowed.push(id);
+		}
 	}
 
 	return allowed;
 }
 
-function stripBotMention(content, botUserId) {
+function stripBotMention(content: string, botUserId: unknown) {
 	return content
 		.replace(new RegExp(`<@!?${botUserId}>`, 'g'), ' ')
 		.replace(/\s+/g, ' ')
 		.trim();
 }
 
-function splitForDiscord(text, limit = DISCORD_MESSAGE_LIMIT) {
+function splitForDiscord(text: string, limit = DISCORD_MESSAGE_LIMIT) {
 	const chunks = [];
 	let remaining = text;
 
 	while (remaining.length > limit) {
 		let cut = remaining.lastIndexOf('\n', limit);
-		if (cut < limit * 0.5) cut = remaining.lastIndexOf(' ', limit);
-		if (cut < limit * 0.5) cut = limit;
+		if (cut < limit * 0.5) {
+			cut = remaining.lastIndexOf(' ', limit);
+		}
+		if (cut < limit * 0.5) {
+			cut = limit;
+		}
 
 		chunks.push(remaining.slice(0, cut).trim());
 		remaining = remaining.slice(cut).trim();
 	}
 
-	if (remaining) chunks.push(remaining);
+	if (remaining) {
+		chunks.push(remaining);
+	}
 	return chunks;
 }
 
-let cachedClient = null;
+let cachedClient: { baseURL: string; apiKey: string | null; client: OpenAI } | null = null;
 
-function getClient(config) {
-	const baseURL = normalizeBaseUrl(config.api_url);
+function getClient(config: AiInput) {
+	const baseURL = normalizeBaseUrl(config.api_url!);
 	if (cachedClient && cachedClient.baseURL === baseURL && cachedClient.apiKey === config.api_key) {
 		return cachedClient.client;
 	}
-	const client = new OpenAI({ baseURL, apiKey: config.api_key, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
+	const client = new OpenAI({ baseURL, apiKey: config.api_key!, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
 	cachedClient = { baseURL, apiKey: config.api_key, client };
 	return client;
 }
 
-async function callChatCompletions(config, messages, { tools = null, onToolCall = null } = {}) {
+async function callChatCompletions(
+	config: AiInput,
+	messages: ChatCompletionMessageParam[],
+	{
+		tools = null,
+		onToolCall = null
+	}: { tools?: ChatCompletionTool[] | null; onToolCall?: ((name: string, args: Record<string, unknown>) => Promise<string>) | null } = {}
+) {
 	const client = getClient(config);
 	const params = buildCompletionParams(config);
 	const loop = [...messages];
@@ -315,9 +364,13 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 		});
 
 		const choice = completion.choices?.[0]?.message;
-		if (!choice) return lastContent;
+		if (!choice) {
+			return lastContent;
+		}
 
-		if (typeof choice.content === 'string' && choice.content.trim()) lastContent = choice.content;
+		if (typeof choice.content === 'string' && choice.content.trim()) {
+			lastContent = choice.content;
+		}
 
 		if (!choice.tool_calls?.length || !onToolCall) {
 			return choice.content ?? lastContent;
@@ -327,9 +380,11 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 
 		const pending = new Map();
 
-		for (const call of choice.tool_calls) {
+		for (const call of choice.tool_calls as ChatCompletionMessageFunctionToolCall[]) {
 			const cacheKey = `${call.function.name}:${call.function.arguments ?? ''}`;
-			if (toolResultCache.has(cacheKey) || pending.has(cacheKey)) continue;
+			if (toolResultCache.has(cacheKey) || pending.has(cacheKey)) {
+				continue;
+			}
 			let args = {};
 			try {
 				args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
@@ -343,7 +398,7 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 		const settled = await Promise.all(pending.values());
 		keys.forEach((key, index) => toolResultCache.set(key, settled[index]));
 
-		for (const call of choice.tool_calls) {
+		for (const call of choice.tool_calls as ChatCompletionMessageFunctionToolCall[]) {
 			const cacheKey = `${call.function.name}:${call.function.arguments ?? ''}`;
 			loop.push({ role: 'tool', tool_call_id: call.id, content: toolResultCache.get(cacheKey) });
 		}
@@ -352,32 +407,48 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 	return lastContent;
 }
 
-async function fetchRepliedMessage(message) {
+async function fetchRepliedMessage(message: Message) {
 	const referenceId = message.reference?.messageId;
-	if (!referenceId) return null;
+	if (!referenceId) {
+		return null;
+	}
 
 	const cached = message.channel.messages.cache.get(referenceId);
-	if (cached) return cached;
+	if (cached) {
+		return cached;
+	}
 
 	return message.fetchReference().catch(() => null);
 }
 
-async function handleMessageCreate(message) {
+async function handleMessageCreate(message: Message) {
 	try {
-		if (message.author?.bot || !message.guild) return;
-		if (message.mentions.everyone) return;
+		if (message.author?.bot || !message.guild) {
+			return;
+		}
+		if (message.mentions.everyone) {
+			return;
+		}
 
 		const botUserId = message.client.user?.id;
-		if (!botUserId) return;
+		if (!botUserId) {
+			return;
+		}
 
 		const mentioned = message.mentions.users.has(botUserId);
-		if (!mentioned && !message.reference?.messageId) return;
+		if (!mentioned && !message.reference?.messageId) {
+			return;
+		}
 
 		const botConfig = getBotConfig();
-		if (!botConfig?.id) return;
+		if (!botConfig?.id) {
+			return;
+		}
 
 		const key = sessionKey(message.guild.id, message.author.id);
-		if (inFlight.has(key)) return;
+		if (inFlight.has(key)) {
+			return;
+		}
 		if (!claimAiMessageLocal(botConfig.id, message.id)) {
 			await logger.log(`🔁 AI ignoring a duplicate delivery of message ${message.id}`);
 			return;
@@ -393,15 +464,19 @@ async function handleMessageCreate(message) {
 			const [configRow, replied] = await Promise.all([db.getAiByBotId(botConfig.id), fetchRepliedMessage(message)]);
 
 			const panelAi = db.aiFromDbRow(configRow);
-			if (!panelAi.enabled || !panelAi.api_url || !panelAi.api_key || !panelAi.model) return;
+			if (!panelAi.enabled || !panelAi.api_url || !panelAi.api_key || !panelAi.model) {
+				return;
+			}
 
-			if (!mentioned && replied?.author?.id !== botUserId) return;
+			if (!mentioned && replied?.author?.id !== botUserId) {
+				return;
+			}
 
 			const config = await resolveGuildAiConfig(message.guild.id, panelAi);
 
 			const prompt = stripBotMention(message.content ?? '', botUserId);
 
-			await message.channel.sendTyping().catch(() => {});
+			await (message.channel as GuildTextBasedChannel).sendTyping().catch(() => {});
 
 			const quoted = replied && replied.author?.id !== botUserId ? replied : null;
 			const { parts: attachmentParts, kinds: attachmentKinds } = await buildAttachmentParts([quoted, message]);
@@ -457,37 +532,50 @@ async function handleMessageCreate(message) {
 				...(imageTool ? [imageTool] : [])
 			];
 
-			const generatedImages = [];
+			const generatedImages: Awaited<ReturnType<typeof runImageTool>>[] = [];
 
-			const onToolCall = (name, args) => {
-				message.channel.sendTyping().catch(() => {});
-				const toolContext = { botId: botConfig.id, guildId: message.guild.id, callerDiscordId: message.author.id };
-				if (SERVER_TOOL_NAMES.has(name)) return runServerTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				if (ACCOUNT_TOOL_NAMES.has(name)) return runAccountTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				if (KNOWLEDGE_TOOL_NAMES.has(name)) return runKnowledgeTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				if (name === 'search_wiki')
-					return runWikiTool(wikis, args, { sessionKey: `${botConfig.id}:${message.guild.id}:${message.author.id}` }).then((result) => JSON.stringify(result));
-				if (name === 'search_web') return runSearchTool(config, args).then((result) => JSON.stringify(result));
-				if (name === 'fetch_web_page') return runFetchTool(config, args).then((result) => JSON.stringify(result));
+			const onToolCall = (name: string, args: Record<string, unknown>) => {
+				(message.channel as GuildTextBasedChannel).sendTyping().catch(() => {});
+				const toolContext = { botId: botConfig.id, guildId: message.guild!.id, callerDiscordId: message.author.id };
+				if (SERVER_TOOL_NAMES.has(name)) {
+					return runServerTool(name, args, toolContext).then((result) => JSON.stringify(result));
+				}
+				if (ACCOUNT_TOOL_NAMES.has(name)) {
+					return runAccountTool(name, args, toolContext).then((result) => JSON.stringify(result));
+				}
+				if (KNOWLEDGE_TOOL_NAMES.has(name)) {
+					return runKnowledgeTool(name, args, toolContext).then((result) => JSON.stringify(result));
+				}
+				if (name === 'search_wiki') {
+					return runWikiTool(wikis, args, { sessionKey: `${botConfig.id}:${message.guild!.id}:${message.author.id}` }).then((result) => JSON.stringify(result));
+				}
+				if (name === 'search_web') {
+					return runSearchTool(config, args).then((result) => JSON.stringify(result));
+				}
+				if (name === 'fetch_web_page') {
+					return runFetchTool(config, args).then((result) => JSON.stringify(result));
+				}
 				if (name === 'generate_image') {
 					return runImageTool(config, args).then((result) => {
-						if (result.ok && generatedImages.length < MAX_GENERATED_IMAGES) generatedImages.push(result);
+						if (result.ok && generatedImages.length < MAX_GENERATED_IMAGES) {
+							generatedImages.push(result);
+						}
 						const { buffer, ...summary } = result;
 						return finalToolResult(summary.ok ? { ...summary, sent_to_channel: true } : summary);
 					});
 				}
-				return executeVoiceTool(name, message, botConfig.id);
+				return executeVoiceTool(name, message as Message<true>, botConfig.id);
 			};
 
-			const raw = await callChatCompletions(config, messages, {
-				tools: tools.length ? tools : null,
+			const raw = await callChatCompletions(config, messages as ChatCompletionMessageParam[], {
+				tools: tools.length ? (tools as ChatCompletionTool[]) : null,
 				onToolCall: tools.length ? onToolCall : null
 			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 
 			const imageFiles = generatedImages
 				.map((image, index) => (image.buffer ? new AttachmentBuilder(image.buffer, { name: `image-${index + 1}.png` }) : null))
-				.filter(Boolean);
+				.filter(Boolean) as AttachmentBuilder[];
 
 			if (!reply) {
 				if (imageFiles.length) {
@@ -500,7 +588,7 @@ async function handleMessageCreate(message) {
 
 			const storedContent = attachmentParts.length && prompt ? `${userContent} [${attachmentKinds.join(', ')} attached]` : userContent;
 			const persisted = appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent)
-				.then(() => appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply))
+				.then(() => appendAiMessage(botConfig.id, message.guild!.id, message.author.id, 'assistant', reply))
 				.catch(() => {});
 
 			const mention = `<@${message.author.id}>`;
@@ -519,7 +607,7 @@ async function handleMessageCreate(message) {
 						allowedMentions: { ...allowedMentions, repliedUser: false }
 					});
 				} else {
-					await message.channel.send({ content, allowedMentions });
+					await (message.channel as GuildTextBasedChannel).send({ content, allowedMentions });
 				}
 			}
 
@@ -529,15 +617,17 @@ async function handleMessageCreate(message) {
 		}
 	} catch (error) {
 		const status = error instanceof OpenAI.APIError ? error.status : null;
-		await logger.log(`❌ AI chat error${status ? ` (${status})` : ''}: ${error.message}`);
+		await logger.log(`❌ AI chat error${status ? ` (${status})` : ''}: ${(error as Error).message}`);
 
 		const noticeKey = status === 401 || status === 403 ? 'ai.errors.keyRejected' : status === 429 ? 'ai.errors.rateLimited' : 'ai.errors.failed';
 		const notice = await translateServer(noticeKey, message.guild?.id ?? '').catch(() => '');
-		if (notice) await message.reply({ content: notice }).catch(() => {});
+		if (notice) {
+			await message.reply({ content: notice }).catch(() => {});
+		}
 	}
 }
 
-function init(client) {
+function init(client: Client) {
 	client.on('messageCreate', handleMessageCreate);
 }
 

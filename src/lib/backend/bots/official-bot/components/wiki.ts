@@ -2,6 +2,35 @@ import { load } from 'cheerio';
 import db from '../../../../database.js';
 import { cachedLookup } from './aiCache.js';
 import { logger } from '../../../../utils/index.js';
+import type { Wiki } from '../../../../database.js';
+
+type WikiHit = { title: string; snippet: string };
+type WikiApiPage = { title: string; missing?: boolean; canonicalurl?: string; fullurl?: string };
+type WikiApiResponse = {
+	relay_error?: string;
+	query?: {
+		search?: WikiHit[];
+		searchinfo?: { suggestion?: string };
+		pages?: WikiApiPage[];
+		normalized?: { to: string }[];
+		redirects?: { to: string }[];
+		general?: { mainpage?: string };
+	};
+	parse?: { wikitext?: string; text?: string };
+};
+type WikiPage = { title: string; url: string | null; stats: Record<string, string> | null; extract: string };
+type WikiSearchResult = {
+	ok: boolean;
+	reason?: string;
+	wiki?: string;
+	wiki_url?: string | null;
+	query?: string;
+	pages?: WikiPage[];
+	other_matches?: string[];
+	note?: string;
+};
+type WikiRouteEntry = { wiki: Wiki; name: Set<string>; host: Set<string>; description: Set<string> };
+type WikiRoute = { picks: Wiki[]; candidates?: undefined } | { candidates: Wiki[]; picks?: undefined };
 
 const REQUEST_TIMEOUT_MS = 30_000;
 export const WIKI_USER_AGENT = 'DansdayBot/1.0 (https://github.com/dansday-com/dansday-discord-bot) MediaWiki-search';
@@ -12,11 +41,13 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const ENABLED_WIKIS_TTL_SEC = 30;
 const CACHE_MAX_ENTRIES = 200;
 
-const cache = new Map();
+const cache = new Map<string, { value: WikiSearchResult; expires: number }>();
 
-function cacheGet(key) {
+function cacheGet(key: string) {
 	const hit = cache.get(key);
-	if (!hit) return null;
+	if (!hit) {
+		return null;
+	}
 	if (Date.now() > hit.expires) {
 		cache.delete(key);
 		return null;
@@ -24,15 +55,17 @@ function cacheGet(key) {
 	return hit.value;
 }
 
-function cacheSet(key, value) {
+function cacheSet(key: string, value: WikiSearchResult) {
 	if (cache.size >= CACHE_MAX_ENTRIES) {
 		const oldest = cache.keys().next().value;
-		if (oldest !== undefined) cache.delete(oldest);
+		if (oldest !== undefined) {
+			cache.delete(oldest);
+		}
 	}
 	cache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
 }
 
-async function apiGet(wiki, params) {
+async function apiGet(wiki: Wiki, params: Record<string, unknown>): Promise<WikiApiResponse> {
 	const url = new URL(wiki.api_url);
 	for (const [key, value] of Object.entries({ ...params, format: 'json', formatversion: '2' })) {
 		url.searchParams.set(key, String(value));
@@ -41,7 +74,7 @@ async function apiGet(wiki, params) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-	const request = wiki.relay_url
+	const request: [string | URL, RequestInit] = wiki.relay_url
 		? [
 				wiki.relay_url,
 				{
@@ -62,24 +95,28 @@ async function apiGet(wiki, params) {
 
 	try {
 		const res = await fetch(request[0], request[1]);
-		if (!res.ok) throw new Error(`HTTP ${res.status}${wiki.relay_url ? ' (via relay)' : ''}`);
+		if (!res.ok) {
+			throw new Error(`HTTP ${res.status}${wiki.relay_url ? ' (via relay)' : ''}`);
+		}
 
 		const data = await res.json();
-		if (data?.relay_error) throw new Error(`Relay: ${data.relay_error}`);
+		if (data?.relay_error) {
+			throw new Error(`Relay: ${data.relay_error}`);
+		}
 		return data;
 	} catch (error) {
 		const elapsed = Date.now() - startedAt;
 		const via = wiki.relay_url ? `relay ${wiki.relay_url}` : 'direct';
-		if (error.name === 'AbortError') {
+		if ((error as Error).name === 'AbortError') {
 			throw new Error(`timed out after ${elapsed}ms via ${via} (action=${params.action ?? '?'})`);
 		}
-		throw new Error(`${error.message} after ${elapsed}ms via ${via}`);
+		throw new Error(`${(error as Error).message} after ${elapsed}ms via ${via}`);
 	} finally {
 		clearTimeout(timer);
 	}
 }
 
-function stripHtml(text) {
+function stripHtml(text: unknown) {
 	return String(text ?? '')
 		.replace(/<[^>]*>/g, '')
 		.replace(/&quot;/g, '"')
@@ -91,7 +128,7 @@ function stripHtml(text) {
 		.trim();
 }
 
-function cleanWikiValue(value) {
+function cleanWikiValue(value: string) {
 	let out = String(value ?? '')
 		.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
 		.replace(/\[\[([^\]]*)\]\]/g, '$1');
@@ -107,7 +144,9 @@ function cleanWikiValue(value) {
 				.map((part) => part.replace(/^\s*[A-Za-z][A-Za-z0-9 _-]*\s*=\s*/, '').trim())
 				.filter(Boolean);
 
-			if (!values.length) return label && !/[=:]/.test(label) ? label : '';
+			if (!values.length) {
+				return label && !/[=:]/.test(label) ? label : '';
+			}
 			return /^[^A-Za-z0-9]+$/.test(label) ? `${values.join(' ')} ${label}` : values.join(' ');
 		});
 	} while (out !== previous && ++guard < 8);
@@ -119,9 +158,11 @@ function cleanWikiValue(value) {
 		.trim();
 }
 
-function extractInfobox(wikitext) {
+function extractInfobox(wikitext: string): Record<string, string> {
 	const start = wikitext.search(/\{\{[A-Za-z0-9 _-]*[Ii]nfobox/);
-	if (start === -1) return {};
+	if (start === -1) {
+		return {};
+	}
 
 	let depth = 0;
 	let end = -1;
@@ -138,17 +179,22 @@ function extractInfobox(wikitext) {
 			}
 		}
 	}
-	if (end === -1) return {};
+	if (end === -1) {
+		return {};
+	}
 
 	const body = wikitext.slice(start + 2, end - 2);
-	const fields = {};
+	const fields: Record<string, string> = {};
 	let depthGuard = 0;
 	let current = '';
 
 	for (let i = 0; i < body.length; i++) {
 		const char = body[i];
-		if (char === '{' || char === '[') depthGuard++;
-		else if (char === '}' || char === ']') depthGuard--;
+		if (char === '{' || char === '[') {
+			depthGuard++;
+		} else if (char === '}' || char === ']') {
+			depthGuard--;
+		}
 
 		if (char === '|' && depthGuard <= 0) {
 			pushField(fields, current);
@@ -162,34 +208,42 @@ function extractInfobox(wikitext) {
 	return fields;
 }
 
-function pushField(fields, chunk) {
+function pushField(fields: Record<string, string>, chunk: string) {
 	const eq = chunk.indexOf('=');
-	if (eq === -1) return;
+	if (eq === -1) {
+		return;
+	}
 
 	const key = chunk.slice(0, eq).trim().toLowerCase();
 	const value = cleanWikiValue(chunk.slice(eq + 1));
-	if (!key || !value || key.includes('\n')) return;
-	if (/(?:^|_)(?:image|img|icon|file|logo|sprite|thumb|caption|color|colour|css|style|width|height|align|px)\d*(?:$|_)/.test(key)) return;
-	if (/^#?[0-9a-f]{3,8}(?:;#?[0-9a-f]{3,8})*$/i.test(value)) return;
+	if (!key || !value || key.includes('\n')) {
+		return;
+	}
+	if (/(?:^|_)(?:image|img|icon|file|logo|sprite|thumb|caption|color|colour|css|style|width|height|align|px)\d*(?:$|_)/.test(key)) {
+		return;
+	}
+	if (/^#?[0-9a-f]{3,8}(?:;#?[0-9a-f]{3,8})*$/i.test(value)) {
+		return;
+	}
 
 	fields[key] = value;
 }
 
-function contentScore(text) {
+function contentScore(text: string) {
 	return String(text ?? '')
 		.split('\n')
 		.filter((line) => line.trim() && !/^=+[^=]+=+$/.test(line.trim()))
 		.join(' ').length;
 }
 
-function tidyExtract(extract) {
+function tidyExtract(extract: string) {
 	return String(extract ?? '')
 		.replace(/\n{3,}/g, '\n\n')
 		.replace(/\n==+\s*[^\n=]+\s*=+\n(?=\s*(\n==|$))/g, '\n')
 		.trim();
 }
 
-function stripTemplates(text) {
+function stripTemplates(text: string) {
 	let out = '';
 	let depth = 0;
 
@@ -235,7 +289,7 @@ const NOISE_SELECTOR = [
 	'.notice'
 ].join(', ');
 
-function htmlToPlain(html) {
+function htmlToPlain(html: unknown) {
 	const $ = load(String(html ?? ''), null, false);
 
 	$(NOISE_SELECTOR).remove();
@@ -270,7 +324,7 @@ function htmlToPlain(html) {
 		.trim();
 }
 
-function wikitextToPlain(wikitext) {
+function wikitextToPlain(wikitext: unknown) {
 	return stripTemplates(String(wikitext ?? ''))
 		.replace(/<ref[^>]*\/>/gi, '')
 		.replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '')
@@ -290,7 +344,7 @@ function wikitextToPlain(wikitext) {
 		.trim();
 }
 
-async function rawSearch(wiki, query) {
+async function rawSearch(wiki: Wiki, query: string) {
 	const data = await apiGet(wiki, {
 		action: 'query',
 		list: 'search',
@@ -305,11 +359,11 @@ async function rawSearch(wiki, query) {
 	};
 }
 
-function titleCase(text) {
-	return text.replace(/\b[a-z]/g, (char) => char.toUpperCase());
+function titleCase(text: string) {
+	return text.replace(/\b[a-z]/g, (char: string) => char.toUpperCase());
 }
 
-async function exactTitle(wiki, query, { strict = false } = {}) {
+async function exactTitle(wiki: Wiki, query: string, { strict = false } = {}) {
 	const candidates = [...new Set([query, titleCase(query)].filter(Boolean))];
 
 	const data = await apiGet(wiki, { action: 'query', titles: candidates.join('|'), redirects: '1' }).catch(() => null);
@@ -317,49 +371,63 @@ async function exactTitle(wiki, query, { strict = false } = {}) {
 
 	for (const candidate of candidates) {
 		const hit = pages.find((entry) => !entry.missing && entry.title.toLowerCase() === candidate.toLowerCase());
-		if (hit) return hit.title;
+		if (hit) {
+			return hit.title;
+		}
 	}
 
 	const redirected = [...(data?.query?.normalized ?? []), ...(data?.query?.redirects ?? [])].map((entry) => entry.to.toLowerCase());
 	const followed = pages.find((entry) => !entry.missing && redirected.includes(entry.title.toLowerCase()));
-	if (followed) return followed.title;
+	if (followed) {
+		return followed.title;
+	}
 
 	return strict ? null : (pages.find((entry) => !entry.missing)?.title ?? null);
 }
 
-function promote(hits, title) {
-	if (!title) return hits;
+function promote(hits: WikiHit[], title: string | null) {
+	if (!title) {
+		return hits;
+	}
 	const rest = hits.filter((hit) => hit.title.toLowerCase() !== title.toLowerCase());
 	return [{ title, snippet: '' }, ...rest];
 }
 
-async function mainPageTitle(wiki) {
+async function mainPageTitle(wiki: Wiki) {
 	const data = await apiGet(wiki, { action: 'query', meta: 'siteinfo', siprop: 'general' }).catch(() => null);
 	return data?.query?.general?.mainpage ?? null;
 }
 
-async function searchTitles(wiki, query, page) {
+async function searchTitles(wiki: Wiki, query: string, page: string) {
 	if (page) {
 		const named = await exactTitle(wiki, page, { strict: true });
-		if (named) return [{ title: named, snippet: '' }];
+		if (named) {
+			return [{ title: named, snippet: '' }];
+		}
 
 		const direct = await rawSearch(wiki, page).catch(() => ({ hits: [] }));
 		const sameTitle = direct.hits.find((hit) => hit.title.toLowerCase() === String(page).toLowerCase());
-		if (sameTitle) return [sameTitle];
+		if (sameTitle) {
+			return [sameTitle];
+		}
 	}
 
 	const [first, exact] = await Promise.all([rawSearch(wiki, query), exactTitle(wiki, query)]);
-	if (first.hits.length || exact) return promote(first.hits, exact);
+	if (first.hits.length || exact) {
+		return promote(first.hits, exact);
+	}
 
 	if (first.suggestion) {
 		const suggested = await rawSearch(wiki, first.suggestion);
-		if (suggested.hits.length) return suggested.hits;
+		if (suggested.hits.length) {
+			return suggested.hits;
+		}
 	}
 
 	return [];
 }
 
-async function readPage(wiki, title) {
+async function readPage(wiki: Wiki, title: string): Promise<WikiPage | null> {
 	const [summary, source] = await Promise.all([
 		apiGet(wiki, { action: 'query', prop: 'info', inprop: 'url', redirects: '1', titles: title }).catch(() => null),
 		apiGet(wiki, {
@@ -373,7 +441,9 @@ async function readPage(wiki, title) {
 	]);
 
 	const page = summary?.query?.pages?.[0];
-	if (!page || page.missing) return null;
+	if (!page || page.missing) {
+		return null;
+	}
 
 	const wikitext = source?.parse?.wikitext ?? '';
 	const infobox = wikitext ? extractInfobox(wikitext) : {};
@@ -390,26 +460,32 @@ async function readPage(wiki, title) {
 	};
 }
 
-export async function searchWiki(wiki, query, page, mainPage = false) {
+export async function searchWiki(wiki: Wiki, query: unknown, page: unknown, mainPage = false): Promise<WikiSearchResult> {
 	const trimmed = String(query ?? '').trim();
 	const requestedPage = String(page ?? '').trim();
-	if (!trimmed && !requestedPage && !mainPage) return { ok: false, reason: 'empty_query' };
+	if (!trimmed && !requestedPage && !mainPage) {
+		return { ok: false, reason: 'empty_query' };
+	}
 
 	const cacheKey = `${wiki.api_url}::${mainPage ? 'MAIN' : ''}::${requestedPage.toLowerCase()}::${trimmed.toLowerCase()}`;
 	const cached = cacheGet(cacheKey);
-	if (cached) return cached;
+	if (cached) {
+		return cached;
+	}
 
-	let hits;
+	let hits: WikiHit[];
 	try {
 		if (mainPage) {
 			const front = await mainPageTitle(wiki);
 			hits = front ? [{ title: front, snippet: '' }] : [];
-			if (!hits.length) throw new Error('main page title unavailable');
+			if (!hits.length) {
+				throw new Error('main page title unavailable');
+			}
 		} else {
 			hits = await searchTitles(wiki, trimmed || requestedPage, requestedPage);
 		}
 	} catch (error) {
-		await logger.log(`❌ Wiki search failed (${wiki.name}): ${error.message}`);
+		await logger.log(`❌ Wiki search failed (${wiki.name}): ${(error as Error).message}`);
 		return { ok: false, reason: 'wiki_unreachable', wiki: wiki.name };
 	}
 
@@ -419,7 +495,7 @@ export async function searchWiki(wiki, query, page, mainPage = false) {
 		return miss;
 	}
 
-	const pages = (await Promise.all(hits.slice(0, PAGES_TO_READ).map((hit) => readPage(wiki, hit.title).catch(() => null)))).filter(Boolean);
+	const pages = (await Promise.all(hits.slice(0, PAGES_TO_READ).map((hit) => readPage(wiki, hit.title).catch(() => null)))).filter(Boolean) as WikiPage[];
 
 	const missedPage = requestedPage && !pages.some((entry) => entry.title.toLowerCase() === requestedPage.toLowerCase());
 
@@ -439,7 +515,7 @@ export async function searchWiki(wiki, query, page, mainPage = false) {
 	return result;
 }
 
-export async function getEnabledWikis(botId) {
+export async function getEnabledWikis(botId: number) {
 	return cachedLookup(`botai:wikis:${botId}`, ENABLED_WIKIS_TTL_SEC, async () => {
 		const rows = await db.getWikisByBotId(botId);
 		return rows.filter((row) => row.enabled && row.api_url);
@@ -498,10 +574,10 @@ const MAX_CANDIDATES = 4;
 const STICKY_TTL_MS = 15 * 60 * 1000;
 const STICKY_MAX_ENTRIES = 500;
 
-const routeIndexCache = new WeakMap();
-const stickyWiki = new Map();
+const routeIndexCache = new WeakMap<Wiki[], WikiRouteEntry[]>();
+const stickyWiki = new Map<string, { wikiId: number; expires: number }>();
 
-function routeTokens(text) {
+function routeTokens(text: string | null) {
 	return new Set(
 		String(text ?? '')
 			.toLowerCase()
@@ -510,17 +586,19 @@ function routeTokens(text) {
 	);
 }
 
-function hostTokens(wiki) {
+function hostTokens(wiki: Wiki) {
 	try {
 		return routeTokens(new URL(wiki.site_url || wiki.api_url).hostname.replace(/^www\./, '').replace(/\.[a-z.]+$/, ''));
 	} catch (_) {
-		return new Set();
+		return new Set<string>();
 	}
 }
 
-function wikiRouteIndex(wikis) {
+function wikiRouteIndex(wikis: Wiki[]) {
 	let index = routeIndexCache.get(wikis);
-	if (index) return index;
+	if (index) {
+		return index;
+	}
 
 	index = wikis.map((wiki) => ({
 		wiki,
@@ -532,35 +610,46 @@ function wikiRouteIndex(wikis) {
 	return index;
 }
 
-function scoreEntry(entry, hintTokens, queryTokens) {
+function scoreEntry(entry: WikiRouteEntry, hintTokens: Set<string>, queryTokens: Set<string>) {
 	let score = 0;
 	for (const [tokens, weight] of [
 		[entry.name, NAME_WEIGHT],
 		[entry.host, HOST_WEIGHT],
 		[entry.description, DESCRIPTION_WEIGHT]
-	]) {
+	] as const) {
 		for (const token of tokens) {
-			if (hintTokens.has(token)) score += weight * HINT_MULTIPLIER;
-			else if (queryTokens.has(token)) score += weight;
+			if (hintTokens.has(token)) {
+				score += weight * HINT_MULTIPLIER;
+			} else if (queryTokens.has(token)) {
+				score += weight;
+			}
 		}
 	}
 	return score;
 }
 
-function rememberWiki(sessionKey, wikiId) {
-	if (!sessionKey || wikiId == null) return;
+function rememberWiki(sessionKey: string | null, wikiId: number) {
+	if (!sessionKey || wikiId == null) {
+		return;
+	}
 	if (stickyWiki.size >= STICKY_MAX_ENTRIES) {
 		const oldest = stickyWiki.keys().next().value;
-		if (oldest !== undefined) stickyWiki.delete(oldest);
+		if (oldest !== undefined) {
+			stickyWiki.delete(oldest);
+		}
 	}
 	stickyWiki.delete(sessionKey);
 	stickyWiki.set(sessionKey, { wikiId, expires: Date.now() + STICKY_TTL_MS });
 }
 
-function recallWiki(sessionKey, wikis) {
-	if (!sessionKey) return null;
+function recallWiki(sessionKey: string | null, wikis: Wiki[]) {
+	if (!sessionKey) {
+		return null;
+	}
 	const hit = stickyWiki.get(sessionKey);
-	if (!hit) return null;
+	if (!hit) {
+		return null;
+	}
 	if (Date.now() > hit.expires) {
 		stickyWiki.delete(sessionKey);
 		return null;
@@ -568,12 +657,16 @@ function recallWiki(sessionKey, wikis) {
 	return wikis.find((wiki) => wiki.id === hit.wikiId) ?? null;
 }
 
-export function routeWiki(wikis, args, sessionKey) {
-	if (wikis.length === 1) return { picks: [wikis[0]] };
+export function routeWiki(wikis: Wiki[], args: Record<string, unknown>, sessionKey: string | null): WikiRoute {
+	if (wikis.length === 1) {
+		return { picks: [wikis[0]] };
+	}
 
 	const hint = String(args?.wiki ?? '').trim();
 	const exact = hint ? wikis.find((wiki) => wiki.name.toLowerCase() === hint.toLowerCase()) : null;
-	if (exact) return { picks: [exact] };
+	if (exact) {
+		return { picks: [exact] };
+	}
 
 	const hintTokens = routeTokens(hint);
 	const queryTokens = routeTokens(`${args?.query ?? ''} ${args?.page ?? ''}`);
@@ -587,17 +680,23 @@ export function routeWiki(wikis, args, sessionKey) {
 
 	if (!scored.length) {
 		const remembered = recallWiki(sessionKey, wikis);
-		if (remembered) return { picks: [remembered] };
+		if (remembered) {
+			return { picks: [remembered] };
+		}
 		return { candidates: wikis.length <= MAX_CANDIDATES ? wikis : [] };
 	}
 
-	if (scored.length === 1 || scored[0].score >= scored[1].score * CLEAR_WINNER_RATIO) return { picks: [scored[0].wiki] };
+	if (scored.length === 1 || scored[0].score >= scored[1].score * CLEAR_WINNER_RATIO) {
+		return { picks: [scored[0].wiki] };
+	}
 
 	return { picks: scored.slice(0, MAX_FAN_OUT).map((row) => row.wiki) };
 }
 
-export function buildWikiTool(wikis) {
-	if (!wikis.length) return null;
+export function buildWikiTool(wikis: Wiki[]) {
+	if (!wikis.length) {
+		return null;
+	}
 
 	return {
 		type: 'function',
@@ -644,9 +743,11 @@ The search itself is English-only, but always reply in the language the user wro
 	};
 }
 
-export function buildWikiDeclaration(wikis) {
+export function buildWikiDeclaration(wikis: Wiki[]) {
 	const tool = buildWikiTool(wikis);
-	if (!tool) return null;
+	if (!tool) {
+		return null;
+	}
 
 	return {
 		name: tool.function.name,
@@ -676,16 +777,22 @@ const WIKI_MULTI_HINT =
 
 const THIN_EXTRACT_CHARS = 400;
 
-function resultIsThin(result) {
+function resultIsThin(result: WikiSearchResult) {
 	const pages = result?.pages ?? [];
-	if (!pages.length) return false;
-	if (pages.some((page) => page.stats && Object.keys(page.stats).length)) return false;
+	if (!pages.length) {
+		return false;
+	}
+	if (pages.some((page) => page.stats && Object.keys(page.stats).length)) {
+		return false;
+	}
 	return pages.reduce((sum, page) => sum + (page.extract?.length ?? 0), 0) < THIN_EXTRACT_CHARS;
 }
 
-export async function runWikiTool(wikis, args, context = {}) {
+export async function runWikiTool(wikis: Wiki[], args: Record<string, unknown>, context: { sessionKey?: string | null } = {}) {
 	const list = Array.isArray(wikis) ? wikis : [];
-	if (!list.length) return { ok: false, reason: 'no_wikis_configured', next_step: WIKI_MISS_HINT };
+	if (!list.length) {
+		return { ok: false, reason: 'no_wikis_configured', next_step: WIKI_MISS_HINT };
+	}
 
 	const sessionKey = context.sessionKey ?? null;
 	const routed = routeWiki(list, args, sessionKey);
@@ -709,7 +816,9 @@ export async function runWikiTool(wikis, args, context = {}) {
 	}
 
 	const chosen = routed.picks[results.indexOf(usable[0])];
-	if (chosen) rememberWiki(sessionKey, chosen.id);
+	if (chosen) {
+		rememberWiki(sessionKey, chosen.id);
+	}
 
 	if (usable.length > 1) {
 		return {
@@ -721,8 +830,12 @@ export async function runWikiTool(wikis, args, context = {}) {
 	}
 
 	const result = usable[0];
-	if (result.note) return { ...result, next_step: WIKI_OFF_TARGET_HINT };
-	if (resultIsThin(result)) return { ...result, next_step: WIKI_THIN_HINT };
+	if (result.note) {
+		return { ...result, next_step: WIKI_OFF_TARGET_HINT };
+	}
+	if (resultIsThin(result)) {
+		return { ...result, next_step: WIKI_THIN_HINT };
+	}
 
 	return result;
 }

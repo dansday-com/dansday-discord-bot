@@ -17,10 +17,16 @@ export type AggregatedPanelStats = PublicPageStats & { servers_counted: number }
 export function aggregatePanelStatistics(snapshots: (PublicPageStats | null | undefined)[]): AggregatedPanelStats {
 	const rows = snapshots.filter(Boolean) as PublicPageStats[];
 	const keys = new Set<string>();
-	for (const row of rows) for (const k of Object.keys(row)) keys.add(k);
+	for (const row of rows) {
+		for (const k of Object.keys(row)) {
+			keys.add(k);
+		}
+	}
 
 	const out: Record<string, number> = {};
-	for (const key of keys) out[key] = 0;
+	for (const key of keys) {
+		out[key] = 0;
+	}
 
 	const maxSet = new Set<string>(MAX_FIELDS);
 	const avgSet = new Set<string>(AVG_FIELDS);

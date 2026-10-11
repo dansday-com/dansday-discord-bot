@@ -20,7 +20,9 @@ export function observeVisibility(node: Element, fn: Listener, rootMargin: strin
 		const listeners = new Map<Element, Listener>();
 		const io = new IntersectionObserver(
 			(entries) => {
-				for (const entry of entries) listeners.get(entry.target)?.(entry.isIntersecting);
+				for (const entry of entries) {
+					listeners.get(entry.target)?.(entry.isIntersecting);
+				}
 			},
 			{ rootMargin }
 		);
@@ -33,7 +35,9 @@ export function observeVisibility(node: Element, fn: Listener, rootMargin: strin
 
 	return () => {
 		const current = registries.get(rootMargin);
-		if (!current) return;
+		if (!current) {
+			return;
+		}
 		current.listeners.delete(node);
 		current.io.unobserve(node);
 		if (current.listeners.size === 0) {

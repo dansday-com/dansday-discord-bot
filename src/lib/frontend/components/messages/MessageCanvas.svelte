@@ -145,12 +145,17 @@
 	});
 
 	$effect(() => {
-		if (selected === 'text') textInput?.focus();
+		if (selected === 'text') {
+			textInput?.focus();
+		}
 	});
 
 	function setText(next: string) {
-		if (next) doc.text[lang] = next;
-		else delete doc.text[lang];
+		if (next) {
+			doc.text[lang] = next;
+		} else {
+			delete doc.text[lang];
+		}
 	}
 
 	function insertEmoji(value: string) {
@@ -162,16 +167,23 @@
 	}
 
 	function add(item: AddItem) {
-		if (item.full) return;
+		if (item.full) {
+			return;
+		}
 		menuOpen = false;
-		if (item.type === 'file') fileInput?.click();
-		else onadd(item.type);
+		if (item.type === 'file') {
+			fileInput?.click();
+		} else {
+			onadd(item.type);
+		}
 	}
 
 	function roleLines(actions: MessageAction[]): string[] {
 		const lines: string[] = [];
 		for (const action of actions) {
-			if (action.type !== 'role') continue;
+			if (action.type !== 'role') {
+				continue;
+			}
 			if (!action.role_id) {
 				lines.push('❌ No role is picked for this yet.');
 				continue;
@@ -179,8 +191,9 @@
 			const mention = `<@&${action.role_id}>`;
 			const has = held.includes(action.role_id);
 			const give = action.mode === 'add' || (action.mode === 'toggle' && !has);
-			if (give === has) lines.push(give ? `You already have ${mention}.` : `You don't have ${mention}.`);
-			else if (give) {
+			if (give === has) {
+				lines.push(give ? `You already have ${mention}.` : `You don't have ${mention}.`);
+			} else if (give) {
 				held = [...held, action.role_id];
 				lines.push(`✅ You now have ${mention}.`);
 			} else {
@@ -196,24 +209,38 @@
 		const target = show ? (show.message_id ? resolve(show.message_id) : null) : null;
 		const written = messageReplyDoc(actions, from?.doc ?? doc);
 		const lines = roleLines(actions);
-		if (actions.length === 0) lines.push('Nothing happens yet. Switch to Edit, click it and pick what it does.');
-		if (show && !target) lines.push(show.message_id ? '❌ The message this shows no longer exists.' : '❌ No message is picked for this yet.');
+		if (actions.length === 0) {
+			lines.push('Nothing happens yet. Switch to Edit, click it and pick what it does.');
+		}
+		if (show && !target) {
+			lines.push(show.message_id ? '❌ The message this shows no longer exists.' : '❌ No message is picked for this yet.');
+		}
 		if (!written && actions.some((action) => action.type === 'text' || action.type === 'attachment')) {
 			lines.push('❌ The message or attachment for this is still empty.');
 		}
 
 		if (target) {
 			const inPlace = from?.doc && (target.layout === 'components' || from.doc.layout !== 'components');
-			if (from && inPlace) from.doc = target;
-			else replies.push({ key: nextKey++, doc: target, lines: [], lang: from?.lang ?? null });
+			if (from && inPlace) {
+				from.doc = target;
+			} else {
+				replies.push({ key: nextKey++, doc: target, lines: [], lang: from?.lang ?? null });
+			}
 		}
-		if (written) replies.push({ key: nextKey++, doc: written, lines: [], lang: from?.lang ?? null });
-		if (lines.length > 0) replies.push({ key: nextKey++, doc: null, lines, lang: from?.lang ?? null });
+		if (written) {
+			replies.push({ key: nextKey++, doc: written, lines: [], lang: from?.lang ?? null });
+		}
+		if (lines.length > 0) {
+			replies.push({ key: nextKey++, doc: null, lines, lang: from?.lang ?? null });
+		}
 	}
 
 	function switchLanguage(code: ServerLanguage, from: Reply | null) {
-		if (from) from.lang = code;
-		else replies.push({ key: nextKey++, doc, lines: [], lang: code });
+		if (from) {
+			from.lang = code;
+		} else {
+			replies.push({ key: nextKey++, doc, lines: [], lang: code });
+		}
 	}
 </script>
 
@@ -376,8 +403,11 @@
 						{onaddbutton}
 						{onaddinside}
 						onlanguage={(code) => {
-							if (code) switchLanguage(code, null);
-							else languageOpen = true;
+							if (code) {
+								switchLanguage(code, null);
+							} else {
+								languageOpen = true;
+							}
 						}}
 						onpress={(actions) => press(actions, null)}
 					/>
@@ -483,7 +513,9 @@
 			onchange={(event) => {
 				const file = event.currentTarget.files?.[0];
 				event.currentTarget.value = '';
-				if (file) onfile(file);
+				if (file) {
+					onfile(file);
+				}
 			}}
 		/>
 	</div>

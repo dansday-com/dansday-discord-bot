@@ -34,20 +34,30 @@
 				schedule.days.length === 7
 					? 'Every day'
 					: schedule.days
-							.map((d: any) => DAY_NAMES[Number(d)] ?? '')
+							.map((d: unknown) => DAY_NAMES[Number(d)] ?? '')
 							.filter(Boolean)
 							.join(' ');
 			return `${days} · ${schedule.from || '00:00'}–${schedule.to || '23:59'}`;
 		}
-		if (item.available_from && item.available_to) return `${wallClock(item.available_from)} → ${wallClock(item.available_to)}`;
-		if (item.available_from) return `From ${wallClock(item.available_from)}`;
-		if (item.available_to) return `Until ${wallClock(item.available_to)}`;
+		if (item.available_from && item.available_to) {
+			return `${wallClock(item.available_from)} → ${wallClock(item.available_to)}`;
+		}
+		if (item.available_from) {
+			return `From ${wallClock(item.available_from)}`;
+		}
+		if (item.available_to) {
+			return `Until ${wallClock(item.available_to)}`;
+		}
 		return 'Always';
 	}
 
 	function statusLabel(item: ItemEntry): string {
-		if (item.buyable) return 'Can buy';
-		if (item.usable) return 'Use only';
+		if (item.buyable) {
+			return 'Can buy';
+		}
+		if (item.usable) {
+			return 'Use only';
+		}
 		return 'Disabled';
 	}
 
@@ -57,10 +67,16 @@
 
 	const filtered = $derived(
 		rows.filter(({ item }) => {
-			if (mode === 'buy' && !item.buyable) return false;
-			if (mode === 'nobuy' && item.buyable) return false;
+			if (mode === 'buy' && !item.buyable) {
+				return false;
+			}
+			if (mode === 'nobuy' && item.buyable) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${item.name} ${effectLabel(item.effect_type)} ${item.description ?? ''}`.toLowerCase().includes(needle);
 		})
 	);

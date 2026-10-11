@@ -82,9 +82,15 @@
 
 	function hint(row: Draft): string {
 		const parts: string[] = [];
-		if (row.goal_type === 'level') parts.push(`${fmt(xpForLevel(Number(row.units) || 0, data.levelReq.baseXp, data.levelReq.multiplier))} XP`);
-		if (row.reached !== null) parts.push(`${fmt(row.reached)} reached`);
-		if (row.id !== null && row.winner_limit) parts.push(`${fmt(row.winners)}/${fmt(Number(row.winner_limit))} taken`);
+		if (row.goal_type === 'level') {
+			parts.push(`${fmt(xpForLevel(Number(row.units) || 0, data.levelReq.baseXp, data.levelReq.multiplier))} XP`);
+		}
+		if (row.reached !== null) {
+			parts.push(`${fmt(row.reached)} reached`);
+		}
+		if (row.id !== null && row.winner_limit) {
+			parts.push(`${fmt(row.winners)}/${fmt(Number(row.winner_limit))} taken`);
+		}
 		return parts.join(' · ');
 	}
 
@@ -113,14 +119,20 @@
 	}
 
 	function imageLabel(row: Draft): string {
-		if (!row.file) return '';
+		if (!row.file) {
+			return '';
+		}
 		const now = imageSizeLabel(row.file.size);
-		if (row.original != null && row.original > row.file.size) return `${row.file.name} · ${imageSizeLabel(row.original)} → ${now}`;
+		if (row.original != null && row.original > row.file.size) {
+			return `${row.file.name} · ${imageSizeLabel(row.original)} → ${now}`;
+		}
 		return `${row.file.name} · ${now}`;
 	}
 
 	function discardImage(row: Draft) {
-		if (row.preview) URL.revokeObjectURL(row.preview);
+		if (row.preview) {
+			URL.revokeObjectURL(row.preview);
+		}
 		row.file = null;
 		row.preview = null;
 		row.original = null;
@@ -135,18 +147,24 @@
 	async function pickImage(row: Draft, index: number, input: HTMLInputElement) {
 		const picked = input.files?.[0];
 		input.value = '';
-		if (!picked) return;
-		if (!imageExtension(picked.type)) return showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
+		if (!picked) {
+			return;
+		}
+		if (!imageExtension(picked.type)) {
+			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
+			return;
+		}
 		preparing = index;
 		try {
 			const prepared = await prepareThemeUpload(picked);
 			if (prepared.file.size > REWARD_IMAGE_MAX_BYTES) {
-				return showToast(
+				showToast(
 					prepared.file === picked
 						? `That image is ${imageSizeLabel(picked.size)}. Pick one under ${IMAGE_LIMIT}.`
 						: `Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${IMAGE_LIMIT}.`,
 					'error'
 				);
+				return;
 			}
 			discardImage(row);
 			row.file = prepared.file;
@@ -158,7 +176,9 @@
 	}
 
 	async function uploadImage(row: Draft): Promise<boolean> {
-		if (!row.file) return true;
+		if (!row.file) {
+			return true;
+		}
 		const form = new FormData();
 		form.append('image', row.file);
 		const res = await fetch(`/api/servers/${data.serverId}/rewards/image`, { method: 'POST', body: form });
@@ -174,11 +194,21 @@
 	}
 
 	async function save() {
-		if (rows.some((r) => r.kind === 'role' && !r.role_id)) return showToast('Pick a role for every role reward', 'error');
-		if (rows.some((r) => r.kind === 'custom' && !r.name.trim())) return showToast('Name every custom reward', 'error');
+		if (rows.some((r) => r.kind === 'role' && !r.role_id)) {
+			showToast('Pick a role for every role reward', 'error');
+			return;
+		}
+		if (rows.some((r) => r.kind === 'custom' && !r.name.trim())) {
+			showToast('Name every custom reward', 'error');
+			return;
+		}
 		busy = true;
 		try {
-			for (const row of rows) if (row.kind === 'custom' && !(await uploadImage(row))) return;
+			for (const row of rows) {
+				if (row.kind === 'custom' && !(await uploadImage(row))) {
+					return;
+				}
+			}
 			const rewards = rows.map((r) => ({
 				id: r.id,
 				goal_type: r.goal_type,
@@ -196,7 +226,10 @@
 				body: JSON.stringify({ rewards, keep, stack })
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not save the rewards', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not save the rewards', 'error');
+				return;
+			}
 			blocked = out.blocked ?? [];
 			showToast(
 				out.synced ? 'Rewards saved. Members who already qualify get theirs now.' : 'Rewards saved. The bot is offline, so they go out when it starts.',
@@ -217,7 +250,10 @@
 				body: JSON.stringify({ id })
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not mark it delivered', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not mark it delivered', 'error');
+				return;
+			}
 			showToast('Marked as delivered', 'success');
 			await invalidateAll();
 		} finally {

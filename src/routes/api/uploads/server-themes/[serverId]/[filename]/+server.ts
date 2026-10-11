@@ -10,9 +10,11 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 
 	const data = await readServerTheme(key);
-	if (!data) return new Response(JSON.stringify({ error: 'File not found' }), { status: 404 });
+	if (!data) {
+		return new Response(JSON.stringify({ error: 'File not found' }), { status: 404 });
+	}
 
-	return new Response(data, {
+	return new Response(data as Uint8Array<ArrayBuffer>, {
 		headers: {
 			'Content-Type': serverThemeContentType(key),
 			'Cache-Control': 'public, max-age=31536000, immutable',

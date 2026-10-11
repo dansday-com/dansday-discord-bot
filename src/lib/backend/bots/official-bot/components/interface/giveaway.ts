@@ -6,8 +6,12 @@ import db from '../../../../../database.js';
 import { translate, serverTranslator, memberTranslator, getUserLanguage, type Translator, errorReason } from '../../i18n.js';
 import { durationField, durationValue, textField, type DurationPreset } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
+import type { Client, Guild, GuildTextBasedChannel, ModalSubmitInteraction, Role, RoleSelectMenuInteraction } from 'discord.js';
+import type { MessageComponentInteraction, RepliableInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
+import type { ButtonInteraction } from 'discord.js';
 
-function giveawayRoleMention(guild, roleId, tr: Translator) {
+function giveawayRoleMention(guild: Guild, roleId: string, tr: Translator) {
 	const role = guild.roles.cache.get(roleId);
 	return role ? `<@&${roleId}>` : tr('giveaway.unknownRole', { roleId });
 }
@@ -24,11 +28,11 @@ const DURATION_PRESETS: DurationPreset[] = [
 	[2, 'week']
 ];
 
-function pendingKey(interaction) {
+function pendingKey(interaction: RepliableInteraction<'cached'>) {
 	return `${interaction.guild.id}:${interaction.user.id}`;
 }
 
-async function giveawaySetupPanel(interaction, allowed: boolean) {
+async function giveawaySetupPanel(interaction: RepliableInteraction<'cached'>, allowed: boolean) {
 	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 	const embedConfig = await getEmbedConfig(interaction.guild.id);
 	const entries = tr('giveaway.announcement.entriesLine', {
@@ -45,7 +49,7 @@ async function giveawaySetupPanel(interaction, allowed: boolean) {
 		.setPlaceholder(tr('giveaway.create.roleSelectPlaceholder'))
 		.setMinValues(0)
 		.setMaxValues(25);
-	const buttonRow = new ActionRowBuilder().addComponents(
+	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder().setCustomId('giveaway_continue_form').setLabel(tr('giveaway.create.continueButton')).setStyle(ButtonStyle.Primary),
 		new ButtonBuilder()
 			.setCustomId('giveaway_multiple_toggle')
@@ -53,10 +57,10 @@ async function giveawaySetupPanel(interaction, allowed: boolean) {
 			.setStyle(ButtonStyle.Secondary),
 		await menuBackButton(interaction.guild.id, interaction.user.id, 'community')
 	);
-	return { embeds: [embed], components: [new ActionRowBuilder().addComponents(roleSelect), buttonRow] };
+	return { embeds: [embed], components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(roleSelect), buttonRow] };
 }
 
-async function showGiveawayModal(interaction, customId: string) {
+async function showGiveawayModal(interaction: MessageComponentInteraction<'cached'>, customId: string) {
 	const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
 	const field = (id: string, key: string, style: TextInputStyle, required: boolean, maxLength: number) =>
 		textField(
@@ -86,7 +90,7 @@ async function showGiveawayModal(interaction, customId: string) {
 	await interaction.showModal(modal);
 }
 
-export async function handleGiveawayMultipleToggle(interaction) {
+export async function handleGiveawayMultipleToggle(interaction: ButtonInteraction<'cached'>) {
 	if (!(await hasPermission(interaction.member, 'giveaway'))) {
 		const content = await getPermissionDeniedMessage(interaction.guild, 'giveaway', interaction.user.id);
 		await interaction.reply({ content, flags: 64 }).catch(() => null);
@@ -97,7 +101,12 @@ export async function handleGiveawayMultipleToggle(interaction) {
 	await interaction.update(await giveawaySetupPanel(interaction, allowed));
 }
 
-function buildGiveawayWinnersDescription(tr: Translator, giveaway, winners, winnerMentions: string) {
+function buildGiveawayWinnersDescription(
+	tr: Translator,
+	giveaway: { title: string | null; prize: string | null; winner_count: number },
+	winners: readonly unknown[],
+	winnerMentions: string
+) {
 	const parts = [
 		`**${giveaway.title}**`,
 		tr('giveaway.announcement.prizeLine', { prize: giveaway.prize }),
@@ -115,7 +124,7 @@ function buildGiveawayWinnersDescription(tr: Translator, giveaway, winners, winn
 	return parts.join('\n\n');
 }
 
-export async function handleGiveawayButton(interaction) {
+export async function handleGiveawayButton(interaction: ButtonInteraction<'cached'>) {
 	try {
 		const member = interaction.member;
 		const guild = interaction.guild;
@@ -162,7 +171,7 @@ export async function handleGiveawayButton(interaction) {
 
 			const backButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'community');
 
-			const buttonRow = new ActionRowBuilder().addComponents(finishButton, backButton);
+			const buttonRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(finishButton, backButton);
 
 			const activeTitle = await translate('giveaway.active.title', interaction.guild.id, interaction.user.id);
 			const activeDescription = await translate('giveaway.active.description', interaction.guild.id, interaction.user.id, {
@@ -182,7 +191,7 @@ export async function handleGiveawayButton(interaction) {
 							if (activeGiveaway.ends_at instanceof Date) {
 								endsAtDate = activeGiveaway.ends_at;
 							} else {
-								const dateStr = String(activeGiveaway.ends_at).replace(' ', 'T') + 'Z';
+								const dateStr = `${String(activeGiveaway.ends_at).replace(' ', 'T')}Z`;
 								endsAtDate = new Date(dateStr);
 							}
 							return `<t:${Math.floor(endsAtDate.getTime() / 1000)}:R>`;
@@ -207,7 +216,7 @@ export async function handleGiveawayButton(interaction) {
 
 		await logger.log(`🎉 Giveaway role selector shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error showing giveaway interface: ${error.message}`);
+		await logger.log(`❌ Error showing giveaway interface: ${(error as Error).message}`);
 		const errorMsg = await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -218,7 +227,7 @@ export async function handleGiveawayButton(interaction) {
 	}
 }
 
-export async function handleGiveawayRoleSelect(interaction) {
+export async function handleGiveawayRoleSelect(interaction: RoleSelectMenuInteraction<'cached'>) {
 	try {
 		if (!(await hasPermission(interaction.member, 'giveaway'))) {
 			const content = await getPermissionDeniedMessage(interaction.guild, 'giveaway', interaction.user.id);
@@ -235,8 +244,8 @@ export async function handleGiveawayRoleSelect(interaction) {
 			`🎉 Giveaway modal shown to ${interaction.user.tag} (${interaction.user.id}) with roles: ${selectedRoles.length > 0 ? selectedRoles.join(', ') : 'none'}`
 		);
 	} catch (error) {
-		await logger.log(`❌ Role selection error: ${error.message}`);
-		await logger.log(`❌ Role selection error stack: ${error.stack}`);
+		await logger.log(`❌ Role selection error: ${(error as Error).message}`);
+		await logger.log(`❌ Role selection error stack: ${(error as Error).stack}`);
 		try {
 			if (interaction.deferred || interaction.replied) {
 				await interaction.followUp({
@@ -254,17 +263,17 @@ export async function handleGiveawayRoleSelect(interaction) {
 				});
 			}
 		} catch (err) {
-			await logger.log(`❌ Failed to send error message: ${err.message}`);
+			await logger.log(`❌ Failed to send error message: ${(err as Error).message}`);
 		}
 	}
 }
 
-export async function handleGiveawaySkipRolesContinue(interaction) {
+export async function handleGiveawaySkipRolesContinue(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		await showGiveawayModal(interaction, 'giveaway_create_none');
 		await logger.log(`🎉 Giveaway modal shown to ${interaction.user.tag} (${interaction.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error showing giveaway modal: ${error.message}`);
+		await logger.log(`❌ Error showing giveaway modal: ${(error as Error).message}`);
 		await interaction.reply({
 			content: await translate('giveaway.errors.failed', interaction.guild.id, interaction.user.id, {
 				error: await errorReason(error, interaction.guild.id, interaction.user.id)
@@ -274,7 +283,7 @@ export async function handleGiveawaySkipRolesContinue(interaction) {
 	}
 }
 
-export async function handleGiveawayModal(interaction) {
+export async function handleGiveawayModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -351,7 +360,7 @@ export async function handleGiveawayModal(interaction) {
 		try {
 			giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
 		} catch (err) {
-			await logger.log(`❌ Error getting giveaway channel: ${err.message}`);
+			await logger.log(`❌ Error getting giveaway channel: ${(err as Error).message}`);
 			const errorMsg = await translate('giveaway.errors.channelError', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({
 				content: errorMsg
@@ -368,7 +377,7 @@ export async function handleGiveawayModal(interaction) {
 			return;
 		}
 
-		const giveawayChannel = guild.channels.cache.get(giveawayChannelId);
+		const giveawayChannel = guild.channels.cache.get(giveawayChannelId) as GuildTextBasedChannel | undefined;
 		if (!giveawayChannel) {
 			await logger.log(`❌ Giveaway channel not found: ${giveawayChannelId}`);
 			const errorMsg = await translate('giveaway.errors.channelNotFound', interaction.guild.id, interaction.user.id);
@@ -430,7 +439,7 @@ export async function handleGiveawayModal(interaction) {
 		const tr = await serverTranslator(guild.id);
 		const roleRestrictionNone = tr('giveaway.announcement.noRoleRestrictions');
 		const roleRestrictionText =
-			allowedRoles && allowedRoles.length > 0 ? allowedRoles.map((roleId) => giveawayRoleMention(guild, roleId, tr)).join(', ') : roleRestrictionNone;
+			allowedRoles && allowedRoles.length > 0 ? allowedRoles.map((roleId: string) => giveawayRoleMention(guild, roleId, tr)).join(', ') : roleRestrictionNone;
 
 		const entriesLabel = multipleEntriesAllowed ? tr('giveaway.announcement.multipleEntries') : tr('giveaway.announcement.singleEntry');
 		const embedTitle = `🎉 ${title}`;
@@ -440,7 +449,9 @@ export async function handleGiveawayModal(interaction) {
 			tr('giveaway.announcement.entriesLine', { entries: entriesLabel }),
 			tr('giveaway.announcement.rolesLine', { roles: roleRestrictionText })
 		];
-		if (minInvites > 0) descriptionLines.push(tr('giveaway.announcement.invitesLine', { count: minInvites }));
+		if (minInvites > 0) {
+			descriptionLines.push(tr('giveaway.announcement.invitesLine', { count: minInvites }));
+		}
 		const embedDescription = descriptionLines.join('\n');
 		const hostedByLabel = tr('giveaway.announcement.hostedBy');
 		const endsLabel = tr('giveaway.active.ends');
@@ -466,7 +477,7 @@ export async function handleGiveawayModal(interaction) {
 		const enterLabel = tr('giveaway.announcement.enterButton');
 		const enterButton = new ButtonBuilder().setCustomId(`giveaway_enter_${giveaway.id}`).setLabel(enterLabel).setStyle(ButtonStyle.Success);
 
-		const enterButtonRow = new ActionRowBuilder().addComponents(enterButton);
+		const enterButtonRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(enterButton);
 
 		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, giveawayChannel.id).catch(() => null);
 		const mentionContent = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
@@ -502,8 +513,8 @@ export async function handleGiveawayModal(interaction) {
 
 		await logger.log(`✅ Giveaway created by ${user.tag} (${user.id}) - ID: ${giveaway.id}`);
 	} catch (error) {
-		await logger.log(`❌ Error processing giveaway: ${error.message}`);
-		await logger.log(`❌ Stack: ${error.stack}`);
+		await logger.log(`❌ Error processing giveaway: ${(error as Error).message}`);
+		await logger.log(`❌ Stack: ${(error as Error).stack}`);
 		const errorMsg = await translate('giveaway.errors.createFailed', interaction.guild.id, interaction.user.id, {
 			error: await errorReason(error, interaction.guild.id, interaction.user.id)
 		});
@@ -513,7 +524,7 @@ export async function handleGiveawayModal(interaction) {
 	}
 }
 
-export async function handleGiveawayEnterButton(interaction) {
+export async function handleGiveawayEnterButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		const customId = interaction.customId;
 		if (!customId.startsWith('giveaway_enter_')) {
@@ -569,7 +580,7 @@ export async function handleGiveawayEnterButton(interaction) {
 		if (giveaway.ends_at instanceof Date) {
 			endsAt = giveaway.ends_at;
 		} else {
-			const dateStr = String(giveaway.ends_at).replace(' ', 'T') + 'Z';
+			const dateStr = `${String(giveaway.ends_at).replace(' ', 'T')}Z`;
 			endsAt = new Date(dateStr);
 		}
 		const now = new Date();
@@ -582,12 +593,12 @@ export async function handleGiveawayEnterButton(interaction) {
 		}
 
 		if (giveaway.allowed_roles !== null && Array.isArray(giveaway.allowed_roles) && giveaway.allowed_roles.length > 0) {
-			const memberRoles = member.roles.cache.map((role) => role.id);
-			const hasAllRequiredRoles = giveaway.allowed_roles.every((roleId) => memberRoles.includes(roleId));
+			const memberRoles = member.roles.cache.map((role: Role) => role.id);
+			const hasAllRequiredRoles = giveaway.allowed_roles.every((roleId: string) => memberRoles.includes(roleId));
 
 			if (!hasAllRequiredRoles) {
 				const mtr = await memberTranslator(interaction.guild.id, interaction.user.id);
-				const roleMentions = giveaway.allowed_roles.map((roleId) => giveawayRoleMention(guild, roleId, mtr)).join(', ');
+				const roleMentions = giveaway.allowed_roles.map((roleId: string) => giveawayRoleMention(guild, roleId, mtr)).join(', ');
 
 				const errorMsg = await translate('giveaway.errors.roleRestriction', interaction.guild.id, interaction.user.id, { roles: roleMentions });
 				await interaction.editReply({
@@ -659,7 +670,7 @@ export async function handleGiveawayEnterButton(interaction) {
 
 		await logger.log(`✅ ${user.tag} (${user.id}) entered giveaway ${giveaway.id}`);
 	} catch (error) {
-		await logger.log(`❌ Error processing giveaway entry: ${error.message}`);
+		await logger.log(`❌ Error processing giveaway entry: ${(error as Error).message}`);
 		await interaction
 			.editReply({
 				content: await translate('giveaway.errors.enterFailed', interaction.guild.id, interaction.user.id, {
@@ -670,7 +681,7 @@ export async function handleGiveawayEnterButton(interaction) {
 	}
 }
 
-export async function handleGiveawayFinish(interaction) {
+export async function handleGiveawayFinish(interaction: ButtonInteraction<'cached'>) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
@@ -738,7 +749,7 @@ export async function handleGiveawayFinish(interaction) {
 		try {
 			giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
 		} catch (err) {
-			await logger.log(`❌ Error getting giveaway channel: ${err.message}`);
+			await logger.log(`❌ Error getting giveaway channel: ${(err as Error).message}`);
 			const errorMsg = await translate('giveaway.errors.finishChannelError', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({
 				content: errorMsg
@@ -754,7 +765,7 @@ export async function handleGiveawayFinish(interaction) {
 			return;
 		}
 
-		const channel = guild.channels.cache.get(giveawayChannelId);
+		const channel = guild.channels.cache.get(giveawayChannelId) as GuildTextBasedChannel | undefined;
 		if (!channel) {
 			const errorMsg = await translate('giveaway.errors.finishChannelNotFound', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({
@@ -896,7 +907,7 @@ export async function handleGiveawayFinish(interaction) {
 
 		await logger.log(`✅ Giveaway ${giveawayId} finished early by ${user.tag} (${user.id}) - Winners: ${winners.map((w) => w.discord_member_id).join(', ')}`);
 	} catch (error) {
-		await logger.log(`❌ Error finishing giveaway: ${error.message}`);
+		await logger.log(`❌ Error finishing giveaway: ${(error as Error).message}`);
 		await interaction
 			.editReply({
 				content: await translate('giveaway.errors.finishFailed', interaction.guild.id, interaction.user.id, {
@@ -907,24 +918,28 @@ export async function handleGiveawayFinish(interaction) {
 	}
 }
 
-async function processEndedGiveaways(client) {
+async function processEndedGiveaways(client: Client) {
 	try {
 		const endedGiveaways = await db.getEndedGiveaways();
 
 		for (const giveaway of endedGiveaways) {
 			try {
 				const server = await db.getServer(giveaway.server_id);
-				if (!server) continue;
+				if (!server) {
+					continue;
+				}
 
 				const guild = client.guilds.cache.get(server.discord_server_id);
-				if (!guild) continue;
+				if (!guild) {
+					continue;
+				}
 				const tr = await serverTranslator(guild.id);
 
 				let giveawayChannelId: string | null = null;
 				try {
 					giveawayChannelId = await GIVEAWAY.getChannelForFinalizingEndedGiveaway(guild.id);
-				} catch (err: any) {
-					await logger.log(`❌ Error resolving giveaway channel for server ${server.id}: ${err?.message || err}`);
+				} catch (err) {
+					await logger.log(`❌ Error resolving giveaway channel for server ${server.id}: ${(err as Error)?.message || err}`);
 				}
 
 				let channel: any = null;
@@ -1049,16 +1064,16 @@ async function processEndedGiveaways(client) {
 
 				await db.markGiveawayEnded(giveaway.id);
 				await logger.log(`✅ Giveaway ${giveaway.id} ended - Winners: ${winners.map((w) => w.discord_member_id).join(', ')}`);
-			} catch (err: any) {
-				await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${err?.message || err}`);
+			} catch (err) {
+				await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${(err as Error)?.message || err}`);
 			}
 		}
-	} catch (error: any) {
-		await logger.log(`❌ Error checking ended giveaways: ${error?.message || error}`);
+	} catch (error) {
+		await logger.log(`❌ Error checking ended giveaways: ${(error as Error)?.message || error}`);
 	}
 }
 
-export function init(client) {
+export function init(client: Client) {
 	processEndedGiveaways(client).catch((err) => {
 		logger.log(`❌ Error processing ended giveaways on startup: ${err.message}`);
 	});

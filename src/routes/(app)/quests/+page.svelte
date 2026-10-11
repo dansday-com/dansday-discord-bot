@@ -10,13 +10,17 @@
 
 	let query = $state('');
 	let liveOnly = $state(false);
-	let broken = $state<Record<string, boolean>>({});
+	const broken = $state<Record<string, boolean>>({});
 
 	const filtered = $derived(
 		data.quests.filter((q) => {
-			if (liveOnly && !q.live) return false;
+			if (liveOnly && !q.live) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${q.quest_name} ${q.game_title} ${q.reward ?? ''}`.toLowerCase().includes(needle);
 		})
 	);

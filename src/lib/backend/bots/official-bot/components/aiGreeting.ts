@@ -4,6 +4,7 @@ import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { SERVER_SETTINGS } from '../../../panelServer.js';
 import { normalizeServerLanguage, serverLanguageEnglishName } from '../../../../languages.js';
+import type { AiInput } from '../../../../database.js';
 
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -34,31 +35,31 @@ const KINDS = {
 	}
 };
 
-function cacheKey(kind, serverId, lang) {
+function cacheKey(kind: string, serverId: number | string, lang: string) {
 	return `dansday:ai-greeting:${kind}:${serverId}:${lang}`;
 }
 
-async function serverLanguage(serverId) {
+async function serverLanguage(serverId: number | string) {
 	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
 	return normalizeServerLanguage(row?.settings?.language);
 }
 
-function normalizeBaseUrl(rawUrl) {
+function normalizeBaseUrl(rawUrl: unknown) {
 	const trimmed = String(rawUrl ?? '')
 		.trim()
 		.replace(/\/+$/, '');
 	return trimmed.endsWith('/chat/completions') ? trimmed.slice(0, -'/chat/completions'.length) : trimmed;
 }
 
-function stripReasoning(text) {
+function stripReasoning(text: string) {
 	return String(text ?? '')
 		.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
 		.replace(/<think>[\s\S]*?<\/think>/gi, '')
 		.trim();
 }
 
-function parseLines(raw, kind) {
-	const required = KINDS[kind].required;
+function parseLines(raw: string, kind: string | number) {
+	const required = KINDS[kind as keyof typeof KINDS].required;
 
 	return stripReasoning(raw)
 		.split('\n')
@@ -74,9 +75,11 @@ function parseLines(raw, kind) {
 		.slice(0, WANTED_LINES);
 }
 
-async function readCache(kind, serverId, lang) {
+async function readCache(kind: string, serverId: number | string, lang: string) {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(cacheKey(kind, serverId, lang));
 		const parsed = raw ? JSON.parse(raw) : null;
@@ -86,16 +89,18 @@ async function readCache(kind, serverId, lang) {
 	}
 }
 
-async function writeCache(kind, serverId, lang, lines) {
+async function writeCache(kind: string, serverId: number | string, lang: string, lines: string[]) {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return;
+	if (!redis) {
+		return;
+	}
 	try {
 		await redis.set(cacheKey(kind, serverId, lang), JSON.stringify(lines), { EX: CACHE_TTL_SECONDS });
 	} catch {}
 }
 
-async function generate(kind, config, serverName, lang) {
-	const spec = KINDS[kind];
+async function generate(kind: string | number, config: AiInput, serverName: string | null, lang: string) {
+	const spec = KINDS[kind as keyof typeof KINDS];
 	const client = new OpenAI({
 		baseURL: normalizeBaseUrl(config.api_url),
 		apiKey: config.api_key,
@@ -122,22 +127,28 @@ Rules for every line:
 For example: ${spec.example}`;
 
 	const completion = await client.chat.completions.create({
-		model: config.model,
+		model: config.model!,
 		messages: [{ role: 'user', content: prompt }]
 	});
 
 	return parseLines(completion.choices?.[0]?.message?.content ?? '', kind);
 }
 
-export async function aiGreetingMessages(kind, { botId, serverId, serverName }) {
-	if (!KINDS[kind] || !botId || !serverId) return null;
+export async function aiGreetingMessages(kind: string, { botId, serverId, serverName }: { botId: number; serverId: number; serverName: string | null }) {
+	if (!KINDS[kind as keyof typeof KINDS] || !botId || !serverId) {
+		return null;
+	}
 
 	const lang = await serverLanguage(serverId);
 	const cached = await readCache(kind, serverId, lang);
-	if (cached) return cached;
+	if (cached) {
+		return cached;
+	}
 
 	const config = db.aiFromDbRow(await db.getAiByBotId(botId).catch(() => null));
-	if (!config.enabled || !config.api_url || !config.api_key || !config.model) return null;
+	if (!config.enabled || !config.api_url || !config.api_key || !config.model) {
+		return null;
+	}
 
 	try {
 		const lines = await generate(kind, config, serverName || 'this server', lang);
@@ -150,7 +161,7 @@ export async function aiGreetingMessages(kind, { botId, serverId, serverName }) 
 		await logger.log(`✨ AI wrote ${lines.length} ${kind} message(s) for ${serverName || serverId}`);
 		return lines;
 	} catch (error) {
-		await logger.log(`❌ AI ${kind} message generation failed: ${error.message}`);
+		await logger.log(`❌ AI ${kind} message generation failed: ${(error as Error).message}`);
 		return null;
 	}
 }

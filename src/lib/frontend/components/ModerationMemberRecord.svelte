@@ -43,7 +43,7 @@
 	});
 
 	$effect(() => {
-		void load(memberId);
+		load(memberId);
 	});
 
 	async function load(id: string) {
@@ -51,7 +51,10 @@
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation?member=${encodeURIComponent(id)}`, { credentials: 'include' });
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not load the record', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not load the record', 'error');
+				return;
+			}
 			cases = out.cases ?? [];
 		} finally {
 			loading = false;
@@ -83,23 +86,33 @@
 	}
 
 	async function saveReason(caseNumber: number) {
-		if (!(await post({ action: 'edit_reason', case_number: caseNumber, reason: draft.trim() }))) return;
+		if (!(await post({ action: 'edit_reason', case_number: caseNumber, reason: draft.trim() }))) {
+			return;
+		}
 		showToast(`Case #${caseNumber} updated`, 'success');
 		editing = null;
 		await load(memberId);
 	}
 
 	async function removeWarning(caseNumber: number) {
-		if (!(await post({ action: 'unwarn', case_number: caseNumber }))) return;
+		if (!(await post({ action: 'unwarn', case_number: caseNumber }))) {
+			return;
+		}
 		showToast(`Warning #${caseNumber} removed`, 'success');
 		await load(memberId);
 		await onchange?.();
 	}
 
 	function status(c: Case) {
-		if (c.revoked_at) return { label: 'Revoked', tone: 'bg-ash-600 text-ash-300' };
-		if (!PUNISHMENTS.includes(c.action)) return null;
-		if (c.active) return { label: 'Active', tone: 'bg-emerald-500/15 text-emerald-300' };
+		if (c.revoked_at) {
+			return { label: 'Revoked', tone: 'bg-ash-600 text-ash-300' };
+		}
+		if (!PUNISHMENTS.includes(c.action)) {
+			return null;
+		}
+		if (c.active) {
+			return { label: 'Active', tone: 'bg-emerald-500/15 text-emerald-300' };
+		}
 		return { label: 'Expired', tone: 'bg-ash-600 text-ash-400' };
 	}
 </script>

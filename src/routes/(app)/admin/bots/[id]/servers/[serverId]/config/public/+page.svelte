@@ -33,7 +33,9 @@
 
 	let lastEffect = inviteEffect;
 	$effect(() => {
-		if (inviteEffect === lastEffect) return;
+		if (inviteEffect === lastEffect) {
+			return;
+		}
 		lastEffect = inviteEffect;
 		inviteEffectSeed = randomSeed();
 	});
@@ -42,7 +44,9 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const picked = input.files?.[0];
 		input.value = '';
-		if (!picked) return;
+		if (!picked) {
+			return;
+		}
 		if (!imageExtension(picked.type)) {
 			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
 			return;
@@ -69,7 +73,9 @@
 			}
 			inviteImageKey = out.key ?? inviteImageKey;
 			inviteImageUrl = out.image ?? null;
-			if (out.accent) inviteAccent = out.accent;
+			if (out.accent) {
+				inviteAccent = out.accent;
+			}
 			showToast('Background saved', 'success');
 			invalidateAll();
 		} finally {
@@ -120,7 +126,9 @@
 			if (d.success) {
 				showToast('Saved', 'success');
 				invalidateAll();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
 			saving = false;
 		}

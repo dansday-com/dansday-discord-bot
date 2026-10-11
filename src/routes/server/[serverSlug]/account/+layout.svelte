@@ -46,11 +46,18 @@
 	const minigamesEnabled = $derived(data.minigamesEnabled === true);
 
 	const disabledFeature = $derived.by(() => {
-		if (isTasks && !tasksEnabled)
+		if (isTasks && !tasksEnabled) {
 			return { title: 'Tasks are turned off', message: 'This server has not enabled daily and weekly tasks.', icon: 'fa-list-check' };
-		if (isItems && !itemsEnabled) return { title: 'Items are turned off', message: 'This server has not enabled the item shop and bag.', icon: 'fa-store' };
-		if (isMinigames && !minigamesEnabled) return { title: 'Minigames are turned off', message: 'This server has not enabled minigames.', icon: 'fa-dice' };
-		if (isMarket && !marketEnabled) return { title: 'Market is turned off', message: 'This server has not enabled the market.', icon: 'fa-chart-line' };
+		}
+		if (isItems && !itemsEnabled) {
+			return { title: 'Items are turned off', message: 'This server has not enabled the item shop and bag.', icon: 'fa-store' };
+		}
+		if (isMinigames && !minigamesEnabled) {
+			return { title: 'Minigames are turned off', message: 'This server has not enabled minigames.', icon: 'fa-dice' };
+		}
+		if (isMarket && !marketEnabled) {
+			return { title: 'Market is turned off', message: 'This server has not enabled the market.', icon: 'fa-chart-line' };
+		}
 		return null;
 	});
 
@@ -90,7 +97,7 @@
 	}
 
 	let taskSummaryLive = $state<any>(null);
-	function setTaskSummary(s: any) {
+	function setTaskSummary(s: unknown) {
 		taskSummaryLive = s;
 	}
 	const taskSummary = $derived(taskSummaryLive ?? pd.tasks?.streak ?? null);
@@ -103,7 +110,9 @@
 		return Math.max(0, Math.min(100, ((cur - prev) / Math.max(1, next - prev)) * 100));
 	});
 	const assetSummary = $derived.by(() => {
-		if (assetSummaryLive) return assetSummaryLive;
+		if (assetSummaryLive) {
+			return assetSummaryLive;
+		}
 		const invested = Number(pd.totalInvested) || 0;
 		const value = Number(pd.totalValue) || 0;
 		const pnl = value - invested;
@@ -134,9 +143,13 @@
 
 	const joinedDate = $derived.by(() => {
 		const joined = pd.profile?.joined;
-		if (!joined) return null;
-		const d = new Date(String(joined).replace(' ', 'T') + 'Z');
-		if (Number.isNaN(d.getTime())) return null;
+		if (!joined) {
+			return null;
+		}
+		const d = new Date(`${String(joined).replace(' ', 'T')}Z`);
+		if (Number.isNaN(d.getTime())) {
+			return null;
+		}
 		return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
 	});
 
@@ -156,13 +169,17 @@
 
 	const activeChips = $derived.by(() => {
 		const chips: { key: string; icon: string; label: string; until: number; accent: string; text?: string }[] = [];
-		for (const e of (pd.activeEffects ?? []) as any[]) {
-			if (!e.expiresAt || e.expiresAt <= now) continue;
+		for (const e of pd.activeEffects ?? []) {
+			if (!e.expiresAt || e.expiresAt <= now) {
+				continue;
+			}
 			let label = effectLabel(e.effect_type);
 			let accent = effectAccentHex(e.effect_type);
 			if (e.effect_type === 'leech' && e.leechRole) {
 				label = e.leechRole === 'victim' ? `Leeched by ${e.leechWith}` : `Leeching ${e.leechWith}`;
-				if (e.leechRole === 'victim') accent = effectAccentHex('steal');
+				if (e.leechRole === 'victim') {
+					accent = effectAccentHex('steal');
+				}
 			}
 			chips.push({
 				key: `eff-${e.effect_type}-${e.leechWith ?? ''}-${e.expiresAt}`,
@@ -172,10 +189,13 @@
 				accent
 			});
 		}
-		if (pd.immuneUntil && pd.immuneUntil > now)
+		if (pd.immuneUntil && pd.immuneUntil > now) {
 			chips.push({ key: 'immune', icon: 'fa-shield-halved', label: 'Immune', until: pd.immuneUntil, accent: effectAccentHex('insurance') });
+		}
 		for (const cd of (pd.attackCooldowns ?? []) as { action: 'steal' | 'bomb'; until: number }[]) {
-			if (!cd.until || cd.until <= now) continue;
+			if (!cd.until || cd.until <= now) {
+				continue;
+			}
 			chips.push({
 				key: `cd-${cd.action}`,
 				icon: cd.action === 'steal' ? 'fa-hand' : 'fa-bomb',
@@ -184,7 +204,7 @@
 				accent: effectAccentHex(cd.action)
 			});
 		}
-		if (pd.insuranceCooldownUntil && pd.insuranceCooldownUntil > now)
+		if (pd.insuranceCooldownUntil && pd.insuranceCooldownUntil > now) {
 			chips.push({
 				key: 'cd-insurance',
 				icon: effectIcon('insurance'),
@@ -192,8 +212,9 @@
 				until: pd.insuranceCooldownUntil,
 				accent: effectAccentHex('insurance')
 			});
+		}
 		chips.sort((a, b) => a.until - b.until);
-		if ((pd.bountyTotal ?? 0) > 0)
+		if ((pd.bountyTotal ?? 0) > 0) {
 			chips.push({
 				key: 'bounty',
 				icon: effectIcon('bounty'),
@@ -202,12 +223,15 @@
 				accent: effectAccentHex('bounty'),
 				text: `${fmt(pd.bountyTotal)} XP`
 			});
+		}
 		return chips;
 	});
 
 	function remainingLabel(untilMs: number): string {
 		const secs = Math.max(0, Math.floor((untilMs - now) / 1000));
-		if (secs < 60) return `${secs}s`;
+		if (secs < 60) {
+			return `${secs}s`;
+		}
 		return formatDuration(Math.floor(secs / 60));
 	}
 
@@ -271,9 +295,13 @@
 	const sessionKey = $derived(`items_card_${data.server.slug}`);
 
 	function syncTabSession() {
-		if (typeof sessionStorage === 'undefined') return;
+		if (typeof sessionStorage === 'undefined') {
+			return;
+		}
 		const urlHash = pd.hash ? String(pd.hash) : '';
-		if (urlHash) sessionStorage.setItem(sessionKey, urlHash);
+		if (urlHash) {
+			sessionStorage.setItem(sessionKey, urlHash);
+		}
 	}
 
 	let es: EventSource | null = null;
@@ -287,11 +315,17 @@
 			source.onmessage = (e) => {
 				try {
 					const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
-					const me = payload?.members?.find((m: any) => String(m.discord_member_id) === pd.memberDiscordId);
+					const me = payload?.members?.find((m) => String(m.discord_member_id) === pd.memberDiscordId);
 					if (me) {
-						if (me.xp != null) liveXp = Number(me.xp) || 0;
-						if (me.level != null) level = Number(me.level) || 1;
-						if (me.rank != null) rank = Number(me.rank);
+						if (me.xp != null) {
+							liveXp = Number(me.xp) || 0;
+						}
+						if (me.level != null) {
+							level = Number(me.level) || 1;
+						}
+						if (me.rank != null) {
+							rank = Number(me.rank);
+						}
 					}
 				} catch (_) {}
 			};
@@ -305,9 +339,13 @@
 	let burstId = $state<number | null>(null);
 
 	function flyToBag(fromEl: HTMLElement | null, iconClass: string) {
-		if (!fromEl || typeof document === 'undefined') return;
+		if (!fromEl || typeof document === 'undefined') {
+			return;
+		}
 		const bagTab = Array.from(document.querySelectorAll('[data-tab-id="items"]')).find((el) => el.getClientRects().length > 0);
-		if (!bagTab) return;
+		if (!bagTab) {
+			return;
+		}
 		const start = fromEl.getBoundingClientRect();
 		const end = bagTab.getBoundingClientRect();
 		const clone = document.createElement('div');
@@ -336,7 +374,7 @@
 		};
 	}
 
-	function canAfford(item: any): boolean {
+	function canAfford(item: Record<string, unknown>): boolean {
 		return liveXp >= (Number(item.cost) || 0);
 	}
 
@@ -352,7 +390,9 @@
 
 	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise', 'luck']);
 	function isBuffActive(effectType: string): boolean {
-		if (!SELF_BUFFS.has(effectType)) return false;
+		if (!SELF_BUFFS.has(effectType)) {
+			return false;
+		}
 		return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
 	}
 	function activeLuckPercent(): number {
@@ -562,7 +602,7 @@
 		</div>
 
 		{#if activeChips.length > 0}
-			<div class="-mt-1.5 mb-4 flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+			<div class="-mt-1.5 mb-4 flex [scrollbar-width:none] flex-nowrap gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
 				{#each activeChips as chip (chip.key)}
 					<span
 						class="inline-flex shrink-0 items-center gap-[7px] rounded-full border px-2.75 py-1.5 text-xs font-bold whitespace-nowrap text-(--chip)"

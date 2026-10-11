@@ -44,7 +44,9 @@
 	afterNavigate(close);
 
 	function dismiss() {
-		if (open) sfx.close();
+		if (open) {
+			sfx.close();
+		}
 		close();
 	}
 
@@ -58,44 +60,70 @@
 	}
 
 	function hrefOf(key: string | null): string | null {
-		if (!key) return null;
+		if (!key) {
+			return null;
+		}
 		const i = Number(key.slice(1));
-		if (key[0] === 's') return tabs[i]?.href ?? null;
-		if (key[0] === 'c') return chips[i]?.href ?? null;
+		if (key[0] === 's') {
+			return tabs[i]?.href ?? null;
+		}
+		if (key[0] === 'c') {
+			return chips[i]?.href ?? null;
+		}
 		return null;
 	}
 
 	function track(x: number, y: number) {
 		const key = keyOf(document.elementFromPoint(x, y));
-		if (key === hover && Math.hypot(x - restX, y - restY) <= REST_RADIUS) return;
-		if (key !== hover && key && key !== 'orb') sfx.detent(Number(key.slice(1)), key[0] === 'c');
+		if (key === hover && Math.hypot(x - restX, y - restY) <= REST_RADIUS) {
+			return;
+		}
+		if (key !== hover && key && key !== 'orb') {
+			sfx.detent(Number(key.slice(1)), key[0] === 'c');
+		}
 		hover = key;
 		restX = x;
 		restY = y;
 		clearTimeout(restTimer);
-		if (!hrefOf(key)) return;
+		if (!hrefOf(key)) {
+			return;
+		}
 		restTimer = setTimeout(() => {
 			const href = hrefOf(key);
-			if (key?.[0] === 's') preview = Number(key.slice(1));
-			if (href) preloadData(href);
+			if (key?.[0] === 's') {
+				preview = Number(key.slice(1));
+			}
+			if (href) {
+				preloadData(href);
+			}
 		}, REST_MS);
 	}
 
 	function press(e: PointerEvent) {
-		if (pointer !== null || !keyOf(e.target)) return;
-		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		if (pointer !== null || !keyOf(e.target)) {
+			return;
+		}
+		if (e.pointerType === 'mouse' && e.button !== 0) {
+			return;
+		}
 		pointer = e.pointerId;
 		wasOpen = open;
-		if (!open) unfold();
+		if (!open) {
+			unfold();
+		}
 		track(e.clientX, e.clientY);
 	}
 
 	function move(e: PointerEvent) {
-		if (e.pointerId === pointer) track(e.clientX, e.clientY);
+		if (e.pointerId === pointer) {
+			track(e.clientX, e.clientY);
+		}
 	}
 
 	function release(e: PointerEvent) {
-		if (e.pointerId !== pointer) return;
+		if (e.pointerId !== pointer) {
+			return;
+		}
 		pointer = null;
 		releasedAt = e.timeStamp;
 		clearTimeout(restTimer);
@@ -107,14 +135,18 @@
 			goto(href);
 		} else if (key === 'orb' && !wasOpen) {
 			hover = null;
-			if (!chimed) chimed = sfx.open();
+			if (!chimed) {
+				chimed = sfx.open();
+			}
 		} else {
 			dismiss();
 		}
 	}
 
 	function cancel(e: PointerEvent) {
-		if (e.pointerId !== pointer) return;
+		if (e.pointerId !== pointer) {
+			return;
+		}
 		pointer = null;
 		clearTimeout(restTimer);
 		hover = null;

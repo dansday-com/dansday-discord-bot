@@ -13,7 +13,9 @@
 
 	function isActive(suffix: string) {
 		const full = base + suffix;
-		if (suffix === '') return page.url.pathname === base;
+		if (suffix === '') {
+			return page.url.pathname === base;
+		}
 		return page.url.pathname === full;
 	}
 </script>

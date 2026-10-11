@@ -48,13 +48,17 @@ export function colorHueGap(a: number, b: number): number {
 
 export function colorOpeningGuess(target: Hsb): Hsb {
 	let h = Math.floor(Math.random() * 360);
-	for (let tries = 0; tries < 50 && colorHueGap(h, target.h) < COLOR_OPENING_HUE_GAP; tries++) h = Math.floor(Math.random() * 360);
+	for (let tries = 0; tries < 50 && colorHueGap(h, target.h) < COLOR_OPENING_HUE_GAP; tries++) {
+		h = Math.floor(Math.random() * 360);
+	}
 	return { h, s: 30 + Math.floor(Math.random() * 60), b: 40 + Math.floor(Math.random() * 50) };
 }
 
-export function colorGuess(raw: any): Hsb | null {
+export function colorGuess(raw: Record<string, unknown>): Hsb | null {
 	const [h, s, b] = COLOR_AXES.map((axis) => (raw?.[axis] == null || raw[axis] === '' ? NaN : Number(raw[axis])));
-	if (![h, s, b].every(Number.isFinite)) return null;
+	if (![h, s, b].every(Number.isFinite)) {
+		return null;
+	}
 	return {
 		h: ((Math.round(h) % 360) + 360) % 360,
 		s: clamp(Math.round(s), 0, COLOR_AXIS_MAX.s),
@@ -114,7 +118,9 @@ function hsbToLab(c: Hsb): [number, number, number] {
 }
 
 function labHue(b: number, a: number): number {
-	if (a === 0 && b === 0) return 0;
+	if (a === 0 && b === 0) {
+		return 0;
+	}
 	const h = deg(Math.atan2(b, a));
 	return h < 0 ? h + 360 : h;
 }
@@ -138,14 +144,20 @@ export function deltaE2000(lab1: [number, number, number], lab2: [number, number
 	let hueDelta = 0;
 	if (!achromatic) {
 		hueDelta = h2 - h1;
-		if (hueDelta > 180) hueDelta -= 360;
-		else if (hueDelta < -180) hueDelta += 360;
+		if (hueDelta > 180) {
+			hueDelta -= 360;
+		} else if (hueDelta < -180) {
+			hueDelta += 360;
+		}
 	}
 
 	let hueMean = h1 + h2;
 	if (!achromatic) {
-		if (Math.abs(h1 - h2) <= 180) hueMean = (h1 + h2) / 2;
-		else hueMean = h1 + h2 < 360 ? (h1 + h2 + 360) / 2 : (h1 + h2 - 360) / 2;
+		if (Math.abs(h1 - h2) <= 180) {
+			hueMean = (h1 + h2) / 2;
+		} else {
+			hueMean = h1 + h2 < 360 ? (h1 + h2 + 360) / 2 : (h1 + h2 - 360) / 2;
+		}
 	}
 
 	const dL = l2 - l1;
@@ -180,6 +192,6 @@ export function colorTotal(scores: number[]): number {
 	return round2(scores.reduce((sum, s) => sum + (Number(s) || 0), 0));
 }
 
-export function colorXp(total: any): number {
+export function colorXp(total: unknown): number {
 	return Math.round(clamp(Number(total) || 0, 0, COLOR_MAX_TOTAL));
 }

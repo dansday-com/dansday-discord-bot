@@ -106,27 +106,39 @@ export function installPacketFilter(client: any, isForwardChannel: (guildId: str
 
 	function drop() {
 		stats.dropped++;
-		if (manager.packetQueue?.length) original();
+		if (manager.packetQueue?.length) {
+			original();
+		}
 		return true;
 	}
 
-	manager.handlePacket = function patchedHandlePacket(packet: any, shard: any) {
-		if (!packet || !packet.t) return original(packet, shard);
+	manager.handlePacket = function patchedHandlePacket(packet: any, shard: unknown) {
+		if (!packet || !packet.t) {
+			return original(packet, shard);
+		}
 
 		stats.seen++;
 
-		if (DROPPED_EVENTS.has(packet.t)) return drop();
+		if (DROPPED_EVENTS.has(packet.t)) {
+			return drop();
+		}
 
 		if (packet.t === 'GUILD_MEMBER_UPDATE') {
 			const own = selfId();
-			if (own && packet.d?.user?.id && String(packet.d.user.id) !== String(own)) return drop();
+			if (own && packet.d?.user?.id && String(packet.d.user.id) !== String(own)) {
+				return drop();
+			}
 		}
 
 		if (packet.t === 'MESSAGE_CREATE') {
 			const guildId = packet.d?.guild_id;
 			const channelId = packet.d?.channel_id;
-			if (!guildId) return drop();
-			if (channelId && isForwardChannel(String(guildId), String(channelId)) === false) return drop();
+			if (!guildId) {
+				return drop();
+			}
+			if (channelId && isForwardChannel(String(guildId), String(channelId)) === false) {
+				return drop();
+			}
 			stats.forwarded++;
 		}
 
@@ -139,7 +151,9 @@ export function installPacketFilter(client: any, isForwardChannel: (guildId: str
 	}
 
 	const timer = setInterval(() => {
-		if (stats.seen === 0) return;
+		if (stats.seen === 0) {
+			return;
+		}
 		const pct = Math.round((stats.dropped / stats.seen) * 100);
 		logger.log(`🧹 Packet filter: ${stats.dropped}/${stats.seen} gateway events dropped (${pct}%), ${stats.forwarded} message(s) in forwarded channels`);
 		stats.seen = 0;

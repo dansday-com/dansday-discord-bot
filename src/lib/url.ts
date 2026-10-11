@@ -19,7 +19,9 @@ export function publicServerPath(slug: string): string {
 }
 
 export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members' | 'account'): string | null {
-	if (!slug) return null;
+	if (!slug) {
+		return null;
+	}
 	return publicSiteOrigin() + publicServerPath(slug) + (page ? `/${page}` : '');
 }
 
@@ -101,27 +103,37 @@ function punycodeDecode(input: string): string | null {
 	let n = 128;
 	let bias = 72;
 	let i = 0;
-	for (let pos = cut > 0 ? cut + 1 : 0; pos < input.length; ) {
+	for (let pos = cut > 0 ? cut + 1 : 0; pos < input.length;) {
 		const start = i;
 		for (let w = 1, k = 36; ; k += 36) {
-			if (pos >= input.length) return null;
+			if (pos >= input.length) {
+				return null;
+			}
 			const c = input.charCodeAt(pos++);
 			const digit = c >= 48 && c <= 57 ? c - 22 : c >= 97 && c <= 122 ? c - 97 : -1;
-			if (digit < 0) return null;
+			if (digit < 0) {
+				return null;
+			}
 			i += digit * w;
 			const t = k <= bias ? 1 : k >= bias + 26 ? 26 : k - bias;
-			if (digit < t) break;
+			if (digit < t) {
+				break;
+			}
 			w *= 36 - t;
 		}
 		const len = out.length + 1;
 		let delta = Math.floor((i - start) / (start === 0 ? 700 : 2));
 		delta += Math.floor(delta / len);
 		let k = 0;
-		for (; delta > 455; k += 36) delta = Math.floor(delta / 35);
+		for (; delta > 455; k += 36) {
+			delta = Math.floor(delta / 35);
+		}
 		bias = k + Math.floor((36 * delta) / (delta + 38));
 		n += Math.floor(i / len);
 		i %= len;
-		if (n > 0x10ffff) return null;
+		if (n > 0x10ffff) {
+			return null;
+		}
 		out.splice(i++, 0, n);
 	}
 	return String.fromCodePoint(...out);
@@ -134,21 +146,33 @@ export function publicServerSlugFromHost(hostname: string | null | undefined): s
 		.replace(/\.$/, '')
 		.replace(/:\d+$/, '');
 	const root = subdomainRootHost();
-	if (!host || !root || !host.endsWith(`.${root}`)) return null;
+	if (!host || !root || !host.endsWith(`.${root}`)) {
+		return null;
+	}
 	const label = host.slice(0, -(root.length + 1));
-	if (!label || label.includes('.')) return null;
+	if (!label || label.includes('.')) {
+		return null;
+	}
 	const decoded = label.startsWith('xn--') ? punycodeDecode(label.slice(4)) : label;
-	if (!decoded || !/^[\p{L}\p{M}\p{Nd}]+(?:-[0-9]+)?$/u.test(decoded)) return null;
-	if (RESERVED_SUBDOMAIN_LABELS.has(label)) return null;
+	if (!decoded || !/^[\p{L}\p{M}\p{Nd}]+(?:-[0-9]+)?$/u.test(decoded)) {
+		return null;
+	}
+	if (RESERVED_SUBDOMAIN_LABELS.has(label)) {
+		return null;
+	}
 	return subdomainLabelToServerSlug(decoded);
 }
 
 export function publicServerSubdomainOrigin(slug: string): string | null {
 	const label = serverSlugToSubdomainLabel(slug);
-	if (!label || !APP_DOMAIN) return null;
+	if (!label || !APP_DOMAIN) {
+		return null;
+	}
 	try {
 		const url = new URL(`${APP_PROTOCOL}//${label}.${APP_DOMAIN}`);
-		if (url.hostname.split('.')[0].length > 63 || publicServerSlugFromHost(url.hostname) !== slug) return null;
+		if (url.hostname.split('.')[0].length > 63 || publicServerSlugFromHost(url.hostname) !== slug) {
+			return null;
+		}
 		return url.origin;
 	} catch {
 		return null;
@@ -157,7 +181,9 @@ export function publicServerSubdomainOrigin(slug: string): string | null {
 
 export function publicServerSubdomainUrl(slug: string, page?: 'leaderboard' | 'members' | 'account'): string | null {
 	const origin = publicServerSubdomainOrigin(slug);
-	if (!origin) return null;
+	if (!origin) {
+		return null;
+	}
 	return origin + (page ? `/${page}` : '');
 }
 
@@ -169,16 +195,22 @@ const PUBLIC_SERVER_SUBPATHS = ['leaderboard', 'members', 'account'];
 
 export function isPublicServerSubpath(pathname: string): boolean {
 	const path = String(pathname ?? '').replace(/\/+$/, '');
-	if (path === '') return true;
+	if (path === '') {
+		return true;
+	}
 	return PUBLIC_SERVER_SUBPATHS.includes(path.slice(1).split('/')[0]);
 }
 
 export function apexLink(path: string, hostname?: string | null): string {
-	if (hostname && publicServerSlugFromHost(hostname)) return publicSiteOrigin() + path;
+	if (hostname && publicServerSlugFromHost(hostname)) {
+		return publicSiteOrigin() + path;
+	}
 	return path;
 }
 
 export function publicServerBasePath(slug: string, hostname?: string | null): string {
-	if (hostname && publicServerSlugFromHost(hostname) === slug) return '';
+	if (hostname && publicServerSlugFromHost(hostname) === slug) {
+		return '';
+	}
 	return publicServerPath(slug);
 }

@@ -72,58 +72,56 @@ const intro = (): string =>
 	);
 
 export function llmsIndex(): string {
-	return (
-		blocks(
-			intro(),
-			'## Documentation',
-			[
-				link('Documentation', DOCS_URL, 'Setup from adding the bot to configuring every module, field by field.'),
-				link('Full documentation in Markdown', LLMS_FULL_URL, `All ${features.length} features, the FAQ and every documentation section in one file.`)
-			].join('\n'),
-			'## Product',
-			[
-				link('Homepage', `${APP_URL}/`, `What the bot does, all ${features.length} features and the FAQ.`),
-				link('Add the bot to a Discord server', OFFICIAL_BOT_INVITE_URL, 'The hosted bot. Nothing to run.'),
-				link('Source code', SOURCE_REPO_URL, 'AGPL-3.0, with Docker Compose and a Node adapter for self-hosting.'),
-				link('Discord App Directory listing', DISCORD_APP_DIRECTORY_URL, "The bot's page in Discord's own directory.")
-			].join('\n'),
-			'## Public directories',
-			[
-				link('Server directory', `${APP_URL}/servers`, 'Every Discord server running the bot with public pages switched on, ranked by total XP earned.'),
-				link('Task directory', `${APP_URL}/tasks`, 'Every daily and weekly task the bot can hand out, with what each one asks for and the module it needs.'),
-				link('Item directory', `${APP_URL}/shop`, 'Every item in the shop catalog: what each one does, what it costs in XP and when it is on sale.'),
-				link('Discord Quest directory', `${APP_URL}/quests`, 'Every Discord Quest the bot has tracked, with the game, the task, the reward and when it runs.'),
-				link(
-					'Roblox catalog directory',
-					`${APP_URL}/roblox`,
-					'Every Roblox catalog item the bot watches, with price, lowest resale, favourites and remaining stock.'
-				),
-				link('Wiki knowledge directory', `${APP_URL}/wikis`, 'Every wiki the bot can look up, and whether it is active or disabled.'),
-				link('Forwarder source servers', `${APP_URL}/forwarder-servers`, 'Every Discord server messages can be forwarded from.')
-			].join('\n'),
-			'## Optional',
-			[
-				link('Sitemap', `${APP_URL}/sitemap.xml`, "Every public URL, including each public server's statistics, leaderboard and members pages."),
-				link('Community Discord', COMMUNITY_DISCORD_URL, 'Support and updates.'),
-				link('Terms of Service', TERMS_URL, 'Terms for the website, the panel and the bot.'),
-				link('Privacy Policy', PRIVACY_URL, 'What is collected and how it is used.')
-			].join('\n')
-		) + '\n'
+	const body = blocks(
+		intro(),
+		'## Documentation',
+		[
+			link('Documentation', DOCS_URL, 'Setup from adding the bot to configuring every module, field by field.'),
+			link('Full documentation in Markdown', LLMS_FULL_URL, `All ${features.length} features, the FAQ and every documentation section in one file.`)
+		].join('\n'),
+		'## Product',
+		[
+			link('Homepage', `${APP_URL}/`, `What the bot does, all ${features.length} features and the FAQ.`),
+			link('Add the bot to a Discord server', OFFICIAL_BOT_INVITE_URL, 'The hosted bot. Nothing to run.'),
+			link('Source code', SOURCE_REPO_URL, 'AGPL-3.0, with Docker Compose and a Node adapter for self-hosting.'),
+			link('Discord App Directory listing', DISCORD_APP_DIRECTORY_URL, "The bot's page in Discord's own directory.")
+		].join('\n'),
+		'## Public directories',
+		[
+			link('Server directory', `${APP_URL}/servers`, 'Every Discord server running the bot with public pages switched on, ranked by total XP earned.'),
+			link('Task directory', `${APP_URL}/tasks`, 'Every daily and weekly task the bot can hand out, with what each one asks for and the module it needs.'),
+			link('Item directory', `${APP_URL}/shop`, 'Every item in the shop catalog: what each one does, what it costs in XP and when it is on sale.'),
+			link('Discord Quest directory', `${APP_URL}/quests`, 'Every Discord Quest the bot has tracked, with the game, the task, the reward and when it runs.'),
+			link(
+				'Roblox catalog directory',
+				`${APP_URL}/roblox`,
+				'Every Roblox catalog item the bot watches, with price, lowest resale, favourites and remaining stock.'
+			),
+			link('Wiki knowledge directory', `${APP_URL}/wikis`, 'Every wiki the bot can look up, and whether it is active or disabled.'),
+			link('Forwarder source servers', `${APP_URL}/forwarder-servers`, 'Every Discord server messages can be forwarded from.')
+		].join('\n'),
+		'## Optional',
+		[
+			link('Sitemap', `${APP_URL}/sitemap.xml`, "Every public URL, including each public server's statistics, leaderboard and members pages."),
+			link('Community Discord', COMMUNITY_DISCORD_URL, 'Support and updates.'),
+			link('Terms of Service', TERMS_URL, 'Terms for the website, the panel and the bot.'),
+			link('Privacy Policy', PRIVACY_URL, 'What is collected and how it is used.')
+		].join('\n')
 	);
+	return `${body}\n`;
 }
 
 export function llmsFull(): string {
-	return (
-		blocks(
-			intro(),
-			`Website: ${APP_URL}/. Source code: ${SOURCE_REPO_URL}. Add the bot: ${OFFICIAL_BOT_INVITE_URL}.`,
-			'## Features',
-			features.map((f) => `- **${f.title}**: ${f.desc} ${f.more}`).join('\n'),
-			'## Frequently asked questions',
-			...faq.map((f) => blocks(`### ${plain(f.q)}`, plain(f.a))),
-			'## Documentation',
-			`Source: ${DOCS_URL}`,
-			...sections.map((s) => blocks(`### ${s.heading}`, s.lead, SECTION_BODY[s.id]?.() ?? ''))
-		) + '\n'
+	const body = blocks(
+		intro(),
+		`Website: ${APP_URL}/. Source code: ${SOURCE_REPO_URL}. Add the bot: ${OFFICIAL_BOT_INVITE_URL}.`,
+		'## Features',
+		features.map((f) => `- **${f.title}**: ${f.desc} ${f.more}`).join('\n'),
+		'## Frequently asked questions',
+		...faq.map((f) => blocks(`### ${plain(f.q)}`, plain(f.a))),
+		'## Documentation',
+		`Source: ${DOCS_URL}`,
+		...sections.map((s) => blocks(`### ${s.heading}`, s.lead, SECTION_BODY[s.id]?.() ?? ''))
 	);
+	return `${body}\n`;
 }

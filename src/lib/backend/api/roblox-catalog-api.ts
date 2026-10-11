@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import { fetchApi } from 'rozod';
 import { getSearchItemsDetails } from 'rozod/lib/endpoints/catalogv2.js';
 import { ROBLOX_CATALOG_ABORT_MS, ROBLOX_CATALOG_NEXT_PAGE_MS, ROBLOX_CATALOG_POLL_MS } from '../config.js';
@@ -32,22 +32,32 @@ const ROBLOX_HEADERS = {
 };
 
 function taxonomyCategory(tax: unknown): string | undefined {
-	if (!Array.isArray(tax) || tax.length === 0) return undefined;
+	if (!Array.isArray(tax) || tax.length === 0) {
+		return undefined;
+	}
 	const names = tax.map((t: { taxonomyName?: string }) => (typeof t?.taxonomyName === 'string' ? t.taxonomyName.trim() : '')).filter(Boolean);
 	return names.length ? names.join(', ') : undefined;
 }
 
 function parseCatalogAssetId(raw: unknown): number | null {
-	if (raw === null || raw === undefined) return null;
+	if (raw === null || raw === undefined) {
+		return null;
+	}
 	if (typeof raw === 'number') {
-		if (!Number.isFinite(raw) || !Number.isInteger(raw)) return null;
+		if (!Number.isFinite(raw) || !Number.isInteger(raw)) {
+			return null;
+		}
 		return raw;
 	}
 	if (typeof raw === 'string') {
 		const t = raw.trim();
-		if (t === '' || !/^-?\d+$/.test(t)) return null;
+		if (t === '' || !/^-?\d+$/.test(t)) {
+			return null;
+		}
 		const n = Number(t);
-		if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+		if (!Number.isFinite(n) || !Number.isInteger(n)) {
+			return null;
+		}
 		return n;
 	}
 	return null;
@@ -55,7 +65,9 @@ function parseCatalogAssetId(raw: unknown): number | null {
 
 function mapCatalogRow(x: Record<string, unknown>): RobloxCatalogItem | null {
 	const id = parseCatalogAssetId(x?.id);
-	if (id == null) return null;
+	if (id == null) {
+		return null;
+	}
 	const offRaw = x.offSaleDeadline;
 	const offSaleDeadline = typeof offRaw === 'string' && offRaw.length > 0 ? offRaw : null;
 	return {
@@ -93,7 +105,7 @@ async function fetchCatalogJson(params: Record<string, unknown>): Promise<{ data
 			return { data: rows as Record<string, unknown>[], nextPageCursor: next };
 		} catch (err: unknown) {
 			const status = (err as { response?: { status?: number } })?.response?.status;
-			const msg = err instanceof Error ? err.message : String(err);
+			const msg = err instanceof Error ? (err as Error).message : String(err);
 			logger.log(`⚠️ [roblox-api] catalog fetch failed ${status ?? '?'} — ${msg}, retrying in ${ROBLOX_CATALOG_POLL_MS / 1000}s...`);
 			await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
 		}
@@ -109,7 +121,9 @@ export async function fetchCatalogFirstPage(extraParams: Record<string, unknown>
 	const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 	if (items.length > 0) {
 		const thumbMap = await fetchThumbnailUrls(items);
-		for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+		for (const item of items) {
+			item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+		}
 	}
 	return items;
 }
@@ -119,19 +133,25 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 
 	while (true) {
 		const params: Record<string, unknown> = { limit: 120, ...extraParams };
-		if (cursor) params.cursor = cursor;
+		if (cursor) {
+			params.cursor = cursor;
+		}
 
 		const { data, nextPageCursor } = await fetchCatalogJson(params);
 		const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 
 		if (items.length > 0) {
 			const thumbMap = await fetchThumbnailUrls(items);
-			for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+			for (const item of items) {
+				item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+			}
 			await onPage(items);
 		}
 
 		cursor = nextPageCursor ?? undefined;
-		if (!cursor) break;
+		if (!cursor) {
+			break;
+		}
 		await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_NEXT_PAGE_MS));
 	}
 }
@@ -139,7 +159,9 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<number, string>> {
 	const out = new Map<number, string>();
 	const ids = items.map((x) => x.id);
-	if (ids.length === 0) return out;
+	if (ids.length === 0) {
+		return out;
+	}
 
 	for (let i = 0; i < ids.length; i += 100) {
 		const chunk = ids.slice(i, i + 100);
@@ -152,8 +174,12 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 		for (const r of Array.isArray(data?.data) ? data.data : []) {
 			const id = Number(r?.targetId);
 			const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
-			if (r?.state !== 'Completed' || !isUsableRobloxThumbnail(url)) continue;
-			if (Number.isFinite(id)) out.set(id, url);
+			if (r?.state !== 'Completed' || !isUsableRobloxThumbnail(url)) {
+				continue;
+			}
+			if (Number.isFinite(id)) {
+				out.set(id, url);
+			}
 		}
 	}
 
@@ -165,9 +191,9 @@ async function fetchWithRetry(url: string, params: Record<string, unknown>): Pro
 		try {
 			const res = await axios.get(url, { params, headers: ROBLOX_HEADERS, timeout: 15_000 });
 			return res.data;
-		} catch (err: any) {
-			const status = err?.response?.status;
-			const body = err?.response?.data ? JSON.stringify(err.response.data) : err?.message;
+		} catch (err) {
+			const status = (err as AxiosError)?.response?.status;
+			const body = (err as AxiosError)?.response?.data ? JSON.stringify((err as AxiosError).response!.data) : (err as AxiosError)?.message;
 			if ((status === 503 || status === 429) && attempt < 2) {
 				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
 				continue;
@@ -194,9 +220,9 @@ async function postCatalogItemDetails(refs: RobloxCatalogItemRef[]): Promise<Rec
 				timeout: ROBLOX_CATALOG_ABORT_MS
 			});
 			return Array.isArray(res.data?.data) ? (res.data.data as Record<string, unknown>[]) : [];
-		} catch (err: any) {
-			const status = err?.response?.status;
-			const freshToken = err?.response?.headers?.['x-csrf-token'];
+		} catch (err) {
+			const status = (err as AxiosError)?.response?.status;
+			const freshToken = (err as AxiosError)?.response?.headers?.['x-csrf-token'];
 			if (status === 403 && typeof freshToken === 'string' && freshToken && freshToken !== catalogCsrfToken) {
 				catalogCsrfToken = freshToken;
 				continue;
@@ -205,7 +231,7 @@ async function postCatalogItemDetails(refs: RobloxCatalogItemRef[]): Promise<Rec
 				await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS * (attempt + 1)));
 				continue;
 			}
-			logger.log(`⚠️ [roblox-api] item details fetch failed ${status ?? '?'} — ${err?.message || err}`);
+			logger.log(`⚠️ [roblox-api] item details fetch failed ${status ?? '?'} — ${(err as AxiosError)?.message || err}`);
 			return [];
 		}
 	}
@@ -219,7 +245,9 @@ export async function fetchCatalogItemsByRefs(refs: RobloxCatalogItemRef[], know
 	for (let i = 0; i < refs.length; i += 100) {
 		const rows = await postCatalogItemDetails(refs.slice(i, i + 100));
 		const items = filterVerifiedCreators(rows.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
-		if (items.length === 0) continue;
+		if (items.length === 0) {
+			continue;
+		}
 
 		for (const item of items) {
 			const known = knownThumbnails?.get(item.id) ?? null;
@@ -229,7 +257,9 @@ export async function fetchCatalogItemsByRefs(refs: RobloxCatalogItemRef[], know
 		const missingThumbnails = items.filter((x) => !x.thumbnailUrl);
 		if (missingThumbnails.length > 0) {
 			const thumbMap = await fetchThumbnailUrls(missingThumbnails);
-			for (const item of missingThumbnails) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+			for (const item of missingThumbnails) {
+				item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+			}
 		}
 
 		out.push(...items);

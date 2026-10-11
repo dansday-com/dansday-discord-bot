@@ -24,9 +24,13 @@ export async function uploadMessageFile(url: string, file: File, onProgress?: (f
 		} catch {
 			return { ok: false, error: 'The upload was interrupted. Check your connection and pick the file again.' };
 		}
-		if (!out?.ok) return { ok: false, error: out?.error || 'Could not upload the file. Try again.' };
+		if (!out?.ok) {
+			return { ok: false, error: out?.error || 'Could not upload the file. Try again.' };
+		}
 		onProgress?.((index + 1) / total);
-		if (out.done) return { ok: true, key: String(out.key) };
+		if (out.done) {
+			return { ok: true, key: String(out.key) };
+		}
 	}
 	return { ok: false, error: 'Could not upload the file. Try again.' };
 }

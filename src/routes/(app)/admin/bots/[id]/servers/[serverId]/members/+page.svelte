@@ -125,24 +125,38 @@
 	const targets = $derived(data.rows.filter((r) => selected.has(r.id)));
 
 	$effect(() => {
-		void search;
-		void who;
-		void sortBy;
+		search;
+		who;
+		sortBy;
 		page = 1;
 	});
 
 	function inStatus(r: Row, s: Status) {
-		if (s === 'banned') return r.ban !== null;
-		if (s === 'left') return !r.here && r.ban === null;
-		if (!r.here) return false;
-		if (s === 'warned') return r.warnings > 0;
-		if (s === 'timedout') return r.timeout_until !== null;
+		if (s === 'banned') {
+			return r.ban !== null;
+		}
+		if (s === 'left') {
+			return !r.here && r.ban === null;
+		}
+		if (!r.here) {
+			return false;
+		}
+		if (s === 'warned') {
+			return r.warnings > 0;
+		}
+		if (s === 'timedout') {
+			return r.timeout_until !== null;
+		}
 		return true;
 	}
 
 	function inGroup(r: Row) {
-		if (!who) return true;
-		if (who === 'g:supporter') return r.is_booster;
+		if (!who) {
+			return true;
+		}
+		if (who === 'g:supporter') {
+			return r.is_booster;
+		}
 		const ids = groupIds ?? [who];
 		return r.role_ids.some((id) => ids.includes(id));
 	}
@@ -155,15 +169,25 @@
 
 	function toggle(id: string) {
 		const next = new Set(selected);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
+		if (next.has(id)) {
+			next.delete(id);
+		} else {
+			next.add(id);
+		}
 		selected = next;
 	}
 
 	function togglePage() {
 		const next = new Set(selected);
-		if (pageAllSelected) for (const id of pageIds) next.delete(id);
-		else for (const id of pageIds) next.add(id);
+		if (pageAllSelected) {
+			for (const id of pageIds) {
+				next.delete(id);
+			}
+		} else {
+			for (const id of pageIds) {
+				next.add(id);
+			}
+		}
 		selected = next;
 	}
 

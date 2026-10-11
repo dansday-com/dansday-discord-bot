@@ -39,7 +39,9 @@
 	const inv = $derived(p.invites);
 	const showInvites = $derived(!!inv && (inv.joins > 0 || inv.bonus !== 0 || !!p.invitedBy));
 	const d = $derived((data.dashboard ?? {}) as Record<string, number>);
-	const ins = $derived(data.insights ?? { favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] });
+	const ins = $derived(
+		data.insights ?? ({ favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] } as Partial<NonNullable<typeof data.insights>>)
+	);
 
 	const signed = (v: number) => `${v >= 0 ? '+' : '−'}${fmt(Math.abs(v))}`;
 
@@ -76,7 +78,9 @@
 			{ label: 'Stream', value: Math.max(0, p.voiceStreaming || 0), color: '#c8911a' }
 		];
 		const total = rows.reduce((s, r) => s + r.value, 0);
-		if (total <= 0) return null;
+		if (total <= 0) {
+			return null;
+		}
 		return { total, segments: rows.map((r) => ({ label: r.label, pct: (r.value / total) * 100, color: r.color })) };
 	});
 
@@ -138,7 +142,7 @@
 
 	const interactionLists = $derived(
 		INTERACTION_LISTS.map((l) => {
-			const raw = (interactions[l.key]?.[l.dir as 'out' | 'in'] ?? []) as any[];
+			const raw = interactions[l.key]?.[l.dir as 'out' | 'in'] ?? [];
 			const weights = raw.map((r) => r.xp || r.hits);
 			return {
 				...l,

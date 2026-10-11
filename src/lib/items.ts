@@ -1,19 +1,7 @@
 import { BRAND_PRIMARY } from './brand.js';
 
 export type ItemEffectId =
-	| 'steal'
-	| 'bomb'
-	| 'boost'
-	| 'shield'
-	| 'leech'
-	| 'reflect'
-	| 'insurance'
-	| 'gift'
-	| 'bounty'
-	| 'spy'
-	| 'disguise'
-	| 'purifier'
-	| 'luck';
+	'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier' | 'luck';
 
 export const BAG_CAPACITY = 50;
 
@@ -21,27 +9,35 @@ export function effectiveBagStock(inventory: { quantity?: number; enabled?: bool
 	return inventory.reduce((sum, r) => {
 		const enabled = r.enabled !== false && r.enabled !== 0;
 		const usable = r.usable !== false && r.usable !== 0;
-		if (!enabled && !usable) return sum;
+		if (!enabled && !usable) {
+			return sum;
+		}
 		return sum + (Number(r.quantity) || 0);
 	}, 0);
 }
 
-export function discountedItemCost(cost: any, luckPercent: any, effectType?: any): number {
+export function discountedItemCost(cost: unknown, luckPercent: unknown, effectType?: unknown): number {
 	const base = Math.max(0, Number(cost) || 0);
 	const luck = Math.max(0, Number(luckPercent) || 0);
-	if (luck <= 0 || effectType === 'luck' || effectType === 'gift') return base;
+	if (luck <= 0 || effectType === 'luck' || effectType === 'gift') {
+		return base;
+	}
 	return Math.max(0, Math.floor(base * (1 - luck / 100)));
 }
 
-function applyLuckBoost(value: number, luckPercent: any, max = Infinity): number {
+function applyLuckBoost(value: number, luckPercent: unknown, max = Infinity): number {
 	const luck = Math.max(0, Number(luckPercent) || 0);
-	if (luck <= 0) return value;
+	if (luck <= 0) {
+		return value;
+	}
 	return Math.min(max, value + luck);
 }
 
-function applyLuckReduction(value: number, luckPercent: any): number {
+function applyLuckReduction(value: number, luckPercent: unknown): number {
 	const luck = Math.max(0, Number(luckPercent) || 0);
-	if (luck <= 0) return value;
+	if (luck <= 0) {
+		return value;
+	}
 	return Math.max(0, value - luck);
 }
 
@@ -51,7 +47,7 @@ function fmtPct(n: number): string {
 	return Number.isInteger(n) ? `${n}` : n.toFixed(1);
 }
 
-export function luckBoostLabel(base: any, luckPercent: any, opts: { max?: number; unit?: string } = {}): string {
+export function luckBoostLabel(base: unknown, luckPercent: unknown, opts: { max?: number; unit?: string } = {}): string {
 	const { max = Infinity, unit = '%' } = opts;
 	const b = Number(base) || 0;
 	const total = applyLuckBoost(b, luckPercent, max);
@@ -59,16 +55,18 @@ export function luckBoostLabel(base: any, luckPercent: any, opts: { max?: number
 	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} +${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
 }
 
-export function luckReduceLabel(base: any, luckPercent: any, unit = '%'): string {
+export function luckReduceLabel(base: unknown, luckPercent: unknown, unit = '%'): string {
 	const b = Number(base) || 0;
 	const total = applyLuckReduction(b, luckPercent);
 	const bonus = b - total;
 	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} −${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
 }
 
-export function formatDuration(minutes: any): string {
+export function formatDuration(minutes: unknown): string {
 	let m = Math.max(0, Math.round(Number(minutes) || 0));
-	if (m <= 0) return '0m';
+	if (m <= 0) {
+		return '0m';
+	}
 	const units: [number, string][] = [
 		[10080, 'w'],
 		[1440, 'd'],
@@ -86,10 +84,14 @@ export function formatDuration(minutes: any): string {
 	return parts.slice(0, 2).join(' ');
 }
 
-function shortXp(n: any): string {
+function shortXp(n: unknown): string {
 	const v = Math.max(0, Math.round(Number(n) || 0));
-	if (v >= 1_000_000) return `${Number.isInteger(v / 1_000_000) ? v / 1_000_000 : (v / 1_000_000).toFixed(1)}M`;
-	if (v >= 1_000) return `${Number.isInteger(v / 1_000) ? v / 1_000 : (v / 1_000).toFixed(1)}k`;
+	if (v >= 1_000_000) {
+		return `${Number.isInteger(v / 1_000_000) ? v / 1_000_000 : (v / 1_000_000).toFixed(1)}M`;
+	}
+	if (v >= 1_000) {
+		return `${Number.isInteger(v / 1_000) ? v / 1_000 : (v / 1_000).toFixed(1)}k`;
+	}
 	return `${v}`;
 }
 
@@ -352,7 +354,9 @@ export function effectDefaultCost(type: string): number {
 
 export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }, luckPercent = 0): string {
 	const effect = EFFECT_BY_ID[item.effect_type];
-	if (!effect) return item.description ?? '';
+	if (!effect) {
+		return item.description ?? '';
+	}
 	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) }, luckPercent);
 }
 
@@ -360,23 +364,29 @@ export type EffectMetaChip = { icon: string; label: string };
 
 export function effectMeta(item: { effect_type: string; config?: any }, luckPercent = 0): EffectMetaChip[] {
 	const effect = EFFECT_BY_ID[item.effect_type];
-	if (!effect) return [];
-	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, any>;
+	if (!effect) {
+		return [];
+	}
+	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, unknown>;
 	const chips: EffectMetaChip[] = [];
-	const pctRangeBoosted = (min: any, max: any) => {
+	const pctRangeBoosted = (min: unknown, max: unknown) => {
 		const lo = Number(min) || 0;
 		const hi = luckBoostLabel(max, luckPercent);
 		return lo === (Number(max) || 0) && !luckPercent ? hi : `${lo}–${hi}`;
 	};
-	const boosted = (base: any, max = Infinity) => luckBoostLabel(base, luckPercent, { max });
-	const reduced = (base: any) => luckReduceLabel(base, luckPercent);
+	const boosted = (base: unknown, max = Infinity) => luckBoostLabel(base, luckPercent, { max });
+	const reduced = (base: unknown) => luckReduceLabel(base, luckPercent);
 
 	switch (item.effect_type) {
 		case 'steal':
 		case 'bomb':
 			chips.push({ icon: 'fa-percent', label: pctRangeBoosted(c.min_percent, c.max_percent) });
-			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
-			if (Number(c.immunity_minutes) > 0) chips.push({ icon: 'fa-shield-halved', label: formatDuration(c.immunity_minutes) });
+			if (Number(c.cooldown_minutes) > 0) {
+				chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
+			}
+			if (Number(c.immunity_minutes) > 0) {
+				chips.push({ icon: 'fa-shield-halved', label: formatDuration(c.immunity_minutes) });
+			}
 			break;
 		case 'boost':
 			chips.push({ icon: 'fa-xmark', label: `${c.multiplier ?? 2}×` });
@@ -394,21 +404,29 @@ export function effectMeta(item: { effect_type: string; config?: any }, luckPerc
 		case 'insurance':
 			chips.push({ icon: 'fa-rotate-left', label: boosted(c.refund_percent ?? 100) });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
-			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
+			if (Number(c.cooldown_minutes) > 0) {
+				chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
+			}
 			break;
 		case 'gift':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.gift_amount)} XP` });
-			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: reduced(c.tax_percent) });
+			if (Number(c.tax_percent) > 0) {
+				chips.push({ icon: 'fa-receipt', label: reduced(c.tax_percent) });
+			}
 			break;
 		case 'bounty':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.bounty_amount)} XP` });
 			break;
 		case 'spy':
-			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: boosted(c.spy_chance) });
+			if (Number(c.spy_chance ?? 100) < 100) {
+				chips.push({ icon: 'fa-percent', label: boosted(c.spy_chance) });
+			}
 			break;
 		case 'luck':
 			chips.push({ icon: 'fa-percent', label: `+${c.luck_percent ?? 0}%` });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
+			break;
+		default:
 			break;
 	}
 	return chips;
@@ -499,8 +517,10 @@ export function effectGuide(type: string): EffectGuide | null {
 	return EFFECT_GUIDES[type] ?? null;
 }
 
-function scheduleMinutesLocal(hhmm: any, fallback: number): number {
-	if (hhmm == null || hhmm === '') return fallback;
+function scheduleMinutesLocal(hhmm: unknown, fallback: number): number {
+	if (hhmm == null || hhmm === '') {
+		return fallback;
+	}
 	const [h, m] = String(hhmm)
 		.split(':')
 		.map((n) => Number(n) || 0);
@@ -509,10 +529,14 @@ function scheduleMinutesLocal(hhmm: any, fallback: number): number {
 
 export type ItemWindowState = 'active' | 'upcoming' | 'ended' | 'always';
 
-export function floatingWallClockMs(value: any, offsetMs: number): number | null {
-	if (!value) return null;
+export function floatingWallClockMs(value: unknown, offsetMs: number): number | null {
+	if (!value) {
+		return null;
+	}
 	const m = String(value).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
-	if (!m) return null;
+	if (!m) {
+		return null;
+	}
 	const asUtc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
 	return asUtc - offsetMs;
 }
@@ -529,14 +553,24 @@ export function itemAvailability(
 	const toMs = floatingWallClockMs(item.available_to, offsetMs);
 
 	if (!hasSchedule) {
-		if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
-		if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
-		if (!fromMs && !toMs) return { visible: true, availableUntil: item.availableUntil ?? null, state: 'always', startsAt: null };
+		if (fromMs && nowMs < fromMs) {
+			return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
+		}
+		if (toMs && nowMs > toMs) {
+			return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
+		}
+		if (!fromMs && !toMs) {
+			return { visible: true, availableUntil: item.availableUntil ?? null, state: 'always', startsAt: null };
+		}
 		return { visible: true, availableUntil: toMs ?? item.availableUntil ?? null, state: 'active', startsAt: null };
 	}
 
-	if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
-	if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
+	if (fromMs && nowMs < fromMs) {
+		return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
+	}
+	if (toMs && nowMs > toMs) {
+		return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
+	}
 
 	const local = new Date(nowMs + offsetMs);
 
@@ -551,19 +585,25 @@ export function itemAvailability(
 		let startsAt: number | null = null;
 		for (let ahead = 0; ahead <= 7; ahead++) {
 			const day = (local.getUTCDay() + ahead) % 7;
-			if (!uniqueDays.has(day)) continue;
+			if (!uniqueDays.has(day)) {
+				continue;
+			}
 			const candidate = startOfLocalDay + ahead * 86400000 + fromMin * 60000;
 			if (candidate > nowMs) {
 				startsAt = candidate;
 				break;
 			}
 		}
-		if (startsAt != null && (!toMs || startsAt <= toMs)) return { visible: true, availableUntil: null, state: 'upcoming', startsAt };
+		if (startsAt != null && (!toMs || startsAt <= toMs)) {
+			return { visible: true, availableUntil: null, state: 'upcoming', startsAt };
+		}
 		return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
 	}
 
 	const ends: number[] = [];
-	if (toMs && Number.isFinite(toMs)) ends.push(toMs);
+	if (toMs && Number.isFinite(toMs)) {
+		ends.push(toMs);
+	}
 	const isFullDay = fromMin <= 0 && toMin >= 1439;
 	if (isFullDay && uniqueDays.size >= 7) {
 		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
@@ -621,7 +661,9 @@ export type ItemOutcome = {
 };
 
 function toMs(value: any): number | null {
-	if (!value) return null;
+	if (!value) {
+		return null;
+	}
 	const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
 	return Number.isFinite(ms) ? ms : null;
 }
@@ -633,10 +675,12 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 
 	if (effectType === 'steal' || effectType === 'bomb') {
 		const verb = effectType === 'steal' ? 'Robbed' : 'Bombed';
-		if (outcome === 'blocked')
+		if (outcome === 'blocked') {
 			return { tone: 'lose', icon: 'fa-shield', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
-		if (outcome === 'reflected')
+		}
+		if (outcome === 'reflected') {
 			return { tone: 'lose', icon: 'fa-arrows-rotate', title: 'Reflected!', line: `It bounced back and you lost the XP.`, deltaXp: -xp, untilMs: null };
+		}
 		const extra = effectType === 'steal' ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`;
 		return {
 			tone: 'win',
@@ -683,7 +727,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			untilMs: null
 		};
 	}
-	if (effectType === 'bounty')
+	if (effectType === 'bounty') {
 		return {
 			tone: 'neutral',
 			icon: effectIcon('bounty'),
@@ -692,6 +736,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: -xp,
 			untilMs: null
 		};
+	}
 	if (effectType === 'leech') {
 		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
 		return {
@@ -704,7 +749,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 		};
 	}
 
-	if (effectType === 'shield')
+	if (effectType === 'shield') {
 		return {
 			tone: 'win',
 			icon: effectIcon('shield'),
@@ -713,7 +758,8 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
-	if (effectType === 'reflect')
+	}
+	if (effectType === 'reflect') {
 		return {
 			tone: 'win',
 			icon: effectIcon('reflect'),
@@ -722,7 +768,8 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
-	if (effectType === 'disguise')
+	}
+	if (effectType === 'disguise') {
 		return {
 			tone: 'win',
 			icon: effectIcon('disguise'),
@@ -731,6 +778,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
+	}
 	if (effectType === 'purifier') {
 		const n = Number(r.cleared) || 0;
 		return {
@@ -753,7 +801,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			untilMs: toMs(r.expiresAt)
 		};
 	}
-	if (effectType === 'boost')
+	if (effectType === 'boost') {
 		return {
 			tone: 'win',
 			icon: effectIcon('boost'),
@@ -762,7 +810,8 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
-	if (effectType === 'luck')
+	}
+	if (effectType === 'luck') {
 		return {
 			tone: 'win',
 			icon: effectIcon('luck'),
@@ -771,6 +820,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
+	}
 
 	return { tone: 'neutral', icon: 'fa-circle-check', title: 'Done', line: `Item used.`, deltaXp: xp || null, untilMs: null };
 }

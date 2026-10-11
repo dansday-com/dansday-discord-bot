@@ -1,11 +1,11 @@
-<script lang="ts">
+<script lang="ts" generics="V extends string | string[]">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { CHANNEL_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
 
 	interface Channel {
 		discord_channel_id: string;
-		name: string;
-		type: string | number;
+		name: string | null;
+		type: string | number | null;
 		category_id: number | null;
 		position: number | null;
 	}
@@ -13,18 +13,18 @@
 	interface Category {
 		id: number;
 		discord_category_id: string;
-		name: string;
+		name: string | null;
 		position: number | null;
 	}
 
 	interface Props {
 		channels: Channel[];
 		categories?: Category[];
-		value: string | string[];
+		value: V;
 		placeholder?: string;
 		emptyText?: string;
 		multi?: boolean;
-		onchange: (value: string | string[]) => void;
+		onchange: (value: V) => void;
 	}
 
 	let { channels, categories = [], value, placeholder = 'Select channel...', emptyText = 'No channels found', multi = false, onchange }: Props = $props();
@@ -36,11 +36,19 @@
 	const currentIds = $derived(multi ? (value as string[]) : value ? [value as string] : []);
 	const selected = $derived(!multi ? channels.find((c) => c.discord_channel_id === (value as string)) : null);
 
-	function channelType(type: string | number): string {
-		if (type === 'GUILD_TEXT' || type === '0' || type === 0) return 'Text';
-		if (type === 'GUILD_VOICE' || type === '2' || type === 2) return 'Voice';
-		if (type === 'GUILD_NEWS' || type === '5' || type === 5) return 'Announcement';
-		if (type === 'GUILD_STAGE_VOICE' || type === '13' || type === 13) return 'Stage';
+	function channelType(type: string | number | null): string {
+		if (type === 'GUILD_TEXT' || type === '0' || type === 0) {
+			return 'Text';
+		}
+		if (type === 'GUILD_VOICE' || type === '2' || type === 2) {
+			return 'Voice';
+		}
+		if (type === 'GUILD_NEWS' || type === '5' || type === 5) {
+			return 'Announcement';
+		}
+		if (type === 'GUILD_STAGE_VOICE' || type === '13' || type === 13) {
+			return 'Stage';
+		}
 		return 'Other';
 	}
 
@@ -56,7 +64,9 @@
 
 		filtered.forEach((ch) => {
 			if (ch.category_id != null && catMap.has(ch.category_id)) {
-				if (!byCategory.has(ch.category_id)) byCategory.set(ch.category_id, []);
+				if (!byCategory.has(ch.category_id)) {
+					byCategory.set(ch.category_id, []);
+				}
 				byCategory.get(ch.category_id)!.push(ch);
 			} else {
 				uncategorized.push(ch);
@@ -78,22 +88,25 @@
 	}
 
 	function toggle(id: string) {
-		if (pending.includes(id)) pending = pending.filter((c) => c !== id);
-		else pending = [...pending, id];
+		if (pending.includes(id)) {
+			pending = pending.filter((c) => c !== id);
+		} else {
+			pending = [...pending, id];
+		}
 	}
 
 	function confirm() {
 		if (!multi) {
-			onchange(pending[0] ?? '');
+			onchange((pending[0] ?? '') as V);
 		} else {
-			onchange([...pending]);
+			onchange([...pending] as V);
 		}
 		open = false;
 		search = '';
 	}
 
 	function remove(id: string) {
-		onchange((value as string[]).filter((c) => c !== id));
+		onchange((value as string[]).filter((c) => c !== id) as V);
 	}
 
 	function close() {
@@ -200,8 +213,9 @@
 										<button
 											type="button"
 											onclick={() => {
-												if (multi) toggle(ch.discord_channel_id);
-												else {
+												if (multi) {
+													toggle(ch.discord_channel_id);
+												} else {
 													pending = [ch.discord_channel_id];
 													confirm();
 												}
@@ -244,8 +258,9 @@
 									<button
 										type="button"
 										onclick={() => {
-											if (multi) toggle(ch.discord_channel_id);
-											else {
+											if (multi) {
+												toggle(ch.discord_channel_id);
+											} else {
 												pending = [ch.discord_channel_id];
 												confirm();
 											}

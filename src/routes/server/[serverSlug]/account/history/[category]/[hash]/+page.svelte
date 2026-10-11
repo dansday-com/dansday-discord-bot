@@ -41,14 +41,23 @@
 	function levelLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
 		const src = LEVEL_SOURCE[h.source] ?? { label: h.source ?? 'Level', icon: 'fa-star' };
 		const badges: Badge[] = [];
-		if (h.level != null) badges.push({ icon: 'fa-arrow-up-right-dots', text: `Lv ${h.level}` });
-		if (h.rank != null) badges.push({ icon: 'fa-ranking-star', text: `#${h.rank}` });
-		if (h.totalXp != null) badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
-		if (h.multiplier && h.source === 'invite_share')
+		if (h.level != null) {
+			badges.push({ icon: 'fa-arrow-up-right-dots', text: `Lv ${h.level}` });
+		}
+		if (h.rank != null) {
+			badges.push({ icon: 'fa-ranking-star', text: `#${h.rank}` });
+		}
+		if (h.totalXp != null) {
+			badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
+		}
+		if (h.multiplier && h.source === 'invite_share') {
 			badges.push({ icon: 'fa-percent', text: `${Math.round(Number(h.multiplier) * 100)}% of an invited member's XP` });
-		else if (h.multiplier)
+		} else if (h.multiplier) {
 			badges.push(h.source === 'invite' ? { icon: 'fa-shield-halved', text: `${h.multiplier}× Staff` } : { icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
-		if (h.friendPercent) badges.push({ icon: 'fa-handshake', text: `+${h.friendPercent}% Friend boost` });
+		}
+		if (h.friendPercent) {
+			badges.push({ icon: 'fa-handshake', text: `+${h.friendPercent}% Friend boost` });
+		}
 		if (h.skimPercent) {
 			const total = Number(h.skimPercent) || 0;
 			const luck = Number(h.luckPercent) || 0;
@@ -66,13 +75,19 @@
 
 	function fmtUnits(qty: number): string {
 		const v = Number(qty) || 0;
-		if (v <= 0) return '0';
-		if (v >= 1) return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
-		if (v >= 0.0001) return v.toFixed(6);
+		if (v <= 0) {
+			return '0';
+		}
+		if (v >= 1) {
+			return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+		}
+		if (v >= 0.0001) {
+			return v.toFixed(6);
+		}
 		return v.toFixed(8);
 	}
 
-	function assetLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
+	function assetLine(h: Record<string, unknown>): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
 		const units = Number(h.price) > 0 ? Number(h.xpAmount) / Number(h.price) : 0;
 		const badges: Badge[] = [{ icon: 'fa-coins', text: `${fmtUnits(units)} ${h.symbol}` }];
 		if (h.action === 'buy') {
@@ -89,7 +104,7 @@
 		};
 	}
 
-	function minigameLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
+	function minigameLine(h: Record<string, unknown>): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
 		if (h.game === 'effect_spin') {
 			return {
 				icon: 'fa-wand-magic-sparkles',
@@ -104,7 +119,9 @@
 			const payout = Number(h.payout) || 0;
 			const badges: Badge[] = [{ icon: 'fa-stairs', text: `Floor ${floor}` }];
 			const dropped = payout > 0 ? 0 : towerPrize(floor - 1);
-			if (dropped > 0) badges.push({ icon: 'fa-arrow-down', text: `Dropped ${fmt(dropped)} XP` });
+			if (dropped > 0) {
+				badges.push({ icon: 'fa-arrow-down', text: `Dropped ${fmt(dropped)} XP` });
+			}
 			if (h.chance != null) {
 				const total = Number(h.chance) || 0;
 				const luck = Number(h.luckPercent) || 0;
@@ -152,14 +169,22 @@
 		const m = Math.floor(s / 60);
 		const h = Math.floor(m / 60);
 		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ago`;
-		if (h > 0) return `${h}h ago`;
-		if (m > 0) return `${m}m ago`;
+		if (d > 0) {
+			return `${d}d ago`;
+		}
+		if (h > 0) {
+			return `${h}h ago`;
+		}
+		if (m > 0) {
+			return `${m}m ago`;
+		}
 		return `${s}s ago`;
 	}
 
-	function luckBadges(h: any, suffix?: string): Badge[] {
-		if (h.ratePercent == null) return [];
+	function luckBadges(h: Record<string, unknown>, suffix?: string): Badge[] {
+		if (h.ratePercent == null) {
+			return [];
+		}
 		const total = Number(h.ratePercent) || 0;
 		const luck = Number(h.luckPercent) || 0;
 		const base = total - luck;
@@ -171,10 +196,15 @@
 	}
 
 	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges?: Badge[] } {
-		if (h.action === 'gift' && h.outcome === 'admin')
+		if (h.action === 'gift' && h.outcome === 'admin') {
 			return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
-		if (h.action === 'buy') return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
-		if (h.action === 'discard') return { icon: 'fa-trash-can', title: `Removed ${h.itemName ?? 'item'}`, tone: 'neutral', deltaLabel: 'Discarded' };
+		}
+		if (h.action === 'buy') {
+			return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
+		}
+		if (h.action === 'discard') {
+			return { icon: 'fa-trash-can', title: `Removed ${h.itemName ?? 'item'}`, tone: 'neutral', deltaLabel: 'Discarded' };
+		}
 		if (h.action === 'bounty_collected') {
 			if (h.direction === 'incoming') {
 				const from = h.actorName ? ` ← ${h.actorName}` : '';
@@ -184,7 +214,9 @@
 			return { icon: effectIcon('bounty'), title: `Bounty collected${on}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
 		}
 
-		if (h.direction === 'incoming') return incomingLine(h);
+		if (h.direction === 'incoming') {
+			return incomingLine(h);
+		}
 
 		if (h.action === 'task_reward') {
 			return { icon: 'fa-gift', title: `Earned ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Reward' };
@@ -226,7 +258,9 @@
 		}
 		const target = h.targetName ? ` → ${h.targetName}` : '';
 		if (h.action === 'spy') {
-			if (h.outcome === 'caught') return { icon: 'fa-triangle-exclamation', title: `Spy caught${target}`, tone: 'lose', deltaLabel: 'Caught' };
+			if (h.outcome === 'caught') {
+				return { icon: 'fa-triangle-exclamation', title: `Spy caught${target}`, tone: 'lose', deltaLabel: 'Caught' };
+			}
 			return { icon: effectIcon('spy'), title: `Spied${target}`, tone: 'neutral', deltaLabel: '', badges: luckBadges(h, 'Chance') };
 		}
 		if (h.action === 'leech') {
@@ -264,9 +298,15 @@
 			return { icon: 'fa-magnifying-glass', title: `Caught a spy${caughtBy}`, tone: 'win', deltaLabel: 'Caught' };
 		}
 
-		if (h.outcome === 'blocked') return { icon: 'fa-shield-halved', title: `Blocked ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
-		if (h.outcome === 'immune') return { icon: 'fa-shield-halved', title: `Immune to ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
-		if (h.outcome === 'reflected') return { icon: 'fa-arrows-rotate', title: `Reflected ${h.action}${by}`, tone: 'win', deltaLabel: 'Reflected' };
+		if (h.outcome === 'blocked') {
+			return { icon: 'fa-shield-halved', title: `Blocked ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
+		}
+		if (h.outcome === 'immune') {
+			return { icon: 'fa-shield-halved', title: `Immune to ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
+		}
+		if (h.outcome === 'reflected') {
+			return { icon: 'fa-arrows-rotate', title: `Reflected ${h.action}${by}`, tone: 'win', deltaLabel: 'Reflected' };
+		}
 
 		if (h.action === 'gift') {
 			return {

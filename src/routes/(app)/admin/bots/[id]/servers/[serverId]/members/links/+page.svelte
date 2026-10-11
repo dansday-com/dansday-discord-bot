@@ -18,7 +18,7 @@
 	const start = $derived((Math.min(page, totalPages) - 1) * PAGE_SIZE);
 
 	$effect(() => {
-		void search;
+		search;
 		page = 1;
 	});
 </script>

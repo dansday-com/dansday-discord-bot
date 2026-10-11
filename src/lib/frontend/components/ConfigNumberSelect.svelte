@@ -31,14 +31,18 @@
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return values;
+		if (!q) {
+			return values;
+		}
 		return values.filter((v) => formatOption(v).toLowerCase().includes(q));
 	});
 
 	const titleId = $derived(id ? `${id}-number-picker-title` : undefined);
 
 	function openModal() {
-		if (disabled || values.length === 0) return;
+		if (disabled || values.length === 0) {
+			return;
+		}
 		search = '';
 		open = true;
 	}
@@ -54,16 +58,22 @@
 	}
 
 	$effect(() => {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') close();
+			if (e.key === 'Escape') {
+				close();
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
 	$effect(() => {
-		if (disabled) open = false;
+		if (disabled) {
+			open = false;
+		}
 	});
 </script>
 

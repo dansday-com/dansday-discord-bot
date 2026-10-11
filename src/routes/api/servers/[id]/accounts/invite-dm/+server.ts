@@ -9,12 +9,16 @@ import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.ser
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
+	if (!locals.user.authenticated) {
+		return false;
+	}
 	if (locals.user.account_source === 'accounts') {
 		const { accountOwnsServer } = await import('$lib/backend/panelServer.js');
 		return accountOwnsServer(locals, serverId);
 	}
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
+		return locals.user.server_id === serverId;
+	}
 	return false;
 }
 
@@ -44,7 +48,9 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	discord_member_ids = [...new Set(discord_member_ids)];
 
 	const denied = guardAccountAction(locals, account_type ?? 'staff');
-	if (denied) return denied;
+	if (denied) {
+		return denied;
+	}
 	const validTypes: string[] = invitableAccountTypes(panelActorOf(locals.user));
 	if (!account_type || !validTypes.includes(account_type)) {
 		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
@@ -59,13 +65,21 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	}
 
 	const server = await db.getServer(serverId);
-	if (!server) return json({ success: false, error: 'Server not found' }, { status: 404 });
+	if (!server) {
+		return json({ success: false, error: 'Server not found' }, { status: 404 });
+	}
 
 	const officialBotId = await db.resolveOfficialBotIdForServer(server);
 	const bot = officialBotId ? await db.getBot(officialBotId) : null;
-	if (!bot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
-	if (bot.status !== 'running') return json({ success: false, error: 'Bot is not running' }, { status: 400 });
-	if (!bot.port || !bot.secret_key) return json({ success: false, error: 'Bot webhook not configured' }, { status: 400 });
+	if (!bot) {
+		return json({ success: false, error: 'Bot not found' }, { status: 404 });
+	}
+	if (bot.status !== 'running') {
+		return json({ success: false, error: 'Bot is not running' }, { status: 400 });
+	}
+	if (!bot.port || !bot.secret_key) {
+		return json({ success: false, error: 'Bot webhook not configured' }, { status: 400 });
+	}
 
 	type Fail = { discord_member_id: string; error: string };
 	const failed: Fail[] = [];
@@ -103,7 +117,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 			link_label: 'Register'
 		});
 
-		const result = await new Promise<{ status: number; body: any }>((resolve) => {
+		const result = await new Promise<{ status: number; body: Record<string, unknown> }>((resolve) => {
 			const options = {
 				hostname: 'localhost',
 				port: bot.port as number,

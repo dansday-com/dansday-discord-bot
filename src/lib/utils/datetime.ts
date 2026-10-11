@@ -6,13 +6,17 @@ export function formatTimestamp(timestamp = Date.now(), includeSeconds = false) 
 	return DateTime.fromMillis(timestamp, { zone: STORAGE_ZONE }).toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
 }
 
+export function toMySQLDateTime(): Date;
+export function toMySQLDateTime(date: string | Date | undefined): Date | null;
 export function toMySQLDateTime(date?: string | Date): Date | null {
 	if (!date) {
 		return DateTime.utc().toJSDate();
 	}
 	if (typeof date === 'string') {
 		const dt = DateTime.fromISO(date);
-		if (!dt.isValid) return null;
+		if (!dt.isValid) {
+			return null;
+		}
 		return dt.toUTC().toJSDate();
 	}
 	return DateTime.fromJSDate(date).toUTC().toJSDate();
@@ -23,7 +27,9 @@ export function getDateTimeFromSqlUtc(value: string | Date | null | undefined): 
 		return DateTime.fromMillis(NaN);
 	}
 	if (value instanceof Date) {
-		if (Number.isNaN(value.getTime())) return DateTime.fromMillis(NaN);
+		if (Number.isNaN(value.getTime())) {
+			return DateTime.fromMillis(NaN);
+		}
 		return DateTime.fromJSDate(value, { zone: 'utc' });
 	}
 	const dt = DateTime.fromSQL(String(value), { zone: 'utc' });
@@ -42,19 +48,25 @@ export function dbDateTimeToMs(value: unknown): number {
 
 export function formatDbDateTime(value: unknown, includeSeconds = false): string {
 	const d = parseMySQLDateTimeUtc(value);
-	if (!d) return '—';
+	if (!d) {
+		return '—';
+	}
 	return formatTimestamp(d.getTime(), includeSeconds);
 }
 
 export function dbUtcValueToIso(value: unknown): string | null {
 	const d = parseMySQLDateTimeUtc(value);
-	if (!d || Number.isNaN(d.getTime())) return null;
+	if (!d || Number.isNaN(d.getTime())) {
+		return null;
+	}
 	return d.toISOString();
 }
 
 export function formatDbDateTimeLocal(value: unknown, includeSeconds = false): string {
 	const d = parseMySQLDateTimeUtc(value);
-	if (!d) return '—';
+	if (!d) {
+		return '—';
+	}
 	return DateTime.fromJSDate(d, { zone: 'utc' })
 		.setZone('local')
 		.toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
@@ -62,7 +74,9 @@ export function formatDbDateTimeLocal(value: unknown, includeSeconds = false): s
 
 export function isUtcSqlExpired(value: string | Date | null | undefined): boolean {
 	const dt = getDateTimeFromSqlUtc(value);
-	if (!dt.isValid) return false;
+	if (!dt.isValid) {
+		return false;
+	}
 	return dt < DateTime.utc();
 }
 

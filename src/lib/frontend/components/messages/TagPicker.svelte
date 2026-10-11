@@ -82,25 +82,37 @@
 
 	function search() {
 		clearTimeout(timer);
-		if (!editor.membersUrl) return;
+		if (!editor.membersUrl) {
+			return;
+		}
 		const id = ++request;
 		timer = setTimeout(async () => {
 			try {
 				const out = await (await fetch(`${editor.membersUrl}?q=${encodeURIComponent(query)}&limit=${MAX_OPTIONS}`)).json();
-				if (id === request) found = Array.isArray(out.members) ? out.members : [];
+				if (id === request) {
+					found = Array.isArray(out.members) ? out.members : [];
+				}
 			} catch (_) {
-				if (id === request) found = [];
+				if (id === request) {
+					found = [];
+				}
 			}
 		}, SEARCH_DELAY_MS);
 	}
 
 	function detect() {
-		if (!target || target.selectionStart !== target.selectionEnd) return close();
+		if (!target || target.selectionStart !== target.selectionEnd) {
+			return close();
+		}
 		const caret = target.selectionStart ?? 0;
 		const match = target.value.slice(0, caret).match(/(?:^|\s)@([^\s@<>]{0,32})$/);
-		if (!match) return close();
+		if (!match) {
+			return close();
+		}
 		const next = match[1].toLowerCase();
-		if (!open || next !== query) active = 0;
+		if (!open || next !== query) {
+			active = 0;
+		}
 		start = caret - match[1].length - 1;
 		query = next;
 		open = true;
@@ -108,14 +120,18 @@
 	}
 
 	async function pick(option: Option) {
-		if (!target) return;
+		if (!target) {
+			return;
+		}
 		const caret = target.selectionStart ?? start;
 		const next = `${target.value.slice(0, start)}${option.insert} ${target.value.slice(caret)}`;
 		if (next.length > max) {
 			showToast('There is no room left in this text for a tag.', 'error');
 			return close();
 		}
-		if (option.memberId) editor.rememberMember(option.memberId, option.label.slice(1));
+		if (option.memberId) {
+			editor.rememberMember(option.memberId, option.label.slice(1));
+		}
 		onchange(next);
 		close();
 		await tick();
@@ -125,7 +141,9 @@
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (!open || options.length === 0) return;
+		if (!open || options.length === 0) {
+			return;
+		}
 		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
 			event.preventDefault();
 			active = (active + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length;
@@ -140,12 +158,16 @@
 	}
 
 	function onkeyup(event: KeyboardEvent) {
-		if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) detect();
+		if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+			detect();
+		}
 	}
 
 	$effect(() => {
 		const node = target;
-		if (!node) return;
+		if (!node) {
+			return;
+		}
 		node.addEventListener('input', detect);
 		node.addEventListener('click', detect);
 		node.addEventListener('keyup', onkeyup);

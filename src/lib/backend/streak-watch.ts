@@ -21,52 +21,72 @@ const COUNTER_METRICS = new Set<TaskMetric>([
 const inFlight = new Set<string>();
 
 async function anyComplete(memberId: number, periodKey: number, period: 'daily' | 'weekly', windowStartMs: number) {
-	const rows = (await db.getMemberTasks(memberId, periodKey, period).catch(() => [])) as any[];
+	const rows = await db.getMemberTasks(memberId, periodKey, period).catch(() => []);
 	for (const row of rows) {
-		if (row.claimed_at) return true;
+		if (row.claimed_at) {
+			return true;
+		}
 
 		const def = TASK_BY_ID.get(row.task_type);
-		if (!def) continue;
+		if (!def) {
+			continue;
+		}
 
 		const goal = Number(row.goal) || 1;
 		let progress = 0;
 
 		if (COUNTER_METRICS.has(def.metric)) {
 			const levels = await db.getMemberLevel(memberId).catch(() => null);
-			progress = Math.max(0, (Number((levels as any)?.[def.metric]) || 0) - (Number(row.baseline) || 0));
+			progress = Math.max(0, (Number((levels as Record<string, unknown>)?.[def.metric]) || 0) - (Number(row.baseline) || 0));
 		} else {
 			progress = await db.countMemberEventsSince(memberId, def.metric, windowStartMs, row.target_item_id ?? null).catch(() => 0);
 		}
 
-		if (progress >= goal) return true;
+		if (progress >= goal) {
+			return true;
+		}
 	}
 	return false;
 }
 
-export async function bankStreakIfEarned(memberId: any) {
+export async function bankStreakIfEarned(memberId: number | string) {
 	const id = Number(memberId);
-	if (!id) return null;
+	if (!id) {
+		return null;
+	}
 
-	const streakRow = (await db.getMemberStreak(id).catch(() => null)) as any;
-	if (!streakRow) return null;
+	const streakRow = await db.getMemberStreak(id).catch(() => null);
+	if (!streakRow) {
+		return null;
+	}
 
 	const nowMs = Date.now();
 	const [dayKey, weekKey] = await Promise.all([db.getLatestTaskKey(id, 'daily').catch(() => null), db.getLatestTaskKey(id, 'weekly').catch(() => null)]);
-	if (!periodOpen(dayKey, 'daily', nowMs)) return null;
-	if (Number(streakRow.last_claim_day_key) === dayKey) return null;
+	if (!periodOpen(dayKey, 'daily', nowMs)) {
+		return null;
+	}
+	if (Number(streakRow.last_claim_day_key) === dayKey) {
+		return null;
+	}
 
 	const key = `${id}:${dayKey}`;
-	if (inFlight.has(key)) return null;
+	if (inFlight.has(key)) {
+		return null;
+	}
 	inFlight.add(key);
 
 	try {
 		const earned =
 			(await anyComplete(id, dayKey, 'daily', dayKey * 60000)) ||
 			(periodOpen(weekKey, 'weekly', nowMs) && (await anyComplete(id, weekKey, 'weekly', weekKey * 60000)));
-		if (!earned) return null;
+		if (!earned) {
+			return null;
+		}
 
 		const result = await db.applyStreakDay(id, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
-		if (!result?.changed) return null;
+		if (!result?.changed) {
+			return null;
+		}
 
 		const milestone = streakMilestone(Number(result.streak) || 0);
 		if (announcer) {

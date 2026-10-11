@@ -27,9 +27,15 @@
 	]);
 	const joins = $derived(
 		data.joins.filter((j) => {
-			if (sourceFilter !== 'all' && j.source !== sourceFilter) return false;
-			if (statusFilter !== 'all' && j.status !== statusFilter) return false;
-			if (!q) return true;
+			if (sourceFilter !== 'all' && j.source !== sourceFilter) {
+				return false;
+			}
+			if (statusFilter !== 'all' && j.status !== statusFilter) {
+				return false;
+			}
+			if (!q) {
+				return true;
+			}
 			return (
 				(j.name ?? '').toLowerCase().includes(q) ||
 				j.discord_member_id.includes(q) ||
@@ -42,9 +48,9 @@
 	const start = $derived((Math.min(page, totalPages) - 1) * PAGE_SIZE);
 
 	$effect(() => {
-		void search;
-		void sourceFilter;
-		void statusFilter;
+		search;
+		sourceFilter;
+		statusFilter;
 		page = 1;
 	});
 </script>

@@ -4,8 +4,11 @@ import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { aiGreetingMessages } from './aiGreeting.js';
 import { serverTranslator } from '../i18n.js';
+import type { GuildMember, PartialGuildMember } from 'discord.js';
+import type { GuildTextBasedChannel } from 'discord.js';
+import type { Client } from 'discord.js';
 
-function replaceBoosterPlaceholders(message, memberId, serverName, boostLevel, totalBoosts) {
+function replaceBoosterPlaceholders(message: string, memberId: string, serverName: string, boostLevel: number, totalBoosts: number) {
 	return message
 		.replace(/\{user\}/g, `<@${memberId}>`)
 		.replace(/\{server\}/g, serverName || 'Unknown Server')
@@ -13,7 +16,7 @@ function replaceBoosterPlaceholders(message, memberId, serverName, boostLevel, t
 		.replace(/\{totalBoosts\}/g, String(totalBoosts));
 }
 
-async function thankBooster(member, client) {
+async function thankBooster(member: GuildMember, client: Client) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -35,7 +38,7 @@ async function thankBooster(member, client) {
 		try {
 			await member.guild.fetch();
 		} catch (fetchError) {
-			await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before booster: ${fetchError.message}`);
+			await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before booster: ${(fetchError as Error).message}`);
 		}
 
 		const serverData = await db.upsertOfficialServer(botConfig.id, member.guild);
@@ -93,7 +96,7 @@ async function thankBooster(member, client) {
 		const embedConfig = await getEmbedConfig(member.guild.id);
 
 		for (const boosterChannelId of boosterChannelIds) {
-			const boosterChannel = client.channels.cache.get(boosterChannelId);
+			const boosterChannel = client.channels.cache.get(boosterChannelId) as GuildTextBasedChannel | undefined;
 			if (!boosterChannel) {
 				await logger.log(`❌ Booster channel not found: ${boosterChannelId}`);
 				continue;
@@ -119,7 +122,9 @@ async function thankBooster(member, client) {
 						{
 							name: tr('booster.fields.boostedSince'),
 							value: (() => {
-								if (!memberData.booster_since) return tr('booster.justNow');
+								if (!memberData.booster_since) {
+									return tr('booster.justNow');
+								}
 								let boosterSinceDate;
 								if (memberData.booster_since instanceof Date) {
 									boosterSinceDate = memberData.booster_since;
@@ -148,16 +153,16 @@ async function thankBooster(member, client) {
 				const memberName = memberData.display_name || memberData.username;
 				await logger.log(`✅ Thanked booster ${memberName} (${member.user.id}) in ${serverData.name} (channel: ${boosterChannel.name})`);
 			} catch (err) {
-				await logger.log(`❌ Failed to thank booster ${member.user.id} in channel ${boosterChannelId}: ${err.message}`);
+				await logger.log(`❌ Failed to thank booster ${member.user.id} in channel ${boosterChannelId}: ${(err as Error).message}`);
 			}
 		}
 	} catch (err) {
-		await logger.log(`❌ Failed to thank booster ${member.user.id}: ${err.message}`);
+		await logger.log(`❌ Failed to thank booster ${member.user.id}: ${(err as Error).message}`);
 	}
 }
 
-function init(client) {
-	client.on('guildMemberUpdate', async (oldMember, newMember) => {
+function init(client: Client) {
+	client.on('guildMemberUpdate', async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) => {
 		try {
 			const botConfig = getBotConfig();
 			if (!botConfig || !botConfig.id) {
@@ -180,7 +185,7 @@ function init(client) {
 				}
 			}
 		} catch (err) {
-			await logger.log(`❌ Error handling booster update: ${err.message}`);
+			await logger.log(`❌ Error handling booster update: ${(err as Error).message}`);
 		}
 	});
 }

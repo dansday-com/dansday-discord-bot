@@ -14,8 +14,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		const limit = Number(url.searchParams.get('limit') || 15);
 		const members = await db.searchServerMembers(serverId, q, limit);
 		return json({ success: true, members });
-	} catch (error: any) {
-		logger.log(`❌ Error fetching server members: ${error.message}`);
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		logger.log(`❌ Error fetching server members: ${(error as Error).message}`);
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };

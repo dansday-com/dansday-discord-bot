@@ -110,10 +110,27 @@ import db from '../../../../database.js';
 import { computeCardToken } from '../../../public/items/index.js';
 import { resolvePublicStatisticsSnapshot } from '../../../public/statistics/stream.js';
 import type { PublicPageStats } from '../../../public/statistics/shape.js';
+import type {
+	ActionRow,
+	ButtonComponent,
+	ComponentType,
+	GuildMember,
+	GuildTextBasedChannel,
+	Message,
+	MessageActionRowComponent,
+	RoleSelectMenuInteraction
+} from 'discord.js';
+import type { MessageComponentInteraction, ModalSubmitInteraction, RepliableInteraction } from 'discord.js';
+import type { ButtonInteraction, Client, Interaction, StringSelectMenuInteraction } from 'discord.js';
+import type { MessageActionRowComponentBuilder } from 'discord.js';
 
-async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
-	if (!interaction.guild) return false;
-	if (await isComponentFeatureEnabled(interaction.guild.id, component)) return false;
+async function replyIfFeatureDisabled(interaction: RepliableInteraction, component: string): Promise<boolean> {
+	if (!interaction.guild) {
+		return false;
+	}
+	if (await isComponentFeatureEnabled(interaction.guild.id, component)) {
+		return false;
+	}
 	const msg = await translate('common.errors.featureDisabled', interaction.guild.id, interaction.user.id);
 	await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
 	return true;
@@ -171,20 +188,26 @@ const MENU_CATEGORIES: {
 	}
 ];
 
-async function availableMenuItems(category: (typeof MENU_CATEGORIES)[number], member) {
+async function availableMenuItems(category: (typeof MENU_CATEGORIES)[number], member: GuildMember) {
 	const usable = await Promise.all(
 		category.items.map(async (item) => {
-			if (item.permission && !(await hasPermission(member, item.permission))) return false;
-			if (!item.features) return true;
+			if (item.permission && !(await hasPermission(member, item.permission))) {
+				return false;
+			}
+			if (!item.features) {
+				return true;
+			}
 			return (await Promise.all(item.features.map((f) => featureAvailable(member.guild.id, f)))).some(Boolean);
 		})
 	);
 	return category.items.filter((_, i) => usable[i]);
 }
 
-async function handleMenuCategory(interaction, categoryId: string) {
+async function handleMenuCategory(interaction: MessageComponentInteraction<'cached'>, categoryId: string) {
 	const category = MENU_CATEGORIES.find((c) => c.id === categoryId);
-	if (!category) return;
+	if (!category) {
+		return;
+	}
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
 
@@ -208,12 +231,12 @@ async function handleMenuCategory(interaction, categoryId: string) {
 		buttons.push(new ButtonBuilder().setCustomId(item.customId).setLabel(label).setStyle(ButtonStyle.Secondary));
 	}
 
-	const rows = [];
+	const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
 	for (let i = 0; i < buttons.length; i += 5) {
-		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
+		rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(...buttons.slice(i, i + 5)));
 	}
 	rows.push(
-		new ActionRowBuilder().addComponents(
+		new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()
 				.setCustomId('bot_menu')
 				.setLabel(await translate('menu.back', g, u))
@@ -244,7 +267,7 @@ function linkLabel(url: string): string {
 	return `${host}${u.port ? `:${u.port}` : ''}${decodeURI(u.pathname).replace(/\/$/, '')}`;
 }
 
-async function handleMenuButton(interaction) {
+async function handleMenuButton(interaction: MessageComponentInteraction<'cached'>) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
 	if (!member) {
 		const errorMsg = await translate('common.errors.memberNotFound', interaction.guild.id, interaction.user.id);
@@ -284,8 +307,12 @@ async function handleMenuButton(interaction) {
 
 	const buttons = [];
 	for (const category of MENU_CATEGORIES) {
-		if (category.permission && !(await hasPermission(member, category.permission))) continue;
-		if ((await availableMenuItems(category, member)).length === 0) continue;
+		if (category.permission && !(await hasPermission(member, category.permission))) {
+			continue;
+		}
+		if ((await availableMenuItems(category, member)).length === 0) {
+			continue;
+		}
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(`menu_cat|${category.id}`)
@@ -326,8 +353,8 @@ async function handleMenuButton(interaction) {
 				db.getServer(server.id).catch(() => null)
 			]);
 			const inviteOn = await isPublicSubFeatureEnabled(interaction.guild.id, 'invite').catch(() => false);
-			const joinUrl = inviteOn && (serverRow?.vanity_url_code || serverRow?.invite_code) ? `${publicSiteOrigin()}${inviteJoinPath(slug)}` : null;
-			publicServer = { serverId: Number(server.id), base, subdomain: publicServerSubdomainOrigin(slug), stats: snapshot?.stats ?? null, joinUrl };
+			const joinUrl = inviteOn && (serverRow?.vanity_url_code || serverRow?.invite_code) ? `${publicSiteOrigin()}${inviteJoinPath(slug!)}` : null;
+			publicServer = { serverId: Number(server.id), base, subdomain: publicServerSubdomainOrigin(slug!), stats: snapshot?.stats ?? null, joinUrl };
 		}
 	} catch (_) {}
 
@@ -376,9 +403,9 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	const rows = [];
+	const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
 	for (let i = 0; i < buttons.length; i += 5) {
-		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
+		rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(...buttons.slice(i, i + 5)));
 	}
 
 	const settingsButton = new ButtonBuilder()
@@ -386,7 +413,7 @@ async function handleMenuButton(interaction) {
 		.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
 		.setStyle(ButtonStyle.Secondary);
 
-	rows.push(new ActionRowBuilder().addComponents(settingsButton));
+	rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(settingsButton));
 
 	if (publicServer) {
 		const base = publicServer.base;
@@ -395,7 +422,7 @@ async function handleMenuButton(interaction) {
 			if (targetRow.components.length < 5) {
 				targetRow.addComponents(btn);
 			} else if (rows.length < 5) {
-				rows.push(new ActionRowBuilder().addComponents(btn));
+				rows.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(btn));
 			}
 		};
 
@@ -429,7 +456,7 @@ async function handleMenuButton(interaction) {
 	}
 }
 
-async function handleMyAccountLinkButton(interaction) {
+async function handleMyAccountLinkButton(interaction: RepliableInteraction<'cached'>) {
 	const guildId = interaction.guild.id;
 	const userId = interaction.user.id;
 
@@ -442,12 +469,22 @@ async function handleMyAccountLinkButton(interaction) {
 		fields: { name: string; value: string; inline?: boolean }[] = []
 	) => {
 		const embed = new EmbedBuilder().setTitle(accountLabel).setTimestamp();
-		if (description) embed.setDescription(description);
-		if (fields.length > 0) embed.addFields(fields);
-		if (embedConfig) embed.setColor(embedConfig.COLOR);
-		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+		if (description) {
+			embed.setDescription(description);
+		}
+		if (fields.length > 0) {
+			embed.addFields(fields);
+		}
+		if (embedConfig) {
+			embed.setColor(embedConfig.COLOR);
+		}
+		if (embedConfig?.FOOTER) {
+			embed.setFooter({ text: embedConfig.FOOTER });
+		}
 		const avatar = interaction.user.displayAvatarURL?.({ size: 128 });
-		if (avatar) embed.setThumbnail(avatar);
+		if (avatar) {
+			embed.setThumbnail(avatar);
+		}
 		await interaction.reply({ embeds: [embed], components, flags: 64 }).catch(() => null);
 	};
 
@@ -506,14 +543,16 @@ async function handleMyAccountLinkButton(interaction) {
 			tr('leveling.activity.messages', { count: messages.toLocaleString() }),
 			tr('leveling.activity.voice', { hours: voiceHours.toLocaleString() })
 		];
-		if (streamHours > 0) activity.push(tr('leveling.activity.streaming', { hours: streamHours.toLocaleString() }));
+		if (streamHours > 0) {
+			activity.push(tr('leveling.activity.streaming', { hours: streamHours.toLocaleString() }));
+		}
 		fields.push({ name: tr('leveling.fields.activity'), value: activity.join(' · '), inline: false });
 	}
 
 	await replyEmbed(fields.length > 0 ? null : description, [row], fields);
 }
 
-export async function handleButtonInteraction(interaction) {
+export async function handleButtonInteraction(interaction: ButtonInteraction<'cached'>) {
 	const { customId } = interaction;
 	const user = interaction.user;
 
@@ -529,112 +568,158 @@ export async function handleButtonInteraction(interaction) {
 			await handleMenuButton(interaction);
 			break;
 		case 'bot_custom_supporter_role':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) {
+				break;
+			}
 			await handleCustomSupporterRoleButton(interaction);
 			break;
 		case 'custom_supporter_role_edit':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) {
+				break;
+			}
 			await handleEditCustomSupporterRole(interaction);
 			break;
 		case 'custom_supporter_role_delete':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) {
+				break;
+			}
 			await handleDeleteCustomSupporterRole(interaction);
 			break;
 		case 'bot_giveaway':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+				break;
+			}
 			await handleGiveawayButton(interaction);
 			break;
 		case 'giveaway_multiple_toggle':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+				break;
+			}
 			await handleGiveawayMultipleToggle(interaction);
 			break;
 		case 'bot_feedback':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) {
+				break;
+			}
 			await handleFeedbackButton(interaction);
 			break;
 		case 'bot_staff_report':
 		case 'bot_staff_rating':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) {
+				break;
+			}
 			await handleStaffRatingButton(interaction);
 			break;
 		case 'bot_notifications':
 			await handleNotificationsButton(interaction);
 			break;
 		case 'notifications_channels':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.notifications)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.notifications)) {
+				break;
+			}
 			await handleNotificationChannelsButton(interaction);
 			break;
 		case ROBLOX_NOTIFICATIONS_MENU_BUTTON_ID:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) {
+				break;
+			}
 			await handleRobloxNotificationsMenuButton(interaction);
 			break;
 		case ROBLOX_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) {
+				break;
+			}
 			await handleRobloxNotificationsDisableAll(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_MENU_BUTTON_ID:
 		case `${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+				break;
+			}
 			await handleCreatorNotificationsMenuButton(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID:
 		case `${CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+				break;
+			}
 			await handleCreatorNotificationsDisableAll(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID:
 		case `${CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+				break;
+			}
 			await handleCreatorNotificationsFollowButton(interaction);
 			break;
 		case CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID:
 		case `${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${CREATOR_CONTENT_HUB_SUFFIX}`:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+				break;
+			}
 			await handleCreatorNotificationsRecentButton(interaction);
 			break;
 		case 'bot_content_creator':
 			await handleContentCreatorHubButton(interaction);
 			break;
 		case 'content_creator_list':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+				break;
+			}
 			await handleContentCreatorButton(interaction);
 			break;
 		case 'content_creator_apply_open':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+				break;
+			}
 			await handleContentCreatorApplyButton(interaction);
 			break;
 		case 'content_creator_dismiss_request':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+				break;
+			}
 			await handleContentCreatorDismissRequest(interaction);
 			break;
 		case 'content_creator_dismiss_yes':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+				break;
+			}
 			await handleContentCreatorDismissYes(interaction);
 			break;
 		case 'content_creator_dismiss_no':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+				break;
+			}
 			await handleContentCreatorDismissNo(interaction);
 			break;
 		case 'bot_moderation':
 			await handleModerationButton(interaction);
 			break;
 		case 'bot_afk':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) {
+				break;
+			}
 			await handleAFKButton(interaction);
 			break;
 		case 'afk_remove':
 			await handleRemoveAFKButton(interaction);
 			break;
 		case 'level_my_account':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) {
+				break;
+			}
 			await handleMyAccountLinkButton(interaction);
 			break;
 		case 'bot_invites':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) {
+				break;
+			}
 			await handleInvitesButton(interaction);
 			break;
 		case INVITE_SLUG_BUTTON_ID:
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) {
+				break;
+			}
 			await handleInviteSlugButton(interaction);
 			break;
 		case 'settings_language':
@@ -644,43 +729,69 @@ export async function handleButtonInteraction(interaction) {
 			if (customId.startsWith('menu_cat|')) {
 				await handleMenuCategory(interaction, customId.split('|')[1]);
 			} else if (customId.startsWith('staff_rating_approve') || customId.startsWith('staff_report_approve')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) {
+					break;
+				}
 				await handleStaffRatingApprove(interaction);
 			} else if (customId.startsWith('staff_rating_reject') || customId.startsWith('staff_report_reject')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) {
+					break;
+				}
 				await handleStaffRatingReject(interaction);
 			} else if (customId.startsWith('content_creator_approve')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+					break;
+				}
 				await handleContentCreatorApprove(interaction);
 			} else if (customId.startsWith('content_creator_reject')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+					break;
+				}
 				await handleContentCreatorReject(interaction);
 			} else if (customId.startsWith('giveaway_enter_')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+					break;
+				}
 				await handleGiveawayEnterButton(interaction);
 			} else if (customId === 'giveaway_continue_form') {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+					break;
+				}
 				await handleGiveawaySkipRolesContinue(interaction);
 			} else if (customId.startsWith('giveaway_finish_')) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+					break;
+				}
 				await handleGiveawayFinish(interaction);
 			} else if (customId === DISCORD_QUEST_BUTTON_ID) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) {
+					break;
+				}
 				await handleDiscordQuestButton(interaction);
 			} else if (customId === QUEST_CLAIM_ALL_BUTTON_ID) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) {
+					break;
+				}
 				await handleQuestClaimAllButton(interaction);
 			} else if (isQuestEnrollButtonId(customId)) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) {
+					break;
+				}
 				await handleQuestEnrollButton(interaction);
 			} else if (isRobloxItemNotificationButtonId(customId)) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) {
+					break;
+				}
 				await handleRobloxItemNotificationButton(interaction);
 			} else if (isCreatorFollowPlatformButtonId(customId)) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+					break;
+				}
 				await handleCreatorFollowPlatformButton(interaction);
 			} else if (isCreatorFollowButtonId(customId)) {
-				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) break;
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+					break;
+				}
 				await handleCreatorFollowButton(interaction);
 			} else {
 				await logger.log(`🔍 Unknown button interaction: ${customId}`);
@@ -695,7 +806,7 @@ export async function handleButtonInteraction(interaction) {
 	}
 }
 
-export async function createInterfaceEmbed(client, guildId) {
+export async function createInterfaceEmbed(client: Client<true>, guildId: string) {
 	if (!guildId) {
 		throw new Error('Guild ID is required to create interface embed');
 	}
@@ -722,22 +833,29 @@ export async function createInterfaceEmbed(client, guildId) {
 	return interfaceEmbed;
 }
 
+type InterfacePayload = {
+	embeds: Awaited<ReturnType<typeof createInterfaceEmbed>>[];
+	components: { components: { data: { type?: ComponentType; label?: string } }[] }[];
+};
+
 export async function createInterfaceButtons(guildId: string) {
 	const menuLabel = await translateServer('menu.button', guildId);
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
-	return [new ActionRowBuilder().addComponents(menuButton)];
+	return [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(menuButton)];
 }
 
-function isInterfaceMessage(message, botUserId: string) {
-	if (message.author?.id !== botUserId) return false;
-	return message.components?.some((row) => row.components?.some((c) => c.customId === 'bot_menu')) ?? false;
+function isInterfaceMessage(message: Message, botUserId: string) {
+	if (message.author?.id !== botUserId) {
+		return false;
+	}
+	return message.components?.some((row) => (row as ActionRow<MessageActionRowComponent>).components?.some((c) => c.customId === 'bot_menu')) ?? false;
 }
 
-function interfaceUpToDate(message, payload) {
+function interfaceUpToDate(message: Message, payload: InterfacePayload) {
 	const current = message.embeds?.[0];
 	const next = payload.embeds[0];
-	const currentLabel = message.components?.[0]?.components?.[0]?.label;
+	const currentLabel = (message.components?.[0] as ActionRow<ButtonComponent> | undefined)?.components?.[0]?.label;
 	const nextLabel = payload.components[0]?.components?.[0]?.data?.label;
 	return (
 		!!current &&
@@ -750,8 +868,14 @@ function interfaceUpToDate(message, payload) {
 	);
 }
 
-export async function refreshInterfaceInChannel(targetChannel, client, { sendIfMissing }: { sendIfMissing: boolean }) {
-	if (!targetChannel?.guild) return;
+export async function refreshInterfaceInChannel(
+	targetChannel: GuildTextBasedChannel | null,
+	client: Client<true>,
+	{ sendIfMissing }: { sendIfMissing: boolean }
+) {
+	if (!targetChannel?.guild) {
+		return;
+	}
 	const payload = {
 		embeds: [await createInterfaceEmbed(client, targetChannel.guild.id)],
 		components: await createInterfaceButtons(targetChannel.guild.id)
@@ -760,7 +884,9 @@ export async function refreshInterfaceInChannel(targetChannel, client, { sendIfM
 	const recent = await targetChannel.messages?.fetch({ limit: 50 }).catch(() => null);
 	const existing = recent?.find((m) => isInterfaceMessage(m, client.user.id)) ?? null;
 	if (existing) {
-		if (interfaceUpToDate(existing, payload)) return;
+		if (interfaceUpToDate(existing, payload)) {
+			return;
+		}
 		await existing.edit(payload);
 		await logger.log(`🎮 Bot interface refreshed in ${targetChannel.name}`);
 	} else if (sendIfMissing) {
@@ -769,8 +895,8 @@ export async function refreshInterfaceInChannel(targetChannel, client, { sendIfM
 	}
 }
 
-function init(client) {
-	client.on('interactionCreate', async (interaction) => {
+function init(client: Client<true>) {
+	client.on('interactionCreate', async (interaction: Interaction) => {
 		if (interaction.isButton()) {
 			if (!interaction.guild) {
 				return;
@@ -784,9 +910,9 @@ function init(client) {
 			}
 
 			try {
-				await handleButtonInteraction(interaction);
+				await handleButtonInteraction(interaction as ButtonInteraction<'cached'>);
 			} catch (error) {
-				await logger.log(`❌ Button interaction error: ${error.message}`);
+				await logger.log(`❌ Button interaction error: ${(error as Error).message}`);
 
 				try {
 					const errorMsg = await translate('common.errors.buttonError', interaction.guild?.id, interaction.user?.id);
@@ -795,7 +921,7 @@ function init(client) {
 						flags: 64
 					});
 				} catch (replyError) {
-					await logger.log(`❌ Failed to send button error response: ${replyError.message}`);
+					await logger.log(`❌ Failed to send button error response: ${(replyError as Error).message}`);
 				}
 			}
 		} else if (interaction.isModalSubmit()) {
@@ -816,51 +942,77 @@ function init(client) {
 				await logger.log(`📝 Modal submitted: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
 				if (interaction.customId.startsWith('moderation_modal|')) {
-					await handleModerationModal(interaction);
+					await handleModerationModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === 'custom_supporter_role_create') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
-					await handleCustomSupporterRoleModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) {
+						return;
+					}
+					await handleCustomSupporterRoleModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === 'custom_supporter_role_edit') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
-					await handleCustomSupporterRoleEditModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) {
+						return;
+					}
+					await handleCustomSupporterRoleEditModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === INVITE_SLUG_MODAL_ID) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) return;
-					await handleInviteSlugModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) {
+						return;
+					}
+					await handleInviteSlugModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === 'feedback_submit') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) return;
-					await handleFeedbackModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) {
+						return;
+					}
+					await handleFeedbackModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === 'afk_set') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) return;
-					await handleAFKModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) {
+						return;
+					}
+					await handleAFKModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId.startsWith('staff_rating_submit') || interaction.customId.startsWith('staff_report_submit')) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) return;
-					await handleStaffRatingModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) {
+						return;
+					}
+					await handleStaffRatingModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === 'content_creator_apply') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) return;
-					await handleContentCreatorModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+						return;
+					}
+					await handleContentCreatorModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId.startsWith('sr_rev|')) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) return;
-					await handleStaffRatingDecisionModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) {
+						return;
+					}
+					await handleStaffRatingDecisionModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId.startsWith('cc_rev|')) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) return;
-					await handleContentCreatorDecisionModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) {
+						return;
+					}
+					await handleContentCreatorDecisionModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId.startsWith('giveaway_create')) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
-					await handleGiveawayModal(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+						return;
+					}
+					await handleGiveawayModal(interaction as ModalSubmitInteraction<'cached'>);
 				} else if (interaction.customId === QUEST_CLAIM_ALL_MODAL_ID) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) {
+						return;
+					}
 					await handleQuestClaimAllModalSubmit(interaction);
 				} else if (isQuestEnrollModalId(interaction.customId)) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) {
+						return;
+					}
 					await handleQuestEnrollModalSubmit(interaction);
 				} else if (isCreatorFollowModalId(interaction.customId)) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+						return;
+					}
 					await handleCreatorFollowModalSubmit(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
 				}
 			} catch (error) {
-				await logger.log(`❌ Modal submission error: ${error.message}`);
+				await logger.log(`❌ Modal submission error: ${(error as Error).message}`);
 
 				try {
 					const errorMsg = await translate('common.errors.modalError', interaction.guild?.id, interaction.user?.id);
@@ -869,7 +1021,7 @@ function init(client) {
 						flags: 64
 					});
 				} catch (replyError) {
-					await logger.log(`❌ Failed to send modal error response: ${replyError.message}`);
+					await logger.log(`❌ Failed to send modal error response: ${(replyError as Error).message}`);
 				}
 			}
 		} else if (interaction.isStringSelectMenu()) {
@@ -893,30 +1045,38 @@ function init(client) {
 				if (isMessageComponentId(customId)) {
 					await handleMessageComponent(interaction);
 				} else if (customId.startsWith('moderation_action|')) {
-					await handleModerationActionSelect(interaction);
+					await handleModerationActionSelect(interaction as StringSelectMenuInteraction<'cached'>);
 				} else if (customId === 'settings_language_select') {
-					await handleLanguageSelect(interaction);
+					await handleLanguageSelect(interaction as StringSelectMenuInteraction<'cached'>);
 				} else if (customId === SETUP_LANGUAGE_SELECT_ID) {
-					await handleSetupLanguageSelect(interaction, client);
+					await handleSetupLanguageSelect(interaction as StringSelectMenuInteraction<'cached'>, client);
 				} else if (customId === 'notifications_select') {
-					await handleNotificationsSelect(interaction);
+					await handleNotificationsSelect(interaction as StringSelectMenuInteraction<'cached'>);
 				} else if (customId === ROBLOX_NOTIFICATIONS_SELECT_ID) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) {
+						return;
+					}
 					await handleRobloxNotificationsSelect(interaction);
 				} else if (isRobloxItemNotificationTypesSelectId(customId)) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) {
+						return;
+					}
 					await handleRobloxItemNotificationTypesSelect(interaction);
 				} else if (isCreatorMenuId(customId, CREATOR_NOTIFICATIONS_SELECT_ID)) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+						return;
+					}
 					await handleCreatorNotificationsSelect(interaction);
 				} else if (isCreatorNotificationTypesSelectId(customId)) {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) return;
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.creator_alerts)) {
+						return;
+					}
 					await handleCreatorNotificationTypesSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown string select: "${customId}" by ${user.tag} (${user.id})`);
 				}
 			} catch (error) {
-				await logger.log(`❌ String select error: ${error.message}`);
+				await logger.log(`❌ String select error: ${(error as Error).message}`);
 				if (!interaction.replied && !interaction.deferred) {
 					const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
 					await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
@@ -941,14 +1101,16 @@ function init(client) {
 				await logger.log(`👥 Role selected: "${customId}" → [${selectedRoles.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
 				if (customId === 'giveaway_role_select') {
-					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
-					await handleGiveawayRoleSelect(interaction);
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) {
+						return;
+					}
+					await handleGiveawayRoleSelect(interaction as RoleSelectMenuInteraction<'cached'>);
 				} else {
 					await logger.log(`⚠️ Unknown role select: "${customId}" by ${user.tag} (${user.id})`);
 				}
 			} catch (error) {
-				await logger.log(`❌ Role selection error in interface.js: ${error.message}`);
-				await logger.log(`❌ Role selection error stack: ${error.stack}`);
+				await logger.log(`❌ Role selection error in interface.js: ${(error as Error).message}`);
+				await logger.log(`❌ Role selection error stack: ${(error as Error).stack}`);
 
 				try {
 					const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
@@ -957,7 +1119,7 @@ function init(client) {
 						flags: 64
 					});
 				} catch (replyError) {
-					await logger.log(`❌ Failed to send role selection error response: ${replyError.message}`);
+					await logger.log(`❌ Failed to send role selection error response: ${(replyError as Error).message}`);
 				}
 			}
 		} else if (interaction.isUserSelectMenu()) {
@@ -984,8 +1146,8 @@ function init(client) {
 					await logger.log(`⚠️ Unknown user select: "${customId}" by ${user.tag} (${user.id})`);
 				}
 			} catch (error) {
-				await logger.log(`❌ User selection error in interface.js: ${error.message}`);
-				await logger.log(`❌ User selection error stack: ${error.stack}`);
+				await logger.log(`❌ User selection error in interface.js: ${(error as Error).message}`);
+				await logger.log(`❌ User selection error stack: ${(error as Error).stack}`);
 
 				try {
 					const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
@@ -996,7 +1158,7 @@ function init(client) {
 						})
 						.catch(() => null);
 				} catch (replyError) {
-					await logger.log(`❌ Failed to send user selection error response: ${replyError.message}`);
+					await logger.log(`❌ Failed to send user selection error response: ${(replyError as Error).message}`);
 				}
 			}
 		}

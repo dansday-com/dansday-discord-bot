@@ -76,10 +76,10 @@ export const POST: RequestHandler = async ({ params }) => {
 		const req = httpRequest(
 			{
 				hostname: 'localhost',
-				port: bot.port,
+				port: bot.port!,
 				path: '/',
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key }
+				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key! }
 			},
 			(res) => {
 				let data = '';

@@ -3,24 +3,33 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { subscribeVoiceCommands, clearVoiceState } from './voiceControl.js';
 import { createVoiceSession } from './voiceSession.js';
+import type { Client, VoiceBasedChannel } from 'discord.js';
+import type { VoiceState } from 'discord.js';
+import type { VoiceCommand } from './voiceControl.js';
 
-let active = null;
-let clientInstance = null;
+let active: ReturnType<typeof createVoiceSession> | null = null;
+let clientInstance: Client | null = null;
 
-async function handleJoin(command) {
-	if (active) return;
+async function handleJoin(command: Extract<VoiceCommand, { cmd: 'join' }>) {
+	if (active) {
+		return;
+	}
 
 	const botConfig = getBotConfig();
-	if (!botConfig?.id) return;
+	if (!botConfig?.id) {
+		return;
+	}
 
 	const panelAi = db.aiFromDbRow(await db.getAiByBotId(botConfig.id));
 	const endpoint = db.aiVoiceEndpoint(panelAi);
-	if (!panelAi.enabled || !panelAi.voice_enabled || !endpoint.api_key || !endpoint.model) return;
+	if (!panelAi.enabled || !panelAi.voice_enabled || !endpoint.api_key || !endpoint.model) {
+		return;
+	}
 
 	const config = await resolveGuildAiConfig(command.guildId, panelAi);
 
 	const session = createVoiceSession({
-		client: clientInstance,
+		client: clientInstance!,
 		config,
 		botId: botConfig.id,
 		guildId: command.guildId,
@@ -40,16 +49,18 @@ async function handleJoin(command) {
 	} catch (error) {
 		active = null;
 		await clearVoiceState(botConfig.id);
-		await logger.log(`❌ Voice AI join failed: ${error.message}`);
+		await logger.log(`❌ Voice AI join failed: ${(error as Error).message}`);
 	}
 }
 
-async function handleVoiceStateUpdate(oldState, newState) {
-	if (!active) return;
+async function handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
+	if (!active) {
+		return;
+	}
 
 	const userId = oldState.id ?? newState.id;
 
-	if (userId === clientInstance.user?.id) {
+	if (userId === clientInstance!.user?.id) {
 		if (!newState.channelId) {
 			await active.stop('disconnected');
 			return;
@@ -66,7 +77,7 @@ async function handleVoiceStateUpdate(oldState, newState) {
 
 			if (target !== newState.channelId) {
 				await logger.log(`🔀 Voice AI was moved, returning to inviter`);
-				await active.moveTo(target, inviter.voice.channel?.name);
+				await active.moveTo(target, inviter!.voice.channel?.name);
 				return;
 			}
 
@@ -74,8 +85,12 @@ async function handleVoiceStateUpdate(oldState, newState) {
 			return;
 		}
 
-		if (newState.serverMute && !oldState.serverMute) await active.ensureUnmuted();
-		if (newState.serverDeaf && !oldState.serverDeaf) await active.ensureUndeafened();
+		if (newState.serverMute && !oldState.serverMute) {
+			await active.ensureUnmuted();
+		}
+		if (newState.serverDeaf && !oldState.serverDeaf) {
+			await active.ensureUndeafened();
+		}
 		return;
 	}
 
@@ -88,10 +103,14 @@ async function handleVoiceStateUpdate(oldState, newState) {
 		return;
 	}
 
-	if (!left) return;
+	if (!left) {
+		return;
+	}
 
 	active.unsubscribeUser(userId);
-	if (!oldState.member?.user?.bot) active.noteLeft(userId);
+	if (!oldState.member?.user?.bot) {
+		active.noteLeft(userId);
+	}
 
 	if (userId === active.inviterId) {
 		if (newState.channelId) {
@@ -103,22 +122,31 @@ async function handleVoiceStateUpdate(oldState, newState) {
 		return;
 	}
 
-	const channel = newState.guild?.channels?.cache?.get(active.channelId) ?? oldState.guild?.channels?.cache?.get(active.channelId);
+	const channel = (newState.guild?.channels?.cache?.get(active.channelId) ?? oldState.guild?.channels?.cache?.get(active.channelId)) as
+		VoiceBasedChannel | undefined;
 	const humans = [...(channel?.members ?? [])].filter(([, m]) => !m.user.bot).length;
-	if (humans === 0) await active.stop('channel_empty');
+	if (humans === 0) {
+		await active.stop('channel_empty');
+	}
 }
 
-async function init(client) {
+async function init(client: Client) {
 	clientInstance = client;
 
 	const botConfig = getBotConfig();
-	if (!botConfig?.id) return;
+	if (!botConfig?.id) {
+		return;
+	}
 
 	await clearVoiceState(botConfig.id);
 
 	const subscriber = await subscribeVoiceCommands(botConfig.id, (command) => {
-		if (command.cmd === 'join') handleJoin(command).catch(() => {});
-		if (command.cmd === 'leave' && active) active.stop(command.reason || 'user_request').catch(() => {});
+		if (command.cmd === 'join') {
+			handleJoin(command).catch(() => {});
+		}
+		if (command.cmd === 'leave' && active) {
+			active.stop(command.reason || 'user_request').catch(() => {});
+		}
 	});
 
 	if (!subscriber) {

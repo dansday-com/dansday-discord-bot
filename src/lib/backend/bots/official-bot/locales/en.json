@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Owner registration",
 			"setupNotOwnerTitle": "Permission denied",
 			"setupNotOwnerBody": "Only the **server owner** can use `/setup`.",
-			"setupNotTextChannelTitle": "Invalid channel",
-			"setupNotTextChannelBody": "Please select a **text channel**.",
 			"joinTitle": "Thanks for adding {botName}!",
 			"joinBody": "Run `/setup` to create the channels and finish setup.",
 			"joinAskAi": "Not sure where to start? Mention {botMention} and just ask — it reads the documentation and can walk you through setup.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Public pages are turned off for this server. Ask a server admin to turn them on in the bot configuration panel."
 		},
 		"errors": {
-			"notRegistered": "⚠️ This server isn't fully connected to the bot yet. Try again in a few minutes, and ask a server admin to check the bot configuration panel if it keeps happening.",
-			"createRecordFailed": "❌ Failed to create member record. Please try again."
+			"notRegistered": "⚠️ This server isn't fully connected to the bot yet. Try again in a few minutes, and ask a server admin to check the bot configuration panel if it keeps happening."
 		},
 		"fields": {
 			"level": "⭐ Level",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Report Staff Member",
 			"ratingLabel": "Rating (1-5 stars)",
-			"ratingPlaceholder": "1 = Very Poor, 5 = Excellent",
 			"categoryLabel": "Category",
 			"descriptionLabel": "Description",
 			"descriptionPlaceholder": "Please describe your experience with this staff member...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Report Submitted",
 			"description": "Your report has been submitted successfully and is now waiting for admin approval. We'll notify you once it's been reviewed.",
-			"anonymous": "\\n\\n🔒 Your report was submitted anonymously.",
-			"roleUpdated": "\\n\\n⭐ **Staff Rating Updated**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} reports)"
+			"anonymous": "\\n\\n🔒 Your report was submitted anonymously."
 		},
 		"dm": {
 			"approved": "Your report about {staff} in **{server}** was approved.\\n\\n**Rating:** {rating}/5\\n**Category:** {category}\\n**Feedback:** {description}\\n\\n**Staff note:** {reason}\\n\\nThank you for helping us keep the team accountable.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Rude Behavior"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Please select a staff member to report.",
 			"invalidRating": "❌ **Invalid Rating**\\n\\nRating must be a number between 1 and 5.",
 			"invalidCategory": "❌ **Invalid Category**\\n\\nPlease pick a category from the list.",
 			"emptyDescription": "❌ **Description Required**\\n\\nPlease provide a description of your experience.",

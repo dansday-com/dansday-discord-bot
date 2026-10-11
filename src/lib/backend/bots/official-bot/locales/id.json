@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Pendaftaran owner",
 			"setupNotOwnerTitle": "Akses ditolak",
 			"setupNotOwnerBody": "Hanya **pemilik server** yang bisa memakai `/setup`.",
-			"setupNotTextChannelTitle": "Saluran tidak valid",
-			"setupNotTextChannelBody": "Pilih **saluran teks**.",
 			"joinTitle": "Terima kasih telah menambahkan {botName}!",
 			"joinBody": "Jalankan `/setup` untuk membuat saluran dan menyelesaikan pengaturan.",
 			"joinAskAi": "Belum tahu harus mulai dari mana? Sebut {botMention} dan tanya saja — bot membaca dokumentasi dan bisa memandu pengaturannya.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Halaman publik dimatikan untuk server ini. Minta admin server mengaktifkannya di panel konfigurasi bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Server ini belum sepenuhnya terhubung dengan bot. Coba lagi dalam beberapa menit, dan minta admin server memeriksa panel konfigurasi bot jika terus terjadi.",
-			"createRecordFailed": "❌ Gagal membuat catatan anggota. Silakan coba lagi."
+			"notRegistered": "⚠️ Server ini belum sepenuhnya terhubung dengan bot. Coba lagi dalam beberapa menit, dan minta admin server memeriksa panel konfigurasi bot jika terus terjadi."
 		},
 		"fields": {
 			"level": "⭐ Level",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Laporkan Staff",
 			"ratingLabel": "Rating (1-5 bintang)",
-			"ratingPlaceholder": "1 = Sangat Buruk, 5 = Sangat Baik",
 			"categoryLabel": "Kategori",
 			"descriptionLabel": "Deskripsi",
 			"descriptionPlaceholder": "Jelaskan pengalaman kamu dengan staff ini...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Laporan Terkirim",
 			"description": "Laporan kamu berhasil dikirim dan sedang menunggu persetujuan admin. Kami akan memberi tahu kamu setelah laporan diproses.",
-			"anonymous": "\\n\\n🔒 Laporan kamu dikirim secara anonim.",
-			"roleUpdated": "\\n\\n⭐ **Rating Staff Diperbarui**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} laporan)"
+			"anonymous": "\\n\\n🔒 Laporan kamu dikirim secara anonim."
 		},
 		"dm": {
 			"approved": "Laporan kamu tentang {staff} di **{server}** telah disetujui.\\n\\n**Rating:** {rating}/5\\n**Kategori:** {category}\\n**Feedback:** {description}\\n\\n**Catatan staff:** {reason}\\n\\nTerima kasih sudah membantu menjaga kualitas tim.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Perilaku Kasar"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Silakan pilih staff yang ingin dilaporkan.",
 			"invalidRating": "❌ **Rating Tidak Valid**\\n\\nRating harus berupa angka antara 1 dan 5.",
 			"invalidCategory": "❌ **Kategori Tidak Valid**\\n\\nPilih kategori dari daftar.",
 			"emptyDescription": "❌ **Deskripsi Diperlukan**\\n\\nSilakan berikan deskripsi pengalaman kamu.",

@@ -12,7 +12,7 @@
 	onMount(() => {
 		if (data.authQueryError) {
 			showToast(data.authQueryError, 'error');
-			void goto('/login', { replaceState: true, noScroll: true });
+			goto('/login', { replaceState: true, noScroll: true });
 		}
 	});
 	let loading = $state(false);
@@ -268,7 +268,9 @@
 				spellcheck="false"
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 mb-4 w-full rounded-xl border px-4 py-3 text-center font-mono text-lg tracking-wider transition-all placeholder:tracking-normal focus:border-cyan-300/40 focus:ring-4 focus:ring-cyan-400/40 focus:outline-none"
 				onkeydown={(e) => {
-					if (e.key === 'Enter') handleDemoLogin();
+					if (e.key === 'Enter') {
+						handleDemoLogin();
+					}
 				}}
 			/>
 

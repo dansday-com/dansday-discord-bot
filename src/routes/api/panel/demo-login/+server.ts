@@ -77,7 +77,9 @@ function makeCaptchaToken(answer: string, secret: string): string {
 
 function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answer?: string } {
 	const parts = token.split('.');
-	if (parts.length !== 3) return { ok: false };
+	if (parts.length !== 3) {
+		return { ok: false };
+	}
 	const [ivB64, tagB64, ctB64] = parts;
 	try {
 		const iv = Buffer.from(ivB64, 'base64url');
@@ -87,8 +89,12 @@ function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answe
 		decipher.setAuthTag(tag);
 		const pt = Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
 		const payload = JSON.parse(pt) as { answer?: string; iat?: number };
-		if (!payload?.answer || typeof payload.iat !== 'number') return { ok: false };
-		if (Date.now() - payload.iat > CAPTCHA_TTL_SECONDS * 1000) return { ok: false };
+		if (!payload?.answer || typeof payload.iat !== 'number') {
+			return { ok: false };
+		}
+		if (Date.now() - payload.iat > CAPTCHA_TTL_SECONDS * 1000) {
+			return { ok: false };
+		}
 		return { ok: true, answer: payload.answer };
 	} catch (_) {
 		return { ok: false };
@@ -97,7 +103,9 @@ function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answe
 
 export const GET: RequestHandler = async () => {
 	const secret = process.env.SECRET;
-	if (!secret) return json({ error: 'Captcha is not configured.' }, { status: 500 });
+	if (!secret) {
+		return json({ error: 'Captcha is not configured.' }, { status: 500 });
+	}
 	const answer = generateCaptchaAnswer();
 	const token = makeCaptchaToken(answer, secret);
 	const svg = renderCaptchaSvg(answer);
@@ -156,11 +164,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		logger.log(`Demo login (IP: ${ip}) -> superadmin_account_id=${seeded.superadmin_account_id}, panel_slug=${sessionSlug}`);
 
 		return json({ success: true, message: 'Demo login successful' }, { headers: { 'Set-Cookie': makeSessionCookie(sessionId) } });
-	} catch (error: any) {
-		logger.log(`❌ Demo login error: ${error?.message || String(error)}`);
+	} catch (error) {
+		logger.log(`❌ Demo login error: ${(error as Error)?.message || String(error)}`);
 		try {
 			console.error(error);
 		} catch (_) {}
-		return json({ success: false, error: error.message }, { status: 500 });
+		return json({ success: false, error: (error as Error).message }, { status: 500 });
 	}
 };

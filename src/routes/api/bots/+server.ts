@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const bots = await db.getAllBots(locals.user.panel_id);
 
 		const botsWithDetails = await Promise.all(
-			bots.map(async (bot: any) => {
+			bots.map(async (bot) => {
 				if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 					try {
 						process.kill(bot.process_id, 0);
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 					}
 				}
 
-				const botData: any = {
+				const botData: Record<string, unknown> = {
 					id: bot.id,
 					name: bot.name,
 					bot_icon: bot.bot_icon,
@@ -44,8 +44,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		);
 
 		return json(botsWithDetails);
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };
 
@@ -79,7 +79,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		}
 
 		const existingBots = await db.getAllBots();
-		const portInUse = existingBots.some((b: any) => b.port === port);
+		const portInUse = existingBots.some((b) => b.port === port);
 		if (portInUse) {
 			return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: 400 });
 		}
@@ -102,7 +102,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		logger.log(`${locals.user.username} added official bot: "${name || 'Bot'}" (ID: ${bot.id})`);
 
 		return json({ success: true, bot });
-	} catch (error: any) {
-		return json({ success: false, error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ success: false, error: (error as Error).message }, { status: 500 });
 	}
 };

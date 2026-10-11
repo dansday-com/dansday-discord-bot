@@ -17,7 +17,9 @@ export const GET: RequestHandler = async ({ params }) => {
 
 			db.getBot(botId)
 				.then((bot) => {
-					if (!bot) return;
+					if (!bot) {
+						return;
+					}
 					send({ status: bot.status, process_id: bot.process_id ?? null, uptime_ms: getBotUptimeMs(bot) });
 				})
 				.catch((_) => {});

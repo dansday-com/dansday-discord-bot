@@ -8,7 +8,7 @@ export const TOWER_FATIGUE = 0.88;
 export const TOWER_MIN_CHANCE = 0.1;
 export const TOWER_HIGH_FLOOR = 3;
 
-function towerFloorIndex(floor: any): number {
+function towerFloorIndex(floor: unknown): number {
 	return Math.min(TOWER_FLOORS, Math.max(1, Math.floor(Number(floor) || 1))) - 1;
 }
 
@@ -16,36 +16,38 @@ function round1(n: number): number {
 	return Math.round(n * 10) / 10;
 }
 
-export function towerFatigue(climb: any): number {
+export function towerFatigue(climb: unknown): number {
 	return Math.pow(TOWER_FATIGUE, Math.max(1, Math.floor(Number(climb) || 1)) - 1);
 }
 
-export function towerOddsDropPercent(climb: any): number {
+export function towerOddsDropPercent(climb: unknown): number {
 	return round1((1 - towerFatigue(climb)) * 100);
 }
 
-export function towerBaseChance(floor: any, climb: any = 1): number {
+export function towerBaseChance(floor: unknown, climb: unknown = 1): number {
 	return Math.max(TOWER_MIN_CHANCE, round1(TOWER_FLOOR_CHANCES[towerFloorIndex(floor)] * towerFatigue(climb)));
 }
 
-export function towerSafeChance(floor: any, climb: any = 1, luckPercent: any = 0): number {
+export function towerSafeChance(floor: unknown, climb: unknown = 1, luckPercent: unknown = 0): number {
 	const base = towerBaseChance(floor, climb);
 	const luck = Math.max(0, Number(luckPercent) || 0);
 	return luck > 0 ? Math.min(100, round1(base + luck)) : base;
 }
 
-export function towerReachChance(floor: any, climb: any = 1): number {
+export function towerReachChance(floor: unknown, climb: unknown = 1): number {
 	let chance = 100;
-	for (let f = 1; f <= towerFloorIndex(floor) + 1; f++) chance = (chance * towerBaseChance(f, climb)) / 100;
+	for (let f = 1; f <= towerFloorIndex(floor) + 1; f++) {
+		chance = (chance * towerBaseChance(f, climb)) / 100;
+	}
 	return chance;
 }
 
-export function towerTrapCount(chance: any): number {
+export function towerTrapCount(chance: unknown): number {
 	const c = Math.min(100, Math.max(0, Number(chance) || 0));
 	return Math.min(TOWER_DOORS - 1, Math.max(1, Math.round(((100 - c) / 100) * TOWER_DOORS)));
 }
 
-export function towerPrize(floor: any): number {
+export function towerPrize(floor: unknown): number {
 	const f = Math.min(TOWER_FLOORS, Math.floor(Number(floor) || 0));
 	return f > 0 ? TOWER_PRIZES[f - 1] : 0;
 }

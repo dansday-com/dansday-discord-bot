@@ -78,7 +78,9 @@ function isoFromSeconds(v: unknown): string | null {
 
 function isoOrNull(v: unknown): string | null {
 	const s = str(v);
-	if (!s) return null;
+	if (!s) {
+		return null;
+	}
 	const t = new Date(s).getTime();
 	return Number.isFinite(t) ? new Date(t).toISOString() : null;
 }
@@ -90,7 +92,9 @@ async function fetchText(url: string, headers: Record<string, string>): Promise<
 
 export function parseCreatorInput(raw: string): { platform: CreatorPlatform; handle: string } | null {
 	const input = raw.trim();
-	if (!input) return null;
+	if (!input) {
+		return null;
+	}
 	let url: URL | null = null;
 	try {
 		url = new URL(/^https?:\/\//i.test(input) ? input : `https://${input}`);
@@ -102,8 +106,12 @@ export function parseCreatorInput(raw: string): { platform: CreatorPlatform; han
 
 	if (host === 'youtube.com' || host === 'youtu.be') {
 		const first = segments[0] ?? '';
-		if (first.startsWith('@')) return { platform: 'youtube', handle: first };
-		if (first === 'channel' && /^UC[\w-]{22}$/.test(segments[1] ?? '')) return { platform: 'youtube', handle: segments[1] };
+		if (first.startsWith('@')) {
+			return { platform: 'youtube', handle: first };
+		}
+		if (first === 'channel' && /^UC[\w-]{22}$/.test(segments[1] ?? '')) {
+			return { platform: 'youtube', handle: segments[1] };
+		}
 		return null;
 	}
 	if (host === 'twitch.tv') {
@@ -117,9 +125,11 @@ export function parseCreatorInput(raw: string): { platform: CreatorPlatform; han
 	return null;
 }
 
-function twitchVideoContent(node: any): CreatorContent | null {
+function twitchVideoContent(node: Record<string, unknown>): CreatorContent | null {
 	const id = str(node?.id);
-	if (!id) return null;
+	if (!id) {
+		return null;
+	}
 	return {
 		contentId: id,
 		type: 'video',
@@ -133,7 +143,9 @@ function twitchVideoContent(node: any): CreatorContent | null {
 function twitchSnapshot(user: any): CreatorSnapshot | null {
 	const accountId = str(user?.id);
 	const login = str(user?.login);
-	if (!accountId || !login) return null;
+	if (!accountId || !login) {
+		return null;
+	}
 	const live: CreatorContent[] = [];
 	const videos: CreatorContent[] = [];
 	const stream = user.stream;
@@ -149,7 +161,9 @@ function twitchSnapshot(user: any): CreatorSnapshot | null {
 	}
 	for (const edge of user.videos?.edges ?? []) {
 		const video = twitchVideoContent(edge?.node);
-		if (video) videos.push(video);
+		if (video) {
+			videos.push(video);
+		}
 	}
 	return {
 		profile: { platform: 'twitch', accountId, handle: login, name: str(user.displayName) ?? login, thumbnailUrl: str(user.profileImageURL) },
@@ -161,16 +175,20 @@ const TWITCH_USER_FIELDS = `id login displayName profileImageURL(width: 70)
 	stream { id title createdAt previewImageURL(width: 440, height: 248) }
 	videos(first: 3, sort: TIME, types: [UPLOAD, HIGHLIGHT]) { edges { node { id title publishedAt previewThumbnailURL(width: 440, height: 248) } } }`;
 
-async function twitchQuery(query: string, variables: Record<string, unknown>): Promise<any[]> {
+async function twitchQuery(query: string, variables: Record<string, unknown>): Promise<unknown[]> {
 	const res = await fetch(TWITCH_GQL_URL, {
 		method: 'POST',
 		headers: { 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json', 'User-Agent': BROWSER_UA },
 		body: JSON.stringify({ query, variables }),
 		signal: AbortSignal.timeout(CREATOR_ALERTS_FETCH_TIMEOUT_MS)
 	});
-	if (!res.ok) throw new Error(`twitch gql ${res.status}`);
+	if (!res.ok) {
+		throw new Error(`twitch gql ${res.status}`);
+	}
 	const body: any = await res.json();
-	if (Array.isArray(body?.errors) && body.errors.length > 0) throw new Error(`twitch gql: ${body.errors[0]?.message ?? 'error'}`);
+	if (Array.isArray(body?.errors) && body.errors.length > 0) {
+		throw new Error(`twitch gql: ${body.errors[0]?.message ?? 'error'}`);
+	}
 	return Array.isArray(body?.data?.users) ? body.data.users : [];
 }
 
@@ -182,10 +200,12 @@ async function fetchTwitchSnapshots(refs: CreatorRef[]): Promise<Map<string, Cre
 			const users = await twitchQuery(`query($i: [ID!]) { users(ids: $i) { ${TWITCH_USER_FIELDS} } }`, { i: ids });
 			for (const user of users) {
 				const snap = twitchSnapshot(user);
-				if (snap) out.set(creatorRefKey(snap.profile), snap);
+				if (snap) {
+					out.set(creatorRefKey(snap.profile), snap);
+				}
 			}
-		} catch (err: any) {
-			await logger.log(`⚠️ Creator alerts: twitch batch failed: ${err?.message || err}`);
+		} catch (err) {
+			await logger.log(`⚠️ Creator alerts: twitch batch failed: ${(err as Error)?.message || err}`);
 		}
 	}
 	return out;
@@ -198,7 +218,9 @@ async function resolveTwitch(login: string): Promise<CreatorProfile | null> {
 
 function youtubeProfileFromPage(html: string): CreatorProfile | null {
 	const accountId = html.match(/"externalId":"(UC[\w-]{22})"/)?.[1];
-	if (!accountId) return null;
+	if (!accountId) {
+		return null;
+	}
 	const name = html.match(/<meta property="og:title" content="([^"]*)"/)?.[1] ?? null;
 	const avatar = html.match(/<meta property="og:image" content="([^"]*)"/)?.[1] ?? null;
 	const vanity = html.match(/"vanityChannelUrl":"[^"]*\/(@[^"/]+)"/)?.[1] ?? null;
@@ -217,7 +239,9 @@ function decodeEntities(s: string): string {
 async function resolveYouTube(handle: string): Promise<CreatorProfile | null> {
 	const path = /^UC[\w-]{22}$/.test(handle) ? `channel/${handle}` : `${handle.startsWith('@') ? handle : `@${handle}`}`;
 	const { status, text } = await fetchText(`https://www.youtube.com/${path}?hl=en`, YOUTUBE_HEADERS);
-	if (status !== 200) return null;
+	if (status !== 200) {
+		return null;
+	}
 	return youtubeProfileFromPage(text);
 }
 
@@ -234,15 +258,23 @@ function youtubeVideo(id: string, title: string | null, kind: 'video' | 'short',
 
 async function youtubeFeed(playlistId: string, kind: 'video' | 'short'): Promise<CreatorContent[]> {
 	const { status, text } = await fetchText(`https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`, YOUTUBE_HEADERS);
-	if (status === 404) return [];
-	if (status !== 200) throw new Error(`youtube feed ${status}`);
+	if (status === 404) {
+		return [];
+	}
+	if (status !== 200) {
+		throw new Error(`youtube feed ${status}`);
+	}
 	const feed = xml.parse(text)?.feed;
-	if (!feed) throw new Error('youtube feed unparsable');
+	if (!feed) {
+		throw new Error('youtube feed unparsable');
+	}
 	const entries = feed.entry == null ? [] : Array.isArray(feed.entry) ? feed.entry : [feed.entry];
 	const out: CreatorContent[] = [];
 	for (const e of entries) {
 		const id = str(e?.['yt:videoId']);
-		if (!id) continue;
+		if (!id) {
+			continue;
+		}
 		out.push(youtubeVideo(id, str(typeof e.title === 'object' ? e.title?.['#text'] : e.title), kind, isoOrNull(e.published)));
 	}
 	return out;
@@ -250,15 +282,23 @@ async function youtubeFeed(playlistId: string, kind: 'video' | 'short'): Promise
 
 async function youtubeLive(accountId: string): Promise<CreatorContent[]> {
 	const { status, text } = await fetchText(`https://www.youtube.com/channel/${accountId}/live?hl=en`, YOUTUBE_HEADERS);
-	if (status !== 200) throw new Error(`youtube live ${status}`);
+	if (status !== 200) {
+		throw new Error(`youtube live ${status}`);
+	}
 	const canonical = text.match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? '';
-	if (!canonical.includes('/watch?v=')) return [];
+	if (!canonical.includes('/watch?v=')) {
+		return [];
+	}
 	const raw = text.match(/var ytInitialPlayerResponse = (\{.*?\});(?:var|<\/script>)/s)?.[1];
-	if (!raw) throw new Error('youtube live player response missing');
+	if (!raw) {
+		throw new Error('youtube live player response missing');
+	}
 	const details = JSON.parse(raw)?.videoDetails;
 	const id = str(details?.videoId);
-	if (!id || details?.isLive !== true) return [];
-	const thumbs: any[] = details.thumbnail?.thumbnails ?? [];
+	if (!id || details?.isLive !== true) {
+		return [];
+	}
+	const thumbs: Record<string, unknown>[] = details.thumbnail?.thumbnails ?? [];
 	return [
 		{
 			contentId: id,
@@ -271,28 +311,41 @@ async function youtubeLive(accountId: string): Promise<CreatorContent[]> {
 	];
 }
 
-function collectRenderers(node: any, key: string, out: any[]) {
-	if (!node || typeof node !== 'object') return;
+function collectRenderers(node: unknown, key: string, out: unknown[]) {
+	if (!node || typeof node !== 'object') {
+		return;
+	}
 	if (Array.isArray(node)) {
-		for (const n of node) collectRenderers(n, key, out);
+		for (const n of node) {
+			collectRenderers(n, key, out);
+		}
 		return;
 	}
 	for (const [k, v] of Object.entries(node)) {
-		if (k === key) out.push(v);
-		else collectRenderers(v, key, out);
+		if (k === key) {
+			out.push(v);
+		} else {
+			collectRenderers(v, key, out);
+		}
 	}
 }
 
-async function youtubeInitialData(accountId: string, tab: string): Promise<any | null> {
+async function youtubeInitialData(accountId: string, tab: string): Promise<unknown | null> {
 	const { status, text } = await fetchText(`https://www.youtube.com/channel/${accountId}/${tab}?hl=en`, YOUTUBE_HEADERS);
-	if (status === 404) return null;
-	if (status !== 200) throw new Error(`youtube ${tab} ${status}`);
+	if (status === 404) {
+		return null;
+	}
+	if (status !== 200) {
+		throw new Error(`youtube ${tab} ${status}`);
+	}
 	const raw = text.match(/var ytInitialData = (\{.*?\});<\/script>/s)?.[1];
-	if (!raw) throw new Error(`youtube ${tab} initial data missing`);
+	if (!raw) {
+		throw new Error(`youtube ${tab} initial data missing`);
+	}
 	return JSON.parse(raw);
 }
 
-function youtubeSelectedTab(data: any, tab: string): any {
+function youtubeSelectedTab(data: unknown, tab: string): unknown {
 	const tabs: any[] = [];
 	collectRenderers(data, 'tabRenderer', tabs);
 	const selected = tabs.find((t) => t?.selected === true);
@@ -304,14 +357,18 @@ async function youtubeTab(accountId: string, kind: 'video' | 'short'): Promise<C
 	const tab = kind === 'short' ? 'shorts' : 'videos';
 	const data = await youtubeInitialData(accountId, tab);
 	const content = data ? youtubeSelectedTab(data, tab) : null;
-	if (!content) return [];
+	if (!content) {
+		return [];
+	}
 	const out: CreatorContent[] = [];
 	if (kind === 'short') {
 		const items: any[] = [];
 		collectRenderers(content, 'shortsLockupViewModel', items);
 		for (const item of items) {
 			const id = str(item?.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId);
-			if (id) out.push(youtubeVideo(id, str(item.overlayMetadata?.primaryText?.content), kind, null));
+			if (id) {
+				out.push(youtubeVideo(id, str(item.overlayMetadata?.primaryText?.content), kind, null));
+			}
 		}
 		return out;
 	}
@@ -319,7 +376,9 @@ async function youtubeTab(accountId: string, kind: 'video' | 'short'): Promise<C
 	collectRenderers(content, 'lockupViewModel', items);
 	for (const item of items) {
 		const id = str(item?.contentId);
-		if (!id || item.contentType !== 'LOCKUP_CONTENT_TYPE_VIDEO') continue;
+		if (!id || item.contentType !== 'LOCKUP_CONTENT_TYPE_VIDEO') {
+			continue;
+		}
 		out.push(youtubeVideo(id, str(item.metadata?.lockupMetadataViewModel?.title?.content), kind, null));
 	}
 	return out;
@@ -330,24 +389,30 @@ async function youtubeUploads(accountId: string, kind: 'video' | 'short'): Promi
 		return await youtubeTab(accountId, kind);
 	} catch (err) {
 		const feed = await youtubeFeed(`${kind === 'short' ? 'UUSH' : 'UULF'}${accountId.slice(2)}`, kind).catch(() => null);
-		if (feed && feed.length > 0) return feed;
+		if (feed && feed.length > 0) {
+			return feed;
+		}
 		throw err;
 	}
 }
 
 async function youtubePosts(accountId: string): Promise<CreatorContent[]> {
 	const data = await youtubeInitialData(accountId, 'posts');
-	if (!data) return [];
+	if (!data) {
+		return [];
+	}
 	const posts: any[] = [];
 	collectRenderers(data, 'backstagePostRenderer', posts);
 	const out: CreatorContent[] = [];
 	for (const p of posts) {
 		const id = str(p?.postId);
-		if (!id) continue;
-		const text = (p.contentText?.runs ?? []).map((r: any) => (typeof r?.text === 'string' ? r.text : '')).join('');
+		if (!id) {
+			continue;
+		}
+		const text = (p.contentText?.runs ?? []).map((r: Record<string, unknown>) => (typeof r?.text === 'string' ? r.text : '')).join('');
 		const images: any[] = [];
 		collectRenderers(p.backstageAttachment, 'backstageImageRenderer', images);
-		const thumbs: any[] = images[0]?.image?.thumbnails ?? [];
+		const thumbs: Record<string, unknown>[] = images[0]?.image?.thumbnails ?? [];
 		out.push({
 			contentId: id,
 			type: 'post',
@@ -367,7 +432,9 @@ async function fetchYouTubeSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 		youtubeLive(ref.accountId),
 		youtubePosts(ref.accountId)
 	]);
-	if (results[0].status === 'rejected') throw results[0].reason;
+	if (results[0].status === 'rejected') {
+		throw results[0].reason;
+	}
 	return {
 		profile: { platform: 'youtube', accountId: ref.accountId, handle: ref.handle, name: null, thumbnailUrl: null },
 		feeds: results.map((r) => (r.status === 'fulfilled' ? r.value : []))
@@ -381,7 +448,9 @@ async function fetchYouTubeSnapshots(refs: CreatorRef[]): Promise<Map<string, Cr
 		while (cursor < refs.length) {
 			const ref = refs[cursor++];
 			const snap = await fetchYouTubeSnapshot(ref).catch(() => null);
-			if (snap) out.set(creatorRefKey(ref), snap);
+			if (snap) {
+				out.set(creatorRefKey(ref), snap);
+			}
 		}
 	};
 	await Promise.all(Array.from({ length: Math.min(CREATOR_ALERTS_YOUTUBE_CONCURRENCY, refs.length) }, worker));
@@ -394,7 +463,9 @@ let tiktokFailures = 0;
 let tiktokCooldownUntil = 0;
 
 async function loadTikTok() {
-	if (!tiktokLib) tiktokLib = await import('tiktok-live-connector');
+	if (!tiktokLib) {
+		tiktokLib = await import('tiktok-live-connector');
+	}
 	return tiktokLib;
 }
 
@@ -405,7 +476,9 @@ function tiktokTripped(): boolean {
 const TIKTOK_BLOCK_PATTERN = /blocked|overload|403|429|composite|captcha|timeout|fetch failed|ECONNRESET/i;
 
 async function tiktokFailed(reason: string) {
-	if (!TIKTOK_BLOCK_PATTERN.test(reason)) return;
+	if (!TIKTOK_BLOCK_PATTERN.test(reason)) {
+		return;
+	}
 	tiktokFailures++;
 	if (tiktokFailures >= 2) {
 		tiktokCooldownUntil = Date.now() + CREATOR_ALERTS_TIKTOK_COOLDOWN_MS;
@@ -419,7 +492,9 @@ async function tiktokRoomInfo(uniqueId: string): Promise<any> {
 	const conn = new lib.TikTokLiveConnection(uniqueId, {});
 	const res = await lib.RouteConfig.fetchRoomInfoFromApiLive({ webClient: conn.webClient, uniqueId });
 	const data = res?.data;
-	if (!data?.user?.id) throw new Error('tiktok room info missing user');
+	if (!data?.user?.id) {
+		throw new Error('tiktok room info missing user');
+	}
 	return data;
 }
 
@@ -428,16 +503,22 @@ async function tiktokEmbed(uniqueId: string): Promise<any> {
 		'User-Agent': BROWSER_UA,
 		'Accept-Language': 'en-US,en;q=0.9'
 	});
-	if (status !== 200) throw new Error(`tiktok embed ${status}`);
+	if (status !== 200) {
+		throw new Error(`tiktok embed ${status}`);
+	}
 	const raw = text.match(/<script id="__FRONTITY_CONNECT_STATE__" type="application\/json">(.*?)<\/script>/s)?.[1];
-	if (!raw) throw new Error(text.length < 200 ? `tiktok embed blocked: ${text.trim().slice(0, 60)}` : 'tiktok embed state missing');
+	if (!raw) {
+		throw new Error(text.length < 200 ? `tiktok embed blocked: ${text.trim().slice(0, 60)}` : 'tiktok embed state missing');
+	}
 	const data = JSON.parse(raw)?.source?.data ?? {};
 	const entry = Object.entries(data).find(([k]) => k.toLowerCase() === `/embed/@${uniqueId.toLowerCase()}`)?.[1] as any;
-	if (!entry?.userInfo) throw new Error('tiktok embed user missing');
+	if (!entry?.userInfo) {
+		throw new Error('tiktok embed user missing');
+	}
 	return entry;
 }
 
-function tiktokProfile(user: any): CreatorProfile {
+function tiktokProfile(user: Record<string, unknown>): CreatorProfile {
 	return {
 		platform: 'tiktok',
 		accountId: String(user.id),
@@ -449,7 +530,9 @@ function tiktokProfile(user: any): CreatorProfile {
 
 async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 	const uniqueId = ref.handle ?? '';
-	if (!uniqueId) throw new Error('tiktok handle missing');
+	if (!uniqueId) {
+		throw new Error('tiktok handle missing');
+	}
 	const room = await tiktokRoomInfo(uniqueId);
 	const profile = tiktokProfile(room.user);
 	const live: CreatorContent[] = [];
@@ -470,7 +553,9 @@ async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 	const embed = await tiktokEmbed(profile.handle ?? uniqueId);
 	for (const v of embed.videoList ?? []) {
 		const id = str(v?.id);
-		if (!id) continue;
+		if (!id) {
+			continue;
+		}
 		posts.push({
 			contentId: id,
 			type: 'post',
@@ -486,18 +571,24 @@ async function fetchTikTokSnapshot(ref: CreatorRef): Promise<CreatorSnapshot> {
 
 async function fetchTikTokSnapshots(refs: CreatorRef[]): Promise<Map<string, CreatorSnapshot>> {
 	const out = new Map<string, CreatorSnapshot>();
-	if (refs.length === 0 || tiktokTripped()) return out;
+	if (refs.length === 0 || tiktokTripped()) {
+		return out;
+	}
 	const count = Math.min(refs.length, CREATOR_ALERTS_TIKTOK_MAX_PER_TICK);
 	const start = tiktokCursor % refs.length;
 	for (let i = 0; i < count; i++) {
-		if (tiktokTripped()) break;
+		if (tiktokTripped()) {
+			break;
+		}
 		const ref = refs[(start + i) % refs.length];
-		if (i > 0) await sleep(CREATOR_ALERTS_TIKTOK_SPACING_MS);
+		if (i > 0) {
+			await sleep(CREATOR_ALERTS_TIKTOK_SPACING_MS);
+		}
 		try {
 			out.set(creatorRefKey(ref), await fetchTikTokSnapshot(ref));
 			tiktokFailures = 0;
-		} catch (err: any) {
-			await tiktokFailed(`${ref.handle}: ${err?.message || err}`);
+		} catch (err) {
+			await tiktokFailed(`${ref.handle}: ${(err as Error)?.message || err}`);
 		}
 	}
 	tiktokCursor = (start + count) % refs.length;
@@ -505,14 +596,20 @@ async function fetchTikTokSnapshots(refs: CreatorRef[]): Promise<Map<string, Cre
 }
 
 async function resolveTikTok(uniqueId: string): Promise<CreatorProfile | null> {
-	if (tiktokTripped()) throw new Error('tiktok cooling down');
+	if (tiktokTripped()) {
+		throw new Error('tiktok cooling down');
+	}
 	const room = await tiktokRoomInfo(uniqueId.replace(/^@/, ''));
 	return tiktokProfile(room.user);
 }
 
 export async function resolveCreator(platform: CreatorPlatform, handle: string): Promise<CreatorProfile | null> {
-	if (platform === 'twitch') return await resolveTwitch(handle);
-	if (platform === 'youtube') return await resolveYouTube(handle);
+	if (platform === 'twitch') {
+		return await resolveTwitch(handle);
+	}
+	if (platform === 'youtube') {
+		return await resolveYouTube(handle);
+	}
 	return await resolveTikTok(handle);
 }
 

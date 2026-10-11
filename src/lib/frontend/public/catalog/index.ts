@@ -115,7 +115,9 @@ async function cached<T>(key: string, build: () => Promise<T>, fallback: T): Pro
 	if (redis) {
 		try {
 			const raw = await redis.get(key);
-			if (raw) return JSON.parse(raw) as T;
+			if (raw) {
+				return JSON.parse(raw) as T;
+			}
 		} catch (_) {}
 	}
 	let value: T;
@@ -133,8 +135,10 @@ async function cached<T>(key: string, build: () => Promise<T>, fallback: T): Pro
 }
 
 function iso(d: unknown): string | null {
-	if (!d) return null;
-	const dt = d instanceof Date ? d : new Date(String(d).replace(' ', 'T') + 'Z');
+	if (!d) {
+		return null;
+	}
+	const dt = d instanceof Date ? d : new Date(`${String(d).replace(' ', 'T')}Z`);
 	return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
 }
 
@@ -145,7 +149,9 @@ function num(v: unknown): number {
 
 function hostOf(url: unknown): string | null {
 	const raw = typeof url === 'string' ? url.trim() : '';
-	if (!raw) return null;
+	if (!raw) {
+		return null;
+	}
 	try {
 		return new URL(raw).host.replace(/^www\./, '') || null;
 	} catch (_) {
@@ -157,7 +163,7 @@ export function resolveQuestDirectory(): Promise<QuestEntry[]> {
 	return cached(
 		'dansday:quest_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicDiscordQuests(MAX_ROWS);
+			const rows: any[] = await db.listPublicDiscordQuests(MAX_ROWS);
 			const now = Date.now();
 			return rows.map((r) => {
 				const starts = iso(r.starts_at);
@@ -186,7 +192,7 @@ export function resolveRobloxDirectory(limit: number | null = null, offset = 0):
 	return cached(
 		`dansday:roblox_directory:${limit ?? 'all'}:${offset}`,
 		async () => {
-			const rows: any[] = await (db as any).listPublicRobloxItems(limit, offset);
+			const rows: any[] = await db.listPublicRobloxItems(limit, offset);
 			return rows.map((r) => {
 				const price = num(r.price);
 				return {
@@ -214,7 +220,7 @@ export function resolveRobloxMostNotified(limit = 6): Promise<RobloxEntry[]> {
 	return cached(
 		`dansday:roblox_most_notified:${limit}`,
 		async () => {
-			const rows: any[] = await (db as any).listPublicRobloxItemsByNotifications(limit);
+			const rows: any[] = await db.listPublicRobloxItemsByNotifications(limit);
 			return rows.map((r) => {
 				const price = num(r.price);
 				return {
@@ -239,7 +245,7 @@ export function resolveRobloxMostNotified(limit = 6): Promise<RobloxEntry[]> {
 }
 
 export function resolveRobloxTrackedCount(): Promise<number> {
-	return cached('dansday:roblox_tracked_count', async () => (await (db as any).countPublicRobloxItems()) as number, 0);
+	return cached('dansday:roblox_tracked_count', async () => (await db.countPublicRobloxItems()) as number, 0);
 }
 
 export function resolveTaskDirectory(): TaskEntry[] {
@@ -265,7 +271,7 @@ export function resolveItemDirectory(): Promise<ItemEntry[]> {
 	return cached(
 		'dansday:item_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicItems(MAX_ROWS);
+			const rows: any[] = await db.listPublicItems(MAX_ROWS);
 			return rows.map((r) => ({
 				id: Number(r.id),
 				name: r.name || `Item ${r.id}`,
@@ -277,7 +283,7 @@ export function resolveItemDirectory(): Promise<ItemEntry[]> {
 				available_from: r.available_from ? String(r.available_from) : null,
 				available_to: r.available_to ? String(r.available_to) : null,
 				recurring_schedule: r.recurring_schedule ?? null,
-				config: (r.config as Record<string, any>) ?? {}
+				config: (r.config as Record<string, unknown>) ?? {}
 			}));
 		},
 		EMPTY_ITEMS
@@ -288,7 +294,7 @@ export function resolveWikiDirectory(): Promise<WikiEntry[]> {
 	return cached(
 		'dansday:wiki_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicWikis(MAX_ROWS);
+			const rows: any[] = await db.listPublicWikis(MAX_ROWS);
 
 			return rows.map((r) => {
 				const site = typeof r.site_url === 'string' && r.site_url.trim() ? r.site_url.trim() : null;
@@ -310,7 +316,7 @@ export function resolveForwarderSourceDirectory(): Promise<ForwarderSourceEntry[
 	return cached(
 		'dansday:forwarder_source_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicForwarderSources(MAX_ROWS);
+			const rows: any[] = await db.listPublicForwarderSources(MAX_ROWS);
 			return rows.map((r) => ({
 				discord_server_id: String(r.discord_server_id),
 				name: r.name || 'Unnamed server',

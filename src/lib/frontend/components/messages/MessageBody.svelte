@@ -65,7 +65,9 @@
 	const LANGUAGE_HINT = 'Added automatically because this message has translations. Members pick a language from it to read the message in that language.';
 
 	function hit(id: string, focus = '') {
-		if (!editable) return {};
+		if (!editable) {
+			return {};
+		}
 		const choose = (event: Event) => {
 			event.stopPropagation();
 			event.preventDefault();
@@ -76,13 +78,17 @@
 			tabindex: 0,
 			onclick: choose,
 			onkeydown: (event: KeyboardEvent) => {
-				if (event.key === 'Enter' || event.key === ' ') choose(event);
+				if (event.key === 'Enter' || event.key === ' ') {
+					choose(event);
+				}
 			}
 		};
 	}
 
 	function mark(id: string) {
-		if (!editable) return '';
+		if (!editable) {
+			return '';
+		}
 		return `dc-edit${selected === id ? ' dc-selected' : ''}${flagged.has(id) ? ' dc-flagged' : ''}`;
 	}
 
@@ -99,7 +105,9 @@
 	}
 
 	function toggleSelect(select: SelectBlock) {
-		if (openSelect === select.id) return closeSelect(select);
+		if (openSelect === select.id) {
+			return closeSelect(select);
+		}
 		openSelect = select.id;
 		picked = [];
 	}
@@ -109,7 +117,9 @@
 		const chose = picked.length > 0;
 		openSelect = null;
 		picked = [];
-		if (chose) onpress(actions);
+		if (chose) {
+			onpress(actions);
+		}
 	}
 
 	function choose(select: SelectBlock, optionId: string) {
@@ -144,7 +154,9 @@
 			type="button"
 			class="dc-button dc-button-{item.style === 'link' ? 'secondary' : item.style} {mark(id)}"
 			onclick={(event) => {
-				if (!editable) return onpress(item.actions);
+				if (!editable) {
+					return onpress(item.actions);
+				}
 				event.stopPropagation();
 				onselect(id, focus);
 			}}
@@ -185,7 +197,9 @@
 				type="button"
 				class="dc-select {openSelect === block.id ? 'dc-select-open' : ''} {mark(block.id)}"
 				onclick={(event) => {
-					if (!editable) return toggleSelect(block);
+					if (!editable) {
+						return toggleSelect(block);
+					}
 					event.stopPropagation();
 					onselect(block.id, '');
 				}}
@@ -281,7 +295,9 @@
 				title={editable ? LANGUAGE_HINT : undefined}
 				onclick={(event) => {
 					event.stopPropagation();
-					if (editable) return onlanguage(null);
+					if (editable) {
+						return onlanguage(null);
+					}
 					openSelect = openSelect === LANGUAGE_MENU ? null : LANGUAGE_MENU;
 				}}
 			>
@@ -297,7 +313,9 @@
 								class="dc-select-option"
 								onclick={() => {
 									openSelect = null;
-									if (code !== shownLanguage) onlanguage(code);
+									if (code !== shownLanguage) {
+										onlanguage(code);
+									}
 								}}
 							>
 								<span class="dc-button-emoji-text">{MESSAGE_LANGUAGE_EMOJI}</span>
@@ -316,7 +334,9 @@
 	class="dc-body {editable ? 'dc-editing' : ''}"
 	role="presentation"
 	onclickcapture={(event) => {
-		if (editable && (event.target as HTMLElement).closest('a')) event.preventDefault();
+		if (editable && (event.target as HTMLElement).closest('a')) {
+			event.preventDefault();
+		}
 	}}
 >
 	{#if doc.layout === 'components'}

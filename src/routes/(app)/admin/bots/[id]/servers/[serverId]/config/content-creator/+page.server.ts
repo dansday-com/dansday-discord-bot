@@ -4,7 +4,18 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
-	const settings = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.content_creator).catch(() => ({}));
-	return { settings: settings?.settings ?? {} };
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
+	const settings = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.content_creator).catch((): { settings?: undefined } => ({}));
+	return {
+		settings: (settings?.settings ?? {}) as {
+			enabled?: boolean;
+			admission_channel_id?: string;
+			target_channel_id?: string;
+			cooldown_days?: number;
+			pending_role?: string;
+			content_creator_roles?: string[];
+		}
+	};
 };

@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Registro de propietario",
 			"setupNotOwnerTitle": "Permiso denegado",
 			"setupNotOwnerBody": "Solo el **propietario del servidor** puede usar `/setup`.",
-			"setupNotTextChannelTitle": "Canal no válido",
-			"setupNotTextChannelBody": "Selecciona un **canal de texto**.",
 			"joinTitle": "¡Gracias por añadir {botName}!",
 			"joinBody": "Ejecuta `/setup` para crear los canales y terminar la configuración.",
 			"joinAskAi": "¿No sabes por dónde empezar? Menciona a {botMention} y pregunta sin más: lee la documentación y puede guiarte en la configuración.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Las páginas públicas están desactivadas en este servidor. Pide a un administrador del servidor que las active en el panel de configuración del bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Este servidor aún no está conectado del todo con el bot. Inténtalo de nuevo en unos minutos y pide a un administrador del servidor que revise el panel de configuración del bot si sigue pasando.",
-			"createRecordFailed": "❌ No se pudo crear el registro del miembro. Inténtalo de nuevo."
+			"notRegistered": "⚠️ Este servidor aún no está conectado del todo con el bot. Inténtalo de nuevo en unos minutos y pide a un administrador del servidor que revise el panel de configuración del bot si sigue pasando."
 		},
 		"fields": {
 			"level": "⭐ Nivel",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Reportar a un miembro del staff",
 			"ratingLabel": "Valoración (1-5 estrellas)",
-			"ratingPlaceholder": "1 = Muy mala, 5 = Excelente",
 			"categoryLabel": "Categoría",
 			"descriptionLabel": "Descripción",
 			"descriptionPlaceholder": "Describe tu experiencia con este miembro del staff...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Reporte enviado",
 			"description": "Tu reporte se ha enviado correctamente y está esperando la aprobación de un administrador. Te avisaremos cuando se haya revisado.",
-			"anonymous": "\\n\\n🔒 Tu reporte se envió de forma anónima.",
-			"roleUpdated": "\\n\\n⭐ **Valoración del staff actualizada**\\n{roleName}\\nValoración: {rating}/5.00 ({totalReports} reportes)"
+			"anonymous": "\\n\\n🔒 Tu reporte se envió de forma anónima."
 		},
 		"dm": {
 			"approved": "Tu reporte sobre {staff} en **{server}** fue aprobado.\\n\\n**Valoración:** {rating}/5\\n**Categoría:** {category}\\n**Comentarios:** {description}\\n\\n**Nota del staff:** {reason}\\n\\nGracias por ayudarnos a mantener al equipo a la altura.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Comportamiento grosero"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Selecciona a un miembro del staff para reportar.",
 			"invalidRating": "❌ **Valoración no válida**\\n\\nLa valoración debe ser un número entre 1 y 5.",
 			"invalidCategory": "❌ **Categoría no válida**\\n\\nElige una categoría de la lista.",
 			"emptyDescription": "❌ **Descripción obligatoria**\\n\\nDescribe tu experiencia.",

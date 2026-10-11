@@ -26,15 +26,21 @@
 
 	$effect(() => {
 		const node = host;
-		if (!node || typeof ResizeObserver === 'undefined') return;
+		if (!node || typeof ResizeObserver === 'undefined') {
+			return;
+		}
 		const measure = () => {
 			const w = node.clientWidth || 360;
 			const h = node.clientHeight || 112;
 			const next = Math.max(0.6, Math.min(7, w / Math.max(1, h)));
 			const quantised = Math.round(next * 8) / 8;
-			if (quantised !== aspect) aspect = quantised;
+			if (quantised !== aspect) {
+				aspect = quantised;
+			}
 			const rows = Math.round(h / 4) * 4;
-			if (rows !== boxH) boxH = rows;
+			if (rows !== boxH) {
+				boxH = rows;
+			}
 		};
 		measure();
 		const ro = new ResizeObserver(measure);
@@ -44,9 +50,13 @@
 
 	$effect(() => {
 		const node = host;
-		if (!node || family === 'none' || frozen) return;
+		if (!node || family === 'none' || frozen) {
+			return;
+		}
 		const parent = node.parentElement;
-		if (!parent) return;
+		if (!parent) {
+			return;
+		}
 		parent.setAttribute('data-fx-host', family);
 		return () => {
 			parent.removeAttribute('data-fx-host');
@@ -56,14 +66,20 @@
 
 	$effect(() => {
 		const parent = host?.parentElement;
-		if (!parent) return;
+		if (!parent) {
+			return;
+		}
 		parent.toggleAttribute('data-fx-run', live && !frozen && family !== 'none');
 	});
 
 	$effect(() => {
-		if (family === 'none' || frozen) return;
+		if (family === 'none' || frozen) {
+			return;
+		}
 		const node = host;
-		if (!node) return;
+		if (!node) {
+			return;
+		}
 		return observeVisibility(node, (visible) => {
 			live = visible;
 		});
@@ -81,9 +97,13 @@
 		const ratio = aspect;
 		const height = boxH;
 		const seen = live;
-		if (!el || !prog || fam === 'none' || !seen) return;
+		if (!el || !prog || fam === 'none' || !seen) {
+			return;
+		}
 		const key = `${fam}|${sd}|${ac}|${ratio}|${height}`;
-		if (key === builtKey && scene && builtEl === el) return;
+		if (key === builtKey && scene && builtEl === el) {
+			return;
+		}
 		builtKey = key;
 		builtEl = el;
 		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
@@ -92,9 +112,13 @@
 	});
 
 	$effect(() => {
-		if (live || frozen) return;
+		if (live || frozen) {
+			return;
+		}
 		const el = canvas;
-		if (!el || builtKey === '') return;
+		if (!el || builtKey === '') {
+			return;
+		}
 		scene = undefined;
 		builtKey = '';
 		builtEl = undefined;
@@ -109,11 +133,17 @@
 		const running = live;
 		const halted = frozen;
 		const fam = family;
-		if (!el || !prog || !sc || !running || halted) return;
-		if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (!el || !prog || !sc || !running || halted) {
+			return;
+		}
+		if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
 		const card = host?.parentElement;
 		return runScene(el, prog, sc, fam === 'fire' ? 18 : 24, (scene) => {
-			if (scene.out !== undefined) card?.style.setProperty('--fx-cover', scene.out.toFixed(3));
+			if (scene.out !== undefined) {
+				card?.style.setProperty('--fx-cover', scene.out.toFixed(3));
+			}
 		});
 	});
 </script>

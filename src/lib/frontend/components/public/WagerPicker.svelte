@@ -20,7 +20,9 @@
 	const ACTIVE = 'border-transparent bg-linear-to-br from-[#e0a52a] to-[#b8860b] text-white shadow-[0_4px_12px_-5px_rgba(184,134,11,0.8)]';
 
 	function pick(value: number | 'custom') {
-		if (selected !== value) sfx.press();
+		if (selected !== value) {
+			sfx.press();
+		}
 		selected = value;
 	}
 </script>

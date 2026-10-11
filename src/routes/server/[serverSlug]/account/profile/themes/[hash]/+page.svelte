@@ -49,7 +49,9 @@
 	async function pickFile(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0] ?? null;
-		if (!file) return;
+		if (!file) {
+			return;
+		}
 
 		if (!file.type.startsWith('image/')) {
 			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
@@ -70,7 +72,9 @@
 				input.value = '';
 				return;
 			}
-			if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+			if (pendingPreview) {
+				URL.revokeObjectURL(pendingPreview);
+			}
 			pendingFile = prepared.file;
 			pendingPreview = URL.createObjectURL(prepared.file);
 			originalSize = file.size;
@@ -82,13 +86,17 @@
 	}
 
 	function discardPending() {
-		if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+		if (pendingPreview) {
+			URL.revokeObjectURL(pendingPreview);
+		}
 		pendingFile = null;
 		pendingPreview = null;
 		pendingAccent = null;
 		originalSize = null;
 		colorDraft = null;
-		if (fileInput) fileInput.value = '';
+		if (fileInput) {
+			fileInput.value = '';
+		}
 	}
 
 	function dropPending() {
@@ -102,7 +110,9 @@
 	}
 
 	async function save() {
-		if (busy || !dirty) return;
+		if (busy || !dirty) {
+			return;
+		}
 		busy = true;
 
 		try {
@@ -144,7 +154,9 @@
 	}
 
 	async function removeImage() {
-		if (busy || !savedImage) return;
+		if (busy || !savedImage) {
+			return;
+		}
 		busy = true;
 
 		try {
@@ -171,7 +183,9 @@
 	}
 
 	async function toggleEffect() {
-		if (busy || spinning) return;
+		if (busy || spinning) {
+			return;
+		}
 		const next = !effectOn;
 		busy = true;
 		try {
@@ -186,8 +200,11 @@
 				return;
 			}
 			await invalidateAll();
-			if (next) sfx.on();
-			else sfx.off();
+			if (next) {
+				sfx.on();
+			} else {
+				sfx.off();
+			}
 			showToast(next ? 'Effect turned on' : 'Effect turned off', 'success');
 		} catch {
 			showToast('Could not change the effect.', 'error');
@@ -197,7 +214,9 @@
 	}
 
 	async function reset() {
-		if (busy) return;
+		if (busy) {
+			return;
+		}
 		busy = true;
 
 		try {
@@ -225,16 +244,22 @@
 	}
 
 	async function recolorFromImage() {
-		if (!pendingFile) return;
+		if (!pendingFile) {
+			return;
+		}
 		colorDraft = null;
 		pendingAccent = await extractAccentFromFile(pendingFile);
 		sfx.done();
 	}
 
 	const savedLabel = $derived.by(() => {
-		if (!pendingFile) return '';
+		if (!pendingFile) {
+			return '';
+		}
 		const now = imageSizeLabel(pendingFile.size);
-		if (originalSize != null && originalSize > pendingFile.size) return `${pendingFile.name} · ${imageSizeLabel(originalSize)} → ${now}`;
+		if (originalSize != null && originalSize > pendingFile.size) {
+			return `${pendingFile.name} · ${imageSizeLabel(originalSize)} → ${now}`;
+		}
 		return `${pendingFile.name} · ${now}`;
 	});
 
@@ -244,7 +269,9 @@
 	}
 
 	$effect(() => {
-		if (!playing && !confirmingReset) return;
+		if (!playing && !confirmingReset) {
+			return;
+		}
 		return lockScroll();
 	});
 
@@ -256,7 +283,9 @@
 		requestAnimationFrame(() => {
 			const wrapW = reelWrapEl?.clientWidth ?? 360;
 			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
-			if (!cell) return;
+			if (!cell) {
+				return;
+			}
 			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
 		});
 	}
@@ -275,7 +304,9 @@
 	let applyingOwner = $state(false);
 
 	async function applyOwnerEffect() {
-		if (applyingOwner) return;
+		if (applyingOwner) {
+			return;
+		}
 		applyingOwner = true;
 		try {
 			const raw = ownerSeed.trim();
@@ -301,7 +332,9 @@
 	}
 
 	async function spin() {
-		if (spinning || busy || !canSpin) return;
+		if (spinning || busy || !canSpin) {
+			return;
+		}
 		sfx.press();
 		spinning = true;
 		reelResult = null;

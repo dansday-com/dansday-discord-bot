@@ -6,12 +6,16 @@ import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEma
 import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
+	if (!locals.user.authenticated) {
+		return false;
+	}
 	if (locals.user.account_source === 'accounts') {
 		const { accountOwnsServer } = await import('$lib/backend/panelServer.js');
 		return accountOwnsServer(locals, serverId);
 	}
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
+		return locals.user.server_id === serverId;
+	}
 	return false;
 }
 
@@ -36,7 +40,9 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	}
 
 	const denied = guardAccountAction(locals, account.account_type);
-	if (denied) return denied;
+	if (denied) {
+		return denied;
+	}
 
 	const { is_frozen } = await request.json();
 	if (typeof is_frozen !== 'boolean') {
@@ -45,7 +51,9 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 	await db.updateServerAccount(accountId, { is_frozen });
 	const action = is_frozen ? 'froze' : 'unfroze';
-	logger.log(`${locals.user.username} ${action} server account ${account.username} (server ${serverId})`);
+	logger.log(
+		`${(locals.user as Extract<App.Locals['user'], { authenticated: true }>).username} ${action} server account ${account.username} (server ${serverId})`
+	);
 
 	try {
 		if (is_frozen) {
@@ -53,8 +61,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		} else {
 			await sendAccountUnfrozenEmail(account.email, account.username);
 		}
-	} catch (err: any) {
-		logger.log(`⚠️ Failed to send ${is_frozen ? 'frozen' : 'unfrozen'} email to ${account.email}: ${err?.message ?? String(err)}`);
+	} catch (err) {
+		logger.log(`⚠️ Failed to send ${is_frozen ? 'frozen' : 'unfrozen'} email to ${account.email}: ${(err as Error)?.message ?? String(err)}`);
 	}
 
 	return json({ success: true });
@@ -77,15 +85,19 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	}
 
 	const denied = guardAccountAction(locals, account.account_type);
-	if (denied) return denied;
+	if (denied) {
+		return denied;
+	}
 
 	await db.deleteServerAccount(accountId);
-	logger.log(`${locals.user.username} deleted server account ${account.username} (server ${serverId})`);
+	logger.log(
+		`${(locals.user as Extract<App.Locals['user'], { authenticated: true }>).username} deleted server account ${account.username} (server ${serverId})`
+	);
 
 	try {
 		await sendAccountDeletedEmail(account.email, account.username);
-	} catch (err: any) {
-		logger.log(`⚠️ Failed to send deleted email to ${account.email}: ${err?.message ?? String(err)}`);
+	} catch (err) {
+		logger.log(`⚠️ Failed to send deleted email to ${account.email}: ${(err as Error)?.message ?? String(err)}`);
 	}
 
 	return json({ success: true });

@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Registratie eigenaar",
 			"setupNotOwnerTitle": "Geen toestemming",
 			"setupNotOwnerBody": "Alleen de **servereigenaar** kan `/setup` gebruiken.",
-			"setupNotTextChannelTitle": "Ongeldig kanaal",
-			"setupNotTextChannelBody": "Kies een **tekstkanaal**.",
 			"joinTitle": "Bedankt voor het toevoegen van {botName}!",
 			"joinBody": "Voer `/setup` uit om de kanalen aan te maken en de installatie af te ronden.",
 			"joinAskAi": "Weet je niet waar je moet beginnen? Tag {botMention} en stel gewoon je vraag — de bot leest de documentatie en helpt je stap voor stap met de installatie.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Openbare pagina's staan uit voor deze server. Vraag een serverbeheerder om ze aan te zetten in het configuratiepaneel van de bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Deze server is nog niet volledig met de bot verbonden. Probeer het over een paar minuten opnieuw en vraag een serverbeheerder om het configuratiepaneel van de bot te controleren als het blijft gebeuren.",
-			"createRecordFailed": "❌ Kon de ledengegevens niet aanmaken. Probeer het opnieuw."
+			"notRegistered": "⚠️ Deze server is nog niet volledig met de bot verbonden. Probeer het over een paar minuten opnieuw en vraag een serverbeheerder om het configuratiepaneel van de bot te controleren als het blijft gebeuren."
 		},
 		"fields": {
 			"level": "⭐ Level",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Staflid melden",
 			"ratingLabel": "Beoordeling (1-5 sterren)",
-			"ratingPlaceholder": "1 = Heel slecht, 5 = Uitstekend",
 			"categoryLabel": "Categorie",
 			"descriptionLabel": "Beschrijving",
 			"descriptionPlaceholder": "Beschrijf je ervaring met dit staflid...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Melding verstuurd",
 			"description": "Je melding is verstuurd en wacht nu op goedkeuring door een admin. We laten het je weten zodra hij is beoordeeld.",
-			"anonymous": "\\n\\n🔒 Je melding is anoniem verstuurd.",
-			"roleUpdated": "\\n\\n⭐ **Staffbeoordeling bijgewerkt**\\n{roleName}\\nBeoordeling: {rating}/5.00 ({totalReports} meldingen)"
+			"anonymous": "\\n\\n🔒 Je melding is anoniem verstuurd."
 		},
 		"dm": {
 			"approved": "Je melding over {staff} in **{server}** is goedgekeurd.\\n\\n**Beoordeling:** {rating}/5\\n**Categorie:** {category}\\n**Feedback:** {description}\\n\\n**Opmerking van de staff:** {reason}\\n\\nBedankt dat je ons helpt het team scherp te houden.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Onbeleefd gedrag"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Kies een staflid om te melden.",
 			"invalidRating": "❌ **Ongeldige beoordeling**\\n\\nDe beoordeling moet een getal tussen 1 en 5 zijn.",
 			"invalidCategory": "❌ **Ongeldige categorie**\\n\\nKies een categorie uit de lijst.",
 			"emptyDescription": "❌ **Beschrijving verplicht**\\n\\nBeschrijf je ervaring.",

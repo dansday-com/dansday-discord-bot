@@ -166,7 +166,9 @@ const DURATION_UNIT_SECONDS = new Map<string, number>(
 
 export function parseLocalizedDuration(input: unknown): number | null {
 	const text = normalizeWord(input);
-	if (!text) return null;
+	if (!text) {
+		return null;
+	}
 	const re = /(\d+)\s*(\p{L}*)/gu;
 	let total = 0;
 	let found = false;
@@ -174,7 +176,9 @@ export function parseLocalizedDuration(input: unknown): number | null {
 	while ((match = re.exec(text)) !== null) {
 		const unit = match[2];
 		const seconds = unit ? DURATION_UNIT_SECONDS.get(unit) : 60;
-		if (seconds == null) return null;
+		if (seconds == null) {
+			return null;
+		}
 		found = true;
 		total += Number(match[1]) * seconds;
 	}

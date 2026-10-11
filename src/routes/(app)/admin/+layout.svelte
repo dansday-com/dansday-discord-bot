@@ -28,12 +28,16 @@
 	}
 
 	onMount(() => {
-		if (!isDemo || typeof demoExpiresAt !== 'number') return;
+		if (!isDemo || typeof demoExpiresAt !== 'number') {
+			return;
+		}
 		const tick = async () => {
 			const left = demoExpiresAt - Date.now();
 			demoRemainingMs = left;
 			if (left <= 0) {
-				if (demoTimer) window.clearInterval(demoTimer);
+				if (demoTimer) {
+					window.clearInterval(demoTimer);
+				}
 				demoTimer = null;
 				try {
 					await fetch('/api/panel/logout', { method: 'POST', credentials: 'include' });
@@ -47,7 +51,9 @@
 	});
 
 	onDestroy(() => {
-		if (demoTimer) window.clearInterval(demoTimer);
+		if (demoTimer) {
+			window.clearInterval(demoTimer);
+		}
 		demoTimer = null;
 	});
 </script>

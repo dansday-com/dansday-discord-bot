@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		}
 
 		return json({ success: true, account_type: inviteLink.account_type });
-	} catch (error: any) {
-		return json({ success: false, error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ success: false, error: (error as Error).message }, { status: 500 });
 	}
 };

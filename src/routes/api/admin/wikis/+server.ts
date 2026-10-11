@@ -22,14 +22,18 @@ function authorize(locals: App.Locals) {
 
 export const GET: RequestHandler = async ({ locals }) => {
 	const auth = authorize(locals);
-	if (auth.error) return auth.error;
+	if (auth.error) {
+		return auth.error;
+	}
 
 	return json({ wikis: await db.getWikis(auth.panelId!) });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const auth = authorize(locals);
-	if (auth.error) return auth.error;
+	if (auth.error) {
+		return auth.error;
+	}
 	const panelId = auth.panelId!;
 
 	let body: Record<string, unknown>;
@@ -40,7 +44,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const parsed = parseWikiInput(body);
-	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
+	if ('error' in parsed) {
+		return json({ success: false, error: parsed.error }, { status: 400 });
+	}
 
 	const existing = await db.getWikis(panelId);
 	if (existing.some((wiki) => wiki.name.toLowerCase() === parsed.value.name.toLowerCase())) {
@@ -52,7 +58,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 export const PATCH: RequestHandler = async ({ locals, request }) => {
 	const auth = authorize(locals);
-	if (auth.error) return auth.error;
+	if (auth.error) {
+		return auth.error;
+	}
 	const panelId = auth.panelId!;
 
 	let body: Record<string, unknown>;
@@ -63,13 +71,19 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const wikiId = Number(body.id);
-	if (!Number.isFinite(wikiId)) return json({ success: false, error: 'Invalid wiki id' }, { status: 400 });
+	if (!Number.isFinite(wikiId)) {
+		return json({ success: false, error: 'Invalid wiki id' }, { status: 400 });
+	}
 
 	const current = await db.getWiki(panelId, wikiId);
-	if (!current) return json({ success: false, error: 'Wiki not found' }, { status: 404 });
+	if (!current) {
+		return json({ success: false, error: 'Wiki not found' }, { status: 404 });
+	}
 
 	const parsed = parseWikiInput(body);
-	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
+	if ('error' in parsed) {
+		return json({ success: false, error: parsed.error }, { status: 400 });
+	}
 
 	const existing = await db.getWikis(panelId);
 	if (existing.some((wiki) => wiki.id !== wikiId && wiki.name.toLowerCase() === parsed.value.name.toLowerCase())) {
@@ -81,7 +95,9 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, request }) => {
 	const auth = authorize(locals);
-	if (auth.error) return auth.error;
+	if (auth.error) {
+		return auth.error;
+	}
 
 	let body: Record<string, unknown>;
 	try {
@@ -91,10 +107,14 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const wikiId = Number(body.id);
-	if (!Number.isFinite(wikiId)) return json({ success: false, error: 'Invalid wiki id' }, { status: 400 });
+	if (!Number.isFinite(wikiId)) {
+		return json({ success: false, error: 'Invalid wiki id' }, { status: 400 });
+	}
 
 	const current = await db.getWiki(auth.panelId!, wikiId);
-	if (!current) return json({ success: false, error: 'Wiki not found' }, { status: 404 });
+	if (!current) {
+		return json({ success: false, error: 'Wiki not found' }, { status: 404 });
+	}
 
 	await db.deleteWiki(auth.panelId!, wikiId);
 	return json({ success: true });

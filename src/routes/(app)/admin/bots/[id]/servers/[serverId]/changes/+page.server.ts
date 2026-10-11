@@ -21,7 +21,9 @@ const PANEL_ACTIONS: Record<string, { component: string; label: string }> = {
 };
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 
 	const serverId = Number(params.serverId);
 
@@ -43,7 +45,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const serverIds = [...new Set([serverId, ...(officialServerId != null ? [Number(officialServerId)] : [])])];
 	const rows = await db.getServerPanelLogs(serverIds, 1000).catch(() => []);
 
-	const parsed = (rows as any[]).map((r) => {
+	const parsed = rows.map((r) => {
 		let changes: { key: string; before: string | null; after: string | null }[] = [];
 		try {
 			changes = typeof r.changes === 'string' ? JSON.parse(r.changes) : (r.changes ?? []);
@@ -59,7 +61,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const ids = new Set<string>();
 	for (const { changes } of parsed) {
 		for (const c of changes) {
-			for (const v of [c.before, c.after]) for (const id of v?.match(SNOWFLAKE) ?? []) ids.add(id);
+			for (const v of [c.before, c.after]) {
+				for (const id of v?.match(SNOWFLAKE) ?? []) {
+					ids.add(id);
+				}
+			}
 		}
 	}
 
@@ -76,10 +82,21 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			})
 		);
 		for (const { channels, roles, members } of lookups) {
-			for (const c of channels as any[]) if (ids.has(c.discord_channel_id) && c.name) names.set(c.discord_channel_id, `#${c.name}`);
-			for (const r of roles as any[]) if (ids.has(r.discord_role_id) && r.name) names.set(r.discord_role_id, `@${r.name}`);
-			for (const m of members as any[])
-				if (!names.has(m.discord_member_id) && (m.username || m.name)) names.set(m.discord_member_id, `@${m.username || m.name}`);
+			for (const c of channels) {
+				if (ids.has(c.discord_channel_id) && c.name) {
+					names.set(c.discord_channel_id, `#${c.name}`);
+				}
+			}
+			for (const r of roles) {
+				if (ids.has(r.discord_role_id) && r.name) {
+					names.set(r.discord_role_id, `@${r.name}`);
+				}
+			}
+			for (const m of members) {
+				if (!names.has(m.discord_member_id) && (m.username || m.name)) {
+					names.set(m.discord_member_id, `@${m.username || m.name}`);
+				}
+			}
 		}
 	}
 

@@ -21,7 +21,7 @@
 	let open = $state(false);
 	let ready = $state<boolean | null>(null);
 	let can = $state<string[]>([]);
-	let turns = $state<Turn[]>([]);
+	const turns = $state<Turn[]>([]);
 	let prompt = $state('');
 	let busy = $state(false);
 	let teaser = $state(false);
@@ -51,8 +51,12 @@
 
 	async function describe(): Promise<{ ready: boolean; can: string[] }> {
 		const query = new URLSearchParams();
-		if (serverId) query.set('server_id', String(serverId));
-		if (editor) query.set('message', editor.scope);
+		if (serverId) {
+			query.set('server_id', String(serverId));
+		}
+		if (editor) {
+			query.set('message', editor.scope);
+		}
 		try {
 			const out = await (await fetch(`/api/agent?${query}`)).json();
 			return { ready: out.ok === true && out.ready === true, can: Array.isArray(out.can) ? out.can : [] };
@@ -62,10 +66,14 @@
 	}
 
 	$effect(() => {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
 		let current = true;
 		describe().then((info) => {
-			if (!current) return;
+			if (!current) {
+				return;
+			}
 			ready = info.ready;
 			can = info.can;
 		});
@@ -90,10 +98,14 @@
 	}
 
 	onMount(() => {
-		if (seen()) return;
+		if (seen()) {
+			return;
+		}
 		const timer = setTimeout(async () => {
 			const info = await describe();
-			if (info.ready && !open && !seen()) teaser = true;
+			if (info.ready && !open && !seen()) {
+				teaser = true;
+			}
 		}, TEASER_DELAY_MS);
 		return () => clearTimeout(timer);
 	});
@@ -112,7 +124,9 @@
 	}
 
 	async function readAnswer(res: Response): Promise<{ ok: boolean; body: any }> {
-		if (!res.headers.get('content-type')?.includes('text/event-stream')) return { ok: res.ok, body: await res.json().catch(() => ({})) };
+		if (!res.headers.get('content-type')?.includes('text/event-stream')) {
+			return { ok: res.ok, body: await res.json().catch(() => ({})) };
+		}
 		const line = (await res.text())
 			.split('\n')
 			.reverse()
@@ -129,7 +143,9 @@
 				body: JSON.stringify({ ...body, server_id: serverId })
 			});
 			const answer = await readAnswer(res);
-			if (answer.ok && answer.body.ok) return answer.body;
+			if (answer.ok && answer.body.ok) {
+				return answer.body;
+			}
 			showToast(answer.body.error || 'The assistant request failed. Try again in a moment.', 'error', 8000);
 		} catch {
 			showToast('Could not reach the panel. Check your connection and try again.', 'error', 8000);
@@ -137,47 +153,67 @@
 		return null;
 	}
 
-	async function settle(out: any) {
+	async function settle(out: Record<string, unknown>) {
 		const changed: string[] = Array.isArray(out.changed) ? out.changed : [];
-		if (changed.length === 0) return;
+		if (changed.length === 0) {
+			return;
+		}
 		announceAgentChanges(changed);
 		await invalidateAll();
 	}
 
-	async function exchange(text: string, showPrompt: boolean): Promise<any | null> {
+	async function exchange(text: string, showPrompt: boolean): Promise<Record<string, unknown> | null> {
 		const target = agentDock.editor;
 		const out = await call({
 			prompt: text,
 			history: turns.map((turn) => ({ role: turn.role, text: turn.text })),
 			message: target ? { scope: target.scope, ...target.read() } : null
 		});
-		if (!out) return null;
-		if (showPrompt) turns.push({ role: 'user', text });
+		if (!out) {
+			return null;
+		}
+		if (showPrompt) {
+			turns.push({ role: 'user', text });
+		}
 		turns.push({ role: 'assistant', text: String(out.reply ?? '') });
-		if (!open) unread = true;
-		if (out.message && target?.apply(out.message)) undoable = { turn: turns.length - 1, editor: target };
+		if (!open) {
+			unread = true;
+		}
+		if (out.message && target?.apply(out.message)) {
+			undoable = { turn: turns.length - 1, editor: target };
+		}
 		scrollDown();
 		await settle(out);
 		return out;
 	}
 
 	async function editorOpened(): Promise<boolean> {
-		for (let i = 0; i < 100 && !agentDock.editor; i++) await new Promise((resolve) => setTimeout(resolve, 50));
+		for (let i = 0; i < 100 && !agentDock.editor; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		}
 		return agentDock.editor !== null;
 	}
 
 	async function ask() {
 		const text = prompt.trim();
-		if (!text || busy || !ready) return;
+		if (!text || busy || !ready) {
+			return;
+		}
 		busy = true;
 		scrollDown();
 		try {
 			const out = await exchange(text, true);
-			if (!out) return;
+			if (!out) {
+				return;
+			}
 			prompt = '';
-			if (typeof out.navigate !== 'string' || !out.navigate.startsWith('/admin/')) return;
+			if (typeof out.navigate !== 'string' || !out.navigate.startsWith('/admin/')) {
+				return;
+			}
 			await goto(out.navigate);
-			if (await editorOpened()) await exchange(text, false);
+			if (await editorOpened()) {
+				await exchange(text, false);
+			}
 		} finally {
 			busy = false;
 			scrollDown();
@@ -192,7 +228,9 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape' && open) open = false;
+		if (event.key === 'Escape' && open) {
+			open = false;
+		}
 	}}
 />
 
@@ -267,7 +305,9 @@
 				aria-label="Message to the assistant"
 				class="{FIELD} field-sizing-content max-h-40 min-w-0 flex-1 resize-none overflow-y-auto disabled:cursor-not-allowed disabled:opacity-60"
 				onkeydown={(event) => {
-					if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+					if (event.key !== 'Enter' || event.shiftKey || event.isComposing) {
+						return;
+					}
 					event.preventDefault();
 					ask();
 				}}></textarea>

@@ -17,12 +17,16 @@
 	const boostLevel = $derived(liveBoost);
 
 	function fmt(val: number | null | undefined): string {
-		if (val == null) return '0';
+		if (val == null) {
+			return '0';
+		}
 		return Number(val).toLocaleString();
 	}
 
 	function fmtDec(val: number | null | undefined): string {
-		if (val == null) return '0';
+		if (val == null) {
+			return '0';
+		}
 		return Number(val).toFixed(2);
 	}
 
@@ -39,7 +43,9 @@
 			.filter((f) => f.n > 0)
 			.map((f) => `${f.n.toLocaleString('en-US')} ${f.label}`);
 		const lead = `Live public statistics for ${serverName} on Discord`;
-		if (!facts.length) return `${lead}, tracked by ${APP_NAME} Bot.`;
+		if (!facts.length) {
+			return `${lead}, tracked by ${APP_NAME} Bot.`;
+		}
 		const list = facts.length > 1 ? `${facts.slice(0, -1).join(', ')} and ${facts[facts.length - 1]}` : facts[0];
 		return `${lead}: ${list}. Tracked by ${APP_NAME} Bot.`;
 	});
@@ -73,14 +79,18 @@
 
 	function pct(part: number | null | undefined, whole: number | null | undefined): number {
 		const w = Number(whole) || 0;
-		if (w <= 0) return 0;
+		if (w <= 0) {
+			return 0;
+		}
 		return Math.min(100, Math.max(0, (Number(part) / w) * 100));
 	}
 
 	function split(parts: number[]): number[] {
 		const clean = parts.map((p) => Math.max(0, Number(p) || 0));
 		const total = clean.reduce((s, x) => s + x, 0);
-		if (total <= 0) return clean.map(() => 0);
+		if (total <= 0) {
+			return clean.map(() => 0);
+		}
 		return clean.map((p) => (p / total) * 100);
 	}
 
@@ -105,7 +115,9 @@
 	const avgLevelBarPct = $derived.by(() => {
 		const maxL = Number(liveStats.leveling_max_level) || 0;
 		const avgL = Number(liveStats.leveling_avg_level) || 0;
-		if (maxL <= 0) return 0;
+		if (maxL <= 0) {
+			return 0;
+		}
 		return Math.min(100, Math.max(4, (avgL / maxL) * 100));
 	});
 
@@ -133,7 +145,9 @@
 	let lastXpForHero: number | null = null;
 
 	function animateHeroXp(target: number) {
-		if (rafXp) cancelAnimationFrame(rafXp);
+		if (rafXp) {
+			cancelAnimationFrame(rafXp);
+		}
 		const start = performance.now();
 		const from = heroXpDisplay;
 		const dur = 900;
@@ -141,8 +155,11 @@
 			const u = Math.min(1, (now - start) / dur);
 			const e = 1 - Math.pow(1 - u, 3);
 			heroXpDisplay = Math.round(from + (target - from) * e);
-			if (u < 1) rafXp = requestAnimationFrame(tick);
-			else rafXp = null;
+			if (u < 1) {
+				rafXp = requestAnimationFrame(tick);
+			} else {
+				rafXp = null;
+			}
 		};
 		rafXp = requestAnimationFrame(tick);
 	}
@@ -180,7 +197,9 @@
 			source.onmessage = (e) => {
 				try {
 					const payload = JSON.parse(e.data) as { stats: PublicPageStats; boost_level: number };
-					if (payload?.stats) applyPayload(payload);
+					if (payload?.stats) {
+						applyPayload(payload);
+					}
 				} catch (_) {}
 			};
 			source.onerror = () => {};
@@ -189,7 +208,9 @@
 
 	onDestroy(() => {
 		es?.close();
-		if (rafXp) cancelAnimationFrame(rafXp);
+		if (rafXp) {
+			cancelAnimationFrame(rafXp);
+		}
 	});
 </script>
 

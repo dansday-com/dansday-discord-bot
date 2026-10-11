@@ -3,6 +3,7 @@ import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
+import type { Client } from 'discord.js';
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const POLL_INTERVAL_MS = 30 * 60_000;
@@ -33,20 +34,26 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000;
 let rateLimitedUntil = 0;
 
 async function cgFetch(path: string): Promise<any> {
-	if (Date.now() < rateLimitedUntil) throw new Error(`coingecko rate-limited, cooling down ${path}`);
+	if (Date.now() < rateLimitedUntil) {
+		throw new Error(`coingecko rate-limited, cooling down ${path}`);
+	}
 	const res = await fetch(`${COINGECKO_BASE}${path}`, { headers: apiHeaders() });
 	if (res.status === 429) {
 		const retryAfterS = Number(res.headers.get('retry-after')) || 0;
 		rateLimitedUntil = Date.now() + Math.max(RATE_LIMIT_COOLDOWN_MS, retryAfterS * 1000);
 		logger.warn(`coingecko 429 ${path}; backing off until ${new Date(rateLimitedUntil).toISOString()}`);
 	}
-	if (!res.ok) throw new Error(`coingecko ${res.status} ${path}`);
+	if (!res.ok) {
+		throw new Error(`coingecko ${res.status} ${path}`);
+	}
 	return res.json();
 }
 
 async function cacheGet(key: string): Promise<any | null> {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(key);
 		return raw != null ? JSON.parse(raw) : null;
@@ -55,9 +62,11 @@ async function cacheGet(key: string): Promise<any | null> {
 	}
 }
 
-async function cacheSet(key: string, value: any, ttlMs: number): Promise<void> {
+async function cacheSet(key: string, value: unknown, ttlMs: number): Promise<void> {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return;
+	if (!redis) {
+		return;
+	}
 	try {
 		await redis.set(key, JSON.stringify(value), { PX: ttlMs });
 	} catch {}
@@ -73,7 +82,7 @@ function shapeMarketRow(row: any) {
 		price: Number(row.current_price) || 0,
 		change24h: Number(row.price_change_percentage_24h) || 0,
 		market_cap_rank: row.market_cap_rank != null ? Number(row.market_cap_rank) : null,
-		sparkline: Array.isArray(row.sparkline_in_7d?.price) ? row.sparkline_in_7d.price.map((n: any) => Number(n) || 0) : []
+		sparkline: Array.isArray(row.sparkline_in_7d?.price) ? row.sparkline_in_7d.price.map((n: unknown) => Number(n) || 0) : []
 	};
 }
 
@@ -90,18 +99,24 @@ async function fetchUniverse() {
 		const path =
 			`/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}` + `&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
 		const rows = await cgFetch(path).catch(() => null);
-		if (!Array.isArray(rows) || rows.length === 0) break;
-		for (const r of rows) all.push(shapeMarketRow(r));
+		if (!Array.isArray(rows) || rows.length === 0) {
+			break;
+		}
+		for (const r of rows) {
+			all.push(shapeMarketRow(r));
+		}
 	}
 	return all;
 }
 
 async function fetchPricesFor(assetIds: string[]): Promise<Record<string, { price: number; change24h: number }>> {
-	if (assetIds.length === 0) return {};
+	if (assetIds.length === 0) {
+		return {};
+	}
 	const ids = encodeURIComponent(assetIds.join(','));
 	const data = await cgFetch(`/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
 	const out: Record<string, { price: number; change24h: number }> = {};
-	for (const [id, val] of Object.entries<any>(data || {})) {
+	for (const [id, val] of Object.entries<Record<string, unknown>>(data || {})) {
 		out[id] = { price: Number(val?.usd) || 0, change24h: Number(val?.usd_24h_change) || 0 };
 	}
 	return out;
@@ -111,7 +126,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 async function distinctHeldCryptoIds(): Promise<string[]> {
 	const rows = await db.getDistinctHeldAssetIds('crypto').catch(() => []);
-	return ((rows as any[]) || []).map((r) => String(r.asset_id)).filter(Boolean);
+	return (rows || []).map((r) => String(r.asset_id)).filter(Boolean);
 }
 
 async function pollOnce(botId: string, force = false): Promise<void> {
@@ -121,7 +136,9 @@ async function pollOnce(botId: string, force = false): Promise<void> {
 		const got = force
 			? await redis.set('market:poll:lock', token, { EX: POLL_LOCK_TTL_S }).catch(() => null)
 			: await redis.set('market:poll:lock', token, { NX: true, EX: POLL_LOCK_TTL_S }).catch(() => null);
-		if (!force && got !== 'OK') return;
+		if (!force && got !== 'OK') {
+			return;
+		}
 	}
 
 	if (!apiKey()) {
@@ -141,7 +158,9 @@ async function pollOnce(botId: string, force = false): Promise<void> {
 			const losers = [...withChange].sort((a, b) => a.change24h - b.change24h).slice(0, MOVERS_COUNT);
 			await cacheSet(MOVERS_KEY, { gainers, losers, ts: Date.now() }, MARKETS_TTL_MS);
 
-			for (const m of universe) priceMap[`crypto:${m.asset_id}`] = { price: m.price, change24h: m.change24h };
+			for (const m of universe) {
+				priceMap[`crypto:${m.asset_id}`] = { price: m.price, change24h: m.change24h };
+			}
 		}
 
 		const held = await distinctHeldCryptoIds();
@@ -149,19 +168,27 @@ async function pollOnce(botId: string, force = false): Promise<void> {
 		const missing = held.filter((id) => !inUniverse.has(id));
 		if (missing.length > 0) {
 			const prices = await fetchPricesFor(missing);
-			for (const [id, p] of Object.entries(prices)) priceMap[`crypto:${id}`] = { price: p.price, change24h: p.change24h };
+			for (const [id, p] of Object.entries(prices)) {
+				priceMap[`crypto:${id}`] = { price: p.price, change24h: p.change24h };
+			}
 		}
 
-		if (Object.keys(priceMap).length > 0) await cacheSet(PRICES_KEY, { map: priceMap, ts: Date.now() }, MARKETS_TTL_MS);
-	} catch (err: any) {
-		logger.warn(`Market poll failed: ${err?.message || err}`);
+		if (Object.keys(priceMap).length > 0) {
+			await cacheSet(PRICES_KEY, { map: priceMap, ts: Date.now() }, MARKETS_TTL_MS);
+		}
+	} catch (err) {
+		logger.warn(`Market poll failed: ${(err as Error)?.message || err}`);
 	}
 }
 
 export function startMarketPoller(botId: string): void {
-	if (pollTimer) return;
-	void pollOnce(botId, true);
-	pollTimer = setInterval(() => void pollOnce(botId), POLL_INTERVAL_MS);
+	if (pollTimer) {
+		return;
+	}
+	pollOnce(botId, true);
+	pollTimer = setInterval(() => {
+		pollOnce(botId);
+	}, POLL_INTERVAL_MS);
 	pollTimer.unref?.();
 }
 
@@ -174,10 +201,14 @@ export function stopMarketPoller(): void {
 
 export async function getMarketsBoard(): Promise<any[]> {
 	const cached = await cacheGet(MARKETS_KEY);
-	if (cached?.rows?.length) return cached.rows;
+	if (cached?.rows?.length) {
+		return cached.rows;
+	}
 	try {
 		const markets = await fetchTopMarkets();
-		if (markets.length > 0) await cacheSet(MARKETS_KEY, { rows: markets, ts: Date.now() }, MARKETS_TTL_MS);
+		if (markets.length > 0) {
+			await cacheSet(MARKETS_KEY, { rows: markets, ts: Date.now() }, MARKETS_TTL_MS);
+		}
 		return markets;
 	} catch {
 		return [];
@@ -187,25 +218,35 @@ export async function getMarketsBoard(): Promise<any[]> {
 export async function getAssetPrice(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {
 	const cached = await cacheGet(PRICES_KEY);
 	const hit = cached?.map?.[`${assetType}:${assetId}`];
-	if (hit && Number(hit.price) > 0) return { price: Number(hit.price), change24h: Number(hit.change24h) || 0 };
-	if (assetType !== 'crypto') return null;
+	if (hit && Number(hit.price) > 0) {
+		return { price: Number(hit.price), change24h: Number(hit.change24h) || 0 };
+	}
+	if (assetType !== 'crypto') {
+		return null;
+	}
 	try {
 		const prices = await fetchPricesFor([assetId]);
 		const p = prices[assetId];
-		if (p && p.price > 0) return p;
+		if (p && p.price > 0) {
+			return p;
+		}
 	} catch {}
 	return null;
 }
 
 export async function searchAssets(query: string): Promise<any[]> {
 	const q = String(query || '').trim();
-	if (!q) return [];
+	if (!q) {
+		return [];
+	}
 	const cached = await cacheGet(searchKey(q));
-	if (cached) return cached;
+	if (cached) {
+		return cached;
+	}
 	try {
 		const data = await cgFetch(`/search?query=${encodeURIComponent(q)}`);
 		const coins = Array.isArray(data?.coins) ? data.coins : [];
-		const results = coins.slice(0, 25).map((c: any) => ({
+		const results = coins.slice(0, 25).map((c: Record<string, unknown>) => ({
 			asset_type: 'crypto',
 			asset_id: String(c.id),
 			symbol: String(c.symbol || '').toUpperCase(),
@@ -240,18 +281,18 @@ export async function searchAssets(query: string): Promise<any[]> {
 
 		await cacheSet(searchKey(q), results, SEARCH_TTL_MS);
 		return results;
-	} catch (err: any) {
-		logger.warn(`Asset search failed: ${err?.message || err}`);
+	} catch (err) {
+		logger.warn(`Asset search failed: ${(err as Error)?.message || err}`);
 		return [];
 	}
 }
 
-async function resolveServerMemberId(serverId: any, discordMemberId: any) {
+async function resolveServerMemberId(serverId: number | string, discordMemberId: number | string) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordMemberId)).catch(() => null);
 	return member?.id ?? null;
 }
 
-async function finalize(guildId: any, memberId: any, before: any, reason: string) {
+async function finalize(guildId: string, memberId: number | string, before: any, reason: string) {
 	await evaluateMemberLevelAndRank(guildId, memberId, {
 		previousLevel: before?.level != null ? Number(before.level) : null,
 		previousRank: before?.rank != null ? Number(before.rank) : null,
@@ -260,9 +301,11 @@ async function finalize(guildId: any, memberId: any, before: any, reason: string
 	}).catch(() => null);
 }
 
-export async function handleAssetBuy(_client: any, payload: any) {
+export async function handleAssetBuy(_client: Client, payload: any) {
 	const { guild_id, actor_discord_id, asset_type, asset_id, xp } = payload || {};
-	if (!guild_id || !actor_discord_id || !asset_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id || !asset_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
 	let server: any;
@@ -273,24 +316,36 @@ export async function handleAssetBuy(_client: any, payload: any) {
 	}
 
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!memberId) return { ok: false, error: 'member_not_found' };
+	if (!memberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const type = String(asset_type || 'crypto');
 	const amount = Math.max(0, Math.floor(Number(xp) || 0));
-	if (amount <= 0) return { ok: false, error: 'invalid_amount' };
-	if (amount < MIN_BUY_XP) return { ok: false, error: 'below_minimum', min: MIN_BUY_XP };
+	if (amount <= 0) {
+		return { ok: false, error: 'invalid_amount' };
+	}
+	if (amount < MIN_BUY_XP) {
+		return { ok: false, error: 'below_minimum', min: MIN_BUY_XP };
+	}
 
 	const market = await getAssetPrice(type, String(asset_id));
-	if (!market || market.price <= 0) return { ok: false, error: 'price_unavailable' };
+	if (!market || market.price <= 0) {
+		return { ok: false, error: 'price_unavailable' };
+	}
 
 	const spendable = await getSpendableXp(memberId, guild_id);
-	if (spendable.total < amount) return { ok: false, error: 'insufficient_xp' };
+	if (spendable.total < amount) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const meta = await resolveAssetMeta(type, String(asset_id));
 
 	const before = await db.getMemberLevel(memberId).catch(() => null);
 	const spent = await spendXp(memberId, amount, guild_id);
-	if (!spent.ok) return { ok: false, error: 'insufficient_xp' };
+	if (!spent.ok) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const existing = await db.getOpenAssetPosition(memberId, type, String(asset_id)).catch(() => null);
 	let position;
@@ -332,9 +387,11 @@ export async function handleAssetBuy(_client: any, payload: any) {
 	return { ok: true, position, price: market.price };
 }
 
-export async function handleAssetSell(_client: any, payload: any) {
+export async function handleAssetSell(_client: Client, payload: any) {
 	const { guild_id, actor_discord_id, position_id, xp: amount } = payload || {};
-	if (!guild_id || !actor_discord_id || !position_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id || !position_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
 	let server: any;
@@ -345,13 +402,19 @@ export async function handleAssetSell(_client: any, payload: any) {
 	}
 
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!memberId) return { ok: false, error: 'member_not_found' };
+	if (!memberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const position = await db.getAssetPosition(position_id).catch(() => null);
-	if (!position || Number(position.member_id) !== Number(memberId)) return { ok: false, error: 'not_owner' };
+	if (!position || Number(position.member_id) !== Number(memberId)) {
+		return { ok: false, error: 'not_owner' };
+	}
 
 	const market = await getAssetPrice(position.asset_type, position.asset_id);
-	if (!market || market.price <= 0) return { ok: false, error: 'price_unavailable' };
+	if (!market || market.price <= 0) {
+		return { ok: false, error: 'price_unavailable' };
+	}
 
 	const buyPrice = Number(position.buy_price) || 0;
 	const invested = Number(position.xp_invested) || 0;
@@ -359,7 +422,9 @@ export async function handleAssetSell(_client: any, payload: any) {
 
 	const requested = Math.floor(Number(amount) || 0);
 	const targetPayout = requested > 0 ? Math.min(requested, currentValue) : currentValue;
-	if (targetPayout <= 0) return { ok: false, error: 'invalid_amount' };
+	if (targetPayout <= 0) {
+		return { ok: false, error: 'invalid_amount' };
+	}
 
 	const full = targetPayout >= currentValue;
 	const soldInvested = full ? invested : Math.max(1, Math.min(invested, Math.round(invested * (targetPayout / currentValue))));
@@ -395,7 +460,9 @@ export async function handleAssetSell(_client: any, payload: any) {
 async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ symbol: string; name: string; image: string | null }> {
 	const board = await getMarketsBoard();
 	const hit = board.find((m) => m.asset_type === assetType && m.asset_id === assetId);
-	if (hit) return { symbol: hit.symbol, name: hit.name, image: hit.image ?? null };
+	if (hit) {
+		return { symbol: hit.symbol, name: hit.name, image: hit.image ?? null };
+	}
 	if (assetType === 'crypto') {
 		try {
 			const data = await cgFetch(
@@ -411,12 +478,12 @@ async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ s
 	return { symbol: assetId.toUpperCase(), name: assetId, image: null };
 }
 
-export async function getMemberPortfolio(memberId: any): Promise<{
+export async function getMemberPortfolio(memberId: number | string): Promise<{
 	positions: any[];
 	totalInvested: number;
 	totalValue: number;
 }> {
-	const rows = ((await db.getOpenAssetPositions(memberId).catch(() => [])) as any[]) || [];
+	const rows = ((await db.getOpenAssetPositions(memberId).catch(() => [])) as Record<string, unknown>[]) || [];
 
 	const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
 	const marketByKey = new Map<string, { price: number; change24h: number }>();
@@ -432,7 +499,9 @@ export async function getMemberPortfolio(memberId: any): Promise<{
 	}
 	if (needFetch.size > 0) {
 		const prices = await fetchPricesFor([...needFetch]).catch(() => ({}));
-		for (const [id, p] of Object.entries(prices)) marketByKey.set(`crypto:${id}`, p);
+		for (const [id, p] of Object.entries(prices)) {
+			marketByKey.set(`crypto:${id}`, p);
+		}
 	}
 
 	const positions: any[] = [];

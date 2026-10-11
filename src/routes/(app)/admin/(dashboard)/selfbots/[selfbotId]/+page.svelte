@@ -30,7 +30,7 @@
 
 	const canControlSelfbot = $derived(data.user.authenticated && data.user.account_source === 'accounts');
 
-	let liveOverride: { status: string; process_id: number | null } | null = $state(null);
+	let liveOverride: { status: string | null; process_id: number | null } | null = $state(null);
 	const liveBot = $derived(liveOverride ?? { status: data.bot.status, process_id: data.bot.process_id ?? null });
 
 	let uptimeBase = $state(0);
@@ -41,7 +41,9 @@
 	const displayUptime = $derived(liveBot.status === 'running' ? uptimeBase + uptimeTick : 0);
 
 	function startTick() {
-		if (tickInterval) return;
+		if (tickInterval) {
+			return;
+		}
 		const base = Date.now();
 		tickInterval = setInterval(() => {
 			uptimeTick = Date.now() - base;
@@ -56,27 +58,43 @@
 		uptimeTick = 0;
 	}
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
-	function statusTextColor(status: string) {
-		if (status === 'running') return 'text-green-400';
-		if (status === 'starting' || status === 'stopping') return 'text-yellow-400';
+	function statusTextColor(status: string | null) {
+		if (status === 'running') {
+			return 'text-green-400';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'text-yellow-400';
+		}
 		return 'text-ash-400';
 	}
 
 	function formatUptime(ms: number): string {
-		if (!ms) return '—';
+		if (!ms) {
+			return '—';
+		}
 		const s = Math.floor(ms / 1000);
 		const m = Math.floor(s / 60);
 		const h = Math.floor(m / 60);
 		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
+		if (d > 0) {
+			return `${d}d ${h % 24}h`;
+		}
+		if (h > 0) {
+			return `${h}h ${m % 60}m`;
+		}
+		if (m > 0) {
+			return `${m}m ${s % 60}s`;
+		}
 		return `${s}s`;
 	}
 
@@ -90,7 +108,9 @@
 		const myEs = new EventSource(`/api/selfbots/${data.bot.id}/stream`);
 		es = myEs;
 		myEs.onmessage = (e) => {
-			if (es !== myEs) return;
+			if (es !== myEs) {
+				return;
+			}
 			const d = JSON.parse(e.data);
 			liveOverride = {
 				status: d.status ?? 'stopped',

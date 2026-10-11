@@ -70,9 +70,13 @@
 	const potentialWin = $derived(Math.floor(wagerXp * multiplier));
 
 	function openPlay(gameId: string) {
-		if (ctx.readOnly) return;
+		if (ctx.readOnly) {
+			return;
+		}
 		playing = gameId;
-		if (gameId !== 'gamble') return;
+		if (gameId !== 'gamble') {
+			return;
+		}
 		multiplier = 2;
 		gamblePercent = 25;
 		gambleCustom = null;
@@ -87,7 +91,9 @@
 	}
 
 	$effect(() => {
-		if (playing === null) return;
+		if (playing === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
@@ -107,7 +113,9 @@
 		requestAnimationFrame(() => {
 			const wrapW = reelWrapEl?.clientWidth ?? 360;
 			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
-			if (!cell) return;
+			if (!cell) {
+				return;
+			}
 			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
 		});
 	}
@@ -123,7 +131,9 @@
 
 	async function play() {
 		const bet = wagerXp;
-		if (busy || bet <= 0 || bet > spendable) return;
+		if (busy || bet <= 0 || bet > spendable) {
+			return;
+		}
 		sfx.press();
 		busy = true;
 		reelResult = null;

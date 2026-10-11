@@ -25,7 +25,7 @@ export function imageUploadField(label: string, customId: string, max: number) {
 export function uploadedFiles(fields: any, customId: string): { attachment: string; name: string }[] {
 	try {
 		const files = fields.getUploadedFiles(customId);
-		return files ? [...files.values()].map((a: any) => ({ attachment: a.url, name: a.name })) : [];
+		return files ? [...files.values()].map((a) => ({ attachment: a.url, name: a.name })) : [];
 	} catch {
 		return [];
 	}
@@ -68,7 +68,7 @@ export function durationField(label: string, customId: string, lang: string, pre
 	);
 }
 
-export function durationValue(fields: any, customId: string, presets: DurationPreset[]): number | null {
+export function durationValue(fields: unknown, customId: string, presets: DurationPreset[]): number | null {
 	const picked = Number(radioValue(fields, customId));
 	return presets.some((p) => presetSeconds(p) === picked) ? picked : null;
 }

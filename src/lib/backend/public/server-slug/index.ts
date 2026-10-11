@@ -17,7 +17,7 @@ function serverSlugKey(s: PublicSlugServerRow) {
 }
 
 async function listPublicServerRows(): Promise<PublicSlugServerRow[]> {
-	const servers: PublicSlugServerRow[] = await (db as any).listPublicServers();
+	const servers: PublicSlugServerRow[] = await db.listPublicServers();
 	return Array.isArray(servers) ? servers : [];
 }
 
@@ -35,9 +35,13 @@ export async function listLivePublicServers(): Promise<SluggedPublicServer[]> {
 
 export async function resolvePublicServerBySlug(requestedSlug: string): Promise<{ server: PublicSlugServerRow; computedSlug: string } | null> {
 	const servers = await listPublicServerRows();
-	if (servers.length === 0) return null;
+	if (servers.length === 0) {
+		return null;
+	}
 	const resolved = resolveIndexedSlugToItem(requestedSlug, servers, serverSlugKey);
-	if (!resolved || !isLivePublicServer(resolved.item)) return null;
+	if (!resolved || !isLivePublicServer(resolved.item)) {
+		return null;
+	}
 	return { server: resolved.item, computedSlug: resolved.computedSlug };
 }
 
@@ -52,7 +56,9 @@ export async function listPublicServerSlugs(): Promise<{ id: number; slug: strin
 
 export async function computePublicServerSlugForServerId(serverId: number): Promise<string | null> {
 	const servers = await listPublicServerRows();
-	if (servers.length === 0) return null;
+	if (servers.length === 0) {
+		return null;
+	}
 	return computeIndexedSlugForItemId(serverId, servers, serverSlugKey);
 }
 

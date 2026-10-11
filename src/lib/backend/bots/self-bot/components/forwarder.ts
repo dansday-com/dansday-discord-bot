@@ -1,6 +1,7 @@
 import { FORWARDER, COMMUNICATION } from '../../../config.js';
 import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
+import type { Message } from 'discord.js';
 
 const WEBHOOK_TIMEOUT_MS = 10_000;
 
@@ -30,12 +31,12 @@ async function sendToOfficialBot(messageData: any) {
 		await logger.log(
 			`📤 Sent message ${messageData.id} to official bot (${response.status}, webhook ${Date.now() - startedAt}ms, ${lag}ms after it was posted)`
 		);
-	} catch (err: any) {
-		await logger.log(`❌ Failed to send message ${messageData.id} to official bot after ${Date.now() - startedAt}ms: ${err.message}`);
+	} catch (err) {
+		await logger.log(`❌ Failed to send message ${messageData.id} to official bot after ${Date.now() - startedAt}ms: ${(err as Error).message}`);
 	}
 }
 
-async function processMessage(message: any) {
+async function processMessage(message: Message<true>) {
 	const mentionedUserIds = message.mentions?.users ? [...message.mentions.users.keys()] : [];
 	const messageData = {
 		id: message.id,
@@ -53,7 +54,7 @@ async function processMessage(message: any) {
 		guild: { id: message.guild?.id, name: message.guild?.name },
 		createdTimestamp: message.createdTimestamp,
 		editedTimestamp: message.editedTimestamp,
-		attachments: message.attachments.map((att: any) => ({
+		attachments: message.attachments.map((att) => ({
 			id: att.id,
 			name: att.name,
 			url: att.url,
@@ -65,17 +66,21 @@ async function processMessage(message: any) {
 		timestamp: Date.now()
 	};
 
-	sendToOfficialBot(messageData).catch((err: any) => logger.log(`❌ Failed to forward message ${message.id}: ${err?.message || err}`));
+	sendToOfficialBot(messageData).catch((err) => logger.log(`❌ Failed to forward message ${message.id}: ${err?.message || err}`));
 }
 
 function init(client: any) {
-	client.on('messageCreate', async (message: any) => {
-		if (!message.guild) return;
+	client.on('messageCreate', async (message: Message<true>) => {
+		if (!message.guild) {
+			return;
+		}
 
 		try {
 			const result = await FORWARDER.shouldForwardChannel(message.channel.id, message.guild.id);
 
-			if (!result || !result.shouldForward) return;
+			if (!result || !result.shouldForward) {
+				return;
+			}
 
 			const candidates = Array.isArray((result as any).matches) && (result as any).matches.length > 0 ? (result as any).matches : [result];
 			const haystack = forwarderKeywordHaystack(message.content, message.embeds);
@@ -83,15 +88,19 @@ function init(client: any) {
 			const mentionedUsers = message.mentions?.users;
 			const mentionsSelfBot = !!mentionedUsers && mentionedUsers.size > 0 && mentionedUsers.has(selfBotId);
 
-			const accepted = candidates.some((candidate: any) => {
-				if (candidate.onlyForwardWhenMentionsSelfBot && !mentionsSelfBot) return false;
+			const accepted = candidates.some((candidate: Record<string, unknown>) => {
+				if (candidate.onlyForwardWhenMentionsSelfBot && !mentionsSelfBot) {
+					return false;
+				}
 				return forwarderKeywordsMatch(candidate.keywords, haystack);
 			});
-			if (!accepted) return;
+			if (!accepted) {
+				return;
+			}
 
 			await processMessage(message);
-		} catch (err: any) {
-			await logger.log(`❌ Error forwarding message ${message.id}: ${err.message}`);
+		} catch (err) {
+			await logger.log(`❌ Error forwarding message ${message.id}: ${(err as Error).message}`);
 		}
 	});
 }

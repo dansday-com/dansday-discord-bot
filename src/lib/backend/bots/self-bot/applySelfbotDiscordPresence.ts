@@ -3,7 +3,9 @@ import db, { presenceFromDbRow } from '../../../database.js';
 import { applyPresenceFromFields, type PresenceSetter } from '../presenceApply.js';
 
 export async function applySelfbotDiscordPresenceFromDb(client: Client, selfbotId: number): Promise<void> {
-	if (!client.user) return;
+	if (!client.user) {
+		return;
+	}
 
 	const row = await db.getSelfbotStatus(selfbotId);
 	await applyPresenceFromFields(client.user as PresenceSetter, presenceFromDbRow(row), `for selfbot ${selfbotId}`);

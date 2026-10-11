@@ -8,8 +8,12 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, apexHome());
-	if ('guest' in shared) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(303, apexHome());
+	}
+	if ('guest' in shared) {
+		redirect(303, serverBasePath || '/');
+	}
 
 	return { ...shared, itemsEnabled, marketEnabled, minigamesEnabled };
 };

@@ -25,11 +25,15 @@ export const DEFAULT_ACCENT = BRAND_PRIMARY;
 const ACCENT_MIN_L = 0.3;
 const ACCENT_MAX_L = 0.62;
 
-export function normalizeAccent(value: any): string | null {
-	if (value == null) return null;
+export function normalizeAccent(value: unknown): string | null {
+	if (value == null) {
+		return null;
+	}
 	const raw = String(value).trim();
 	const withHash = raw.startsWith('#') ? raw : `#${raw}`;
-	if (!/^#[0-9a-f]{6}$/i.test(withHash)) return null;
+	if (!/^#[0-9a-f]{6}$/i.test(withHash)) {
+		return null;
+	}
 	return withHash.toLowerCase();
 }
 
@@ -52,23 +56,29 @@ export function relativeLuminance(hex: string): number {
 	return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
 }
 
-export function accentInk(hex: any): string {
+export function accentInk(hex: unknown): string {
 	const accent = normalizeAccent(hex) ?? DEFAULT_ACCENT;
 	return relativeLuminance(accent) > 0.45 ? '#241a16' : '#ffffff';
 }
 
-export function shiftAccent(hex: any, amount: number): string {
+export function shiftAccent(hex: unknown, amount: number): string {
 	const accent = normalizeAccent(hex) ?? DEFAULT_ACCENT;
 	const [r, g, b] = toRgb(accent);
-	if (amount >= 0) return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
+	if (amount >= 0) {
+		return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
+	}
 	const k = 1 + amount;
 	return toHex(r * k, g * k, b * k);
 }
 
 function clampAccentLightness(r: number, g: number, b: number): string {
 	const l = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-	if (l >= ACCENT_MIN_L && l <= ACCENT_MAX_L) return toHex(r, g, b);
-	if (l <= 0.01) return DEFAULT_ACCENT;
+	if (l >= ACCENT_MIN_L && l <= ACCENT_MAX_L) {
+		return toHex(r, g, b);
+	}
+	if (l <= 0.01) {
+		return DEFAULT_ACCENT;
+	}
 	const target = l < ACCENT_MIN_L ? ACCENT_MIN_L : ACCENT_MAX_L;
 	if (l < ACCENT_MIN_L) {
 		const t = (target - l) / (1 - l);
@@ -78,12 +88,16 @@ function clampAccentLightness(r: number, g: number, b: number): string {
 }
 
 export function resolveMemberTheme(row: MemberThemeRow | null | undefined): MemberTheme | null {
-	if (!row) return null;
+	if (!row) {
+		return null;
+	}
 	const image = row.image ? String(row.image) : null;
 	const accent = normalizeAccent(row.accent_color);
 	const ownedEffect = normalizeEffect(row.effect);
 	const effectEnabled = row.effect_enabled !== false && row.effect_enabled !== 0;
-	if (!image && !accent && ownedEffect === 'none') return null;
+	if (!image && !accent && ownedEffect === 'none') {
+		return null;
+	}
 	return {
 		image,
 		accent: accent ?? DEFAULT_ACCENT,
@@ -96,7 +110,9 @@ export function resolveMemberTheme(row: MemberThemeRow | null | undefined): Memb
 }
 
 export function themeVars(theme: MemberTheme | null | undefined): string {
-	if (!theme) return '';
+	if (!theme) {
+		return '';
+	}
 	const accent = normalizeAccent(theme.accent) ?? DEFAULT_ACCENT;
 	const secondary = shiftAccent(accent, 0.2);
 	const deep = shiftAccent(accent, -0.25);
@@ -131,9 +147,13 @@ export async function prepareThemeUpload(file: File): Promise<{ file: File; acce
 	const url = URL.createObjectURL(file);
 	try {
 		const img = await loadImageElement(url);
-		if (!img) return { file, accent: DEFAULT_ACCENT };
+		if (!img) {
+			return { file, accent: DEFAULT_ACCENT };
+		}
 		const accent = accentFromImage(img);
-		if (file.type === 'image/gif') return { file, accent };
+		if (file.type === 'image/gif') {
+			return { file, accent };
+		}
 		return { file: (await encodeWebp(img, file)) ?? file, accent };
 	} catch {
 		return { file, accent: DEFAULT_ACCENT };
@@ -143,10 +163,14 @@ export async function prepareThemeUpload(file: File): Promise<{ file: File; acce
 }
 
 async function encodeWebp(img: HTMLImageElement, source: File): Promise<File | null> {
-	if (typeof document === 'undefined') return null;
+	if (typeof document === 'undefined') {
+		return null;
+	}
 	const width = img.naturalWidth || img.width;
 	const height = img.naturalHeight || img.height;
-	if (!width || !height) return null;
+	if (!width || !height) {
+		return null;
+	}
 
 	const scale = Math.min(1, THEME_WEBP_MAX_EDGE / Math.max(width, height));
 	const canvas = document.createElement('canvas');
@@ -154,12 +178,18 @@ async function encodeWebp(img: HTMLImageElement, source: File): Promise<File | n
 	canvas.height = Math.max(1, Math.round(height * scale));
 
 	const ctx = canvas.getContext('2d');
-	if (!ctx) return null;
+	if (!ctx) {
+		return null;
+	}
 	ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
 	const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', THEME_WEBP_QUALITY));
-	if (!blob || blob.type !== 'image/webp') return null;
-	if (blob.size >= source.size && scale === 1) return null;
+	if (!blob || blob.type !== 'image/webp') {
+		return null;
+	}
+	if (blob.size >= source.size && scale === 1) {
+		return null;
+	}
 
 	const name = `${source.name.replace(/\.[^.]+$/, '') || 'theme'}.webp`;
 	return new File([blob], name, { type: 'image/webp' });
@@ -184,7 +214,9 @@ function accentFromImage(img: HTMLImageElement): string {
 	canvas.width = size;
 	canvas.height = size;
 	const ctx = canvas.getContext('2d', { willReadFrequently: true });
-	if (!ctx) return DEFAULT_ACCENT;
+	if (!ctx) {
+		return DEFAULT_ACCENT;
+	}
 
 	try {
 		ctx.drawImage(img, 0, 0, size, size);
@@ -197,7 +229,9 @@ function accentFromImage(img: HTMLImageElement): string {
 
 		for (let i = 0; i < data.length; i += 4) {
 			const a = data[i + 3];
-			if (a < 128) continue;
+			if (a < 128) {
+				continue;
+			}
 			const r = data[i];
 			const g = data[i + 1];
 			const b = data[i + 2];
@@ -210,7 +244,9 @@ function accentFromImage(img: HTMLImageElement): string {
 			const max = Math.max(r, g, b);
 			const min = Math.min(r, g, b);
 			const lightness = (max + min) / 510;
-			if (lightness < 0.12 || lightness > 0.92) continue;
+			if (lightness < 0.12 || lightness > 0.92) {
+				continue;
+			}
 			const delta = max - min;
 			const saturation = delta === 0 ? 0 : delta / (255 - Math.abs(max + min - 255));
 
@@ -229,11 +265,17 @@ function accentFromImage(img: HTMLImageElement): string {
 
 		let best: { r: number; g: number; b: number; weight: number } | null = null;
 		for (const bucket of buckets.values()) {
-			if (!best || bucket.weight > best.weight) best = bucket;
+			if (!best || bucket.weight > best.weight) {
+				best = bucket;
+			}
 		}
 
-		if (best) return clampAccentLightness(best.r / best.weight, best.g / best.weight, best.b / best.weight);
-		if (fallbackN > 0) return clampAccentLightness(fallbackR / fallbackN, fallbackG / fallbackN, fallbackB / fallbackN);
+		if (best) {
+			return clampAccentLightness(best.r / best.weight, best.g / best.weight, best.b / best.weight);
+		}
+		if (fallbackN > 0) {
+			return clampAccentLightness(fallbackR / fallbackN, fallbackG / fallbackN, fallbackB / fallbackN);
+		}
 		return DEFAULT_ACCENT;
 	} catch {
 		return DEFAULT_ACCENT;

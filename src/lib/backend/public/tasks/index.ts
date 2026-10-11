@@ -43,18 +43,24 @@ const COUNTER_METRICS = new Set<TaskMetric>([
 	'voice_minutes_streaming'
 ]);
 
-function daysActive(memberSince: any): number {
+function daysActive(memberSince: unknown): number {
 	const dt = parseMySQLDateTimeUtc(memberSince);
-	if (!dt) return 1;
+	if (!dt) {
+		return 1;
+	}
 	const days = Math.floor((Date.now() - dt.getTime()) / 86400000);
 	return Math.max(1, days);
 }
 
-async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0) {
-	if (!itemsEnabled) return [];
+async function loadCatalog(serverId: number, itemsEnabled: boolean, tzOffsetMin = 0) {
+	if (!itemsEnabled) {
+		return [];
+	}
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
-	if (panelId == null) return [];
-	const all = (await db.listItems(panelId).catch(() => [])) as any[];
+	if (panelId == null) {
+		return [];
+	}
+	const all = (await db.listItems(panelId).catch(() => [])) as Record<string, unknown>[];
 	const nowMs = Date.now();
 	return all
 		.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0)
@@ -81,10 +87,10 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0
 		});
 }
 
-async function loadLevelingRates(serverId: any): Promise<LevelingRates> {
+async function loadLevelingRates(serverId: number | string): Promise<LevelingRates> {
 	const rowOrRows = await db.getServerSettings(serverId, 'leveling').catch(() => null);
 	const row = Array.isArray(rowOrRows) ? (rowOrRows[0] ?? null) : rowOrRows;
-	const raw = (row as any)?.settings;
+	const raw = row?.settings;
 	const cfg = (typeof raw === 'string' ? safeConfig(raw) : raw) || {};
 
 	const d = DEFAULT_LEVELING_RATES;
@@ -108,9 +114,13 @@ function safeConfig(raw: string) {
 function longestByEffect(catalog: { effectType: string; durationMinutes: number }[]): Record<string, number> {
 	const out: Record<string, number> = {};
 	for (const c of catalog) {
-		if (!c.effectType || c.durationMinutes <= 0) continue;
+		if (!c.effectType || c.durationMinutes <= 0) {
+			continue;
+		}
 		const prev = out[c.effectType];
-		if (prev == null || c.durationMinutes > prev) out[c.effectType] = c.durationMinutes;
+		if (prev == null || c.durationMinutes > prev) {
+			out[c.effectType] = c.durationMinutes;
+		}
 	}
 	return out;
 }
@@ -118,21 +128,27 @@ function longestByEffect(catalog: { effectType: string; durationMinutes: number 
 function cheapestByEffect(catalog: { cost: number; effectType: string }[]): Record<string, number> {
 	const out: Record<string, number> = {};
 	for (const c of catalog) {
-		if (!c.effectType) continue;
+		if (!c.effectType) {
+			continue;
+		}
 		const prev = out[c.effectType];
-		if (prev == null || c.cost < prev) out[c.effectType] = c.cost;
+		if (prev == null || c.cost < prev) {
+			out[c.effectType] = c.cost;
+		}
 	}
 	return out;
 }
 
-async function needsGeneration(memberId: any, dayKey: number, weekKey: number): Promise<boolean> {
-	const daily = (await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as any[];
-	if (!daily || daily.length === 0) return true;
-	const weekly = (await db.getMemberTasks(memberId, weekKey, 'weekly').catch(() => [])) as any[];
+async function needsGeneration(memberId: number | string, dayKey: number, weekKey: number): Promise<boolean> {
+	const daily = await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => []);
+	if (!daily || daily.length === 0) {
+		return true;
+	}
+	const weekly = await db.getMemberTasks(memberId, weekKey, 'weekly').catch(() => []);
 	return !weekly || weekly.length === 0;
 }
 
-async function loadMemberHistory(memberId: any, elig: TaskEligibility, nowMs: number) {
+async function loadMemberHistory(memberId: number | string, elig: TaskEligibility, nowMs: number) {
 	const sinceMs = nowMs - RECENT_WINDOW_DAYS * 86400000;
 	const metrics = historyMetricsFor(elig);
 
@@ -148,9 +164,14 @@ async function loadMemberHistory(memberId: any, elig: TaskEligibility, nowMs: nu
 
 	for (const { metric, total } of counted) {
 		const value = Number(total) || 0;
-		if (value <= 0) continue;
-		if (PEAK_METRICS.has(metric)) recentPeak[metric] = value;
-		else recentDaily[metric] = value / RECENT_WINDOW_DAYS;
+		if (value <= 0) {
+			continue;
+		}
+		if (PEAK_METRICS.has(metric)) {
+			recentPeak[metric] = value;
+		} else {
+			recentDaily[metric] = value / RECENT_WINDOW_DAYS;
+		}
 	}
 
 	return { recentDaily, recentPeak };
@@ -174,7 +195,9 @@ async function buildPeriod(opts: {
 
 	if ((!rows || rows.length === 0) && generate) {
 		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, eligibility, period);
-		if (generated.length === 0) return [];
+		if (generated.length === 0) {
+			return [];
+		}
 
 		const payload = generated.map((g) => {
 			const def = TASK_BY_ID.get(g.taskType);
@@ -199,24 +222,30 @@ async function buildPeriod(opts: {
 			};
 		});
 
-		rows = (await db.persistMemberTasks(member.id, periodKey, payload, period).catch(() => [])) as any[];
+		rows = await db.persistMemberTasks(member.id, periodKey, payload, period).catch(() => []);
 	}
 
-	const itemIds = [...new Set([...rows.map((r) => r.reward_item_id), ...rows.map((r) => r.target_item_id)].filter((v: any) => v != null))].map(Number);
+	const itemIds = [...new Set([...rows.map((r) => r.reward_item_id), ...rows.map((r) => r.target_item_id)].filter((v) => v != null))].map(Number);
 	const itemMap = new Map<number, any>();
 	for (const id of itemIds) {
 		const it = await db.getItem(id).catch(() => null);
-		if (it) itemMap.set(id, it);
+		if (it) {
+			itemMap.set(id, it);
+		}
 	}
 
 	const tasks = [];
 	for (const row of rows) {
 		const def = TASK_BY_ID.get(row.task_type);
-		if (!def) continue;
+		if (!def) {
+			continue;
+		}
 
 		const targetItemId = row.target_item_id == null ? null : Number(row.target_item_id);
 		const targetItem = targetItemId != null ? itemMap.get(targetItemId) : null;
-		if (def.targetsItem && !targetItem) continue;
+		if (def.targetsItem && !targetItem) {
+			continue;
+		}
 
 		let progress = 0;
 		if (COUNTER_METRICS.has(def.metric)) {
@@ -365,13 +394,13 @@ export async function loadTasksShared(opts: {
 	};
 }
 
-export async function memberDailyEarn(memberId: any): Promise<number> {
+export async function memberDailyEarn(memberId: number | string): Promise<number> {
 	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
 	const total = await db.countMemberEventsSince(memberId, 'xp_gained', sinceMs).catch(() => 0);
 	return Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
 }
 
-function shapeLogin(row: any, nowMs: number, catalog: { id: number; cost: number }[]) {
+function shapeLogin(row: Record<string, unknown>, nowMs: number, catalog: { id: number; cost: number }[]) {
 	const cycleDay = Number(row?.cycle_day) || 0;
 	const last = row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key);
 	const cyclesCompleted = Number(row?.cycles_completed) || 0;
@@ -401,7 +430,7 @@ function shapeLogin(row: any, nowMs: number, catalog: { id: number; cost: number
 	};
 }
 
-function shapeStreak(row: any) {
+function shapeStreak(row: Record<string, unknown>) {
 	const current = Number(row?.current_streak) || 0;
 	const next = nextMilestone(current);
 	return {

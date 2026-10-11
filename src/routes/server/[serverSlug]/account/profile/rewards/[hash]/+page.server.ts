@@ -17,9 +17,9 @@ async function loadRewards(serverId: number, memberId: number) {
 		db.getRewardWinnerCounts(serverId),
 		db.getMemberLevel(memberId).catch(() => null)
 	]);
-	const roleById = new Map((roles as any[]).map((r) => [String(r.discord_role_id), r]));
-	const rules = { rewards, ...rewardRuleFlags((main as any)?.settings) };
-	const progress = rewardProgress(stats as any);
+	const roleById = new Map(roles.map((r) => [String(r.discord_role_id), r]));
+	const rules = { rewards, ...rewardRuleFlags(main?.settings) };
+	const progress = rewardProgress(stats);
 	const states = rewardStates(rules, progress, held, earnings, winners);
 	return {
 		keep: rules.keep,
@@ -51,8 +51,12 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) redirect(303, apexHome());
-	if ('guest' in shared || !shared.member) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(303, apexHome());
+	}
+	if ('guest' in shared || !shared.member) {
+		redirect(303, serverBasePath || '/');
+	}
 
 	const leveling = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const levelingEnabled = (leveling as any)?.settings?.enabled === true;

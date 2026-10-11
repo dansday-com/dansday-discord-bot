@@ -22,16 +22,21 @@
 	type RoleRgb = { r: number; g: number; b: number };
 
 	function parseRoleColorRaw(raw: string | null | undefined): RoleRgb | null {
-		if (raw == null) return null;
+		if (raw == null) {
+			return null;
+		}
 		const s = String(raw).trim();
-		if (s === '' || s.toLowerCase() === 'null' || s === 'undefined' || s === '0') return null;
+		if (s === '' || s.toLowerCase() === 'null' || s === 'undefined' || s === '0') {
+			return null;
+		}
 		if (s.startsWith('#')) {
 			let h = s.slice(1);
-			if (h.length === 3)
+			if (h.length === 3) {
 				h = h
 					.split('')
 					.map((c) => c + c)
 					.join('');
+			}
 			if (h.length === 6 && /^[0-9a-fA-F]+$/.test(h)) {
 				return {
 					r: parseInt(h.slice(0, 2), 16),
@@ -70,10 +75,14 @@
 	function rolePillStyle(color: string | null | undefined): string {
 		const rgb = parseRoleColorRaw(color);
 		const fallback = `--role-fg: #2e211b; --role-bg: color-mix(in srgb, var(--color-primary) 10%, transparent); --role-bd: color-mix(in srgb, var(--color-primary) 38%, transparent); --role-dot: var(--color-primary);`;
-		if (!rgb) return fallback;
+		if (!rgb) {
+			return fallback;
+		}
 		const L = roleColorLuminance(rgb);
 		const nearWhite = L >= 0.78 || (rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
-		if (nearWhite) return fallback;
+		if (nearWhite) {
+			return fallback;
+		}
 		const hex = rgbToHex(rgb);
 		const softText = L > 0.52;
 		return [
@@ -95,7 +104,9 @@
 	const members = $derived(liveMembers);
 
 	function fmtNum(n: number): string {
-		if (n == null) return '0';
+		if (n == null) {
+			return '0';
+		}
 		return Number(n).toLocaleString();
 	}
 
@@ -110,7 +121,9 @@
 			source.onmessage = (e) => {
 				try {
 					const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
-					if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members;
+					if (payload?.members && Array.isArray(payload.members)) {
+						liveMembers = payload.members;
+					}
 				} catch (_) {}
 			};
 			source.onerror = () => {};
@@ -145,7 +158,9 @@
 
 	$effect(() => {
 		const tp = Math.max(1, Math.ceil(sorted.length / PER_PAGE));
-		if (listPage > tp) listPage = tp;
+		if (listPage > tp) {
+			listPage = tp;
+		}
 	});
 
 	const paged = $derived(sorted.slice((listPage - 1) * PER_PAGE, listPage * PER_PAGE));
@@ -155,8 +170,12 @@
 	}
 
 	function displayName(m: (typeof members)[number]): string {
-		if (m.server_display_name?.trim()) return m.server_display_name;
-		if (m.display_name?.trim()) return m.display_name;
+		if (m.server_display_name?.trim()) {
+			return m.server_display_name;
+		}
+		if (m.display_name?.trim()) {
+			return m.display_name;
+		}
 		return m.username ?? 'Unknown';
 	}
 
@@ -173,7 +192,7 @@
 	}
 
 	function highestRole(m: (typeof members)[number]) {
-		return (m.roles ?? []).reduce((top: any, r: any) => (top == null || (r.position ?? 0) > (top.position ?? 0) ? r : top), null as any);
+		return (m.roles ?? []).reduce<(typeof m.roles)[number] | null>((top, r) => (top == null || (r.position ?? 0) > (top.position ?? 0) ? r : top), null);
 	}
 
 	const linkEmbed = $derived.by(() => {
@@ -181,7 +200,7 @@
 		const boosters = all.filter((m) => m.is_booster).length;
 		const newest = [...all]
 			.filter((m) => m.member_since)
-			.sort((a, b) => new Date(b.member_since).getTime() - new Date(a.member_since).getTime())
+			.sort((a, b) => new Date(b.member_since!).getTime() - new Date(a.member_since!).getTime())
 			.slice(0, 3)
 			.map((m) => `**${md(listDisplayName(m))}**`);
 		const lines = [

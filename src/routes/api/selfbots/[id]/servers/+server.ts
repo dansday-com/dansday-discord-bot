@@ -7,12 +7,14 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	try {
 		const id = Number(params.id);
 		const selfbot = await db.getSelfbotById(id);
-		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
+		if (!selfbot) {
+			return json({ error: 'Selfbot not found' }, { status: 404 });
+		}
 		if (!(await canReadSelfbotTopology(locals, id))) {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 		return json(await db.getServersForSelfbot(id));
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: 500 });
 	}
 };

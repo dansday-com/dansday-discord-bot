@@ -29,10 +29,14 @@ let lastKey = 0;
 let cues = 0;
 
 function audio(): AudioContext | null {
-	if (typeof window === 'undefined' || !primed || !live) return null;
+	if (typeof window === 'undefined' || !primed || !live) {
+		return null;
+	}
 	if (!context) {
 		const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
-		if (!Ctor) return null;
+		if (!Ctor) {
+			return null;
+		}
 		try {
 			context = new Ctor();
 		} catch {
@@ -41,7 +45,9 @@ function audio(): AudioContext | null {
 		master = context!.createGain();
 		master.connect(context!.destination);
 	}
-	if (context!.state !== 'running') void context!.resume().catch(() => null);
+	if (context!.state !== 'running') {
+		context!.resume().catch(() => null);
+	}
 	return context;
 }
 
@@ -51,7 +57,9 @@ function prime() {
 }
 
 if (typeof window !== 'undefined') {
-	for (const type of UNLOCK_EVENTS) window.addEventListener(type, prime, { capture: true, passive: true });
+	for (const type of UNLOCK_EVENTS) {
+		window.addEventListener(type, prime, { capture: true, passive: true });
+	}
 	window.addEventListener('pointerdown', (e) => e.pointerType === 'mouse' && prime(), { capture: true, passive: true });
 }
 
@@ -62,13 +70,17 @@ function unit(n: number): number {
 function tone(freq: number, { type = 'sine', gain = 0.08, dur = 0.1, delay = 0, glide = 0 }: ToneOptions = {}) {
 	cues++;
 	const ctx = audio();
-	if (!ctx || !master) return;
+	if (!ctx || !master) {
+		return;
+	}
 	const at = ctx.currentTime + delay;
 	const osc = ctx.createOscillator();
 	const amp = ctx.createGain();
 	osc.type = type;
 	osc.frequency.setValueAtTime(freq, at);
-	if (glide > 0) osc.frequency.exponentialRampToValueAtTime(glide, at + dur);
+	if (glide > 0) {
+		osc.frequency.exponentialRampToValueAtTime(glide, at + dur);
+	}
 	amp.gain.setValueAtTime(0.0001, at);
 	amp.gain.linearRampToValueAtTime(gain, at + 0.004);
 	amp.gain.exponentialRampToValueAtTime(0.0001, at + dur);
@@ -85,11 +97,15 @@ function tone(freq: number, { type = 'sine', gain = 0.08, dur = 0.1, delay = 0, 
 function noise(freq: number, { gain = 0.06, dur = 0.01, q = 2.6, delay = 0 }: NoiseOptions = {}) {
 	cues++;
 	const ctx = audio();
-	if (!ctx || !master) return;
+	if (!ctx || !master) {
+		return;
+	}
 	if (!hiss) {
 		hiss = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
 		const data = hiss.getChannelData(0);
-		for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+		for (let i = 0; i < data.length; i++) {
+			data[i] = Math.random() * 2 - 1;
+		}
 	}
 	const at = ctx.currentTime + delay;
 	const src = ctx.createBufferSource();
@@ -114,7 +130,9 @@ function noise(freq: number, { gain = 0.06, dur = 0.01, q = 2.6, delay = 0 }: No
 
 function click(axis: TickAxis, ratio: number) {
 	const now = performance.now();
-	if (now - lastTick < TICK_GAP_MS) return;
+	if (now - lastTick < TICK_GAP_MS) {
+		return;
+	}
 	lastTick = now;
 	const t = TICKS[axis];
 	const bend = (1.25 - 0.5 * unit(ratio)) * Math.pow(2, (Math.random() - 0.5) / 8);
@@ -189,7 +207,9 @@ export const sfx = {
 		const notes = 3 + Math.round(unit(quality) * 5);
 		SCALE.slice(0, notes).forEach((f, i) => tone(f, { type: i % 2 ? 'sine' : 'triangle', gain: 0.07, dur: 0.18, delay: i * 0.07 }));
 		tone(SCALE[notes - 1] * 2, { gain: 0.06, dur: 0.6, delay: notes * 0.07 });
-		if (quality >= 0.8) noise(7000, { gain: 0.03, dur: 0.4, q: 0.6, delay: notes * 0.07 });
+		if (quality >= 0.8) {
+			noise(7000, { gain: 0.03, dur: 0.4, q: 0.6, delay: notes * 0.07 });
+		}
 	},
 	buy() {
 		tone(1318.51, { gain: 0.08, dur: 0.07 });
@@ -220,7 +240,9 @@ export const sfx = {
 	},
 	flip(delay = 0, soft = false) {
 		noise(1400, { gain: soft ? 0.022 : 0.05, dur: 0.1, q: 0.9, delay });
-		if (!soft) tone(460, { type: 'triangle', gain: 0.04, dur: 0.1, glide: 820, delay });
+		if (!soft) {
+			tone(460, { type: 'triangle', gain: 0.04, dur: 0.1, glide: 820, delay });
+		}
 	},
 	gem(step: number) {
 		const freq = 523.25 * Math.pow(2, Math.max(0, step - 1) / 6);
@@ -229,7 +251,9 @@ export const sfx = {
 		tone(freq * 2, { gain: 0.04, dur: 0.4, delay: 0.1 });
 	},
 	open(): boolean {
-		if (!audio()) return false;
+		if (!audio()) {
+			return false;
+		}
 		tone(392, { gain: 0.05, dur: 0.12 });
 		tone(587.33, { gain: 0.05, dur: 0.14, delay: 0.045 });
 		tone(783.99, { gain: 0.045, dur: 0.24, delay: 0.09 });
@@ -240,7 +264,9 @@ export const sfx = {
 	},
 	detent(index: number, high = false) {
 		const now = performance.now();
-		if (now - lastDetent < DETENT_GAP_MS) return;
+		if (now - lastDetent < DETENT_GAP_MS) {
+			return;
+		}
 		lastDetent = now;
 		tone(SCALE[Math.abs(index) % SCALE.length] * (high ? 2 : 1), { type: 'triangle', gain: 0.05, dur: 0.05 });
 	},
@@ -274,7 +300,9 @@ export const sfx = {
 	},
 	key() {
 		const now = performance.now();
-		if (now - lastKey < KEY_GAP_MS) return;
+		if (now - lastKey < KEY_GAP_MS) {
+			return;
+		}
 		lastKey = now;
 		noise(2400 * Math.pow(2, (Math.random() - 0.5) / 4), { gain: 0.022, dur: 0.006 });
 	}
@@ -287,24 +315,33 @@ function unlessCued(play: () => void) {
 
 function onClick(e: Event) {
 	const el = (e.target as Element | null)?.closest?.(PRESSABLE);
-	if (!el || el.closest('[data-sfx-off]')) return;
+	if (!el || el.closest('[data-sfx-off]')) {
+		return;
+	}
 	unlessCued(sfx.press);
 }
 
 function onInput(e: Event) {
 	const el = e.target as HTMLInputElement | null;
-	if (!el?.matches || el.closest('[data-sfx-off]')) return;
+	if (!el?.matches || el.closest('[data-sfx-off]')) {
+		return;
+	}
 	if (el.matches('input[type="range"]')) {
 		const min = Number(el.min) || 0;
 		const span = (Number(el.max) || 100) - min || 1;
 		unlessCued(() => sfx.notch((Number(el.value) - min) / span));
-	} else if (el.matches('input[type="color"]')) unlessCued(() => sfx.notch(0.5));
-	else if (el.matches(TYPED)) unlessCued(sfx.key);
+	} else if (el.matches('input[type="color"]')) {
+		unlessCued(() => sfx.notch(0.5));
+	} else if (el.matches(TYPED)) {
+		unlessCued(sfx.key);
+	}
 }
 
 function onChange(e: Event) {
 	const el = e.target as Element | null;
-	if (!el?.matches?.('select, input[type="file"]') || el.closest('[data-sfx-off]')) return;
+	if (!el?.matches?.('select, input[type="file"]') || el.closest('[data-sfx-off]')) {
+		return;
+	}
 	unlessCued(sfx.select);
 }
 

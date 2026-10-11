@@ -33,7 +33,9 @@ export function messageEditor(): MessageEditorContext {
 
 export function moveItem<T>(items: T[], index: number, delta: number) {
 	const target = index + delta;
-	if (target < 0 || target >= items.length) return;
+	if (target < 0 || target >= items.length) {
+		return;
+	}
 	const [item] = items.splice(index, 1);
 	items.splice(target, 0, item);
 }
@@ -41,7 +43,9 @@ export function moveItem<T>(items: T[], index: number, delta: number) {
 export function clickOutside(node: HTMLElement, onoutside: () => void) {
 	let handler = onoutside;
 	const listener = (event: PointerEvent) => {
-		if (event.target instanceof Node && !node.contains(event.target)) handler();
+		if (event.target instanceof Node && !node.contains(event.target)) {
+			handler();
+		}
 	};
 	document.addEventListener('pointerdown', listener, true);
 	return {

@@ -24,7 +24,9 @@ export class SceneClock {
 	}
 
 	play() {
-		if (this.#playing || this.still) return;
+		if (this.#playing || this.still) {
+			return;
+		}
 		this.#playing = true;
 		this.#last = -1;
 		this.#raf = requestAnimationFrame(this.#tick);
@@ -36,7 +38,9 @@ export class SceneClock {
 	}
 
 	#tick = (now: number) => {
-		if (!this.#playing) return;
+		if (!this.#playing) {
+			return;
+		}
 		const dt = this.#last < 0 ? 0 : Math.max(0, Math.min(100, now - this.#last));
 		this.#last = now;
 		const next = this.t + dt;
@@ -59,8 +63,11 @@ export function playWhenVisible(node: HTMLElement, clock: SceneClock) {
 		([entry]) => {
 			const viewport = entry.rootBounds?.height || window.innerHeight;
 			const visible = entry.intersectionRatio >= 0.35 || entry.intersectionRect.height >= viewport * 0.4;
-			if (visible) clock.play();
-			else clock.pause();
+			if (visible) {
+				clock.play();
+			} else {
+				clock.pause();
+			}
 		},
 		{ threshold: [0, 0.1, 0.2, 0.35, 0.5, 0.75, 1] }
 	);

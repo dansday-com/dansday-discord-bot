@@ -8,7 +8,9 @@ const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom
 
 function normalizeHttpUrl(input: string): string | null {
 	const t = input.trim();
-	if (!t) return null;
+	if (!t) {
+		return null;
+	}
 	return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 }
 
@@ -19,7 +21,9 @@ function isDiscordStreamingUrl(urlStr: string): boolean {
 	} catch {
 		return false;
 	}
-	if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+	if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+		return false;
+	}
 	const h = u.hostname.toLowerCase();
 	return h === 'twitch.tv' || h === 'www.twitch.tv' || h === 'youtube.com' || h === 'www.youtube.com' || h === 'youtu.be' || h === 'm.youtube.com';
 }

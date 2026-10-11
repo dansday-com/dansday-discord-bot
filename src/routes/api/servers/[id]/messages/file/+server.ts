@@ -5,7 +5,9 @@ import { messagePanelAccess, pruneMessageFiles } from '$lib/frontend/serverMessa
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const access = await messagePanelAccess(locals, params.id);
-	if (access instanceof Response) return access;
+	if (access instanceof Response) {
+		return access;
+	}
 	return receiveMessageUpload(
 		request,
 		{ scope: 'server', id: access.serverId },

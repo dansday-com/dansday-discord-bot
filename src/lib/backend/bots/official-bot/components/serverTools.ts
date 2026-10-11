@@ -10,13 +10,16 @@ import { rewardGoalLabel } from '../../../../rewards.js';
 import { COLOR_MAX_TOTAL } from '../../../../color.js';
 import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer } from './aiToolShared.js';
+import type { ToolContext, ToolFeatures } from './aiToolShared.js';
+import type { MemberListRow } from '../../../../database.js';
+import type { LeaderboardMetric, LeaderboardPeriod } from '../../../public/leaderboard/cache.js';
 
 const MAX_LEADERBOARD_ROWS = 25;
 const MAX_MEMBER_MATCHES = 8;
 const MAX_SHOP_ITEMS = 40;
 const VOICE_LEADERBOARD_ROWS = 5;
 
-const LEADERBOARD_METRICS = [
+const LEADERBOARD_METRICS: LeaderboardMetric[] = [
 	'xp',
 	'chat',
 	'voice_total',
@@ -47,9 +50,16 @@ const LEADERBOARD_METRICS = [
 	'invites'
 ];
 
-const LEADERBOARD_PERIODS = ['all', 'month', 'week'];
+const LEADERBOARD_PERIODS: LeaderboardPeriod[] = ['all', 'month', 'week'];
 
-function shapeItem(item, tzOffsetMin, nowMs) {
+type CatalogItem = Awaited<ReturnType<typeof loadItemsCatalog>>[number];
+type LeaderboardRow = NonNullable<Awaited<ReturnType<typeof resolveLeaderboardSnapshot>>>['rows'][number];
+type LeaderboardArgs = { metric?: LeaderboardMetric; period?: LeaderboardPeriod; limit?: unknown; order?: unknown };
+type RosterArgs = { sort?: string; limit?: unknown };
+type ShopArgs = { viewerDiscordId?: string | null; availability?: unknown; type?: unknown };
+type ToDate = (raw: unknown) => Date | null;
+
+function shapeItem(item: CatalogItem, tzOffsetMin: number | undefined, nowMs: number) {
 	const window = itemAvailability(item, nowMs, tzOffsetMin);
 	const effect = getItemEffect(item.effect_type);
 	const config = item.config ?? {};
@@ -74,12 +84,16 @@ function shapeItem(item, tzOffsetMin, nowMs) {
 	};
 }
 
-export async function runServerStatsTool(botId, guildId) {
+export async function runServerStatsTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const snapshot = await resolvePublicStatisticsSnapshot(ctx.server.id).catch(() => null);
-	if (!snapshot?.stats) return fail('no_statistics_yet');
+	if (!snapshot?.stats) {
+		return fail('no_statistics_yet');
+	}
 
 	const s = snapshot.stats;
 	const rawCreated = ctx.server.discord_created_at;
@@ -132,15 +146,21 @@ export async function runServerStatsTool(botId, guildId) {
 	};
 }
 
-function levelRequirementXp(level, baseXp, multiplier) {
-	if (level <= 1) return 0;
-	if (multiplier === 1) return baseXp * (level - 1);
+function levelRequirementXp(level: number, baseXp: number, multiplier: number) {
+	if (level <= 1) {
+		return 0;
+	}
+	if (multiplier === 1) {
+		return baseXp * (level - 1);
+	}
 	return (baseXp * (Math.pow(multiplier, level - 1) - 1)) / (multiplier - 1);
 }
 
-export async function runLevelingRulesTool(botId, guildId, args) {
+export async function runLevelingRulesTool(botId: number, guildId: string, args: Record<string, unknown>) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	let settings;
 	try {
@@ -236,7 +256,7 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 	};
 }
 
-function metricValue(metric, r) {
+function metricValue(metric: unknown, r: LeaderboardRow) {
 	switch (metric) {
 		case 'chat':
 			return num(r.chat_total);
@@ -290,7 +310,7 @@ function metricValue(metric, r) {
 	}
 }
 
-function metricDetail(metric, r) {
+function metricDetail(metric: string, r: LeaderboardRow) {
 	if (metric.startsWith('minigames_tower_')) {
 		const total = num(r.minigame_total);
 		const wins = num(r.minigame_wins);
@@ -337,25 +357,31 @@ function metricDetail(metric, r) {
 	if (metric.startsWith('items_bounty')) {
 		return { bounty_on_them: num(r.bounty_on_them), bounty_collected: num(r.bounty_collected), bounty_given: num(r.bounty_given) };
 	}
-	if (metric.startsWith('items_gift')) return { gift_given: num(r.gift_given), gift_received: num(r.gift_received) };
+	if (metric.startsWith('items_gift')) {
+		return { gift_given: num(r.gift_given), gift_received: num(r.gift_received) };
+	}
 	if (metric === 'invites') {
 		return { invites_total: num(r.invites_total), still_here: num(r.invites_active), left: num(r.invites_left), staff_bonus: num(r.invites_bonus) };
 	}
 	return { xp: num(r.xp), messages: num(r.chat_total), voice_minutes: num(r.voice_minutes_total) };
 }
 
-export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_LEADERBOARD_ROWS } = {}) {
+export async function runLeaderboardTool(botId: number, guildId: string, args: LeaderboardArgs, { maxRows = MAX_LEADERBOARD_ROWS } = {}) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
-	const metric = LEADERBOARD_METRICS.includes(args?.metric) ? args.metric : 'xp';
-	const period = LEADERBOARD_PERIODS.includes(args?.period) ? args.period : 'all';
+	const metric = LEADERBOARD_METRICS.includes(args?.metric as LeaderboardMetric) ? args.metric! : 'xp';
+	const period = LEADERBOARD_PERIODS.includes(args?.period as LeaderboardPeriod) ? args.period! : 'all';
 	const limit = Math.max(1, Math.min(num(args?.limit) || 10, maxRows));
 	const worst = args?.order === 'worst';
 
 	const snapshot = await resolveLeaderboardSnapshot(ctx.server.id, metric, period, 100).catch(() => null);
 	const rows = snapshot?.rows ?? [];
-	if (!rows.length) return fail('leaderboard_empty', { metric, period });
+	if (!rows.length) {
+		return fail('leaderboard_empty', { metric, period });
+	}
 
 	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => String(n)));
 	const members = await db.getServerMembersList(ctx.server.id).catch(() => []);
@@ -383,14 +409,18 @@ export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_L
 	};
 }
 
-export async function runMemberInfoTool(botId, guildId, args) {
+export async function runMemberInfoTool(botId: number, guildId: string, args: Record<string, unknown>) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const query = String(args?.name ?? '')
 		.trim()
 		.toLowerCase();
-	if (!query) return fail('missing_name');
+	if (!query) {
+		return fail('missing_name');
+	}
 
 	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => Number(n)));
 	const members = (await db.getServerMembersList(ctx.server.id).catch(() => [])).filter((m) => !disguised.has(Number(m.id)));
@@ -402,7 +432,9 @@ export async function runMemberInfoTool(botId, guildId, args) {
 		? byId
 		: members.filter((m) => [m.server_display_name, m.display_name, m.username].filter(Boolean).some((n) => String(n).toLowerCase().includes(query)));
 
-	if (!matches.length) return fail('member_not_found', { searched: args.name });
+	if (!matches.length) {
+		return fail('member_not_found', { searched: args.name });
+	}
 
 	if (matches.length > 1) {
 		return {
@@ -417,8 +449,10 @@ export async function runMemberInfoTool(botId, guildId, args) {
 	const rating = await db.getStaffRatingAggregate(ctx.server.id, m.id).catch(() => null);
 	const reviews = Number(rating?.total_reports) || 0;
 
-	const toDate = (raw) => {
-		if (!raw) return null;
+	const toDate: ToDate = (raw) => {
+		if (!raw) {
+			return null;
+		}
 		const d = raw instanceof Date ? raw : parseMySQLDateTimeUtc(raw);
 		return d && !Number.isNaN(d.getTime()) ? d : null;
 	};
@@ -426,12 +460,12 @@ export async function runMemberInfoTool(botId, guildId, args) {
 	return {
 		ok: true,
 		...publicMemberShape(m, toDate),
-		...(reviews > 0 ? { staff_rating: Number(rating.average_rating) || 0, staff_reviews: reviews } : {}),
+		...(reviews > 0 ? { staff_rating: Number(rating!.average_rating) || 0, staff_reviews: reviews } : {}),
 		note: "These are public profile fields. joined_server is when they joined this server; account_created is how old their Discord account is. This member's bag, assets, minigames, history and tasks are private and must not be requested."
 	};
 }
 
-function publicMemberShape(m, toDate) {
+function publicMemberShape(m: MemberListRow, toDate: ToDate) {
 	const afkSince = toDate(m.afk_since);
 	return {
 		name: nameOfMember(m),
@@ -456,28 +490,34 @@ function publicMemberShape(m, toDate) {
 
 const ROSTER_SORTS = ['joined_oldest', 'joined_newest', 'account_oldest', 'account_newest'];
 
-export async function runMemberRosterTool(botId, guildId, args) {
+export async function runMemberRosterTool(botId: number, guildId: string, args: RosterArgs) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
-	const sort = ROSTER_SORTS.includes(args?.sort) ? args.sort : 'joined_oldest';
+	const sort = ROSTER_SORTS.includes(args?.sort as string) ? args.sort! : 'joined_oldest';
 	const limit = Math.max(1, Math.min(num(args?.limit) || 5, MAX_MEMBER_MATCHES));
 
 	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => Number(n)));
 	const members = (await db.getServerMembersList(ctx.server.id).catch(() => [])).filter((m) => !disguised.has(Number(m.id)));
 
 	const byAccount = sort.startsWith('account');
-	const toDate = (raw) => {
-		if (!raw) return null;
+	const toDate: ToDate = (raw) => {
+		if (!raw) {
+			return null;
+		}
 		const d = raw instanceof Date ? raw : parseMySQLDateTimeUtc(raw);
 		return d && !Number.isNaN(d.getTime()) ? d : null;
 	};
 
 	const dated = members.map((m) => ({ m, at: toDate(byAccount ? m.profile_created_at : m.member_since) })).filter((e) => e.at);
-	if (!dated.length) return fail('no_dates_synced', { sort });
+	if (!dated.length) {
+		return fail('no_dates_synced', { sort });
+	}
 
 	const newest = sort.endsWith('newest');
-	dated.sort((a, b) => (newest ? b.at.getTime() - a.at.getTime() : a.at.getTime() - b.at.getTime()));
+	dated.sort((a, b) => (newest ? b.at!.getTime() - a.at!.getTime() : a.at!.getTime() - b.at!.getTime()));
 
 	return {
 		ok: true,
@@ -491,12 +531,16 @@ export async function runMemberRosterTool(botId, guildId, args) {
 	};
 }
 
-export async function runStaffRatingTool(botId, guildId) {
+export async function runStaffRatingTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const ratings = await db.getAllStaffRatings(ctx.server.id).catch(() => []);
-	if (!ratings.length) return fail('no_staff_ratings');
+	if (!ratings.length) {
+		return fail('no_staff_ratings');
+	}
 
 	const members = await db.getServerMembersList(ctx.server.id).catch(() => []);
 	const byId = new Map(members.map((m) => [Number(m.id), m]));
@@ -511,12 +555,16 @@ export async function runStaffRatingTool(botId, guildId) {
 	};
 }
 
-export async function runGiveawaysTool(botId, guildId) {
+export async function runGiveawaysTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const giveaways = await db.listActiveGiveawaysForServer(ctx.server.id).catch(() => []);
-	if (!giveaways.length) return fail('no_active_giveaways');
+	if (!giveaways.length) {
+		return fail('no_active_giveaways');
+	}
 
 	const withEntrants = await Promise.all(
 		giveaways.map(async (g) => ({
@@ -534,12 +582,16 @@ export async function runGiveawaysTool(botId, guildId) {
 	return { ok: true, giveaways: withEntrants };
 }
 
-export async function runQuestsTool(botId, guildId) {
+export async function runQuestsTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const quests = await db.listActiveBotDiscordQuests(botId).catch(() => []);
-	if (!quests.length) return fail('no_active_quests');
+	if (!quests.length) {
+		return fail('no_active_quests');
+	}
 
 	const now = Date.now();
 	return {
@@ -559,14 +611,20 @@ export async function runQuestsTool(botId, guildId) {
 	};
 }
 
-export async function runShopTool(botId, guildId, args) {
+export async function runShopTool(botId: number, guildId: string, args: ShopArgs) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
-	if (!ctx.itemsEnabled) return fail('items_not_enabled_for_this_server');
+	if (ctx.error) {
+		return ctx.error;
+	}
+	if (!ctx.itemsEnabled) {
+		return fail('items_not_enabled_for_this_server');
+	}
 
 	const catalog = await loadItemsCatalog(ctx.server.id).catch(() => []);
 	const live = catalog.filter((i) => i.live);
-	if (!live.length) return fail('shop_is_empty');
+	if (!live.length) {
+		return fail('shop_is_empty');
+	}
 
 	const member = args?.viewerDiscordId ? await memberByDiscordId(ctx.server.id, args.viewerDiscordId) : null;
 	const tzOffsetMin = member ? await memberTzOffset(member.id) : 0;
@@ -586,7 +644,9 @@ export async function runShopTool(botId, guildId, args) {
 		.toLowerCase();
 	const byType = typeFilter ? filtered.filter((i) => i.type === typeFilter || i.label.toLowerCase() === typeFilter) : filtered;
 
-	if (!byType.length) return fail('no_items_match', { availability: wanted, type: typeFilter || null });
+	if (!byType.length) {
+		return fail('no_items_match', { availability: wanted, type: typeFilter || null });
+	}
 
 	return {
 		ok: true,
@@ -626,18 +686,32 @@ const ROSTER_DESCRIPTION =
 
 const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_leveling_rules', 'get_member_roster']);
 
-function allowedServerTool(name, features) {
-	if (!features) return true;
-	if (!features.publicData) return false;
-	if (ALWAYS_ON.has(name)) return true;
-	if (name === 'get_shop') return features.items === true;
-	if (name === 'get_giveaways') return features.giveaway === true;
-	if (name === 'get_quests') return features.quests === true;
-	if (name === 'get_staff_ratings') return features.staffRating === true;
+function allowedServerTool(name: string, features: ToolFeatures | null) {
+	if (!features) {
+		return true;
+	}
+	if (!features.publicData) {
+		return false;
+	}
+	if (ALWAYS_ON.has(name)) {
+		return true;
+	}
+	if (name === 'get_shop') {
+		return features.items === true;
+	}
+	if (name === 'get_giveaways') {
+		return features.giveaway === true;
+	}
+	if (name === 'get_quests') {
+		return features.quests === true;
+	}
+	if (name === 'get_staff_ratings') {
+		return features.staffRating === true;
+	}
 	return true;
 }
 
-export function buildServerTools(features = null) {
+export function buildServerTools(features: ToolFeatures | null = null) {
 	return [
 		{
 			type: 'function',
@@ -740,7 +814,7 @@ export function buildServerTools(features = null) {
 	].filter((t) => allowedServerTool(t.function.name, features));
 }
 
-export function buildServerDeclarations(features = null) {
+export function buildServerDeclarations(features: ToolFeatures | null = null) {
 	return [
 		{ name: 'get_server_stats', description: `${STATS_DESCRIPTION}\n\n${VOICE_NOTE}`, parameters: { type: Type.OBJECT, properties: {} } },
 		{
@@ -814,18 +888,36 @@ export const SERVER_TOOL_NAMES = new Set([
 	'get_shop'
 ]);
 
-export function runServerTool(name, args, { botId, guildId, callerDiscordId, voice = false }) {
+export function runServerTool(name: string, args: Record<string, unknown>, { botId, guildId, callerDiscordId, voice = false }: ToolContext) {
 	const opts = voice ? { maxRows: VOICE_LEADERBOARD_ROWS } : {};
 
-	if (name === 'get_server_stats') return runServerStatsTool(botId, guildId);
-	if (name === 'get_leaderboard') return runLeaderboardTool(botId, guildId, args, opts);
-	if (name === 'get_member_info') return runMemberInfoTool(botId, guildId, args);
-	if (name === 'get_leveling_rules') return runLevelingRulesTool(botId, guildId, args);
-	if (name === 'get_member_roster') return runMemberRosterTool(botId, guildId, args);
-	if (name === 'get_staff_ratings') return runStaffRatingTool(botId, guildId);
-	if (name === 'get_giveaways') return runGiveawaysTool(botId, guildId);
-	if (name === 'get_quests') return runQuestsTool(botId, guildId);
-	if (name === 'get_shop') return runShopTool(botId, guildId, { ...args, viewerDiscordId: callerDiscordId });
+	if (name === 'get_server_stats') {
+		return runServerStatsTool(botId, guildId);
+	}
+	if (name === 'get_leaderboard') {
+		return runLeaderboardTool(botId, guildId, args as LeaderboardArgs, opts);
+	}
+	if (name === 'get_member_info') {
+		return runMemberInfoTool(botId, guildId, args);
+	}
+	if (name === 'get_leveling_rules') {
+		return runLevelingRulesTool(botId, guildId, args);
+	}
+	if (name === 'get_member_roster') {
+		return runMemberRosterTool(botId, guildId, args as RosterArgs);
+	}
+	if (name === 'get_staff_ratings') {
+		return runStaffRatingTool(botId, guildId);
+	}
+	if (name === 'get_giveaways') {
+		return runGiveawaysTool(botId, guildId);
+	}
+	if (name === 'get_quests') {
+		return runQuestsTool(botId, guildId);
+	}
+	if (name === 'get_shop') {
+		return runShopTool(botId, guildId, { ...args, viewerDiscordId: callerDiscordId });
+	}
 	return Promise.resolve(fail('unknown_tool'));
 }
 

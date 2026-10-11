@@ -8,10 +8,12 @@ import { inviteJoinPath } from '$lib/invites.js';
 import { serverThemeUrl } from '$lib/backend/storage/serverThemes.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(302, '/login');
+	}
 
 	const parentData = await parent();
-	const overview: any = (parentData as any).overview;
+	const overview: any = parentData.overview;
 
 	const settingsRow = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.public).catch(() => null);
 	const settings = (settingsRow as any)?.settings || {};

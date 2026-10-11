@@ -15,7 +15,9 @@
 
 	async function toggle() {
 		open = !open;
-		if (!open) return;
+		if (!open) {
+			return;
+		}
 		await tick();
 		list?.scrollIntoView({ block: 'nearest' });
 	}

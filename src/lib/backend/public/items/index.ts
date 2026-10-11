@@ -3,44 +3,55 @@ import { request as httpRequest } from 'http';
 import db from '../../../database.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
 import { resolveMemberThemeForClient } from '../../storage/memberThemes.js';
+import type { ServerRow } from '../../../schema.js';
 
-export function computeCardToken(serverId: any, discordMemberId: string): string {
+export function computeCardToken(serverId: number, discordMemberId: string): string {
 	const secret = process.env.SECRET;
-	if (!secret) throw new Error('SECRET is not configured; account card links cannot be signed.');
+	if (!secret) {
+		throw new Error('SECRET is not configured; account card links cannot be signed.');
+	}
 	return createHmac('sha256', secret)
 		.update(`card:${Number(serverId)}:${discordMemberId}`)
 		.digest('hex');
 }
 
 export async function resolveMemberByCardToken(serverId: number, token: string): Promise<any | null> {
-	if (!token) return null;
+	if (!token) {
+		return null;
+	}
 	const supplied = Buffer.from(String(token), 'utf8');
 	const members = await db.getServerMembersList(serverId).catch(() => []);
 	for (const m of members as any[]) {
-		if (!m.discord_member_id) continue;
+		if (!m.discord_member_id) {
+			continue;
+		}
 		const expected = Buffer.from(computeCardToken(serverId, m.discord_member_id), 'utf8');
-		if (expected.length === supplied.length && timingSafeEqual(expected, supplied)) return m;
+		if (expected.length === supplied.length && timingSafeEqual(expected, supplied)) {
+			return m;
+		}
 	}
 	return null;
 }
 
 export const SENTINEL_GUEST = 'guest';
 
-export function itemsCardTokenFromUrl(urlHash: any): string {
+export function itemsCardTokenFromUrl(urlHash: unknown): string {
 	const raw = urlHash != null ? String(urlHash) : '';
 	return raw && raw !== SENTINEL_GUEST ? raw : '';
 }
 
-export async function resolveActiveBotForServer(server: any): Promise<any | null> {
+export async function resolveActiveBotForServer(server: ServerRow): Promise<any | null> {
 	const officialBotId = await db.resolveOfficialBotIdForServer(server).catch(() => null);
-	if (officialBotId == null) return null;
+	if (officialBotId == null) {
+		return null;
+	}
 	const bot = await db.getBot(officialBotId).catch(() => null);
 	return bot ?? null;
 }
 
-async function isMemberDisguised(memberId: any): Promise<boolean> {
+async function isMemberDisguised(memberId: number | string): Promise<boolean> {
 	const effects = await db.getActiveEffectsForMember(memberId).catch(() => []);
-	return ((effects as any[]) || []).some((e) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
+	return (effects || []).some((e) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
 }
 
 function safeParse(raw: any) {
@@ -51,8 +62,10 @@ function safeParse(raw: any) {
 	}
 }
 
-function scheduleMinutes(hhmm: any, fallback: number): number {
-	if (hhmm == null || hhmm === '') return fallback;
+function scheduleMinutes(hhmm: unknown, fallback: number): number {
+	if (hhmm == null || hhmm === '') {
+		return fallback;
+	}
 	const [h, m] = String(hhmm)
 		.split(':')
 		.map((n) => Number(n) || 0);
@@ -63,22 +76,30 @@ function availableUntilMs(item: any): number | null {
 	const ends: number[] = [];
 	if (item.available_to) {
 		const t = floatingWallClockMs(item.available_to, 0);
-		if (t != null) ends.push(t);
+		if (t != null) {
+			ends.push(t);
+		}
 	}
 	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
 		const now = new Date();
 		const toMin = scheduleMinutes(schedule.to, 1439);
 		const endOfWindow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + (toMin * 60 + 59) * 1000;
-		if (Number.isFinite(endOfWindow)) ends.push(endOfWindow);
+		if (Number.isFinite(endOfWindow)) {
+			ends.push(endOfWindow);
+		}
 	}
-	if (ends.length === 0) return null;
+	if (ends.length === 0) {
+		return null;
+	}
 	return Math.min(...ends);
 }
 
 export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
-	if (panelId == null) return [];
+	if (panelId == null) {
+		return [];
+	}
 	const all = await db.listItems(panelId).catch(() => []);
 	const out: any[] = [];
 	for (const i of all as any[]) {
@@ -111,7 +132,9 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);
 	const ps = (psRow as any)?.settings ?? {};
-	if (subKey && !publicSubfeatureEnabled(ps, subKey)) return { notFound: true } as const;
+	if (subKey && !publicSubfeatureEnabled(ps, subKey)) {
+		return { notFound: true } as const;
+	}
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
@@ -122,7 +145,9 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 
-	if (!member) return { guest: true as const };
+	if (!member) {
+		return { guest: true as const };
+	}
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
 	const bagStock = effectiveBagStock(invRows as any[]);
@@ -162,7 +187,9 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	const immunityMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	for (const it of items as any[]) {
-		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
+		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') {
+			continue;
+		}
 		const cfg = it.config || {};
 		const action = it.effect_type as 'steal' | 'bomb';
 		cooldownMinByAction[action] = Math.max(cooldownMinByAction[action], Number(cfg.cooldown_minutes) || 0);
@@ -172,34 +199,50 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	const attackCooldowns: { action: 'steal' | 'bomb'; until: number }[] = [];
 	for (const action of ['steal', 'bomb'] as const) {
 		const min = cooldownMinByAction[action];
-		if (min <= 0) continue;
+		if (min <= 0) {
+			continue;
+		}
 		const last = await db.getLastAttackActionByActor(member.id, [action]).catch(() => null);
-		if (!last) continue;
+		if (!last) {
+			continue;
+		}
 		const ends = last.getTime() + min * 60000;
-		if (ends > Date.now()) attackCooldowns.push({ action, until: ends });
+		if (ends > Date.now()) {
+			attackCooldowns.push({ action, until: ends });
+		}
 	}
 
 	let immuneUntil: number | null = null;
 	for (const action of ['steal', 'bomb'] as const) {
 		const min = immunityMinByAction[action];
-		if (min <= 0) continue;
+		if (min <= 0) {
+			continue;
+		}
 		const last = await db.getLastActionAgainstTarget(member.id, [action]).catch(() => null);
-		if (!last) continue;
+		if (!last) {
+			continue;
+		}
 		const ends = last.getTime() + min * 60000;
-		if (ends > Date.now() && (immuneUntil === null || ends > immuneUntil)) immuneUntil = ends;
+		if (ends > Date.now() && (immuneUntil === null || ends > immuneUntil)) {
+			immuneUntil = ends;
+		}
 	}
 
 	let insuranceCooldownUntil: number | null = null;
 	let maxInsuranceCooldownMin = 0;
 	for (const it of items as any[]) {
-		if (it.effect_type !== 'insurance') continue;
+		if (it.effect_type !== 'insurance') {
+			continue;
+		}
 		maxInsuranceCooldownMin = Math.max(maxInsuranceCooldownMin, Number((it.config || {}).cooldown_minutes) || 0);
 	}
 	if (maxInsuranceCooldownMin > 0) {
 		const last = await db.getLastActionByActor(member.id, 'insurance').catch(() => null);
 		if (last) {
 			const ends = last.getTime() + maxInsuranceCooldownMin * 60000;
-			if (ends > Date.now()) insuranceCooldownUntil = ends;
+			if (ends > Date.now()) {
+				insuranceCooldownUntil = ends;
+			}
 		}
 	}
 
@@ -237,7 +280,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	};
 }
 
-export function postBotWebhook(bot: any, payload: any): Promise<{ status: number; body: any }> {
+export function postBotWebhook(bot: any, payload: unknown): Promise<{ status: number; body: any }> {
 	const body = JSON.stringify(payload);
 	return new Promise((resolve) => {
 		const req = httpRequest(

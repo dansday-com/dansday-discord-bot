@@ -13,31 +13,45 @@ const MAX_PLAYS = 30;
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
 	const rate = await checkRateLimit(ip, 'minigame_play', MAX_PLAYS, RATE_WINDOW_MS);
-	if (!rate.allowed) return json({ success: false, error: 'Too many plays. Please slow down.' }, { status: 429 });
+	if (!rate.allowed) {
+		return json({ success: false, error: 'Too many plays. Please slow down.' }, { status: 429 });
+	}
 
 	const serverSlug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(serverSlug);
-	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
+	if (!resolved) {
+		return json({ success: false, error: 'Not found' }, { status: 404 });
+	}
 	const server = resolved.server;
 
 	const row = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public).catch(() => null);
-	const ps = (row as any)?.settings ?? {};
+	const ps = row?.settings ?? {};
 	if (!publicSubfeatureEnabled(ps, 'minigames')) {
 		return json({ success: false, error: 'Minigames are disabled for this server.' }, { status: 403 });
 	}
 
 	const body = await request.json().catch(() => null);
-	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
+	if (!body) {
+		return json({ success: false, error: 'Invalid body' }, { status: 400 });
+	}
 	const { card, multiplier, amount } = body;
-	if (!card || !multiplier || !amount) return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	if (!card || !multiplier || !amount) {
+		return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	}
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
-	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
+	if (!actor) {
+		return json({ success: false, error: 'Member not found' }, { status: 404 });
+	}
 
 	const fullServer = await db.getServer(server.id);
-	if (!fullServer?.discord_server_id) return json({ success: false, error: 'Server unavailable.' }, { status: 500 });
+	if (!fullServer?.discord_server_id) {
+		return json({ success: false, error: 'Server unavailable.' }, { status: 500 });
+	}
 	const bot = await resolveActiveBotForServer(fullServer);
-	if (!bot?.port || !bot.secret_key) return json({ success: false, error: 'Bot not available.' }, { status: 500 });
+	if (!bot?.port || !bot.secret_key) {
+		return json({ success: false, error: 'Bot not available.' }, { status: 500 });
+	}
 
 	const webhookResult = await postBotWebhook(bot, {
 		type: 'minigame_play',

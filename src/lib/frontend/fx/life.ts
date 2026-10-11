@@ -23,12 +23,18 @@ function flockIdent(s: FxScene): Flock {
 	const sep = 1.6 + r() * 1.8;
 	const roost = [0.2 + r() * 0.6, 0.25 + r() * 0.4];
 	const poles: number[][] = [];
-	for (let i = 0; i < 4; i++) poles.push([r(), 0.3 + r() * 0.4]);
+	for (let i = 0; i < 4; i++) {
+		poles.push([r(), 0.3 + r() * 0.4]);
+	}
 	const sun = 0.15 + r() * 0.7;
 	const ridge: number[] = [];
-	for (let i = 0; i < 9; i++) ridge.push(r());
+	for (let i = 0; i < 9; i++) {
+		ridge.push(r());
+	}
 	const trees: number[][] = [];
-	for (let i = 0; i < 7; i++) trees.push([r(), 0.4 + r() * 0.8]);
+	for (let i = 0; i < 7; i++) {
+		trees.push([r(), 0.4 + r() * 0.8]);
+	}
 	const period = 300 + ((r() * 180) | 0);
 	const wire = r() < 0.5 ? 1 : 0;
 	return { cohere, align, sep, roost, poles, sun, ridge, trees, period, wire };
@@ -41,7 +47,7 @@ export function makeSwarm(rows: number): FxProgram {
 		stride: 0.9,
 		init(s) {
 			const id = flockIdent(s);
-			(s as any).id = id;
+			s.id = id;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				s.parts[o] = s.rnd() * s.w;
@@ -55,7 +61,7 @@ export function makeSwarm(rows: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const id = (s as any).id as Flock;
+			const id = s.id as Flock;
 			const p = s.parts;
 			const [br, bg, bb] = hsl(s.v.hue, s.v.sat * 0.3, 14);
 			const [wr, wg, wb] = hsl(s.v.hue2, s.v.sat * 0.4, 72);
@@ -64,16 +70,20 @@ export function makeSwarm(rows: number): FxProgram {
 			const sunX = id.sun * s.w;
 			const sunY = dusk - s.h * 0.06;
 			const srd = s.h * 0.09;
-			for (let dy = -srd * 4; dy <= srd * 4; dy++)
+			for (let dy = -srd * 4; dy <= srd * 4; dy++) {
 				for (let dx = -srd * 4; dx <= srd * 4; dx++) {
 					const d = Math.hypot(dx, dy) / srd;
-					if (d < 1) paint(s, sunX + dx, sunY + dy, 255, 196, 128, 1);
-					else plot(s, sunX + dx, sunY + dy, 255, 158, 92, Math.max(0, 1 - d / 4) ** 2.3 * 0.42);
+					if (d < 1) {
+						paint(s, sunX + dx, sunY + dy, 255, 196, 128, 1);
+					} else {
+						plot(s, sunX + dx, sunY + dy, 255, 158, 92, Math.max(0, 1 - d / 4) ** 2.3 * 0.42);
+					}
 				}
+			}
 
-			void br;
-			void bg;
-			void bb;
+			br;
+			bg;
+			bb;
 			const [gr, gg, gb] = hsl(s.v.hue + 18, s.v.sat * 0.36, 13);
 			for (let y = dusk; y < s.h; y++) {
 				const f = (y - dusk) / (s.h - dusk);
@@ -90,16 +100,26 @@ export function makeSwarm(rows: number): FxProgram {
 					const f = k / bh;
 					const tier = (f * 3) % 1;
 					const half = (0.2 + f * 0.8) * (0.5 + tier * 0.6) * s.w * 0.02 + 0.4;
-					for (let q = -half; q <= half; q++) paint(s, bx + q, dusk - (bh - k), 8, 10, 12, 0.96);
+					for (let q = -half; q <= half; q++) {
+						paint(s, bx + q, dusk - (bh - k), 8, 10, 12, 0.96);
+					}
 				}
 			}
 
 			for (const [px, ph] of id.poles) {
 				const x = px * s.w;
 				const top = dusk - ph * s.h * 0.5;
-				for (let y = top; y < dusk; y++) for (let q = -1; q <= 1; q++) paint(s, x + q, y, 10, 11, 13, 0.96);
-				for (let k = -3; k <= 3; k++) paint(s, x + k, top, 10, 11, 13, 0.96);
-				for (let k = -2; k <= 2; k++) paint(s, x + k, top + 3, 10, 11, 13, 0.96);
+				for (let y = top; y < dusk; y++) {
+					for (let q = -1; q <= 1; q++) {
+						paint(s, x + q, y, 10, 11, 13, 0.96);
+					}
+				}
+				for (let k = -3; k <= 3; k++) {
+					paint(s, x + k, top, 10, 11, 13, 0.96);
+				}
+				for (let k = -2; k <= 2; k++) {
+					paint(s, x + k, top + 3, 10, 11, 13, 0.96);
+				}
 			}
 			if (id.wire) {
 				for (let i = 0; i + 1 < id.poles.length; i++) {
@@ -136,12 +156,16 @@ export function makeSwarm(rows: number): FxProgram {
 				let vy = 0;
 				let seen = 0;
 				for (let j = 0; j < s.n; j += 2) {
-					if (j === i) continue;
+					if (j === i) {
+						continue;
+					}
 					const q = j * P;
 					const dx = p[q] - p[o];
 					const dy = p[q + 1] - p[o + 1];
 					const d2 = dx * dx + dy * dy;
-					if (d2 > 90) continue;
+					if (d2 > 90) {
+						continue;
+					}
 					seen++;
 					cx += p[q];
 					cy += p[q + 1];
@@ -162,7 +186,9 @@ export function makeSwarm(rows: number): FxProgram {
 				}
 				ax += (rx - p[o]) * 0.0014;
 				ay += (ry - p[o + 1]) * 0.0022;
-				if (p[o + 1] > dusk - 4) ay -= 0.06;
+				if (p[o + 1] > dusk - 4) {
+					ay -= 0.06;
+				}
 				if (hunt >= 0) {
 					const fdx = p[o] - hx;
 					const fdy = p[o + 1] - hy;
@@ -184,16 +210,24 @@ export function makeSwarm(rows: number): FxProgram {
 				}
 				p[o] += p[o + 2];
 				p[o + 1] += p[o + 3];
-				if (p[o] < -2) p[o] = s.w + 2;
-				if (p[o] > s.w + 2) p[o] = -2;
-				if (p[o + 1] < -2) p[o + 1] = 2;
+				if (p[o] < -2) {
+					p[o] = s.w + 2;
+				}
+				if (p[o] > s.w + 2) {
+					p[o] = -2;
+				}
+				if (p[o + 1] < -2) {
+					p[o + 1] = 2;
+				}
 
 				p[o + 5] += sp * 0.5;
 				const flap = Math.sin(p[o + 5]);
 				const a = 0.85 * edge(p[o], -2, s.w + 2, s.w * 0.1);
 				const dirx = sp > 0.001 ? p[o + 2] / sp : 1;
 				const diry = sp > 0.001 ? p[o + 3] / sp : 0;
-				for (let q = -1; q <= 0; q++) paint(s, p[o] + dirx * q, p[o + 1] + diry * q, 6, 7, 9, a);
+				for (let q = -1; q <= 0; q++) {
+					paint(s, p[o] + dirx * q, p[o + 1] + diry * q, 6, 7, 9, a);
+				}
 				const span = 1.6 + Math.abs(flap) * 2.4;
 				for (let k = 1; k <= span; k++) {
 					const fx = -diry * k;
@@ -202,7 +236,9 @@ export function makeSwarm(rows: number): FxProgram {
 					paint(s, p[o] + fx, p[o + 1] + fy * 0.6 - Math.abs(flap) * 0.4, 6, 7, 9, ka);
 					paint(s, p[o] - fx, p[o + 1] - fy * 0.6 - Math.abs(flap) * 0.4, 6, 7, 9, ka);
 				}
-				if (p[o + 1] < s.h * 0.3) plot(s, p[o], p[o + 1], wr, wg, wb, a * 0.12);
+				if (p[o + 1] < s.h * 0.3) {
+					plot(s, p[o], p[o + 1], wr, wg, wb, a * 0.12);
+				}
 			}
 
 			if (hunt >= 0) {
@@ -211,17 +247,23 @@ export function makeSwarm(rows: number): FxProgram {
 				const flap2 = Math.sin(s.t * 0.42);
 				for (let k = -4; k <= 4; k++) {
 					const f = Math.abs(k) / 4;
-					for (let q = -1; q <= 1; q++) paint(s, hx + k * fd2, hy + q * (1 - f * 0.55), 4, 5, 7, fade * 0.98);
+					for (let q = -1; q <= 1; q++) {
+						paint(s, hx + k * fd2, hy + q * (1 - f * 0.55), 4, 5, 7, fade * 0.98);
+					}
 				}
 				for (let side = -1; side <= 1; side += 2) {
 					for (let k = 1; k <= 9; k++) {
 						const f = k / 9;
 						const sw = 1.4 - f * 0.9;
 						const wy = hy + side * k * (0.35 + Math.abs(flap2) * 0.75) - Math.abs(flap2) * 1.2;
-						for (let q = -sw; q <= sw; q++) paint(s, hx - k * 0.55 * fd2 + q, wy, 5, 6, 8, fade * (1 - f * 0.4));
+						for (let q = -sw; q <= sw; q++) {
+							paint(s, hx - k * 0.55 * fd2 + q, wy, 5, 6, 8, fade * (1 - f * 0.4));
+						}
 					}
 				}
-				for (let k = 0; k < 5; k++) paint(s, hx - (5 + k) * fd2, hy + k * 0.3, 4, 5, 7, fade * (1 - k / 6));
+				for (let k = 0; k < 5; k++) {
+					paint(s, hx - (5 + k) * fd2, hy + k * 0.3, 4, 5, 7, fade * (1 - k / 6));
+				}
 				plot(s, hx + 4 * fd2, hy - 1, 230, 180, 70, fade * 0.8);
 			}
 
@@ -242,15 +284,23 @@ function hash2(x: number, y: number, g: number) {
 function jellyIdent(s: FxScene): Bloom {
 	const r = mulberry32(s.v.seed + 2350);
 	const bells: number[][] = [];
-	for (let i = 0; i < 7; i++) bells.push([r(), r(), 0.55 + r() * 0.85, r() * Math.PI * 2, 0.5 + r() * 0.6, r()]);
+	for (let i = 0; i < 7; i++) {
+		bells.push([r(), r(), 0.55 + r() * 0.85, r() * Math.PI * 2, 0.5 + r() * 0.6, r()]);
+	}
 	const period = 44 + r() * 42;
 	const motes = 0.3 + r() * 0.5;
 	const kelp: number[][] = [];
-	for (let i = 0; i < 9; i++) kelp.push([r(), 0.22 + r() * 0.4, r() * 6.28, 0.6 + r() * 0.8]);
+	for (let i = 0; i < 9; i++) {
+		kelp.push([r(), 0.22 + r() * 0.4, r() * 6.28, 0.6 + r() * 0.8]);
+	}
 	const floor: number[] = [];
-	for (let i = 0; i < 9; i++) floor.push(r());
+	for (let i = 0; i < 9; i++) {
+		floor.push(r());
+	}
 	const rocks: number[][] = [];
-	for (let i = 0; i < 5; i++) rocks.push([r(), 0.03 + r() * 0.05, 0.4 + r() * 0.6]);
+	for (let i = 0; i < 5; i++) {
+		rocks.push([r(), 0.03 + r() * 0.05, 0.4 + r() * 0.6]);
+	}
 	const flashPeriod = 230 + ((r() * 170) | 0);
 	const grain = (r() * 9999) | 0;
 	return { bells, period, motes, kelp, floor, rocks, flashPeriod, grain };
@@ -263,9 +313,9 @@ export function makeJelly(rows: number): FxProgram {
 		stride: 0.5,
 		init(s) {
 			const id = jellyIdent(s);
-			(s as any).id = id;
-			(s as any).y = id.bells.map((b) => b[1]);
-			(s as any).lit = id.bells.map(() => 0);
+			s.id = id;
+			s.y = id.bells.map((b) => b[1]);
+			s.lit = id.bells.map(() => 0);
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				s.parts[o] = s.rnd() * s.w;
@@ -276,15 +326,15 @@ export function makeJelly(rows: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const id = (s as any).id as Bloom;
-			const ys = (s as any).y as number[];
-			const lits = (s as any).lit as number[];
+			const id = s.id as Bloom;
+			const ys = s.y as number[];
+			const lits = s.lit as number[];
 			const [dr, dg, db] = hsl(s.v.hue, 30 + s.v.sat * 0.5, 12);
 			const [br2, bg2, bb2] = hsl(s.v.hue2, Math.max(50, s.v.sat), 70);
 			const [tr, tg, tb] = hsl(s.v.hue, 34 + s.v.sat * 0.5, 58);
 			const [kr, kg, kb] = hsl(140 + (s.v.hue % 50), 22 + s.v.sat * 0.2, 16);
 
-			const prev = ((s as any).glow as number) ?? 0;
+			const prev = (s.glow as number) ?? 0;
 			const cyc = ((s.t * s.v.speed) % id.flashPeriod) / id.flashPeriod;
 			const wave = cyc < 0.42 ? cyc / 0.42 : -1;
 
@@ -303,14 +353,17 @@ export function makeJelly(rows: number): FxProgram {
 			for (const [rx, rr2, rh] of id.rocks) {
 				const px = rx * s.w;
 				const rad = rr2 * s.w;
-				for (let dy = -rad * rh * 2; dy <= 0; dy++)
+				for (let dy = -rad * rh * 2; dy <= 0; dy++) {
 					for (let dx = -rad; dx <= rad; dx++) {
 						const d = Math.hypot(dx / rad, dy / (rad * rh * 2));
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						const g = hash2(px + dx, bedY + dy, id.grain + 9);
 						const lit = (0.9 + g * 0.5) * (1 + Math.max(0, -dy / (rad * rh * 2)) * 0.5) * (1 + prev * 0.8);
 						paint(s, px + dx, bedY + dy + 2, dr * lit * 1.8, dg * lit * 1.8, db * lit * 1.7, 1);
 					}
+				}
 			}
 			for (const [kx, klen, kph, kthk] of id.kelp) {
 				const bx = kx * s.w;
@@ -338,15 +391,21 @@ export function makeJelly(rows: number): FxProgram {
 				pump = Math.max(pump, thrust);
 				ys[bi] -= thrust * 0.5 * b[2] * s.v.speed;
 				ys[bi] += 0.06 * (1 - thrust) * 0.5;
-				if (ys[bi] < -0.25) ys[bi] = 1.25;
-				if (ys[bi] > 1.3) ys[bi] = -0.2;
+				if (ys[bi] < -0.25) {
+					ys[bi] = 1.25;
+				}
+				if (ys[bi] > 1.3) {
+					ys[bi] = -0.2;
+				}
 
 				const cx = b[0] * s.w + Math.sin(s.t * 0.01 + b[3]) * s.w * 0.05 * s.v.drift * s.v.dir;
 				const cy = ys[bi] * s.h;
 				if (wave >= 0) {
 					const front = wave * 1.35 - 0.2;
 					const near = 1 - Math.abs(cx / s.w - front) / 0.22;
-					if (near > 0) lits[bi] = Math.max(lits[bi], Math.min(1, near * 1.5));
+					if (near > 0) {
+						lits[bi] = Math.max(lits[bi], Math.min(1, near * 1.5));
+					}
 				}
 				lits[bi] *= 0.955;
 				const fl = lits[bi];
@@ -354,7 +413,9 @@ export function makeJelly(rows: number): FxProgram {
 				const rw = s.w * 0.085 * b[2] * (1 + squeeze * 0.22);
 				const rh = s.h * 0.15 * b[2] * (1 - squeeze * 0.3);
 				const a = edge(cy, -s.h * 0.3, s.h * 1.3, s.h * 0.3);
-				if (a <= 0.01) continue;
+				if (a <= 0.01) {
+					continue;
+				}
 
 				const gr2 = br2 * (1 - fl) + 255 * fl;
 				const gg3 = bg2 * (1 - fl) + 250 * fl;
@@ -395,12 +456,15 @@ export function makeJelly(rows: number): FxProgram {
 					}
 				}
 				const hrad = rw * (1.8 + fl * 2.4);
-				for (let y = -hrad; y <= hrad; y++)
+				for (let y = -hrad; y <= hrad; y++) {
 					for (let x = -hrad; x <= hrad; x++) {
 						const d = Math.hypot(x / hrad, y / (hrad * 0.9));
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						plot(s, cx + x, cy + y, gr2, gg3, gb3, (1 - d) * (1 - d) * (0.12 + fl * 0.5) * a);
 					}
+				}
 			}
 
 			for (let i = 0; i < s.n; i++) {
@@ -416,7 +480,7 @@ export function makeJelly(rows: number): FxProgram {
 				const tw = 0.4 + 0.6 * Math.sin(p[o + 3] * 1.3);
 				plot(s, p[o], p[o + 1], br2, bg2, bb2, tw * (0.3 + glow * 0.5) * edge(p[o + 1], -1, s.h + 1, s.h * 0.2));
 			}
-			(s as any).glow = glow;
+			s.glow = glow;
 			s.out = Math.min(1, pump * 0.35 + glow * 0.85);
 			blit(s);
 		}
@@ -439,19 +503,29 @@ type Field = {
 function meadowIdent(s: FxScene): Field {
 	const r = mulberry32(s.v.seed + 3460);
 	const blades: number[][] = [];
-	for (let i = 0; i < 64; i++) blades.push([r(), r(), r(), r()]);
+	for (let i = 0; i < 64; i++) {
+		blades.push([r(), r(), r(), r()]);
+	}
 	const gustPeriod = 120 + r() * 110;
 	const horizon = 0.6 + r() * 0.12;
 	const seeds = 0.3 + r() * 0.5;
 	const hills: number[] = [];
-	for (let i = 0; i < 9; i++) hills.push(r());
+	for (let i = 0; i < 9; i++) {
+		hills.push(r());
+	}
 	const trees: number[][] = [];
-	for (let i = 0; i < 5; i++) trees.push([r(), 0.4 + r() * 0.9, r()]);
+	for (let i = 0; i < 5; i++) {
+		trees.push([r(), 0.4 + r() * 0.9, r()]);
+	}
 	const sun = 0.12 + r() * 0.76;
 	const clouds: number[][] = [];
-	for (let i = 0; i < 5; i++) clouds.push([r(), 0.1 + r() * 0.6, 0.4 + r() * 0.8]);
+	for (let i = 0; i < 5; i++) {
+		clouds.push([r(), 0.1 + r() * 0.6, 0.4 + r() * 0.8]);
+	}
 	const posts: number[] = [];
-	for (let i = 0; i < 6; i++) posts.push(r());
+	for (let i = 0; i < 6; i++) {
+		posts.push(r());
+	}
 	const fence = r() < 0.5 ? 1 : 0;
 	return { blades, gustPeriod, horizon, seeds, hills, trees, sun, clouds, posts, fence };
 }
@@ -463,7 +537,7 @@ export function makeMeadow(rows: number): FxProgram {
 		stride: 0.5,
 		init(s) {
 			const id = meadowIdent(s);
-			(s as any).id = id;
+			s.id = id;
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
 				s.parts[o] = s.rnd() * s.w;
@@ -474,7 +548,7 @@ export function makeMeadow(rows: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const id = (s as any).id as Field;
+			const id = s.id as Field;
 			const horizon = id.horizon * s.h;
 			const [gr, gg, gb] = hsl(s.v.hue, 30 + s.v.sat * 0.5, 26);
 			const [lr, lg, lb] = hsl(s.v.hue2, 34 + s.v.sat * 0.5, 62);
@@ -486,12 +560,16 @@ export function makeMeadow(rows: number): FxProgram {
 			const sunY = horizon - s.h * 0.08;
 
 			const srd = s.h * 0.075;
-			for (let dy = -srd * 3.5; dy <= srd * 3.5; dy++)
+			for (let dy = -srd * 3.5; dy <= srd * 3.5; dy++) {
 				for (let dx = -srd * 3.5; dx <= srd * 3.5; dx++) {
 					const d = Math.hypot(dx, dy) / srd;
-					if (d < 1) paint(s, sunX + dx, sunY + dy, 255, 236, 186, 1);
-					else plot(s, sunX + dx, sunY + dy, 255, 208, 130, Math.max(0, 1 - d / 3.5) ** 2.2 * 0.4);
+					if (d < 1) {
+						paint(s, sunX + dx, sunY + dy, 255, 236, 186, 1);
+					} else {
+						plot(s, sunX + dx, sunY + dy, 255, 208, 130, Math.max(0, 1 - d / 3.5) ** 2.2 * 0.4);
+					}
 				}
+			}
 			for (const [tx, th, tw2] of id.trees) {
 				const bx = tx * s.w;
 				const bh = th * s.h * 0.12;
@@ -510,11 +588,17 @@ export function makeMeadow(rows: number): FxProgram {
 				const fy = horizon + (s.h - horizon) * 0.14;
 				for (const px of id.posts) {
 					const x = px * s.w;
-					for (let k = 0; k < s.h * 0.1; k++) for (let q = -1; q <= 0; q++) paint(s, x + q, fy - k, 62, 46, 32, 0.95);
+					for (let k = 0; k < s.h * 0.1; k++) {
+						for (let q = -1; q <= 0; q++) {
+							paint(s, x + q, fy - k, 62, 46, 32, 0.95);
+						}
+					}
 				}
 				for (let rail = 0; rail < 2; rail++) {
 					const ry = fy - s.h * (0.04 + rail * 0.045);
-					for (let x = 0; x < s.w; x++) paint(s, x, ry + Math.sin(x * 0.05) * 0.6, 58, 43, 30, 0.85);
+					for (let x = 0; x < s.w; x++) {
+						paint(s, x, ry + Math.sin(x * 0.05) * 0.6, 58, 43, 30, 0.85);
+					}
 				}
 			}
 
@@ -536,7 +620,9 @@ export function makeMeadow(rows: number): FxProgram {
 				const x0 = ((i / count) * s.w + (jx - 0.5) * (s.w / count) * 2) % s.w;
 				const depth = b[1];
 				const base = horizon + depth * (s.h - horizon) * 1.02;
-				if (base > s.h + 2) continue;
+				if (base > s.h + 2) {
+					continue;
+				}
 				const len = (s.h - horizon) * (0.16 + b[0] * 0.36) * (0.5 + depth * 0.8);
 				const reach = (x0 - front) / (s.w * 0.28);
 				const hit = Math.exp(-reach * reach);
@@ -552,19 +638,24 @@ export function makeMeadow(rows: number): FxProgram {
 					const cg2 = gg * (1 - f * 0.25) + lg * f * 0.42 * lit;
 					const cb2 = gb * (1 - f * 0.25) + lb * f * 0.42 * lit;
 					paint(s, x, y, cr, cg2, cb2, (0.55 + f * 0.4) * shade);
-					if (f > 0.55 && hit > 0.3) plot(s, x, y, sr, sg, sb, (f - 0.55) * hit * 0.35 * shade);
+					if (f > 0.55 && hit > 0.3) {
+						plot(s, x, y, sr, sg, sb, (f - 0.55) * hit * 0.35 * shade);
+					}
 				}
 				if (b[3] > 0.78) {
 					const hx = x0 + bend * len * 0.9;
 					const hy = base - len;
 					const hrad = 1.2 + depth * 0.9;
-					for (let dy = -hrad * 1.5; dy <= hrad * 1.5; dy++)
+					for (let dy = -hrad * 1.5; dy <= hrad * 1.5; dy++) {
 						for (let dx = -hrad; dx <= hrad; dx++) {
 							const d = Math.hypot(dx / hrad, dy / (hrad * 1.5));
-							if (d > 1) continue;
+							if (d > 1) {
+								continue;
+							}
 							const fuzz = 0.55 + 0.45 * Math.sin(dx * 3.1 + dy * 2.3 + b[2] * 17);
 							paint(s, hx + dx, hy + dy, sr, sg, sb, (1 - d) * fuzz * 0.75 * shade);
 						}
+					}
 					plot(s, hx, hy, 255, 250, 232, 0.4 * shade * (0.4 + sunlit * 0.8));
 				}
 			}
@@ -577,10 +668,18 @@ export function makeMeadow(rows: number): FxProgram {
 				p[o + 3] += 0.04;
 				p[o] += (0.1 + hit * 1.1) * s.v.dir * s.v.drift * p[o + 2];
 				p[o + 1] += Math.sin(p[o + 3]) * 0.1 - 0.04 * p[o + 2] - hit * 0.14;
-				if (p[o] > s.w + 2) p[o] = -2;
-				if (p[o] < -2) p[o] = s.w + 2;
-				if (p[o + 1] < -2) p[o + 1] = s.h * 0.5 + s.rnd() * s.h * 0.5;
-				if (p[o + 1] > s.h + 2) p[o + 1] = horizon;
+				if (p[o] > s.w + 2) {
+					p[o] = -2;
+				}
+				if (p[o] < -2) {
+					p[o] = s.w + 2;
+				}
+				if (p[o + 1] < -2) {
+					p[o + 1] = s.h * 0.5 + s.rnd() * s.h * 0.5;
+				}
+				if (p[o + 1] > s.h + 2) {
+					p[o + 1] = horizon;
+				}
 				const a = 0.6 * edge(p[o], -2, s.w + 2, s.w * 0.12) * edge(p[o + 1], -2, s.h + 2, s.h * 0.15);
 				const spin = p[o + 3] * 0.6;
 				for (let k = 0; k < 4; k++) {

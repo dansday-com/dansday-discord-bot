@@ -23,6 +23,7 @@ import {
 	type ServerLanguage
 } from '../../../../../../languages.js';
 import { defaultGreetingMessages } from '../../../../../../localizedDefaults.js';
+import type { Client, Guild, GuildBasedChannel, GuildTextBasedChannel, RepliableInteraction, StringSelectMenuInteraction } from 'discord.js';
 export const commandDefinition = {
 	name: 'setup',
 	description: t('setup.commandDescription', 'en').slice(0, 100),
@@ -39,9 +40,14 @@ const COLOR_WARN = 0xfee75c;
 const COLOR_ERR = 0xed4245;
 const EPHEMERAL = 64;
 
-async function replySetupEphemeral(interaction: any, opts: { color: number; title?: string; description: string; linkUrl?: string; linkLabel?: string }) {
+async function replySetupEphemeral(
+	interaction: RepliableInteraction,
+	opts: { color: number; title?: string; description: string; linkUrl?: string; linkLabel?: string }
+) {
 	const embed = new EmbedBuilder().setColor(opts.color).setDescription(opts.description.slice(0, 4096));
-	if (opts.title) embed.setTitle(opts.title.slice(0, 256));
+	if (opts.title) {
+		embed.setTitle(opts.title.slice(0, 256));
+	}
 	const components: ActionRowBuilder<ButtonBuilder>[] = [];
 	if (opts.linkUrl && /^https?:\/\//i.test(opts.linkUrl.trim()) && opts.linkLabel) {
 		components.push(
@@ -59,15 +65,21 @@ async function replySetupEphemeral(interaction: any, opts: { color: number; titl
 
 function findActiveOwnerInvite(invites: { account_type: string; used_by: unknown; used_at: unknown; expires_at: unknown; token: string }[]) {
 	for (const inv of invites) {
-		if (inv.account_type !== 'owner') continue;
-		if (inv.used_by || inv.used_at) continue;
-		if (inv.expires_at && isUtcSqlExpired(inv.expires_at as string | Date)) continue;
+		if (inv.account_type !== 'owner') {
+			continue;
+		}
+		if (inv.used_by || inv.used_at) {
+			continue;
+		}
+		if (inv.expires_at && isUtcSqlExpired(inv.expires_at as string | Date)) {
+			continue;
+		}
 		return inv;
 	}
 	return null;
 }
 
-function isSetupAllowed(interaction: any) {
+function isSetupAllowed(interaction: RepliableInteraction<'cached'>) {
 	const isOwner = interaction.member?.id === interaction.guild?.ownerId;
 	const hasAdministrator =
 		interaction.memberPermissions?.has?.(PermissionFlagsBits.Administrator) ||
@@ -82,10 +94,12 @@ async function hasSavedServerLanguage(serverId: number) {
 	return isServerLanguage(settings.language);
 }
 
-async function suggestedSetupLanguage(guild: any): Promise<ServerLanguage> {
+async function suggestedSetupLanguage(guild: Guild): Promise<ServerLanguage> {
 	const botConfig = getBotConfig();
 	const server = botConfig ? await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null) : null;
-	if (server && (await hasSavedServerLanguage(server.id))) return getServerLanguage(guild.id);
+	if (server && (await hasSavedServerLanguage(server.id))) {
+		return getServerLanguage(guild.id);
+	}
 	return serverLanguageFromDiscordLocale(guild.preferredLocale) ?? (await getServerLanguage(guild.id));
 }
 
@@ -93,7 +107,7 @@ function setupCategoryNames(botName: string) {
 	return new Set([SETUP_MENU_CATEGORY_NAME.replace('{botName}', botName), ...SERVER_LANGUAGE_CODES.map((l) => t('setup.categoryName', l, { botName }))]);
 }
 
-function channelNameKey(name: unknown) {
+function channelNameKey(name: string) {
 	return String(name ?? '')
 		.toLowerCase()
 		.replace(/\s+/g, '-');
@@ -105,45 +119,71 @@ function setupChannelNames(def: (typeof SETUP_CHANNEL_DEFS)[number]) {
 
 const pendingRenames = new Map<string, string>();
 
-function renameIfNeeded(channel: any, name: string) {
-	if (!channel) return;
+function renameIfNeeded(channel: GuildBasedChannel, name: string) {
+	if (!channel) {
+		return;
+	}
 	const current = pendingRenames.get(channel.id) ?? channel.name;
 	const same = channel.type === ChannelType.GuildText ? channelNameKey(current) === channelNameKey(name) : current === name;
-	if (same) return;
+	if (same) {
+		return;
+	}
 	pendingRenames.set(channel.id, name);
 	channel
 		.setName(name)
-		.catch((err: any) => logger.log(`⚠️ Could not rename #${channel.name} to ${name}: ${err.message}`))
+		.catch((err) => logger.log(`⚠️ Could not rename #${channel.name} to ${name}: ${err.message}`))
 		.finally(() => {
-			if (pendingRenames.get(channel.id) === name) pendingRenames.delete(channel.id);
+			if (pendingRenames.get(channel.id) === name) {
+				pendingRenames.delete(channel.id);
+			}
 		});
 }
 
-async function syncSetupChannels(guild: any, serverId: number, lang: ServerLanguage, botName: string, create: boolean) {
+type SetupChannels<M> = { channelMap: Record<string, string>; createdKeys: string[]; menuChannel: M };
+
+function syncSetupChannels(guild: Guild, serverId: number, lang: ServerLanguage, botName: string, create: true): Promise<SetupChannels<GuildTextBasedChannel>>;
+function syncSetupChannels(
+	guild: Guild,
+	serverId: number,
+	lang: ServerLanguage,
+	botName: string,
+	create: boolean
+): Promise<SetupChannels<GuildTextBasedChannel | null> | null>;
+async function syncSetupChannels(
+	guild: Guild,
+	serverId: number,
+	lang: ServerLanguage,
+	botName: string,
+	create: boolean
+): Promise<SetupChannels<GuildTextBasedChannel | null> | null> {
 	const categoryNames = setupCategoryNames(botName);
 	const categoryName = t('setup.categoryName', lang, { botName });
 	const storedCategories = await db.getCategoriesForServer(serverId).catch(() => []);
 	const storedChannels = await db.getChannelsForServer(serverId).catch(() => []);
 
 	const liveChannel = async (discordId: string) => {
-		if (!discordId) return null;
+		if (!discordId) {
+			return null;
+		}
 		return guild.channels.fetch(discordId).catch(() => null);
 	};
 
 	const storedCategory = storedCategories.find((c: { name: string | null }) => c.name != null && categoryNames.has(c.name));
 	let menuCategory = storedCategory ? await liveChannel(storedCategory.discord_category_id) : null;
 	if (!menuCategory) {
-		menuCategory = guild.channels.cache.find((c: any) => c.type === ChannelType.GuildCategory && categoryNames.has(c.name)) ?? null;
+		menuCategory = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && categoryNames.has(c.name)) ?? null;
 	}
 	if (!menuCategory) {
 		const menuNames = setupChannelNames(SETUP_CHANNEL_DEFS.find((d) => d.settingsKey === 'menu')!);
 		const existingMenu = guild.channels.cache.find(
-			(c: any) => c.type === ChannelType.GuildText && c.parent?.type === ChannelType.GuildCategory && menuNames.has(channelNameKey(c.name))
+			(c) => c.type === ChannelType.GuildText && c.parent?.type === ChannelType.GuildCategory && menuNames.has(channelNameKey(c.name))
 		);
 		menuCategory = existingMenu?.parent ?? null;
 	}
 
-	if (!menuCategory && !create) return null;
+	if (!menuCategory && !create) {
+		return null;
+	}
 
 	if (!menuCategory) {
 		menuCategory = await guild.channels.create({
@@ -164,7 +204,7 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 
 	const channelMap: Record<string, string> = {};
 	const createdKeys: string[] = [];
-	let menuChannel: any = null;
+	let menuChannel: GuildTextBasedChannel | null = null;
 
 	for (const def of SETUP_CHANNEL_DEFS) {
 		const names = setupChannelNames(def);
@@ -179,8 +219,7 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 
 		let ch = storedRow ? await liveChannel(storedRow.discord_channel_id) : null;
 		if (!ch) {
-			ch =
-				guild.channels.cache.find((c: any) => c.type === ChannelType.GuildText && names.has(channelNameKey(c.name)) && c.parentId === menuCategory.id) ?? null;
+			ch = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && names.has(channelNameKey(c.name)) && c.parentId === menuCategory.id) ?? null;
 		}
 
 		if (ch) {
@@ -197,32 +236,40 @@ async function syncSetupChannels(guild: any, serverId: number, lang: ServerLangu
 		}
 
 		channelMap[def.settingsKey] = ch.id;
-		if (def.settingsKey === 'menu') menuChannel = ch;
+		if (def.settingsKey === 'menu') {
+			menuChannel = ch as GuildTextBasedChannel;
+		}
 	}
 
 	return { channelMap, createdKeys, menuChannel };
 }
 
-export async function syncServerMenu(client: any, guildId: string) {
+export async function syncServerMenu(client: Client<true>, guildId: string) {
 	const lang = await getServerLanguage(guildId);
 	const guild = client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId).catch(() => null));
 	const botConfig = getBotConfig();
-	if (!guild || !botConfig) return;
+	if (!guild || !botConfig) {
+		return;
+	}
 	const server = await db.getServerByDiscordId(botConfig.id, guildId);
-	if (!server) return;
+	if (!server) {
+		return;
+	}
 
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
 	const synced = await syncSetupChannels(guild, server.id, lang, embedConfig.NICKNAME, false);
-	if (synced?.menuChannel) await refreshInterfaceInChannel(synced.menuChannel, client, { sendIfMissing: false });
-}
-
-export async function syncAllServerMenus(client: any) {
-	for (const guild of client.guilds.cache.values()) {
-		await syncServerMenu(client, guild.id).catch((err: any) => logger.log(`⚠️ Menu sync failed for ${guild.name}: ${err.message}`));
+	if (synced?.menuChannel) {
+		await refreshInterfaceInChannel(synced.menuChannel, client, { sendIfMissing: false });
 	}
 }
 
-export async function execute(interaction: any, _client: any) {
+export async function syncAllServerMenus(client: Client<true>) {
+	for (const guild of client.guilds.cache.values()) {
+		await syncServerMenu(client, guild.id).catch((err) => logger.log(`⚠️ Menu sync failed for ${guild.name}: ${err.message}`));
+	}
+}
+
+export async function execute(interaction: any, _client: unknown) {
 	const gid = interaction.guild?.id ?? '';
 	const uid = interaction.user?.id ?? '';
 
@@ -242,7 +289,9 @@ export async function execute(interaction: any, _client: any) {
 			.setColor(embedConfig.COLOR)
 			.setTitle(await translate('setup.language.title', gid, uid))
 			.setDescription(await translate('setup.language.description', gid, uid));
-		if (embedConfig.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+		if (embedConfig.FOOTER) {
+			embed.setFooter({ text: embedConfig.FOOTER });
+		}
 
 		const select = new StringSelectMenuBuilder()
 			.setCustomId(SETUP_LANGUAGE_SELECT_ID)
@@ -260,7 +309,7 @@ export async function execute(interaction: any, _client: any) {
 			components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
 			flags: EPHEMERAL
 		});
-	} catch (error: any) {
+	} catch (error) {
 		const errorMsg = await translate('interface.panel.error', gid, uid, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
 			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLOR_ERR).setDescription(errorMsg)], components: [] }).catch(() => null);
@@ -270,7 +319,7 @@ export async function execute(interaction: any, _client: any) {
 	}
 }
 
-export async function handleSetupLanguageSelect(interaction: any, client: any) {
+export async function handleSetupLanguageSelect(interaction: StringSelectMenuInteraction<'cached'>, client: Client<true>) {
 	const gid = interaction.guild?.id ?? '';
 	const uid = interaction.user?.id ?? '';
 
@@ -285,7 +334,9 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 		}
 
 		const lang = interaction.values?.[0];
-		if (!isServerLanguage(lang)) return;
+		if (!isServerLanguage(lang)) {
+			return;
+		}
 
 		await interaction.update({
 			embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(t('setup.language.working', lang, { language: serverLanguageLabel(lang) }))],
@@ -430,24 +481,19 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 			channel_ids: notifChannelIds
 		});
 
-		const channelSummary =
-			(await translate('setup.language.applied', gid, uid, { language: serverLanguageLabel(lang) })) +
-			'\n' +
-			(createdKeys.length
-				? await translate('interface.panel.setupChannelsCreated', gid, uid, { count: createdKeys.length })
-				: await translate('interface.panel.setupChannelsAllPresent', gid, uid));
+		const languageLine = await translate('setup.language.applied', gid, uid, { language: serverLanguageLabel(lang) });
+		const channelsLine = createdKeys.length
+			? await translate('interface.panel.setupChannelsCreated', gid, uid, { count: createdKeys.length })
+			: await translate('interface.panel.setupChannelsAllPresent', gid, uid);
+		const channelSummary = `${languageLine}\n${channelsLine}`;
 
 		const accounts = await db.getServerAccountsByServer(server.id);
 		const hasOwner = accounts.some((a: { account_type: string }) => a.account_type === 'owner');
 		if (hasOwner) {
-			let description =
-				channelSummary +
-				'\n\n' +
-				(await translate('interface.panel.setupHasOwnerAccount', gid, uid, {
-					channel: menuChannel.toString()
-				}));
+			const ownerLine = await translate('interface.panel.setupHasOwnerAccount', gid, uid, { channel: menuChannel.toString() });
 			const loginUrl = `${publicSiteOrigin()}/login`;
-			description += '\n\n' + (await translate('interface.panel.setupSignInLinkLine', gid, uid, { url: loginUrl }));
+			const signInLine = await translate('interface.panel.setupSignInLinkLine', gid, uid, { url: loginUrl });
+			const description = `${channelSummary}\n\n${ownerLine}\n\n${signInLine}`;
 			const linkLabel = await translate('interface.panel.setupOpenPanelButton', gid, uid);
 			await interaction.editReply({
 				embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(description)],
@@ -472,19 +518,13 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 		}
 
 		const inviteUrl = `${origin}/register?token=${token}`;
+		const inviteLine = await translate('interface.panel.setupOwnerInviteReady', gid, uid, { channel: menuChannel.toString(), url: inviteUrl });
 		await interaction.editReply({
 			embeds: [
 				new EmbedBuilder()
 					.setColor(COLOR_OK)
 					.setTitle(await translate('interface.panel.setupOwnerInviteEmbedTitle', gid, uid))
-					.setDescription(
-						channelSummary +
-							'\n\n' +
-							(await translate('interface.panel.setupOwnerInviteReady', gid, uid, {
-								channel: menuChannel.toString(),
-								url: inviteUrl
-							}))
-					)
+					.setDescription(`${channelSummary}\n\n${inviteLine}`)
 			],
 			components: [
 				new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -495,7 +535,7 @@ export async function handleSetupLanguageSelect(interaction: any, client: any) {
 				)
 			]
 		});
-	} catch (error: any) {
+	} catch (error) {
 		const errorMsg = await translate('interface.panel.error', gid, uid, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
 			await interaction.editReply({

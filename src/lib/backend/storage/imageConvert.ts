@@ -22,8 +22,12 @@ export async function themeImageToWebp(data: Buffer, extension: ImageFormat): Pr
 			.webp(animated ? { quality: QUALITY, effort: ANIMATED_EFFORT, loop: 0 } : { quality: QUALITY, effort: STILL_EFFORT })
 			.toBuffer();
 
-		if (encoded.length >= data.length && extension === 'webp') return { data, extension };
-		if (encoded.length >= data.length && animated) return { data, extension };
+		if (encoded.length >= data.length && extension === 'webp') {
+			return { data, extension };
+		}
+		if (encoded.length >= data.length && animated) {
+			return { data, extension };
+		}
 		return { data: encoded, extension: 'webp' };
 	} catch {
 		return { data, extension };

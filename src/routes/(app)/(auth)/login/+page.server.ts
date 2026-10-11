@@ -10,7 +10,9 @@ const AUTH_QUERY_ERROR_MESSAGES: Record<string, string> = {
 };
 
 export const load: PageServerLoad = ({ locals, url }) => {
-	if (locals.user.authenticated) redirect(302, DASHBOARD_PATH);
+	if (locals.user.authenticated) {
+		redirect(302, DASHBOARD_PATH);
+	}
 	const code = url.searchParams.get('error');
 	const authQueryError = code && code in AUTH_QUERY_ERROR_MESSAGES ? AUTH_QUERY_ERROR_MESSAGES[code] : null;
 	return {

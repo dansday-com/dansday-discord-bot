@@ -1,5 +1,6 @@
 import { createClient } from 'redis';
 import { randomBytes } from 'crypto';
+import type { RedisClientType } from 'redis';
 
 export type SessionData = {
 	authenticated: boolean;
@@ -20,16 +21,20 @@ export function demoExpireRedisKey(panelSlug: string): string {
 	return `${DEMO_EXPIRE_REDIS_PREFIX}${panelSlug}`;
 }
 
-let redisClient: ReturnType<typeof createClient> | null = null;
+let redisClient: RedisClientType | null = null;
 
 export async function getRedis() {
-	if (redisClient) return redisClient;
+	if (redisClient) {
+		return redisClient;
+	}
 	const url = process.env.REDIS_URL;
-	if (!url) return null;
+	if (!url) {
+		return null;
+	}
 	try {
 		const client = createClient({ url });
 		await client.connect();
-		redisClient = client;
+		redisClient = client as RedisClientType;
 		return client;
 	} catch (_) {
 		return null;
@@ -42,10 +47,14 @@ function sessionKey(id: string) {
 
 export async function getSession(sessionId: string): Promise<SessionData | null> {
 	const redis = await getRedis();
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(sessionKey(sessionId));
-		if (!raw) return null;
+		if (!raw) {
+			return null;
+		}
 		return JSON.parse(raw) as SessionData;
 	} catch (_) {
 		return null;
@@ -54,7 +63,9 @@ export async function getSession(sessionId: string): Promise<SessionData | null>
 
 export async function setSession(sessionId: string, data: SessionData, ttlSeconds: number = SESSION_TTL): Promise<void> {
 	const redis = await getRedis();
-	if (!redis) return;
+	if (!redis) {
+		return;
+	}
 	const ttl = Math.max(5, Math.floor(ttlSeconds));
 	const expires_at = Date.now() + ttl * 1000;
 	await redis.setEx(sessionKey(sessionId), ttl, JSON.stringify({ ...data, expires_at }));
@@ -65,7 +76,9 @@ export async function setSession(sessionId: string, data: SessionData, ttlSecond
 
 export async function destroySession(sessionId: string): Promise<void> {
 	const redis = await getRedis();
-	if (!redis) return;
+	if (!redis) {
+		return;
+	}
 	const sidKey = sessionKey(sessionId);
 	try {
 		const raw = await redis.get(sidKey);
@@ -81,12 +94,16 @@ export async function destroySession(sessionId: string): Promise<void> {
 
 export async function deleteSessionsWithDemoPanelSlug(panelSlug: string): Promise<void> {
 	const redis = await getRedis();
-	if (!redis) return;
+	if (!redis) {
+		return;
+	}
 	try {
 		const keys = await redis.keys('dansday:sess:*');
 		for (const key of keys) {
 			const raw = await redis.get(key);
-			if (!raw) continue;
+			if (!raw) {
+				continue;
+			}
 			try {
 				const data = JSON.parse(raw) as SessionData;
 				if (data.is_demo === true && data.demo_panel_slug === panelSlug) {
@@ -102,10 +119,14 @@ export function newSessionId(): string {
 }
 
 export function getSessionIdFromCookie(cookieHeader: string | null): string | null {
-	if (!cookieHeader) return null;
+	if (!cookieHeader) {
+		return null;
+	}
 	for (const part of cookieHeader.split(';')) {
 		const [k, v] = part.trim().split('=');
-		if (k === COOKIE_NAME) return decodeURIComponent(v ?? '');
+		if (k === COOKIE_NAME) {
+			return decodeURIComponent(v ?? '');
+		}
 	}
 	return null;
 }

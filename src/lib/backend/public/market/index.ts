@@ -8,7 +8,9 @@ const PRICES_KEY = 'market:usd:prices';
 
 async function cacheGet(key: string): Promise<any | null> {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(key);
 		return raw != null ? JSON.parse(raw) : null;
@@ -31,9 +33,11 @@ export async function loadMovers(): Promise<{ gainers: any[]; losers: any[] }> {
 	return { gainers: cached?.gainers ?? [], losers: cached?.losers ?? [] };
 }
 
-export async function loadMarketShared(server: any, hash: string) {
+export async function loadMarketShared(server: Record<string, unknown>, hash: string) {
 	const shared = await loadItemsShared(server, hash, 'market');
-	if ('notFound' in shared || 'guest' in shared) return shared;
+	if ('notFound' in shared || 'guest' in shared) {
+		return shared;
+	}
 
 	const board = await loadMarketsBoard();
 	const { gainers, losers } = await loadMovers();
@@ -45,7 +49,7 @@ export async function loadMarketShared(server: any, hash: string) {
 
 	if (shared.member) {
 		const rows = await db.getOpenAssetPositions(shared.member.id).catch(() => []);
-		for (const p of (rows as any[]) || []) {
+		for (const p of (rows as Record<string, unknown>[]) || []) {
 			const invested = Number(p.xp_invested) || 0;
 			const buyPrice = Number(p.buy_price) || 0;
 			const market = priceMap[`${p.asset_type}:${p.asset_id}`];

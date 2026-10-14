@@ -4,18 +4,19 @@
 	import { scrollLocked } from '../../scrollLock.js';
 	import { sfx } from '../../sfx';
 	import type { NavTab } from './types';
+	import { HALF_TURN_DEGREES } from '$lib/utils/numbers.js';
 
 	let { tabs, label = 'Menu' }: { tabs: NavTab[]; label?: string } = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let hover = $state<string | null>(null);
 	let preview = $state<number | null>(null);
 
 	let pointer: number | null = null;
 	let wasOpen = false;
-	let chimed = true;
+	let hasChimed = true;
 	let releasedAt = -Infinity;
-	let restTimer: ReturnType<typeof setTimeout> | undefined;
+	let restTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 	let restX = 0;
 	let restY = 0;
 
@@ -36,7 +37,7 @@
 	function close() {
 		clearTimeout(restTimer);
 		pointer = null;
-		open = false;
+		isOpen = false;
 		hover = null;
 		preview = null;
 	}
@@ -44,15 +45,15 @@
 	afterNavigate(close);
 
 	function dismiss() {
-		if (open) {
+		if (isOpen) {
 			sfx.close();
 		}
 		close();
 	}
 
 	function unfold() {
-		open = true;
-		chimed = sfx.open();
+		isOpen = true;
+		hasChimed = sfx.open();
 	}
 
 	function keyOf(el: EventTarget | null): string | null {
@@ -79,7 +80,11 @@
 			return;
 		}
 		if (key !== hover && key && key !== 'orb') {
-			sfx.detent(Number(key.slice(1)), key[0] === 'c');
+			if (key[0] === 'c') {
+				sfx.highDetent(Number(key.slice(1)));
+			} else {
+				sfx.detent(Number(key.slice(1)));
+			}
 		}
 		hover = key;
 		restX = x;
@@ -107,8 +112,8 @@
 			return;
 		}
 		pointer = e.pointerId;
-		wasOpen = open;
-		if (!open) {
+		wasOpen = isOpen;
+		if (!isOpen) {
 			unfold();
 		}
 		track(e.clientX, e.clientY);
@@ -135,8 +140,8 @@
 			goto(href);
 		} else if (key === 'orb' && !wasOpen) {
 			hover = null;
-			if (!chimed) {
-				chimed = sfx.open();
+			if (!hasChimed) {
+				hasChimed = sfx.open();
 			}
 		} else {
 			dismiss();
@@ -160,23 +165,28 @@
 	const LABEL = 0.79;
 	const GAP = 0.012;
 	const STEPS = 8;
+	const HUB_X_PERCENT = 50;
+	const HUB_Y_PERCENT = 100;
+	const REACH_X_PERCENT = 50;
+	const REACH_Y_PERCENT = 100;
 
-	const rad = (deg: number) => (deg * Math.PI) / 180;
-	const pad = (r: number) => (Math.asin(GAP / r) * 180) / Math.PI;
-	const at = (r: number, deg: number) => `${(50 + 50 * r * Math.cos(rad(deg))).toFixed(2)}% ${(100 - 100 * r * Math.sin(rad(deg))).toFixed(2)}%`;
+	const rad = (deg: number) => (deg * Math.PI) / HALF_TURN_DEGREES;
+	const pad = (r: number) => (Math.asin(GAP / r) * HALF_TURN_DEGREES) / Math.PI;
+	const at = (r: number, deg: number) =>
+		`${(HUB_X_PERCENT + REACH_X_PERCENT * r * Math.cos(rad(deg))).toFixed(2)}% ${(HUB_Y_PERCENT - REACH_Y_PERCENT * r * Math.sin(rad(deg))).toFixed(2)}%`;
 	const arc = (r: number, from: number, to: number) => Array.from({ length: STEPS + 1 }, (_, k) => at(r, from + ((to - from) * k) / STEPS));
 
 	const wedges = $derived.by(() => {
-		const span = 180 / tabs.length;
+		const span = HALF_TURN_DEGREES / tabs.length;
 		return tabs.map((tab, i) => {
-			const start = 180 - i * span;
+			const start = HALF_TURN_DEGREES - i * span;
 			const end = start - span;
 			const mid = rad(start - span / 2);
 			return {
 				tab,
 				clip: `polygon(${[...arc(1, start - pad(1), end + pad(1)), ...arc(INNER, end + pad(INNER), start - pad(INNER))].join(', ')})`,
-				left: 50 + 50 * LABEL * Math.cos(mid),
-				top: 100 - 100 * LABEL * Math.sin(mid)
+				left: HUB_X_PERCENT + REACH_X_PERCENT * LABEL * Math.cos(mid),
+				top: HUB_Y_PERCENT - REACH_Y_PERCENT * LABEL * Math.sin(mid)
 			};
 		});
 	});
@@ -186,7 +196,7 @@
 </script>
 
 <svelte:window
-	onkeydown={(e) => open && e.key === 'Escape' && dismiss()}
+	onkeydown={(e) => isOpen && e.key === 'Escape' && dismiss()}
 	onpointerdown={press}
 	onpointermove={move}
 	onpointerup={release}
@@ -195,7 +205,7 @@
 />
 
 <div class="sm:hidden" data-sfx-off>
-	{#if open}
+	{#if isOpen}
 		<div use:scrollLocked transition:fade={{ duration: 140 }} class="fixed inset-0 z-50">
 			<button type="button" class="bg-base-content/45 absolute inset-0 size-full touch-none backdrop-blur-[4px]" aria-label="Close menu" onclick={dismiss}
 			></button>
@@ -276,13 +286,13 @@
 		type="button"
 		data-wheel="orb"
 		data-tab-id={current?.id}
-		aria-label={open ? 'Close menu' : label}
-		aria-expanded={open}
+		aria-label={isOpen ? 'Close menu' : label}
+		aria-expanded={isOpen}
 		aria-controls="nav-wheel"
 		class="ring-canvas fixed bottom-4 left-1/2 z-50 grid size-14 -translate-x-1/2 place-items-center rounded-full shadow-[0_10px_24px_-6px_color-mix(in_srgb,var(--color-primary)_75%,transparent)] ring-4 transition-transform active:scale-95 {TOUCH} {ACTIVE}"
-		onclick={(e) => !handled(e) && (open ? dismiss() : unfold())}
+		onclick={(e) => !handled(e) && (isOpen ? dismiss() : unfold())}
 	>
-		{#if open}
+		{#if isOpen}
 			<i class="fas fa-xmark text-xl"></i>
 		{:else}
 			<span class="flex flex-col items-center gap-0.5 leading-none">

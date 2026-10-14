@@ -16,6 +16,8 @@
 	type Sort = { value: string; label: string; by: (r: Row) => number | string; desc?: boolean; show?: Show };
 
 	const PAGE_SIZE = 50;
+	const UNRANKED_SORT_RANK = 9999;
+	const ROLE_PREVIEW_COUNT = 3;
 	const STATUSES = [
 		{ id: 'all', label: 'Members', suggest: 'warn' },
 		{ id: 'warned', label: 'Warned', suggest: 'clearwarns' },
@@ -50,8 +52,8 @@
 		created: { icon: 'fa-id-card text-rose-400', date: (r) => r.profile_created_at }
 	} satisfies Record<string, Show>;
 	const SORTS: Sort[] = [
-		{ value: 'rank_asc', label: 'Rank (Low → High)', by: (r) => r.rank ?? 9999, show: SHOW.rank },
-		{ value: 'rank_desc', label: 'Rank (High → Low)', by: (r) => r.rank ?? 9999, desc: true, show: SHOW.rank },
+		{ value: 'rank_asc', label: 'Rank (Low → High)', by: (r) => r.rank ?? UNRANKED_SORT_RANK, show: SHOW.rank },
+		{ value: 'rank_desc', label: 'Rank (High → Low)', by: (r) => r.rank ?? UNRANKED_SORT_RANK, desc: true, show: SHOW.rank },
 		{ value: 'level_desc', label: 'Level (High → Low)', by: (r) => r.level, desc: true },
 		{ value: 'level_asc', label: 'Level (Low → High)', by: (r) => r.level },
 		{ value: 'xp_desc', label: 'XP (High → Low)', by: (r) => r.xp, desc: true, show: SHOW.xp },
@@ -95,10 +97,10 @@
 	const q = $derived(search.trim().toLowerCase());
 	const sort = $derived(SORTS.find((s) => s.value === sortBy) ?? SORTS[0]);
 	const roleById = $derived(new Map(data.roles.map((r) => [r.id, r])));
-	const gone = $derived(status === 'banned' || status === 'left');
+	const isGone = $derived(status === 'banned' || status === 'left');
 	const whoOptions = $derived([{ value: '', label: 'Everyone' }, ...GROUPS, ...data.roles.map((r) => ({ value: r.id, label: r.name }))]);
 	const groupIds = $derived(who.startsWith('g:') ? ((data.groups as Record<string, string[]>)[who.slice(2)] ?? null) : null);
-	const groupUnset = $derived(!gone && !!GROUP_CONFIG[who] && groupIds?.length === 0);
+	const isGroupUnset = $derived(!isGone && !!GROUP_CONFIG[who] && groupIds?.length === 0);
 
 	const tabs = $derived(STATUSES.map((s) => ({ ...s, count: data.rows.filter((r) => inStatus(r, s.id)).length })));
 	const rows = $derived(
@@ -106,7 +108,7 @@
 			.filter(
 				(r) =>
 					inStatus(r, status) &&
-					(gone || inGroup(r)) &&
+					(isGone || inGroup(r)) &&
 					(!q || r.name.toLowerCase().includes(q) || (r.username ?? '').toLowerCase().includes(q) || r.id.includes(q))
 			)
 			.sort((a, b) => {
@@ -121,7 +123,7 @@
 	const pageRows = $derived(rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE));
 	const pickable = $derived(status === 'left' ? [] : rows.filter((r) => !r.locked).map((r) => r.id));
 	const pageIds = $derived(status === 'left' ? [] : pageRows.filter((r) => !r.locked).map((r) => r.id));
-	const pageAllSelected = $derived(pageIds.length > 0 && pageIds.every((id) => selected.has(id)));
+	const isWholePageSelected = $derived(pageIds.length > 0 && pageIds.every((id) => selected.has(id)));
 	const targets = $derived(data.rows.filter((r) => selected.has(r.id)));
 
 	$effect(() => {
@@ -179,7 +181,7 @@
 
 	function togglePage() {
 		const next = new Set(selected);
-		if (pageAllSelected) {
+		if (isWholePageSelected) {
 			for (const id of pageIds) {
 				next.delete(id);
 			}
@@ -228,7 +230,7 @@
 			/>
 		</div>
 		<div class="flex flex-col gap-3 sm:flex-row">
-			{#if !gone}
+			{#if !isGone}
 				<LabeledSelect appearance="members-toolbar" options={whoOptions} bind:value={who} ariaLabel="Role filter" />
 			{/if}
 			<LabeledSelect appearance="members-toolbar" options={SORTS} bind:value={sortBy} ariaLabel="Sort members" />
@@ -238,7 +240,7 @@
 	<div class="text-ash-300 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
 		{#if status !== 'left'}
 			<label class="flex items-center gap-2">
-				<input type="checkbox" class="checkbox checkbox-sm" checked={pageAllSelected} disabled={pageIds.length === 0} onchange={togglePage} />
+				<input type="checkbox" class="checkbox checkbox-sm" checked={isWholePageSelected} disabled={pageIds.length === 0} onchange={togglePage} />
 				Select page
 			</label>
 			{#if pickable.length > pageIds.length && selected.size < pickable.length}
@@ -250,7 +252,7 @@
 		<span class="text-ash-500 ml-auto text-xs">{rows.length.toLocaleString()} shown</span>
 	</div>
 
-	{#if groupUnset}
+	{#if isGroupUnset}
 		<div class="text-ash-400 border-ash-600 bg-ash-800/60 rounded-lg border px-4 py-3 text-sm">
 			<p class="text-ash-300 mb-1">No roles are set for this group yet.</p>
 			<a
@@ -315,7 +317,7 @@
 							{/if}
 							{#if r.role_ids.length > 0}
 								<div class="mt-1 flex flex-wrap gap-1">
-									{#each r.role_ids.slice(0, 3) as rid (rid)}
+									{#each r.role_ids.slice(0, ROLE_PREVIEW_COUNT) as rid (rid)}
 										{@const role = roleById.get(rid)}
 										{#if role}
 											<span class="border-ash-500 text-ash-200 inline-flex max-w-32 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6rem]">
@@ -323,7 +325,9 @@
 											</span>
 										{/if}
 									{/each}
-									{#if r.role_ids.length > 3}<span class="text-ash-400 self-center text-[0.6rem]">+{r.role_ids.length - 3}</span>{/if}
+									{#if r.role_ids.length > ROLE_PREVIEW_COUNT}<span class="text-ash-400 self-center text-[0.6rem]"
+											>+{r.role_ids.length - ROLE_PREVIEW_COUNT}</span
+										>{/if}
 								</div>
 							{/if}
 						</div>

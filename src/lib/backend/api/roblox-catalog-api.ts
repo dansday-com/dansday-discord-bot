@@ -4,6 +4,13 @@ import { getSearchItemsDetails } from 'rozod/lib/endpoints/catalogv2.js';
 import { ROBLOX_CATALOG_ABORT_MS, ROBLOX_CATALOG_NEXT_PAGE_MS, ROBLOX_CATALOG_POLL_MS } from '../config.js';
 import { isUsableRobloxThumbnail } from '../../roblox-thumbnails.js';
 import { logger } from '../../utils/index.js';
+import { HTTP } from '../../http.js';
+import { SECOND_MS } from '../../utils/time.js';
+
+const THUMBNAIL_BATCH_SIZE = 100;
+const CATALOG_DETAILS_BATCH_SIZE = 100;
+const RETRY_ATTEMPTS = 3;
+const THUMBNAIL_RETRY_BACKOFF_SECONDS = 30;
 
 export type RobloxCatalogItem = {
 	id: number;
@@ -106,7 +113,7 @@ async function fetchCatalogJson(params: Record<string, unknown>): Promise<{ data
 		} catch (err: unknown) {
 			const status = (err as { response?: { status?: number } })?.response?.status;
 			const msg = err instanceof Error ? (err as Error).message : String(err);
-			logger.log(`⚠️ [roblox-api] catalog fetch failed ${status ?? '?'} — ${msg}, retrying in ${ROBLOX_CATALOG_POLL_MS / 1000}s...`);
+			logger.log(`⚠️ [roblox-api] catalog fetch failed ${status ?? '?'} — ${msg}, retrying in ${ROBLOX_CATALOG_POLL_MS / SECOND_MS}s...`);
 			await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
 		}
 	}
@@ -129,7 +136,7 @@ export async function fetchCatalogFirstPage(extraParams: Record<string, unknown>
 }
 
 export async function streamCatalogPages(extraParams: Record<string, unknown>, onPage: (items: RobloxCatalogItem[]) => Promise<void>): Promise<void> {
-	let cursor: string | undefined;
+	let cursor: string | null = null;
 
 	while (true) {
 		const params: Record<string, unknown> = { limit: 120, ...extraParams };
@@ -148,7 +155,7 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 			await onPage(items);
 		}
 
-		cursor = nextPageCursor ?? undefined;
+		cursor = nextPageCursor ?? null;
 		if (!cursor) {
 			break;
 		}
@@ -163,9 +170,9 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 		return out;
 	}
 
-	for (let i = 0; i < ids.length; i += 100) {
-		const chunk = ids.slice(i, i + 100);
-		const data = await fetchWithRetry('https://thumbnails.roblox.com/v1/assets', {
+	for (let i = 0; i < ids.length; i += THUMBNAIL_BATCH_SIZE) {
+		const chunk = ids.slice(i, i + THUMBNAIL_BATCH_SIZE);
+		const data = await fetchWithRetry<{ data?: { targetId?: unknown; imageUrl?: unknown; state?: unknown }[] }>('https://thumbnails.roblox.com/v1/assets', {
 			assetIds: chunk.join(','),
 			size: '420x420',
 			format: 'Png',
@@ -186,21 +193,22 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 	return out;
 }
 
-async function fetchWithRetry(url: string, params: Record<string, unknown>): Promise<any> {
-	for (let attempt = 0; attempt < 3; attempt++) {
+async function fetchWithRetry<T>(url: string, params: Record<string, unknown>): Promise<T | undefined> {
+	for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
 		try {
-			const res = await axios.get(url, { params, headers: ROBLOX_HEADERS, timeout: 15_000 });
+			const res = await axios.get<T>(url, { params, headers: ROBLOX_HEADERS, timeout: 15_000 });
 			return res.data;
 		} catch (err) {
 			const status = (err as AxiosError)?.response?.status;
 			const body = (err as AxiosError)?.response?.data ? JSON.stringify((err as AxiosError).response!.data) : (err as AxiosError)?.message;
-			if ((status === 503 || status === 429) && attempt < 2) {
-				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
+			if ((status === HTTP.SERVICE_UNAVAILABLE || status === HTTP.TOO_MANY_REQUESTS) && attempt < 2) {
+				await new Promise((r) => setTimeout(r, THUMBNAIL_RETRY_BACKOFF_SECONDS * SECOND_MS * (attempt + 1)));
 				continue;
 			}
 			throw new Error(`[roblox-api] thumbnails failed ${status} — ${body}`);
 		}
 	}
+	return undefined;
 }
 
 export type RobloxCatalogItemRef = {
@@ -213,7 +221,7 @@ let catalogCsrfToken: string | null = null;
 async function postCatalogItemDetails(refs: RobloxCatalogItemRef[]): Promise<Record<string, unknown>[]> {
 	const body = { items: refs.map((r) => ({ itemType: r.itemType, id: r.id })) };
 
-	for (let attempt = 0; attempt < 3; attempt++) {
+	for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
 		try {
 			const res = await axios.post('https://catalog.roblox.com/v1/catalog/items/details', body, {
 				headers: { ...ROBLOX_HEADERS, 'Content-Type': 'application/json', ...(catalogCsrfToken ? { 'x-csrf-token': catalogCsrfToken } : {}) },
@@ -223,11 +231,11 @@ async function postCatalogItemDetails(refs: RobloxCatalogItemRef[]): Promise<Rec
 		} catch (err) {
 			const status = (err as AxiosError)?.response?.status;
 			const freshToken = (err as AxiosError)?.response?.headers?.['x-csrf-token'];
-			if (status === 403 && typeof freshToken === 'string' && freshToken && freshToken !== catalogCsrfToken) {
+			if (status === HTTP.FORBIDDEN && typeof freshToken === 'string' && freshToken && freshToken !== catalogCsrfToken) {
 				catalogCsrfToken = freshToken;
 				continue;
 			}
-			if ((status === 429 || status === 503) && attempt < 2) {
+			if ((status === HTTP.TOO_MANY_REQUESTS || status === HTTP.SERVICE_UNAVAILABLE) && attempt < 2) {
 				await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS * (attempt + 1)));
 				continue;
 			}
@@ -242,8 +250,8 @@ async function postCatalogItemDetails(refs: RobloxCatalogItemRef[]): Promise<Rec
 export async function fetchCatalogItemsByRefs(refs: RobloxCatalogItemRef[], knownThumbnails?: Map<number, string | null>): Promise<RobloxCatalogItem[]> {
 	const out: RobloxCatalogItem[] = [];
 
-	for (let i = 0; i < refs.length; i += 100) {
-		const rows = await postCatalogItemDetails(refs.slice(i, i + 100));
+	for (let i = 0; i < refs.length; i += CATALOG_DETAILS_BATCH_SIZE) {
+		const rows = await postCatalogItemDetails(refs.slice(i, i + CATALOG_DETAILS_BATCH_SIZE));
 		const items = filterVerifiedCreators(rows.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 		if (items.length === 0) {
 			continue;

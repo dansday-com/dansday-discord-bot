@@ -14,7 +14,7 @@ const NEW_YEAR_MS = Date.UTC(2026, 0, 1, 12, 30, 45);
 
 test('formatTimestamp prints day first in UTC', () => {
 	assert.equal(formatTimestamp(NEW_YEAR_MS), '01/01/2026 12:30');
-	assert.equal(formatTimestamp(NEW_YEAR_MS, true), '01/01/2026 12:30:45');
+	assert.equal(formatTimestamp(NEW_YEAR_MS, 'second'), '01/01/2026 12:30:45');
 });
 
 test('toMySQLDateTime converts ISO strings and dates, and rejects text that is not a date', () => {

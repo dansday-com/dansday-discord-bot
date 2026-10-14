@@ -11,14 +11,14 @@
 		server: { slug: string; name?: string | null; server_icon?: string | null; join_available?: boolean };
 	} = $props();
 
-	const basePath = $derived((page.data as any)?.serverBasePath ?? publicServerBasePath(server.slug, page.url.hostname));
+	const basePath = $derived(page.data.serverBasePath ?? publicServerBasePath(server.slug, page.url.hostname));
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
 	const isAccount = $derived(/\/account(\/|$)/.test(pathNorm));
 	const isOverview = $derived(!isLeaderboard && !isMembers && !isAccount);
 
-	const accountHash = $derived((page.data as any)?.hash || pathNorm.match(/\/account\/(?:\w+\/)*([0-9a-f]{16})$/)?.[1] || '');
+	const accountHash = $derived(page.data.hash || pathNorm.match(/\/account\/(?:\w+\/)*([0-9a-f]{16})$/)?.[1] || '');
 	const accountHref = $derived(accountHash ? `${basePath}/account/profile/stats/${accountHash}` : `${basePath}/account`);
 
 	let hasStoredCard = $state(false);

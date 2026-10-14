@@ -1,7 +1,7 @@
 import { cleanupDemoSession } from './seedDemo.js';
 import { DEMO_EXPIRE_REDIS_PREFIX, deleteSessionsWithDemoPanelSlug, getRedis } from '../../utils/session.js';
 
-let listenerStarted = false;
+let hasListenerStarted = false;
 
 function expiredKeyToDemoSlug(key: string): string | null {
 	if (!key.startsWith(DEMO_EXPIRE_REDIS_PREFIX)) {
@@ -15,7 +15,7 @@ function expiredKeyToDemoSlug(key: string): string | null {
 }
 
 export async function startDemoSessionExpiryListener(): Promise<void> {
-	if (listenerStarted) {
+	if (hasListenerStarted) {
 		return;
 	}
 	const url = process.env.REDIS_URL;
@@ -29,7 +29,7 @@ export async function startDemoSessionExpiryListener(): Promise<void> {
 			return;
 		}
 
-		listenerStarted = true;
+		hasListenerStarted = true;
 
 		try {
 			await redis.configSet('notify-keyspace-events', 'Ex');
@@ -61,7 +61,7 @@ export async function startDemoSessionExpiryListener(): Promise<void> {
 			}
 		});
 	} catch (e) {
-		listenerStarted = false;
+		hasListenerStarted = false;
 		console.warn('[demo-expiry] Failed to start Redis expiry listener:', e);
 	}
 }

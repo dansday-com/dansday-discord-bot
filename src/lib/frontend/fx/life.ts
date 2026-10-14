@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;

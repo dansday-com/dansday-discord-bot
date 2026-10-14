@@ -25,7 +25,7 @@ function serialize(payload: unknown): string {
 		.replace(/\u2029/g, '\\u2029');
 }
 
-function payload(server: LinkEmbedServer, url: string, subtitle: string, lines: string[]) {
+function payload(server: LinkEmbedServer, { url, subtitle, lines }: EmbedText) {
 	const link = url.replace(/\(/g, '%28').replace(/\)/g, '%29');
 	const heading = { type: 10, content: `## [${md(server.name)}](${link})\n${md(subtitle)}` };
 	const buttons = [
@@ -48,9 +48,11 @@ function payload(server: LinkEmbedServer, url: string, subtitle: string, lines: 
 	};
 }
 
-export function serverLinkEmbed(server: LinkEmbedServer, url: string, subtitle: string, lines: string[]): string {
+type EmbedText = { url: string; subtitle: string; lines: string[] };
+
+export function serverLinkEmbed(server: LinkEmbedServer, { url, subtitle, lines }: EmbedText): string {
 	for (let n = lines.length; n >= 0; n--) {
-		const json = serialize(payload(server, url, subtitle, lines.slice(0, n)));
+		const json = serialize(payload(server, { url, subtitle, lines: lines.slice(0, n) }));
 		if (new TextEncoder().encode(json).length <= MAX_BYTES) {
 			return `<script id="discord:component-embed" type="application/json">${json}</script>`;
 		}

@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
 import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
+import { HTTP } from '$lib/http.js';
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) {
@@ -26,17 +27,17 @@ function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: nu
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
 	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const accountId = Number(params.accountId);
 	const account = await db.getServerAccountById(accountId);
 	if (!account || account.server_id !== serverId) {
-		return json({ success: false, error: 'Account not found' }, { status: 404 });
+		return json({ success: false, error: 'Account not found' }, { status: HTTP.NOT_FOUND });
 	}
 
 	if (isTargetSelfServerAccount(locals, account.id)) {
-		return json({ success: false, error: 'Cannot modify your own account' }, { status: 400 });
+		return json({ success: false, error: 'Cannot modify your own account' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const denied = guardAccountAction(locals, account.account_type);
@@ -46,7 +47,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 	const { is_frozen } = await request.json();
 	if (typeof is_frozen !== 'boolean') {
-		return json({ success: false, error: 'is_frozen must be a boolean' }, { status: 400 });
+		return json({ success: false, error: 'is_frozen must be a boolean' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	await db.updateServerAccount(accountId, { is_frozen });
@@ -71,17 +72,17 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
 	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const accountId = Number(params.accountId);
 	const account = await db.getServerAccountById(accountId);
 	if (!account || account.server_id !== serverId) {
-		return json({ success: false, error: 'Account not found' }, { status: 404 });
+		return json({ success: false, error: 'Account not found' }, { status: HTTP.NOT_FOUND });
 	}
 
 	if (isTargetSelfServerAccount(locals, account.id)) {
-		return json({ success: false, error: 'Cannot delete your own account' }, { status: 400 });
+		return json({ success: false, error: 'Cannot delete your own account' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const denied = guardAccountAction(locals, account.account_type);

@@ -1,4 +1,5 @@
 export const DEFAULT_TOOL_TIMEOUT_MS = 20_000;
+const ERROR_DETAIL_PREVIEW_LENGTH = 200;
 
 export function resolveToolUrl(rawUrl: string, path: string) {
 	const trimmed = String(rawUrl ?? '')
@@ -10,7 +11,9 @@ export function resolveToolUrl(rawUrl: string, path: string) {
 	return trimmed.endsWith(path) ? trimmed : `${trimmed}${path}`;
 }
 
-export async function postJson(url: string, apiKey: string, body: unknown, timeoutMs = DEFAULT_TOOL_TIMEOUT_MS) {
+type ToolEndpoint = { url: string; apiKey: string };
+
+export async function postJson({ url, apiKey }: ToolEndpoint, body: unknown, timeoutMs = DEFAULT_TOOL_TIMEOUT_MS) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -24,10 +27,10 @@ export async function postJson(url: string, apiKey: string, body: unknown, timeo
 
 		if (!res.ok) {
 			const detail = await res.text().catch(() => '');
-			const error: any = new Error(`HTTP ${res.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
-			error.status = res.status;
-			error.body = detail;
-			throw error;
+			throw Object.assign(new Error(`HTTP ${res.status}${detail ? ` ${detail.slice(0, ERROR_DETAIL_PREVIEW_LENGTH)}` : ''}`), {
+				status: res.status,
+				body: detail
+			});
 		}
 
 		return await res.json();

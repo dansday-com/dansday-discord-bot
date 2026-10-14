@@ -1,4 +1,24 @@
 import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES, isServerLanguage, serverLanguageLabel, type ServerLanguage } from './languages.js';
+import { BYTES_PER_MB, BASE36_RADIX } from './utils/numbers.js';
+
+const UPLOAD_CHUNK_MB = 8;
+const NO_PERMISSIONS = 0n;
+const PERMISSION_BIT = 1n;
+export const TOP_BOOST_LEVEL = 3;
+export const NEAR_LIMIT_SHARE = 0.9;
+const MID_BOOST_LEVEL = 2;
+const TOP_BOOST_UPLOAD_MB = 100;
+const MID_BOOST_UPLOAD_MB = 50;
+const BASE_UPLOAD_MB = 20;
+const PART_ID_LENGTH = 8;
+const RANDOM_FRACTION_START = 2;
+const CUSTOM_ID_BASE_PARTS = 4;
+const CUSTOM_ID_POST_PARTS = 5;
+const HEX_COLOR_LENGTH = 7;
+const ROLE_ID_MAX_LENGTH = 25;
+const BUTTON_STYLE_CODES = { primary: 1, secondary: 2, success: 3, danger: 4, link: 5 } as const;
+const TEXT_DISPLAY_TYPE = 10;
+const SUMMARY_MAX_LENGTH = 140;
 
 export const MESSAGE_UPLOAD_ROOTS = { server: 'server-messages', global: 'global-messages' } as const;
 export const MESSAGE_CUSTOM_ID_PREFIXES = { server: 'msg', global: 'gmsg' } as const;
@@ -48,9 +68,7 @@ export const MESSAGE_VIDEO_TYPES: Record<string, (typeof MESSAGE_VIDEO_EXTENSION
 };
 export const MESSAGE_VIDEO_ACCEPT = Object.keys(MESSAGE_VIDEO_TYPES).join(',');
 export const MESSAGE_VIDEO_FORMATS_LABEL = 'MP4, WEBM, MOV';
-export const MESSAGE_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
-
-const MB = 1024 * 1024;
+export const MESSAGE_UPLOAD_CHUNK_BYTES = UPLOAD_CHUNK_MB * BYTES_PER_MB;
 
 const UNSAFE_ROLE_PERMISSION_BITS = {
 	kickMembers: 1,
@@ -72,11 +90,11 @@ const UNSAFE_ROLE_PERMISSION_BITS = {
 	manageThreads: 34,
 	moderateMembers: 40
 } as const;
-const UNSAFE_ROLE_PERMISSIONS = Object.values(UNSAFE_ROLE_PERMISSION_BITS).reduce((mask, bit) => mask | (1n << BigInt(bit)), 0n);
+const UNSAFE_ROLE_PERMISSIONS = Object.values(UNSAFE_ROLE_PERMISSION_BITS).reduce((mask, bit) => mask | (PERMISSION_BIT << BigInt(bit)), NO_PERMISSIONS);
 
 export function isSelfAssignableRole(permissions: unknown): boolean {
 	try {
-		return (BigInt(String(permissions ?? '0') || '0') & UNSAFE_ROLE_PERMISSIONS) === 0n;
+		return (BigInt(String(permissions ?? '0') || '0') & UNSAFE_ROLE_PERMISSIONS) === NO_PERMISSIONS;
 	} catch {
 		return false;
 	}
@@ -84,7 +102,7 @@ export function isSelfAssignableRole(permissions: unknown): boolean {
 
 export function messageUploadLimit(boostLevel: unknown): number {
 	const level = Number(boostLevel) || 0;
-	return (level >= 3 ? 100 : level >= 2 ? 50 : 20) * MB;
+	return (level >= TOP_BOOST_LEVEL ? TOP_BOOST_UPLOAD_MB : level >= MID_BOOST_LEVEL ? MID_BOOST_UPLOAD_MB : BASE_UPLOAD_MB) * BYTES_PER_MB;
 }
 
 export const MESSAGE_PLACEHOLDERS = [
@@ -180,7 +198,15 @@ export type MessageDoc = {
 
 export type MessageComponent = { kind: 'button'; button: MessageButton } | { kind: 'select'; select: SelectBlock };
 
-export type MessagePayload = { v2: boolean; content: string | null; embeds: any[]; components: any[]; files: MessageFile[]; empty: boolean };
+export type PayloadComponent = { type: number; content?: unknown; components?: PayloadComponent[]; [field: string]: unknown };
+export type MessagePayload = {
+	v2: boolean;
+	content: string | null;
+	embeds: Record<string, unknown>[];
+	components: PayloadComponent[];
+	files: MessageFile[];
+	empty: boolean;
+};
 
 export type MessageRenderOptions = {
 	scope?: MessageScope;
@@ -206,7 +232,10 @@ const UPLOAD_KEY = new RegExp(
 );
 
 export function newMessagePartId(): string {
-	return Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+	return Math.random()
+		.toString(BASE36_RADIX)
+		.slice(RANDOM_FRACTION_START, RANDOM_FRACTION_START + PART_ID_LENGTH)
+		.padEnd(PART_ID_LENGTH, '0');
 }
 
 export function isMessageUploadKey(value: unknown, owner?: MessageOwner): boolean {
@@ -228,8 +257,8 @@ export function messageFilePreviewUrl(value: string): string {
 	return isMessageUploadKey(value) ? `/api/uploads/${value}` : value;
 }
 
-function uploadName(key: string, spoiler = false): string {
-	return `${spoiler ? 'SPOILER_' : ''}${key.slice(key.lastIndexOf('/') + 1)}`;
+function uploadName(key: string, isSpoiler = false): string {
+	return `${isSpoiler ? 'SPOILER_' : ''}${key.slice(key.lastIndexOf('/') + 1)}`;
 }
 
 export function pickText(value: Localized | undefined, lang: ServerLanguage, base: ServerLanguage): string {
@@ -259,15 +288,10 @@ export function parseMessageEmoji(value: string): { id?: string; name: string; a
 	return UNICODE_EMOJI.test(raw) ? { name: raw } : null;
 }
 
-export function messageCustomId(
-	scope: MessageScope,
-	messageId: number,
-	partId: string,
-	lang: ServerLanguage,
-	pinned = false,
-	post: number | null = null
-): string {
-	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}${pinned ? '*' : ''}${post ? `|${post}` : ''}`;
+type CustomIdParts = { messageId: number; partId: string; lang: ServerLanguage; pinned?: boolean; post?: number | null };
+
+export function messageCustomId(scope: MessageScope, { messageId, partId, lang, pinned: isPinned = false, post = null }: CustomIdParts): string {
+	return `${MESSAGE_CUSTOM_ID_PREFIXES[scope]}|${messageId}|${partId}|${lang}${isPinned ? '*' : ''}${post ? `|${post}` : ''}`;
 }
 
 export function parseMessageCustomId(
@@ -275,22 +299,22 @@ export function parseMessageCustomId(
 ): { scope: MessageScope; messageId: number; partId: string; lang: ServerLanguage; pinned: boolean; post: number | null } | null {
 	const parts = String(customId ?? '').split('|');
 	const scope = MESSAGE_SCOPES.find((candidate) => MESSAGE_CUSTOM_ID_PREFIXES[candidate] === parts[0]);
-	if ((parts.length !== 4 && parts.length !== 5) || !scope) {
+	if ((parts.length !== CUSTOM_ID_BASE_PARTS && parts.length !== CUSTOM_ID_POST_PARTS) || !scope) {
 		return null;
 	}
 	const messageId = Number(parts[1]);
 	if (!Number.isInteger(messageId) || messageId <= 0 || !parts[2]) {
 		return null;
 	}
-	const pinned = parts[3].endsWith('*');
-	const lang = pinned ? parts[3].slice(0, -1) : parts[3];
+	const isPinned = parts[3].endsWith('*');
+	const lang = isPinned ? parts[3].slice(0, -1) : parts[3];
 	const post = Number(parts[4]);
 	return {
 		scope,
 		messageId,
 		partId: parts[2],
 		lang: isServerLanguage(lang) ? lang : DEFAULT_SERVER_LANGUAGE,
-		pinned,
+		pinned: isPinned,
 		post: Number.isInteger(post) && post > 0 ? post : null
 	};
 }
@@ -423,7 +447,7 @@ function linkValue(value: unknown): string {
 }
 
 function colorValue(value: unknown): string {
-	const raw = text(value, 7).trim();
+	const raw = text(value, HEX_COLOR_LENGTH).trim();
 	return HEX_COLOR.test(raw) ? raw.toLowerCase() : '';
 }
 
@@ -445,7 +469,7 @@ function normalizeActions(value: unknown, ctx: NormalizeContext): MessageAction[
 			action = { type: 'show', message_id: Number.isFinite(messageId) && messageId > 0 ? messageId : 0 };
 		} else if (raw.type === 'role' && ctx.roles) {
 			const mode = MESSAGE_ROLE_MODES.some((m) => m.id === raw.mode) ? (raw.mode as MessageRoleMode) : 'toggle';
-			const roleId = text(raw.role_id, 25);
+			const roleId = text(raw.role_id, ROLE_ID_MAX_LENGTH);
 			action = { type: 'role', mode, role_id: ROLE_ID.test(roleId) ? roleId : '' };
 		}
 		if (!action) {
@@ -461,8 +485,8 @@ function normalizeActions(value: unknown, ctx: NormalizeContext): MessageAction[
 	return out;
 }
 
-function normalizeButton(raw: Record<string, unknown>, ctx: NormalizeContext): MessageButton {
-	const style = MESSAGE_BUTTON_STYLES.some((s) => s.id === raw?.style) ? (raw.style as MessageButtonStyle) : 'secondary';
+function normalizeButton(raw: Record<string, unknown> | undefined, ctx: NormalizeContext): MessageButton {
+	const style = MESSAGE_BUTTON_STYLES.some((s) => s.id === raw?.style) ? (raw?.style as MessageButtonStyle) : 'secondary';
 	return {
 		id: partId(raw?.id, ctx),
 		style,
@@ -495,7 +519,7 @@ function normalizeRow(raw: Record<string, unknown>, ctx: NormalizeContext): RowB
 	return null;
 }
 
-function normalizeInner(raw: any, ctx: NormalizeContext): InnerBlock | null {
+function normalizeInner(raw: Record<string, unknown>, ctx: NormalizeContext): InnerBlock | null {
 	if (raw?.type === 'text') {
 		return { id: partId(raw.id, ctx), type: 'text', text: localized(raw.text, MESSAGE_LIMITS.blockText, ctx.languages) };
 	}
@@ -506,7 +530,7 @@ function normalizeInner(raw: any, ctx: NormalizeContext): InnerBlock | null {
 			text: localized(raw.text, MESSAGE_LIMITS.blockText, ctx.languages),
 			accessory: raw.accessory === 'button' ? 'button' : 'thumbnail',
 			image: imageValue(raw.image, ctx),
-			button: normalizeButton(raw.button, ctx)
+			button: normalizeButton(raw.button as Record<string, unknown> | undefined, ctx)
 		};
 	}
 	if (raw?.type === 'gallery') {
@@ -645,14 +669,14 @@ export function messageRoleIds(doc: MessageDoc): string[] {
 
 export function messageReplyDoc(actions: MessageAction[], source: MessageDoc): MessageDoc | null {
 	const written = actions.find((action): action is Extract<MessageAction, { type: 'text' }> => action.type === 'text')?.text ?? {};
-	const worded = pickText(written, source.language, source.language).trim() !== '';
+	const isWorded = pickText(written, source.language, source.language).trim() !== '';
 	const attachments = actions.flatMap((action, i) =>
 		action.type === 'attachment' && action.file ? [{ id: `reply${i}`, file: action.file, spoiler: false }] : []
 	);
-	if (!worded && attachments.length === 0) {
+	if (!isWorded && attachments.length === 0) {
 		return null;
 	}
-	return { ...newMessageDoc(source.language), languages: source.languages, language_switch: false, text: worded ? written : {}, attachments };
+	return { ...newMessageDoc(source.language), languages: source.languages, language_switch: false, text: isWorded ? written : {}, attachments };
 }
 
 export function messageUploadKeys(doc: MessageDoc): string[] {
@@ -686,13 +710,15 @@ export function removeMessageLanguage(doc: MessageDoc, lang: ServerLanguage, sco
 	return normalizeMessageDoc({ ...doc, languages: doc.languages.filter((l) => l !== lang) }, undefined, scope);
 }
 
-function embedHasContent(embed: MessageEmbed, lang: ServerLanguage, base: ServerLanguage, media = true): boolean {
+type RenderLocale = { lang: ServerLanguage; base: ServerLanguage; media?: boolean };
+
+function embedHasContent(embed: MessageEmbed, { lang, base, media: isMediaShown = true }: RenderLocale): boolean {
 	const has = (value: Localized) => pickText(value, lang, base).trim() !== '';
-	const pictured = media && (!!embed.image || !!embed.thumbnail);
-	return has(embed.title) || has(embed.description) || has(embed.author) || has(embed.footer) || embed.fields.length > 0 || pictured;
+	const isPictured = isMediaShown && (!!embed.image || !!embed.thumbnail);
+	return has(embed.title) || has(embed.description) || has(embed.author) || has(embed.footer) || embed.fields.length > 0 || isPictured;
 }
 
-function renderButton(button: MessageButton, opts: MessageRenderOptions, base: ServerLanguage): unknown | null {
+function renderButton(button: MessageButton, opts: MessageRenderOptions, base: ServerLanguage): PayloadComponent | null {
 	const label = applyMessagePlaceholders(pickText(button.label, opts.lang, base), opts.server)
 		.trim()
 		.slice(0, MESSAGE_LIMITS.label);
@@ -702,18 +728,29 @@ function renderButton(button: MessageButton, opts: MessageRenderOptions, base: S
 	}
 	const shared = { type: 2, ...(label ? { label } : {}), ...(emoji ? { emoji } : {}) };
 	if (button.style === 'link') {
-		return button.url ? { ...shared, style: 5, url: button.url } : null;
+		return button.url ? { ...shared, style: BUTTON_STYLE_CODES.link, url: button.url } : null;
 	}
 	if (opts.interactive === false) {
 		return null;
 	}
-	const style = button.style === 'primary' ? 1 : button.style === 'success' ? 3 : button.style === 'danger' ? 4 : 2;
-	return { ...shared, style, custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, button.id, opts.lang, opts.pinned, opts.post) };
+	const style =
+		button.style === 'primary'
+			? BUTTON_STYLE_CODES.primary
+			: button.style === 'success'
+				? BUTTON_STYLE_CODES.success
+				: button.style === 'danger'
+					? BUTTON_STYLE_CODES.danger
+					: BUTTON_STYLE_CODES.secondary;
+	return {
+		...shared,
+		style,
+		custom_id: messageCustomId(opts.scope ?? 'server', { messageId: opts.messageId, partId: button.id, lang: opts.lang, pinned: opts.pinned, post: opts.post })
+	};
 }
 
-function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLanguage): unknown | null {
+function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLanguage): PayloadComponent | null {
 	if (block.type === 'buttons') {
-		const buttons = block.buttons.map((b) => renderButton(b, opts, base)).filter(Boolean);
+		const buttons = block.buttons.map((b) => renderButton(b, opts, base)).filter((b) => b !== null);
 		return buttons.length > 0 ? { type: 1, components: buttons } : null;
 	}
 	if (opts.interactive === false) {
@@ -745,7 +782,13 @@ function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLang
 		components: [
 			{
 				type: 3,
-				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, block.id, opts.lang, opts.pinned, opts.post),
+				custom_id: messageCustomId(opts.scope ?? 'server', {
+					messageId: opts.messageId,
+					partId: block.id,
+					lang: opts.lang,
+					pinned: opts.pinned,
+					post: opts.post
+				}),
 				min_values: 1,
 				max_values: block.multiple ? options.length : 1,
 				options,
@@ -755,7 +798,9 @@ function renderRow(block: RowBlock, opts: MessageRenderOptions, base: ServerLang
 	};
 }
 
-function renderInner(block: InnerBlock, opts: MessageRenderOptions, base: ServerLanguage, files: MessageFile[]): unknown | null {
+type InnerRender = { base: ServerLanguage; files: MessageFile[] };
+
+function renderInner(block: InnerBlock, opts: MessageRenderOptions, { base, files }: InnerRender): PayloadComponent | null {
 	const resolve = (value: Localized) => applyMessagePlaceholders(pickText(value, opts.lang, base), opts.server);
 	if (block.type === 'text') {
 		const content = resolve(block.text);
@@ -779,11 +824,11 @@ function renderInner(block: InnerBlock, opts: MessageRenderOptions, base: Server
 			.filter((item) => item.media)
 			.map((item) => {
 				const description = resolve(item.caption).trim().slice(0, MESSAGE_LIMITS.caption);
-				const attached = isMessageUploadKey(item.media) && isMessageVideo(item.media);
-				if (attached && !files.some((file) => file.key === item.media)) {
+				const isAttached = isMessageUploadKey(item.media) && isMessageVideo(item.media);
+				if (isAttached && !files.some((file) => file.key === item.media)) {
 					files.push({ key: item.media, name: uploadName(item.media) });
 				}
-				return { media: { url: attached ? `attachment://${uploadName(item.media)}` : opts.image(item.media) }, ...(description ? { description } : {}) };
+				return { media: { url: isAttached ? `attachment://${uploadName(item.media)}` : opts.image(item.media) }, ...(description ? { description } : {}) };
 			});
 		return items.length > 0 ? { type: 12, items } : null;
 	}
@@ -793,9 +838,9 @@ function renderInner(block: InnerBlock, opts: MessageRenderOptions, base: Server
 	return renderRow(block, opts, base);
 }
 
-function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: ServerLanguage): unknown | null {
-	const media = opts.media !== false;
-	if (!embedHasContent(embed, opts.lang, base, media)) {
+function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: ServerLanguage): Record<string, unknown> | null {
+	const isMediaShown = opts.media !== false;
+	if (!embedHasContent(embed, { lang: opts.lang, base, media: isMediaShown })) {
 		return null;
 	}
 	const resolve = (value: Localized) => applyMessagePlaceholders(pickText(value, opts.lang, base), opts.server);
@@ -825,14 +870,14 @@ function renderEmbed(embed: MessageEmbed, opts: MessageRenderOptions, base: Serv
 				}
 			: {}),
 		...(fields.length > 0 ? { fields } : {}),
-		...(media && embed.thumbnail ? { thumbnail: { url: opts.image(embed.thumbnail) } } : {}),
-		...(media && embed.image ? { image: { url: opts.image(embed.image) } } : {}),
+		...(isMediaShown && embed.thumbnail ? { thumbnail: { url: opts.image(embed.thumbnail) } } : {}),
+		...(isMediaShown && embed.image ? { image: { url: opts.image(embed.image) } } : {}),
 		...(footer ? { footer: { text: footer, ...(embed.footer_icon ? { icon_url: opts.image(embed.footer_icon) } : {}) } } : {}),
 		...(embed.timestamp ? { timestamp: new Date().toISOString() } : {})
 	};
 }
 
-function renderLanguageRow(doc: MessageDoc, opts: MessageRenderOptions): unknown | null {
+function renderLanguageRow(doc: MessageDoc, opts: MessageRenderOptions): PayloadComponent | null {
 	if (opts.interactive === false) {
 		return null;
 	}
@@ -846,7 +891,13 @@ function renderLanguageRow(doc: MessageDoc, opts: MessageRenderOptions): unknown
 		components: [
 			{
 				type: 3,
-				custom_id: messageCustomId(opts.scope ?? 'server', opts.messageId, MESSAGE_LANGUAGE_PART, current, opts.pinned, opts.post),
+				custom_id: messageCustomId(opts.scope ?? 'server', {
+					messageId: opts.messageId,
+					partId: MESSAGE_LANGUAGE_PART,
+					lang: current,
+					pinned: opts.pinned,
+					post: opts.post
+				}),
 				min_values: 1,
 				max_values: 1,
 				options: doc.languages.map((code) => ({ label: serverLanguageLabel(code), value: code, emoji, default: code === current }))
@@ -865,12 +916,12 @@ export function renderMessagePayload(doc: MessageDoc, opts: MessageRenderOptions
 		const components = doc.blocks
 			.map((block) => {
 				if (block.type !== 'container') {
-					return renderInner(block, opts, base, files);
+					return renderInner(block, opts, { base, files });
 				}
-				const inner = block.blocks.map((b) => renderInner(b, opts, base, files)).filter(Boolean);
+				const inner = block.blocks.map((b) => renderInner(b, opts, { base, files })).filter((c) => c !== null);
 				return inner.length > 0 ? { type: 17, ...(block.color ? { accent_color: parseInt(block.color.slice(1), 16) } : {}), components: inner } : null;
 			})
-			.filter(Boolean);
+			.filter((c) => c !== null);
 		const parts = languageRow && components.length > 0 ? [...components, languageRow] : components;
 		return {
 			v2: true,
@@ -883,26 +934,26 @@ export function renderMessagePayload(doc: MessageDoc, opts: MessageRenderOptions
 	}
 
 	const body = applyMessagePlaceholders(pickText(doc.text, opts.lang, base), opts.server).slice(0, MESSAGE_LIMITS.text);
-	const embeds = doc.embeds.map((embed) => renderEmbed(embed, opts, base)).filter(Boolean);
-	const components = doc.rows.map((row) => renderRow(row, opts, base)).filter(Boolean);
+	const embeds = doc.embeds.map((embed) => renderEmbed(embed, opts, base)).filter((e) => e !== null);
+	const components = doc.rows.map((row) => renderRow(row, opts, base)).filter((c) => c !== null);
 	const files =
 		opts.media === false ? [] : doc.attachments.map((attachment) => ({ key: attachment.file, name: uploadName(attachment.file, attachment.spoiler) }));
 	const content = [prefix, body.trim() ? body : ''].filter(Boolean).join('\n');
-	const empty = !body.trim() && embeds.length === 0 && components.length === 0 && files.length === 0;
+	const isEmpty = !body.trim() && embeds.length === 0 && components.length === 0 && files.length === 0;
 	return {
 		v2: false,
 		content: content || null,
 		embeds,
-		components: languageRow && !empty ? [...components, languageRow] : components,
+		components: languageRow && !isEmpty ? [...components, languageRow] : components,
 		files,
-		empty
+		empty: isEmpty
 	};
 }
 
 export function messagePayloadTextLength(payload: MessagePayload): number {
-	const walk = (component: any): number =>
-		(component?.type === 10 ? String(component.content ?? '').length : 0) +
-		(Array.isArray(component?.components) ? component.components.reduce((sum: number, child: unknown) => sum + walk(child), 0) : 0);
+	const walk = (component: PayloadComponent): number =>
+		(component.type === TEXT_DISPLAY_TYPE ? String(component.content ?? '').length : 0) +
+		(Array.isArray(component.components) ? component.components.reduce((sum, child) => sum + walk(child), 0) : 0);
 	return payload.components.reduce((sum, component) => sum + walk(component), 0);
 }
 
@@ -913,13 +964,21 @@ function countComponents(components: Record<string, unknown>[]): number {
 	);
 }
 
-function embedLength(embed: any): number {
+type EmbedText = {
+	title?: unknown;
+	description?: unknown;
+	footer?: { text?: unknown };
+	author?: { name?: unknown };
+	fields?: { name: unknown; value: unknown }[];
+};
+
+function embedLength(embed: EmbedText): number {
 	return (
 		String(embed.title ?? '').length +
 		String(embed.description ?? '').length +
 		String(embed.footer?.text ?? '').length +
 		String(embed.author?.name ?? '').length +
-		(embed.fields ?? []).reduce((sum: number, field: Record<string, unknown>) => sum + String(field.name).length + String(field.value).length, 0)
+		(embed.fields ?? []).reduce((sum, field) => sum + String(field.name).length + String(field.value).length, 0)
 	);
 }
 
@@ -1047,7 +1106,7 @@ export function messageDocIssues(doc: MessageDoc): MessageIssue[] {
 	} else {
 		doc.embeds.forEach((embed, i) => {
 			const where = `Embed ${i + 1}`;
-			if (!embedHasContent(embed, base, base)) {
+			if (!embedHasContent(embed, { lang: base, base })) {
 				out.push({ part: embed.id, text: `${where} is empty. Give it a title or description, or remove it.` });
 			}
 			embed.fields.forEach((field, j) => {
@@ -1114,5 +1173,5 @@ export function messageSummary(doc: MessageDoc): string {
 	return String(first ?? '')
 		.replace(/\s+/g, ' ')
 		.trim()
-		.slice(0, 140);
+		.slice(0, SUMMARY_MAX_LENGTH);
 }

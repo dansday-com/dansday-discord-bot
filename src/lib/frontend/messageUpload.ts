@@ -1,14 +1,19 @@
 import { MESSAGE_UPLOAD_CHUNK_BYTES } from '$lib/messages.js';
+import { BASE36_RADIX } from '$lib/utils/numbers.js';
+
+const UPLOAD_ID_RANDOM_CHARS = 12;
 
 export type MessageUploadResult = { ok: true; key: string } | { ok: false; error: string };
 
 export async function uploadMessageFile(url: string, file: File, onProgress?: (fraction: number) => void): Promise<MessageUploadResult> {
 	const total = Math.max(1, Math.ceil(file.size / MESSAGE_UPLOAD_CHUNK_BYTES));
-	const uploadId = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join('') + Date.now().toString(36);
+	const uploadId =
+		Array.from(crypto.getRandomValues(new Uint8Array(UPLOAD_ID_RANDOM_CHARS)), (b) => (b % BASE36_RADIX).toString(BASE36_RADIX)).join('') +
+		Date.now().toString(BASE36_RADIX);
 
 	for (let index = 0; index < total; index++) {
 		const chunk = file.slice(index * MESSAGE_UPLOAD_CHUNK_BYTES, (index + 1) * MESSAGE_UPLOAD_CHUNK_BYTES);
-		let out: any = null;
+		let out: { ok?: boolean; done?: boolean; key?: string; error?: string } | null = null;
 		try {
 			const res = await fetch(url, {
 				method: 'POST',

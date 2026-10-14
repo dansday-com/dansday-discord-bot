@@ -11,6 +11,6 @@ export async function getAutoQuest(panelId: number): Promise<boolean> {
 	return (await questSettings(panelId)).auto_quest === true;
 }
 
-export async function setAutoQuest(panelId: number, enabled: boolean): Promise<void> {
-	await db.upsertPanelSettings(panelId, SERVER_SETTINGS.component.discord_quest_notifier, { ...(await questSettings(panelId)), auto_quest: enabled });
+export async function setAutoQuest(panelId: number, isEnabled: boolean): Promise<void> {
+	await db.upsertPanelSettings(panelId, SERVER_SETTINGS.component.discord_quest_notifier, { ...(await questSettings(panelId)), auto_quest: isEnabled });
 }

@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
-	const user = locals.user;
+	const { user } = locals;
 
 	if (user.authenticated) {
 		return json({

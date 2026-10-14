@@ -6,22 +6,23 @@ import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.j
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import { MESSAGE_LIMITS, isSelfAssignableRole, messageUploadLimit } from '$lib/messages.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent, url }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 
 	const serverId = Number(params.serverId);
 	if (!(await canUseEmbedBuilder(locals, serverId))) {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 	const listPath = adminServerSectionPath(params.id, params.serverId, 'messages');
 	const isNew = params.messageId === 'new';
 	const messages = await db.getServerMessages(serverId).catch(() => []);
 	const current = isNew ? null : (messages.find((message) => message.id === Number(params.messageId)) ?? null);
 	if (!isNew && !current) {
-		redirect(302, listPath);
+		redirect(HTTP.FOUND, listPath);
 	}
 	const copy = isNew ? (messages.find((message) => message.id === Number(url.searchParams.get('copy'))) ?? null) : null;
 

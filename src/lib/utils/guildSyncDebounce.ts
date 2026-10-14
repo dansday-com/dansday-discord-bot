@@ -1,3 +1,15 @@
+import { MINUTE_MS, SECOND_MS } from './time.js';
+
+const FULL_RESYNC_INTERVAL_MINUTES = 30;
+const EVENT_SYNC_DEBOUNCE_SECONDS = 15;
+const EVENT_SYNC_MAX_WAIT_MINUTES = 2;
+const STARTUP_SYNC_DELAY_SECONDS = 2;
+
+export const FULL_RESYNC_INTERVAL_MS = FULL_RESYNC_INTERVAL_MINUTES * MINUTE_MS;
+export const EVENT_SYNC_DEBOUNCE_MS = EVENT_SYNC_DEBOUNCE_SECONDS * SECOND_MS;
+export const EVENT_SYNC_MAX_WAIT_MS = EVENT_SYNC_MAX_WAIT_MINUTES * MINUTE_MS;
+export const STARTUP_SYNC_DELAY_MS = STARTUP_SYNC_DELAY_SECONDS * SECOND_MS;
+
 export function createGuildSyncDebouncer<G extends { id: string }>(runSync: (guild: G) => Promise<unknown>, delayMs: number, maxWaitMs: number) {
 	const timers = new Map<string, ReturnType<typeof setTimeout>>();
 	const pending = new Map<string, G>();

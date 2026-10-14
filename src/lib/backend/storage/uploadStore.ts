@@ -1,12 +1,15 @@
 import { deleteObject, getObject, listObjectKeys, publicUrl, putObject } from './index.js';
 import { imageContentType, imageFilenamePattern } from '../../images.js';
 
+const BASE36_RADIX = 36;
+const RANDOM_SUFFIX_END_INDEX = 8;
+
 export const UPLOAD_FILENAME_PATTERN = imageFilenamePattern('\\d+-[a-z0-9]+');
 
 export const NUMERIC_SCOPE = /[1-9]\d*/;
 
 export function uploadFilename(extension: string): string {
-	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+	return `${Date.now()}-${Math.random().toString(BASE36_RADIX).slice(2, RANDOM_SUFFIX_END_INDEX)}.${extension}`;
 }
 
 export function uploadTimestampMs(key: string): number | null {

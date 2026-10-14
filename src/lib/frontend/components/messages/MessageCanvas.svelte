@@ -9,13 +9,17 @@
 		messageRowLimit,
 		type MessageAction,
 		type MessageBlockType,
-		type MessageDoc
+		type MessageDoc,
+		NEAR_LIMIT_SHARE
 	} from '$lib/messages.js';
 	import EmojiPicker from './EmojiPicker.svelte';
 	import MessageBody from './MessageBody.svelte';
 	import { clickOutside, messageEditor } from './editorContext.js';
 	import { discordMarkdown, type MarkdownContext } from './discordMarkdown.js';
 	import TagPicker from './TagPicker.svelte';
+	import { PERCENT } from '$lib/utils/numbers.js';
+
+	const TEXT_INPUT_MAX_ROWS = 8;
 
 	type Reply = { key: number; doc: MessageDoc | null; lines: string[]; lang: ServerLanguage | null };
 	type AddType = 'embed' | 'file' | MessageBlockType;
@@ -71,9 +75,9 @@
 	let held = $state<string[]>([]);
 	let now = $state('');
 	let nextKey = 0;
-	let languageOpen = $state(false);
-	let layoutOpen = $state(false);
-	let emojiOpen = $state(false);
+	let isLanguageOpen = $state(false);
+	let isLayoutOpen = $state(false);
+	let isEmojiOpen = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 	let textInput = $state<HTMLTextAreaElement>();
 
@@ -82,21 +86,21 @@
 		{ id: 'components', label: 'Advanced layout', hint: 'Components V2: boxes with a colored edge, text beside an image, dividers and galleries.' }
 	] as const;
 
-	const editing = $derived(mode === 'edit');
-	const standard = $derived(doc.layout === 'standard');
-	const translating = $derived(lang !== doc.language);
+	const isEditing = $derived(mode === 'edit');
+	const isStandard = $derived(doc.layout === 'standard');
+	const isTranslating = $derived(lang !== doc.language);
 	const messageText = $derived(doc.text[lang] ?? '');
 	const hasContent = $derived(
-		standard ? !!(doc.text[doc.language] ?? '').trim() || doc.attachments.length > 0 || doc.embeds.length > 0 || doc.rows.length > 0 : doc.blocks.length > 0
+		isStandard ? !!(doc.text[doc.language] ?? '').trim() || doc.attachments.length > 0 || doc.embeds.length > 0 || doc.rows.length > 0 : doc.blocks.length > 0
 	);
 	const otherLanguages = $derived(SERVER_LANGUAGES.filter((language) => !doc.languages.includes(language.code)));
-	const rowsFull = $derived(doc.rows.length >= messageRowLimit(doc));
+	const areRowsFull = $derived(doc.rows.length >= messageRowLimit(doc));
 	const buttonRoom = $derived.by(() => {
 		const last = doc.rows[doc.rows.length - 1];
 		return last?.type === 'buttons' && last.buttons.length < MESSAGE_LIMITS.buttons;
 	});
 	const items = $derived<AddItem[]>(
-		standard
+		isStandard
 			? [
 					{
 						type: 'embed',
@@ -117,9 +121,9 @@
 						label: 'Button',
 						hint: 'Replies privately, gives a role or links somewhere',
 						icon: 'fa-hand-pointer',
-						full: rowsFull && !buttonRoom
+						full: areRowsFull && !buttonRoom
 					},
-					{ type: 'select', label: 'Dropdown', hint: 'A menu of choices, great for picking roles', icon: 'fa-list', full: rowsFull }
+					{ type: 'select', label: 'Dropdown', hint: 'A menu of choices, great for picking roles', icon: 'fa-list', full: areRowsFull }
 				]
 			: [
 					{ type: 'text', label: 'Text', hint: 'A paragraph or a heading', icon: 'fa-align-left', full: false },
@@ -162,7 +166,7 @@
 		const start = textInput?.selectionStart ?? messageText.length;
 		const end = textInput?.selectionEnd ?? start;
 		setText((messageText.slice(0, start) + value + messageText.slice(end)).slice(0, MESSAGE_LIMITS.text));
-		emojiOpen = false;
+		isEmojiOpen = false;
 		textInput?.focus();
 	}
 
@@ -265,13 +269,13 @@
 		<span class="dc-channel"><i class="fas fa-hashtag"></i>{channel}</span>
 
 		<div class="dc-switch" role="group" aria-label="Mode">
-			<button type="button" aria-pressed={editing} class={editing ? 'dc-switch-on' : ''} onclick={() => (mode = 'edit')}>
+			<button type="button" aria-pressed={isEditing} class={isEditing ? 'dc-switch-on' : ''} onclick={() => (mode = 'edit')}>
 				<i class="fas fa-pen"></i>Edit
 			</button>
 			<button
 				type="button"
-				aria-pressed={!editing}
-				class={editing ? '' : 'dc-switch-on'}
+				aria-pressed={!isEditing}
+				class={isEditing ? '' : 'dc-switch-on'}
 				title="Click the buttons like a member would"
 				onclick={() => {
 					mode = 'try';
@@ -282,12 +286,12 @@
 			</button>
 		</div>
 
-		<div class="relative" use:clickOutside={() => (languageOpen = false)}>
-			<button type="button" class="dc-chip" aria-expanded={languageOpen} onclick={() => (languageOpen = !languageOpen)}>
+		<div class="relative" use:clickOutside={() => (isLanguageOpen = false)}>
+			<button type="button" class="dc-chip" aria-expanded={isLanguageOpen} onclick={() => (isLanguageOpen = !isLanguageOpen)}>
 				<i class="fas fa-language"></i>{serverLanguageLabel(lang)}{doc.languages.length > 1 ? ` · ${doc.languages.length}` : ''}
 				<i class="fas fa-chevron-down dc-chip-caret"></i>
 			</button>
-			{#if languageOpen}
+			{#if isLanguageOpen}
 				<div class="bg-ash-800 border-ash-600 absolute right-0 z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border p-2 shadow-2xl">
 					<p class="text-ash-400 px-2 pt-1 pb-2 text-xs">
 						Translate this message. {editor.roleActions
@@ -301,7 +305,7 @@
 								class="hover:bg-ash-700 text-ash-100 flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm"
 								onclick={() => {
 									lang = code;
-									languageOpen = false;
+									isLanguageOpen = false;
 								}}
 							>
 								<i class="fas fa-check text-xs {lang === code ? 'text-emerald-400' : 'text-transparent'}"></i>
@@ -314,7 +318,7 @@
 									class="text-ash-400 hover:bg-ash-700 grid size-7 place-items-center rounded-md text-xs hover:text-red-300"
 									aria-label="Remove {serverLanguageLabel(code)}"
 									onclick={() => {
-										languageOpen = false;
+										isLanguageOpen = false;
 										onremovelanguage(code);
 									}}
 								>
@@ -333,7 +337,7 @@
 									onclick={() => {
 										doc.languages.push(language.code);
 										lang = language.code;
-										languageOpen = false;
+										isLanguageOpen = false;
 									}}
 								>
 									<i class="fas fa-plus mr-1 text-[10px] text-emerald-400"></i>{language.name}
@@ -354,12 +358,12 @@
 			{/if}
 		</div>
 
-		<div class="relative" use:clickOutside={() => (layoutOpen = false)}>
-			<button type="button" class="dc-chip" aria-expanded={layoutOpen} onclick={() => (layoutOpen = !layoutOpen)}>
-				<i class="fas fa-layer-group"></i>{standard ? 'Standard' : 'Advanced'}
+		<div class="relative" use:clickOutside={() => (isLayoutOpen = false)}>
+			<button type="button" class="dc-chip" aria-expanded={isLayoutOpen} onclick={() => (isLayoutOpen = !isLayoutOpen)}>
+				<i class="fas fa-layer-group"></i>{isStandard ? 'Standard' : 'Advanced'}
 				<i class="fas fa-chevron-down dc-chip-caret"></i>
 			</button>
-			{#if layoutOpen}
+			{#if isLayoutOpen}
 				<div class="bg-ash-800 border-ash-600 absolute right-0 z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border p-2 shadow-2xl">
 					{#each LAYOUTS as layout (layout.id)}
 						<button
@@ -367,7 +371,7 @@
 							class="hover:bg-ash-700 flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left"
 							onclick={() => {
 								doc.layout = layout.id;
-								layoutOpen = false;
+								isLayoutOpen = false;
 								onclear();
 							}}
 						>
@@ -396,7 +400,7 @@
 						{server}
 						{context}
 						{now}
-						editable={editing}
+						editable={isEditing}
 						{selected}
 						{flagged}
 						{onselect}
@@ -406,20 +410,20 @@
 							if (code) {
 								switchLanguage(code, null);
 							} else {
-								languageOpen = true;
+								isLanguageOpen = true;
 							}
 						}}
 						onpress={(actions) => press(actions, null)}
 					/>
 				{:else}
 					<p class="dc-empty">
-						{standard
+						{isStandard
 							? 'Your message is empty. Type in the box below, or press + to add an embed, a photo or a button.'
 							: 'Nothing here yet. Press + below to add your first part.'}
 					</p>
 				{/if}
 				{#if uploading !== null}
-					<p class="dc-uploading"><i class="fas fa-spinner fa-spin"></i>Uploading {Math.round(uploading * 100)}%</p>
+					<p class="dc-uploading"><i class="fas fa-spinner fa-spin"></i>Uploading {Math.round(uploading * PERCENT)}%</p>
 				{/if}
 			</div>
 		</div>
@@ -481,23 +485,25 @@
 			{/if}
 		</div>
 
-		{#if standard}
+		{#if isStandard}
 			<textarea
 				bind:this={textInput}
 				value={messageText}
 				oninput={(event) => setText(event.currentTarget.value)}
 				maxlength={MESSAGE_LIMITS.text}
-				rows={Math.min(8, Math.max(1, messageText.split('\n').length))}
+				rows={Math.min(TEXT_INPUT_MAX_ROWS, Math.max(1, messageText.split('\n').length))}
 				aria-label="What the bot says"
-				placeholder={translating && doc.text[doc.language] ? doc.text[doc.language] : `Write what the bot says in #${channel}`}
+				placeholder={isTranslating && doc.text[doc.language] ? doc.text[doc.language] : `Write what the bot says in #${channel}`}
 				class="dc-input"></textarea>
 			<TagPicker target={textInput} max={MESSAGE_LIMITS.text} placement="above" onchange={setText} />
-			<span class="dc-count {messageText.length >= MESSAGE_LIMITS.text * 0.9 ? 'dc-count-near' : ''}">{messageText.length}/{MESSAGE_LIMITS.text}</span>
-			<div class="relative" use:clickOutside={() => (emojiOpen = false)}>
-				<button type="button" class="dc-emoji-button" aria-label="Add an emoji" aria-expanded={emojiOpen} onclick={() => (emojiOpen = !emojiOpen)}>
+			<span class="dc-count {messageText.length >= MESSAGE_LIMITS.text * NEAR_LIMIT_SHARE ? 'dc-count-near' : ''}"
+				>{messageText.length}/{MESSAGE_LIMITS.text}</span
+			>
+			<div class="relative" use:clickOutside={() => (isEmojiOpen = false)}>
+				<button type="button" class="dc-emoji-button" aria-label="Add an emoji" aria-expanded={isEmojiOpen} onclick={() => (isEmojiOpen = !isEmojiOpen)}>
 					<i class="fas fa-face-smile"></i>
 				</button>
-				{#if emojiOpen}
+				{#if isEmojiOpen}
 					<div class="absolute right-0 bottom-full z-30 mb-2 w-80 max-w-[calc(100vw-3rem)] shadow-2xl"><EmojiPicker onpick={insertEmoji} /></div>
 				{/if}
 			</div>

@@ -11,8 +11,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	return receiveMessageUpload(
 		request,
 		{ scope: 'global', id: access.panelId },
-		messageUploadLimit(0),
-		'A global message goes to every server, so it has to fit the limit of a server without boosts.',
-		() => pruneGlobalMessageFiles(access.panelId)
+		{
+			limit: messageUploadLimit(0),
+			tooLarge: 'A global message goes to every server, so it has to fit the limit of a server without boosts.',
+			pruneUnused: () => pruneGlobalMessageFiles(access.panelId)
+		}
 	);
 };

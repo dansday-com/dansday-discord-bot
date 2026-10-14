@@ -5,18 +5,19 @@ import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { TIER_DENIED, canActOn, panelActorOf, type MemberTier } from '$lib/panelHierarchy.js';
 import { moderationRulesFromSettings } from '$lib/moderation-rules.js';
 import { isUtcSqlExpired } from '$lib/utils/index.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const { overview } = await parent();
 	const serverId = Number(params.serverId);
 	const id = params.memberId;
 	if (!/^\d{15,25}$/.test(id)) {
-		error(404, 'Member not found');
+		error(HTTP.NOT_FOUND, 'Member not found');
 	}
 
 	const base = await db.getMemberByDiscordId(serverId, id, { includeDeleted: true });
 	if (!base || base.is_bot) {
-		error(404, 'Member not found');
+		error(HTTP.NOT_FOUND, 'Member not found');
 	}
 
 	const [list, cases, roles, tierMap, mainSettings] = await Promise.all([
@@ -26,7 +27,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		db.getMemberTierMap(serverId).catch(() => ({ staffRoleIds: [] as string[], adminRoleIds: [] as string[], tiers: {} as Record<string, MemberTier> })),
 		db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null)
 	]);
-	const m = (list as any[])[0] ?? base;
+	const m: Record<string, unknown> = list[0] ?? base;
 	const actor = panelActorOf(locals.user);
 	const roleTier = (roleId: string) => (tierMap.adminRoleIds.includes(roleId) ? 'owner' : tierMap.staffRoleIds.includes(roleId) ? 'staff' : 'member');
 	const canEdit = canActOn(actor, tierMap.tiers[id] ?? 'member');

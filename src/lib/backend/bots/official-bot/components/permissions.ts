@@ -32,12 +32,15 @@ async function isContentCreator(member: GuildMember) {
 	return await PERMISSIONS.hasAnyRole(member, perms.CONTENT_CREATOR_ROLES);
 }
 
-export async function hasPermission(member: any, action: string) {
-	if (member?.user?.bot ?? member?.bot ?? false) {
+export async function hasPermission(member: GuildMember | null, action: string) {
+	if (member?.user.bot) {
 		return false;
 	}
 	if (OPEN_ACTIONS.includes(action)) {
 		return true;
+	}
+	if (!member) {
+		return false;
 	}
 
 	if (await isAdmin(member)) {
@@ -131,16 +134,16 @@ export async function getPermissionDeniedMessage(guild: Guild, action: string, u
 		const hasOwner = accounts.some((a) => a.account_type === 'owner');
 
 		if (!hasOwner) {
-			const title = await translate('permissions.ownerRequired.title', guild.id, userId ?? '');
-			const desc = await translate('permissions.ownerRequired.description', guild.id, userId ?? '', { action: actionName });
+			const title = await translate('permissions.ownerRequired.title', { guildId: guild.id, userId: userId ?? '' });
+			const desc = await translate('permissions.ownerRequired.description', { guildId: guild.id, userId: userId ?? '' }, { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
 
 		const perms = await getGuildPermissions(guild.id);
 		const allRoles = [...perms.STAFF_ROLES, ...perms.CONTENT_CREATOR_ROLES];
 		if (allRoles.length === 0) {
-			const title = await translate('permissions.notConfigured.title', guild.id, userId ?? '');
-			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName });
+			const title = await translate('permissions.notConfigured.title', { guildId: guild.id, userId: userId ?? '' });
+			const desc = await translate('permissions.notConfigured.description', { guildId: guild.id, userId: userId ?? '' }, { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
 	} catch (e) {}
@@ -149,12 +152,12 @@ export async function getPermissionDeniedMessage(guild: Guild, action: string, u
 	const roleList =
 		requiredRoles.length > 0
 			? requiredRoles.map((role) => `**${role}**`).join(', ')
-			: await translate('permissions.requiredRoleFallback', guild.id, userId ?? '');
+			: await translate('permissions.requiredRoleFallback', { guildId: guild.id, userId: userId ?? '' });
 
 	const scope = action === 'custom_supporter_role' ? 'permissions.supporterRoleDenied' : 'permissions.denied';
-	const title = await translate(`${scope}.title`, guild.id, userId ?? '');
-	const description = await translate(`${scope}.description`, guild.id, userId ?? '', { action: actionName, roles: roleList });
-	const footer = await translate(`${scope}.footer`, guild.id, userId ?? '');
+	const title = await translate(`${scope}.title`, { guildId: guild.id, userId: userId ?? '' });
+	const description = await translate(`${scope}.description`, { guildId: guild.id, userId: userId ?? '' }, { action: actionName, roles: roleList });
+	const footer = await translate(`${scope}.footer`, { guildId: guild.id, userId: userId ?? '' });
 
 	return `${title}\n\n${description}\n\n${footer}`;
 }

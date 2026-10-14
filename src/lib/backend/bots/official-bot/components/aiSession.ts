@@ -1,7 +1,10 @@
 import { getRedisClient } from '../../../../redis.js';
+import { MINUTE_SECONDS, SECOND_MS } from '../../../../utils/time.js';
 
-const SESSION_TTL_SEC = 30 * 60;
-const SEEN_TTL_SEC = 10 * 60;
+const SESSION_TTL_MINUTES = 30;
+const SEEN_TTL_MINUTES = 10;
+const SESSION_TTL_SEC = SESSION_TTL_MINUTES * MINUTE_SECONDS;
+const SEEN_TTL_SEC = SEEN_TTL_MINUTES * MINUTE_SECONDS;
 const MAX_STORED = 40;
 
 const sessions = new Map<string, { messages: { role: string; content: string }[]; expiresAt: number }>();
@@ -30,7 +33,7 @@ function readLocal(key: string, limit: number) {
 	if (!entry) {
 		return [];
 	}
-	entry.expiresAt = Date.now() + SESSION_TTL_SEC * 1000;
+	entry.expiresAt = Date.now() + SESSION_TTL_SEC * SECOND_MS;
 	return entry.messages.slice(-limit);
 }
 
@@ -43,7 +46,7 @@ function appendLocal(key: string, message: StoredMessage) {
 	if (entry.messages.length > MAX_STORED) {
 		entry.messages = entry.messages.slice(-MAX_STORED);
 	}
-	entry.expiresAt = Date.now() + SESSION_TTL_SEC * 1000;
+	entry.expiresAt = Date.now() + SESSION_TTL_SEC * SECOND_MS;
 	sessions.set(key, entry);
 }
 
@@ -60,7 +63,7 @@ function parseMessages(raw: string[]) {
 		.filter(Boolean) as StoredMessage[];
 }
 
-export async function readAiSession(botId: number, guildId: string, memberId: number | string, limit = 20) {
+export async function readAiSession({ botId, guildId, memberId }: AiSessionKey, limit = 20) {
 	const key = sessionKey(botId, guildId, memberId);
 	const redis = await getRedisClient().catch(() => null);
 	if (!redis) {
@@ -75,7 +78,9 @@ export async function readAiSession(botId: number, guildId: string, memberId: nu
 	}
 }
 
-export async function appendAiMessage(botId: number, guildId: string, memberId: number | string, role: string, content: string) {
+type AiSessionKey = { botId: number; guildId: string; memberId: number | string };
+
+export async function appendAiMessage({ botId, guildId, memberId }: AiSessionKey, role: string, content: string) {
 	const key = sessionKey(botId, guildId, memberId);
 	const message = { role, content };
 
@@ -109,7 +114,7 @@ export function claimAiMessageLocal(botId: number, messageId: string) {
 	const key = seenKey(botId, messageId);
 	const now = Date.now();
 	for (const [id, at] of seen) {
-		if (now - at > SEEN_TTL_SEC * 1000) {
+		if (now - at > SEEN_TTL_SEC * SECOND_MS) {
 			seen.delete(id);
 		}
 	}

@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;
@@ -224,8 +224,8 @@ export function makeMycelium(rows: number): FxProgram {
 			const open = cyc < 0.46 ? 0 : Math.min(1, (cyc - 0.46) / 0.14);
 			const ripe = cyc < 0.58 ? 0 : cyc < 0.86 ? Math.min(1, (cyc - 0.58) / 0.08) : Math.max(0, 1 - (cyc - 0.86) / 0.05);
 			const wilt = cyc < 0.88 ? 0 : (cyc - 0.88) / 0.12;
-			const burst = cyc >= 0.775 && cyc < 0.83;
-			const crack = cyc >= 0.2 && cyc < 0.215;
+			const isBursting = cyc >= 0.775 && cyc < 0.83;
+			const isCracking = cyc >= 0.2 && cyc < 0.215;
 
 			const [ar, ag, ab] = hsl(id.soil + 16, 20, 13);
 			const beamX = id.side > 0.5 ? s.w * 0.26 : s.w * 0.74;
@@ -328,19 +328,19 @@ export function makeMycelium(rows: number): FxProgram {
 				}
 			}
 
-			const drawLitter = (front: boolean) => {
+			const drawLitter = (isFront: boolean) => {
 				for (const p of id.litter) {
-					if (p[5] > 0.62 !== front) {
+					if (p[5] > 0.62 !== isFront) {
 						continue;
 					}
 					const cx = p[0] * s.w;
 					const cy = litY + (p[1] - 0.45) * s.h * 0.07;
 					const co = Math.cos(p[3]);
 					const si = Math.sin(p[3]);
-					const twig = p[4] > 0.74;
+					const isTwig = p[4] > 0.74;
 					const hw = 2.2 + p[2] * 4.8;
-					const hh = (0.9 + p[2] * 1.5) * (twig ? 0.44 : 1);
-					const [r2, g2, b2] = hsl(id.leaf + (p[4] - 0.5) * 30, twig ? 20 : 48, twig ? 24 : 32 + p[4] * 18);
+					const hh = (0.9 + p[2] * 1.5) * (isTwig ? 0.44 : 1);
+					const [r2, g2, b2] = hsl(id.leaf + (p[4] - 0.5) * 30, isTwig ? 20 : 48, isTwig ? 24 : 32 + p[4] * 18);
 					for (let dy = -hh - 1; dy <= hh + 1; dy++) {
 						for (let dx = -hw - 1; dx <= hw + 1; dx++) {
 							const u = (dx * co + dy * si) / hw;
@@ -348,7 +348,7 @@ export function makeMycelium(rows: number): FxProgram {
 							if (u * u + v2 * v2 > 1) {
 								continue;
 							}
-							const rib = !twig && Math.abs(v2) < 0.2 ? 0.68 : 1;
+							const rib = !isTwig && Math.abs(v2) < 0.2 ? 0.68 : 1;
 							const lit = (0.56 + (1 - Math.abs(v2)) * 0.55 - Math.abs(u) * 0.2) * rib;
 							paint(s, cx + dx, cy + dy, r2 * lit, g2 * lit, b2 * lit, 1);
 						}
@@ -361,7 +361,7 @@ export function makeMycelium(rows: number): FxProgram {
 			const seatX = 0.24 + id.seat * 0.52;
 			const baseY = litY + 2;
 
-			if (crack) {
+			if (isCracking) {
 				for (let i = 0; i < nf; i++) {
 					const bx = (seatX + (i - (nf - 1) / 2) * 0.115) * s.w;
 					for (let j = 0; j < 9; j++) {
@@ -420,7 +420,7 @@ export function makeMycelium(rows: number): FxProgram {
 					if (Math.abs(u) > 1) {
 						continue;
 					}
-					const dome = Math.pow(Math.max(0, 1 - u * u), 0.6);
+					const dome = Math.max(0, 1 - u * u) ** 0.6;
 					const droop = wilt * ch * 1.2 * u * u;
 					const top = capY - dome * ch + droop;
 					const bot = capY + (1 - Math.abs(u)) * ch * 0.22 + droop;
@@ -459,7 +459,7 @@ export function makeMycelium(rows: number): FxProgram {
 					}
 				}
 
-				if (burst) {
+				if (isBursting) {
 					for (let j = 0; j < 7; j++) {
 						const side = rg() < 0.5 ? -1 : 1;
 						const u = 0.2 + rg() * 0.8;
@@ -517,10 +517,10 @@ export function makeMycelium(rows: number): FxProgram {
 
 			let boom = s.boom as number;
 			let puff = s.puff as number;
-			if (crack) {
+			if (isCracking) {
 				boom = 1;
 			}
-			if (burst) {
+			if (isBursting) {
 				puff = 1;
 			}
 			if (boom > 0) {
@@ -1031,7 +1031,7 @@ function colonyIdent(s: FxScene): Colony {
 	return { nest, piles, evap, pebbles, twigs, grain, dropPeriod, dropAt };
 }
 
-function drawAnt(s: FxScene, x: number, y: number, ang: number, carry: boolean, col: number[], lit: number) {
+function drawAnt(s: FxScene, x: number, y: number, ang: number, isCarrying: boolean, col: number[], lit: number) {
 	const cx = Math.cos(ang);
 	const cy = Math.sin(ang);
 	const px = -cy;
@@ -1063,7 +1063,7 @@ function drawAnt(s: FxScene, x: number, y: number, ang: number, carry: boolean, 
 	for (const sgn of [-1, 1]) {
 		paint(s, x + cx * 2.5 + px * sgn * 0.8, y + cy * 2.5 + py * sgn * 0.8, col[0] * 0.55 * lit, col[1] * 0.55 * lit, col[2] * 0.55 * lit, 0.65);
 	}
-	if (carry) {
+	if (isCarrying) {
 		const gx = x + cx * 2.4;
 		const gy = y + cy * 2.4;
 		paint(s, gx, gy, 138, 116, 76, 0.9);
@@ -1104,7 +1104,7 @@ export function makeAnthill(rows: number): FxProgram {
 			const p = s.parts;
 
 			const cyc = ((s.t * s.v.speed) % id.dropPeriod) / id.dropPeriod;
-			const falling = cyc < 0.06;
+			const isFalling = cyc < 0.06;
 			const crumbLife = cyc < 0.06 ? 0 : cyc < 0.72 ? 1 - (cyc - 0.06) / 0.66 : 0;
 			const crumbX = id.dropAt[0] * s.w;
 			const crumbY = id.dropAt[1] * s.h;
@@ -1171,10 +1171,10 @@ export function makeAnthill(rows: number): FxProgram {
 
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
-				const carry = p[o + 4] > 0.5;
+				const isCarrying = p[o + 4] > 0.5;
 				let bx = 0;
 				let by = 0;
-				if (carry) {
+				if (isCarrying) {
 					bx = nx - p[o];
 					by = ny - p[o + 1];
 				} else if (crumbLife > 0 && s.rnd() < 0.55) {
@@ -1209,10 +1209,10 @@ export function makeAnthill(rows: number): FxProgram {
 				while (turn < -Math.PI) {
 					turn += Math.PI * 2;
 				}
-				const grip = carry ? 0.3 : 0.17;
-				const roam = carry ? 0.16 : 0.34;
+				const grip = isCarrying ? 0.3 : 0.17;
+				const roam = isCarrying ? 0.16 : 0.34;
 				p[o + 5] += turn * grip + (s.rnd() - 0.5) * roam * (0.6 + s.v.drift * 0.8);
-				const rate = (0.34 + (i % 9) * 0.04) * s.v.speed * (crumbLife > 0 ? 1.3 : 1) * (carry ? 1.1 : 0.9);
+				const rate = (0.34 + (i % 9) * 0.04) * s.v.speed * (crumbLife > 0 ? 1.3 : 1) * (isCarrying ? 1.1 : 0.9);
 				p[o] += Math.cos(p[o + 5]) * rate;
 				p[o + 1] += Math.sin(p[o + 5]) * rate;
 				if (p[o] < 2 || p[o] > s.w - 3) {
@@ -1226,7 +1226,7 @@ export function makeAnthill(rows: number): FxProgram {
 
 				const cell = (p[o + 1] | 0) * s.w + (p[o] | 0);
 				worn[cell] = Math.min(1, worn[cell] + 0.02);
-				if (carry) {
+				if (isCarrying) {
 					ph[cell] = Math.min(2, ph[cell] + 0.6);
 					if (Math.hypot(nx - p[o], ny - p[o + 1]) < 3) {
 						p[o + 4] = 0;
@@ -1285,7 +1285,7 @@ export function makeAnthill(rows: number): FxProgram {
 				}
 			}
 
-			if (falling) {
+			if (isFalling) {
 				const fy = crumbY * (cyc / 0.06);
 				for (let oy = -2; oy <= 2; oy++) {
 					for (let ox = -2; ox <= 2; ox++) {
@@ -1334,11 +1334,11 @@ export function makeAnthill(rows: number): FxProgram {
 			let laden = 0;
 			for (let i = 0; i < shown; i++) {
 				const o = i * P;
-				const carrying = p[o + 4] > 0.5;
-				if (carrying) {
+				const isCarrying = p[o + 4] > 0.5;
+				if (isCarrying) {
 					laden++;
 				}
-				drawAnt(s, p[o], p[o + 1], p[o + 5], carrying, [ar, ag, ab], carrying ? 1.25 : 1);
+				drawAnt(s, p[o], p[o + 1], p[o + 5], isCarrying, [ar, ag, ab], isCarrying ? 1.25 : 1);
 			}
 			s.out = Math.min(1, laden / (s.n * 0.14) + (crumbLife > 0 ? 0.25 : 0));
 			blit(s);
@@ -1410,7 +1410,7 @@ export function makeSlime(rows: number): FxProgram {
 			const p = s.parts;
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
-			const falling = cyc < 0.07;
+			const isFalling = cyc < 0.07;
 			const feast = cyc >= 0.07 && cyc < 0.6 ? 1 - (cyc - 0.07) / 0.53 : 0;
 			const prune = cyc >= 0.6 && cyc < 0.86 ? Math.sin(((cyc - 0.6) / 0.26) * Math.PI) : 0;
 			const dropX = id.drop[0] * s.w;
@@ -1575,7 +1575,7 @@ export function makeSlime(rows: number): FxProgram {
 				f[2] = Math.min(f[3], f[2] + 0.0011);
 			}
 
-			if (falling) {
+			if (isFalling) {
 				const fy = dropY * (cyc / 0.07);
 				const wob = 1 + Math.sin(s.t * 0.4) * 0.16;
 				for (let oy = -2; oy <= 2; oy++) {
@@ -1817,8 +1817,8 @@ export function makeCulture(rows: number): FxProgram {
 					if (u < 0.3) {
 						plot(s, x, y - 1, lr3, lg3, lb3, (0.3 - u) * vig * 0.7);
 					}
-					const rim = own[Math.max(0, cell - 1)] !== o || own[Math.min(own.length - 1, cell + 1)] !== o || own[Math.max(0, cell - s.w)] !== o;
-					if (rim) {
+					const isRim = own[Math.max(0, cell - 1)] !== o || own[Math.min(own.length - 1, cell + 1)] !== o || own[Math.max(0, cell - s.w)] !== o;
+					if (isRim) {
 						plot(s, x, y, lr3 * 1.5, lg3 * 1.5, lb3 * 1.5, 0.4 * vig);
 						paint(s, x, y + 1, 0, 0, 0, 0.26);
 					}
@@ -1888,7 +1888,9 @@ export function makeCulture(rows: number): FxProgram {
 				}
 			}
 
-			if (--(s as any).seedAt <= 0) {
+			const seedAt = (s.seedAt as number) - 1;
+			s.seedAt = seedAt;
+			if (seedAt <= 0) {
 				s.seedAt = 70 + ((s.rnd() * 110) | 0);
 				let pick = -1;
 				let dirt = 1e9;
@@ -2194,8 +2196,8 @@ export function makeGraze(rows: number): FxProgram {
 
 				const cell = Math.max(0, Math.min(turf.length - 1, (p[o + 1] | 0) * s.w + (p[o] | 0)));
 				const here = turf[cell];
-				const grazing = fear < 0.12 && here > 0.34;
-				if (grazing) {
+				const isGrazing = fear < 0.12 && here > 0.34;
+				if (isGrazing) {
 					p[o + 3] = Math.min(1, p[o + 3] + 0.07);
 					const r2 = 1.6 * sc;
 					for (let oy = -r2; oy <= r2; oy++) {
@@ -2744,7 +2746,7 @@ export function makeBloom(rows: number): FxProgram {
 			}
 
 			const rx = id.rootX * s.w;
-			const px = (u: number, v: number) => rx + u * s.h + bend * Math.pow(Math.max(0, -v), 1.35);
+			const px = (u: number, v: number) => rx + u * s.h + bend * Math.max(0, -v) ** 1.35;
 			const py = (v: number) => gy + v * s.h;
 
 			const shw = s.h * 0.34 * id.scale;
@@ -3133,10 +3135,10 @@ export function makeSpore(rows: number): FxProgram {
 				const rr = (2.6 + c[2] * 4.4) * (0.62 + depth * 0.66);
 				const swell = t < 0.7 ? t / 0.7 : 0;
 				const split = t > 0.5 && t < 0.72 ? (t - 0.5) / 0.22 : 0;
-				const fired = t >= 0.72 && t < 0.74;
+				const hasFired = t >= 0.72 && t < 0.74;
 				const live = t < 0.72 ? 0.55 + swell * 0.45 : 0.35 + ((t - 0.72) / 0.26) * 0.6;
 				drawCap(x, y, rr * (0.78 + swell * 0.26), swell, split, c[4], live);
-				if (fired) {
+				if (hasFired) {
 					rings.push([x, y - rr * 1.4, 0, rr]);
 					const n = 22 + ((rr * 5) | 0);
 					for (let q = 0; q < n; q++) {

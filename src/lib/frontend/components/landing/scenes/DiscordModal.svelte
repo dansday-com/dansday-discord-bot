@@ -1,18 +1,22 @@
 <script lang="ts">
 	import { quintOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
-	import { TYPE_MS, tapping, typed } from './clock.svelte.js';
+	import { PRESS_MS, TYPE_MS, tapping, typed } from './clock.svelte.js';
 	import Tap from './Tap.svelte';
 	import type { SceneField, SceneModal } from './types.js';
 
 	let { modal, t, sheet = false, still = false }: { modal: SceneModal | null; t: number; sheet?: boolean; still?: boolean } = $props();
 
-	const ms = $derived(still ? 0 : 220);
-	const focused = (f: SceneField) => f.typeFrom !== undefined && t >= f.typeFrom && t < f.typeFrom + Array.from(f.value).length * TYPE_MS + 500;
-	const submitting = $derived(modal !== null && t >= modal.submitAt && t < modal.submitAt + 220);
+	const MODAL_ANIM_MS = 220;
+	const FOCUS_LINGER_MS = 500;
+	const SHEET_EXTRA_MS = 80;
+
+	const ms = $derived(still ? 0 : MODAL_ANIM_MS);
+	const focused = (f: SceneField) => f.typeFrom !== undefined && t >= f.typeFrom && t < f.typeFrom + Array.from(f.value).length * TYPE_MS + FOCUS_LINGER_MS;
+	const isSubmitting = $derived(modal !== null && t >= modal.submitAt && t < modal.submitAt + PRESS_MS);
 
 	const enter = (node: Element) =>
-		sheet ? fly(node, { y: 80, duration: ms + 80, easing: quintOut }) : scale(node, { start: 0.94, duration: ms, easing: quintOut });
+		sheet ? fly(node, { y: 80, duration: ms + SHEET_EXTRA_MS, easing: quintOut }) : scale(node, { start: 0.94, duration: ms, easing: quintOut });
 </script>
 
 {#snippet fields(m: SceneModal)}
@@ -46,7 +50,7 @@
 		class="scene-submit relative inline-flex h-10 items-center justify-center rounded-[4px] bg-[#5865f2] px-5 text-[14px] font-medium text-white {full
 			? 'w-full rounded-lg'
 			: ''}"
-		class:scene-submit-pressed={submitting}
+		class:scene-submit-pressed={isSubmitting}
 	>
 		Submit
 		{#if modal && tapping(t, modal.submitAt)}<Tap />{/if}

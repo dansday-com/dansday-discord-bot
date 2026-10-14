@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Column } from './types';
 
+	const MIN_COLUMN_PCT = 6;
+
 	let {
 		columns,
 		grow = 1
@@ -17,7 +19,7 @@
 			<div class="bg-base-content/10 flex w-3/5 max-w-6 flex-1 items-end overflow-hidden rounded-t-md">
 				<div
 					class="w-full rounded-t-md transition-[height] duration-700 ease-out"
-					style="height: {Math.max(6, col.pct) * grow}%; background: {col.color};"
+					style="height: {Math.max(MIN_COLUMN_PCT, col.pct) * grow}%; background: {col.color};"
 				></div>
 			</div>
 			{#if col.icon}

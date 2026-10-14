@@ -3,36 +3,22 @@ import type { PageServerLoad } from './$types';
 import { apexHome } from '$lib/url.js';
 import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
+import { HTTP } from '$lib/http.js';
 
 const PER_PAGE = 50;
 
-export const load: PageServerLoad = async ({ parent, params, url }) => {
-	const { server, serverBasePath, itemsEnabled, marketEnabled, minigamesEnabled } = await parent();
+type ItemRow = Awaited<ReturnType<typeof db.getMemberItemHistory>>[number];
+type LevelRow = Awaited<ReturnType<typeof db.getMemberLevelHistory>>[number];
+type AssetRow = Awaited<ReturnType<typeof db.getMemberAssetHistory>>[number];
+type MinigameRow = Awaited<ReturnType<typeof db.getMemberMinigameHistory>>[number];
+type HistoryFlags = { areItemsEnabled: boolean; isMarketEnabled: boolean; areMinigamesEnabled: boolean };
 
-	const hash = itemsCardTokenFromUrl(params.hash);
-	const shared = await loadItemsShared(server, hash, null);
-	if ('notFound' in shared) {
-		redirect(303, apexHome());
-	}
-	if ('guest' in shared || !shared.member) {
-		redirect(303, serverBasePath || '/');
-	}
+const numberOrNull = (value: unknown) => (value != null ? Number(value) : null);
+const timeOf = (value: Date | string | null | undefined) => (value ? new Date(value).getTime() : null);
 
-	const tabParam = String(params.category || 'all');
-	const allowed = new Set(['all', 'level']);
-	if (itemsEnabled) {
-		allowed.add('items');
-	}
-	if (marketEnabled) {
-		allowed.add('market');
-	}
-	if (minigamesEnabled) {
-		allowed.add('minigames');
-	}
-	const tab = allowed.has(tabParam) ? tabParam : 'all';
-
-	const itemRows = itemsEnabled ? await db.getMemberItemHistory(shared.member.id, 0).catch(() => []) : [];
-	const itemEvents = itemRows.map((h) => ({
+function itemEvent(h: ItemRow) {
+	const isHiddenActor = h.direction === 'incoming' && Number(h.actor_disguised) === 1 && !(h.action === 'spy' && h.outcome === 'caught');
+	return {
 		id: `i-${h.id}`,
 		kind: 'item' as const,
 		action: h.action,
@@ -40,36 +26,35 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		itemName: h.item_name ?? null,
 		outcome: h.outcome,
 		xpAmount: Number(h.xp) || 0,
-		ratePercent: h.rate_percent != null ? Number(h.rate_percent) : null,
-		luckPercent: h.luck_percent != null ? Number(h.luck_percent) : null,
+		ratePercent: numberOrNull(h.rate_percent),
+		luckPercent: numberOrNull(h.luck_percent),
 		direction: h.direction === 'incoming' ? 'incoming' : 'outgoing',
 		targetName: h.target_server_display_name || h.target_display_name || h.target_username || null,
-		actorName:
-			h.direction === 'incoming' && Number(h.actor_disguised) === 1 && !(h.action === 'spy' && h.outcome === 'caught')
-				? null
-				: h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
+		actorName: isHiddenActor ? null : h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
 		actorDisguised: Number(h.actor_disguised) === 1,
-		at: h.created_at ? new Date(h.created_at).getTime() : null
-	}));
+		at: timeOf(h.created_at)
+	};
+}
 
-	const levelRows = await db.getMemberLevelHistory(shared.member.id, 0).catch(() => []);
-	const levelEvents = levelRows.map((x) => ({
+function levelEvent(x: LevelRow) {
+	return {
 		id: `l-${x.id}`,
 		kind: 'level' as const,
 		source: x.source,
 		xpAmount: Number(x.xp) || 0,
-		totalXp: x.xp_total != null ? Number(x.xp_total) : null,
-		level: x.level != null ? Number(x.level) : null,
-		rank: x.rank != null ? Number(x.rank) : null,
-		multiplier: x.multiplier != null ? Number(x.multiplier) : null,
-		skimPercent: x.skim_percent != null ? Number(x.skim_percent) : null,
-		friendPercent: x.friend_percent != null ? Number(x.friend_percent) : null,
-		luckPercent: x.luck_percent != null ? Number(x.luck_percent) : null,
-		at: x.created_at ? new Date(x.created_at).getTime() : null
-	}));
+		totalXp: numberOrNull(x.xp_total),
+		level: numberOrNull(x.level),
+		rank: numberOrNull(x.rank),
+		multiplier: numberOrNull(x.multiplier),
+		skimPercent: numberOrNull(x.skim_percent),
+		friendPercent: numberOrNull(x.friend_percent),
+		luckPercent: numberOrNull(x.luck_percent),
+		at: timeOf(x.created_at)
+	};
+}
 
-	const assetRows = marketEnabled ? await db.getMemberAssetHistory(shared.member.id, 0).catch(() => []) : [];
-	const assetEvents = assetRows.map((r) => ({
+function assetEvent(r: AssetRow) {
+	return {
 		id: `a-${r.id}`,
 		kind: 'asset' as const,
 		action: r.action,
@@ -79,11 +64,12 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		xpAmount: Number(r.xp) || 0,
 		net: Number(r.net) || 0,
 		price: Number(r.price) || 0,
-		at: r.created_at ? new Date(r.created_at).getTime() : null
-	}));
+		at: timeOf(r.created_at)
+	};
+}
 
-	const minigameRows = minigamesEnabled ? await db.getMemberMinigameHistory(shared.member.id, 0).catch(() => []) : [];
-	const minigameEvents = minigameRows.map((h) => ({
+function minigameEvent(h: MinigameRow) {
+	return {
 		id: `m-${h.id}`,
 		kind: 'minigame' as const,
 		game: h.game,
@@ -92,21 +78,52 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		payout: Number(h.payout) || 0,
 		xpAmount: Number(h.xp) || 0,
 		outcome: h.outcome,
-		chance: h.chance != null ? Number(h.chance) : null,
-		luckPercent: h.luck_percent != null ? Number(h.luck_percent) : null,
-		at: h.created_at ? new Date(h.created_at).getTime() : null
-	}));
+		chance: numberOrNull(h.chance),
+		luckPercent: numberOrNull(h.luck_percent),
+		at: timeOf(h.created_at)
+	};
+}
 
-	const events =
-		tab === 'items'
-			? itemEvents
-			: tab === 'level'
-				? levelEvents
-				: tab === 'market'
-					? assetEvents
-					: tab === 'minigames'
-						? minigameEvents
-						: [...itemEvents, ...levelEvents, ...assetEvents, ...minigameEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+type HistoryEvent = ReturnType<typeof itemEvent> | ReturnType<typeof levelEvent> | ReturnType<typeof assetEvent> | ReturnType<typeof minigameEvent>;
+
+function historyTab(category: string | undefined, flags: HistoryFlags) {
+	const allowed = new Set(['all', 'level']);
+	if (flags.areItemsEnabled) {
+		allowed.add('items');
+	}
+	if (flags.isMarketEnabled) {
+		allowed.add('market');
+	}
+	if (flags.areMinigamesEnabled) {
+		allowed.add('minigames');
+	}
+	const tabParam = String(category || 'all');
+	return allowed.has(tabParam) ? tabParam : 'all';
+}
+
+async function historyEvents(memberId: number, tab: string, flags: HistoryFlags) {
+	const itemEvents = (flags.areItemsEnabled ? await db.getMemberItemHistory(memberId, 0).catch(() => []) : []).map(itemEvent);
+	const levelEvents = (await db.getMemberLevelHistory(memberId, 0).catch(() => [])).map(levelEvent);
+	const assetEvents = (flags.isMarketEnabled ? await db.getMemberAssetHistory(memberId, 0).catch(() => []) : []).map(assetEvent);
+	const minigameEvents = (flags.areMinigamesEnabled ? await db.getMemberMinigameHistory(memberId, 0).catch(() => []) : []).map(minigameEvent);
+	const byTab: Record<string, HistoryEvent[]> = { items: itemEvents, level: levelEvents, market: assetEvents, minigames: minigameEvents };
+	return byTab[tab] ?? [...itemEvents, ...levelEvents, ...assetEvents, ...minigameEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+}
+
+export const load: PageServerLoad = async ({ parent, params, url }) => {
+	const { server, serverBasePath, itemsEnabled: areItemsEnabled, marketEnabled: isMarketEnabled, minigamesEnabled: areMinigamesEnabled } = await parent();
+
+	const shared = await loadItemsShared(server, itemsCardTokenFromUrl(params.hash), null);
+	if ('notFound' in shared) {
+		redirect(HTTP.SEE_OTHER, apexHome());
+	}
+	if ('guest' in shared || !shared.member) {
+		redirect(HTTP.SEE_OTHER, serverBasePath || '/');
+	}
+
+	const flags: HistoryFlags = { areItemsEnabled, isMarketEnabled, areMinigamesEnabled };
+	const tab = historyTab(params.category, flags);
+	const events = await historyEvents(shared.member.id, tab, flags);
 
 	const totalPages = Math.max(1, Math.ceil(events.length / PER_PAGE));
 	const reqPage = Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1));

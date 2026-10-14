@@ -3,10 +3,11 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { normalizeForwarderSettings } from '$lib/forwarder-settings.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.forwarder).catch(() => null);
 
@@ -28,8 +29,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 				}
 			}
 			const guildId = resolved.source_guild_id;
-			const unreachable = typeof guildId === 'string' && guildId !== '' ? !reachableGuildIds.has(guildId) : false;
-			return { ...resolved, source_unreachable: unreachable };
+			const isUnreachable = typeof guildId === 'string' && guildId !== '' ? !reachableGuildIds.has(guildId) : false;
+			return { ...resolved, source_unreachable: isUnreachable };
 		})
 	);
 

@@ -2,15 +2,15 @@ type Scroller = { stop: () => void; start: () => void };
 
 let scroller: Scroller | null = null;
 let locks = 0;
-let usedOverflow = false;
+let hasUsedOverflow = false;
 
 export function registerScroller(instance: Scroller): () => void {
 	scroller = instance;
 	if (locks > 0) {
 		instance.stop();
-		if (usedOverflow) {
+		if (hasUsedOverflow) {
 			document.body.style.overflow = '';
-			usedOverflow = false;
+			hasUsedOverflow = false;
 		}
 	}
 	return () => {
@@ -30,22 +30,22 @@ export function lockScroll(): () => void {
 			scroller.stop();
 		} else {
 			document.body.style.overflow = 'hidden';
-			usedOverflow = true;
+			hasUsedOverflow = true;
 		}
 	}
 
-	let released = false;
+	let wasReleased = false;
 	return () => {
-		if (released) {
+		if (wasReleased) {
 			return;
 		}
-		released = true;
+		wasReleased = true;
 		locks = Math.max(0, locks - 1);
 		if (locks === 0) {
 			scroller?.start();
-			if (usedOverflow) {
+			if (hasUsedOverflow) {
 				document.body.style.overflow = '';
-				usedOverflow = false;
+				hasUsedOverflow = false;
 			}
 		}
 	};

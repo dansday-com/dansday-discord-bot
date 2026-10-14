@@ -1,5 +1,14 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits, StringSelectMenuBuilder } from 'discord.js';
-import { refreshInterfaceInChannel } from '../../interface.js';
+import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	ChannelType,
+	EmbedBuilder,
+	PermissionFlagsBits,
+	StringSelectMenuBuilder,
+	MessageFlags
+} from 'discord.js';
+import { publishInterfaceInChannel, refreshInterfaceInChannel } from '../../interface.js';
 import { randomBytes } from 'crypto';
 import db from '../../../../../../database.js';
 import {
@@ -12,7 +21,7 @@ import {
 	SETUP_CHANNEL_DEFS
 } from '../../../../../config.js';
 import { publicSiteOrigin } from '../../../../../../url.js';
-import { getServerLanguage, rememberServerLanguage, t, translate, errorReason } from '../../../i18n.js';
+import { getServerLanguage, memberTranslator, rememberServerLanguage, t, translate, errorReason, type Translator } from '../../../i18n.js';
 import { isUtcSqlExpired, logger } from '../../../../../../utils/index.js';
 import {
 	SERVER_LANGUAGES,
@@ -23,43 +32,54 @@ import {
 	type ServerLanguage
 } from '../../../../../../languages.js';
 import { defaultGreetingMessages } from '../../../../../../localizedDefaults.js';
-import type { Client, Guild, GuildBasedChannel, GuildTextBasedChannel, RepliableInteraction, StringSelectMenuInteraction } from 'discord.js';
+import { DISCORD_LIMITS } from '../../../../../../discordLimits.js';
+import type {
+	ChatInputCommandInteraction,
+	Client,
+	Guild,
+	GuildBasedChannel,
+	GuildTextBasedChannel,
+	RepliableInteraction,
+	StringSelectMenuInteraction
+} from 'discord.js';
+import { EMBED_COLORS } from '../../embedColors.js';
+import { INVITE_TOKEN_BYTES } from '../../../../../../accounts.js';
+
 export const commandDefinition = {
 	name: 'setup',
-	description: t('setup.commandDescription', 'en').slice(0, 100),
+	description: t('setup.commandDescription', 'en').slice(0, DISCORD_LIMITS.COMMAND_DESCRIPTION),
 	description_localizations: Object.fromEntries(
-		SERVER_LANGUAGES.flatMap((l) => l.discordLocales.filter((loc) => loc !== 'en-US').map((loc) => [loc, t('setup.commandDescription', l.code).slice(0, 100)]))
+		SERVER_LANGUAGES.flatMap((l) =>
+			l.discordLocales.filter((loc) => loc !== 'en-US').map((loc) => [loc, t('setup.commandDescription', l.code).slice(0, DISCORD_LIMITS.COMMAND_DESCRIPTION)])
+		)
 	),
 	options: []
 };
 
 export const SETUP_LANGUAGE_SELECT_ID = 'setup_language';
 
-const COLOR_OK = 0x57f287;
 const COLOR_WARN = 0xfee75c;
-const COLOR_ERR = 0xed4245;
-const EPHEMERAL = 64;
 
 async function replySetupEphemeral(
 	interaction: RepliableInteraction,
 	opts: { color: number; title?: string; description: string; linkUrl?: string; linkLabel?: string }
 ) {
-	const embed = new EmbedBuilder().setColor(opts.color).setDescription(opts.description.slice(0, 4096));
+	const embed = new EmbedBuilder().setColor(opts.color).setDescription(opts.description.slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION));
 	if (opts.title) {
-		embed.setTitle(opts.title.slice(0, 256));
+		embed.setTitle(opts.title.slice(0, DISCORD_LIMITS.EMBED_TITLE));
 	}
 	const components: ActionRowBuilder<ButtonBuilder>[] = [];
 	if (opts.linkUrl && /^https?:\/\//i.test(opts.linkUrl.trim()) && opts.linkLabel) {
 		components.push(
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(opts.linkUrl.trim()).setLabel(opts.linkLabel.slice(0, 80))
+				new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(opts.linkUrl.trim()).setLabel(opts.linkLabel.slice(0, DISCORD_LIMITS.BUTTON_LABEL))
 			)
 		);
 	}
 	await interaction.reply({
 		embeds: [embed],
 		...(components.length ? { components } : {}),
-		flags: EPHEMERAL
+		flags: MessageFlags.Ephemeral
 	});
 }
 
@@ -124,8 +144,8 @@ function renameIfNeeded(channel: GuildBasedChannel, name: string) {
 		return;
 	}
 	const current = pendingRenames.get(channel.id) ?? channel.name;
-	const same = channel.type === ChannelType.GuildText ? channelNameKey(current) === channelNameKey(name) : current === name;
-	if (same) {
+	const isSame = channel.type === ChannelType.GuildText ? channelNameKey(current) === channelNameKey(name) : current === name;
+	if (isSame) {
 		return;
 	}
 	pendingRenames.set(channel.id, name);
@@ -141,20 +161,45 @@ function renameIfNeeded(channel: GuildBasedChannel, name: string) {
 
 type SetupChannels<M> = { channelMap: Record<string, string>; createdKeys: string[]; menuChannel: M };
 
-function syncSetupChannels(guild: Guild, serverId: number, lang: ServerLanguage, botName: string, create: true): Promise<SetupChannels<GuildTextBasedChannel>>;
-function syncSetupChannels(
-	guild: Guild,
-	serverId: number,
-	lang: ServerLanguage,
-	botName: string,
-	create: boolean
-): Promise<SetupChannels<GuildTextBasedChannel | null> | null>;
+type SetupTarget = { serverId: number; lang: ServerLanguage; botName: string };
+
+type SetupCreator = {
+	category: (guild: Guild, name: string) => Promise<GuildBasedChannel | null>;
+	channel: (guild: Guild, name: string, parentId: string) => Promise<GuildBasedChannel | null>;
+};
+
+const CREATE_MISSING: SetupCreator = {
+	category: (guild, name) =>
+		guild.channels.create({
+			name,
+			type: ChannelType.GuildCategory,
+			permissionOverwrites: [
+				{
+					id: guild.id,
+					deny: [PermissionFlagsBits.SendMessages]
+				}
+			]
+		}),
+	channel: (guild, name, parentId) => guild.channels.create({ name, type: ChannelType.GuildText, parent: parentId })
+};
+
+const KEEP_EXISTING: SetupCreator = {
+	category: async () => null,
+	channel: async () => null
+};
+
+function findSetupChannels(guild: Guild, target: SetupTarget): Promise<SetupChannels<GuildTextBasedChannel | null> | null> {
+	return syncSetupChannels(guild, target, KEEP_EXISTING);
+}
+
+function ensureSetupChannels(guild: Guild, target: SetupTarget): Promise<SetupChannels<GuildTextBasedChannel>> {
+	return syncSetupChannels(guild, target, CREATE_MISSING) as Promise<SetupChannels<GuildTextBasedChannel>>;
+}
+
 async function syncSetupChannels(
 	guild: Guild,
-	serverId: number,
-	lang: ServerLanguage,
-	botName: string,
-	create: boolean
+	{ serverId, lang, botName }: SetupTarget,
+	creator: SetupCreator
 ): Promise<SetupChannels<GuildTextBasedChannel | null> | null> {
 	const categoryNames = setupCategoryNames(botName);
 	const categoryName = t('setup.categoryName', lang, { botName });
@@ -181,26 +226,17 @@ async function syncSetupChannels(
 		menuCategory = existingMenu?.parent ?? null;
 	}
 
-	if (!menuCategory && !create) {
+	if (menuCategory) {
+		renameIfNeeded(menuCategory, categoryName);
+	} else {
+		menuCategory = await creator.category(guild, categoryName);
+	}
+	if (!menuCategory) {
 		return null;
 	}
+	const menuCategoryId = menuCategory.id;
 
-	if (!menuCategory) {
-		menuCategory = await guild.channels.create({
-			name: categoryName,
-			type: ChannelType.GuildCategory,
-			permissionOverwrites: [
-				{
-					id: guild.id,
-					deny: [PermissionFlagsBits.SendMessages]
-				}
-			]
-		});
-	} else {
-		renameIfNeeded(menuCategory, categoryName);
-	}
-
-	const storedCategoryRowId = storedCategories.find((c: { discord_category_id: string }) => c.discord_category_id === menuCategory.id)?.id;
+	const storedCategoryRowId = storedCategories.find((c: { discord_category_id: string }) => c.discord_category_id === menuCategoryId)?.id;
 
 	const channelMap: Record<string, string> = {};
 	const createdKeys: string[] = [];
@@ -219,20 +255,17 @@ async function syncSetupChannels(
 
 		let ch = storedRow ? await liveChannel(storedRow.discord_channel_id) : null;
 		if (!ch) {
-			ch = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && names.has(channelNameKey(c.name)) && c.parentId === menuCategory.id) ?? null;
+			ch = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && names.has(channelNameKey(c.name)) && c.parentId === menuCategoryId) ?? null;
 		}
 
 		if (ch) {
 			renameIfNeeded(ch, name);
-		} else if (create) {
-			ch = await guild.channels.create({
-				name,
-				type: ChannelType.GuildText,
-				parent: menuCategory.id
-			});
-			createdKeys.push(def.settingsKey);
 		} else {
-			continue;
+			ch = await creator.channel(guild, name, menuCategoryId);
+			if (!ch) {
+				continue;
+			}
+			createdKeys.push(def.settingsKey);
 		}
 
 		channelMap[def.settingsKey] = ch.id;
@@ -257,9 +290,9 @@ export async function syncServerMenu(client: Client<true>, guildId: string) {
 	}
 
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
-	const synced = await syncSetupChannels(guild, server.id, lang, embedConfig.NICKNAME, false);
+	const synced = await findSetupChannels(guild, { serverId: server.id, lang, botName: embedConfig.NICKNAME });
 	if (synced?.menuChannel) {
-		await refreshInterfaceInChannel(synced.menuChannel, client, { sendIfMissing: false });
+		await refreshInterfaceInChannel(synced.menuChannel, client);
 	}
 }
 
@@ -269,33 +302,33 @@ export async function syncAllServerMenus(client: Client<true>) {
 	}
 }
 
-export async function execute(interaction: any, _client: unknown) {
+export async function execute(interaction: ChatInputCommandInteraction, _client: unknown) {
 	const gid = interaction.guild?.id ?? '';
 	const uid = interaction.user?.id ?? '';
 
 	try {
-		if (!isSetupAllowed(interaction)) {
+		if (!interaction.inCachedGuild() || !isSetupAllowed(interaction)) {
 			await replySetupEphemeral(interaction, {
-				color: COLOR_ERR,
-				title: await translate('interface.panel.setupNotOwnerTitle', gid, uid),
-				description: await translate('interface.panel.setupNotOwnerBody', gid, uid)
+				color: EMBED_COLORS.danger,
+				title: await translate('interface.panel.setupNotOwnerTitle', { guildId: gid, userId: uid }),
+				description: await translate('interface.panel.setupNotOwnerBody', { guildId: gid, userId: uid })
 			});
 			return;
 		}
 
 		const suggested = await suggestedSetupLanguage(interaction.guild);
-		const embedConfig = await getEmbedConfig(gid).catch(() => ({ COLOR: COLOR_OK, FOOTER: '' }));
+		const embedConfig = await getEmbedConfig(gid).catch(() => ({ COLOR: EMBED_COLORS.success, FOOTER: '' }));
 		const embed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle(await translate('setup.language.title', gid, uid))
-			.setDescription(await translate('setup.language.description', gid, uid));
+			.setTitle(await translate('setup.language.title', { guildId: gid, userId: uid }))
+			.setDescription(await translate('setup.language.description', { guildId: gid, userId: uid }));
 		if (embedConfig.FOOTER) {
 			embed.setFooter({ text: embedConfig.FOOTER });
 		}
 
 		const select = new StringSelectMenuBuilder()
 			.setCustomId(SETUP_LANGUAGE_SELECT_ID)
-			.setPlaceholder(await translate('setup.language.placeholder', gid, uid))
+			.setPlaceholder(await translate('setup.language.placeholder', { guildId: gid, userId: uid }))
 			.addOptions(
 				SERVER_LANGUAGES.map((l) => ({
 					label: serverLanguageLabel(l.code),
@@ -307,16 +340,143 @@ export async function execute(interaction: any, _client: unknown) {
 		await interaction.reply({
 			embeds: [embed],
 			components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
-			flags: EPHEMERAL
+			flags: MessageFlags.Ephemeral
 		});
 	} catch (error) {
-		const errorMsg = await translate('interface.panel.error', gid, uid, { error: await errorReason(error, gid, uid) });
+		const errorMsg = await translate('interface.panel.error', { guildId: gid, userId: uid }, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
-			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLOR_ERR).setDescription(errorMsg)], components: [] }).catch(() => null);
+			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(EMBED_COLORS.danger).setDescription(errorMsg)], components: [] }).catch(() => null);
 		} else {
-			await replySetupEphemeral(interaction, { color: COLOR_ERR, description: errorMsg });
+			await replySetupEphemeral(interaction, { color: EMBED_COLORS.danger, description: errorMsg });
 		}
 	}
+}
+
+type ChannelMap = Record<string, string>;
+type SetupComponentDefaults = {
+	component: string;
+	defaults?: (lang: ServerLanguage) => Record<string, unknown>;
+	channels: (channelMap: ChannelMap) => Record<string, unknown>;
+};
+type SetupResult = { serverId: number; menuChannel: GuildTextBasedChannel; summary: string };
+
+function setupComponentDefaults(): SetupComponentDefaults[] {
+	const C = SERVER_SETTINGS.component;
+	const greeting = (kind: 'welcomer' | 'leaver' | 'booster') => (lang: ServerLanguage) => ({ enabled: true, messages: defaultGreetingMessages(kind, lang) });
+	const enabled = () => ({ enabled: true });
+	const disabled = () => ({ enabled: false });
+	return [
+		{ component: C.main, channels: (m) => ({ bot_updates_channel_id: m['bot_updates'], moderation_log_channel_id: m['moderation'] }) },
+		{ component: C.leveling, defaults: () => ({ enabled: true, ...DEFAULT_LEVELING_SETTINGS }), channels: (m) => ({ PROGRESS_CHANNEL_ID: m['leveling'] }) },
+		{
+			component: C.public,
+			defaults: () => ({ items_enabled: true, minigames_enabled: true, market_enabled: true, tasks_enabled: true, invite_enabled: true }),
+			channels: (m) => ({ ITEMS_CHANNEL_ID: m['items'], MINIGAMES_CHANNEL_ID: m['minigames'] })
+		},
+		{ component: C.welcomer, defaults: greeting('welcomer'), channels: (m) => ({ channels: [m['welcomer']] }) },
+		{ component: C.leaver, defaults: greeting('leaver'), channels: (m) => ({ channels: [m['leaver']] }) },
+		{ component: C.booster, defaults: greeting('booster'), channels: (m) => ({ channels: [m['booster']] }) },
+		{ component: C.giveaway, defaults: enabled, channels: (m) => ({ giveaway_channel: m['giveaway'] }) },
+		{ component: C.roblox_catalog_notifier, defaults: enabled, channels: (m) => ({ channel_id: m['roblox_catalog_notifier'] }) },
+		{ component: C.staff_rating, defaults: disabled, channels: (m) => ({ rating_channel_id: m['staff_rating'] }) },
+		{ component: C.discord_quest_notifier, defaults: enabled, channels: (m) => ({ channel_id: m['discord_quest_notifier'] }) },
+		{ component: C.content_creator, defaults: disabled, channels: (m) => ({ target_channel_id: m['content_creator'] }) },
+		{ component: C.creator_alerts, defaults: enabled, channels: (m) => ({ target_channel_id: m['content_creator'] }) },
+		{
+			component: C.notifications,
+			defaults: enabled,
+			channels: (m) => ({
+				channel_ids: Object.entries(m)
+					.filter(([key]) => key !== 'menu')
+					.map(([, id]) => id)
+			})
+		}
+	];
+}
+
+async function storedSettings(serverId: number, component: string) {
+	const row = await db.getServerSettings(serverId, component);
+	return row?.settings && typeof row.settings === 'object' ? row.settings : {};
+}
+
+async function applySetupDefaults(serverId: number, { channelMap, lang }: { channelMap: ChannelMap; lang: ServerLanguage }) {
+	for (const entry of setupComponentDefaults()) {
+		const raw = await storedSettings(serverId, entry.component);
+		await db.upsertServerSettings(serverId, entry.component, { ...entry.defaults?.(lang), ...raw, ...entry.channels(channelMap) });
+	}
+}
+
+async function saveServerLanguage(serverId: number, { guildId, lang }: { guildId: string; lang: ServerLanguage }) {
+	const mainBefore = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
+	const mainBeforeSettings = mainBefore?.settings && typeof mainBefore.settings === 'object' ? mainBefore.settings : {};
+	await db.upsertServerSettings(serverId, SERVER_SETTINGS.component.main, { ...mainBeforeSettings, language: lang });
+	rememberServerLanguage(guildId, lang);
+}
+
+function linkButtonRow(url: string, label: string) {
+	return new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel(label.slice(0, DISCORD_LIMITS.BUTTON_LABEL))
+	);
+}
+
+async function ownerInviteToken(serverId: number) {
+	const activeInvite = findActiveOwnerInvite(await db.getServerAccountInvitesByServer(serverId));
+	if (activeInvite) {
+		return activeInvite.token;
+	}
+	const token = randomBytes(INVITE_TOKEN_BYTES).toString('hex');
+	await db.createServerAccountInvite({ token, server_id: serverId, account_type: 'owner' });
+	return token;
+}
+
+async function setupCompletionReply(tr: Translator, { serverId, menuChannel, summary }: SetupResult) {
+	const accounts = await db.getServerAccountsByServer(serverId);
+	if (accounts.some((a: { account_type: string }) => a.account_type === 'owner')) {
+		const loginUrl = `${publicSiteOrigin()}/login`;
+		const description = `${summary}\n\n${tr('interface.panel.setupHasOwnerAccount', { channel: menuChannel.toString() })}\n\n${tr('interface.panel.setupSignInLinkLine', { url: loginUrl })}`;
+		return {
+			embeds: [new EmbedBuilder().setColor(EMBED_COLORS.success).setDescription(description)],
+			components: [linkButtonRow(loginUrl, tr('interface.panel.setupOpenPanelButton'))]
+		};
+	}
+
+	const inviteUrl = `${publicSiteOrigin()}/register?token=${await ownerInviteToken(serverId)}`;
+	const inviteLine = tr('interface.panel.setupOwnerInviteReady', { channel: menuChannel.toString(), url: inviteUrl });
+	return {
+		embeds: [
+			new EmbedBuilder().setColor(EMBED_COLORS.success).setTitle(tr('interface.panel.setupOwnerInviteEmbedTitle')).setDescription(`${summary}\n\n${inviteLine}`)
+		],
+		components: [linkButtonRow(inviteUrl, tr('interface.panel.setupOwnerInviteButton'))]
+	};
+}
+
+async function setupServerRow(guildId: string): Promise<{ serverId: number } | { warningKey: string }> {
+	const botConfig = getBotConfig();
+	if (!botConfig) {
+		return { warningKey: 'interface.panel.setupWarnNoBotConfig' };
+	}
+	const server = await db.getServerByDiscordId(botConfig.id, guildId);
+	return server ? { serverId: server.id } : { warningKey: 'interface.panel.setupWarnNoServer' };
+}
+
+async function runServerSetup(
+	interaction: StringSelectMenuInteraction<'cached'>,
+	{ serverId, lang, client }: { serverId: number; lang: ServerLanguage; client: Client<true> }
+) {
+	const { guild } = interaction;
+	const embedConfig = await getEmbedConfig(guild.id).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
+	await saveServerLanguage(serverId, { guildId: guild.id, lang });
+
+	const { channelMap, createdKeys, menuChannel } = await ensureSetupChannels(guild, { serverId, lang, botName: embedConfig.NICKNAME });
+	await publishInterfaceInChannel(menuChannel, client);
+	await applySetupDefaults(serverId, { channelMap, lang });
+
+	const tr = await memberTranslator(guild.id, interaction.user.id);
+	const channelsLine = createdKeys.length
+		? tr('interface.panel.setupChannelsCreated', { count: createdKeys.length })
+		: tr('interface.panel.setupChannelsAllPresent');
+	const summary = `${tr('setup.language.applied', { language: serverLanguageLabel(lang) })}\n${channelsLine}`;
+	await interaction.editReply(await setupCompletionReply(tr, { serverId, menuChannel, summary }));
 }
 
 export async function handleSetupLanguageSelect(interaction: StringSelectMenuInteraction<'cached'>, client: Client<true>) {
@@ -326,9 +486,9 @@ export async function handleSetupLanguageSelect(interaction: StringSelectMenuInt
 	try {
 		if (!isSetupAllowed(interaction)) {
 			await replySetupEphemeral(interaction, {
-				color: COLOR_ERR,
-				title: await translate('interface.panel.setupNotOwnerTitle', gid, uid),
-				description: await translate('interface.panel.setupNotOwnerBody', gid, uid)
+				color: EMBED_COLORS.danger,
+				title: await translate('interface.panel.setupNotOwnerTitle', { guildId: gid, userId: uid }),
+				description: await translate('interface.panel.setupNotOwnerBody', { guildId: gid, userId: uid })
 			});
 			return;
 		}
@@ -339,210 +499,25 @@ export async function handleSetupLanguageSelect(interaction: StringSelectMenuInt
 		}
 
 		await interaction.update({
-			embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(t('setup.language.working', lang, { language: serverLanguageLabel(lang) }))],
+			embeds: [new EmbedBuilder().setColor(EMBED_COLORS.success).setDescription(t('setup.language.working', lang, { language: serverLanguageLabel(lang) }))],
 			components: []
 		});
 
-		const guild = interaction.guild;
-		const embedConfig = await getEmbedConfig(gid).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
-		const botName = embedConfig.NICKNAME;
-
-		const botConfig = getBotConfig();
-		if (!botConfig) {
+		const server = await setupServerRow(interaction.guild.id);
+		if ('warningKey' in server) {
 			await interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(COLOR_WARN).setDescription(await translate('interface.panel.setupWarnNoBotConfig', gid, uid))]
+				embeds: [new EmbedBuilder().setColor(COLOR_WARN).setDescription(await translate(server.warningKey, { guildId: gid, userId: uid }))]
 			});
 			return;
 		}
 
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-		if (!server) {
-			await interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(COLOR_WARN).setDescription(await translate('interface.panel.setupWarnNoServer', gid, uid))]
-			});
-			return;
-		}
-
-		const mainBefore = await db.getServerSettings(server.id, SERVER_SETTINGS.component.main).catch(() => null);
-		const mainBeforeSettings = mainBefore?.settings && typeof mainBefore.settings === 'object' ? mainBefore.settings : {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.main, { ...mainBeforeSettings, language: lang });
-		rememberServerLanguage(gid, lang);
-
-		const { channelMap, createdKeys, menuChannel } = await syncSetupChannels(guild, server.id, lang, botName, true);
-
-		await refreshInterfaceInChannel(menuChannel, client, { sendIfMissing: true });
-
-		const getSettings = async (comp: string) => {
-			const row = await db.getServerSettings(server.id, comp);
-			return row?.settings && typeof row.settings === 'object' ? row.settings : null;
-		};
-
-		const mainSettings = (await getSettings(SERVER_SETTINGS.component.main)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.main, {
-			...mainSettings,
-			bot_updates_channel_id: channelMap['bot_updates'],
-			moderation_log_channel_id: channelMap['moderation']
-		});
-
-		const lvlRaw = (await getSettings(SERVER_SETTINGS.component.leveling)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.leveling, {
-			enabled: true,
-			...DEFAULT_LEVELING_SETTINGS,
-			...lvlRaw,
-			PROGRESS_CHANNEL_ID: channelMap['leveling']
-		});
-
-		const psRaw = (await getSettings(SERVER_SETTINGS.component.public)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.public, {
-			items_enabled: true,
-			minigames_enabled: true,
-			market_enabled: true,
-			tasks_enabled: true,
-			invite_enabled: true,
-			...psRaw,
-			ITEMS_CHANNEL_ID: channelMap['items'],
-			MINIGAMES_CHANNEL_ID: channelMap['minigames']
-		});
-
-		const welcRaw = (await getSettings(SERVER_SETTINGS.component.welcomer)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.welcomer, {
-			enabled: true,
-			messages: defaultGreetingMessages('welcomer', lang),
-			...welcRaw,
-			channels: [channelMap['welcomer']]
-		});
-
-		const leaveRaw = (await getSettings(SERVER_SETTINGS.component.leaver)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.leaver, {
-			enabled: true,
-			messages: defaultGreetingMessages('leaver', lang),
-			...leaveRaw,
-			channels: [channelMap['leaver']]
-		});
-
-		const boostRaw = (await getSettings(SERVER_SETTINGS.component.booster)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.booster, {
-			enabled: true,
-			messages: defaultGreetingMessages('booster', lang),
-			...boostRaw,
-			channels: [channelMap['booster']]
-		});
-
-		const giveRaw = (await getSettings(SERVER_SETTINGS.component.giveaway)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.giveaway, {
-			enabled: true,
-			...giveRaw,
-			giveaway_channel: channelMap['giveaway']
-		});
-
-		const rblxRaw = (await getSettings(SERVER_SETTINGS.component.roblox_catalog_notifier)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.roblox_catalog_notifier, {
-			enabled: true,
-			...rblxRaw,
-			channel_id: channelMap['roblox_catalog_notifier']
-		});
-
-		const staffRaw = (await getSettings(SERVER_SETTINGS.component.staff_rating)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.staff_rating, {
-			enabled: false,
-			...staffRaw,
-			rating_channel_id: channelMap['staff_rating']
-		});
-
-		const questRaw = (await getSettings(SERVER_SETTINGS.component.discord_quest_notifier)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.discord_quest_notifier, {
-			enabled: true,
-			...questRaw,
-			channel_id: channelMap['discord_quest_notifier']
-		});
-
-		const ccRaw = (await getSettings(SERVER_SETTINGS.component.content_creator)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.content_creator, {
-			enabled: false,
-			...ccRaw,
-			target_channel_id: channelMap['content_creator']
-		});
-
-		const caRaw = (await getSettings(SERVER_SETTINGS.component.creator_alerts)) || {};
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.creator_alerts, {
-			enabled: true,
-			...caRaw,
-			target_channel_id: channelMap['content_creator']
-		});
-
-		const notifRaw = (await getSettings(SERVER_SETTINGS.component.notifications)) || {};
-		const notifChannelIds = Object.entries(channelMap)
-			.filter(([key]) => key !== 'menu')
-			.map(([, id]) => id);
-
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.notifications, {
-			enabled: true,
-			...notifRaw,
-			channel_ids: notifChannelIds
-		});
-
-		const languageLine = await translate('setup.language.applied', gid, uid, { language: serverLanguageLabel(lang) });
-		const channelsLine = createdKeys.length
-			? await translate('interface.panel.setupChannelsCreated', gid, uid, { count: createdKeys.length })
-			: await translate('interface.panel.setupChannelsAllPresent', gid, uid);
-		const channelSummary = `${languageLine}\n${channelsLine}`;
-
-		const accounts = await db.getServerAccountsByServer(server.id);
-		const hasOwner = accounts.some((a: { account_type: string }) => a.account_type === 'owner');
-		if (hasOwner) {
-			const ownerLine = await translate('interface.panel.setupHasOwnerAccount', gid, uid, { channel: menuChannel.toString() });
-			const loginUrl = `${publicSiteOrigin()}/login`;
-			const signInLine = await translate('interface.panel.setupSignInLinkLine', gid, uid, { url: loginUrl });
-			const description = `${channelSummary}\n\n${ownerLine}\n\n${signInLine}`;
-			const linkLabel = await translate('interface.panel.setupOpenPanelButton', gid, uid);
-			await interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(COLOR_OK).setDescription(description)],
-				components: [
-					new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(loginUrl).setLabel(linkLabel.slice(0, 80)))
-				]
-			});
-			return;
-		}
-
-		const origin = publicSiteOrigin();
-
-		const invites = await db.getServerAccountInvitesByServer(server.id);
-		const activeInvite = findActiveOwnerInvite(invites);
-
-		let token: string;
-		if (activeInvite) {
-			token = activeInvite.token;
-		} else {
-			token = randomBytes(32).toString('hex');
-			await db.createServerAccountInvite({ token, server_id: server.id, account_type: 'owner' });
-		}
-
-		const inviteUrl = `${origin}/register?token=${token}`;
-		const inviteLine = await translate('interface.panel.setupOwnerInviteReady', gid, uid, { channel: menuChannel.toString(), url: inviteUrl });
-		await interaction.editReply({
-			embeds: [
-				new EmbedBuilder()
-					.setColor(COLOR_OK)
-					.setTitle(await translate('interface.panel.setupOwnerInviteEmbedTitle', gid, uid))
-					.setDescription(`${channelSummary}\n\n${inviteLine}`)
-			],
-			components: [
-				new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder()
-						.setStyle(ButtonStyle.Link)
-						.setURL(inviteUrl)
-						.setLabel((await translate('interface.panel.setupOwnerInviteButton', gid, uid)).slice(0, 80))
-				)
-			]
-		});
+		await runServerSetup(interaction, { serverId: server.serverId, lang, client });
 	} catch (error) {
-		const errorMsg = await translate('interface.panel.error', gid, uid, { error: await errorReason(error, gid, uid) });
+		const errorMsg = await translate('interface.panel.error', { guildId: gid, userId: uid }, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
-			await interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(COLOR_ERR).setDescription(errorMsg)]
-			});
+			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(EMBED_COLORS.danger).setDescription(errorMsg)] });
 		} else {
-			await replySetupEphemeral(interaction, { color: COLOR_ERR, description: errorMsg });
+			await replySetupEphemeral(interaction, { color: EMBED_COLORS.danger, description: errorMsg });
 		}
 	}
 }

@@ -1,7 +1,7 @@
-import { MessageFlags, PermissionFlagsBits } from 'discord.js';
+import { MessageFlags, PermissionFlagsBits, RESTJSONErrorCodes } from 'discord.js';
 import db, { type ServerMessage, type ServerMessagePost } from '../../../../database.js';
 import { NOTIFICATIONS, getBotConfig, getEmbedConfig, getServerForCurrentBot, publicSiteOrigin } from '../../../config.js';
-import { logger } from '../../../../utils/index.js';
+import { logger, attempt } from '../../../../utils/index.js';
 import {
 	MESSAGE_LANGUAGE_PART,
 	MESSAGE_LIMITS,
@@ -21,6 +21,7 @@ import { isServerLanguage, type ServerLanguage } from '../../../../languages.js'
 import { messageFileUrl, readMessageFile } from '../../../storage/messageFiles.js';
 import { errorReasonFor, translatorFor, type Translator } from '../i18n.js';
 import type { Guild, GuildTextBasedChannel, InteractionReplyOptions, Message, MessageComponentInteraction, Role, Client } from 'discord.js';
+import { SECOND_MS } from '../../../../utils/time.js';
 
 type RoleAction = Extract<MessageAction, { type: 'role' }>;
 type ShowAction = Extract<MessageAction, { type: 'show' }>;
@@ -32,9 +33,8 @@ type ComponentInteraction = MessageComponentInteraction<'cached'> & { values?: s
 type ErrorLike = { code?: unknown; message?: unknown } | null | undefined;
 type SyncResult = { post_id: number; channel_id: string; channel_name: string; ok: boolean; gone?: boolean; error?: string };
 
-const UNKNOWN_CHANNEL = 10003;
-const UNKNOWN_MESSAGE = 10008;
-const FILE_TOO_LARGE = 40005;
+const REJECTION_DETAIL_MAX_LENGTH = 300;
+const REFUSAL_DETAIL_MAX_LENGTH = 200;
 const FILE_MISSING = 'file_missing';
 const ROLE_COOLDOWN_MS = 3000;
 const ROLE_COOLDOWN_SWEEP_AT = 2000;
@@ -60,7 +60,9 @@ function imageUrl(value: string): string {
 	return url.startsWith('/') ? publicSiteOrigin() + url : url;
 }
 
-function renderer(scope: MessageScope, message: ServerMessage, server: string, defaults: RenderExtra = {}): Renderer {
+type RenderTarget = { server: string; defaults?: RenderExtra };
+
+function renderer(scope: MessageScope, message: ServerMessage, { server, defaults = {} }: RenderTarget): Renderer {
 	return (lang, extra = {}) => renderMessagePayload(message.content, { scope, messageId: message.id, lang, server, image: imageUrl, ...defaults, ...extra });
 }
 
@@ -123,25 +125,25 @@ function prefixFits(payload: MessagePayload, prefix: string): boolean {
 
 function panelReason(error: unknown, channelName: string): string {
 	const code = (error as ErrorLike)?.code;
-	if (code === 50001) {
+	if (code === RESTJSONErrorCodes.MissingAccess) {
 		return `The bot can't see #${channelName}. Give its role View Channel there.`;
 	}
-	if (code === 50013) {
+	if (code === RESTJSONErrorCodes.MissingPermissions) {
 		return `The bot can't post in #${channelName}. Give its role Send Messages, Embed Links and Attach Files there.`;
 	}
-	if (code === UNKNOWN_CHANNEL) {
+	if (code === RESTJSONErrorCodes.UnknownChannel) {
 		return `#${channelName} no longer exists.`;
 	}
-	if (code === FILE_TOO_LARGE) {
+	if (code === RESTJSONErrorCodes.RequestEntityTooLarge) {
 		return `A file is over this server's upload limit. Discord sets it from the server's boost level. Use a smaller file.`;
 	}
 	if (code === FILE_MISSING) {
 		return 'An uploaded file is missing from storage. Remove it from the message and upload it again.';
 	}
-	if (code === 50035) {
-		return `Discord rejected the message: ${String((error as ErrorLike)?.message ?? 'invalid content').slice(0, 300)}`;
+	if (code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
+		return `Discord rejected the message: ${String((error as ErrorLike)?.message ?? 'invalid content').slice(0, REJECTION_DETAIL_MAX_LENGTH)}`;
 	}
-	return `Discord refused it (${String((error as ErrorLike)?.message ?? 'unknown error').slice(0, 200)}). Try again in a moment.`;
+	return `Discord refused it (${String((error as ErrorLike)?.message ?? 'unknown error').slice(0, REFUSAL_DETAIL_MAX_LENGTH)}). Try again in a moment.`;
 }
 
 async function resolveGuild(client: Client, guildId: string) {
@@ -189,37 +191,49 @@ function groupMentions(guild: Guild, groups: unknown, staffRoles: unknown): stri
 	return [...out, ...[...roleIds].map((id) => `<@&${id}>`)].join(' ');
 }
 
-async function post(channel: GuildTextBasedChannel, render: Renderer, lang: ServerLanguage, files: LoadedFile[], mentions: string) {
+type PostContent = { lang: ServerLanguage; files: LoadedFile[]; mentions: string };
+
+async function post(channel: GuildTextBasedChannel, render: Renderer, { lang, files, mentions }: PostContent) {
 	const chunks = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(channel.guild.id, channel.id).catch(() => null)) ?? [];
 	const prefix = [mentions, chunks[0]].filter(Boolean).join(' ');
 	const plain = render(lang);
-	const inline = prefix !== '' && prefixFits(plain, prefix);
-	const sent = await channel.send(sendBody(inline ? render(lang, { prefix }) : plain, files));
-	for (const extra of inline ? chunks.slice(1) : [prefix, ...chunks.slice(1)]) {
+	const isInline = prefix !== '' && prefixFits(plain, prefix);
+	const sent = await channel.send(sendBody(isInline ? render(lang, { prefix }) : plain, files));
+	for (const extra of isInline ? chunks.slice(1) : [prefix, ...chunks.slice(1)]) {
 		if (extra) {
 			await channel.send({ content: extra }).catch(() => null);
 		}
 	}
-	return { message_id: String(sent.id), mentions: inline ? prefix : null };
+	return { message_id: String(sent.id), mentions: isInline ? prefix : null };
 }
 
-async function syncPost(guild: Guild, entry: ServerMessagePost, doc: MessageDoc, render: Renderer, interactive: boolean): Promise<SyncResult> {
+type PostSync = { doc: MessageDoc; render: Renderer; interactive: boolean };
+
+async function syncPost(guild: Guild, entry: ServerMessagePost, { doc, render, interactive: isInteractive }: PostSync): Promise<SyncResult> {
 	const base = { post_id: entry.id, channel_id: entry.discord_channel_id, channel_name: entry.channel_name };
 	try {
-		const channel = await guild.channels
-			.fetch(entry.discord_channel_id)
-			.catch((error: ErrorLike) => (error?.code === UNKNOWN_CHANNEL ? null : Promise.reject(error)));
+		const channel = await guild.channels.fetch(entry.discord_channel_id).catch((error: unknown) => {
+			if ((error as ErrorLike)?.code === RESTJSONErrorCodes.UnknownChannel) {
+				return null;
+			}
+			throw error;
+		});
 		const posted = channel?.isTextBased()
-			? await channel.messages.fetch(entry.discord_message_id).catch((error: ErrorLike) => (error?.code === UNKNOWN_MESSAGE ? null : Promise.reject(error)))
+			? await channel.messages.fetch(entry.discord_message_id).catch((error: unknown) => {
+					if ((error as ErrorLike)?.code === RESTJSONErrorCodes.UnknownMessage) {
+						return null;
+					}
+					throw error;
+				})
 			: null;
 		if (!posted) {
 			return { ...base, ok: true, gone: true };
 		}
 
 		const wasV2 = posted.flags.has(MessageFlags.IsComponentsV2);
-		const rendered = render(postLanguage(doc, entry.language), { prefix: entry.mentions ?? '', interactive });
+		const rendered = render(postLanguage(doc, entry.language), { prefix: entry.mentions ?? '', interactive: isInteractive });
 		if (rendered.empty) {
-			if (interactive) {
+			if (isInteractive) {
 				return { ...base, ok: false, error: 'This message has nothing left to show. Add something to it, or remove the posted copies.' };
 			}
 			await posted.delete();
@@ -265,18 +279,17 @@ export async function sendServerMessage(client: Client, payload: Record<string, 
 	}
 
 	const lang = postLanguage(message.content, payload.language);
-	const render = renderer('server', message, guild.name);
+	const render = renderer('server', message, { server: guild.name });
 	if (render(lang).empty) {
 		return { ok: false, error: 'This message has nothing to send yet.' };
 	}
 
-	let files: LoadedFile[];
-	try {
-		files = await loadFiles(render(lang));
-	} catch (error) {
-		await logger.log(`❌ Failed to load files for message ${message.id}: ${(error as Error)?.message}`);
-		return { ok: false, error: panelReason(error, '') };
+	const filesResult = await attempt(() => loadFiles(render(lang)));
+	if (!filesResult.ok) {
+		await logger.log(`❌ Failed to load files for message ${message.id}: ${(filesResult.error as Error)?.message}`);
+		return { ok: false, error: panelReason(filesResult.error, '') };
 	}
+	const files = filesResult.value;
 
 	const mentions = roleMentions(guild, payload.role_ids);
 	const results: { channel_id: string; ok: boolean; message_id?: string; mentions?: string | null; error?: string }[] = [];
@@ -287,7 +300,7 @@ export async function sendServerMessage(client: Client, payload: Record<string, 
 			continue;
 		}
 		try {
-			results.push({ channel_id: channelId, ok: true, ...(await post(channel, render, lang, files, mentions)) });
+			results.push({ channel_id: channelId, ok: true, ...(await post(channel, render, { lang, files, mentions })) });
 			await logger.log(`📤 Message "${message.name}" sent to #${channel.name} (${channel.id}) in ${guild.name} (${guild.id})`);
 		} catch (error) {
 			await logger.log(`❌ Failed to send message ${message.id} to channel ${channelId}: ${(error as Error)?.message}`);
@@ -308,16 +321,20 @@ export async function syncServerMessagePosts(client: Client, payload: Record<str
 		return { ok: false, error: 'That message no longer exists.' };
 	}
 
-	const refresh = payload.refresh === true;
+	const shouldRefresh = payload.refresh === true;
 	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
 	for (const entry of await db.getServerMessagePosts(payload.server_id as number | string, message.id)) {
 		if (wanted && !wanted.has(entry.id)) {
 			continue;
 		}
-		const content = refresh ? message.content : (entry.content ?? message.content);
-		const result = await syncPost(guild, entry, content, renderer('server', { ...message, content }, guild.name), payload.interactive !== false);
-		if (refresh && result.ok && !result.gone) {
+		const content = shouldRefresh ? message.content : (entry.content ?? message.content);
+		const result = await syncPost(guild, entry, {
+			doc: content,
+			render: renderer('server', { ...message, content }, { server: guild.name }),
+			interactive: payload.interactive !== false
+		});
+		if (shouldRefresh && result.ok && !result.gone) {
 			await db.setServerMessagePostContent(payload.server_id as number | string, entry.id, content).catch(() => null);
 		}
 		results.push(result);
@@ -346,13 +363,12 @@ export async function sendGlobalMessage(client: Client, payload: Record<string, 
 		return { ok: false, error: 'That message no longer exists.' };
 	}
 
-	let files: LoadedFile[];
-	try {
-		files = await loadFiles(renderer('global', message, '')(message.content.language));
-	} catch (error) {
-		await logger.log(`❌ Failed to load files for global message ${message.id}: ${(error as Error)?.message}`);
-		return { ok: false, error: panelReason(error, '') };
+	const filesResult = await attempt(() => loadFiles(renderer('global', message, { server: '' })(message.content.language)));
+	if (!filesResult.ok) {
+		await logger.log(`❌ Failed to load files for global message ${message.id}: ${(filesResult.error as Error)?.message}`);
+		return { ok: false, error: panelReason(filesResult.error, '') };
 	}
+	const files = filesResult.value;
 
 	const results: Record<string, unknown>[] = [];
 	for (const server of await db.getServersForBot(currentBotId())) {
@@ -372,12 +388,12 @@ export async function sendGlobalMessage(client: Client, payload: Record<string, 
 				continue;
 			}
 			const lang = postLanguage(message.content, settings.language);
-			const render = renderer('global', message, guild.name, { defaultColor: await serverColor(guild.id) });
+			const render = renderer('global', message, { server: guild.name, defaults: { defaultColor: await serverColor(guild.id) } });
 			if (render(lang).empty) {
 				results.push({ ...base, ok: false, error: 'This message has nothing to send yet.' });
 				continue;
 			}
-			const sent = await post(channel, render, lang, files, groupMentions(guild, payload.mention_groups, settings.staff_roles));
+			const sent = await post(channel, render, { lang, files, mentions: groupMentions(guild, payload.mention_groups, settings.staff_roles) });
 			results.push({ ...base, ok: true, channel_id: channelId, language: lang, ...sent });
 			await logger.log(`📤 Global message "${message.name}" sent to #${channel.name} in ${guild.name} (${guild.id})`);
 		} catch (error) {
@@ -396,7 +412,7 @@ export async function syncGlobalMessagePosts(client: Client, payload: Record<str
 		return { ok: false, error: 'That message no longer exists.' };
 	}
 
-	const refresh = payload.refresh === true;
+	const shouldRefresh = payload.refresh === true;
 	const wanted = Array.isArray(payload.post_ids) ? new Set(payload.post_ids.map(Number)) : null;
 	const results: SyncResult[] = [];
 	for (const entry of await db.getGlobalMessagePosts(panel, message.id, currentBotId())) {
@@ -408,10 +424,10 @@ export async function syncGlobalMessagePosts(client: Client, payload: Record<str
 			results.push({ post_id: entry.id, channel_id: entry.discord_channel_id, channel_name: entry.channel_name, ok: true, gone: true });
 			continue;
 		}
-		const content = refresh ? message.content : (entry.content ?? message.content);
-		const render = renderer('global', { ...message, content }, guild.name, { defaultColor: await serverColor(guild.id) });
-		const result = await syncPost(guild, entry, content, render, payload.interactive !== false);
-		if (refresh && result.ok && !result.gone) {
+		const content = shouldRefresh ? message.content : (entry.content ?? message.content);
+		const render = renderer('global', { ...message, content }, { server: guild.name, defaults: { defaultColor: await serverColor(guild.id) } });
+		const result = await syncPost(guild, entry, { doc: content, render, interactive: payload.interactive !== false });
+		if (shouldRefresh && result.ok && !result.gone) {
 			await db.setGlobalMessagePostContent(panel, entry.id, content).catch(() => null);
 		}
 		results.push(result);
@@ -481,7 +497,7 @@ async function applyRoles(interaction: ComponentInteraction, actions: RoleAction
 	if (actions.length === 0) {
 		return [];
 	}
-	const guild = interaction.guild;
+	const { guild } = interaction;
 	const member = await guild.members.fetch(interaction.user.id).catch(() => null);
 	if (!member) {
 		return [tr('common.errors.memberNotFound')];
@@ -496,19 +512,19 @@ async function applyRoles(interaction: ComponentInteraction, actions: RoleAction
 			lines.push(tr(`messages.blocked.${block}`, { role: mention }));
 			continue;
 		}
-		const has = member.roles.cache.has(role!.id);
-		const give = action.mode === 'add' || (action.mode === 'toggle' && !has);
-		if (give === has) {
-			lines.push(tr(give ? 'messages.roleAlready' : 'messages.roleNotHeld', { role: mention }));
+		const hasRole = member.roles.cache.has(role!.id);
+		const shouldGive = action.mode === 'add' || (action.mode === 'toggle' && !hasRole);
+		if (shouldGive === hasRole) {
+			lines.push(tr(shouldGive ? 'messages.roleAlready' : 'messages.roleNotHeld', { role: mention }));
 			continue;
 		}
 		try {
-			if (give) {
+			if (shouldGive) {
 				await member.roles.add(role!.id, 'Message button');
 			} else {
 				await member.roles.remove(role!.id, 'Message button');
 			}
-			lines.push(tr(give ? 'messages.roleAdded' : 'messages.roleRemoved', { role: mention }));
+			lines.push(tr(shouldGive ? 'messages.roleAdded' : 'messages.roleRemoved', { role: mention }));
 		} catch (error) {
 			await logger.log(`❌ Message button could not change role ${action.role_id} for ${interaction.user.id}: ${(error as Error)?.message}`);
 			lines.push(tr('messages.roleFailed', { role: mention, reason: errorReasonFor(tr, error) }));
@@ -544,147 +560,218 @@ export function isMessageComponentId(customId: string): boolean {
 	return parseMessageCustomId(customId) !== null;
 }
 
+type MessageRef = NonNullable<ReturnType<typeof parseMessageCustomId>>;
+type ComponentScene = {
+	ref: MessageRef;
+	guild: Guild;
+	serverId: number;
+	lang: ServerLanguage;
+	isSwitching: boolean;
+	isFromMenu: boolean;
+	isPinned: boolean;
+	tr: Translator;
+	panel: number | null;
+	defaults: RenderExtra;
+};
+type SceneMessage = { message: ServerMessage | null; post: ServerMessagePost | null; component: ReturnType<typeof findMessageComponent> | null };
+
+async function componentScene(interaction: ComponentInteraction, ref: MessageRef): Promise<ComponentScene> {
+	const { guild } = interaction;
+	const server = await getServerForCurrentBot(guild.id);
+	const isSwitching = ref.partId === MESSAGE_LANGUAGE_PART;
+	const isFromMenu = Array.isArray(interaction.values);
+	const chosen = isSwitching && isFromMenu ? interaction.values![0] : ref.lang;
+	const memberLang = isSwitching || ref.pinned ? ref.lang : await memberLanguage(server.id, interaction.user.id, ref.lang);
+	const lang: ServerLanguage = isSwitching && isServerLanguage(chosen) ? chosen : memberLang;
+	return {
+		ref,
+		guild,
+		serverId: server.id,
+		lang,
+		isSwitching,
+		isFromMenu,
+		isPinned: isSwitching || ref.pinned,
+		tr: translatorFor(lang),
+		panel: ref.scope === 'global' ? await currentPanelId() : null,
+		defaults: ref.scope === 'global' ? { defaultColor: await serverColor(guild.id) } : {}
+	};
+}
+
+function loadSceneMessage(scene: ComponentScene, id: number) {
+	if (scene.ref.scope !== 'global') {
+		return db.getServerMessage(scene.serverId, id);
+	}
+	return scene.panel == null ? null : db.getGlobalMessage(scene.panel, id);
+}
+
+async function scenePosts(scene: ComponentScene, template: ServerMessage | null): Promise<ServerMessagePost[]> {
+	if (!template) {
+		return [];
+	}
+	if (scene.ref.scope !== 'global') {
+		return db.getServerMessagePosts(scene.serverId, template.id);
+	}
+	return scene.panel == null ? [] : db.getGlobalMessagePosts(scene.panel, template.id, currentBotId());
+}
+
+async function sceneMessage(scene: ComponentScene, source: Message): Promise<SceneMessage> {
+	const template = await loadSceneMessage(scene, scene.ref.messageId);
+	const posts = await scenePosts(scene, template);
+	const { ref } = scene;
+	const post = posts.find((entry) => (ref.post != null ? entry.id === ref.post : entry.discord_message_id === source.id)) ?? null;
+	const message = template && post?.content ? { ...template, content: post.content } : template;
+	const component = message && !scene.isSwitching ? findMessageComponent(message.content, ref.partId) : null;
+	return { message, post, component };
+}
+
+function componentActions(component: SceneMessage['component'], picked: string[]): MessageAction[] {
+	if (!component) {
+		return [];
+	}
+	return component.kind === 'button' ? component.button.actions : component.select.options.filter((o) => picked.includes(o.id)).flatMap((o) => o.actions);
+}
+
+function shownPayload(scene: ComponentScene, { target, post, source }: { target: ServerMessage | null; post: ServerMessagePost | null; source: Message }) {
+	const isSourceV2 = source.flags.has(MessageFlags.IsComponentsV2);
+	const defaults = scene.isSwitching && post ? { ...scene.defaults, post: post.id } : scene.defaults;
+	const render = target ? renderer(scene.ref.scope, target, { server: scene.guild.name, defaults }) : null;
+	const shownLanguage = scene.isSwitching && target ? postLanguage(target.content, scene.lang) : scene.lang;
+	const hasNoMedia = scene.isSwitching && (!source.flags.has(MessageFlags.Ephemeral) || !showsMedia(source));
+	const lean = render && hasNoMedia ? render(shownLanguage, { pinned: scene.isPinned, media: false }) : null;
+	const rendered = lean && !lean.empty ? lean : render ? render(shownLanguage, { pinned: scene.isPinned }) : null;
+	const shown = rendered && !rendered.empty ? rendered : null;
+	return { shown, isSourceV2, isInPlace: !!shown && source.flags.has(MessageFlags.Ephemeral) && (shown.v2 || !isSourceV2) };
+}
+
+class ComponentResponder {
+	readonly lines: string[] = [];
+	private readonly interaction: ComponentInteraction;
+	private readonly tr: Translator;
+	private isAcknowledged = false;
+	private isReplyPending = false;
+
+	constructor(interaction: ComponentInteraction, tr: Translator) {
+		this.interaction = interaction;
+		this.tr = tr;
+	}
+
+	async showInPlace(shown: MessagePayload, isSourceV2: boolean) {
+		const isSlow = shown.files.length > 0;
+		if (isSlow) {
+			await this.interaction.deferUpdate();
+		}
+		const files = await loadFiles(shown).catch(() => null);
+		if (files) {
+			const body = { ...editBody(shown, isSourceV2), files, attachments: [] };
+			await (isSlow ? this.interaction.editReply(body) : this.interaction.update(body));
+		} else {
+			this.lines.push(this.tr('messages.unavailable'));
+		}
+		this.isAcknowledged = true;
+	}
+
+	async refreshMenu(again: MessagePayload) {
+		await this.interaction.update(again.v2 ? { components: again.components, flags: MessageFlags.IsComponentsV2 } : { components: again.components });
+		this.isAcknowledged = true;
+	}
+
+	async sendPrivately(payload: MessagePayload) {
+		if (!this.isAcknowledged && payload.files.length > 0) {
+			await this.interaction.deferReply({ flags: MessageFlags.Ephemeral });
+			this.isReplyPending = true;
+		}
+		const files = await loadFiles(payload).catch(() => null);
+		if (!files) {
+			this.lines.push(this.tr('messages.unavailable'));
+		} else if (this.isReplyPending) {
+			await this.interaction.editReply(sendBody(payload, files));
+			this.isReplyPending = false;
+		} else if (this.isAcknowledged) {
+			await this.interaction.followUp(privateBody(payload, files));
+		} else {
+			await this.interaction.reply(privateBody(payload, files));
+		}
+		this.isAcknowledged = true;
+	}
+
+	async ensureAcknowledged() {
+		if (!this.isAcknowledged) {
+			await this.interaction.deferReply({ flags: MessageFlags.Ephemeral });
+			this.isReplyPending = true;
+			this.isAcknowledged = true;
+		}
+	}
+
+	async finish() {
+		if (this.lines.length === 0) {
+			return;
+		}
+		const result = { content: this.lines.join('\n'), allowedMentions: { parse: [] } };
+		if (this.isReplyPending) {
+			await this.interaction.editReply(result);
+		} else {
+			await this.interaction.followUp({ ...result, flags: MessageFlags.Ephemeral });
+		}
+	}
+}
+
+async function roleActionLines(interaction: ComponentInteraction, roles: RoleAction[], scene: ComponentScene): Promise<string[]> {
+	const wait = roles.length > 0 ? roleCooldownLeft(scene.guild.id, interaction.user.id) : 0;
+	if (wait <= 0) {
+		return applyRoles(interaction, roles, scene.tr);
+	}
+	const time = new Intl.NumberFormat(scene.lang, { style: 'unit', unit: 'second', unitDisplay: 'long' }).format(Math.ceil(wait / SECOND_MS));
+	return [scene.tr('messages.cooldown', { time })];
+}
+
 export async function handleMessageComponent(interaction: ComponentInteraction) {
 	const ref = parseMessageCustomId(interaction.customId);
 	if (!ref || !interaction.guild) {
 		return;
 	}
 
-	const guild = interaction.guild;
-	const server = await getServerForCurrentBot(guild.id);
-	const switching = ref.partId === MESSAGE_LANGUAGE_PART;
-	const fromMenu = Array.isArray(interaction.values);
-	const chosen = switching && fromMenu ? interaction.values![0] : ref.lang;
-	const lang: ServerLanguage = switching
-		? isServerLanguage(chosen)
-			? chosen
-			: ref.lang
-		: ref.pinned
-			? ref.lang
-			: await memberLanguage(server.id, interaction.user.id, ref.lang);
-	const pinned = switching || ref.pinned;
-	const tr = translatorFor(lang);
+	const scene = await componentScene(interaction, ref);
+	const { tr, isSwitching } = scene;
 	const privately = (content: string): InteractionReplyOptions => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
-
-	const panel = ref.scope === 'global' ? await currentPanelId() : null;
-	const load = (id: number) => (ref.scope === 'global' ? (panel == null ? null : db.getGlobalMessage(panel, id)) : db.getServerMessage(server.id, id));
-	const defaults = ref.scope === 'global' ? { defaultColor: await serverColor(guild.id) } : {};
-
-	const template = await load(ref.messageId);
 	const source = interaction.message;
-	const posts: ServerMessagePost[] = !template
-		? []
-		: ref.scope === 'global'
-			? panel == null
-				? []
-				: await db.getGlobalMessagePosts(panel, template.id, currentBotId())
-			: await db.getServerMessagePosts(server.id, template.id);
-	const post = posts.find((entry) => (ref.post != null ? entry.id === ref.post : entry.discord_message_id === source.id)) ?? null;
-	const message = template && post?.content ? { ...template, content: post.content } : template;
-	const component = message && !switching ? findMessageComponent(message.content, ref.partId) : null;
-	if (!message || (!switching && !component)) {
+	const { message, post, component } = await sceneMessage(scene, source);
+	if (!message || (!isSwitching && !component)) {
 		await interaction.reply(privately(tr('messages.unavailable')));
 		return;
 	}
 
-	const picked: string[] = fromMenu ? interaction.values! : [];
-	const actions = !component
-		? []
-		: component.kind === 'button'
-			? component.button.actions
-			: component.select.options.filter((o) => picked.includes(o.id)).flatMap((o) => o.actions);
+	const actions = componentActions(component, scene.isFromMenu ? interaction.values! : []);
 	const show = actions.find((a): a is ShowAction => a.type === 'show');
 	const roles = ref.scope === 'server' ? actions.filter((a): a is RoleAction => a.type === 'role') : [];
 	const written = messageReplyDoc(actions, message.content);
-	if (!switching && !show && !written && roles.length === 0) {
+	if (!isSwitching && !show && !written && roles.length === 0) {
 		await interaction.reply(privately(tr('messages.notSetUp')));
 		return;
 	}
 
-	const target = switching ? message : show ? await load(show.message_id) : null;
-	const sourceV2 = source.flags.has(MessageFlags.IsComponentsV2);
-	const render = target ? renderer(ref.scope, target, guild.name, switching && post ? { ...defaults, post: post.id } : defaults) : null;
-	const shownLanguage = switching && target ? postLanguage(target.content, lang) : lang;
-	const withoutMedia = switching && (!source.flags.has(MessageFlags.Ephemeral) || !showsMedia(source));
-	const lean = render && withoutMedia ? render(shownLanguage, { pinned, media: false }) : null;
-	const rendered = lean && !lean.empty ? lean : render ? render(shownLanguage, { pinned }) : null;
-	const shown = rendered && !rendered.empty ? rendered : null;
-	const inPlace = !!shown && source.flags.has(MessageFlags.Ephemeral) && (shown.v2 || !sourceV2);
-	const lines: string[] = [];
-	let acknowledged = false;
-	let pendingReply = false;
+	const target = isSwitching ? message : show ? await loadSceneMessage(scene, show.message_id) : null;
+	const { shown, isSourceV2, isInPlace } = shownPayload(scene, { target, post, source });
+	const responder = new ComponentResponder(interaction, tr);
 
-	if (inPlace && shown) {
-		const slow = shown.files.length > 0;
-		if (slow) {
-			await interaction.deferUpdate();
-		}
-		const files = await loadFiles(shown).catch(() => null);
-		if (files) {
-			const body = { ...editBody(shown, sourceV2), files, attachments: [] };
-			if (slow) {
-				await interaction.editReply(body);
-			} else {
-				await interaction.update(body);
-			}
-		} else {
-			lines.push(tr('messages.unavailable'));
-		}
-		acknowledged = true;
-	} else if (fromMenu) {
+	if (isInPlace && shown) {
+		await responder.showInPlace(shown, isSourceV2);
+	} else if (scene.isFromMenu) {
 		const prefix = ref.post == null ? (post?.mentions ?? '') : '';
-		const again = renderer(ref.scope, message, guild.name, defaults)(ref.lang, { prefix, pinned: ref.pinned, post: ref.post });
-		await interaction.update(again.v2 ? { components: again.components, flags: MessageFlags.IsComponentsV2 } : { components: again.components });
-		acknowledged = true;
+		await responder.refreshMenu(
+			renderer(ref.scope, message, { server: scene.guild.name, defaults: scene.defaults })(ref.lang, { prefix, pinned: ref.pinned, post: ref.post })
+		);
 	}
 
-	const sendPrivately = async (payload: MessagePayload) => {
-		if (!acknowledged && payload.files.length > 0) {
-			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-			pendingReply = true;
-		}
-		const files = await loadFiles(payload).catch(() => null);
-		if (!files) {
-			lines.push(tr('messages.unavailable'));
-		} else if (pendingReply) {
-			await interaction.editReply(sendBody(payload, files));
-			pendingReply = false;
-		} else if (acknowledged) {
-			await interaction.followUp(privateBody(payload, files));
-		} else {
-			await interaction.reply(privateBody(payload, files));
-		}
-		acknowledged = true;
-	};
-
-	if ((show || switching) && !shown) {
-		lines.push(tr('messages.unavailable'));
+	if ((show || isSwitching) && !shown) {
+		responder.lines.push(tr('messages.unavailable'));
 	}
-	if (shown && !inPlace) {
-		await sendPrivately(shown);
+	if (shown && !isInPlace) {
+		await responder.sendPrivately(shown);
 	}
 	if (written) {
-		await sendPrivately(renderer(ref.scope, { ...message, content: written }, guild.name)(lang, { interactive: false }));
+		await responder.sendPrivately(renderer(ref.scope, { ...message, content: written }, { server: scene.guild.name })(scene.lang, { interactive: false }));
 	}
-	if (!acknowledged) {
-		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-		pendingReply = true;
-	}
-
-	const wait = roles.length > 0 ? roleCooldownLeft(guild.id, interaction.user.id) : 0;
-	if (wait > 0) {
-		const time = new Intl.NumberFormat(lang, { style: 'unit', unit: 'second', unitDisplay: 'long' }).format(Math.ceil(wait / 1000));
-		lines.push(tr('messages.cooldown', { time }));
-	} else {
-		lines.push(...(await applyRoles(interaction, roles, tr)));
-	}
-	if (lines.length === 0) {
-		return;
-	}
-	const result = { content: lines.join('\n'), allowedMentions: { parse: [] } };
-	if (pendingReply) {
-		await interaction.editReply(result);
-	} else {
-		await interaction.followUp({ ...result, flags: MessageFlags.Ephemeral });
-	}
+	await responder.ensureAcknowledged();
+	responder.lines.push(...(await roleActionLines(interaction, roles, scene)));
+	await responder.finish();
 }

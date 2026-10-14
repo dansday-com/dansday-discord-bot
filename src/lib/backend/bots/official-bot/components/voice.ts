@@ -93,16 +93,16 @@ async function handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState
 		return;
 	}
 
-	const left = oldState.channelId === active.channelId && newState.channelId !== active.channelId;
-	const joined = newState.channelId === active.channelId && oldState.channelId !== active.channelId;
+	const hasLeft = oldState.channelId === active.channelId && newState.channelId !== active.channelId;
+	const hasJoined = newState.channelId === active.channelId && oldState.channelId !== active.channelId;
 
-	if (joined && !newState.member?.user?.bot) {
+	if (hasJoined && !newState.member?.user?.bot) {
 		active.subscribeUser(userId);
 		active.noteJoined(userId);
 		return;
 	}
 
-	if (!left) {
+	if (!hasLeft) {
 		return;
 	}
 

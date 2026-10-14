@@ -2,50 +2,62 @@ import { json } from '@sveltejs/kit';
 import db, { type ServerMessage } from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { postBotWebhook, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
+import { postBotWebhook, resolveActiveBotForServer, type BotWebhookBody } from '$lib/backend/public/items/index.js';
+import type { ServerRow } from '$lib/schema.js';
 import { messageUploadKeys } from '$lib/messages.js';
 import { pruneMessageFiles as pruneStoredFiles } from '$lib/backend/storage/messageFiles.js';
+import { HTTP } from '$lib/http.js';
 
 export const BOT_OFFLINE = 'The bot is offline. Start it, then try again.';
 
 type Change = { key: string; before: string | null; after: string | null };
 
-export async function messagePanelAccess(locals: App.Locals, rawServerId: string | undefined): Promise<{ serverId: number; server: any } | Response> {
+export async function messagePanelAccess(locals: App.Locals, rawServerId: string | undefined): Promise<{ serverId: number; server: ServerRow } | Response> {
 	if (!locals.user.authenticated) {
-		return json({ ok: false, error: 'Authentication required' }, { status: 401 });
+		return json({ ok: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 	const serverId = parseInt(rawServerId ?? '');
 	if (isNaN(serverId)) {
-		return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
+		return json({ ok: false, error: 'Invalid server ID' }, { status: HTTP.BAD_REQUEST });
 	}
 	if (!(await canUseEmbedBuilder(locals, serverId))) {
-		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 	const server = await db.getServer(serverId);
 	if (!server) {
-		return json({ ok: false, error: 'Server not found' }, { status: 404 });
+		return json({ ok: false, error: 'Server not found' }, { status: HTTP.NOT_FOUND });
 	}
 	return { serverId, server };
 }
 
-export async function logMessageAction(locals: App.Locals, serverId: number, action: string, changes: Change[]) {
-	await db.createServerPanelLog(serverId, panelActorIds(locals), action, changes).catch(() => null);
+type PanelLogEntry = { action: string; changes: Change[] };
+
+export async function logMessageAction(locals: App.Locals, serverId: number, { action, changes }: PanelLogEntry) {
+	await db.createServerPanelLog(serverId, panelActorIds(locals), { action, changes }).catch(() => null);
 }
 
-export async function callMessageBot(server: any, type: string, payload: Record<string, unknown>): Promise<{ running: boolean; body: any }> {
+export async function callMessageBot(
+	server: ServerRow,
+	type: string,
+	payload: Record<string, unknown>
+): Promise<{ running: boolean; body: BotWebhookBody | null }> {
 	const bot = await resolveActiveBotForServer(server);
 	if (!bot || bot.status !== 'running' || !bot.port || !bot.secret_key) {
 		return { running: false, body: null };
 	}
 	const result = await postBotWebhook(bot, { type, guild_id: server.discord_server_id, server_id: server.id, ...payload });
-	return { running: result.status !== 502, body: result.body };
+	return { running: result.status !== HTTP.BAD_GATEWAY, body: result.body };
 }
 
-export async function syncMessagePosts(server: any, messageId: number, interactive = true, refresh: number[] | 'all' | null = null) {
+type PostSyncResult = { post_id: number; gone?: boolean; ok?: boolean; channel_id?: string; channel_name?: string; error?: string };
+
+type SyncOptions = { interactive?: boolean; refresh?: number[] | 'all' | null };
+
+export async function syncMessagePosts(server: ServerRow, messageId: number, { interactive: isInteractive = true, refresh = null }: SyncOptions = {}) {
 	const out = { running: false, updated: [] as string[], removed: 0, failed: [] as string[] };
 	const call = await callMessageBot(server, 'server_message_sync', {
 		message_id: messageId,
-		interactive,
+		interactive: isInteractive,
 		refresh: refresh !== null,
 		...(Array.isArray(refresh) ? { post_ids: refresh } : {})
 	});
@@ -53,7 +65,7 @@ export async function syncMessagePosts(server: any, messageId: number, interacti
 	if (!call.body?.ok) {
 		return out;
 	}
-	for (const result of call.body.results ?? []) {
+	for (const result of (call.body.results ?? []) as PostSyncResult[]) {
 		if (result.gone) {
 			await db.deleteServerMessagePost(server.id, result.post_id).catch(() => null);
 			out.removed++;

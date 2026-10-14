@@ -9,17 +9,20 @@ import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
 import { removeServerTheme, saveServerTheme, serverThemeFilename, serverThemeKey, serverThemeUrl } from '$lib/backend/storage/serverThemes.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { normalizeAccent } from '$lib/themes.js';
+import { HTTP } from '$lib/http.js';
 
-async function readPublicSettings(serverId: number): Promise<Record<string, any>> {
+type PublicSettings = { invite_theme_image?: string | null; invite_theme_accent?: string | null; [setting: string]: unknown };
+
+async function readPublicSettings(serverId: number): Promise<PublicSettings> {
 	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.public).catch(() => null);
-	const settings = (row as any)?.settings;
+	const settings = row?.settings;
 	return settings && typeof settings === 'object' && !Array.isArray(settings) ? { ...settings } : {};
 }
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
 	if (!(await canEditServerSettings(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	try {
@@ -42,23 +45,28 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 
 		await db
-			.createServerPanelLog(serverId, panelActorIds(locals), SERVER_SETTINGS.component.public, [
-				{ key: 'invite page background', before: previous ? 'image' : null, after: 'new image' },
-				...(accent && accent !== settings.invite_theme_accent ? [{ key: 'invite page tone', before: settings.invite_theme_accent ?? null, after: accent }] : [])
-			])
+			.createServerPanelLog(serverId, panelActorIds(locals), {
+				action: SERVER_SETTINGS.component.public,
+				changes: [
+					{ key: 'invite page background', before: previous ? 'image' : null, after: 'new image' },
+					...(accent && accent !== settings.invite_theme_accent
+						? [{ key: 'invite page tone', before: settings.invite_theme_accent ?? null, after: accent }]
+						: [])
+				]
+			})
 			.catch(() => null);
 
 		return json({ success: true, key, image: serverThemeUrl(key), accent: next.invite_theme_accent ?? null });
 	} catch (error) {
 		logger.log(`❌ Error saving invite page background: ${(error as Error).message}`);
-		return json({ success: false, error: 'Could not save the background.' }, { status: 500 });
+		return json({ success: false, error: 'Could not save the background.' }, { status: HTTP.INTERNAL_ERROR });
 	}
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
 	if (!(await canEditServerSettings(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const settings = await readPublicSettings(serverId);
@@ -71,7 +79,10 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	await db.upsertServerSettings(serverId, SERVER_SETTINGS.component.public, settings);
 	await removeServerTheme(previous);
 	await db
-		.createServerPanelLog(serverId, panelActorIds(locals), SERVER_SETTINGS.component.public, [{ key: 'invite page background', before: 'image', after: null }])
+		.createServerPanelLog(serverId, panelActorIds(locals), {
+			action: SERVER_SETTINGS.component.public,
+			changes: [{ key: 'invite page background', before: 'image', after: null }]
+		})
 		.catch(() => null);
 	return json({ success: true });
 };

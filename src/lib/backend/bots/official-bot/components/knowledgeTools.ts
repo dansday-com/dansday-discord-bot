@@ -33,6 +33,7 @@ import { loadItemsCatalog } from '../../../public/items/index.js';
 import { VOICE_NOTE, fail, publicServer } from './aiToolShared.js';
 import type { ToolContext } from './aiToolShared.js';
 import type { LegalDoc } from '../../../../legal.js';
+import { DAY_MS } from '../../../../utils/time.js';
 
 const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'market', 'tips'];
 
@@ -170,7 +171,7 @@ async function ensureMaintainerHandle() {
 	if (!MAINTAINER_DISCORD_ID) {
 		return;
 	}
-	if (cachedHandle && Date.now() - handleFetchedAt < 86400000) {
+	if (cachedHandle && Date.now() - handleFetchedAt < DAY_MS) {
 		return;
 	}
 	try {
@@ -188,9 +189,7 @@ async function ensureMaintainerHandle() {
 			cachedHandle = String(body.username);
 			handleFetchedAt = Date.now();
 		}
-	} catch {
-		return;
-	}
+	} catch {}
 }
 
 function maintainerHandle() {

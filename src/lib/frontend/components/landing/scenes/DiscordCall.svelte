@@ -2,7 +2,7 @@
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
 	import { scale } from 'svelte/transition';
-	import { tapping } from './clock.svelte.js';
+	import { SCENE_ANIM_MS, SCENE_RESET_MS, tapping } from './clock.svelte.js';
 	import Tap from './Tap.svelte';
 	import type { Person, SceneCall, SceneCallMember } from './types.js';
 
@@ -10,15 +10,18 @@
 
 	const POP_MS = 1100;
 	const POP_GAP_MS = 140;
+	const FRIEND_BOOST_PERCENT = 10;
+	const POP_TOP_PX = 6;
+	const POP_STEP_PX = 21;
 
 	const present = $derived(call.members.filter((m) => t >= (m.joinAt ?? -1)));
-	const percent = $derived(present.filter((m) => m.who !== call.me).length * 10);
-	const camera = $derived(t >= call.cameraAt);
-	const live = $derived(t >= call.liveAt);
+	const percent = $derived(present.filter((m) => m.who !== call.me).length * FRIEND_BOOST_PERCENT);
+	const isCameraOn = $derived(t >= call.cameraAt);
+	const isLive = $derived(t >= call.liveAt);
 	const tick = $derived(still ? null : (call.ticks.find((k) => t >= k.at && t < k.at + POP_MS + k.gains.length * POP_GAP_MS) ?? null));
-	const animMs = $derived(still || t < 500 ? 0 : 320);
+	const animMs = $derived(still || t < SCENE_RESET_MS ? 0 : SCENE_ANIM_MS);
 
-	const talking = (m: SceneCallMember) => (m.talk ?? []).some(([from, to]) => t >= from && t < to);
+	const talking = (m: SceneCallMember) => (m.talk ?? []).some(({ from, to }) => t >= from && t < to);
 </script>
 
 <div class="bg-ash-950 shrink-0 px-3 pt-2 pb-3 sm:px-4">
@@ -34,15 +37,15 @@
 		{/if}
 		<span class="ml-auto flex shrink-0 items-center gap-1.5 text-[11px]">
 			<span
-				class="relative grid size-7 place-items-center rounded-full transition-colors duration-200 {camera
+				class="relative grid size-7 place-items-center rounded-full transition-colors duration-200 {isCameraOn
 					? 'bg-ash-50 text-ash-950'
 					: 'bg-ash-700 text-ash-100'}"
 			>
-				<i class="fas {camera ? 'fa-video' : 'fa-video-slash'}"></i>
+				<i class="fas {isCameraOn ? 'fa-video' : 'fa-video-slash'}"></i>
 				{#if tapping(t, call.cameraAt)}<Tap />{/if}
 			</span>
 			<span
-				class="relative grid size-7 place-items-center rounded-full transition-colors duration-200 {live
+				class="relative grid size-7 place-items-center rounded-full transition-colors duration-200 {isLive
 					? 'bg-ash-50 text-ash-950'
 					: 'bg-ash-700 text-ash-100'}"
 			>
@@ -64,7 +67,7 @@
 			>
 				<div class="bg-ash-800 relative grid size-full place-items-center overflow-hidden rounded-xl">
 					<img src={person.avatar} alt="" class="size-10 rounded-full" loading="lazy" />
-					{#if me && camera}
+					{#if me && isCameraOn}
 						<img
 							in:scale={{ start: 1.25, duration: animMs, easing: quintOut }}
 							src={person.avatar}
@@ -74,7 +77,7 @@
 						/>
 					{/if}
 					<span class="call-ring absolute inset-0 rounded-xl" class:call-ring-on={talking(m)}></span>
-					{#if me && live}
+					{#if me && isLive}
 						<span
 							in:scale={{ start: 0.6, duration: animMs, easing: quintOut }}
 							class="absolute top-1.5 left-1.5 rounded-[4px] bg-[#f23f43] px-1 text-[9px] leading-[14px] font-extrabold tracking-[0.04em] text-white"
@@ -85,7 +88,7 @@
 					<span
 						class="absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-0.75rem)] items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[10.5px] font-semibold text-white"
 					>
-						{#if me && camera}<i class="fas fa-video text-[8.5px]"></i>{/if}
+						{#if me && isCameraOn}<i class="fas fa-video text-[8.5px]"></i>{/if}
 						<span class="truncate">{person.name}</span>
 					</span>
 				</div>
@@ -93,7 +96,7 @@
 					{#each tick.gains as gain, i (`${tick.at}:${i}`)}
 						<span
 							class="call-pop pointer-events-none absolute right-1.5 rounded-full bg-black/75 px-1.5 py-px text-[10.5px] font-bold whitespace-nowrap text-[#efb11d]"
-							style="top: {6 + i * 21}px; animation-delay: {i * POP_GAP_MS}ms; animation-duration: {POP_MS}ms"
+							style="top: {POP_TOP_PX + i * POP_STEP_PX}px; animation-delay: {i * POP_GAP_MS}ms; animation-duration: {POP_MS}ms"
 						>
 							{gain}
 						</span>

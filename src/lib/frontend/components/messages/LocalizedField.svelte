@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NEAR_LIMIT_SHARE } from '$lib/messages.js';
 	import type { Localized } from '$lib/messages.js';
 	import { serverLanguageLabel } from '$lib/languages.js';
 	import { messageEditor } from './editorContext.js';
@@ -26,10 +27,10 @@
 	let area = $state<HTMLTextAreaElement>();
 
 	const editor = messageEditor();
-	const translating = $derived(editor.lang !== editor.base);
+	const isTranslating = $derived(editor.lang !== editor.base);
 	const current = $derived(value[editor.lang] ?? '');
-	const original = $derived(translating ? (value[editor.base] ?? '') : '');
-	const tone = $derived(current.length >= max ? 'text-red-400' : current.length >= max * 0.9 ? 'text-yellow-400' : 'text-ash-500');
+	const original = $derived(isTranslating ? (value[editor.base] ?? '') : '');
+	const tone = $derived(current.length >= max ? 'text-red-400' : current.length >= max * NEAR_LIMIT_SHARE ? 'text-yellow-400' : 'text-ash-500');
 
 	function set(next: string) {
 		if (next) {
@@ -69,7 +70,7 @@
 			class={FIELD}
 		/>
 	{/if}
-	{#if translating && original && !current}
+	{#if isTranslating && original && !current}
 		<p class="text-ash-500 mt-1 text-[11px]">Left empty, so members see the {serverLanguageLabel(editor.base)} text.</p>
 	{/if}
 </div>

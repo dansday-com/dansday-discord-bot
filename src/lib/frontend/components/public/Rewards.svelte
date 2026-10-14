@@ -2,6 +2,8 @@
 	import { prefersReducedMotion } from '$lib/frontend/components/dash';
 	import { rewardGoalMeta, xpForLevel, type RewardKind, type RewardState } from '$lib/rewards.js';
 	import GameModal from './GameModal.svelte';
+	import { MINUTES_PER_HOUR } from '$lib/utils/time.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
 
 	type RewardItem = {
 		id: number;
@@ -70,8 +72,8 @@
 	}
 
 	function hours(minutes: number): string {
-		const h = Math.floor(minutes / 60);
-		const m = minutes % 60;
+		const h = Math.floor(minutes / MINUTES_PER_HOUR);
+		const m = minutes % MINUTES_PER_HOUR;
 		return m === 0 ? `${fmt(h)} h` : `${fmt(h)} h ${m} min`;
 	}
 
@@ -83,7 +85,7 @@
 		if (r.goal_type === 'chat') {
 			return `${fmt(left)} to go`;
 		}
-		return left >= 60 ? `${fmt(Math.ceil(left / 60))} h to go` : `${left} min to go`;
+		return left >= MINUTES_PER_HOUR ? `${fmt(Math.ceil(left / MINUTES_PER_HOUR))} h to go` : `${left} min to go`;
 	}
 
 	function progress(r: RewardItem): string {
@@ -98,10 +100,10 @@
 
 	function pct(r: RewardItem): number {
 		if (r.goal_type !== 'level') {
-			return Math.max(0, Math.min(100, (r.current / Math.max(1, r.goal)) * 100));
+			return Math.max(0, Math.min(PERCENT, (r.current / Math.max(1, r.goal)) * PERCENT));
 		}
 		const to = xpForLevel(r.goal, levelReq.baseXp, levelReq.multiplier);
-		return Math.max(0, Math.min(100, (xp / Math.max(1, to)) * 100));
+		return Math.max(0, Math.min(PERCENT, (xp / Math.max(1, to)) * PERCENT));
 	}
 
 	function status(r: RewardItem): { icon: string; tone: string; line: string } {

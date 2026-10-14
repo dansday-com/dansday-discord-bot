@@ -13,9 +13,9 @@ import {
 } from '../src/lib/backend/bots/official-bot/components/interface/formFields.ts';
 
 const PRESETS: DurationPreset[] = [
-	[10, 'minute'],
-	[1, 'hour'],
-	[7, 'day']
+	{ amount: 10, unit: 'minute' },
+	{ amount: 1, unit: 'hour' },
+	{ amount: 7, unit: 'day' }
 ];
 const picked = (value: unknown) => ({ getRadioGroup: () => value });
 const throwing = {
@@ -34,7 +34,7 @@ const throwing = {
 };
 
 test('durationField offers the presets as radio choices labelled in the member language', () => {
-	const english = durationField('How long', 'duration', 'en', PRESETS).toJSON();
+	const english = durationField('How long', 'duration', { lang: 'en', presets: PRESETS }).toJSON();
 	assert.equal(english.label, 'How long');
 	assert.deepEqual(english.component, {
 		type: 21,
@@ -45,7 +45,7 @@ test('durationField offers the presets as radio choices labelled in the member l
 			{ label: '7 days', value: '604800' }
 		]
 	});
-	const indonesian = durationField('Berapa lama', 'duration', 'id', PRESETS).toJSON();
+	const indonesian = durationField('Berapa lama', 'duration', { lang: 'id', presets: PRESETS }).toJSON();
 	assert.deepEqual(
 		(indonesian.component as { options: { label: string }[] }).options.map((option) => option.label),
 		['10 menit', '1 jam', '7 hari']

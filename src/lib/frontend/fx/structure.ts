@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 export function ground(s: FxScene, salt: number, height: number, rough: number, light: number) {
@@ -22,7 +22,7 @@ export function ground(s: FxScene, salt: number, height: number, rough: number, 
 	}
 }
 
-export function withGround(inner: FxProgram, salt: number, height: number, rough: number, light: number, catchLight = false): FxProgram {
+export function withGround(inner: FxProgram, salt: number, height: number, rough: number, light: number, shouldCatchLight = false): FxProgram {
 	return {
 		opaque: true,
 		rows: inner.rows,
@@ -31,7 +31,7 @@ export function withGround(inner: FxProgram, salt: number, height: number, rough
 		frame(s) {
 			inner.frame(s);
 			const lit: number[][] = [];
-			if (catchLight) {
+			if (shouldCatchLight) {
 				const r = mulberry32(s.v.seed + salt);
 				const steps = 7 + ((r() * 5) | 0);
 				const pts: number[] = [];
@@ -201,7 +201,7 @@ export function withHorizon(inner: FxProgram): FxProgram {
 					if (i < 0 || i >= s.px.length) {
 						continue;
 					}
-					s.px[i] = s.px[i + 1] = s.px[i + 2] = 0;
+					s.px.fill(0, i, i + 3);
 					s.px[i + 3] = 255;
 				}
 			}
@@ -275,7 +275,7 @@ export function makeBreaker(rows: number): FxProgram {
 		frame(s) {
 			clear(s);
 			const st = s;
-			const dir = s.v.dir;
+			const { dir } = s.v;
 			const rest = st.rest as number;
 			const period = st.period as number;
 			const surf = st.surf as Float32Array;
@@ -462,7 +462,7 @@ export function makeHoles(rows: number): FxProgram {
 						if (d < rad) {
 							const i = (((cy + y) | 0) * s.w + ((cx + x) | 0)) * 4;
 							if (i >= 0 && i < s.px.length) {
-								s.px[i] = s.px[i + 1] = s.px[i + 2] = 0;
+								s.px.fill(0, i, i + 3);
 								s.px[i + 3] = 255;
 							}
 						} else {
@@ -531,8 +531,8 @@ export function makeSign(rows: number): FxProgram {
 				for (let x = 0; x < s.w; x++) {
 					const row = (y / 5) | 0;
 					const brick = ((x + (row % 2) * 6) / 12) | 0;
-					const edge = (x + (row % 2) * 6) % 12 < 1 || y % 5 === 0;
-					const shade = edge ? 0.42 : 1;
+					const isEdge = (x + (row % 2) * 6) % 12 < 1 || y % 5 === 0;
+					const shade = isEdge ? 0.42 : 1;
 					plot(s, x, y, kr * shade, kg * shade, kb * shade, 0.52 + ((brick * 7) % 3) * 0.04);
 				}
 			}
@@ -636,9 +636,9 @@ export function makeWishNight(rows: number): FxProgram {
 				const halfW = Math.sqrt(Math.max(0, rad * rad - y * y));
 				for (let x = -halfW; x <= halfW; x++) {
 					const term = (1 - 2 * moon.lit) * halfW;
-					const lit = moon.waxing ? x > term : x < -term;
-					let a = lit ? 1 : 0.09;
-					if (lit) {
+					const isLit = moon.waxing ? x > term : x < -term;
+					let a = isLit ? 1 : 0.09;
+					if (isLit) {
 						for (const [mxp, myp, mrad] of moon.maria) {
 							if (Math.hypot(x / rad - mxp, y / rad - myp) < mrad) {
 								a *= 0.74;
@@ -821,7 +821,7 @@ export function withScreen(inner: FxProgram, dark: number, cover: number, vignet
 		init: inner.init,
 		frame(s) {
 			inner.frame(s);
-			const px = s.px;
+			const { px } = s;
 			const [br, bg, bb] = hsl(s.v.hue, s.v.sat * 0.45, dark);
 			const cx = s.w / 2;
 			const cy = s.h / 2;
@@ -864,6 +864,16 @@ function glint(x: number, y: number, t: number) {
 	return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
+type ShoreScene = FxScene & {
+	shore: number;
+	lip: number;
+	crests: number[][];
+	runs: number[][];
+	wet: Float32Array;
+	mirror: Float32Array;
+	sun?: number[];
+};
+
 export function withShore(inner: FxProgram): FxProgram {
 	return {
 		opaque: true,
@@ -887,8 +897,8 @@ export function withShore(inner: FxProgram): FxProgram {
 		},
 		frame(s) {
 			inner.frame(s);
-			const st = s as any;
-			const sun = st.sun as number[];
+			const st = s as ShoreScene;
+			const { sun } = st;
 			if (!sun) {
 				blit(s);
 				return;
@@ -898,13 +908,13 @@ export function withShore(inner: FxProgram): FxProgram {
 			const deep = Math.max(1, shoreY - hz);
 			const sand = Math.max(1, s.h - shoreY);
 			const wetEnd = Math.min(s.h, Math.ceil(shoreY + sand * 0.16 + 1));
-			const wet = st.wet as Float32Array;
-			const crests = st.crests as number[][];
-			const runs = st.runs as number[][];
+			const { wet } = st;
+			const { crests } = st;
+			const { runs } = st;
 
 			const [fr, fg, fb] = hsl(s.v.hue + 198, s.v.sat * 0.5, 20);
 			const [nr, ng, nb] = hsl(s.v.hue + 206, s.v.sat * 0.42, 34);
-			const mirror = st.mirror as Float32Array;
+			const { mirror } = st;
 			for (let x = 0; x < s.w; x++) {
 				mirror[x] = 0.22 + 0.78 * Math.exp(-Math.abs(x - sunX) / (s.w * 0.42));
 			}
@@ -971,7 +981,7 @@ export function withShore(inner: FxProgram): FxProgram {
 				if (p < 0.06) {
 					continue;
 				}
-				const y = hz + deep * Math.pow(p, 1.7);
+				const y = hz + deep * p ** 1.7;
 				const thick = 0.8 + p * p * 3.4;
 				const rise = deep * (0.06 + p * p * 0.36) * c[1];
 				const a = edge(p, 0.04, 1.0, 0.12) * (0.3 + p * 0.62) * c[1];

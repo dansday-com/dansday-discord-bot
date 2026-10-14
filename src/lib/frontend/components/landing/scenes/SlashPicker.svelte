@@ -5,6 +5,8 @@
 	import { tapping } from './clock.svelte.js';
 	import Tap from './Tap.svelte';
 
+	const PICKER_FLY_MS = 200;
+
 	let {
 		commands,
 		draft,
@@ -16,7 +18,7 @@
 
 <div
 	class="bg-ash-800 border-ash-950 overflow-hidden rounded-lg border shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
-	transition:fly={{ y: 8, duration: still ? 0 : 200, easing: quintOut }}
+	transition:fly={{ y: 8, duration: still ? 0 : PICKER_FLY_MS, easing: quintOut }}
 >
 	<p class="text-ash-200 flex items-center gap-2 px-3 pt-2.5 pb-1.5 text-[11.5px] font-bold tracking-[0.02em] uppercase">
 		<img src={BOT.avatar} alt="" class="size-4 rounded-full" loading="lazy" />{BOT.name}

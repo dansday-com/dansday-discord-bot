@@ -6,7 +6,7 @@ export function serverThemeFilename(extension: string): string {
 	return uploadFilename(extension);
 }
 
-export function serverThemeKey(serverId: any, filename: string): string {
+export function serverThemeKey(serverId: string | number, filename: string): string {
 	return store.key([serverId], filename);
 }
 

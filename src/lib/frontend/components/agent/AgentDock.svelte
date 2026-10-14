@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HTTP } from '$lib/http.js';
 	import { onMount, tick } from 'svelte';
 	import { quintOut } from 'svelte/easing';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -6,26 +7,31 @@
 	import { AGENT_OFF, AGENT_PROMPT_LIMIT } from '$lib/agent.js';
 	import { agentDock, announceAgentChanges, type AgentMessageEditor } from '$lib/frontend/agent.svelte';
 	import { ADMIN_TAB_PATHS } from '$lib/frontend/redirect.js';
-	import { showToast } from '$lib/frontend/toast.svelte';
+	import { showToast, TOAST_MS } from '$lib/frontend/toast.svelte';
 	import { FIELD, GHOST_BUTTON, ICON_BUTTON } from '$lib/frontend/components/messages/styles.js';
 
 	type Turn = { role: 'user' | 'assistant'; text: string };
 
 	const SEEN_KEY = 'agent-dock-seen';
 	const TEASER_DELAY_MS = 6000;
+	const POP_START_SCALE = 0.96;
+	const POP_SCALE_GROWTH = 0.04;
+	const SSE_DATA_PREFIX = 'data: ';
+	const EDITOR_WAIT_TRIES = 100;
+	const EDITOR_WAIT_STEP_MS = 50;
 
 	const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	let { superadmin }: { superadmin: boolean } = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let ready = $state<boolean | null>(null);
 	let can = $state<string[]>([]);
 	const turns = $state<Turn[]>([]);
 	let prompt = $state('');
-	let busy = $state(false);
-	let teaser = $state(false);
-	let unread = $state(false);
+	let isBusy = $state(false);
+	let isTeaserShown = $state(false);
+	let hasUnread = $state(false);
 	let undoable = $state.raw<{ turn: number; editor: AgentMessageEditor } | null>(null);
 	let log = $state<HTMLElement>();
 	let input = $state<HTMLTextAreaElement>();
@@ -45,7 +51,9 @@
 			duration,
 			easing: quintOut,
 			css: (t: number, u: number) =>
-				reduced ? `opacity: ${t}` : `opacity: ${t}; transform: translateY(${u * lift}px) scale(${0.96 + 0.04 * t}); transform-origin: bottom right`
+				reduced
+					? `opacity: ${t}`
+					: `opacity: ${t}; transform: translateY(${u * lift}px) scale(${POP_START_SCALE + POP_SCALE_GROWTH * t}); transform-origin: bottom right`
 		};
 	}
 
@@ -66,7 +74,7 @@
 	}
 
 	$effect(() => {
-		if (!open) {
+		if (!isOpen) {
 			return;
 		}
 		let current = true;
@@ -91,7 +99,7 @@
 	}
 
 	function markSeen() {
-		teaser = false;
+		isTeaserShown = false;
 		try {
 			localStorage.setItem(SEEN_KEY, '1');
 		} catch (_) {}
@@ -103,8 +111,8 @@
 		}
 		const timer = setTimeout(async () => {
 			const info = await describe();
-			if (info.ready && !open && !seen()) {
-				teaser = true;
+			if (info.ready && !isOpen && !seen()) {
+				isTeaserShown = true;
 			}
 		}, TEASER_DELAY_MS);
 		return () => clearTimeout(timer);
@@ -112,8 +120,8 @@
 
 	async function show() {
 		markSeen();
-		unread = false;
-		open = true;
+		hasUnread = false;
+		isOpen = true;
 		await tick();
 		input?.focus();
 	}
@@ -123,19 +131,21 @@
 		log?.scrollTo({ top: log.scrollHeight });
 	}
 
-	async function readAnswer(res: Response): Promise<{ ok: boolean; body: any }> {
+	type AnswerBody = { ok?: boolean; error?: string; message?: Parameters<AgentMessageEditor['apply']>[0]; [field: string]: unknown };
+
+	async function readAnswer(res: Response): Promise<{ ok: boolean; body: AnswerBody }> {
 		if (!res.headers.get('content-type')?.includes('text/event-stream')) {
 			return { ok: res.ok, body: await res.json().catch(() => ({})) };
 		}
 		const line = (await res.text())
 			.split('\n')
 			.reverse()
-			.find((entry) => entry.startsWith('data: '));
-		const payload = line ? JSON.parse(line.slice(6)) : { status: 502, body: {} };
-		return { ok: payload.status < 400, body: payload.body ?? {} };
+			.find((entry) => entry.startsWith(SSE_DATA_PREFIX));
+		const payload = line ? JSON.parse(line.slice(SSE_DATA_PREFIX.length)) : { status: HTTP.BAD_GATEWAY, body: {} };
+		return { ok: payload.status < HTTP.BAD_REQUEST, body: payload.body ?? {} };
 	}
 
-	async function call(body: Record<string, unknown>): Promise<any | null> {
+	async function call(body: Record<string, unknown>): Promise<AnswerBody | null> {
 		try {
 			const res = await fetch('/api/agent', {
 				method: 'POST',
@@ -146,9 +156,9 @@
 			if (answer.ok && answer.body.ok) {
 				return answer.body;
 			}
-			showToast(answer.body.error || 'The assistant request failed. Try again in a moment.', 'error', 8000);
+			showToast(answer.body.error || 'The assistant request failed. Try again in a moment.', 'error', TOAST_MS.error);
 		} catch {
-			showToast('Could not reach the panel. Check your connection and try again.', 'error', 8000);
+			showToast('Could not reach the panel. Check your connection and try again.', 'error', TOAST_MS.error);
 		}
 		return null;
 	}
@@ -176,8 +186,8 @@
 			turns.push({ role: 'user', text });
 		}
 		turns.push({ role: 'assistant', text: String(out.reply ?? '') });
-		if (!open) {
-			unread = true;
+		if (!isOpen) {
+			hasUnread = true;
 		}
 		if (out.message && target?.apply(out.message)) {
 			undoable = { turn: turns.length - 1, editor: target };
@@ -188,18 +198,18 @@
 	}
 
 	async function editorOpened(): Promise<boolean> {
-		for (let i = 0; i < 100 && !agentDock.editor; i++) {
-			await new Promise((resolve) => setTimeout(resolve, 50));
+		for (let i = 0; i < EDITOR_WAIT_TRIES && !agentDock.editor; i++) {
+			await new Promise((resolve) => setTimeout(resolve, EDITOR_WAIT_STEP_MS));
 		}
 		return agentDock.editor !== null;
 	}
 
 	async function ask() {
 		const text = prompt.trim();
-		if (!text || busy || !ready) {
+		if (!text || isBusy || !ready) {
 			return;
 		}
-		busy = true;
+		isBusy = true;
 		scrollDown();
 		try {
 			const out = await exchange(text, true);
@@ -215,7 +225,7 @@
 				await exchange(text, false);
 			}
 		} finally {
-			busy = false;
+			isBusy = false;
 			scrollDown();
 		}
 	}
@@ -228,13 +238,13 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape' && open) {
-			open = false;
+		if (event.key === 'Escape' && isOpen) {
+			isOpen = false;
 		}
 	}}
 />
 
-{#if open}
+{#if isOpen}
 	<section
 		in:pop={{ duration: 200 }}
 		out:pop={{ duration: 150 }}
@@ -246,14 +256,14 @@
 			<h2 class="text-ash-100 flex min-w-0 items-center gap-2 text-sm font-semibold">
 				<i class="fas fa-wand-magic-sparkles text-fuchsia-300"></i><span class="truncate">Assistant</span>
 			</h2>
-			<button type="button" class={ICON_BUTTON} aria-label="Close the assistant" onclick={() => (open = false)}><i class="fas fa-xmark"></i></button>
+			<button type="button" class={ICON_BUTTON} aria-label="Close the assistant" onclick={() => (isOpen = false)}><i class="fas fa-xmark"></i></button>
 		</header>
 
 		<div bind:this={log} class="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
 			{#if ready === false}
 				<p class="text-ash-300 text-sm">{AGENT_OFF}</p>
 				{#if superadmin}
-					<a href={ADMIN_TAB_PATHS.ai} class="{GHOST_BUTTON} self-start" onclick={() => (open = false)}
+					<a href={ADMIN_TAB_PATHS.ai} class="{GHOST_BUTTON} self-start" onclick={() => (isOpen = false)}
 						><i class="fas fa-robot text-emerald-400"></i>Open AI settings</a
 					>
 				{/if}
@@ -273,7 +283,7 @@
 					<div class="flex max-w-[92%] flex-col gap-2 self-start">
 						<p class="bg-ash-700 text-ash-100 rounded-lg px-3 py-2 text-sm break-words whitespace-pre-wrap">{turn.text}</p>
 						{#if undoable?.turn === i && undoable.editor === editor}
-							<button type="button" class="{GHOST_BUTTON} self-start" disabled={busy} onclick={undo}>
+							<button type="button" class="{GHOST_BUTTON} self-start" disabled={isBusy} onclick={undo}>
 								<i class="fas fa-rotate-left"></i>Undo this change
 							</button>
 						{/if}
@@ -281,7 +291,7 @@
 				{/if}
 			{/each}
 
-			{#if busy}
+			{#if isBusy}
 				<p class="text-ash-400 flex items-center gap-2 self-start text-sm">
 					<i class="fas fa-spinner fa-spin"></i>Working. A long message can take a few minutes.
 				</p>
@@ -300,7 +310,7 @@
 				bind:value={prompt}
 				rows="2"
 				maxlength={AGENT_PROMPT_LIMIT}
-				disabled={!ready || busy}
+				disabled={!ready || isBusy}
 				placeholder={editor ? 'Describe the message, or what to change' : 'What do you need?'}
 				aria-label="Message to the assistant"
 				class="{FIELD} field-sizing-content max-h-40 min-w-0 flex-1 resize-none overflow-y-auto disabled:cursor-not-allowed disabled:opacity-60"
@@ -313,7 +323,7 @@
 				}}></textarea>
 			<button
 				type="submit"
-				disabled={!ready || busy || !prompt.trim()}
+				disabled={!ready || isBusy || !prompt.trim()}
 				aria-label="Send"
 				class="bg-ash-600 hover:bg-ash-500 text-ash-100 grid size-10 shrink-0 place-items-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 			>
@@ -322,7 +332,7 @@
 		</form>
 	</section>
 {:else}
-	{#if teaser}
+	{#if isTeaserShown}
 		<div
 			in:pop={{ duration: 260, lift: 8 }}
 			out:pop={{ duration: 150, lift: 8 }}
@@ -338,9 +348,9 @@
 		onclick={show}
 		class="fixed right-4 bottom-4 z-30 inline-flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-linear-to-br from-fuchsia-600 to-violet-600 text-sm font-semibold text-white shadow-xl shadow-black/40 transition-[filter,scale] duration-150 ease-out hover:brightness-110 active:scale-[0.97] sm:w-auto sm:px-5"
 	>
-		<i class="fas {busy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}"></i>
+		<i class="fas {isBusy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}"></i>
 		<span class="hidden sm:inline">Ask AI</span>
-		{#if unread}
+		{#if hasUnread}
 			<span class="ring-ash-950 absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 ring-2"></span>
 		{/if}
 	</button>

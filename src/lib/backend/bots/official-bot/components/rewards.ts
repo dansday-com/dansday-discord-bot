@@ -72,39 +72,45 @@ async function payRewardXp(guildId: string, memberId: number, xp: number) {
 	await finalizeXpChanges(guildId, snaps, 'reward');
 }
 
-async function grantReward(guildId: string, memberId: number, reward: Reward, earnings: Map<number, RewardEarning>) {
-	const paid = reward.kind === 'xp';
-	const won = await db.earnMemberReward(memberId, reward.id, reward.winner_limit, paid).catch(() => false);
-	if (!won) {
+type RewardGrant = { reward: Reward; earnings: Map<number, RewardEarning> };
+
+async function grantReward(guildId: string, memberId: number, { reward, earnings }: RewardGrant) {
+	const isPaid = reward.kind === 'xp';
+	const hasWon = await db.earnMemberReward(memberId, { rewardId: reward.id, winnerLimit: reward.winner_limit, delivered: isPaid }).catch(() => false);
+	if (!hasWon) {
 		return;
 	}
-	earnings.set(reward.id, { delivered: paid });
-	if (paid) {
+	earnings.set(reward.id, { delivered: isPaid });
+	if (isPaid) {
 		await payRewardXp(guildId, memberId, reward.xp);
 	}
 }
 
+type RewardPass = {
+	memberId: number;
+	rules: RewardRules;
+	progress: RewardProgress;
+	earnings: Map<number, RewardEarning>;
+	before?: Partial<RewardProgress> | null;
+};
+
 async function applyRewards(
 	guild: Guild,
 	member: GuildMember,
-	memberId: number,
-	rules: RewardRules,
-	progress: RewardProgress,
-	earnings: Map<number, RewardEarning>,
-	before?: Partial<RewardProgress> | null
+	{ memberId, rules, progress, earnings, before }: RewardPass
 ): Promise<{ added: string[]; removed: string[] }> {
-	for (const reward of limitedRewardCandidates(rules, progress, earnings, before)) {
-		await grantReward(guild.id, memberId, reward, earnings);
+	for (const reward of limitedRewardCandidates(rules, { progress, earnings, before })) {
+		await grantReward(guild.id, memberId, { reward, earnings });
 	}
 
-	const plan = planRewards(rules, progress, member.roles.cache.keys(), earnings);
+	const plan = planRewards(rules, { progress, heldRoleIds: member.roles.cache.keys(), earnings });
 	for (const reward of plan.withdraw) {
 		if (await db.withdrawMemberReward(memberId, reward.id).catch(() => false)) {
 			earnings.delete(reward.id);
 		}
 	}
 	for (const reward of plan.earn) {
-		await grantReward(guild.id, memberId, reward, earnings);
+		await grantReward(guild.id, memberId, { reward, earnings });
 	}
 
 	const added: string[] = [];
@@ -150,7 +156,7 @@ export async function syncMemberRewards(guild: Guild, discordMemberId: string, b
 			return [];
 		}
 		const earnings = await db.getMemberRewardEarnings(stats.member_id);
-		const { added } = await applyRewards(guild, member, Number(stats.member_id), rules, rewardProgress(stats), earnings, before);
+		const { added } = await applyRewards(guild, member, { memberId: Number(stats.member_id), rules, progress: rewardProgress(stats), earnings, before });
 		return added;
 	} catch (err) {
 		await logger.log(`⚠️ Reward sync failed for ${discordMemberId} in ${guild?.id}: ${(err as Error).message}`);
@@ -158,7 +164,9 @@ export async function syncMemberRewards(guild: Guild, discordMemberId: string, b
 	}
 }
 
-export async function checkRewardProgress(guild: Guild | null | undefined, discordMemberId: string, beforeStats: any, afterStats: any) {
+type StatsChange = { beforeStats: Record<string, unknown> | null | undefined; afterStats: Record<string, unknown> | null | undefined };
+
+export async function checkRewardProgress(guild: Guild | null | undefined, discordMemberId: string, { beforeStats, afterStats }: StatsChange) {
 	try {
 		if (!guild || !beforeStats || !afterStats) {
 			return;
@@ -169,8 +177,8 @@ export async function checkRewardProgress(guild: Guild | null | undefined, disco
 		}
 		const before = rewardProgress(beforeStats);
 		const after = rewardProgress(afterStats);
-		const crossed = rules.rewards.some((r) => r.goal_type !== 'level' && before[r.goal_type] < r.goal && after[r.goal_type] >= r.goal);
-		if (crossed) {
+		const hasCrossed = rules.rewards.some((r) => r.goal_type !== 'level' && before[r.goal_type] < r.goal && after[r.goal_type] >= r.goal);
+		if (hasCrossed) {
 			await syncMemberRewards(guild, discordMemberId, before);
 		}
 	} catch (_) {}
@@ -199,7 +207,7 @@ async function runGuildSync(guild: Guild) {
 				continue;
 			}
 			const earnings = earningsByMember.get(row.member_id) ?? new Map<number, RewardEarning>();
-			const result = await applyRewards(guild, member, row.member_id, rules, rewardProgress(row.stats), earnings);
+			const result = await applyRewards(guild, member, { memberId: row.member_id, rules, progress: rewardProgress(row.stats), earnings });
 			added += result.added.length;
 			removed += result.removed.length;
 		}

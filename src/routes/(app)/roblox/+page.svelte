@@ -3,21 +3,21 @@
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
 	import type { RobloxEntry } from '$lib/frontend/public/catalog/index.js';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay } from '$lib/frontend/components/shell';
 	import { isUsableRobloxThumbnail } from '$lib/roblox-thumbnails.js';
 
 	let { data }: PageProps = $props();
 
 	let loaded = $state<RobloxEntry[]>([...data.items]);
-	let loading = $state(false);
+	let isLoading = $state(false);
 	let exhausted = $state(data.items.length >= data.tracked);
 	let sentinel: HTMLDivElement | null = $state(null);
 
 	async function loadMore() {
-		if (loading || exhausted) {
+		if (isLoading || exhausted) {
 			return;
 		}
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch(`/api/public-catalog/roblox?offset=${loaded.length}`);
 			const payload = (await res.json()) as { items?: RobloxEntry[]; limit?: number };
@@ -31,7 +31,7 @@
 		} catch (_) {
 			exhausted = true;
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
@@ -57,7 +57,7 @@
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
 	let query = $state('');
-	let limitedOnly = $state(false);
+	let isLimitedOnly = $state(false);
 	const broken = $state<Record<string, boolean>>({});
 
 	const initials = (n: string) =>
@@ -75,7 +75,7 @@
 
 	const filtered = $derived(
 		loaded.filter((item) => {
-			if (limitedOnly && !item.limited) {
+			if (isLimitedOnly && !item.limited) {
 				return false;
 			}
 			if (category && item.category !== category) {
@@ -123,9 +123,9 @@
 					{/if}
 					<button
 						type="button"
-						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {limitedOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
-						onclick={() => (limitedOnly = !limitedOnly)}
-						aria-pressed={limitedOnly}
+						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {isLimitedOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
+						onclick={() => (isLimitedOnly = !isLimitedOnly)}
+						aria-pressed={isLimitedOnly}
 					>
 						Limited only
 					</button>
@@ -133,7 +133,7 @@
 
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 					{#each filtered as item, i (item.asset_id)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {Math.min(i, 8) * 60}ms">
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {cappedListDelay(i)}">
 							<a
 								href={`https://www.roblox.com/catalog/${item.asset_id}`}
 								target="_blank"
@@ -207,7 +207,7 @@
 				{/if}
 
 				<div bind:this={sentinel} class="pt-8">
-					{#if loading}
+					{#if isLoading}
 						<p class="text-base-content/45 text-[12px] font-bold tracking-[0.12em] uppercase">
 							<i class="fas fa-spinner fa-spin text-[11px]"></i>
 							Loading more

@@ -1,13 +1,7 @@
 <script lang="ts" generics="V extends string | string[]">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { ROLE_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
-
-	interface Role {
-		discord_role_id: string;
-		name: string | null;
-		color: string | null;
-		position: number | null;
-	}
+	import type { PickerRole as Role } from './pickerTypes.js';
 
 	interface Props {
 		roles: Role[];
@@ -19,7 +13,7 @@
 
 	let { roles, value, placeholder = 'Select roles...', single = false, onchange }: Props = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
 	let pending = $state<string[]>([]);
 
@@ -34,7 +28,7 @@
 
 	function openModal() {
 		pending = [...currentIds];
-		open = true;
+		isOpen = true;
 		search = '';
 	}
 
@@ -45,12 +39,10 @@
 			} else {
 				pending = [id];
 			}
+		} else if (pending.includes(id)) {
+			pending = pending.filter((r) => r !== id);
 		} else {
-			if (pending.includes(id)) {
-				pending = pending.filter((r) => r !== id);
-			} else {
-				pending = [...pending, id];
-			}
+			pending = [...pending, id];
 		}
 	}
 
@@ -60,7 +52,7 @@
 		} else {
 			onchange([...pending] as V);
 		}
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -73,7 +65,7 @@
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -124,7 +116,7 @@
 	</div>
 {/if}
 
-{#if open}
+{#if isOpen}
 	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"

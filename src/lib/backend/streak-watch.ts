@@ -1,11 +1,10 @@
 import db from '../database.js';
 import { TASK_BY_ID, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY, streakMilestone, periodOpen, type TaskMetric } from '../tasks.js';
+import { MINUTE_MS } from '../utils/time.js';
 
 type StreakAnnouncer = (
-	guildId: string,
-	discordMemberId: string,
-	streakResult: NonNullable<Awaited<ReturnType<typeof db.applyStreakDay>>>,
-	milestone: ReturnType<typeof streakMilestone>
+	member: { guildId: string; discordMemberId: string },
+	news: { streakResult: NonNullable<Awaited<ReturnType<typeof db.applyStreakDay>>>; milestone: ReturnType<typeof streakMilestone> }
 ) => Promise<unknown>;
 
 let announcer: StreakAnnouncer | null = null;
@@ -25,7 +24,9 @@ const COUNTER_METRICS = new Set<TaskMetric>([
 
 const inFlight = new Set<string>();
 
-async function anyComplete(memberId: number, periodKey: number, period: 'daily' | 'weekly', windowStartMs: number) {
+type PeriodWindow = { periodKey: number; period: 'daily' | 'weekly'; windowStartMs: number };
+
+async function anyComplete(memberId: number, { periodKey, period, windowStartMs }: PeriodWindow) {
 	const rows = await db.getMemberTasks(memberId, periodKey, period).catch(() => []);
 	for (const row of rows) {
 		if (row.claimed_at) {
@@ -44,7 +45,9 @@ async function anyComplete(memberId: number, periodKey: number, period: 'daily' 
 			const levels = await db.getMemberLevel(memberId).catch(() => null);
 			progress = Math.max(0, (Number((levels as Record<string, unknown>)?.[def.metric]) || 0) - (Number(row.baseline) || 0));
 		} else {
-			progress = await db.countMemberEventsSince(memberId, def.metric, windowStartMs, row.target_item_id ?? null).catch(() => 0);
+			progress = await db
+				.countMemberEventsSince(memberId, { metric: def.metric, sinceMs: windowStartMs, targetItemId: row.target_item_id ?? null })
+				.catch(() => 0);
 		}
 
 		if (progress >= goal) {
@@ -81,14 +84,14 @@ export async function bankStreakIfEarned(memberId: number | string) {
 	inFlight.add(key);
 
 	try {
-		const earned =
-			(await anyComplete(id, dayKey, 'daily', dayKey * 60000)) ||
-			(periodOpen(weekKey, 'weekly', nowMs) && (await anyComplete(id, weekKey, 'weekly', weekKey * 60000)));
-		if (!earned) {
+		const isEarned =
+			(await anyComplete(id, { periodKey: dayKey, period: 'daily', windowStartMs: dayKey * MINUTE_MS })) ||
+			(periodOpen(weekKey, 'weekly', nowMs) && (await anyComplete(id, { periodKey: weekKey, period: 'weekly', windowStartMs: weekKey * MINUTE_MS })));
+		if (!isEarned) {
 			return null;
 		}
 
-		const result = await db.applyStreakDay(id, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
+		const result = await db.applyStreakDay(id, { dayKey, freezeMax: STREAK_FREEZE_MAX, earnEvery: STREAK_FREEZE_EARN_EVERY }).catch(() => null);
 		if (!result?.changed) {
 			return null;
 		}
@@ -98,7 +101,10 @@ export async function bankStreakIfEarned(memberId: number | string) {
 			const member = await db.getServerMemberById(id).catch(() => null);
 			const server = member ? await db.getServer(member.server_id).catch(() => null) : null;
 			if (server?.discord_server_id) {
-				await announcer(String(server.discord_server_id), String(member!.discord_member_id), result, milestone).catch(() => null);
+				await announcer(
+					{ guildId: String(server.discord_server_id), discordMemberId: String(member!.discord_member_id) },
+					{ streakResult: result, milestone }
+				).catch(() => null);
 			}
 		}
 

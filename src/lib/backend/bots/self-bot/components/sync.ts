@@ -6,30 +6,16 @@ import {
 	mapChannelsForSync,
 	createGuildSyncDebouncer,
 	isSyncedChannelType,
-	channelSyncSignature
+	channelSyncSignature,
+	type SyncableChannel
 } from '../../../../utils/index.js';
-import type { Guild, GuildMember, TextChannel } from 'discord.js';
+import type { Client, Guild } from 'discord.js-selfbot-v13';
+import { FULL_RESYNC_INTERVAL_MS, EVENT_SYNC_DEBOUNCE_MS, EVENT_SYNC_MAX_WAIT_MS, STARTUP_SYNC_DELAY_MS } from '../../../../utils/guildSyncDebounce.js';
+import { channelLogLabel } from '../../../../utils/discordChannels.js';
 
-const FULL_RESYNC_INTERVAL_MS = 30 * 60 * 1000;
-const EVENT_SYNC_DEBOUNCE_MS = 15 * 1000;
-const EVENT_SYNC_MAX_WAIT_MS = 2 * 60 * 1000;
-
-let client: any = null;
-let botId: any = null;
-let syncRunning = false;
-
-function channelLabel(channel: any) {
-	if (channel.type === 4 || channel.type === 'GUILD_CATEGORY') {
-		return 'Category';
-	}
-	if (channel.type === 0 || channel.type === 'GUILD_TEXT') {
-		return 'Text Channel';
-	}
-	if (channel.type === 5 || channel.type === 'GUILD_NEWS') {
-		return 'News Channel';
-	}
-	return 'Channel';
-}
+let client: Client | null = null;
+let botId: string | null = null;
+let isSyncRunning = false;
 
 async function findBotById(id: number | string) {
 	try {
@@ -40,7 +26,7 @@ async function findBotById(id: number | string) {
 	}
 }
 
-async function keepViewable(guild: Guild, categories: Record<string, unknown>[], channels: Record<string, unknown>[]) {
+async function keepViewable<T extends SyncableChannel>(guild: Guild, categories: T[], channels: T[]) {
 	try {
 		await guild.members.fetchMe();
 	} catch (error) {
@@ -58,7 +44,7 @@ async function keepViewable(guild: Guild, categories: Record<string, unknown>[],
 	return { categories: visibleCategories, channels: visibleChannels };
 }
 
-async function syncGuildData(guild: any) {
+async function syncGuildData(guild: Guild) {
 	try {
 		if (!botId) {
 			logger.log(`⚠️  Selfbot ID not set, skipping sync for guild: ${guild.name}`);
@@ -100,10 +86,10 @@ async function syncGuildData(guild: any) {
 const queueGuildSync = createGuildSyncDebouncer(syncGuildData, EVENT_SYNC_DEBOUNCE_MS, EVENT_SYNC_MAX_WAIT_MS);
 
 async function syncAllGuilds() {
-	if (syncRunning) {
+	if (isSyncRunning) {
 		return;
 	}
-	syncRunning = true;
+	isSyncRunning = true;
 
 	try {
 		if (!client || !botId) {
@@ -126,7 +112,7 @@ async function syncAllGuilds() {
 	} catch (error) {
 		logger.log(`❌ Error syncing all guilds: ${(error as Error).message}`);
 	} finally {
-		syncRunning = false;
+		isSyncRunning = false;
 	}
 }
 
@@ -162,30 +148,30 @@ async function updateBotInfo() {
 	}
 }
 
-async function init(discordClient: unknown, botIdFromEnv: unknown) {
-	client = discordClient;
-
-	if (botIdFromEnv) {
-		botId = botIdFromEnv;
-		const bot = await findBotById(botId);
-		if (bot) {
-			logger.log(`✅ Found selfbot in database: ${bot.name} (ID: ${bot.id})`);
-			const officialBot = await db.getOfficialBotForSelfbot(bot.id);
-			if (officialBot) {
-				logger.log(`🔗 Selfbot linked to official bot: ${officialBot.name} (servers stored under selfbot id ${bot.id})`);
-			} else {
-				logger.log(`⚠️  No official bot linked; selfbot will still sync its own server rows`);
-			}
-			if (client.user) {
-				await updateBotInfo();
-			}
-		} else {
-			logger.log(`❌ Selfbot not found in database with ID: ${botId}`);
-		}
-	} else {
+async function resolveSelfbot(discordClient: Client, botIdFromEnv: string | undefined) {
+	if (!botIdFromEnv) {
 		logger.log(`⚠️  BOT_ID not set. Sync will be limited.`);
+		return;
 	}
+	botId = botIdFromEnv;
+	const bot = await findBotById(botId);
+	if (!bot) {
+		logger.log(`❌ Selfbot not found in database with ID: ${botId}`);
+		return;
+	}
+	logger.log(`✅ Found selfbot in database: ${bot.name} (ID: ${bot.id})`);
+	const officialBot = await db.getOfficialBotForSelfbot(bot.id);
+	if (officialBot) {
+		logger.log(`🔗 Selfbot linked to official bot: ${officialBot.name} (servers stored under selfbot id ${bot.id})`);
+	} else {
+		logger.log(`⚠️  No official bot linked; selfbot will still sync its own server rows`);
+	}
+	if (discordClient.user) {
+		await updateBotInfo();
+	}
+}
 
+function startSyncTimers() {
 	setTimeout(async () => {
 		if (!botId) {
 			return;
@@ -193,7 +179,7 @@ async function init(discordClient: unknown, botIdFromEnv: unknown) {
 		logger.log('🔄 Selfbot startup sync (all visible guilds)...');
 		await syncAllGuilds();
 		logger.log('✅ Selfbot startup sync complete');
-	}, 2000);
+	}, STARTUP_SYNC_DELAY_MS);
 
 	setInterval(() => {
 		if (!botId) {
@@ -202,17 +188,19 @@ async function init(discordClient: unknown, botIdFromEnv: unknown) {
 		logger.log('🔄 Selfbot periodic guild re-sync...');
 		syncAllGuilds().catch((error) => logger.log(`❌ Periodic guild re-sync failed: ${error.message}`));
 	}, FULL_RESYNC_INTERVAL_MS);
+}
 
-	client.on('guildCreate', async (guild: Guild) => {
+function registerGuildEvents(discordClient: Client) {
+	discordClient.on('guildCreate', async (guild) => {
 		logger.log(`🆕 Selfbot joined new guild: ${guild.name}`);
 		await syncGuildData(guild);
 	});
 
-	client.on('guildDelete', async (guild: Record<string, unknown>) => {
+	discordClient.on('guildDelete', async (guild) => {
 		if (!botId) {
 			return;
 		}
-		if (guild.available === false || guild.unavailable === true) {
+		if (guild.available === false) {
 			logger.log(`⏸️  Source server unavailable (Discord outage), keeping data: ${guild.name || guild.id}`);
 			return;
 		}
@@ -227,17 +215,17 @@ async function init(discordClient: unknown, botIdFromEnv: unknown) {
 		}
 	});
 
-	client.on('guildUpdate', async (_oldGuild: unknown, newGuild: unknown) => {
+	discordClient.on('guildUpdate', async (_oldGuild, newGuild) => {
 		if (botId) {
 			queueGuildSync(newGuild);
 		}
 	});
 
-	client.on('guildMemberUpdate', async (oldMember: GuildMember, newMember: GuildMember) => {
+	discordClient.on('guildMemberUpdate', async (oldMember, newMember) => {
 		if (!botId || !newMember?.guild) {
 			return;
 		}
-		if (String(newMember.id) !== String(client.user?.id)) {
+		if (String(newMember.id) !== String(discordClient.user?.id)) {
 			return;
 		}
 		const before = [...(oldMember?.roles?.cache?.keys() ?? [])].sort().join(',');
@@ -248,41 +236,50 @@ async function init(discordClient: unknown, botIdFromEnv: unknown) {
 		await logger.log(`🔐 Own roles changed in ${newMember.guild.name}, re-checking channel visibility`);
 		queueGuildSync(newMember.guild);
 	});
+}
 
-	client.on('channelCreate', async (channel: TextChannel) => {
+function registerChannelEvents(discordClient: Client) {
+	discordClient.on('channelCreate', async (channel) => {
 		if (!channel.guild || !botId || !isSyncedChannelType(channel)) {
 			return;
 		}
-		await logger.log(`📁 ${channelLabel(channel)} created: **${channel.name || 'Unknown'}** (${channel.id})`);
+		await logger.log(`📁 ${channelLogLabel(channel)} created: **${channel.name || 'Unknown'}** (${channel.id})`);
 		queueGuildSync(channel.guild);
 	});
 
-	client.on('channelUpdate', async (oldChannel: any, newChannel: any) => {
-		if (!newChannel.guild || !botId || !isSyncedChannelType(newChannel)) {
+	discordClient.on('channelUpdate', async (oldChannel, newChannel) => {
+		if (!('guild' in newChannel) || !newChannel.guild || !botId || !isSyncedChannelType(newChannel)) {
 			return;
 		}
 		if (channelSyncSignature(oldChannel) === channelSyncSignature(newChannel)) {
 			return;
 		}
 
-		const oldName = oldChannel.name || 'Unknown';
+		const oldName = ('name' in oldChannel && oldChannel.name) || 'Unknown';
 		const newName = newChannel.name || 'Unknown';
 		if (oldName !== newName) {
-			await logger.log(`✏️ ${channelLabel(newChannel)} renamed: **${oldName}** → **${newName}** (${newChannel.id})`);
+			await logger.log(`✏️ ${channelLogLabel(newChannel)} renamed: **${oldName}** → **${newName}** (${newChannel.id})`);
 		} else {
-			await logger.log(`✏️ ${channelLabel(newChannel)} updated: **${newName}** (${newChannel.id})`);
+			await logger.log(`✏️ ${channelLogLabel(newChannel)} updated: **${newName}** (${newChannel.id})`);
 		}
 		queueGuildSync(newChannel.guild);
 	});
 
-	client.on('channelDelete', async (channel: TextChannel) => {
-		if (!channel.guild || !botId || !isSyncedChannelType(channel)) {
+	discordClient.on('channelDelete', async (channel) => {
+		if (!('guild' in channel) || !channel.guild || !botId || !isSyncedChannelType(channel)) {
 			return;
 		}
-		await logger.log(`🗑️ ${channelLabel(channel)} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
+		await logger.log(`🗑️ ${channelLogLabel(channel)} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
 		queueGuildSync(channel.guild);
 	});
+}
 
+async function init(discordClient: Client, botIdFromEnv: string | undefined) {
+	client = discordClient;
+	await resolveSelfbot(discordClient, botIdFromEnv);
+	startSyncTimers();
+	registerGuildEvents(discordClient);
+	registerChannelEvents(discordClient);
 	logger.log('🔄 Selfbot sync component initialized');
 }
 

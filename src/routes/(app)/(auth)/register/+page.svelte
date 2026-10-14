@@ -1,21 +1,26 @@
 <script lang="ts">
+	import { USERNAME_MIN_LENGTH } from '$lib/accounts.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
+	const PASSWORD_MIN_LENGTH = 6;
+	const ERROR_REDIRECT_DELAY_MS = 1500;
+	const SUCCESS_REDIRECT_DELAY_MS = 500;
+
 	let { data }: PageProps = $props();
 
-	let loading = $state(false);
-	let showPassword = $state(false);
+	let isLoading = $state(false);
+	let isPasswordShown = $state(false);
 	let username = $state('');
 	let email = $state('');
 	let password = $state('');
 
 	async function handleSubmit() {
-		if (!username || username.length < 3) {
-			showToast('Username must be at least 3 characters long', 'error');
+		if (!username || username.length < USERNAME_MIN_LENGTH) {
+			showToast(`Username must be at least ${USERNAME_MIN_LENGTH} characters long`, 'error');
 			return;
 		}
 		if (!/^[a-zA-Z]+$/.test(username)) {
@@ -26,12 +31,12 @@
 			showToast('Please enter a valid email address', 'error');
 			return;
 		}
-		if (!password || password.length < 6) {
-			showToast('Password must be at least 6 characters long', 'error');
+		if (!password || password.length < PASSWORD_MIN_LENGTH) {
+			showToast(`Password must be at least ${PASSWORD_MIN_LENGTH} characters long`, 'error');
 			return;
 		}
 
-		loading = true;
+		isLoading = true;
 		try {
 			const endpoint = data.token ? '/api/panel/register-with-token' : '/api/panel/register';
 			const body = data.token ? { token: data.token, username, email, password } : { username, email, password };
@@ -47,7 +52,7 @@
 				const err = await res.json().catch(() => ({ error: 'Registration failed' }));
 				showToast(err.error || 'Registration failed', 'error');
 				if (err.redirect_to) {
-					setTimeout(() => goto(err.redirect_to), 1500);
+					setTimeout(() => goto(err.redirect_to), ERROR_REDIRECT_DELAY_MS);
 				}
 				return;
 			}
@@ -55,14 +60,14 @@
 			const d = await res.json();
 			if (d.success) {
 				showToast(d.message || 'Registration successful!', 'success');
-				setTimeout(() => goto(DASHBOARD_PATH), 500);
+				setTimeout(() => goto(DASHBOARD_PATH), SUCCESS_REDIRECT_DELAY_MS);
 			} else {
 				showToast(d.error || 'Registration failed', 'error');
 			}
 		} catch (_) {
 			showToast('Registration failed. Please try again.', 'error');
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 </script>
@@ -123,7 +128,7 @@
 			<div class="relative">
 				<input
 					id="password"
-					type={showPassword ? 'text' : 'password'}
+					type={isPasswordShown ? 'text' : 'password'}
 					bind:value={password}
 					placeholder="Min. 6 characters"
 					autocomplete="new-password"
@@ -131,22 +136,22 @@
 				/>
 				<button
 					type="button"
-					aria-label={showPassword ? 'Hide password' : 'Show password'}
-					onclick={() => (showPassword = !showPassword)}
+					aria-label={isPasswordShown ? 'Hide password' : 'Show password'}
+					onclick={() => (isPasswordShown = !isPasswordShown)}
 					class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
 				>
-					<i class="fas {showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+					<i class="fas {isPasswordShown ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
 				</button>
 			</div>
 		</div>
 
 		<button
 			type="submit"
-			disabled={loading}
+			disabled={isLoading}
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
-			{#if loading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
-			{loading ? 'Processing...' : 'Register'}
+			{#if isLoading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
+			{isLoading ? 'Processing...' : 'Register'}
 		</button>
 
 		<div class="text-center">

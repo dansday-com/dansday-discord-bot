@@ -1,10 +1,12 @@
 import type { WikiInput } from '$lib/database.js';
 import { WIKI_USER_AGENT } from '$lib/backend/bots/official-bot/components/wiki.js';
+import { HTTP } from '$lib/http.js';
+import { WIKI_NAME_MAX_LENGTH, WIKI_DESCRIPTION_MAX_LENGTH } from '$lib/wikiLimits.js';
 
-const MAX_NAME_LENGTH = 64;
 const MAX_URL_LENGTH = 512;
-const MAX_DESCRIPTION_LENGTH = 255;
 const TEST_TIMEOUT_MS = 12_000;
+const MAX_RELAY_KEY_LENGTH = 191;
+const MIN_KEPT_SHARE = 0.5;
 
 export type WikiTest =
 	| { ok: true; sitename: string; generator: string | null; site_url: string | null; description: string | null; via_relay: boolean }
@@ -23,8 +25,8 @@ export function parseWikiInput(body: Record<string, unknown>): { error: string }
 	if (!name) {
 		return { error: 'Wiki name is required' };
 	}
-	if (name.length > MAX_NAME_LENGTH) {
-		return { error: `Wiki name must be at most ${MAX_NAME_LENGTH} characters` };
+	if (name.length > WIKI_NAME_MAX_LENGTH) {
+		return { error: `Wiki name must be at most ${WIKI_NAME_MAX_LENGTH} characters` };
 	}
 	if (!api_url) {
 		return { error: 'API URL is required' };
@@ -53,11 +55,11 @@ export function parseWikiInput(body: Record<string, unknown>): { error: string }
 	if (relay_url && !relay_key) {
 		return { error: 'A relay key is required when using a relay URL' };
 	}
-	if (relay_key.length > 191) {
-		return { error: 'Relay key must be at most 191 characters' };
+	if (relay_key.length > MAX_RELAY_KEY_LENGTH) {
+		return { error: `Relay key must be at most ${MAX_RELAY_KEY_LENGTH} characters` };
 	}
-	if (description.length > MAX_DESCRIPTION_LENGTH) {
-		return { error: `Description must be at most ${MAX_DESCRIPTION_LENGTH} characters` };
+	if (description.length > WIKI_DESCRIPTION_MAX_LENGTH) {
+		return { error: `Description must be at most ${WIKI_DESCRIPTION_MAX_LENGTH} characters` };
 	}
 
 	return {
@@ -92,13 +94,13 @@ async function summarizeWiki(askWiki: AskWiki, general: Record<string, unknown>)
 		}
 
 		const summary = extract.replace(/\s+/g, ' ').trim();
-		if (summary.length <= MAX_DESCRIPTION_LENGTH) {
+		if (summary.length <= WIKI_DESCRIPTION_MAX_LENGTH) {
 			return summary || null;
 		}
 
-		const cut = summary.slice(0, MAX_DESCRIPTION_LENGTH);
+		const cut = summary.slice(0, WIKI_DESCRIPTION_MAX_LENGTH);
 		const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf(', '), cut.lastIndexOf(' '));
-		return (stop > MAX_DESCRIPTION_LENGTH * 0.5 ? cut.slice(0, stop) : cut).trim() || null;
+		return (stop > WIKI_DESCRIPTION_MAX_LENGTH * MIN_KEPT_SHARE ? cut.slice(0, stop) : cut).trim() || null;
 	} catch (_) {
 		return null;
 	}
@@ -141,10 +143,10 @@ export async function testWiki(input: { api_url?: unknown; relay_url?: unknown; 
 		const res = await askWiki({ action: 'query', meta: 'siteinfo' });
 
 		if (!res.ok) {
-			const blocked = res.status === 403 || res.status === 429;
+			const isBlocked = res.status === HTTP.FORBIDDEN || res.status === HTTP.TOO_MANY_REQUESTS;
 			const error = relayUrl
 				? `The relay returned HTTP ${res.status}. Check the relay URL and key, and that the wiki's host is in the relay's allowlist.`
-				: blocked
+				: isBlocked
 					? `The wiki refused the request (HTTP ${res.status}). It is not your URL — the wiki is blocking this server's IP, which hosts like Miraheze and Fandom often do behind Cloudflare. Add a relay URL, or contact the wiki about allowing your server.`
 					: `The wiki responded with HTTP ${res.status}`;
 			return { ok: false, error };

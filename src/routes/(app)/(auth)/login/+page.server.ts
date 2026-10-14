@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
+import { HTTP } from '$lib/http.js';
 
 const AUTH_QUERY_ERROR_MESSAGES: Record<string, string> = {
 	invite_invalid: 'This invite link is invalid, expired, or was already used.',
@@ -11,7 +12,7 @@ const AUTH_QUERY_ERROR_MESSAGES: Record<string, string> = {
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	if (locals.user.authenticated) {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 	const code = url.searchParams.get('error');
 	const authQueryError = code && code in AUTH_QUERY_ERROR_MESSAGES ? AUTH_QUERY_ERROR_MESSAGES[code] : null;

@@ -3,10 +3,11 @@ import type { PageServerLoad } from './$types';
 import db, { aiFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { normalizeServerAiSettings } from '$lib/server-ai-settings.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 
 	const [row, officialBotId] = await Promise.all([

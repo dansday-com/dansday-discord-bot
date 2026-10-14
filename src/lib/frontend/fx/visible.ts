@@ -1,4 +1,4 @@
-type Listener = (visible: boolean) => void;
+type Listener = (isVisible: boolean) => void;
 
 type Registry = {
 	io: IntersectionObserver;

@@ -34,7 +34,7 @@ const PRESENCE_POLL_MS = 30_000;
 let presencePollTimer: ReturnType<typeof setInterval> | null = null;
 let singletonLock: BotSingletonLock | null = null;
 
-let BOT_TOKEN: string | undefined;
+let BOT_TOKEN: string | null = null;
 (async () => {
 	await initializeConfig();
 	BOT_TOKEN = getBotToken('official');
@@ -58,15 +58,15 @@ const client = new Client({
 	rest: { rejectOnRateLimit: ['/guilds/:id/members/@me'] }
 });
 
-let initialized = false;
+let isInitialized = false;
 
 client.on('clientReady', async (readyClient) => {
 	logger.info('Official bot logged in', { userTag: readyClient.user?.tag });
 
-	if (initialized) {
+	if (isInitialized) {
 		return;
 	}
-	initialized = true;
+	isInitialized = true;
 
 	if (!BOT_TOKEN) {
 		await initializeConfig();
@@ -77,7 +77,7 @@ client.on('clientReady', async (readyClient) => {
 		throw new Error('Bot token not available. Cannot proceed.');
 	}
 
-	await commands.deployCommands(false);
+	await commands.deployCommands();
 
 	logger.init(readyClient);
 	forwarder.init();
@@ -99,9 +99,9 @@ client.on('clientReady', async (readyClient) => {
 	if (wakeModelAvailable()) {
 		const wakeWarmStartedAt = Date.now();
 		warmWakeModel()
-			.then((ready) => {
+			.then((isReady) => {
 				logger.info(
-					ready ? `Wake word model preloaded in ${Date.now() - wakeWarmStartedAt}ms` : 'Wake word model failed to preload; voice sessions will retry on join'
+					isReady ? `Wake word model preloaded in ${Date.now() - wakeWarmStartedAt}ms` : 'Wake word model failed to preload; voice sessions will retry on join'
 				);
 			})
 			.catch(() => {});
@@ -125,7 +125,7 @@ client.on('clientReady', async (readyClient) => {
 	initCreatorAlerts(readyClient, officialBotId);
 	initExpirySweeper(readyClient);
 	initModerationSweeper(readyClient);
-	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(readyClient, guildId, discordMemberId, streakResult, milestone));
+	initStreakWatch((member, news) => announceStreak(readyClient, member, news));
 	startMarketPoller(String(officialBotId));
 	webhook.startWebhookServer(readyClient, officialBotId);
 });

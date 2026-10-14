@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;
@@ -79,10 +79,10 @@ export function makeCircuit(rows: number): FxProgram {
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
 			const heat = cyc > 0.4 && cyc < 0.72 ? (cyc - 0.4) / 0.32 : 0;
-			const blown = cyc >= 0.72 && cyc < 0.8;
-			const sweep = cyc >= 0.8 ? (cyc - 0.8) / 0.2 : blown ? 0 : 1;
+			const isBlown = cyc >= 0.72 && cyc < 0.8;
+			const sweep = cyc >= 0.8 ? (cyc - 0.8) / 0.2 : isBlown ? 0 : 1;
 			const flick = cyc > 0.62 && cyc < 0.72 ? (Math.sin(s.t * 1.7) > 0.2 ? 0.45 : 1) : 1;
-			const live = (x: number) => (blown ? 0.06 : Math.min(1, Math.max(0, (sweep * 1.18 - x / s.w) * 6)) * flick);
+			const live = (x: number) => (isBlown ? 0.06 : Math.min(1, Math.max(0, (sweep * 1.18 - x / s.w) * 6)) * flick);
 
 			sub;
 			subg;
@@ -134,7 +134,7 @@ export function makeCircuit(rows: number): FxProgram {
 					paint(s, x, y + 1, cu * 1.35, cug * 1.35, cub * 1.35, 0.8);
 				}
 
-				pulses[ti] += id.rate * s.v.speed * (0.6 + na[2] * 0.8) * s.v.dir * (1 + heat * 1.6) * (blown ? 0 : 1);
+				pulses[ti] += id.rate * s.v.speed * (0.6 + na[2] * 0.8) * s.v.dir * (1 + heat * 1.6) * (isBlown ? 0 : 1);
 				if (pulses[ti] > 1.3) {
 					pulses[ti] -= 1.6;
 				}
@@ -289,7 +289,7 @@ export function makeCircuit(rows: number): FxProgram {
 				}
 			}
 
-			s.out = Math.min(1, load / 3 + heat * 0.7 + (blown ? 0.9 : 0));
+			s.out = Math.min(1, load / 3 + heat * 0.7 + (isBlown ? 0.9 : 0));
 			blit(s);
 		}
 	};
@@ -477,9 +477,9 @@ export function makePrism(rows: number): FxProgram {
 					const d1 = sign(verts[0][0], verts[0][1], verts[1][0], verts[1][1], x, y);
 					const d2 = sign(verts[1][0], verts[1][1], verts[2][0], verts[2][1], x, y);
 					const d3 = sign(verts[2][0], verts[2][1], verts[0][0], verts[0][1], x, y);
-					const neg = d1 < 0 || d2 < 0 || d3 < 0;
-					const pos = d1 > 0 || d2 > 0 || d3 > 0;
-					if (neg && pos) {
+					const hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
+					const hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
+					if (hasNegative && hasPositive) {
 						continue;
 					}
 					const glassy = 0.3 + hash2(x, y, id.grain + 12) * 0.12;

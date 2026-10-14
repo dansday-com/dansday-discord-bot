@@ -57,7 +57,7 @@ Never edit `bots/` by hand. It is generated and gitignored; change the TypeScrip
 
 ```bash
 npm run build:format   # prettier --write then --check
-npm run build:lint     # eslint: braces, const, template literals, nothing unused
+npm run build:lint     # eslint: braces, const, template literals, no any, nothing unused
 npm run build:test     # node --test over tests/
 npm run build:sync     # svelte-kit sync
 npm run build          # production build

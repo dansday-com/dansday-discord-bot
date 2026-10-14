@@ -23,7 +23,7 @@ import {
 export { getBotUptimeMs };
 
 const COMMAND_TIMEOUT_MS = 30_000;
-const externalRunner = (process.env.BOT_RUNNER ?? '').trim().toLowerCase() === 'external';
+const isExternalRunner = (process.env.BOT_RUNNER ?? '').trim().toLowerCase() === 'external';
 
 type StatusListener = (e: BotStatusEvent) => void;
 
@@ -32,10 +32,10 @@ const statusListeners = new Map<string, Set<StatusListener>>();
 let subscriberReady: Promise<boolean> | null = null;
 
 export function runsBotsInProcess(): boolean {
-	return !externalRunner;
+	return !isExternalRunner;
 }
 
-function parseMessage(raw: string): any {
+function parseMessage(raw: string): Record<string, unknown> | null {
 	try {
 		return JSON.parse(raw);
 	} catch (_) {
@@ -57,25 +57,25 @@ function connectRunnerSubscriber(): Promise<boolean> {
 		await subscriber.connect();
 		await subscriber.subscribe(RUNNER_REPLY_CHANNEL, (raw) => {
 			const { requestId, ...result } = parseMessage(raw) ?? {};
-			pendingCommands.get(requestId)?.(result as RunnerResult);
+			pendingCommands.get(String(requestId))?.(result as RunnerResult);
 		});
 		await subscriber.subscribe(RUNNER_STATUS_CHANNEL, (raw) => {
 			const { key, ...event } = parseMessage(raw) ?? {};
-			for (const fn of statusListeners.get(key) ?? []) {
+			for (const fn of statusListeners.get(String(key)) ?? []) {
 				fn(event as BotStatusEvent);
 			}
 		});
 		return true;
 	})()
-		.catch((err: any) => {
+		.catch((err: Error) => {
 			logger.error('Bot runner subscriber failed to connect', { error: String(err?.message || err) });
 			return false;
 		})
-		.then((connected) => {
-			if (!connected) {
+		.then((isConnected) => {
+			if (!isConnected) {
 				subscriberReady = null;
 			}
-			return connected;
+			return isConnected;
 		});
 	return subscriberReady;
 }
@@ -113,19 +113,19 @@ async function sendRunnerCommand(action: RunnerAction, kind: BotProcessKind, id:
 }
 
 export function startBotById(botId: number, bot: BotProcessRow): Promise<RunnerResult> {
-	return externalRunner ? sendRunnerCommand('start', botKindOf(bot), botId) : startBotInProcess(botId, bot);
+	return isExternalRunner ? sendRunnerCommand('start', botKindOf(bot), botId) : startBotInProcess(botId, bot);
 }
 
 export function stopBotById(botId: number, bot?: BotProcessRow): Promise<RunnerResult> {
-	return externalRunner ? sendRunnerCommand('stop', bot ? botKindOf(bot) : 'official', botId) : stopBotInProcess(botId, bot);
+	return isExternalRunner ? sendRunnerCommand('stop', bot ? botKindOf(bot) : 'official', botId) : stopBotInProcess(botId, bot);
 }
 
 export function restartBotById(botId: number, bot: BotProcessRow): Promise<RunnerResult> {
-	return externalRunner ? sendRunnerCommand('restart', botKindOf(bot), botId) : restartBotInProcess(botId, bot);
+	return isExternalRunner ? sendRunnerCommand('restart', botKindOf(bot), botId) : restartBotInProcess(botId, bot);
 }
 
 export function subscribeBotStatus(kind: BotProcessKind, botNumericId: number, fn: StatusListener): () => void {
-	if (!externalRunner) {
+	if (!isExternalRunner) {
 		return subscribeBotStatusInProcess(kind, botNumericId, fn);
 	}
 

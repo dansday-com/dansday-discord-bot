@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ISO_MINUTE_LENGTH } from '$lib/utils/datetime.js';
+	import { legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -7,12 +9,42 @@
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
-	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect, getItemEffect, effectDefaultCost } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect, getItemEffect, effectDefaultCost, type ItemConfig, type ItemSchedule } from '$lib/items.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
+
+	const GIFT_SEARCH_DEBOUNCE_MS = 300;
 
 	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
 
-	const ALL_DEFAULT_CFG: Record<string, any> = Object.assign({}, ...ITEM_EFFECTS.map((e) => e.defaultConfig));
+	type AdminItem = {
+		id: number;
+		name: string;
+		effect_type: string;
+		description: string | null;
+		cost: number;
+		enabled: boolean;
+		usable: boolean;
+		available_from: string | null;
+		available_to: string | null;
+		recurring_schedule: ItemSchedule | string | null;
+		config: ItemConfig | string | null;
+	};
+
+	type ItemFormConfig = ItemConfig & { scope?: string; recur_days: number[]; recur_from: string; recur_to: string };
+
+	type GiftMember = {
+		id: number;
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		server_id: number;
+		server_name: string | null;
+		inventory_total: number;
+	};
+
+	const ALL_DEFAULT_CFG: ItemConfig = Object.assign({}, ...ITEM_EFFECTS.map((e) => e.defaultConfig));
 
 	function toLocalInput(value: unknown): string {
 		if (!value) {
@@ -26,16 +58,16 @@
 		if (!value) {
 			return null;
 		}
-		return `${value.slice(0, 16).replace('T', ' ')}:00`;
+		return `${value.slice(0, ISO_MINUTE_LENGTH).replace('T', ' ')}:00`;
 	}
 
-	let items = $state<any[]>([]);
-	let loading = $state(true);
-	let saving = $state(false);
+	let items = $state<AdminItem[]>([]);
+	let isLoading = $state(true);
+	let isSaving = $state(false);
 
 	const adminGroups = $derived.by(() => {
 		const byCost = (a: Record<string, unknown>, b: Record<string, unknown>) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
-		const out: { key: string; label: string; icon: string; items: Record<string, unknown>[] }[] = [];
+		const out: { key: string; label: string; icon: string; items: AdminItem[] }[] = [];
 		for (const eff of ITEM_EFFECTS) {
 			const groupItems = items.filter((i) => i.effect_type === eff.id).sort(byCost);
 			if (groupItems.length > 0) {
@@ -45,9 +77,9 @@
 		return out;
 	});
 
-	let editing = $state<any | null>(null);
-	let confirmDelete = $state<any | null>(null);
-	let deleting = $state(false);
+	let editing = $state<{ mode: 'create' | 'edit' } | null>(null);
+	let confirmDelete = $state<AdminItem | null>(null);
+	let isDeleting = $state(false);
 
 	function blankForm() {
 		return {
@@ -65,14 +97,14 @@
 				recur_days: [] as number[],
 				recur_from: '',
 				recur_to: ''
-			} as Record<string, any>
+			} as ItemFormConfig
 		};
 	}
 
 	let form = $state(blankForm());
 
 	async function loadItems() {
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch('/api/admin/items', { credentials: 'include' });
 			const d = await res.json();
@@ -82,7 +114,7 @@
 				showToast(d.error || 'Failed to load', 'error');
 			}
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
@@ -109,8 +141,8 @@
 		editing = { mode: 'create' };
 	}
 
-	function startEdit(item: any) {
-		const cfg = typeof item.config === 'string' ? JSON.parse(item.config || '{}') : item.config || {};
+	function startEdit(item: AdminItem) {
+		const cfg: ItemConfig = typeof item.config === 'string' ? JSON.parse(item.config || '{}') : item.config || {};
 		const f = blankForm();
 		f.id = item.id;
 		f.name = item.name ?? '';
@@ -122,7 +154,7 @@
 		f.available_from = toLocalInput(item.available_from);
 		f.available_to = toLocalInput(item.available_to);
 		f.cfg = { ...f.cfg, ...cfg };
-		const recur = typeof item.recurring_schedule === 'string' ? JSON.parse(item.recurring_schedule || 'null') : item.recurring_schedule;
+		const recur: ItemSchedule | null = typeof item.recurring_schedule === 'string' ? JSON.parse(item.recurring_schedule || 'null') : item.recurring_schedule;
 		if (recur) {
 			f.cfg.recur_days = (recur.days ?? []).map(Number);
 			f.cfg.recur_from = recur.from ?? '';
@@ -133,12 +165,12 @@
 	}
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const config = buildConfig();
 			const recurringSchedule = config.recurring_schedule ?? null;
 			delete config.recurring_schedule;
-			const payload: any = {
+			const payload: Record<string, unknown> = {
 				name: form.name,
 				effect_type: form.effect_type,
 				description: form.description,
@@ -150,23 +182,15 @@
 				recurring_schedule: recurringSchedule,
 				config
 			};
-			let res;
 			if (form.id) {
 				payload.id = form.id;
-				res = await fetch('/api/admin/items', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					credentials: 'include',
-					body: JSON.stringify(payload)
-				});
-			} else {
-				res = await fetch('/api/admin/items', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					credentials: 'include',
-					body: JSON.stringify(payload)
-				});
 			}
+			const res = await fetch('/api/admin/items', {
+				method: form.id ? 'PUT' : 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify(payload)
+			});
 			const d = await res.json();
 			if (d.success) {
 				showToast('Saved', 'success');
@@ -176,13 +200,13 @@
 				showToast(d.error || 'Failed to save', 'error');
 			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 
 	let togglingId = $state<number | null>(null);
 
-	async function toggleEnabled(item: any) {
+	async function toggleEnabled(item: AdminItem) {
 		const next = item.enabled === false;
 		togglingId = item.id;
 		item.enabled = next;
@@ -206,7 +230,7 @@
 		}
 	}
 
-	async function toggleUsable(item: any) {
+	async function toggleUsable(item: AdminItem) {
 		const next = item.usable === false;
 		togglingId = item.id;
 		item.usable = next;
@@ -235,7 +259,7 @@
 		if (!item) {
 			return;
 		}
-		deleting = true;
+		isDeleting = true;
 		try {
 			const res = await fetch('/api/admin/items', {
 				method: 'DELETE',
@@ -252,22 +276,22 @@
 				showToast(d.error || 'Failed to delete', 'error');
 			}
 		} finally {
-			deleting = false;
+			isDeleting = false;
 		}
 	}
 
-	let giftItem = $state<any | null>(null);
+	let giftItem = $state<AdminItem | null>(null);
 	let giftSearch = $state('');
-	let giftMembers = $state<any[]>([]);
+	let giftMembers = $state<GiftMember[]>([]);
 	let giftLimit = $state(0);
-	let giftLoading = $state(false);
+	let isGiftLoading = $state(false);
 	let giftingMemberId = $state<number | null>(null);
 	let giftSearchTimer: ReturnType<typeof setTimeout> | null = null;
 	let giftRequestId = 0;
 
 	async function loadGiftMembers() {
 		const requestId = ++giftRequestId;
-		giftLoading = true;
+		isGiftLoading = true;
 		try {
 			const res = await fetch(`/api/admin/items/gift?q=${encodeURIComponent(giftSearch.trim())}`, { credentials: 'include' });
 			const d = await res.json();
@@ -282,12 +306,12 @@
 			}
 		} finally {
 			if (requestId === giftRequestId) {
-				giftLoading = false;
+				isGiftLoading = false;
 			}
 		}
 	}
 
-	function startGift(item: any) {
+	function startGift(item: AdminItem) {
 		giftItem = item;
 		giftSearch = '';
 		giftMembers = [];
@@ -298,11 +322,11 @@
 		if (giftSearchTimer) {
 			clearTimeout(giftSearchTimer);
 		}
-		giftSearchTimer = setTimeout(loadGiftMembers, 300);
+		giftSearchTimer = setTimeout(loadGiftMembers, GIFT_SEARCH_DEBOUNCE_MS);
 	}
 
 	const giftGroups = $derived.by(() => {
-		const groups = new Map<string, { server: string; members: any[] }>();
+		const groups = new Map<string, { server: string; members: GiftMember[] }>();
 		for (const m of giftMembers) {
 			const key = `${m.server_id}`;
 			if (!groups.has(key)) {
@@ -313,15 +337,15 @@
 		return [...groups.values()];
 	});
 
-	function giftAvatar(m: any): string {
-		return m.avatar || `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
+	function giftAvatar(m: GiftMember): string {
+		return m.avatar || legacyDefaultAvatarUrl(m.discord_member_id);
 	}
 
-	function giftMemberName(m: any): string {
+	function giftMemberName(m: GiftMember): string {
 		return m.server_display_name || m.display_name || m.username || 'Unknown';
 	}
 
-	async function giveTo(member: any) {
+	async function giveTo(member: GiftMember) {
 		if (!giftItem) {
 			return;
 		}
@@ -417,14 +441,14 @@
 		</button>
 	</div>
 
-	{#if loading}
+	{#if isLoading}
 		<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</p>
 	{:else if items.length === 0}
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-8 text-center">
 			<p class="text-ash-400 text-sm">No items yet. Click "Add Item" to create your first one.</p>
 		</div>
 	{:else}
-		{#snippet adminCard(item: any)}
+		{#snippet adminCard(item: AdminItem)}
 			<div
 				class="bg-ash-800 border-ash-700 rounded-xl border border-l-4 p-4 transition-opacity"
 				class:opacity-60={item.enabled === false && item.usable === false}
@@ -877,10 +901,10 @@
 				>
 				<button
 					onclick={save}
-					disabled={saving}
+					disabled={isSaving}
 					class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
 				>
-					{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}{saving ? 'Saving...' : 'Save'}
+					{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}{isSaving ? 'Saving...' : 'Save'}
 				</button>
 			</div>
 		</div>
@@ -893,7 +917,7 @@
 	message={confirmDelete ? `Delete "${confirmDelete.name}"? This removes it from every server's items.` : ''}
 	confirmLabel="Delete"
 	dangerous
-	loading={deleting}
+	loading={isDeleting}
 	onconfirm={remove}
 	oncancel={() => (confirmDelete = null)}
 />
@@ -938,7 +962,7 @@
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
-				{#if giftLoading}
+				{#if isGiftLoading}
 					<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</p>
 				{:else if giftGroups.length === 0}
 					<p class="text-ash-400 py-6 text-center text-sm">No members found.</p>

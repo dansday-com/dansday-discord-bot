@@ -3,13 +3,14 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MAX_SAVED_MESSAGES, messageButtons, messageSelects, messageSummary } from '$lib/messages.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
 	const panelId = Number(locals.user.panel_id);

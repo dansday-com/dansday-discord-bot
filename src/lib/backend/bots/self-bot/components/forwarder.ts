@@ -1,11 +1,11 @@
 import { FORWARDER, COMMUNICATION } from '../../../config.js';
 import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
 import { logger } from '../../../../utils/index.js';
-import type { Message } from 'discord.js';
+import type { Client, Message } from 'discord.js-selfbot-v13';
 
 const WEBHOOK_TIMEOUT_MS = 10_000;
 
-async function sendToOfficialBot(messageData: any) {
+async function sendToOfficialBot(messageData: ForwardedMessage) {
 	const startedAt = Date.now();
 	try {
 		const response = await fetch(COMMUNICATION.WEBHOOK_URL, {
@@ -36,9 +36,11 @@ async function sendToOfficialBot(messageData: any) {
 	}
 }
 
-async function processMessage(message: Message<true>) {
+type ForwardedMessage = ReturnType<typeof forwardedMessage>;
+
+function forwardedMessage(message: Message<true>) {
 	const mentionedUserIds = message.mentions?.users ? [...message.mentions.users.keys()] : [];
-	const messageData = {
+	return {
 		id: message.id,
 		content: message.content,
 		author: {
@@ -65,13 +67,15 @@ async function processMessage(message: Message<true>) {
 		mentioned_user_ids: mentionedUserIds,
 		timestamp: Date.now()
 	};
-
-	sendToOfficialBot(messageData).catch((err) => logger.log(`❌ Failed to forward message ${message.id}: ${err?.message || err}`));
 }
 
-function init(client: any) {
-	client.on('messageCreate', async (message: Message<true>) => {
-		if (!message.guild) {
+async function processMessage(message: Message<true>) {
+	sendToOfficialBot(forwardedMessage(message)).catch((err) => logger.log(`❌ Failed to forward message ${message.id}: ${err?.message || err}`));
+}
+
+function init(client: Client) {
+	client.on('messageCreate', async (message) => {
+		if (!message.inGuild() || !message.guild) {
 			return;
 		}
 
@@ -82,19 +86,19 @@ function init(client: any) {
 				return;
 			}
 
-			const candidates = Array.isArray((result as any).matches) && (result as any).matches.length > 0 ? (result as any).matches : [result];
+			const candidates = 'matches' in result && result.matches.length > 0 ? result.matches : [result];
 			const haystack = forwarderKeywordHaystack(message.content, message.embeds);
 			const selfBotId = message.client.user?.id;
 			const mentionedUsers = message.mentions?.users;
-			const mentionsSelfBot = !!mentionedUsers && mentionedUsers.size > 0 && mentionedUsers.has(selfBotId);
+			const doesMentionSelfBot = !!selfBotId && !!mentionedUsers && mentionedUsers.size > 0 && mentionedUsers.has(selfBotId);
 
-			const accepted = candidates.some((candidate: Record<string, unknown>) => {
-				if (candidate.onlyForwardWhenMentionsSelfBot && !mentionsSelfBot) {
+			const isAccepted = candidates.some((candidate) => {
+				if (candidate.onlyForwardWhenMentionsSelfBot && !doesMentionSelfBot) {
 					return false;
 				}
 				return forwarderKeywordsMatch(candidate.keywords, haystack);
 			});
-			if (!accepted) {
+			if (!isAccepted) {
 				return;
 			}
 

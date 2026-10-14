@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { HTTP } from '$lib/http.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -14,6 +15,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 		return json(channels);
 	} catch (error) {
-		return json({ error: (error as Error).message }, { status: 500 });
+		return json({ error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

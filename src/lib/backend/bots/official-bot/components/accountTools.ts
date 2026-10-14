@@ -9,8 +9,12 @@ import { TOWER_GAME } from '../../../../tower.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzKnown, memberTzOffset, nameOfMember, num, publicServer, safeConfig } from './aiToolShared.js';
 import type { PublicServerContext, ToolContext, ToolFeatures } from './aiToolShared.js';
 import type { MemberListRow } from '../../../../database.js';
+import type { StoredLevelingSettings } from '../../../config.js';
 
 const MAX_HISTORY_ROWS = 20;
+const MAX_VOICE_BUDDIES = 5;
+const MAX_FAVOURITE_ITEMS = 5;
+const MAX_RECENT_GAMES = 5;
 
 async function callerAccount(botId: number, guildId: string, callerDiscordId: string | null) {
 	if (!callerDiscordId) {
@@ -40,28 +44,92 @@ async function sharedFor(ctx: PublicServerContext, hash: string) {
 
 type ItemsShared = NonNullable<Awaited<ReturnType<typeof sharedFor>>>;
 
-async function accountOverview(ctx: PublicServerContext, shared: ItemsShared, member: MemberListRow) {
-	const [dashboard, insights, buddies, levelingRow, inviteStats, inviter] = await Promise.all([
-		db.getMemberDashboard(member.id, {}).catch(() => null),
-		db.getMemberInsights(member.id, ctx.server.id).catch(() => null),
-		db.getMemberLevelFriends(member.id, 5).catch(() => []),
-		db.getServerSettings(ctx.server.id, SERVER_SETTINGS.component.leveling).catch(() => null),
-		db.getMemberInviteStats(Number(member.id)).catch(() => null),
-		db.getMemberInviter(Number(member.id)).catch(() => null)
-	]);
+type InviteStats = NonNullable<Awaited<ReturnType<typeof db.getMemberInviteStats>>>;
+type Dashboard = NonNullable<Awaited<ReturnType<typeof db.getMemberDashboard>>>;
 
-	const rates = (levelingRow as any)?.settings ?? {};
-	const xpSources = [
+function xpBySource(member: MemberListRow, { rates, inviteXp }: { rates: StoredLevelingSettings; inviteXp: unknown }) {
+	return [
 		{ source: 'Messages', xp: num(member.chat_total) * num(rates.MESSAGE?.XP) },
 		{ source: 'Voice', xp: num(member.voice_minutes_active) * num(rates.VOICE?.XP_PER_MINUTE) },
 		{ source: 'Video', xp: num(member.voice_minutes_video) * num(rates.VIDEO?.XP_PER_MINUTE) },
 		{ source: 'Streaming', xp: num(member.voice_minutes_streaming) * num(rates.STREAMING?.XP_PER_MINUTE) },
 		{ source: 'AFK voice', xp: num(member.voice_minutes_afk) * num(rates.VOICE?.AFK_XP_PER_MINUTE) },
-		{ source: 'Invites', xp: num(inviteStats?.xp) }
+		{ source: 'Invites', xp: num(inviteXp) }
 	]
 		.map((s) => ({ ...s, xp: Math.round(s.xp) }))
 		.filter((s) => s.xp > 0)
 		.sort((a, b) => b.xp - a.xp);
+}
+
+function inviteSummary(inviteStats: InviteStats | null) {
+	if (!inviteStats) {
+		return null;
+	}
+	return {
+		total: inviteStats.total,
+		still_here: inviteStats.active,
+		left: inviteStats.left,
+		fake: inviteStats.fake,
+		staff_bonus: inviteStats.bonus,
+		waiting_for_payout: inviteStats.pending,
+		xp_from_joins: inviteStats.join_xp,
+		xp_from_shares: inviteStats.share_xp,
+		xp_earned: inviteStats.xp
+	};
+}
+
+function dashboardTotals(dashboard: Dashboard | null) {
+	if (!dashboard) {
+		return {};
+	}
+	return {
+		totals: {
+			items_bought: dashboard.items_buys,
+			xp_spent_on_items: dashboard.items_buy_spend,
+			xp_stolen_by_you: dashboard.items_stolen,
+			times_robbed: dashboard.items_stolen_from,
+			times_bombed: dashboard.items_bombed_by,
+			gifts_received: dashboard.items_gifts_received,
+			minigames_played: dashboard.minigames_plays,
+			minigames_net_xp: dashboard.minigames_net,
+			giveaways_won: dashboard.giveaways_won,
+			quests_claimed: dashboard.quests_claimed
+		}
+	};
+}
+
+function isoOrNull(value: Date | string | null | undefined) {
+	return value ? new Date(value).toISOString() : null;
+}
+
+function memberStanding(member: MemberListRow, shared: ItemsShared) {
+	return {
+		roles: (member.roles ?? []).map((r) => r.name),
+		is_booster: !!member.is_booster,
+		booster_since: isoOrNull(member.booster_since),
+		is_afk: !!member.is_afk,
+		afk_message: member.afk_message ?? null,
+		member_since: isoOrNull(member.member_since),
+		discord_account_since: isoOrNull(member.profile_created_at),
+		luck_percent: shared.luckPercent ?? 0,
+		bounty_on_you: shared.bountyTotal ?? 0,
+		active_effects: (shared.activeEffects ?? []).map((e) => ({
+			effect: e.effect_type,
+			value: e.effect_value,
+			expires_in: e.expiresAt ? formatMs(e.expiresAt - Date.now()) : null
+		}))
+	};
+}
+
+async function accountOverview(ctx: PublicServerContext, shared: ItemsShared, member: MemberListRow) {
+	const [dashboard, insights, buddies, levelingRow, inviteStats, inviter] = await Promise.all([
+		db.getMemberDashboard(member.id, {}).catch(() => null),
+		db.getMemberInsights(member.id, ctx.server.id).catch(() => null),
+		db.getMemberLevelFriends(member.id, MAX_VOICE_BUDDIES).catch(() => []),
+		db.getServerSettings(ctx.server.id, SERVER_SETTINGS.component.leveling).catch(() => null),
+		db.getMemberInviteStats(Number(member.id)).catch(() => null),
+		db.getMemberInviter(Number(member.id)).catch(() => null)
+	]);
 
 	return {
 		name: nameOfMember(member),
@@ -75,58 +143,14 @@ async function accountOverview(ctx: PublicServerContext, shared: ItemsShared, me
 			video: num(member.voice_minutes_video),
 			streaming: num(member.voice_minutes_streaming)
 		},
-		xp_by_source: xpSources,
-		invites: inviteStats
-			? {
-					total: inviteStats.total,
-					still_here: inviteStats.active,
-					left: inviteStats.left,
-					fake: inviteStats.fake,
-					staff_bonus: inviteStats.bonus,
-					waiting_for_payout: inviteStats.pending,
-					xp_from_joins: inviteStats.join_xp,
-					xp_from_shares: inviteStats.share_xp,
-					xp_earned: inviteStats.xp
-				}
-			: null,
+		xp_by_source: xpBySource(member, { rates: levelingRow?.settings ?? {}, inviteXp: inviteStats?.xp }),
+		invites: inviteSummary(inviteStats),
 		invited_by: inviter?.inviter_name ?? null,
-		voice_buddies: (buddies ?? []).map((b) => ({
-			name: b.name,
-			minutes_together: num(b.minutes),
-			xp_earned_together: num(b.xp)
-		})),
+		voice_buddies: (buddies ?? []).map((b) => ({ name: b.name, minutes_together: num(b.minutes), xp_earned_together: num(b.xp) })),
 		voice_buddies_note: 'The members they share voice channels with most. Every other member in the channel adds +10% voice XP.',
-		roles: (member.roles ?? []).map((r) => r.name),
-		is_booster: !!member.is_booster,
-		booster_since: member.booster_since ? new Date(member.booster_since).toISOString() : null,
-		is_afk: !!member.is_afk,
-		afk_message: member.afk_message ?? null,
-		member_since: member.member_since ? new Date(member.member_since).toISOString() : null,
-		discord_account_since: member.profile_created_at ? new Date(member.profile_created_at).toISOString() : null,
-		luck_percent: shared.luckPercent ?? 0,
-		bounty_on_you: shared.bountyTotal ?? 0,
-		active_effects: (shared.activeEffects ?? []).map((e) => ({
-			effect: e.effect_type,
-			value: e.effect_value,
-			expires_in: e.expiresAt ? formatMs(e.expiresAt - Date.now()) : null
-		})),
-		...(dashboard
-			? {
-					totals: {
-						items_bought: dashboard.items_buys,
-						xp_spent_on_items: dashboard.items_buy_spend,
-						xp_stolen_by_you: dashboard.items_stolen,
-						times_robbed: dashboard.items_stolen_from,
-						times_bombed: dashboard.items_bombed_by,
-						gifts_received: dashboard.items_gifts_received,
-						minigames_played: dashboard.minigames_plays,
-						minigames_net_xp: dashboard.minigames_net,
-						giveaways_won: dashboard.giveaways_won,
-						quests_claimed: dashboard.quests_claimed
-					}
-				}
-			: {}),
-		...(insights?.favorite_items?.length ? { favourite_items: insights.favorite_items.slice(0, 5) } : {}),
+		...memberStanding(member, shared),
+		...dashboardTotals(dashboard),
+		...(insights?.favorite_items?.length ? { favourite_items: insights.favorite_items.slice(0, MAX_FAVOURITE_ITEMS) } : {}),
 		...(insights?.relationships ? { relationships: insights.relationships } : {})
 	};
 }
@@ -229,7 +253,7 @@ async function accountMinigames(ctx: PublicServerContext, member: MemberListRow)
 		wagered_xp: wagered,
 		net_xp: net,
 		biggest_win_xp: biggestWin,
-		recent: rows.slice(0, 5).map((r) => ({
+		recent: rows.slice(0, MAX_RECENT_GAMES).map((r) => ({
 			game: r.game,
 			wager_xp: num(r.wager),
 			result: r.outcome,
@@ -281,7 +305,7 @@ async function accountTasks(ctx: PublicServerContext, member: MemberListRow) {
 		return fail('tasks_not_enabled_for_this_server');
 	}
 
-	const [tzOffsetMin, tzKnown] = await Promise.all([memberTzOffset(member.id), memberTzKnown(member.id)]);
+	const [tzOffsetMin, isTzKnown] = await Promise.all([memberTzOffset(member.id), memberTzKnown(member.id)]);
 
 	const tasks = await loadTasksShared({
 		server: ctx.server,
@@ -290,7 +314,7 @@ async function accountTasks(ctx: PublicServerContext, member: MemberListRow) {
 		minigamesEnabled: ctx.minigamesEnabled,
 		marketEnabled: ctx.marketEnabled,
 		tzOffsetMin,
-		tzKnown
+		tzKnown: isTzKnown
 	}).catch((error) => {
 		logger.log(`❌ AI task lookup failed: ${error.message}`);
 		return null;
@@ -357,9 +381,7 @@ async function accountTasks(ctx: PublicServerContext, member: MemberListRow) {
 }
 
 async function withAccount(
-	botId: number,
-	guildId: string,
-	callerDiscordId: string | null,
+	{ botId, guildId, callerDiscordId }: ToolCaller,
 	run: (account: { ctx: PublicServerContext; member: MemberListRow; hash: string }) => Promise<Record<string, unknown>>
 ) {
 	const resolved = await callerAccount(botId, guildId, callerDiscordId);
@@ -373,7 +395,7 @@ async function withAccount(
 }
 
 export function runMyOverviewTool(botId: number, guildId: string, callerDiscordId: string | null) {
-	return withAccount(botId, guildId, callerDiscordId, async ({ ctx, member, hash }) => {
+	return withAccount({ botId, guildId, callerDiscordId }, async ({ ctx, member, hash }) => {
 		const shared = await sharedFor(ctx, hash);
 		if (!shared) {
 			return fail('account_unavailable');
@@ -383,7 +405,7 @@ export function runMyOverviewTool(botId: number, guildId: string, callerDiscordI
 }
 
 export function runMyItemsTool(botId: number, guildId: string, callerDiscordId: string | null) {
-	return withAccount(botId, guildId, callerDiscordId, async ({ ctx, member, hash }) => {
+	return withAccount({ botId, guildId, callerDiscordId }, async ({ ctx, member, hash }) => {
 		if (!ctx.itemsEnabled) {
 			return fail('items_not_enabled_for_this_server');
 		}
@@ -396,19 +418,21 @@ export function runMyItemsTool(botId: number, guildId: string, callerDiscordId: 
 }
 
 export function runMyAssetsTool(botId: number, guildId: string, callerDiscordId: string | null) {
-	return withAccount(botId, guildId, callerDiscordId, ({ ctx, member }) => accountAssets(ctx, member));
+	return withAccount({ botId, guildId, callerDiscordId }, ({ ctx, member }) => accountAssets(ctx, member));
 }
 
 export function runMyMinigamesTool(botId: number, guildId: string, callerDiscordId: string | null) {
-	return withAccount(botId, guildId, callerDiscordId, ({ ctx, member }) => accountMinigames(ctx, member));
+	return withAccount({ botId, guildId, callerDiscordId }, ({ ctx, member }) => accountMinigames(ctx, member));
 }
 
-export function runMyHistoryTool(botId: number, guildId: string, callerDiscordId: string | null, args: Record<string, unknown>) {
-	return withAccount(botId, guildId, callerDiscordId, ({ ctx, member }) => accountHistory(ctx, member, args));
+type ToolCaller = { botId: number; guildId: string; callerDiscordId: string | null };
+
+export function runMyHistoryTool({ botId, guildId, callerDiscordId }: ToolCaller, args: Record<string, unknown>) {
+	return withAccount({ botId, guildId, callerDiscordId }, ({ ctx, member }) => accountHistory(ctx, member, args));
 }
 
 export function runMyTasksTool(botId: number, guildId: string, callerDiscordId: string | null) {
-	return withAccount(botId, guildId, callerDiscordId, ({ ctx, member }) => accountTasks(ctx, member));
+	return withAccount({ botId, guildId, callerDiscordId }, ({ ctx, member }) => accountTasks(ctx, member));
 }
 
 const OWN_ONLY =
@@ -500,7 +524,7 @@ export function runAccountTool(name: string, args: Record<string, unknown>, { bo
 		return runMyMinigamesTool(botId, guildId, callerDiscordId);
 	}
 	if (name === 'get_my_history') {
-		return runMyHistoryTool(botId, guildId, callerDiscordId, args);
+		return runMyHistoryTool({ botId, guildId, callerDiscordId }, args);
 	}
 	if (name === 'get_my_tasks') {
 		return runMyTasksTool(botId, guildId, callerDiscordId);

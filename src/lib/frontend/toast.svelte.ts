@@ -9,6 +9,8 @@ export type Toast = {
 
 const MAX_VISIBLE = 4;
 
+export const TOAST_MS = { short: 4000, long: 7000, error: 8000 } as const;
+
 type Timer = { handle: ReturnType<typeof setTimeout> | null; remaining: number; startedAt: number };
 
 const toasts = $state<Toast[]>([]);
@@ -20,7 +22,7 @@ function arm(id: number, ms: number) {
 	timers.set(id, { handle, remaining: ms, startedAt: Date.now() });
 }
 
-export function showToast(message: string, type: ToastType = 'info', duration = 4000) {
+export function showToast(message: string, type: ToastType = 'info', duration: number = TOAST_MS.short) {
 	const id = nextId++;
 	toasts.push({ id, message, type, duration });
 	while (toasts.length > MAX_VISIBLE) {

@@ -1,28 +1,33 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, MessageFlags } from 'discord.js';
 import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
-import { logger } from '../../../../../utils/index.js';
+import { logger, attempt } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { memberTranslator, translate, serverTranslator, errorReason } from '../../i18n.js';
+import { memberTranslator, translate, serverTranslator, errorReason, type Translator } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue, imageUploadField, uploadedFiles } from './formFields.js';
 import db from '../../../../../database.js';
-import type { GuildTextBasedChannel, MessageComponentInteraction, ModalSubmitInteraction } from 'discord.js';
+import type { Guild, GuildTextBasedChannel, MessageComponentInteraction, ModalSubmitInteraction, User } from 'discord.js';
+import { SECOND_MS } from '../../../../../utils/time.js';
+import { DISCORD_LIMITS, truncateToLimit } from '../../../../../discordLimits.js';
+
+const FEEDBACK_MAX_LENGTH = 2000;
+const MAX_SCREENSHOTS = 3;
 
 export async function handleFeedbackButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
-		const member = interaction.member;
+		const { member } = interaction;
 
 		if (!(await hasPermission(member, 'feedback'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'feedback', interaction.user.id);
 			await interaction
 				.reply({
 					content: errorMessage,
-					flags: 64
+					flags: MessageFlags.Ephemeral
 				})
 				.catch(() => null);
 			return;
 		}
 
-		const modalTitle = await translate('feedback.modal.title', interaction.guild.id, interaction.user.id);
+		const modalTitle = await translate('feedback.modal.title', { guildId: interaction.guild.id, userId: interaction.user.id });
 		const modal = new ModalBuilder().setCustomId('feedback_submit').setTitle(modalTitle);
 
 		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
@@ -31,11 +36,11 @@ export async function handleFeedbackButton(interaction: MessageComponentInteract
 			.setStyle(TextInputStyle.Paragraph)
 			.setPlaceholder(tr('feedback.modal.placeholder'))
 			.setRequired(true)
-			.setMaxLength(2000);
+			.setMaxLength(FEEDBACK_MAX_LENGTH);
 
 		modal.addLabelComponents(
 			textField(tr('feedback.modal.label'), feedbackInput),
-			imageUploadField(tr('feedback.modal.screenshotsLabel'), 'feedback_screenshots', 3),
+			imageUploadField(tr('feedback.modal.screenshotsLabel'), 'feedback_screenshots', MAX_SCREENSHOTS),
 			checkboxField(tr('feedback.modal.anonymousLabel'), 'anonymous', false)
 		);
 
@@ -43,157 +48,131 @@ export async function handleFeedbackButton(interaction: MessageComponentInteract
 		await logger.log(`💬 Feedback modal shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error showing feedback modal: ${(error as Error).message}`);
-		const errorMsg = await translate('feedback.errors.failed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
+		const errorMsg = await translate(
+			'feedback.errors.failed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			}
+		);
 		await interaction.reply({
 			content: errorMsg,
-			flags: 64
+			flags: MessageFlags.Ephemeral
 		});
 	}
 }
 
+type Submission = { feedbackId: number; message: string; isAnonymous: boolean; user: User };
+
+async function findFeedbackChannel(guild: Guild): Promise<{ value: GuildTextBasedChannel } | { errorKey: string }> {
+	const channelIdResult = await attempt(() => FEEDBACK.getChannel(guild.id));
+	if (!channelIdResult.ok) {
+		await logger.log(`❌ Error getting feedback channel: ${(channelIdResult.error as Error).message}`);
+		return { errorKey: 'feedback.errors.channelError' };
+	}
+	const channelId = channelIdResult.value;
+	if (!channelId) {
+		await logger.log(`❌ Feedback channel not configured for server ${guild.id}`);
+		return { errorKey: 'feedback.errors.channelNotConfigured' };
+	}
+	const channel = guild.channels.cache.get(channelId) as GuildTextBasedChannel | undefined;
+	if (!channel) {
+		await logger.log(`❌ Feedback channel not found: ${channelId}`);
+		return { errorKey: 'feedback.errors.channelNotFound' };
+	}
+	return { value: channel };
+}
+
+function feedbackEmbed(tr: Translator, embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>, submission: Submission) {
+	const { message, isAnonymous, user } = submission;
+	return new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(tr('feedback.channelEmbed.title'))
+		.setDescription(truncateToLimit(message, DISCORD_LIMITS.EMBED_DESCRIPTION))
+		.setThumbnail(isAnonymous ? null : user.displayAvatarURL({ size: 256 }))
+		.addFields([
+			{ name: tr('feedback.channelEmbed.fieldFrom'), value: isAnonymous ? tr('feedback.channelEmbed.anonymous') : `<@${user.id}>`, inline: true },
+			{ name: tr('feedback.channelEmbed.fieldSubmitted'), value: `<t:${Math.floor(Date.now() / SECOND_MS)}:R>`, inline: true }
+		])
+		.setTimestamp()
+		.setFooter({ text: `${embedConfig.FOOTER} ${tr('feedback.channelEmbed.footerSuffix', { feedbackId: submission.feedbackId })}` });
+}
+
+async function feedbackStaffMention(guildId: string) {
+	try {
+		const feedbackRoleId = await FEEDBACK.getRole(guildId);
+		return feedbackRoleId ? `<@&${feedbackRoleId}>` : '';
+	} catch (err) {
+		await logger.log(`⚠️  Error getting feedback role: ${(err as Error).message}`);
+		return '';
+	}
+}
+
+async function postFeedback(channel: GuildTextBasedChannel, { embed, screenshots }: { embed: EmbedBuilder; screenshots: ReturnType<typeof uploadedFiles> }) {
+	const staffMentions = await feedbackStaffMention(channel.guild.id);
+	const feedbackPost = { content: staffMentions || undefined, embeds: [embed] };
+	await channel.send({ ...feedbackPost, files: screenshots }).catch(async (err: Record<string, unknown>) => {
+		if (screenshots.length === 0) {
+			throw err;
+		}
+		await logger.log(`⚠️  Feedback screenshots could not be attached: ${err.message}`);
+		await channel.send(feedbackPost);
+	});
+}
+
 export async function handleFeedbackModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
-		await interaction.deferReply({ flags: 64 });
-
-		const member = interaction.member;
-		const guild = interaction.guild;
-		const user = interaction.user;
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const { member, guild, user } = interaction;
 
 		if (!(await hasPermission(member, 'feedback'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'feedback', interaction.user.id);
-			await interaction
-				.editReply({
-					content: errorMessage
-				})
-				.catch(() => null);
+			await interaction.editReply({ content: errorMessage }).catch(() => null);
 			return;
 		}
 
-		const feedbackMessage = interaction.fields.getTextInputValue('feedback_message').trim();
-
-		if (!feedbackMessage || feedbackMessage.length === 0) {
-			const errorMsg = await translate('feedback.errors.invalid', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
+		const mtr = await memberTranslator(guild.id, user.id);
+		const message = interaction.fields.getTextInputValue('feedback_message').trim();
+		if (!message) {
+			await interaction.editReply({ content: mtr('feedback.errors.invalid') });
 			return;
 		}
 
 		const isAnonymous = checkboxValue(interaction.fields, 'anonymous', false);
 		const screenshots = uploadedFiles(interaction.fields, 'feedback_screenshots');
-
-		let feedbackChannelId;
-		try {
-			feedbackChannelId = await FEEDBACK.getChannel(guild.id);
-		} catch (err) {
-			await logger.log(`❌ Error getting feedback channel: ${(err as Error).message}`);
-			const errorMsg = await translate('feedback.errors.channelError', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
+		const channel = await findFeedbackChannel(guild);
+		if ('errorKey' in channel) {
+			await interaction.editReply({ content: mtr(channel.errorKey) });
 			return;
 		}
 
-		if (!feedbackChannelId) {
-			await logger.log(`❌ Feedback channel not configured for server ${guild.id}`);
-			const errorMsg = await translate('feedback.errors.channelNotConfigured', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
-			return;
-		}
-
-		const feedbackChannel = guild.channels.cache.get(feedbackChannelId) as GuildTextBasedChannel | undefined;
-		if (!feedbackChannel) {
-			await logger.log(`❌ Feedback channel not found: ${feedbackChannelId}`);
-			const errorMsg = await translate('feedback.errors.channelNotFound', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
-			return;
-		}
-
-		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig!.id, guild.id);
+		const server = await db.getServerByDiscordId(getBotConfig()!.id, guild.id);
 		const dbMember = await db.upsertMember(server.id, member);
+		const feedbackId = await db.createFeedback(server.id, { memberId: dbMember.id, description: message, isAnonymous });
 
-		const feedbackId = await db.createFeedback(server.id, dbMember.id, feedbackMessage, isAnonymous);
+		const embedConfig = await getEmbedConfig(guild.id);
+		const embed = feedbackEmbed(await serverTranslator(guild.id), embedConfig, { feedbackId, message, isAnonymous, user });
+		await postFeedback(channel.value, { embed, screenshots });
 
-		const embedConfig = await getEmbedConfig(interaction.guild.id);
-		const tr = await serverTranslator(guild.id);
-
-		const feedbackEmbedTitle = tr('feedback.channelEmbed.title');
-		const fromLabel = tr('feedback.channelEmbed.fieldFrom');
-		const submittedLabel = tr('feedback.channelEmbed.fieldSubmitted');
-		const footerText = `${embedConfig.FOOTER} ${tr('feedback.channelEmbed.footerSuffix', { feedbackId })}`;
-		const feedbackEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(feedbackEmbedTitle)
-			.setDescription(feedbackMessage.length > 4096 ? `${feedbackMessage.substring(0, 4093)}...` : feedbackMessage)
-			.setThumbnail(isAnonymous ? null : user.displayAvatarURL({ size: 256 }))
-			.addFields([
-				{
-					name: fromLabel,
-					value: isAnonymous ? tr('feedback.channelEmbed.anonymous') : `<@${user.id}>`,
-					inline: true
-				},
-				{
-					name: submittedLabel,
-					value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
-					inline: true
-				}
-			])
-			.setTimestamp()
-			.setFooter({ text: footerText });
-
-		let staffMentions = '';
-		try {
-			const feedbackRoleId = await FEEDBACK.getRole(guild.id);
-			if (feedbackRoleId) {
-				staffMentions = `<@&${feedbackRoleId}>`;
-			}
-		} catch (err) {
-			await logger.log(`⚠️  Error getting feedback role: ${(err as Error).message}`);
-		}
-
-		const feedbackPost = { content: staffMentions || undefined, embeds: [feedbackEmbed] };
-		await feedbackChannel.send({ ...feedbackPost, files: screenshots }).catch(async (err: Record<string, unknown>) => {
-			if (screenshots.length === 0) {
-				throw err;
-			}
-			await logger.log(`⚠️  Feedback screenshots could not be attached: ${err.message}`);
-			await feedbackChannel.send(feedbackPost);
-		});
-
-		const successTitle = await translate('feedback.submitted.title', interaction.guild.id, interaction.user.id);
-		let successDescription = await translate('feedback.submitted.description', interaction.guild.id, interaction.user.id);
-
-		if (isAnonymous) {
-			const anonymousText = await translate('feedback.submitted.anonymous', interaction.guild.id, interaction.user.id);
-			successDescription += anonymousText;
-		}
-
-		const memberFooterSuffix = await translate('feedback.channelEmbed.footerSuffix', interaction.guild.id, interaction.user.id, { feedbackId });
 		const successEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle(successTitle)
-			.setDescription(successDescription)
+			.setTitle(mtr('feedback.submitted.title'))
+			.setDescription(mtr('feedback.submitted.description') + (isAnonymous ? mtr('feedback.submitted.anonymous') : ''))
 			.setTimestamp()
-			.setFooter({ text: `${embedConfig.FOOTER} ${memberFooterSuffix}` });
-
-		await interaction.editReply({
-			embeds: [successEmbed]
-		});
+			.setFooter({ text: `${embedConfig.FOOTER} ${mtr('feedback.channelEmbed.footerSuffix', { feedbackId })}` });
+		await interaction.editReply({ embeds: [successEmbed] });
 
 		await logger.log(`✅ Feedback submitted by ${user.tag} (${user.id})`);
 	} catch (error) {
 		await logger.log(`❌ Error processing feedback: ${(error as Error).message}`);
 		await logger.log(`❌ Stack: ${(error as Error).stack}`);
-		const errorMsg = await translate('feedback.errors.submitFailed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
+		const errorMsg = await translate(
+			'feedback.errors.submitFailed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			}
+		);
 		await interaction.editReply({
 			content: errorMsg
 		});

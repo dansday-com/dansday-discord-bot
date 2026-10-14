@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
@@ -11,6 +12,21 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import { compact, md, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
+	import { HEX_RADIX, RGB_MAX } from '$lib/utils/numbers.js';
+	import { relativeLuminance } from '$lib/utils/rgb.js';
+
+	const SHORT_HEX_LENGTH = 3;
+	const HEX_COLOR_LENGTH = 6;
+	const BLUE_HEX_OFFSET = 4;
+	const COLOR_INT_MAX = 0xffffff;
+	const RED_SHIFT_BITS = 16;
+	const GREEN_SHIFT_BITS = 8;
+	const NEAR_WHITE_LUMINANCE = 0.78;
+	const NEAR_WHITE_CHANNEL = 248;
+	const SOFT_TEXT_LUMINANCE = 0.52;
+	const NEWEST_MEMBERS_SHOWN = 3;
+	const ROW_STAGGER_MS = 32;
+	const RANK_AVATAR_PX = 56;
 
 	let { data }: PageProps = $props();
 
@@ -31,17 +47,17 @@
 		}
 		if (s.startsWith('#')) {
 			let h = s.slice(1);
-			if (h.length === 3) {
+			if (h.length === SHORT_HEX_LENGTH) {
 				h = h
 					.split('')
 					.map((c) => c + c)
 					.join('');
 			}
-			if (h.length === 6 && /^[0-9a-fA-F]+$/.test(h)) {
+			if (h.length === HEX_COLOR_LENGTH && /^[0-9a-fA-F]+$/.test(h)) {
 				return {
 					r: parseInt(h.slice(0, 2), 16),
-					g: parseInt(h.slice(2, 4), 16),
-					b: parseInt(h.slice(4, 6), 16)
+					g: parseInt(h.slice(2, BLUE_HEX_OFFSET), 16),
+					b: parseInt(h.slice(BLUE_HEX_OFFSET, HEX_COLOR_LENGTH), 16)
 				};
 			}
 			return null;
@@ -49,27 +65,23 @@
 		if (/^[0-9A-Fa-f]{6}$/.test(s)) {
 			return {
 				r: parseInt(s.slice(0, 2), 16),
-				g: parseInt(s.slice(2, 4), 16),
-				b: parseInt(s.slice(4, 6), 16)
+				g: parseInt(s.slice(2, BLUE_HEX_OFFSET), 16),
+				b: parseInt(s.slice(BLUE_HEX_OFFSET, HEX_COLOR_LENGTH), 16)
 			};
 		}
 		const n = Number.parseInt(s, 10);
-		if (Number.isFinite(n) && n >= 0 && n <= 0xffffff) {
-			return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+		if (Number.isFinite(n) && n >= 0 && n <= COLOR_INT_MAX) {
+			return { r: (n >> RED_SHIFT_BITS) & RGB_MAX, g: (n >> GREEN_SHIFT_BITS) & RGB_MAX, b: n & RGB_MAX };
 		}
 		return null;
 	}
 
 	function rgbToHex({ r, g, b }: RoleRgb): string {
-		return `#${[r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`;
+		return `#${[r, g, b].map((x) => Math.max(0, Math.min(RGB_MAX, x)).toString(HEX_RADIX).padStart(2, '0')).join('')}`;
 	}
 
 	function roleColorLuminance({ r, g, b }: RoleRgb): number {
-		const lin = (c: number) => {
-			c /= 255;
-			return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-		};
-		return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+		return relativeLuminance([r, g, b]);
 	}
 
 	function rolePillStyle(color: string | null | undefined): string {
@@ -79,12 +91,12 @@
 			return fallback;
 		}
 		const L = roleColorLuminance(rgb);
-		const nearWhite = L >= 0.78 || (rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
+		const nearWhite = L >= NEAR_WHITE_LUMINANCE || (rgb.r >= NEAR_WHITE_CHANNEL && rgb.g >= NEAR_WHITE_CHANNEL && rgb.b >= NEAR_WHITE_CHANNEL);
 		if (nearWhite) {
 			return fallback;
 		}
 		const hex = rgbToHex(rgb);
-		const softText = L > 0.52;
+		const softText = L > SOFT_TEXT_LUMINANCE;
 		return [
 			`--role-fg: ${softText ? '#2e211b' : hex}`,
 			`--role-bg: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.13)`,
@@ -95,7 +107,7 @@
 
 	let liveMembers = $state([...(data.members ?? [])]);
 	let es: EventSource | null = null;
-	let mounted = $state(false);
+	let isMounted = $state(false);
 
 	$effect(() => {
 		liveMembers = [...(data.members ?? [])];
@@ -112,7 +124,7 @@
 
 	onMount(() => {
 		requestAnimationFrame(() => {
-			mounted = true;
+			isMounted = true;
 		});
 		return onFirstInteraction(() => {
 			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
@@ -188,7 +200,7 @@
 	}
 
 	function avatarSrc(m: (typeof members)[number]): string {
-		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
+		return m.avatar ?? legacyDefaultAvatarUrl(m.discord_member_id);
 	}
 
 	function highestRole(m: (typeof members)[number]) {
@@ -201,13 +213,13 @@
 		const newest = [...all]
 			.filter((m) => m.member_since)
 			.sort((a, b) => new Date(b.member_since!).getTime() - new Date(a.member_since!).getTime())
-			.slice(0, 3)
+			.slice(0, NEWEST_MEMBERS_SHOWN)
 			.map((m) => `**${md(listDisplayName(m))}**`);
 		const lines = [
 			`**${compact(all.length)}** members${boosters > 0 ? ` · **${compact(boosters)}** boosters` : ''}`,
 			...(newest.length ? [`Newest: ${newest.join(', ')}`] : [])
 		];
-		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl, 'Member directory', lines);
+		return serverLinkEmbed({ ...data.server, name: serverName }, { url: data.canonicalUrl, subtitle: 'Member directory', lines });
 	});
 </script>
 
@@ -255,10 +267,10 @@
 			{@const memberAccent = normalizeAccent(member.theme_accent)}
 			{@const memberImage = member.theme_image ?? null}
 			<li
-				class="card border-base-300 bg-base-100 relative isolate overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
+				class="card border-base-300 bg-base-100 relative isolate overflow-hidden border shadow-sm transition-all duration-500 ease-out {isMounted
 					? 'translate-y-0 opacity-100'
 					: 'translate-y-3 opacity-0'} {rs ? 'border-l-4' : ''}"
-				style="transition-delay: {i * 32}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}{memberAccent ? ` --row-accent: ${memberAccent};` : ''}"
+				style="transition-delay: {i * ROW_STAGGER_MS}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}{memberAccent ? ` --row-accent: ${memberAccent};` : ''}"
 			>
 				{#if memberAccent}
 					{#if memberImage}
@@ -286,7 +298,7 @@
 							>
 								{member.rank != null ? `#${member.rank}` : '—'}
 							</span>
-							<RankAvatar src={avatarSrc(member)} name={listDisplayName(member)} size={56} />
+							<RankAvatar src={avatarSrc(member)} name={listDisplayName(member)} size={RANK_AVATAR_PX} />
 						</div>
 
 						<div class="min-w-0 flex-1">

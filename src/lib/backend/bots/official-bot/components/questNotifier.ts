@@ -6,32 +6,36 @@ import {
 	getEmbedConfig,
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
-	NOTIFICATIONS,
 	type DiscordQuestSummary
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { serverTranslator } from '../i18n.js';
 import { questRewardText, questTaskText } from './questText.js';
+import { sendWithNotifiedMentions } from './notifiedMentions.js';
+import { SECOND_MS } from '../../../../utils/time.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
-let tickRunning = false;
+let isTickRunning = false;
 
 async function runTickGuarded(client: Client, officialBotId: number) {
-	if (tickRunning) {
+	if (isTickRunning) {
 		await logger.log('⏭️ Quest notifier: previous tick still running — skipping this run');
 		return;
 	}
-	tickRunning = true;
+	isTickRunning = true;
 	try {
 		await runTick(client, officialBotId);
 	} finally {
-		tickRunning = false;
+		isTickRunning = false;
 	}
 }
 
 const POLL_MS = 300_000;
 const POLL_JITTER_MS = 60_000;
 const QUEST_FETCH_CONCURRENCY = 4;
+const REWARDS_TEXT_MAX_LENGTH = 1008;
+const TASK_TEXT_MAX_LENGTH = 1006;
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
 	const results = new Array<R>(items.length);
@@ -57,10 +61,12 @@ function discordTs(iso: string | undefined | null, style: 'R'): string {
 	if (!Number.isFinite(t)) {
 		return '—';
 	}
-	return `<t:${Math.floor(t / 1000)}:${style}>`;
+	return `<t:${Math.floor(t / SECOND_MS)}:${style}>`;
 }
 
-export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: DiscordQuestSummary, opts?: { test?: boolean }) {
+type QuestDelivery = { guildId: string; channelId: string; quest: DiscordQuestSummary; opts?: { test?: boolean } };
+
+export async function sendQuestNotificationMessage(client: Client, { guildId, channelId, quest, opts }: QuestDelivery) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	if (!guild) {
 		throw new Error('Guild not found');
@@ -73,8 +79,11 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	const embedConfig = await getEmbedConfig(guildId);
 	const tr = await serverTranslator(guildId);
 	const rewardsCore = questRewardText(tr, quest.reward);
-	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
-	const taskBlock = `• ${questTaskText(tr, quest.questDescription || quest.taskTypeLabel, quest.taskTypeKey).slice(0, 1006)} ▶️`.slice(0, 1024);
+	const rewardsBlock = `${rewardsCore.slice(0, REWARDS_TEXT_MAX_LENGTH)} 🔮`.slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE);
+	const taskBlock = `• ${questTaskText(tr, quest.questDescription || quest.taskTypeLabel, quest.taskTypeKey).slice(0, TASK_TEXT_MAX_LENGTH)} ▶️`.slice(
+		0,
+		DISCORD_LIMITS.EMBED_FIELD_VALUE
+	);
 	const expiresBlock = quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? discordTs(quest.expiresAt, 'R') : '—';
 
 	const fields: { name: string; value: string; inline?: boolean }[] = [
@@ -82,18 +91,18 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 		{ name: tr('questNotifier.fields.tasks'), value: taskBlock, inline: false },
 		{
 			name: tr('questNotifier.fields.game'),
-			value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
+			value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE),
 			inline: true
 		}
 	];
 	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
 	if (pub) {
-		fields.push({ name: tr('questNotifier.fields.publisher'), value: pub.slice(0, 1024), inline: true });
+		fields.push({ name: tr('questNotifier.fields.publisher'), value: pub.slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE), inline: true });
 	}
 
-	fields.push({ name: tr('questNotifier.fields.expires'), value: expiresBlock.slice(0, 1024), inline: true });
+	fields.push({ name: tr('questNotifier.fields.expires'), value: expiresBlock.slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE), inline: true });
 
-	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).addFields(fields);
+	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, DISCORD_LIMITS.EMBED_TITLE)).addFields(fields);
 
 	const thumb = quest.thumbnailUrl?.trim();
 	const banner = quest.bannerUrl?.trim();
@@ -105,7 +114,7 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	}
 
 	const footerParts = [quest.publisher, embedConfig.FOOTER].filter((x) => typeof x === 'string' && x.trim().length > 0) as string[];
-	embed.setFooter({ text: footerParts.join(' · ').slice(0, 2048) });
+	embed.setFooter({ text: footerParts.join(' · ').slice(0, DISCORD_LIMITS.EMBED_FOOTER) });
 
 	const startMs = quest.startsAt && Number.isFinite(Date.parse(quest.startsAt)) ? Date.parse(quest.startsAt) : Date.now();
 	embed.setTimestamp(startMs);
@@ -115,21 +124,14 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	}
 
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel(tr('questNotifier.openInDiscord').slice(0, 80)).setEmoji('🖥️')
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Link)
+			.setURL(quest.questUrl)
+			.setLabel(tr('questNotifier.openInDiscord').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
+			.setEmoji('🖥️')
 	);
 
-	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(channel.guild.id, channel.id).catch(() => null);
-	await channel.send({
-		content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
-		embeds: [embed],
-		components: [row]
-	});
-
-	if (notificationMentions && notificationMentions.length > 1) {
-		for (let i = 1; i < notificationMentions.length; i++) {
-			await channel.send({ content: notificationMentions[i] }).catch(() => null);
-		}
-	}
+	await sendWithNotifiedMentions(channel, { embeds: [embed], components: [row] });
 }
 
 async function prefetchBotWideQuests(officialBotId: number): Promise<Map<string, string>> {
@@ -248,7 +250,7 @@ async function runTick(client: Client, officialBotId: number) {
 				}
 				postedTargets.add(targetKey);
 				try {
-					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q);
+					await sendQuestNotificationMessage(client, { guildId: server.discord_server_id, channelId, quest: q });
 					await logger.log(
 						`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name}) discovered via ${sourceByQuestId.get(q.id) ?? 'bot-wide stored quest'}`
 					);

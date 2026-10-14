@@ -71,7 +71,9 @@ const baseStyles = `
     .footer a { color: var(--link); text-decoration: none; }
 `;
 
-function emailLayout(title: string, accentColor: string, bodyContent: string, year: number) {
+type LayoutBody = { accentColor: string; bodyContent: string; year: number };
+
+function emailLayout(title: string, { accentColor, bodyContent, year }: LayoutBody) {
 	return `
         <!DOCTYPE html>
         <html lang="en">
@@ -128,7 +130,7 @@ export async function sendAccountFrozenEmail(email: string, username: string) {
 		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout(subject, '#f59e0b', body, year)
+		html: emailLayout(subject, { accentColor: '#f59e0b', bodyContent: body, year })
 	};
 
 	try {
@@ -160,7 +162,7 @@ export async function sendAccountUnfrozenEmail(email: string, username: string) 
 		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout(subject, '#34d399', body, year)
+		html: emailLayout(subject, { accentColor: '#34d399', bodyContent: body, year })
 	};
 
 	try {
@@ -192,7 +194,7 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
 		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout(subject, '#f87171', body, year)
+		html: emailLayout(subject, { accentColor: '#f87171', bodyContent: body, year })
 	};
 
 	try {

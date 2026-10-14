@@ -1,3 +1,4 @@
+import { HTTP } from '../http.js';
 declare const __APP_NAME__: string;
 declare const __APP_URL__: string;
 
@@ -195,7 +196,7 @@ export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'market', 'minigames', 't
 
 export type PublicStatisticsSubfeature = (typeof PUBLIC_STATISTICS_SUBFEATURES)[number];
 
-export function publicSubfeatureEnabled(settings: any, subfeature: PublicStatisticsSubfeature): boolean {
+export function publicSubfeatureEnabled(settings: Record<string, unknown> | null | undefined, subfeature: PublicStatisticsSubfeature): boolean {
 	return settings?.[`${subfeature}_enabled`] !== false;
 }
 
@@ -503,7 +504,7 @@ export async function guardApiRoute(locals: App.Locals, pathname: string): Promi
 
 	if (!locals.user.authenticated) {
 		return new Response(JSON.stringify({ error: 'Authentication required' }), {
-			status: 401,
+			status: HTTP.UNAUTHORIZED,
 			headers: { 'Content-Type': 'application/json' }
 		});
 	}
@@ -516,15 +517,15 @@ export async function guardApiRoute(locals: App.Locals, pathname: string): Promi
 
 		if (guard.superadminOnly && locals.user.account_source !== 'accounts') {
 			return new Response(JSON.stringify({ error: 'Access denied' }), {
-				status: 403,
+				status: HTTP.FORBIDDEN,
 				headers: { 'Content-Type': 'application/json' }
 			});
 		}
 
-		const allowed = await guard.check(locals, match);
-		if (!allowed) {
+		const isAllowed = await guard.check(locals, match);
+		if (!isAllowed) {
 			return new Response(JSON.stringify({ error: 'Access denied' }), {
-				status: 403,
+				status: HTTP.FORBIDDEN,
 				headers: { 'Content-Type': 'application/json' }
 			});
 		}

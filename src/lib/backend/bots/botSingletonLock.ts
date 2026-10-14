@@ -1,10 +1,12 @@
 import { getRedisClient, isRedisConfigured } from '../../redis.js';
 import { logger } from '../../utils/index.js';
+import { SECOND_MS } from '../../utils/time.js';
 
 const LOCK_TTL_SECONDS = 30;
 const RENEW_INTERVAL_MS = 10_000;
-const FENCE_AFTER_MS = (LOCK_TTL_SECONDS - RENEW_INTERVAL_MS / 1000) * 1000;
-const ACQUIRE_WAIT_MS = (LOCK_TTL_SECONDS + 10) * 1000;
+const FENCE_AFTER_MS = (LOCK_TTL_SECONDS - RENEW_INTERVAL_MS / SECOND_MS) * SECOND_MS;
+const ACQUIRE_GRACE_SECONDS = 10;
+const ACQUIRE_WAIT_MS = (LOCK_TTL_SECONDS + ACQUIRE_GRACE_SECONDS) * SECOND_MS;
 const ACQUIRE_POLL_MS = 2_000;
 
 function lockKey(kind: string, botId: string): string {

@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import {
 	DAILY_DIFFICULTY_PLAN,
 	DAILY_TASK_SLOTS,
-	DAY_MINUTES,
 	DIFFICULTY_META,
 	TASK_BY_ID,
 	TASK_DEFINITIONS,
@@ -16,6 +15,7 @@ import {
 	msUntilPeriodEnds,
 	periodOpen
 } from '../src/lib/tasks.ts';
+import { DAY_MINUTES } from '../src/lib/utils/time.ts';
 
 const MINUTE = 60_000;
 const KEY = 1_000_000;

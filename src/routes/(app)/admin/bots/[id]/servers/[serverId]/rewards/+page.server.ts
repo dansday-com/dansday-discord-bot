@@ -3,13 +3,14 @@ import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { SERVER_SETTINGS, accountOwnsServer, canEditServerSettings } from '$lib/backend/panelServer.js';
-import { DEFAULT_LEVELING_SETTINGS } from '$lib/backend/config.js';
+import { DEFAULT_LEVELING_SETTINGS, type StoredLevelingSettings } from '$lib/backend/config.js';
 import { rewardGoalUnits, rewardProgress, rewardRuleFlags } from '$lib/rewards.js';
 import { rewardImageUrl } from '$lib/backend/storage/rewards.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 
 	const serverId = Number(params.serverId);
@@ -20,12 +21,12 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 			const targetBot = ob ?? fallback;
 			if (targetBot != null) {
-				redirect(302, adminServerSectionPath(targetBot, locals.user.server_id, 'rewards'));
+				redirect(HTTP.FOUND, adminServerSectionPath(targetBot, locals.user.server_id, 'rewards'));
 			}
-			redirect(302, DASHBOARD_PATH);
+			redirect(HTTP.FOUND, DASHBOARD_PATH);
 		}
 	} else if (!(await accountOwnsServer(locals, serverId))) {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
 	const { overview } = await parent();
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		db.getPendingRewardDeliveries(serverId).catch(() => []),
 		canEditServerSettings(locals, serverId)
 	]);
-	const leveling = (levelingSettings as any)?.settings ?? {};
+	const leveling: StoredLevelingSettings = levelingSettings?.settings ?? {};
 	const req = leveling.REQUIREMENTS ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS;
 	const memberProgress = progress.map((m) => rewardProgress(m.stats));
 

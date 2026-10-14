@@ -4,7 +4,7 @@ export { default as ConfirmModal } from './ConfirmModal.svelte';
 export { default as OutcomeModal } from './OutcomeModal.svelte';
 export { default as TargetPicker } from './TargetPicker.svelte';
 export { default as WagerPicker } from './WagerPicker.svelte';
-export { default as ReelStrip, REEL_SECONDS, REEL_CURVE } from './ReelStrip.svelte';
+export { default as ReelStrip } from './ReelStrip.svelte';
 export { default as TowerGame } from './TowerGame.svelte';
 export { default as ColorGame } from './ColorGame.svelte';
 export { default as MetricTabs } from './MetricTabs.svelte';
@@ -12,3 +12,5 @@ export { default as EmptyState } from './EmptyState.svelte';
 export { default as Rewards } from './Rewards.svelte';
 
 export { RANK_STYLES, PODIUM_HEIGHT, rankStyle, initial, type RankStyle } from './ranks';
+export { RESULT_POPUP_MS } from './popups';
+export { REEL_SECONDS, REEL_CURVE, REEL_RESULT_DELAY_MS, SPIN_REEL_CELLS, IDLE_REEL_CELLS, reelCellOffset } from './reel';

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatPercentValue } from '$lib/utils/format.js';
+	import { MINUTE_MS, SECOND_MS, MINUTES_PER_HOUR } from '$lib/utils/time.js';
 	import { onMount } from 'svelte';
 	import { Tween, prefersReducedMotion } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
@@ -29,13 +31,33 @@
 	type Face = 'next' | 'door' | 'passed' | 'gem' | 'gemMine' | 'trap' | 'trapMine';
 
 	const FLIP_MS = 520;
+	const BURST_SPARKS = 18;
+	const CASHOUT_SPARKS = 12;
+	const BURST_ANGLE_JITTER = 0.2;
+	const BURST_REACH_PX = 70;
+	const BURST_REACH_BANDS = 3;
+	const BURST_REACH_STEP_PX = 22;
+	const BURST_VERTICAL_SQUASH = 0.5;
+	const BURST_DELAY_GROUPS = 4;
+	const BURST_DELAY_STEP_MS = 35;
+	const BONUS_ROUNDING = 10;
+	const PRIZE_TWEEN_MS = 480;
+	const GOOD_ODDS_PERCENT = 60;
+	const FAIR_ODDS_PERCENT = 40;
+	const TRAP_FLIP_DELAY_MS = 240;
+	const TRAP_FLIP_STAGGER_MS = 70;
+	const SHAKE_MS = 500;
 	const SETTLE_MS = 780;
 	const DOORS = Array.from({ length: TOWER_DOORS }, (_, i) => i);
 	const FOG = [2, 1];
-	const BURST = Array.from({ length: 18 }, (_, i) => {
-		const angle = (i / 18) * Math.PI * 2 + (i % 2) * 0.2;
-		const reach = 70 + (i % 3) * 22;
-		return { x: Math.round(Math.cos(angle) * reach), y: Math.round(Math.sin(angle) * reach * 0.5), delay: (i % 4) * 35 };
+	const BURST = Array.from({ length: BURST_SPARKS }, (_, i) => {
+		const angle = (i / BURST_SPARKS) * Math.PI * 2 + (i % 2) * BURST_ANGLE_JITTER;
+		const reach = BURST_REACH_PX + (i % BURST_REACH_BANDS) * BURST_REACH_STEP_PX;
+		return {
+			x: Math.round(Math.cos(angle) * reach),
+			y: Math.round(Math.sin(angle) * reach * BURST_VERTICAL_SQUASH),
+			delay: (i % BURST_DELAY_GROUPS) * BURST_DELAY_STEP_MS
+		};
 	});
 	const ARCH = 'rounded-t-[999px] rounded-b-[10px]';
 
@@ -91,8 +113,8 @@
 	let verdictClimb = $state(1);
 	let path = $state<Record<number, Reveal>>({});
 	let pending = $state<number | null>(null);
-	let busy = $state(false);
-	let shake = $state(false);
+	let isBusy = $state(false);
+	let isShaking = $state(false);
 	let flash = $state(0);
 	let burst = $state(0);
 	let gain = $state<{ id: number; xp: number } | null>(null);
@@ -105,46 +127,42 @@
 	const oddsClimb = $derived(verdict ? verdictClimb : climb);
 	const luck = $derived(tower?.luckPercent ?? 0);
 	const drop = $derived(towerOddsDropPercent(climb));
-	const won = $derived(!!verdict && verdict.payout > 0);
-	const summit = $derived(verdict?.outcome === 'cleared');
+	const hasWon = $derived(!!verdict && verdict.payout > 0);
+	const isAtSummit = $derived(verdict?.outcome === 'cleared');
 	const top = $derived(verdict ? verdict.floor : tower?.active ? Math.min(TOWER_FLOORS, cleared + 1) : 1);
 	const trail = $derived([top - 1, top - 2].filter((f) => f > 0));
 	const hero = $derived(rowStatus(top));
 	const safe = $derived(towerSafeChance(top, oddsClimb, luck));
 	const safeBase = $derived(towerBaseChance(top, oddsClimb));
-	const safeBonus = $derived(Math.round((safe - safeBase) * 10) / 10);
+	const safeBonus = $derived(Math.round((safe - safeBase) * BONUS_ROUNDING) / BONUS_ROUNDING);
 	const carried = $derived(verdict ? (verdict.payout > 0 ? verdict.payout : verdict.lost) : towerPrize(cleared));
 	const resetsIn = $derived.by(() => {
 		const ms = resetAt - now;
 		if (!tower || tower.climbsUsed < 1 || resetAt <= 0 || ms <= 0) {
 			return '';
 		}
-		const m = Math.ceil(ms / 60000);
-		return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+		const m = Math.ceil(ms / MINUTE_MS);
+		return m >= MINUTES_PER_HOUR ? `${Math.floor(m / MINUTES_PER_HOUR)}h ${String(m % MINUTES_PER_HOUR).padStart(2, '0')}m` : `${m}m`;
 	});
 
-	const shown = new Tween(0, { duration: 480, easing: cubicOut });
+	const shown = new Tween(0, { duration: PRIZE_TWEEN_MS, easing: cubicOut });
 	$effect(() => {
-		shown.set(carried, { duration: prefersReducedMotion.current ? 0 : 480 });
+		shown.set(carried, { duration: prefersReducedMotion.current ? 0 : PRIZE_TWEEN_MS });
 	});
 
 	$effect(() => {
-		if (!tower || tower.active || busy || resetAt <= 0 || now < resetAt) {
+		if (!tower || tower.active || isBusy || resetAt <= 0 || now < resetAt) {
 			return;
 		}
 		resetAt = 0;
 		refresh();
 	});
 
-	function fmtPct(n: number): string {
-		return Number.isInteger(n) ? `${n}` : n.toFixed(1);
-	}
-
 	function oddsTone(chance: number): string {
-		if (chance >= 60) {
+		if (chance >= GOOD_ODDS_PERCENT) {
 			return 'text-success';
 		}
-		if (chance >= 40) {
+		if (chance >= FAIR_ODDS_PERCENT) {
 			return 'text-warning';
 		}
 		return 'text-error';
@@ -182,7 +200,7 @@
 		if (!r || door === r.door) {
 			return 0;
 		}
-		return 240 + DOORS.filter((d) => d !== r.door).indexOf(door) * 70;
+		return TRAP_FLIP_DELAY_MS + DOORS.filter((d) => d !== r.door).indexOf(door) * TRAP_FLIP_STAGGER_MS;
 	}
 
 	function apply(state: TowerState) {
@@ -233,24 +251,24 @@
 		} else {
 			flash += 1;
 			sfx.bust();
-			shake = true;
-			setTimeout(() => (shake = false), 500);
+			isShaking = true;
+			setTimeout(() => (isShaking = false), SHAKE_MS);
 		}
 	}
 
 	onMount(() => {
-		busy = true;
-		refresh().finally(() => (busy = false));
-		const ticker = setInterval(() => (now = Date.now()), 1000);
+		isBusy = true;
+		refresh().finally(() => (isBusy = false));
+		const ticker = setInterval(() => (now = Date.now()), SECOND_MS);
 		return () => clearInterval(ticker);
 	});
 
 	async function start() {
-		if (busy) {
+		if (isBusy) {
 			return;
 		}
 		sfx.press();
-		busy = true;
+		isBusy = true;
 		const d = await send('start');
 		if (d) {
 			verdict = null;
@@ -258,14 +276,14 @@
 			path = {};
 			apply(d.state);
 		}
-		busy = false;
+		isBusy = false;
 	}
 
 	async function pick(door: number) {
-		if (busy || !tower?.active || verdict) {
+		if (isBusy || !tower?.active || verdict) {
 			return;
 		}
-		busy = true;
+		isBusy = true;
 		pending = door;
 		sfx.knock();
 		const floor = cleared + 1;
@@ -273,11 +291,11 @@
 		pending = null;
 		const step = d?.step;
 		if (!d || !step) {
-			busy = false;
+			isBusy = false;
 			return;
 		}
 		path = { ...path, [floor]: { door: step.door ?? door, trapDoors: step.trapDoors ?? [] } };
-		DOORS.forEach((other) => sfx.flip(flipDelay(floor, other) / 1000, other !== path[floor].door));
+		DOORS.forEach((other) => (other !== path[floor].door ? sfx.softFlip(flipDelay(floor, other) / SECOND_MS) : sfx.flip(flipDelay(floor, other) / SECOND_MS)));
 		setTimeout(() => {
 			if (step.outcome === 'safe') {
 				sfx.gem(step.floor);
@@ -287,35 +305,35 @@
 			} else {
 				settle(d);
 			}
-			busy = false;
+			isBusy = false;
 		}, SETTLE_MS);
 	}
 
 	async function cashout() {
-		if (busy || !tower?.active || cleared < 1 || verdict) {
+		if (isBusy || !tower?.active || cleared < 1 || verdict) {
 			return;
 		}
 		sfx.press();
-		busy = true;
+		isBusy = true;
 		const d = await send('cashout');
 		if (d) {
 			settle(d);
 		}
-		busy = false;
+		isBusy = false;
 	}
 </script>
 
-<GameModal icon="fa-tower-observation" title="Tower" state={verdict ? (won ? 'win' : 'lose') : 'idle'} {shake} closable={!busy} {onclose}>
+<GameModal icon="fa-tower-observation" title="Tower" state={verdict ? (hasWon ? 'win' : 'lose') : 'idle'} shake={isShaking} closable={!isBusy} {onclose}>
 	{#if !tower}
 		<div class="text-base-content/50 grid h-[460px] place-items-center text-2xl">
-			{#if busy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-triangle-exclamation"></i>{/if}
+			{#if isBusy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-triangle-exclamation"></i>{/if}
 		</div>
 	{:else}
 		<div class="mb-3 grid grid-cols-2 gap-2">
 			<div class="border-base-300 bg-base-200 relative rounded-xl border px-3 py-2">
 				<div class="text-base-content/55 text-[10px] font-bold tracking-[0.08em] uppercase">Win</div>
 				<div
-					class="text-[22px] leading-tight font-black whitespace-nowrap tabular-nums {verdict && !won
+					class="text-[22px] leading-tight font-black whitespace-nowrap tabular-nums {verdict && !hasWon
 						? 'text-error line-through decoration-2'
 						: 'bg-linear-to-b from-[#e8b53a] to-[#b8860b] bg-clip-text text-transparent'}"
 				>
@@ -332,7 +350,9 @@
 			<div class="border-base-300 bg-base-200 rounded-xl border px-3 py-2">
 				<div class="text-base-content/55 text-[10px] font-bold tracking-[0.08em] whitespace-nowrap uppercase">Floor {top} safe chance</div>
 				<div class="text-[22px] leading-tight font-black whitespace-nowrap tabular-nums {oddsTone(safe)}">
-					{fmtPct(safe)}%{#if safeBonus > 0}<span class="text-base-content/55 ml-1 text-[11px]">({fmtPct(safeBase)} +{fmtPct(safeBonus)} 🍀)</span>{/if}
+					{formatPercentValue(safe)}%{#if safeBonus > 0}<span class="text-base-content/55 ml-1 text-[11px]"
+							>({formatPercentValue(safeBase)} +{formatPercentValue(safeBonus)} 🍀)</span
+						>{/if}
 				</div>
 			</div>
 		</div>
@@ -341,7 +361,7 @@
 			{#key lift}
 				<div class={lift > 0 ? 'motion-safe:animate-tower-climb' : ''}>
 					<div class="relative mb-2 h-[76px]">
-						{#if summit}
+						{#if isAtSummit}
 							<div class="pointer-events-none absolute inset-0 bg-radial-[ellipse_at_50%_0%] from-[#e0a52a]/35 to-transparent to-70%"></div>
 						{:else}
 							<div class="flex flex-col gap-2">
@@ -367,9 +387,9 @@
 										.ring}"
 								>
 									{#key burst}
-										{#if won}
+										{#if hasWon}
 											<span class="absolute top-1/2 left-1/2" aria-hidden="true">
-												{#each BURST.slice(0, summit ? 18 : 12) as p, i (i)}
+												{#each BURST.slice(0, isAtSummit ? BURST_SPARKS : CASHOUT_SPARKS) as p, i (i)}
 													<span
 														class="motion-safe:animate-tower-burst absolute size-1.5 rounded-full bg-[#e8b53a] opacity-0 shadow-[0_0_6px_rgba(224,165,42,0.9)]"
 														style="--x: {p.x}px; --y: {p.y}px; animation-delay: {p.delay}ms"
@@ -379,8 +399,8 @@
 										{/if}
 									{/key}
 									<div class="text-[11px] font-black tracking-[0.18em] uppercase {VERDICT[verdict.outcome].tone}">{VERDICT[verdict.outcome].label}</div>
-									<div class="text-[24px] leading-tight font-black tabular-nums {won ? 'text-[#e0a52a]' : 'text-error line-through decoration-2'}">
-										{won ? '+' : ''}{fmt(won ? verdict.payout : verdict.lost)} XP
+									<div class="text-[24px] leading-tight font-black tabular-nums {hasWon ? 'text-[#e0a52a]' : 'text-error line-through decoration-2'}">
+										{hasWon ? '+' : ''}{fmt(hasWon ? verdict.payout : verdict.lost)} XP
 									</div>
 								</div>
 							</div>
@@ -400,7 +420,7 @@
 								<button
 									type="button"
 									class="group h-[104px] transition-[translate] duration-150 ease-out perspective-[700px] enabled:hover:-translate-y-0.5 enabled:active:translate-y-0.5 disabled:cursor-default {ARCH}"
-									disabled={hero !== 'active' || busy || !!verdict || !!path[top]}
+									disabled={hero !== 'active' || isBusy || !!verdict || !!path[top]}
 									aria-label="Door {door + 1}"
 									onclick={() => pick(door)}
 								>
@@ -467,7 +487,7 @@
 
 		<div class="mb-3 flex items-center justify-between px-0.5 text-[12px] font-bold">
 			<span class="text-base-content/60">Climb {climb}</span>
-			<span class={drop > 0 ? 'text-error' : 'text-success'}>{drop > 0 ? `Odds −${fmtPct(drop)}%` : 'Full odds'}</span>
+			<span class={drop > 0 ? 'text-error' : 'text-success'}>{drop > 0 ? `Odds −${formatPercentValue(drop)}%` : 'Full odds'}</span>
 			<span class="text-base-content/50 tabular-nums">{resetsIn ? `Reset ${resetsIn}` : ''}</span>
 		</div>
 
@@ -476,8 +496,8 @@
 				type="button"
 				class="btn h-auto w-full py-3.5 text-[15px] font-black {cleared > 0
 					? 'border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] text-white'
-					: ''} {!busy && cleared > 0 ? 'animate-game-charge' : ''}"
-				disabled={busy || cleared < 1}
+					: ''} {!isBusy && cleared > 0 ? 'animate-game-charge' : ''}"
+				disabled={isBusy || cleared < 1}
 				onclick={cashout}
 			>
 				<i class="fas fa-sack-dollar"></i>Cash out{cleared > 0 ? ` ${fmt(towerPrize(cleared))} XP` : ''}
@@ -485,10 +505,10 @@
 		{:else}
 			<button
 				type="button"
-				class="btn h-auto w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] py-3.5 text-[15px] font-black text-white {busy
+				class="btn h-auto w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] py-3.5 text-[15px] font-black text-white {isBusy
 					? ''
 					: 'animate-game-charge'}"
-				disabled={busy}
+				disabled={isBusy}
 				onclick={start}
 			>
 				<i class="fas fa-stairs"></i>Climb

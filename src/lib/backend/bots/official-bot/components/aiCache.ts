@@ -1,4 +1,5 @@
 import { getRedisClient } from '../../../../redis.js';
+import { SECOND_MS } from '../../../../utils/time.js';
 
 const local = new Map<string, { value: unknown; expires: number }>();
 
@@ -15,7 +16,7 @@ function readLocal(key: string) {
 }
 
 function writeLocal(key: string, value: unknown, ttlSeconds: number) {
-	local.set(key, { value, expires: Date.now() + ttlSeconds * 1000 });
+	local.set(key, { value, expires: Date.now() + ttlSeconds * SECOND_MS });
 }
 
 async function readRedis(key: string) {
@@ -74,7 +75,5 @@ export async function invalidateCached(key: string) {
 	}
 	try {
 		await redis.del(key);
-	} catch (_) {
-		return;
-	}
+	} catch (_) {}
 }

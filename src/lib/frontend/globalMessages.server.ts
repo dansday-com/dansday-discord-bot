@@ -4,6 +4,7 @@ import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { postBotWebhook } from '$lib/backend/public/items/index.js';
 import { messageUploadKeys } from '$lib/messages.js';
 import { pruneMessageFiles } from '$lib/backend/storage/messageFiles.js';
+import { HTTP } from '$lib/http.js';
 
 export const GLOBAL_MENTION_GROUPS = ['everyone', 'here', 'admin', 'staff'] as const;
 
@@ -11,11 +12,11 @@ type Change = { key: string; before: string | null; after: string | null };
 
 export function globalPanelAccess(locals: App.Locals): { panelId: number } | Response {
 	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin' || locals.user.account_source !== 'accounts') {
-		return json({ ok: false, error: 'Only the panel admin can use global messages.' }, { status: 401 });
+		return json({ ok: false, error: 'Only the panel admin can use global messages.' }, { status: HTTP.UNAUTHORIZED });
 	}
 	const panelId = Number(locals.user.panel_id);
 	if (!Number.isFinite(panelId) || panelId <= 0) {
-		return json({ ok: false, error: 'No panel available' }, { status: 404 });
+		return json({ ok: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND });
 	}
 	return { panelId };
 }
@@ -35,24 +36,23 @@ async function callBots(panelId: number, type: string, payload: Record<string, u
 
 export async function logGlobalMessageAction(locals: App.Locals, action: string, entries: { serverId: number; changes: Change[] }[]) {
 	for (const entry of entries) {
-		await db.createServerPanelLog(entry.serverId, panelActorIds(locals), action, entry.changes).catch(() => null);
+		await db.createServerPanelLog(entry.serverId, panelActorIds(locals), { action, changes: entry.changes }).catch(() => null);
 	}
 }
 
-export async function sendGlobalMessage(locals: App.Locals, panelId: number, message: ServerMessage, groups: string[]) {
+export async function sendGlobalMessage({ locals, panelId }: PanelActor, message: ServerMessage, groups: string[]) {
 	const call = await callBots(panelId, 'global_message_send', { message_id: message.id, mention_groups: groups });
 	const sent = call.results.filter((r) => r.ok);
 	for (const r of sent) {
-		await db.addGlobalMessagePost(
-			panelId,
-			message.id,
-			r.server_id,
-			String(r.channel_id),
-			String(r.message_id),
-			String(r.language),
-			r.mentions ?? null,
-			message.content
-		);
+		await db.addGlobalMessagePost(panelId, {
+			messageId: message.id,
+			serverId: r.server_id,
+			discordChannelId: String(r.channel_id),
+			discordMessageId: String(r.message_id),
+			language: String(r.language),
+			mentions: r.mentions ?? null,
+			content: message.content
+		});
 	}
 	await logGlobalMessageAction(
 		locals,
@@ -74,12 +74,12 @@ export async function sendGlobalMessage(locals: App.Locals, panelId: number, mes
 	};
 }
 
+type SyncOptions = { interactive?: boolean; refresh?: number[] | 'all' | null };
+
 export async function syncGlobalMessagePosts(
-	locals: App.Locals,
-	panelId: number,
+	{ locals, panelId }: PanelActor,
 	message: ServerMessage,
-	interactive = true,
-	refresh: number[] | 'all' | null = null
+	{ interactive: isInteractive = true, refresh = null }: SyncOptions = {}
 ) {
 	const wanted = Array.isArray(refresh) ? new Set(refresh) : null;
 	const posts = (await db.getGlobalMessagePosts(panelId, message.id)).filter((post) => !wanted || wanted.has(post.id));
@@ -88,7 +88,7 @@ export async function syncGlobalMessagePosts(
 		posts.length > 0
 			? await callBots(panelId, 'global_message_sync', {
 					message_id: message.id,
-					interactive,
+					interactive: isInteractive,
 					refresh: refresh !== null,
 					...(wanted ? { post_ids: [...wanted] } : {})
 				})
@@ -123,7 +123,9 @@ export async function syncGlobalMessagePosts(
 	return { total: posts.length, updated: updated.length, removed, failed, unreached: posts.length - call.results.length };
 }
 
-export async function removeGlobalMessagePosts(locals: App.Locals, panelId: number, message: ServerMessage, posts: GlobalMessagePost[]) {
+type PanelActor = { locals: App.Locals; panelId: number };
+
+export async function removeGlobalMessagePosts({ locals, panelId }: PanelActor, message: ServerMessage, posts: GlobalMessagePost[]) {
 	if (posts.length === 0) {
 		return { removed: 0, failed: [] as string[], unreached: 0 };
 	}

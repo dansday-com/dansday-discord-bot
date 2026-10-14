@@ -1,7 +1,9 @@
 import db from '../../../../database.js';
 import { getLevelRequirement, determineLevel } from './leveling.js';
 
-export async function reevaluateLevel(memberId: number | string, stats: any, guildId: string) {
+type MemberLevelRow = Awaited<ReturnType<typeof db.getMemberLevel>>;
+
+export async function reevaluateLevel(memberId: number | string, stats: MemberLevelRow | undefined, guildId: string): Promise<MemberLevelRow | undefined> {
 	if (!stats || !guildId) {
 		return stats;
 	}
@@ -25,7 +27,7 @@ export async function getSpendableXp(memberId: number | string, guildId: string)
 	}
 	const rawXp = stats.xp ?? 0;
 	const total = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
-	let level = stats.level;
+	let { level } = stats;
 	if (typeof level === 'bigint') {
 		level = Number(level);
 	}

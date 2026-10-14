@@ -5,6 +5,7 @@ import { SERVER_SETTINGS, canEditServerSettings } from '$lib/backend/panelServer
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { MODERATION_RULE_KEYS, moderationRulesFromSettings, type ModerationRules } from '$lib/moderation-rules.js';
 import { MODERATION_ACTION_META, formatDuration } from '$lib/frontend/moderation.js';
+import { HTTP } from '$lib/http.js';
 
 const RULE_LABELS: Record<keyof ModerationRules, string> = {
 	warn_expiry_days: 'warning expiry',
@@ -31,14 +32,14 @@ function describe(rules: ModerationRules, key: keyof ModerationRules): string {
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
-		return json({ ok: false, error: 'Authentication required' }, { status: 401 });
+		return json({ ok: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 	const serverId = parseInt(params.id ?? '');
 	if (isNaN(serverId)) {
-		return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
+		return json({ ok: false, error: 'Invalid server ID' }, { status: HTTP.BAD_REQUEST });
 	}
 	if (!(await canEditServerSettings(locals, serverId))) {
-		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const body = await request.json().catch(() => null);
@@ -62,7 +63,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		.filter((key) => JSON.stringify(previous[key]) !== JSON.stringify(rules[key]))
 		.map((key) => ({ key: RULE_LABELS[key], before: describe(previous, key), after: describe(rules, key) }));
 	if (changes.length > 0) {
-		await db.createServerPanelLog(serverId, panelActorIds(locals), 'moderation_rules', changes).catch(() => null);
+		await db.createServerPanelLog(serverId, panelActorIds(locals), { action: 'moderation_rules', changes }).catch(() => null);
 	}
 
 	return json({ ok: true, rules });

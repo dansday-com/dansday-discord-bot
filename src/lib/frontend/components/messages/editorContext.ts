@@ -31,7 +31,7 @@ export function messageEditor(): MessageEditorContext {
 	return getContext<MessageEditorContext>(KEY);
 }
 
-export function moveItem<T>(items: T[], index: number, delta: number) {
+export function moveItem(items: unknown[], index: number, delta: number) {
 	const target = index + delta;
 	if (target < 0 || target >= items.length) {
 		return;

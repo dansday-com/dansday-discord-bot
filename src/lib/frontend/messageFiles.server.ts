@@ -2,39 +2,48 @@ import { json } from '@sveltejs/kit';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { logger } from '$lib/utils/index.js';
-import { imageSizeLabel } from '$lib/images.js';
+import { IMAGE_SIGNATURE_HEX, imageSizeLabel } from '$lib/images.js';
 import { MESSAGE_UPLOAD_CHUNK_BYTES, type MessageOwner } from '$lib/messages.js';
 import { messageFileContentType, messageFileKey, messageFileKeyFor, readMessageFile, saveMessageFile } from '$lib/backend/storage/messageFiles.js';
+import { attemptSync } from '$lib/utils/attempt.js';
+import { HTTP } from '$lib/http.js';
+import { HOUR_MS } from '$lib/utils/time.js';
 
 const TEMP_ROOT = join(process.cwd(), 'data', 'tmp', 'message-uploads');
-const STALE_MS = 60 * 60 * 1000;
+const STALE_MS = HOUR_MS;
 const UPLOAD_ID = /^[a-z0-9]{12,32}$/;
 const INTERRUPTED = 'The upload was interrupted. Pick the file again.';
+const SNIFF_HEADER_BYTES = 12;
+const FOURCC_BYTES = 4;
+const PNG_MAGIC = Buffer.from(IMAGE_SIGNATURE_HEX.png, 'hex');
+const JPEG_MAGIC = Buffer.from(IMAGE_SIGNATURE_HEX.jpeg, 'hex');
+const EBML_MAGIC = Buffer.from('1a45dfa3', 'hex');
 
 function sniffExtension(data: Buffer): string | null {
-	const ascii = (start: number, end: number) => data.subarray(start, end).toString('latin1');
-	if (data.length < 12) {
+	const fourcc = (slot: number) => data.subarray(slot * FOURCC_BYTES, (slot + 1) * FOURCC_BYTES).toString('latin1');
+	const startsWith = (magic: Buffer) => data.subarray(0, magic.length).equals(magic);
+	if (data.length < SNIFF_HEADER_BYTES) {
 		return null;
 	}
-	if (data[0] === 0x89 && ascii(1, 4) === 'PNG') {
+	if (startsWith(PNG_MAGIC)) {
 		return 'png';
 	}
-	if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+	if (startsWith(JPEG_MAGIC)) {
 		return 'jpg';
 	}
-	if (ascii(0, 4) === 'GIF8') {
+	if (fourcc(0) === 'GIF8') {
 		return 'gif';
 	}
-	if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') {
+	if (fourcc(0) === 'RIFF' && fourcc(2) === 'WEBP') {
 		return 'webp';
 	}
-	if (data[0] === 0x1a && data[1] === 0x45 && data[2] === 0xdf && data[3] === 0xa3) {
+	if (startsWith(EBML_MAGIC)) {
 		return 'webm';
 	}
-	if (ascii(4, 8) === 'ftyp') {
-		return ascii(8, 12) === 'qt  ' ? 'mov' : 'mp4';
+	if (fourcc(1) === 'ftyp') {
+		return fourcc(2) === 'qt  ' ? 'mov' : 'mp4';
 	}
-	if (['moov', 'mdat', 'wide', 'free'].includes(ascii(4, 8))) {
+	if (['moov', 'mdat', 'wide', 'free'].includes(fourcc(1))) {
 		return 'mov';
 	}
 	return null;
@@ -54,29 +63,25 @@ function pruneStale() {
 	}
 }
 
-export async function receiveMessageUpload(
-	request: Request,
-	owner: MessageOwner,
-	limit: number,
-	tooLarge: string,
-	pruneUnused: () => Promise<unknown>
-): Promise<Response> {
+type UploadLimits = { limit: number; tooLarge: string; pruneUnused: () => Promise<unknown> };
+
+export async function receiveMessageUpload(request: Request, owner: MessageOwner, { limit, tooLarge, pruneUnused }: UploadLimits): Promise<Response> {
 	const uploadId = request.headers.get('x-upload-id') ?? '';
 	const index = Number(request.headers.get('x-upload-index'));
 	const total = Number(request.headers.get('x-upload-total'));
 	if (!UPLOAD_ID.test(uploadId) || !Number.isInteger(index) || !Number.isInteger(total) || total < 1 || index < 0 || index >= total) {
-		return json({ ok: false, error: INTERRUPTED }, { status: 400 });
+		return json({ ok: false, error: INTERRUPTED }, { status: HTTP.BAD_REQUEST });
 	}
 	const oversized = `That file is over the ${imageSizeLabel(limit)} upload limit. ${tooLarge}`;
 	if (total > Math.ceil(limit / MESSAGE_UPLOAD_CHUNK_BYTES)) {
-		return json({ ok: false, error: oversized }, { status: 400 });
+		return json({ ok: false, error: oversized }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const dir = join(TEMP_ROOT, `${owner.scope}-${owner.id}-${uploadId}`);
 	try {
 		const chunk = Buffer.from(await request.arrayBuffer());
 		if (chunk.length === 0 || chunk.length > MESSAGE_UPLOAD_CHUNK_BYTES) {
-			return json({ ok: false, error: INTERRUPTED }, { status: 400 });
+			return json({ ok: false, error: INTERRUPTED }, { status: HTTP.BAD_REQUEST });
 		}
 
 		if (index === 0) {
@@ -85,18 +90,18 @@ export async function receiveMessageUpload(
 			rmSync(dir, { recursive: true, force: true });
 			mkdirSync(dir, { recursive: true });
 		} else if (!existsSync(dir)) {
-			return json({ ok: false, error: INTERRUPTED }, { status: 400 });
+			return json({ ok: false, error: INTERRUPTED }, { status: HTTP.BAD_REQUEST });
 		}
 		writeFileSync(join(dir, String(index)), chunk);
 
 		const parts = Array.from({ length: index + 1 }, (_, i) => join(dir, String(i)));
 		if (parts.some((part) => !existsSync(part))) {
 			rmSync(dir, { recursive: true, force: true });
-			return json({ ok: false, error: INTERRUPTED }, { status: 400 });
+			return json({ ok: false, error: INTERRUPTED }, { status: HTTP.BAD_REQUEST });
 		}
 		if (parts.reduce((sum, part) => sum + statSync(part).size, 0) > limit) {
 			rmSync(dir, { recursive: true, force: true });
-			return json({ ok: false, error: oversized }, { status: 400 });
+			return json({ ok: false, error: oversized }, { status: HTTP.BAD_REQUEST });
 		}
 		if (index < total - 1) {
 			return json({ ok: true, done: false });
@@ -106,7 +111,7 @@ export async function receiveMessageUpload(
 		rmSync(dir, { recursive: true, force: true });
 		const extension = sniffExtension(data);
 		if (!extension) {
-			return json({ ok: false, error: 'Use a PNG, JPG, GIF or WEBP image, or an MP4, WEBM or MOV video.' }, { status: 400 });
+			return json({ ok: false, error: 'Use a PNG, JPG, GIF or WEBP image, or an MP4, WEBM or MOV video.' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const key = messageFileKey(owner, extension);
@@ -115,21 +120,20 @@ export async function receiveMessageUpload(
 	} catch (error) {
 		rmSync(dir, { recursive: true, force: true });
 		logger.log(`❌ Error saving message file: ${(error as Error).message}`);
-		return json({ ok: false, error: 'Could not save the file. Try again.' }, { status: 500 });
+		return json({ ok: false, error: 'Could not save the file. Try again.' }, { status: HTTP.INTERNAL_ERROR });
 	}
 }
 
 export async function serveMessageFile(request: Request, owner: MessageOwner, filename: string): Promise<Response> {
-	let key: string;
-	try {
-		key = messageFileKeyFor(owner, filename);
-	} catch {
-		return new Response(JSON.stringify({ error: 'Invalid path' }), { status: 400 });
+	const resolved = attemptSync(() => messageFileKeyFor(owner, filename));
+	if (!resolved.ok) {
+		return new Response(JSON.stringify({ error: 'Invalid path' }), { status: HTTP.BAD_REQUEST });
 	}
+	const key = resolved.value;
 
 	const data = await readMessageFile(key);
 	if (!data) {
-		return new Response(JSON.stringify({ error: 'File not found' }), { status: 404 });
+		return new Response(JSON.stringify({ error: 'File not found' }), { status: HTTP.NOT_FOUND });
 	}
 
 	const headers = {
@@ -146,10 +150,10 @@ export async function serveMessageFile(request: Request, owner: MessageOwner, fi
 		const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
 		const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
 		if (start >= size || start > end) {
-			return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+			return new Response(null, { status: HTTP.RANGE_NOT_SATISFIABLE, headers: { 'Content-Range': `bytes */${size}` } });
 		}
 		return new Response(new Uint8Array(data.subarray(start, end + 1)), {
-			status: 206,
+			status: HTTP.PARTIAL_CONTENT,
 			headers: { ...headers, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': String(end - start + 1) }
 		});
 	}

@@ -9,6 +9,9 @@ import {
 	setCachedLeaderboard
 } from './cache.js';
 import { attachMemberThemes } from '../memberThemes.js';
+import { PERCENT, roundTo } from '../../../utils/numbers.js';
+
+const MAX_LEADERBOARD_ROWS = 100;
 
 export type MembersListEntry = {
 	discord_member_id: string;
@@ -47,7 +50,7 @@ function memberSortValue(m: MembersListEntry, metric: LeaderboardMetric): number
 }
 
 export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const sorted = [...members].sort((a, b) => {
 		const vb = memberSortValue(b, metric);
 		const va = memberSortValue(a, metric);
@@ -75,6 +78,8 @@ export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[],
 	}));
 }
 
+type Rows<F extends (...args: never[]) => Promise<unknown[]>> = Awaited<ReturnType<F>>;
+
 function periodSince(period: LeaderboardPeriod): Date | null {
 	if (period === 'week') {
 		return DateTime.utc().startOf('week').toJSDate();
@@ -85,8 +90,8 @@ function periodSince(period: LeaderboardPeriod): Date | null {
 	return null;
 }
 
-function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+function buildPeriodRows(entries: Rows<typeof db.getLeaderboardPeriodCounts>, metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const value = (e: Record<string, unknown>): number => {
 		switch (metric) {
 			case 'chat':
@@ -137,14 +142,14 @@ const TOWER_METRICS: LeaderboardMetric[] = ['minigames_tower_net', 'minigames_to
 const COLOR_METRICS: LeaderboardMetric[] = ['minigames_color_net', 'minigames_color_avg', 'minigames_color_best'];
 const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big', ...TOWER_METRICS, ...COLOR_METRICS];
 
-function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+function buildMinigamesRows(entries: Rows<typeof db.getMinigamesLeaderboard>, metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const ratio = (e: Record<string, unknown>): number => {
 		const total = Number(e.minigame_total ?? 0);
 		if (total <= 0) {
 			return 0;
 		}
-		return (Number(e.minigame_wins ?? 0) / total) * 100;
+		return (Number(e.minigame_wins ?? 0) / total) * PERCENT;
 	};
 	const value = (e: Record<string, unknown>): number => {
 		switch (metric) {
@@ -162,9 +167,9 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 				return Number(e.minigame_net ?? 0);
 		}
 	};
-	const tower = TOWER_METRICS.includes(metric);
-	const color = COLOR_METRICS.includes(metric);
-	const tieBreak = (e: Record<string, unknown>): number => (tower || color ? Number(e.minigame_net ?? 0) : 0);
+	const isTowerMetric = TOWER_METRICS.includes(metric);
+	const isColorMetric = COLOR_METRICS.includes(metric);
+	const tieBreak = (e: Record<string, unknown>): number => (isTowerMetric || isColorMetric ? Number(e.minigame_net ?? 0) : 0);
 
 	const pool = entries;
 
@@ -200,12 +205,12 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 		minigame_wins: Number(e.minigame_wins ?? 0),
 		minigame_total: Number(e.minigame_total ?? 0),
 		minigame_big_win: Number(e.minigame_big_win ?? 0),
-		minigame_ratio: Math.round(ratio(e) * 10) / 10,
-		...(tower ? { minigame_best_floor: Math.round(Number(e.minigame_best_floor ?? 0)) } : {}),
-		...(color
+		minigame_ratio: roundTo(ratio(e), 1),
+		...(isTowerMetric ? { minigame_best_floor: Math.round(Number(e.minigame_best_floor ?? 0)) } : {}),
+		...(isColorMetric
 			? {
-					minigame_avg_score: Math.round(Number(e.minigame_avg_score ?? 0) * 100) / 100,
-					minigame_best_score: Math.round(Number(e.minigame_best_floor ?? 0) * 100) / 100
+					minigame_avg_score: roundTo(Number(e.minigame_avg_score ?? 0), 2),
+					minigame_best_score: roundTo(Number(e.minigame_best_floor ?? 0), 2)
 				}
 			: {}),
 		rank: null
@@ -214,8 +219,8 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 
 const BOUNTY_METRICS: LeaderboardMetric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
 
-function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+function buildBountyRows(entries: Rows<typeof db.getItemsBountyLeaderboard>, metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const value = (e: Record<string, unknown>): number => {
 		switch (metric) {
 			case 'items_bounty_claimer':
@@ -260,8 +265,8 @@ function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 const STEAL_METRICS: LeaderboardMetric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
 const BOMB_METRICS: LeaderboardMetric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
 
-function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+function buildAttackRows(entries: Rows<typeof db.getItemsAttackLeaderboard>, metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const isRate = metric.endsWith('_rate');
 	const isBig = metric.endsWith('_big');
 	const rate = (e: Record<string, unknown>): number => {
@@ -269,7 +274,7 @@ function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		if (attempts <= 0) {
 			return 0;
 		}
-		return (Number(e.attack_success ?? 0) / attempts) * 100;
+		return (Number(e.attack_success ?? 0) / attempts) * PERCENT;
 	};
 	const value = (e: Record<string, unknown>): number => {
 		if (isRate) {
@@ -308,15 +313,15 @@ function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		attack_success: Number(e.attack_success ?? 0),
 		attack_attempts: Number(e.attack_attempts ?? 0),
 		attack_big: Number(e.attack_big ?? 0),
-		attack_rate: Math.round(rate(e) * 10) / 10,
+		attack_rate: roundTo(rate(e), 1),
 		rank: null
 	}));
 }
 
 const GIFT_METRICS: LeaderboardMetric[] = ['items_gift_give', 'items_gift_receive'];
 
-function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+function buildGiftRows(entries: Rows<typeof db.getItemsGiftLeaderboard>, metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const value = (e: Record<string, unknown>): number => (metric === 'items_gift_receive' ? Number(e.gift_received ?? 0) : Number(e.gift_given ?? 0));
 
 	const sorted = [...entries].sort((a, b) => {
@@ -348,8 +353,8 @@ function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number)
 	}));
 }
 
-function buildInviteRows(entries: any[], limit: number): LeaderboardRow[] {
-	const safe = Math.max(1, Math.min(100, limit));
+function buildInviteRows(entries: Rows<typeof db.getInvitesLeaderboard>, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, limit));
 	const sorted = [...entries].sort((a, b) => {
 		const diff = Number(b.invites_total ?? 0) - Number(a.invites_total ?? 0);
 		if (diff !== 0) {
@@ -392,45 +397,48 @@ type StreamState = {
 
 const streams = new Map<StreamKey, StreamState>();
 
-function makeKeyV2(serverId: number, metric: LeaderboardMetric, period: LeaderboardPeriod, limit: number): StreamKey {
+function makeKeyV2(serverId: number, { metric, period, limit }: BoardView): StreamKey {
 	return `${serverId}:${metric}:${period}:${limit}`;
 }
 
 const CACHE_FRESH_MS = 20_000;
 
-async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period: LeaderboardPeriod, limit: number): Promise<LeaderboardSnapshot> {
-	let rows: LeaderboardRow[];
-	const since = periodSince(period);
+type RowsQuery = { serverId: number; metric: LeaderboardMetric; since: Date | null; limit: number };
+
+async function leaderboardRows({ serverId, metric, since, limit }: RowsQuery): Promise<LeaderboardRow[]> {
 	if (MINIGAMES_METRICS.includes(metric)) {
 		const entries = await db
 			.getMinigamesLeaderboard(serverId, since, TOWER_METRICS.includes(metric) ? 'tower' : COLOR_METRICS.includes(metric) ? 'color' : 'gamble')
 			.catch(() => []);
-		rows = buildMinigamesRows(entries, metric, limit);
-	} else if (BOUNTY_METRICS.includes(metric)) {
-		const entries = await db.getItemsBountyLeaderboard(serverId, since).catch(() => []);
-		rows = buildBountyRows(entries, metric, limit);
-	} else if (STEAL_METRICS.includes(metric)) {
-		const entries = await db.getItemsAttackLeaderboard(serverId, 'steal', since).catch(() => []);
-		rows = buildAttackRows(entries, metric, limit);
-	} else if (BOMB_METRICS.includes(metric)) {
-		const entries = await db.getItemsAttackLeaderboard(serverId, 'bomb', since).catch(() => []);
-		rows = buildAttackRows(entries, metric, limit);
-	} else if (GIFT_METRICS.includes(metric)) {
-		const entries = await db.getItemsGiftLeaderboard(serverId, since).catch(() => []);
-		rows = buildGiftRows(entries, metric, limit);
-	} else if (metric === 'invites') {
-		const entries = await db.getInvitesLeaderboard(serverId, since).catch(() => []);
-		rows = buildInviteRows(entries, limit);
-	} else if (since) {
-		const entries = await db.getLeaderboardPeriodCounts(serverId, since).catch(() => []);
-		rows = buildPeriodRows(entries, metric, limit);
-	} else {
-		const disguisedIds = new Set((await db.getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
-		const members = (await db.getServerMembersList(serverId)).filter((m) => !disguisedIds.has(Number(m.id)));
-		rows = buildLeaderboardRowsFromMembersList(members, metric, limit);
+		return buildMinigamesRows(entries, metric, limit);
 	}
+	if (BOUNTY_METRICS.includes(metric)) {
+		return buildBountyRows(await db.getItemsBountyLeaderboard(serverId, since).catch(() => []), metric, limit);
+	}
+	if (STEAL_METRICS.includes(metric)) {
+		return buildAttackRows(await db.getItemsAttackLeaderboard(serverId, 'steal', since).catch(() => []), metric, limit);
+	}
+	if (BOMB_METRICS.includes(metric)) {
+		return buildAttackRows(await db.getItemsAttackLeaderboard(serverId, 'bomb', since).catch(() => []), metric, limit);
+	}
+	if (GIFT_METRICS.includes(metric)) {
+		return buildGiftRows(await db.getItemsGiftLeaderboard(serverId, since).catch(() => []), metric, limit);
+	}
+	if (metric === 'invites') {
+		return buildInviteRows(await db.getInvitesLeaderboard(serverId, since).catch(() => []), limit);
+	}
+	if (since) {
+		return buildPeriodRows(await db.getLeaderboardPeriodCounts(serverId, since).catch(() => []), metric, limit);
+	}
+	const disguisedIds = new Set((await db.getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
+	const members = (await db.getServerMembersList(serverId)).filter((m) => !disguisedIds.has(Number(m.id)));
+	return buildLeaderboardRowsFromMembersList(members, metric, limit);
+}
+
+async function buildSnapshot(serverId: number, { metric, period, limit }: BoardView): Promise<LeaderboardSnapshot> {
+	const rows = await leaderboardRows({ serverId, metric, since: periodSince(period), limit });
 	const snap: LeaderboardSnapshot = { metric, period, limit, updated_at: Date.now(), rows: await attachMemberThemes(serverId, rows) };
-	setCachedLeaderboard(serverId, metric, period, limit, snap).catch(() => {});
+	setCachedLeaderboard(serverId, { metric, period, limit }, { snapshot: snap }).catch(() => {});
 	return snap;
 }
 
@@ -438,22 +446,22 @@ export type ResolveLeaderboardSnapshotOpts = { bypassCache?: boolean };
 
 export async function resolveLeaderboardSnapshot(
 	serverId: number,
-	metric: LeaderboardMetric,
-	period: LeaderboardPeriod,
-	limit: number,
+	{ metric, period, limit }: BoardView,
 	opts?: ResolveLeaderboardSnapshotOpts
 ): Promise<LeaderboardSnapshot> {
 	if (!opts?.bypassCache) {
-		const cached = await getCachedLeaderboard(serverId, metric, period, limit);
+		const cached = await getCachedLeaderboard(serverId, { metric, period, limit });
 		if (cached && Date.now() - cached.updated_at < CACHE_FRESH_MS) {
 			return cached;
 		}
 	}
-	return buildSnapshot(serverId, metric, period, limit);
+	return buildSnapshot(serverId, { metric, period, limit });
 }
 
-export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric, period: LeaderboardPeriod, limit: number, fn: Listener): () => void {
-	const k = makeKeyV2(serverId, metric, period, limit);
+type BoardView = { metric: LeaderboardMetric; period: LeaderboardPeriod; limit: number };
+
+export function subscribeLeaderboard(serverId: number, { metric, period, limit }: BoardView, fn: Listener): () => void {
+	const k = makeKeyV2(serverId, { metric, period, limit });
 	let state = streams.get(k);
 	if (!state) {
 		state = { listeners: new Set(), timer: null, lastJson: null };
@@ -474,7 +482,7 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 				return;
 			}
 			try {
-				const snap = await resolveLeaderboardSnapshot(serverId, metric, period, limit, { bypassCache: true });
+				const snap = await resolveLeaderboardSnapshot(serverId, { metric, period, limit }, { bypassCache: true });
 				const json = JSON.stringify(snap);
 				if (json === current.lastJson) {
 					return;
@@ -492,7 +500,7 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 				return;
 			}
 			try {
-				const snap = await resolveLeaderboardSnapshot(serverId, metric, period, limit, { bypassCache: true });
+				const snap = await resolveLeaderboardSnapshot(serverId, { metric, period, limit }, { bypassCache: true });
 				current.lastJson = JSON.stringify(snap);
 				for (const l of current.listeners) {
 					l(snap);

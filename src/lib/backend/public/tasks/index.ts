@@ -1,4 +1,5 @@
 import db from '../../../database.js';
+import type { ServerRow } from '../../../schema.js';
 import { parseMySQLDateTimeUtc } from '../../../utils/index.js';
 import { effectIcon, effectAccentHex, itemAvailability } from '../../../items.js';
 import {
@@ -33,6 +34,10 @@ import {
 	type TaskMetric,
 	type TaskPeriod
 } from '../../../tasks.js';
+import { DAY_MS, MINUTE_MS } from '../../../utils/time.js';
+import { PERCENT } from '../../../utils/numbers.js';
+
+const MEDIAN_PERCENTILE = 50;
 
 const COUNTER_METRICS = new Set<TaskMetric>([
 	'chat_total',
@@ -48,12 +53,12 @@ function daysActive(memberSince: unknown): number {
 	if (!dt) {
 		return 1;
 	}
-	const days = Math.floor((Date.now() - dt.getTime()) / 86400000);
+	const days = Math.floor((Date.now() - dt.getTime()) / DAY_MS);
 	return Math.max(1, days);
 }
 
-async function loadCatalog(serverId: number, itemsEnabled: boolean, tzOffsetMin = 0) {
-	if (!itemsEnabled) {
+async function loadCatalog(serverId: number, areItemsEnabled: boolean, tzOffsetMin = 0) {
+	if (!areItemsEnabled) {
 		return [];
 	}
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
@@ -65,7 +70,7 @@ async function loadCatalog(serverId: number, itemsEnabled: boolean, tzOffsetMin 
 	return all
 		.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0)
 		.filter((i) => {
-			const state = itemAvailability(i, nowMs, tzOffsetMin).state;
+			const { state } = itemAvailability(i, nowMs, tzOffsetMin);
 			return state === 'active' || state === 'always';
 		})
 		.map((i) => {
@@ -82,7 +87,7 @@ async function loadCatalog(serverId: number, itemsEnabled: boolean, tzOffsetMin 
 				maxPercent: Math.max(0, Number(cfg?.max_percent) || 0),
 				skimPercent: Math.max(0, Number(cfg?.skim_percent) || 0),
 				refundPercent: Math.max(0, Number(cfg?.refund_percent) || 0),
-				successChance: Math.max(0, Math.min(100, Number(cfg?.spy_chance ?? 100)))
+				successChance: Math.max(0, Math.min(PERCENT, Number(cfg?.spy_chance ?? PERCENT)))
 			};
 		});
 }
@@ -149,7 +154,7 @@ async function needsGeneration(memberId: number | string, dayKey: number, weekKe
 }
 
 async function loadMemberHistory(memberId: number | string, elig: TaskEligibility, nowMs: number) {
-	const sinceMs = nowMs - RECENT_WINDOW_DAYS * 86400000;
+	const sinceMs = nowMs - RECENT_WINDOW_DAYS * DAY_MS;
 	const metrics = historyMetricsFor(elig);
 
 	const recentDaily: Partial<Record<TaskMetric, number>> = {};
@@ -158,7 +163,7 @@ async function loadMemberHistory(memberId: number | string, elig: TaskEligibilit
 	const counted = await Promise.all(
 		metrics.map(async (metric) => ({
 			metric,
-			total: await db.countMemberEventsSince(memberId, metric, sinceMs).catch(() => 0)
+			total: await db.countMemberEventsSince(memberId, { metric, sinceMs }).catch(() => 0)
 		}))
 	);
 
@@ -177,9 +182,11 @@ async function loadMemberHistory(memberId: number | string, elig: TaskEligibilit
 	return { recentDaily, recentPeak };
 }
 
-async function buildPeriod(opts: {
-	member: any;
-	serverId: any;
+type TaskMember = { id: number; member_since: Date | string | null };
+
+type PeriodContext = {
+	member: TaskMember;
+	serverId: number;
 	period: TaskPeriod;
 	periodKey: number;
 	windowStartMs: number;
@@ -188,112 +195,126 @@ async function buildPeriod(opts: {
 	catalog: { id: number; cost: number }[];
 	currentStreak: number;
 	generate: boolean;
-}) {
-	const { member, serverId, period, periodKey, windowStartMs, eligibility, baselines, catalog, currentStreak, generate } = opts;
+};
+type GeneratedTask = ReturnType<typeof generateDailyTasks>[number];
+type TaskRow = Awaited<ReturnType<typeof db.getMemberTasks>>[number];
+type TaskItem = NonNullable<Awaited<ReturnType<typeof db.getItem>>>;
 
-	let rows = (await db.getMemberTasks(member.id, periodKey, period).catch(() => [])) as any[];
+function generatedTaskRow(g: GeneratedTask, ctx: PeriodContext) {
+	const { eligibility, catalog, period, periodKey } = ctx;
+	const def = TASK_BY_ID.get(g.taskType);
+	const targetCost = g.targetItemId != null ? Number(catalog.find((c) => c.id === g.targetItemId)?.cost) || 0 : 0;
+	const { goal } = g;
+	const spend = def ? taskCostXp(def, goal, { elig: eligibility, targetCost }) : 0;
+	const value = def
+		? taskValueXp(def, { goal, difficulty: g.difficulty, streak: ctx.currentStreak }, { elig: eligibility, period, targetCost })
+		: XP_REWARD_MIN;
+	const reward = pickReward({ memberId: Number(ctx.member.id), periodKey, slot: g.slot, difficulty: g.difficulty, value, catalog, period, minWorth: spend });
+	const metric = def?.metric as TaskMetric | undefined;
+	return {
+		slot: g.slot,
+		taskType: g.taskType,
+		difficulty: g.difficulty,
+		goal,
+		baseline: metric && COUNTER_METRICS.has(metric) ? Number(ctx.baselines[metric]) || 0 : 0,
+		targetItemId: g.targetItemId ?? null,
+		rewardKind: reward.kind,
+		rewardXp: reward.kind === 'xp' ? reward.xp : 0,
+		rewardItemId: reward.kind === 'item' ? reward.itemId : null
+	};
+}
 
-	if ((!rows || rows.length === 0) && generate) {
-		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, eligibility, period);
-		if (generated.length === 0) {
-			return [];
-		}
-
-		const payload = generated.map((g) => {
-			const def = TASK_BY_ID.get(g.taskType);
-			const targetCost = g.targetItemId != null ? Number(catalog.find((c) => c.id === g.targetItemId)?.cost) || 0 : 0;
-			const goal = g.goal;
-			const spend = def ? taskCostXp(def, goal, eligibility, targetCost) : 0;
-			const value = def ? taskValueXp(def, goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
-			const reward = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period, spend);
-
-			const metric = def?.metric as TaskMetric | undefined;
-			const baseline = metric && COUNTER_METRICS.has(metric) ? Number(baselines[metric]) || 0 : 0;
-			return {
-				slot: g.slot,
-				taskType: g.taskType,
-				difficulty: g.difficulty,
-				goal,
-				baseline,
-				targetItemId: g.targetItemId ?? null,
-				rewardKind: reward.kind,
-				rewardXp: reward.kind === 'xp' ? reward.xp : 0,
-				rewardItemId: reward.kind === 'item' ? reward.itemId : null
-			};
-		});
-
-		rows = await db.persistMemberTasks(member.id, periodKey, payload, period).catch(() => []);
+async function periodTaskRows(ctx: PeriodContext): Promise<TaskRow[]> {
+	const rows = await db.getMemberTasks(ctx.member.id, ctx.periodKey, ctx.period).catch(() => []);
+	if ((rows && rows.length > 0) || !ctx.generate) {
+		return rows;
 	}
+	const generated = generateDailyTasks(
+		{ memberId: Number(ctx.member.id), serverId: Number(ctx.serverId), periodKey: ctx.periodKey },
+		ctx.eligibility,
+		ctx.period
+	);
+	if (generated.length === 0) {
+		return [];
+	}
+	const payload = generated.map((g) => generatedTaskRow(g, ctx));
+	return db.persistMemberTasks(ctx.member.id, { dayKey: ctx.periodKey, rows: payload, period: ctx.period }).catch(() => []);
+}
 
+async function taskItems(rows: TaskRow[]) {
 	const itemIds = [...new Set([...rows.map((r) => r.reward_item_id), ...rows.map((r) => r.target_item_id)].filter((v) => v != null))].map(Number);
-	const itemMap = new Map<number, any>();
+	const itemMap = new Map<number, TaskItem>();
 	for (const id of itemIds) {
 		const it = await db.getItem(id).catch(() => null);
 		if (it) {
 			itemMap.set(id, it);
 		}
 	}
-
-	const tasks = [];
-	for (const row of rows) {
-		const def = TASK_BY_ID.get(row.task_type);
-		if (!def) {
-			continue;
-		}
-
-		const targetItemId = row.target_item_id == null ? null : Number(row.target_item_id);
-		const targetItem = targetItemId != null ? itemMap.get(targetItemId) : null;
-		if (def.targetsItem && !targetItem) {
-			continue;
-		}
-
-		let progress = 0;
-		if (COUNTER_METRICS.has(def.metric)) {
-			const current = Number(baselines[def.metric]) || 0;
-			progress = Math.max(0, current - (Number(row.baseline) || 0));
-		} else {
-			progress = await db.countMemberEventsSince(member.id, def.metric, windowStartMs, targetItemId).catch(() => 0);
-		}
-
-		const goal = Number(row.goal) || 1;
-		const rewardItem = row.reward_item_id != null ? itemMap.get(Number(row.reward_item_id)) : null;
-
-		tasks.push({
-			slot: Number(row.slot),
-			period,
-			id: def.id,
-			label: def.label,
-			icon: targetItem ? effectIcon(targetItem.effect_type) : def.icon,
-			accent: targetItem ? effectAccentHex(targetItem.effect_type) : def.accent,
-			unit: def.unit,
-			difficulty: row.difficulty,
-			description: def.describe(goal, { itemName: targetItem?.name ?? null }),
-			targetItem: targetItem ? { id: targetItemId, name: targetItem.name, effectType: targetItem.effect_type } : null,
-			goal,
-			progress: Math.min(progress, goal),
-			rawProgress: progress,
-			complete: progress >= goal,
-			claimed: !!row.claimed_at,
-			reward:
-				row.reward_kind === 'item' && rewardItem
-					? {
-							kind: 'item' as const,
-							itemId: Number(row.reward_item_id),
-							name: rewardItem.name,
-							effectType: rewardItem.effect_type,
-							cost: Number(rewardItem.cost) || 0
-						}
-					: { kind: 'xp' as const, xp: Number(row.xp_reward) || 0 }
-		});
-	}
-
-	tasks.sort((a, b) => a.slot - b.slot);
-	return tasks;
+	return itemMap;
 }
 
-export async function loadTasksShared(opts: {
-	server: any;
-	member: any;
+function taskReward(row: TaskRow, rewardItem: TaskItem | null | undefined) {
+	if (row.reward_kind === 'item' && rewardItem) {
+		return {
+			kind: 'item' as const,
+			itemId: Number(row.reward_item_id),
+			name: rewardItem.name,
+			effectType: rewardItem.effect_type,
+			cost: Number(rewardItem.cost) || 0
+		};
+	}
+	return { kind: 'xp' as const, xp: Number(row.xp_reward) || 0 };
+}
+
+async function taskView(row: TaskRow, { ctx, itemMap }: { ctx: PeriodContext; itemMap: Map<number, TaskItem> }) {
+	const def = TASK_BY_ID.get(row.task_type);
+	const targetItemId = row.target_item_id == null ? null : Number(row.target_item_id);
+	const targetItem = targetItemId != null ? itemMap.get(targetItemId) : null;
+	if (!def || (def.targetsItem && !targetItem)) {
+		return null;
+	}
+
+	const progress = COUNTER_METRICS.has(def.metric)
+		? Math.max(0, (Number(ctx.baselines[def.metric]) || 0) - (Number(row.baseline) || 0))
+		: await db.countMemberEventsSince(ctx.member.id, { metric: def.metric, sinceMs: ctx.windowStartMs, targetItemId }).catch(() => 0);
+	const goal = Number(row.goal) || 1;
+
+	return {
+		slot: Number(row.slot),
+		period: ctx.period,
+		id: def.id,
+		label: def.label,
+		icon: targetItem ? effectIcon(targetItem.effect_type) : def.icon,
+		accent: targetItem ? effectAccentHex(targetItem.effect_type) : def.accent,
+		unit: def.unit,
+		difficulty: row.difficulty,
+		description: def.describe(goal, { itemName: targetItem?.name ?? null }),
+		targetItem: targetItem ? { id: targetItemId, name: targetItem.name, effectType: targetItem.effect_type } : null,
+		goal,
+		progress: Math.min(progress, goal),
+		rawProgress: progress,
+		complete: progress >= goal,
+		claimed: !!row.claimed_at,
+		reward: taskReward(row, row.reward_item_id != null ? itemMap.get(Number(row.reward_item_id)) : null)
+	};
+}
+
+async function buildPeriod(ctx: PeriodContext) {
+	const rows = await periodTaskRows(ctx);
+	const itemMap = await taskItems(rows);
+	const tasks: NonNullable<Awaited<ReturnType<typeof taskView>>>[] = [];
+	for (const row of rows) {
+		const task = await taskView(row, { ctx, itemMap });
+		if (task) {
+			tasks.push(task);
+		}
+	}
+	return tasks.sort((a, b) => a.slot - b.slot);
+}
+
+type TasksRequest = {
+	server: Pick<ServerRow, 'id'>;
+	member: TaskMember;
 	itemsEnabled: boolean;
 	minigamesEnabled: boolean;
 	marketEnabled?: boolean;
@@ -301,25 +322,12 @@ export async function loadTasksShared(opts: {
 	nowMs?: number;
 	generate?: boolean;
 	tzKnown?: boolean;
-}) {
-	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
-	const marketEnabled = opts.marketEnabled === true;
-	const nowMs = opts.nowMs ?? Date.now();
-	const nowKey = minuteKeyFor(nowMs);
-	const [latestDaily, latestWeekly] = await Promise.all([
-		db.getLatestTaskKey(member.id, 'daily').catch(() => null),
-		db.getLatestTaskKey(member.id, 'weekly').catch(() => null)
-	]);
-	const dayKey = periodOpen(latestDaily, 'daily', nowMs) ? latestDaily : nowKey;
-	const weekKey = periodOpen(latestWeekly, 'weekly', nowMs) ? latestWeekly : nowKey;
-	const dayStartMs = dayKey * 60000;
-	const weekStartMs = weekKey * 60000;
+};
+type TaskCatalog = Awaited<ReturnType<typeof loadCatalog>>;
+type LevelsRow = Awaited<ReturnType<typeof db.ensureMemberLevel>>;
 
-	const levels = (await db.ensureMemberLevel(member.id).catch(() => null)) as any;
-	const streakRow = (await db.ensureMemberStreak(member.id, opts.tzKnown !== false ? tzOffsetMin : undefined).catch(() => null)) as any;
-	const loginRow = (await db.ensureMemberClaim(member.id).catch(() => null)) as any;
-
-	const baselines: Partial<Record<TaskMetric, number>> = {
+function taskBaselines(levels: LevelsRow | null): Partial<Record<TaskMetric, number>> {
+	return {
 		chat_total: Number(levels?.chat_total) || 0,
 		reactions_given: Number(levels?.reactions_given) || 0,
 		voice_minutes_active: Number(levels?.voice_minutes_active) || 0,
@@ -328,30 +336,64 @@ export async function loadTasksShared(opts: {
 		voice_minutes_streaming: Number(levels?.voice_minutes_streaming) || 0,
 		xp_gained: Number(levels?.xp) || 0
 	};
+}
 
-	const catalog = await loadCatalog(server.id, itemsEnabled, tzOffsetMin);
-	const medianItemCost = costPercentile(
-		catalog.map((c) => c.cost).filter((c) => c > 0),
-		50
-	);
-	const measuredDailyEarn = await memberDailyEarn(member.id);
-
-	const eligibility: TaskEligibility = {
+async function taskEligibility(
+	opts: TasksRequest,
+	{ catalog, baselines }: { catalog: TaskCatalog; baselines: Partial<Record<TaskMetric, number>> }
+): Promise<TaskEligibility> {
+	const { server, member } = opts;
+	return {
 		levelingEnabled: true,
-		minigamesEnabled,
-		itemsEnabled,
-		marketEnabled,
+		minigamesEnabled: opts.minigamesEnabled,
+		itemsEnabled: opts.itemsEnabled,
+		marketEnabled: opts.marketEnabled === true,
 		baselines,
 		activeDays: daysActive(member.member_since),
 		effectCosts: cheapestByEffect(catalog),
-		medianItemCost,
+		medianItemCost: costPercentile(
+			catalog.map((c) => c.cost).filter((c) => c > 0),
+			MEDIAN_PERCENTILE
+		),
 		catalog,
 		effectDurations: longestByEffect(catalog),
 		levelingRates: await loadLevelingRates(server.id),
 		memberCount: await db.countServerMembers(server.id).catch(() => 0),
-		measuredDailyEarn,
+		measuredDailyEarn: await memberDailyEarn(member.id),
 		invitesTracked: await db.serverTracksInvites(server.id).catch(() => false)
 	};
+}
+
+function reelPool(catalog: TaskCatalog) {
+	const costs = catalog.map((c) => c.cost);
+	return [...catalog]
+		.sort((a, b) => a.cost - b.cost)
+		.map((c) => ({ name: c.name, cost: c.cost, effectType: c.effectType, tier: rarityTierFor(c.cost, costs) }));
+}
+
+async function periodKeys(memberId: number, nowMs: number) {
+	const nowKey = minuteKeyFor(nowMs);
+	const [latestDaily, latestWeekly] = await Promise.all([
+		db.getLatestTaskKey(memberId, 'daily').catch(() => null),
+		db.getLatestTaskKey(memberId, 'weekly').catch(() => null)
+	]);
+	return {
+		dayKey: periodOpen(latestDaily, 'daily', nowMs) ? latestDaily : nowKey,
+		weekKey: periodOpen(latestWeekly, 'weekly', nowMs) ? latestWeekly : nowKey
+	};
+}
+
+export async function loadTasksShared(opts: TasksRequest) {
+	const { server, member, tzOffsetMin } = opts;
+	const nowMs = opts.nowMs ?? Date.now();
+	const { dayKey, weekKey } = await periodKeys(member.id, nowMs);
+
+	const levels = await db.ensureMemberLevel(member.id).catch(() => null);
+	const streakRow = await db.ensureMemberStreak(member.id, opts.tzKnown !== false ? tzOffsetMin : undefined).catch(() => null);
+	const loginRow = await db.ensureMemberClaim(member.id).catch(() => null);
+	const baselines = taskBaselines(levels);
+	const catalog = await loadCatalog(server.id, opts.itemsEnabled, tzOffsetMin);
+	const eligibility = await taskEligibility(opts, { catalog, baselines });
 
 	if (opts.generate !== false && (await needsGeneration(member.id, dayKey, weekKey))) {
 		const history = await loadMemberHistory(member.id, eligibility, nowMs);
@@ -359,16 +401,22 @@ export async function loadTasksShared(opts: {
 		eligibility.recentPeak = history.recentPeak;
 	}
 
-	const currentStreak = Number(streakRow?.current_streak) || 0;
+	const shared = {
+		member,
+		serverId: server.id,
+		eligibility,
+		baselines,
+		catalog,
+		currentStreak: Number(streakRow?.current_streak) || 0,
+		generate: opts.generate !== false
+	};
+	const daily = await buildPeriod({ ...shared, period: 'daily', periodKey: dayKey, windowStartMs: dayKey * MINUTE_MS });
+	const weekly = await buildPeriod({ ...shared, period: 'weekly', periodKey: weekKey, windowStartMs: weekKey * MINUTE_MS });
 
-	const shared = { member, serverId: server.id, eligibility, baselines, catalog, currentStreak, generate: opts.generate !== false };
-	const daily = await buildPeriod({ ...shared, period: 'daily', periodKey: dayKey, windowStartMs: dayStartMs });
-	const weekly = await buildPeriod({ ...shared, period: 'weekly', periodKey: weekKey, windowStartMs: weekStartMs });
-
-	const completedToday = daily.some((t) => t.complete) || weekly.some((t) => t.complete);
+	const isCompletedToday = daily.some((t) => t.complete) || weekly.some((t) => t.complete);
 	const earnedStreak =
-		daily.length > 0 && completedToday && Number(streakRow?.last_claim_day_key) !== dayKey
-			? await db.applyStreakDay(member.id, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null)
+		daily.length > 0 && isCompletedToday && Number(streakRow?.last_claim_day_key) !== dayKey
+			? await db.applyStreakDay(member.id, { dayKey, freezeMax: STREAK_FREEZE_MAX, earnEvery: STREAK_FREEZE_EARN_EVERY }).catch(() => null)
 			: null;
 
 	return {
@@ -383,37 +431,32 @@ export async function loadTasksShared(opts: {
 		streakEarned: !!earnedStreak?.changed,
 		streakMilestone: earnedStreak?.changed ? streakMilestone(Number(earnedStreak.streak) || 0) : null,
 		login: shapeLogin(loginRow, nowMs, catalog),
-		reelPool: (() => {
-			const costs = catalog.map((c) => c.cost);
-			return [...catalog]
-				.sort((a, b) => a.cost - b.cost)
-				.map((c) => ({ name: c.name, cost: c.cost, effectType: c.effectType, tier: rarityTierFor(c.cost, costs) }));
-		})(),
+		reelPool: reelPool(catalog),
 		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
 		empty: daily.length === 0 && weekly.length === 0
 	};
 }
 
 export async function memberDailyEarn(memberId: number | string): Promise<number> {
-	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
-	const total = await db.countMemberEventsSince(memberId, 'xp_gained', sinceMs).catch(() => 0);
+	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * DAY_MS;
+	const total = await db.countMemberEventsSince(memberId, { metric: 'xp_gained', sinceMs }).catch(() => 0);
 	return Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
 }
 
-function shapeLogin(row: Record<string, unknown>, nowMs: number, catalog: { id: number; cost: number }[]) {
+function shapeLogin(row: Record<string, unknown> | null, nowMs: number, catalog: { id: number; cost: number }[]) {
 	const cycleDay = Number(row?.cycle_day) || 0;
 	const last = row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key);
 	const cyclesCompleted = Number(row?.cycles_completed) || 0;
 
-	const broken = loginCycleBroken(last, nowMs);
-	const nextDay = broken || cycleDay >= LOGIN_CYCLE_DAYS ? 1 : cycleDay + 1;
+	const isBroken = loginCycleBroken(last, nowMs);
+	const nextDay = isBroken || cycleDay >= LOGIN_CYCLE_DAYS ? 1 : cycleDay + 1;
 	const readyInMs = loginReadyInMs(last, nowMs);
-	const claimedToday = readyInMs > 0;
-	const canClaim = !claimedToday;
+	const isClaimedToday = readyInMs > 0;
+	const canClaim = !isClaimedToday;
 
 	const rewards = loginCyclePreview().map((r) => ({
 		...r,
-		claimed: !claimedToday && r.day < nextDay ? true : claimedToday && r.day <= cycleDay,
+		claimed: !isClaimedToday && r.day < nextDay ? true : isClaimedToday && r.day <= cycleDay,
 		current: canClaim && r.day === nextDay,
 		odds: loginTierOddsFor(catalog, r.day)
 	}));
@@ -421,7 +464,7 @@ function shapeLogin(row: Record<string, unknown>, nowMs: number, catalog: { id: 
 	return {
 		cycleDay,
 		nextDay,
-		claimedToday,
+		claimedToday: isClaimedToday,
 		canClaim,
 		readyInMs,
 		cycleDays: LOGIN_CYCLE_DAYS,
@@ -430,7 +473,7 @@ function shapeLogin(row: Record<string, unknown>, nowMs: number, catalog: { id: 
 	};
 }
 
-function shapeStreak(row: Record<string, unknown>) {
+function shapeStreak(row: Record<string, unknown> | null) {
 	const current = Number(row?.current_streak) || 0;
 	const next = nextMilestone(current);
 	return {

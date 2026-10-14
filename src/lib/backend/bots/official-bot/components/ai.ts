@@ -16,13 +16,17 @@ import { aiLanguageInstruction, translateServer } from '../i18n.js';
 import type { Client, Guild, GuildTextBasedChannel, Message, Attachment } from 'discord.js';
 import type { AiInput } from '../../../../database.js';
 import type { ChatCompletionMessageFunctionToolCall, ChatCompletionMessageParam, ChatCompletionTool } from 'openai/resources/chat/completions';
+import { HTTP } from '../../../../http.js';
+import { BYTES_PER_MB } from '../../../../utils/numbers.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
+import { isoDay } from '../../../../utils/datetime.js';
 
-const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
 const MAX_TOOL_ITERATIONS = 5;
 const MAX_GENERATED_IMAGES = 2;
+const SPLIT_MIN_FRACTION = 0.5;
 
 const inFlight = new Set();
 
@@ -44,12 +48,12 @@ function stripReasoning(text: string) {
 }
 
 function buildCompletionParams(config: AiInput) {
-	const useThinking = config.reasoning !== 'none';
+	const isUseThinking = config.reasoning !== 'none';
 	const modelLower = (config.model ?? '').toLowerCase();
 	const isGemini = modelLower.includes('gemini');
 
 	const thinkingKwargs = (() => {
-		if (!useThinking) {
+		if (!isUseThinking) {
 			return {};
 		}
 		if (modelLower.includes('glm')) {
@@ -69,7 +73,7 @@ function buildCompletionParams(config: AiInput) {
 
 	return {
 		model: config.model!,
-		...(useThinking ? { reasoning_effort: isGemini && config.reasoning === 'xhigh' ? 'high' : config.reasoning } : {}),
+		...(isUseThinking ? { reasoning_effort: isGemini && config.reasoning === 'xhigh' ? 'high' : config.reasoning } : {}),
 		...(!isGemini ? { frequency_penalty: 0.3 } : {}),
 		...thinkingKwargs
 	};
@@ -96,7 +100,8 @@ const VOICE_TOOLS = [
 ];
 
 const MAX_ATTACHMENTS = 4;
-const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024;
+const MAX_ATTACHMENT_MB = 12;
+const MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MB * BYTES_PER_MB;
 const ATTACHMENT_FETCH_TIMEOUT_MS = 20_000;
 
 const ATTACHMENT_KINDS = [
@@ -249,7 +254,7 @@ async function executeVoiceTool(name: string, message: Message<true>, botId: num
 		return finalToolResult({ ok: false, reason: 'busy_in_another_channel', busy_channel_name: state.channelName ?? 'another channel' });
 	}
 
-	const published = await publishVoiceCommand(botId, {
+	const isPublished = await publishVoiceCommand(botId, {
 		cmd: 'join',
 		guildId: message.guild.id,
 		channelId,
@@ -258,7 +263,7 @@ async function executeVoiceTool(name: string, message: Message<true>, botId: num
 		textChannelId: message.channel.id
 	});
 
-	if (!published) {
+	if (!isPublished) {
 		return finalToolResult({ ok: false, reason: 'voice_worker_unavailable' });
 	}
 
@@ -303,16 +308,16 @@ function stripBotMention(content: string, botUserId: unknown) {
 		.trim();
 }
 
-function splitForDiscord(text: string, limit = DISCORD_MESSAGE_LIMIT) {
+function splitForDiscord(text: string, limit: number = DISCORD_LIMITS.MESSAGE) {
 	const chunks = [];
 	let remaining = text;
 
 	while (remaining.length > limit) {
 		let cut = remaining.lastIndexOf('\n', limit);
-		if (cut < limit * 0.5) {
+		if (cut < limit * SPLIT_MIN_FRACTION) {
 			cut = remaining.lastIndexOf(' ', limit);
 		}
-		if (cut < limit * 0.5) {
+		if (cut < limit * SPLIT_MIN_FRACTION) {
 			cut = limit;
 		}
 
@@ -353,12 +358,12 @@ async function callChatCompletions(
 	let lastContent = '';
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-		const lastIteration = i === MAX_TOOL_ITERATIONS - 1;
-		const offerTools = tools && onToolCall && !lastIteration;
+		const isLastIteration = i === MAX_TOOL_ITERATIONS - 1;
+		const shouldOfferTools = tools && onToolCall && !isLastIteration;
 
 		const completion = await client.chat.completions.create({
 			...params,
-			...(offerTools ? { tools, tool_choice: 'auto' } : {}),
+			...(shouldOfferTools ? { tools, tool_choice: 'auto' } : {}),
 			messages: loop
 		});
 
@@ -420,27 +425,210 @@ async function fetchRepliedMessage(message: Message) {
 	return message.fetchReference().catch(() => null);
 }
 
+type GuildAiConfig = Awaited<ReturnType<typeof resolveGuildAiConfig>>;
+type GeneratedImage = Awaited<ReturnType<typeof runImageTool>>;
+type AiTrigger = { botUserId: string; botId: number; isMentioned: boolean };
+type UserTurn = { prompt: string; userContent: string; attachmentParts: unknown[]; attachmentKinds: (string | null)[] };
+type ToolSetup = { botId: number; config: GuildAiConfig; wikis: Awaited<ReturnType<typeof getEnabledWikis>>; generatedImages: GeneratedImage[] };
+type AiReply = { reply: string; imageFiles: AttachmentBuilder[] };
+
+function aiTrigger(message: Message): AiTrigger | null {
+	if (message.author?.bot || !message.guild || message.mentions.everyone) {
+		return null;
+	}
+	const botUserId = message.client.user?.id;
+	if (!botUserId) {
+		return null;
+	}
+	const isMentioned = message.mentions.users.has(botUserId);
+	if (!isMentioned && !message.reference?.messageId) {
+		return null;
+	}
+	const botConfig = getBotConfig();
+	return botConfig?.id ? { botUserId, botId: botConfig.id, isMentioned } : null;
+}
+
+function quotedNoteFor(quoted: Message | null, botUserId: string) {
+	if (!quoted) {
+		return '';
+	}
+	const quotedText = stripBotMention(quoted.content ?? '', botUserId).trim();
+	const quotedName = quoted.member?.displayName ?? quoted.author?.username ?? 'someone';
+	const quotedKinds = [...(quoted.attachments?.values?.() ?? [])].map(classifyAttachment).filter(Boolean);
+	return `[Replying to ${quotedName}${quotedKinds.length ? ` who attached ${quotedKinds.join(', ')}` : ''}]${quotedText ? ` ${quotedName} said: "${quotedText}"` : ''}\n\n`;
+}
+
+async function buildUserTurn(message: Message, { botUserId, replied }: { botUserId: string; replied: Message | null }): Promise<UserTurn> {
+	const prompt = stripBotMention(message.content ?? '', botUserId);
+	const quoted = replied && replied.author?.id !== botUserId ? replied : null;
+	const { parts: attachmentParts, kinds: attachmentKinds } = await buildAttachmentParts([quoted, message]);
+	const ownText = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
+	const speakerName = message.member?.displayName ?? message.author.username;
+	const speakerNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>.`;
+	return { prompt, userContent: `${speakerNote}\n\n${quotedNoteFor(quoted, botUserId)}${ownText}`, attachmentParts, attachmentKinds };
+}
+
+function aiToolRunner(message: Message<true>, setup: ToolSetup) {
+	const { botId, config, wikis, generatedImages } = setup;
+	const toolContext = { botId, guildId: message.guild.id, callerDiscordId: message.author.id };
+	const asJson = (result: unknown) => JSON.stringify(result);
+	return (name: string, args: Record<string, unknown>) => {
+		(message.channel as GuildTextBasedChannel).sendTyping().catch(() => {});
+		if (SERVER_TOOL_NAMES.has(name)) {
+			return runServerTool(name, args, toolContext).then(asJson);
+		}
+		if (ACCOUNT_TOOL_NAMES.has(name)) {
+			return runAccountTool(name, args, toolContext).then(asJson);
+		}
+		if (KNOWLEDGE_TOOL_NAMES.has(name)) {
+			return runKnowledgeTool(name, args, toolContext).then(asJson);
+		}
+		if (name === 'search_wiki') {
+			return runWikiTool(wikis, args, { sessionKey: `${botId}:${message.guild.id}:${message.author.id}` }).then(asJson);
+		}
+		if (name === 'search_web') {
+			return runSearchTool(config, args).then(asJson);
+		}
+		if (name === 'fetch_web_page') {
+			return runFetchTool(config, args).then(asJson);
+		}
+		if (name === 'generate_image') {
+			return runImageTool(config, args).then((result) => {
+				if (result.ok && generatedImages.length < MAX_GENERATED_IMAGES) {
+					generatedImages.push(result);
+				}
+				const { buffer, ...summary } = result;
+				return finalToolResult(summary.ok ? { ...summary, sent_to_channel: true } : summary);
+			});
+		}
+		return executeVoiceTool(name, message, botId);
+	};
+}
+
+function availableAiTools(
+	config: GuildAiConfig,
+	{ wikis, toolFeatures }: { wikis: ToolSetup['wikis']; toolFeatures: Awaited<ReturnType<typeof resolveToolFeatures>> | null }
+) {
+	const wikiTool = buildWikiTool(wikis);
+	const searchTool = buildSearchTool(config);
+	const fetchTool = buildFetchTool(config);
+	const imageTool = buildImageTool(config);
+	return [
+		...(config.voice_enabled && !!config.voice_model ? VOICE_TOOLS : []),
+		...buildServerTools(toolFeatures),
+		...buildAccountTools(toolFeatures),
+		...buildKnowledgeTools(),
+		...(wikiTool ? [wikiTool] : []),
+		...(searchTool ? [searchTool] : []),
+		...(fetchTool ? [fetchTool] : []),
+		...(imageTool ? [imageTool] : [])
+	];
+}
+
+async function generateAiReply(message: Message<true>, { botId, config, turn }: { botId: number; config: GuildAiConfig; turn: UserTurn }): Promise<AiReply> {
+	const [conversation, wikis, toolFeatures, languageNote] = await Promise.all([
+		readAiSession({ botId, guildId: message.guild.id, memberId: message.author.id }, MAX_RECENT),
+		getEnabledWikis(botId).catch(() => []),
+		resolveToolFeatures(botId, message.guild.id).catch(() => null),
+		aiLanguageInstruction(message.guild.id, 'chat').catch(() => '')
+	]);
+
+	const hasServerData = buildServerTools(toolFeatures).length > 0 || buildAccountTools(toolFeatures).length > 0;
+	const today = isoDay(new Date());
+	const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', languageNote, PING_NOTE, hasServerData ? SERVER_DATA_NOTE : '']
+		.filter(Boolean)
+		.join('\n\n');
+	const userMessage = turn.attachmentParts.length
+		? { role: 'user', content: [{ type: 'text', text: turn.userContent }, ...turn.attachmentParts] }
+		: { role: 'user', content: turn.userContent };
+	const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, userMessage];
+
+	const tools = availableAiTools(config, { wikis, toolFeatures });
+	const generatedImages: GeneratedImage[] = [];
+	const raw = await callChatCompletions(config, messages as ChatCompletionMessageParam[], {
+		tools: tools.length ? (tools as ChatCompletionTool[]) : null,
+		onToolCall: tools.length ? aiToolRunner(message, { botId, config, wikis, generatedImages }) : null
+	});
+	const imageFiles = generatedImages
+		.map((image, index) => (image.buffer ? new AttachmentBuilder(image.buffer, { name: `image-${index + 1}.png` }) : null))
+		.filter(Boolean) as AttachmentBuilder[];
+	return { reply: stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH), imageFiles };
+}
+
+async function sendAiReply(message: Message<true>, { reply, imageFiles }: AiReply) {
+	const mention = `<@${message.author.id}>`;
+	const chunks = splitForDiscord(reply, DISCORD_LIMITS.MESSAGE - mention.length - 1);
+	const lastIndex = chunks.length - 1;
+
+	for (let i = 0; i < chunks.length; i++) {
+		const content = i === lastIndex ? `${chunks[i]} ${mention}` : chunks[i];
+		const named = await resolveMentionedMembers(message.guild, content);
+		const allowedMentions = { parse: [], users: [...new Set([...named, ...(i === lastIndex ? [message.author.id] : [])])] };
+		if (i === 0) {
+			await message.reply({ content, ...(imageFiles.length ? { files: imageFiles } : {}), allowedMentions: { ...allowedMentions, repliedUser: false } });
+		} else {
+			await (message.channel as GuildTextBasedChannel).send({ content, allowedMentions });
+		}
+	}
+}
+
+async function answerMessage(message: Message<true>, trigger: AiTrigger) {
+	const { botId, botUserId } = trigger;
+	if (!(await claimAiMessageShared(botId, message.id))) {
+		await logger.log(`🔁 AI ignoring message ${message.id}, another process claimed it first`);
+		return;
+	}
+
+	const [configRow, replied] = await Promise.all([db.getAiByBotId(botId), fetchRepliedMessage(message)]);
+	const panelAi = db.aiFromDbRow(configRow);
+	if (!panelAi.enabled || !panelAi.api_url || !panelAi.api_key || !panelAi.model) {
+		return;
+	}
+	if (!trigger.isMentioned && replied?.author?.id !== botUserId) {
+		return;
+	}
+
+	const config = await resolveGuildAiConfig(message.guild.id, panelAi);
+	await (message.channel as GuildTextBasedChannel).sendTyping().catch(() => {});
+	const turn = await buildUserTurn(message, { botUserId, replied });
+	const answer = await generateAiReply(message, { botId, config, turn });
+
+	if (!answer.reply) {
+		const fallback = answer.imageFiles.length
+			? { files: answer.imageFiles, allowedMentions: { parse: [], repliedUser: false } }
+			: { content: await translateServer('ai.errors.noResponse', message.guild.id) };
+		await message.reply(fallback).catch(() => {});
+		return;
+	}
+
+	const scope = { botId, guildId: message.guild.id, memberId: message.author.id };
+	const storedContent = turn.attachmentParts.length && turn.prompt ? `${turn.userContent} [${turn.attachmentKinds.join(', ')} attached]` : turn.userContent;
+	const persisted = appendAiMessage(scope, 'user', storedContent)
+		.then(() => appendAiMessage(scope, 'assistant', answer.reply))
+		.catch(() => {});
+	await sendAiReply(message, answer);
+	await persisted;
+}
+
+async function reportAiError(message: Message, error: unknown) {
+	const status = error instanceof OpenAI.APIError ? error.status : null;
+	await logger.log(`❌ AI chat error${status ? ` (${status})` : ''}: ${(error as Error).message}`);
+	const noticeKey =
+		status === HTTP.UNAUTHORIZED || status === HTTP.FORBIDDEN
+			? 'ai.errors.keyRejected'
+			: status === HTTP.TOO_MANY_REQUESTS
+				? 'ai.errors.rateLimited'
+				: 'ai.errors.failed';
+	const notice = await translateServer(noticeKey, message.guild?.id ?? '').catch(() => '');
+	if (notice) {
+		await message.reply({ content: notice }).catch(() => {});
+	}
+}
+
 async function handleMessageCreate(message: Message) {
 	try {
-		if (message.author?.bot || !message.guild) {
-			return;
-		}
-		if (message.mentions.everyone) {
-			return;
-		}
-
-		const botUserId = message.client.user?.id;
-		if (!botUserId) {
-			return;
-		}
-
-		const mentioned = message.mentions.users.has(botUserId);
-		if (!mentioned && !message.reference?.messageId) {
-			return;
-		}
-
-		const botConfig = getBotConfig();
-		if (!botConfig?.id) {
+		const trigger = aiTrigger(message);
+		if (!trigger || !message.inGuild()) {
 			return;
 		}
 
@@ -448,181 +636,18 @@ async function handleMessageCreate(message: Message) {
 		if (inFlight.has(key)) {
 			return;
 		}
-		if (!claimAiMessageLocal(botConfig.id, message.id)) {
+		if (!claimAiMessageLocal(trigger.botId, message.id)) {
 			await logger.log(`🔁 AI ignoring a duplicate delivery of message ${message.id}`);
 			return;
 		}
 		inFlight.add(key);
-
 		try {
-			if (!(await claimAiMessageShared(botConfig.id, message.id))) {
-				await logger.log(`🔁 AI ignoring message ${message.id}, another process claimed it first`);
-				return;
-			}
-
-			const [configRow, replied] = await Promise.all([db.getAiByBotId(botConfig.id), fetchRepliedMessage(message)]);
-
-			const panelAi = db.aiFromDbRow(configRow);
-			if (!panelAi.enabled || !panelAi.api_url || !panelAi.api_key || !panelAi.model) {
-				return;
-			}
-
-			if (!mentioned && replied?.author?.id !== botUserId) {
-				return;
-			}
-
-			const config = await resolveGuildAiConfig(message.guild.id, panelAi);
-
-			const prompt = stripBotMention(message.content ?? '', botUserId);
-
-			await (message.channel as GuildTextBasedChannel).sendTyping().catch(() => {});
-
-			const quoted = replied && replied.author?.id !== botUserId ? replied : null;
-			const { parts: attachmentParts, kinds: attachmentKinds } = await buildAttachmentParts([quoted, message]);
-
-			const quotedText = quoted ? stripBotMention(quoted.content ?? '', botUserId).trim() : '';
-			const quotedName = quoted ? (quoted.member?.displayName ?? quoted.author?.username ?? 'someone') : '';
-			const quotedKinds = quoted ? [...(quoted.attachments?.values?.() ?? [])].map(classifyAttachment).filter(Boolean) : [];
-			const quotedNote = quoted
-				? `[Replying to ${quotedName}${quotedKinds.length ? ` who attached ${quotedKinds.join(', ')}` : ''}]${quotedText ? ` ${quotedName} said: "${quotedText}"` : ''}\n\n`
-				: '';
-
-			const ownText = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
-			const speakerName = message.member?.displayName ?? message.author.username;
-			const speakerNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>.`;
-			const userContent = `${speakerNote}\n\n${quotedNote}${ownText}`;
-
-			const [conversation, wikis, toolFeatures, languageNote] = await Promise.all([
-				readAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT),
-				getEnabledWikis(botConfig.id).catch(() => []),
-				resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null),
-				aiLanguageInstruction(message.guild.id, 'chat').catch(() => '')
-			]);
-
-			const serverTools = buildServerTools(toolFeatures);
-			const accountTools = buildAccountTools(toolFeatures);
-
-			const today = new Date().toISOString().slice(0, 10);
-			const serverDataNote = serverTools.length || accountTools.length ? SERVER_DATA_NOTE : '';
-			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', languageNote, PING_NOTE, serverDataNote]
-				.filter(Boolean)
-				.join('\n\n');
-
-			const userMessage = attachmentParts.length
-				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
-				: { role: 'user', content: userContent };
-
-			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, userMessage];
-
-			const voiceReady = config.voice_enabled && !!config.voice_model;
-			const wikiTool = buildWikiTool(wikis);
-			const searchTool = buildSearchTool(config);
-			const fetchTool = buildFetchTool(config);
-			const imageTool = buildImageTool(config);
-
-			const tools = [
-				...(voiceReady ? VOICE_TOOLS : []),
-				...serverTools,
-				...accountTools,
-				...buildKnowledgeTools(),
-				...(wikiTool ? [wikiTool] : []),
-				...(searchTool ? [searchTool] : []),
-				...(fetchTool ? [fetchTool] : []),
-				...(imageTool ? [imageTool] : [])
-			];
-
-			const generatedImages: Awaited<ReturnType<typeof runImageTool>>[] = [];
-
-			const onToolCall = (name: string, args: Record<string, unknown>) => {
-				(message.channel as GuildTextBasedChannel).sendTyping().catch(() => {});
-				const toolContext = { botId: botConfig.id, guildId: message.guild!.id, callerDiscordId: message.author.id };
-				if (SERVER_TOOL_NAMES.has(name)) {
-					return runServerTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				}
-				if (ACCOUNT_TOOL_NAMES.has(name)) {
-					return runAccountTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				}
-				if (KNOWLEDGE_TOOL_NAMES.has(name)) {
-					return runKnowledgeTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				}
-				if (name === 'search_wiki') {
-					return runWikiTool(wikis, args, { sessionKey: `${botConfig.id}:${message.guild!.id}:${message.author.id}` }).then((result) => JSON.stringify(result));
-				}
-				if (name === 'search_web') {
-					return runSearchTool(config, args).then((result) => JSON.stringify(result));
-				}
-				if (name === 'fetch_web_page') {
-					return runFetchTool(config, args).then((result) => JSON.stringify(result));
-				}
-				if (name === 'generate_image') {
-					return runImageTool(config, args).then((result) => {
-						if (result.ok && generatedImages.length < MAX_GENERATED_IMAGES) {
-							generatedImages.push(result);
-						}
-						const { buffer, ...summary } = result;
-						return finalToolResult(summary.ok ? { ...summary, sent_to_channel: true } : summary);
-					});
-				}
-				return executeVoiceTool(name, message as Message<true>, botConfig.id);
-			};
-
-			const raw = await callChatCompletions(config, messages as ChatCompletionMessageParam[], {
-				tools: tools.length ? (tools as ChatCompletionTool[]) : null,
-				onToolCall: tools.length ? onToolCall : null
-			});
-			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
-
-			const imageFiles = generatedImages
-				.map((image, index) => (image.buffer ? new AttachmentBuilder(image.buffer, { name: `image-${index + 1}.png` }) : null))
-				.filter(Boolean) as AttachmentBuilder[];
-
-			if (!reply) {
-				if (imageFiles.length) {
-					await message.reply({ files: imageFiles, allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
-					return;
-				}
-				await message.reply({ content: await translateServer('ai.errors.noResponse', message.guild.id) }).catch(() => {});
-				return;
-			}
-
-			const storedContent = attachmentParts.length && prompt ? `${userContent} [${attachmentKinds.join(', ')} attached]` : userContent;
-			const persisted = appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent)
-				.then(() => appendAiMessage(botConfig.id, message.guild!.id, message.author.id, 'assistant', reply))
-				.catch(() => {});
-
-			const mention = `<@${message.author.id}>`;
-			const chunks = splitForDiscord(reply, DISCORD_MESSAGE_LIMIT - mention.length - 1);
-			const lastIndex = chunks.length - 1;
-
-			for (let i = 0; i < chunks.length; i++) {
-				const content = i === lastIndex ? `${chunks[i]} ${mention}` : chunks[i];
-				const named = await resolveMentionedMembers(message.guild, content);
-				const allowedMentions = { parse: [], users: [...new Set([...named, ...(i === lastIndex ? [message.author.id] : [])])] };
-
-				if (i === 0) {
-					await message.reply({
-						content,
-						...(imageFiles.length ? { files: imageFiles } : {}),
-						allowedMentions: { ...allowedMentions, repliedUser: false }
-					});
-				} else {
-					await (message.channel as GuildTextBasedChannel).send({ content, allowedMentions });
-				}
-			}
-
-			await persisted;
+			await answerMessage(message, trigger);
 		} finally {
 			inFlight.delete(key);
 		}
 	} catch (error) {
-		const status = error instanceof OpenAI.APIError ? error.status : null;
-		await logger.log(`❌ AI chat error${status ? ` (${status})` : ''}: ${(error as Error).message}`);
-
-		const noticeKey = status === 401 || status === 403 ? 'ai.errors.keyRejected' : status === 429 ? 'ai.errors.rateLimited' : 'ai.errors.failed';
-		const notice = await translateServer(noticeKey, message.guild?.id ?? '').catch(() => '');
-		if (notice) {
-			await message.reply({ content: notice }).catch(() => {});
-		}
+		await reportAiError(message, error);
 	}
 }
 

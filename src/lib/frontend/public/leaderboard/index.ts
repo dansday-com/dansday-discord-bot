@@ -6,6 +6,7 @@ export {
 	getCachedLeaderboard,
 	setCachedLeaderboard
 } from '../../../backend/public/leaderboard/cache.js';
+export { parseLeaderboardLimit, parseLeaderboardMetric, parseLeaderboardPeriod } from '../../../backend/public/leaderboard/metrics.js';
 export {
 	buildLeaderboardRowsFromMembersList,
 	type MembersListEntry,

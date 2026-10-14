@@ -9,11 +9,11 @@ import {
 	effectPalette,
 	effectVariant,
 	familySalt,
-	mulberry32,
 	normalizeEffect,
 	normalizeSeed,
 	rollEffect
 } from '../src/lib/effects.ts';
+import { mulberry32 } from '../src/lib/utils/random.ts';
 import { BLEND, PROGRAMS } from '../src/lib/frontend/fx/programs.ts';
 
 const HEX = /^#[0-9a-f]{6}$/i;

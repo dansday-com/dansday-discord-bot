@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { DateTime } from 'luxon';
 import { logger, isUtcSqlExpired } from '$lib/utils/index.js';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
+import { HTTP } from '$lib/http.js';
 
 async function canManageInvites(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) {
@@ -24,29 +25,29 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	const inviteId = Number(params.inviteId);
 
 	if (!locals.user.authenticated) {
-		return json({ success: false, error: 'Authentication required' }, { status: 401 });
+		return json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 	if (!(await canManageInvites(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 	if (!Number.isFinite(inviteId) || inviteId < 1) {
-		return json({ success: false, error: 'Invalid invite' }, { status: 400 });
+		return json({ success: false, error: 'Invalid invite' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const invite = await db.getServerAccountInviteByIdForServer(inviteId, serverId);
 	if (!invite) {
-		return json({ success: false, error: 'Invite not found' }, { status: 404 });
+		return json({ success: false, error: 'Invite not found' }, { status: HTTP.NOT_FOUND });
 	}
 	const denied = guardAccountAction(locals, invite.account_type);
 	if (denied) {
 		return denied;
 	}
 	if (invite.used_by != null || invite.used_at) {
-		return json({ success: false, error: 'This invite was already used' }, { status: 400 });
+		return json({ success: false, error: 'This invite was already used' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	if (invite.expires_at && isUtcSqlExpired(invite.expires_at)) {
-		return json({ success: false, error: 'This invite is already expired' }, { status: 400 });
+		return json({ success: false, error: 'This invite is already expired' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const expiredAt = DateTime.utc().minus({ seconds: 1 }).toJSDate();
@@ -54,9 +55,10 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 
 	logger.log(`${locals.user.username} expired server account invite ${inviteId} (server ${serverId})`);
 	await db
-		.createServerPanelLog(serverId, panelActorIds(locals), 'account_invite', [
-			{ key: 'invite link', before: `${invite.account_type}, open`, after: `${invite.account_type}, expired` }
-		])
+		.createServerPanelLog(serverId, panelActorIds(locals), {
+			action: 'account_invite',
+			changes: [{ key: 'invite link', before: `${invite.account_type}, open`, after: `${invite.account_type}, expired` }]
+		})
 		.catch(() => null);
 
 	return json({ success: true });

@@ -1,6 +1,7 @@
 import { createClient } from 'redis';
 import { randomBytes } from 'crypto';
 import type { RedisClientType } from 'redis';
+import { SECOND_MS, DAY_SECONDS } from './time.js';
 
 export type SessionData = {
 	authenticated: boolean;
@@ -12,7 +13,9 @@ export type SessionData = {
 	expires_at?: number;
 };
 
-const SESSION_TTL = 60 * 60 * 24;
+const SESSION_TTL = DAY_SECONDS;
+const SESSION_MIN_TTL_SECONDS = 5;
+const SESSION_ID_BYTES = 32;
 const COOKIE_NAME = 'sid';
 
 export const DEMO_EXPIRE_REDIS_PREFIX = 'dansday:demo-expire:';
@@ -66,8 +69,8 @@ export async function setSession(sessionId: string, data: SessionData, ttlSecond
 	if (!redis) {
 		return;
 	}
-	const ttl = Math.max(5, Math.floor(ttlSeconds));
-	const expires_at = Date.now() + ttl * 1000;
+	const ttl = Math.max(SESSION_MIN_TTL_SECONDS, Math.floor(ttlSeconds));
+	const expires_at = Date.now() + ttl * SECOND_MS;
 	await redis.setEx(sessionKey(sessionId), ttl, JSON.stringify({ ...data, expires_at }));
 	if (data.is_demo === true && data.demo_panel_slug) {
 		await redis.setEx(demoExpireRedisKey(data.demo_panel_slug), ttl, '1');
@@ -115,7 +118,7 @@ export async function deleteSessionsWithDemoPanelSlug(panelSlug: string): Promis
 }
 
 export function newSessionId(): string {
-	return randomBytes(32).toString('hex');
+	return randomBytes(SESSION_ID_BYTES).toString('hex');
 }
 
 export function getSessionIdFromCookie(cookieHeader: string | null): string | null {

@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
-	import { showToast } from '$lib/frontend/toast.svelte';
+	import { deleteMessage } from './messageActions';
 
 	type Row = {
 		id: number;
@@ -35,25 +35,17 @@
 	} = $props();
 
 	let confirm = $state<Row | null>(null);
-	let deleting = $state(false);
+	let isDeleting = $state(false);
 
 	async function remove(message: Row) {
-		deleting = true;
+		isDeleting = true;
 		try {
-			const res = await fetch(`${apiBase}/${message.id}`, { method: 'DELETE' });
-			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Could not delete the message', 'error', 8000);
+			if (!(await deleteMessage(`${apiBase}/${message.id}`))) {
 				return;
 			}
-			showToast(
-				out.stripped ? 'Message deleted.' : 'Message deleted. A bot is offline, so some posted copies keep their buttons until it is back.',
-				out.stripped ? 'success' : 'info',
-				7000
-			);
 			await invalidateAll();
 		} finally {
-			deleting = false;
+			isDeleting = false;
 			confirm = null;
 		}
 	}
@@ -135,7 +127,7 @@
 		: ''}
 	confirmLabel="Delete"
 	dangerous
-	loading={deleting}
+	loading={isDeleting}
 	onconfirm={() => confirm && remove(confirm)}
 	oncancel={() => (confirm = null)}
 />

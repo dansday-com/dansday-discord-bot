@@ -6,8 +6,8 @@ import type { SQL } from 'drizzle-orm';
 import type { ResultSetHeader } from 'mysql2';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './backend/panelServer.js';
-import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES, APP_DOMAIN } from './backend/panelServer.js';
+import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, attemptSync } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS } from './backend/config.js';
 import { DEFAULT_SERVER_LANGUAGE } from './languages.js';
@@ -15,12 +15,41 @@ import { defaultGreetingMessages, defaultMainEmbedFooter } from './localizedDefa
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import { DEFAULT_REWARD_SETTINGS, sortRewards, type Reward, type RewardDraft, type RewardEarning, type RewardGoal, type RewardKind } from './rewards.js';
-import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
+import { minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import { COLOR_GAME } from './color.js';
 import { normalizeMessageDoc, type MessageDoc, type MessageScope } from './messages.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
+import { DAY_MS, MINUTE_MS, SECOND_MS, DAY_MINUTES, DAYS_PER_WEEK, SECONDS_PER_MINUTE } from './utils/time.js';
+import { roundTo } from './utils/numbers.js';
+
+export const DEFAULT_BOT_PORT = 7777;
+const SLUG_SUFFIX_LIMIT = 10_000;
+const PUBLIC_LIST_DEFAULT_LIMIT = 300;
+const PUBLIC_LIST_MAX_LIMIT = 500;
+const XP_EVENTS_DEFAULT_LIMIT = 40;
+const XP_EVENTS_MAX_LIMIT = 100;
+const MEMBER_SEARCH_DEFAULT_LIMIT = 15;
+const MEMBER_SEARCH_MAX_LIMIT = 50;
+const GIFT_SEARCH_DEFAULT_LIMIT = 50;
+const GIFT_SEARCH_MAX_LIMIT = 100;
+const STALE_STREAKS_DEFAULT_LIMIT = 500;
+const LEVEL_FRIENDS_DEFAULT_LIMIT = 5;
+const LEVEL_GAIN_SOURCE_MAX_LENGTH = 24;
+const POPULAR_ROBLOX_ITEMS_DEFAULT_LIMIT = 6;
+const INSIGHT_PEERS_DEFAULT_LIMIT = 3;
+const SERVER_LEADERBOARD_MAX_LIMIT = 50;
+const MONTH_RANGE_DAYS = 30;
+const URL_COLUMN_MAX_LENGTH = 512;
+const GIVEAWAY_SHUFFLE_ROUNDS = 10;
+const STREAM_LOG_PAYLOAD_MAX_LENGTH = 60000;
+const STREAM_LOG_PREVIEW_LENGTH = 8000;
+const STREAM_LOG_EVENT_TYPE_MAX_LENGTH = 64;
+const FEEDBACK_DEFAULT_LIMIT = 100;
+const FEEDBACK_MAX_LIMIT = 500;
+const PANEL_LOG_ACTION_MAX_LENGTH = 24;
+const PRIOR_MEMBER_MARGIN_MINUTES = 5;
 
 type SelectResult<T> = [T[], unknown];
 type ScalarRow<K extends string> = Partial<Record<K, string | number | null>>;
@@ -201,16 +230,16 @@ async function runMigrations() {
 
 async function markAllMigrationsAsDone() {
 	const migrationsDir = join(process.cwd(), 'src/lib/migrations');
-	let files: string[];
-	try {
-		files = readdirSync(migrationsDir)
+	const listed = attemptSync(() =>
+		readdirSync(migrationsDir)
 			.filter((f) => f.endsWith('.sql'))
-			.sort();
-	} catch (_) {
+			.sort()
+	);
+	if (!listed.ok) {
 		return;
 	}
 
-	for (const file of files) {
+	for (const file of listed.value) {
 		await db.execute(sql`INSERT IGNORE INTO migrations (name, ran_at) VALUES (${file}, UTC_TIMESTAMP())`);
 	}
 }
@@ -233,15 +262,15 @@ async function setupDatabase() {
 	return true;
 }
 
-let dbInitialized = false;
+let isDbInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
 export function skipDatabaseSetup() {
-	dbInitialized = true;
+	isDbInitialized = true;
 }
 
 export async function initializeDatabase() {
-	if (dbInitialized || process.env.BOT_KIND) {
+	if (isDbInitialized || process.env.BOT_KIND) {
 		return;
 	}
 	if (initializationPromise) {
@@ -251,7 +280,7 @@ export async function initializeDatabase() {
 	initializationPromise = (async () => {
 		try {
 			await setupDatabase();
-			dbInitialized = true;
+			isDbInitialized = true;
 		} catch (error) {
 			logger.log(`⚠️  Database initialization: ${(error as Error).message}`);
 		} finally {
@@ -274,7 +303,7 @@ async function retryOnConnectionError<T>(fn: () => Promise<T>, maxRetries = 3, d
 				(error as DriverError).code === 'ETIMEDOUT' ||
 				(error as DriverError).code === 'PROTOCOL_CONNECTION_LOST';
 			if (isConnectionError && attempt < maxRetries) {
-				console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / 1000}s...`);
+				console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / SECOND_MS}s...`);
 				await new Promise((resolve) => setTimeout(resolve, delayMs));
 				continue;
 			}
@@ -349,7 +378,7 @@ export async function createBot(botData: BotInput) {
 		token: botData.token,
 		application_id: botData.application_id || null,
 		bot_icon: botData.bot_icon || null,
-		port: botData.port !== undefined ? botData.port : 7777,
+		port: botData.port !== undefined ? botData.port : DEFAULT_BOT_PORT,
 		secret_key: botData.secret_key || null,
 		panel_id: botData.panel_id,
 		created_at: now,
@@ -390,9 +419,6 @@ export type BotStatusInput = {
 	activity_url: string | null;
 	activity_state: string | null;
 };
-
-import { APP_DOMAIN } from './backend/panelServer.js';
-import type { Guild } from 'discord.js';
 
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',
@@ -900,8 +926,8 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		.from(schema.servers)
 		.where(sql`${schema.servers.deleted_at} IS NOT NULL AND ${schema.servers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`);
 
-	const serversSkipped = staleServers.length > PURGE_MAX_SERVERS_PER_RUN;
-	if (serversSkipped) {
+	const areServersSkipped = staleServers.length > PURGE_MAX_SERVERS_PER_RUN;
+	if (areServersSkipped) {
 		logger.log(
 			`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping the server purge for manual review. Member purge still runs. Raise the cap or clear deleted_at to proceed.`
 		);
@@ -927,7 +953,7 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		await db.delete(schema.serverMembers).where(eq(schema.serverMembers.id, Number(row.id)));
 	}
 
-	return { servers: serversSkipped ? 0 : staleServers.length, members: membersBatch.length, skipped: serversSkipped };
+	return { servers: areServersSkipped ? 0 : staleServers.length, members: membersBatch.length, skipped: areServersSkipped };
 }
 
 export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
@@ -1315,7 +1341,7 @@ export async function upsertOfficialServer(officialBotId: number, guild: GuildLi
 	return server;
 }
 
-export async function upsertSelfbotServer(selfbotId: number, guild: Guild) {
+export async function upsertSelfbotServer(selfbotId: number, guild: GuildLike) {
 	await initializeDatabase();
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
@@ -1352,7 +1378,9 @@ function chunkRows<T>(rows: T[], size = SYNC_UPSERT_CHUNK): T[][] {
 	return out;
 }
 
-async function batchUpsert<T>(label: string, rows: T[], runBatch: (batch: T[]) => Promise<unknown>, runSingle: (row: T) => Promise<unknown>) {
+type UpsertRunners<T> = { runBatch: (batch: T[]) => Promise<unknown>; runSingle: (row: T) => Promise<unknown> };
+
+async function batchUpsert<T>(label: string, rows: T[], { runBatch, runSingle }: UpsertRunners<T>) {
 	for (const batch of chunkRows(rows)) {
 		try {
 			await runBatch(batch);
@@ -1380,10 +1408,8 @@ export async function syncSelfbotCategories(selfbotServerId: number, categories:
 			updated_at: now
 		}));
 
-		await batchUpsert(
-			'selfbot category upsert',
-			rows,
-			(batch) =>
+		await batchUpsert('selfbot category upsert', rows, {
+			runBatch: (batch) =>
 				db
 					.insert(schema.selfbotServerCategories)
 					.values(batch)
@@ -1394,12 +1420,12 @@ export async function syncSelfbotCategories(selfbotServerId: number, categories:
 							updated_at: now
 						}
 					}),
-			(row) =>
+			runSingle: (row) =>
 				db
 					.insert(schema.selfbotServerCategories)
 					.values(row)
 					.onDuplicateKeyUpdate({ set: { name: row.name, position: row.position, updated_at: now } })
-		);
+		});
 	}
 
 	const discordIds = new Set((categories ?? []).map((c) => String(c.id)));
@@ -1435,10 +1461,8 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: Cha
 			updated_at: now
 		}));
 
-		await batchUpsert(
-			'selfbot channel upsert',
-			rows,
-			(batch) =>
+		await batchUpsert('selfbot channel upsert', rows, {
+			runBatch: (batch) =>
 				db
 					.insert(schema.selfbotServerChannels)
 					.values(batch)
@@ -1451,7 +1475,7 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: Cha
 							updated_at: now
 						}
 					}),
-			(row) =>
+			runSingle: (row) =>
 				db
 					.insert(schema.selfbotServerChannels)
 					.values(row)
@@ -1464,7 +1488,7 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: Cha
 							updated_at: now
 						}
 					})
-		);
+		});
 	}
 
 	const discordIds = new Set(valid.map((ch) => String(ch.id)));
@@ -1532,7 +1556,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 	if (!existing.has(base)) {
 		return base;
 	}
-	for (let i = 2; i < 10_000; i++) {
+	for (let i = 2; i < SLUG_SUFFIX_LIMIT; i++) {
 		const candidate = `${base}-${i}`;
 		if (!existing.has(candidate)) {
 			return candidate;
@@ -1634,7 +1658,7 @@ export async function listPublicPanelIds(): Promise<number[]> {
 	return rows.map((r) => Number(r.panel_id)).filter((n) => Number.isFinite(n));
 }
 
-export async function listPublicItems(limit = 300) {
+export async function listPublicItems(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const panelIds = await listPublicPanelIds();
 	if (!panelIds.length) {
@@ -1645,10 +1669,10 @@ export async function listPublicItems(limit = 300) {
 		.from(schema.items)
 		.where(inArray(schema.items.panel_id, panelIds))
 		.orderBy(asc(schema.items.sort_order), asc(schema.items.id))
-		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+		.limit(Math.max(1, Math.min(PUBLIC_LIST_MAX_LIMIT, Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT)));
 }
 
-export async function listPublicWikis(limit = 300) {
+export async function listPublicWikis(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const panelIds = await listPublicPanelIds();
 	if (!panelIds.length) {
@@ -1666,10 +1690,10 @@ export async function listPublicWikis(limit = 300) {
 		.from(schema.wikis)
 		.where(inArray(schema.wikis.panel_id, panelIds))
 		.orderBy(desc(schema.wikis.enabled), asc(schema.wikis.name))
-		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+		.limit(Math.max(1, Math.min(PUBLIC_LIST_MAX_LIMIT, Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT)));
 }
 
-export async function listPublicForwarderSources(limit = 300) {
+export async function listPublicForwarderSources(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const panelIds = await listPublicPanelIds();
 	if (!panelIds.length) {
@@ -1702,7 +1726,7 @@ export async function listPublicForwarderSources(limit = 300) {
 
 	return [...byDiscordId.values()]
 		.sort((a, b) => Number(b.total_members ?? 0) - Number(a.total_members ?? 0))
-		.slice(0, Math.max(1, Math.min(500, Number(limit) || 300)));
+		.slice(0, Math.max(1, Math.min(PUBLIC_LIST_MAX_LIMIT, Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT)));
 }
 
 export async function getMaxPublicXpEventId(): Promise<number> {
@@ -1712,13 +1736,13 @@ export async function getMaxPublicXpEventId(): Promise<number> {
 	return Number(row?.max_id) || 0;
 }
 
-export async function listPublicXpEventsAfter(afterId: unknown, limit = 40) {
+export async function listPublicXpEventsAfter(afterId: unknown, limit = XP_EVENTS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const safeAfter = Number(afterId) || 0;
 	if (safeAfter <= 0) {
 		return [] as { id: number; xp: number }[];
 	}
-	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+	const safeLimit = Math.max(1, Math.min(XP_EVENTS_MAX_LIMIT, Number(limit) || XP_EVENTS_DEFAULT_LIMIT));
 
 	const rows = await db.execute(sql`
 		SELECT sll.id, sll.xp
@@ -2077,10 +2101,10 @@ export async function getServerMemberById(memberId: number | string | null) {
 	);
 }
 
-export async function searchServerMembers(serverId: number | string, queryText: string | null, limit = 15) {
+export async function searchServerMembers(serverId: number | string, queryText: string | null, limit = MEMBER_SEARCH_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const q = (queryText || '').trim();
-	const safeLimit = Math.max(1, Math.min(50, Number(limit) || 15));
+	const safeLimit = Math.max(1, Math.min(MEMBER_SEARCH_MAX_LIMIT, Number(limit) || MEMBER_SEARCH_DEFAULT_LIMIT));
 	const likeValue = `%${q.replace(/[%_]/g, '\\$&')}%`;
 
 	if (!q) {
@@ -2126,21 +2150,21 @@ export async function searchServerMembers(serverId: number | string, queryText: 
 		.limit(safeLimit);
 }
 
-export async function searchPanelMembersForGift(panelId: number | string, queryText: string | null, limit = 50) {
+export async function searchPanelMembersForGift(panelId: number | string, queryText: string | null, limit = GIFT_SEARCH_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	if (panelId == null) {
 		return [];
 	}
 	const q = (queryText || '').trim();
-	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+	const safeLimit = Math.max(1, Math.min(GIFT_SEARCH_MAX_LIMIT, Number(limit) || GIFT_SEARCH_DEFAULT_LIMIT));
 	const escaped = q.replace(/[%_\\]/g, '\\$&');
 	const contains = `%${escaped}%`;
 	const prefix = `${escaped}%`;
-	const numericId = /^\d{5,}$/.test(q);
+	const isNumericId = /^\d{5,}$/.test(q);
 
 	const searchClause = !q
 		? sql``
-		: numericId
+		: isNumericId
 			? sql`AND m.discord_member_id LIKE ${prefix}`
 			: sql`AND (
 					m.server_display_name LIKE ${contains}
@@ -2235,15 +2259,15 @@ export async function memberServerHasItemsEnabled(memberId: unknown, panelId: un
 async function refreshMemberIsContentCreator(memberId: number, serverId: number, discordRoleIds: string[]) {
 	await initializeDatabase();
 	const ccRoleDbIds = await getContentCreatorRoleDbIds(serverId);
-	let has = false;
+	let hasRole = false;
 	if (ccRoleDbIds.size > 0 && discordRoleIds.length > 0) {
 		const rows = await db
 			.select({ id: schema.serverRoles.id })
 			.from(schema.serverRoles)
 			.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
-		has = rows.some((r) => ccRoleDbIds.has(r.id));
+		hasRole = rows.some((r) => ccRoleDbIds.has(r.id));
 	}
-	if (has) {
+	if (hasRole) {
 		const now = toMySQLDateTime();
 		await db.execute(sql`
 			INSERT INTO server_member_content_creators (member_id, created_at) VALUES (${memberId}, ${now})
@@ -2412,10 +2436,10 @@ export async function syncMembers(serverId: number | string, members: MemberLike
 	const active = dbMembers.filter((m) => !m.deleted_at);
 	const toMark = active.filter((m) => !discordIds.has(m.discord_member_id)).map((m) => m.id);
 
-	const marksEveryone = active.length > 0 && toMark.length === active.length;
-	const marksTooMany = active.length >= SYNC_MARK_GUARD_MIN_ACTIVE && toMark.length > active.length * SYNC_MARK_MAX_RATIO;
+	const doesMarkEveryone = active.length > 0 && toMark.length === active.length;
+	const hasTooManyMarks = active.length >= SYNC_MARK_GUARD_MIN_ACTIVE && toMark.length > active.length * SYNC_MARK_MAX_RATIO;
 
-	if (marksEveryone || marksTooMany) {
+	if (doesMarkEveryone || hasTooManyMarks) {
 		logger.log(
 			`⚠️  syncMembers for server ${serverId} would mark ${toMark.length} of ${active.length} member(s) deleted; refusing as a safety guard (Discord list had ${discordIds.size})`
 		);
@@ -2560,7 +2584,9 @@ export function triggerStreakWatch(memberId: number | string) {
 	});
 }
 
-export async function applyStreakDay(memberId: number | string, dayKey: number, freezeMax: number, earnEvery: number) {
+type StreakDay = { dayKey: number; freezeMax: number; earnEvery: number };
+
+export async function applyStreakDay(memberId: number | string, { dayKey, freezeMax, earnEvery }: StreakDay) {
 	await initializeDatabase();
 	const existing = await ensureMemberStreak(memberId);
 	const last = existing?.last_claim_day_key == null ? null : Number(existing.last_claim_day_key);
@@ -2574,7 +2600,7 @@ export async function applyStreakDay(memberId: number | string, dayKey: number, 
 	let freezes = Number(existing?.freezes_available) || 0;
 	let freezeUsed = 0;
 	let daysMissed = 0;
-	let reset = false;
+	let wasReset = false;
 
 	if (gap == null || gap <= 1 || previousStreak === 0) {
 		streak += 1;
@@ -2587,7 +2613,7 @@ export async function applyStreakDay(memberId: number | string, dayKey: number, 
 			freezes -= missed;
 			streak += 1;
 		} else {
-			reset = true;
+			wasReset = true;
 			streak = 1;
 		}
 	}
@@ -2621,7 +2647,7 @@ export async function applyStreakDay(memberId: number | string, dayKey: number, 
 		freezesLeft: freezesAfterSpend,
 		freezeEarned,
 		daysMissed,
-		reset,
+		reset: wasReset,
 		row: await getMemberStreak(memberId)
 	};
 }
@@ -2650,7 +2676,9 @@ export async function getMemberTasks(memberId: number | string, dayKey: number, 
 		.orderBy(schema.serverMemberTasks.slot);
 }
 
-export async function persistMemberTasks(memberId: number | string, dayKey: number, rows: Record<string, unknown>[], period = 'daily') {
+type TaskBatch = { dayKey: number; rows: Record<string, unknown>[]; period?: string };
+
+export async function persistMemberTasks(memberId: number | string, { dayKey, rows, period = 'daily' }: TaskBatch) {
 	await initializeDatabase();
 	if (!rows || rows.length === 0) {
 		return getMemberTasks(memberId, dayKey, period);
@@ -2679,7 +2707,9 @@ export async function persistMemberTasks(memberId: number | string, dayKey: numb
 	return getMemberTasks(memberId, dayKey, period);
 }
 
-export async function claimMemberTask(memberId: number | string, dayKey: number, slot: number, period = 'daily') {
+type TaskSlot = { dayKey: number; slot: number; period?: string };
+
+export async function claimMemberTask(memberId: number | string, { dayKey, slot, period = 'daily' }: TaskSlot) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = (await db.execute(
@@ -2733,308 +2763,312 @@ export async function applyMemberClaim(memberId: number | string, dayKey: number
 	return { changed: true, row: await getMemberClaim(memberId) };
 }
 
-export async function countMemberEventsSince(memberId: number | string, metric: string, sinceMs: number, targetItemId: unknown = null) {
+type EventWindow = { metric: string; sinceMs: number; targetItemId?: unknown };
+type EventQuery = { id: number; since: Date; metric: string; targetId: number };
+type EventCounter = (query: EventQuery) => Promise<number> | null;
+type LevelEventMetric = {
+	agg: 'sum' | 'count' | 'peakFriends';
+	sources?: string[];
+	friends?: 'with' | 'without';
+	boost?: 'without';
+	leech?: 'without';
+	earnedOnly?: boolean;
+};
+type ComboEventMetric = { actions?: string[]; anyUse?: boolean; disguised?: boolean; lucky?: boolean; success?: boolean };
+
+const NOT_WAGER_FREE = sql` AND game NOT IN ${WAGER_FREE_GAMES}`;
+const ITEM_USE_ACTIONS = sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
+const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
+
+const GAMBLE_EVENT_FILTERS: Record<string, SQL> = {
+	gamble_played: sql``,
+	gamble_won: sql` AND outcome = 'win'`,
+	gamble_highroll: sql` AND multiplier >= 5`,
+	gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
+	gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
+	gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
+	gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`,
+	gamble_lost: sql` AND outcome = 'lose'`,
+	gamble_lost_big: sql` AND outcome = 'lose' AND multiplier >= 5`
+};
+
+const TOWER_EVENT_FILTERS: Record<string, SQL> = {
+	tower_climbed: sql``,
+	tower_cashed: sql` AND outcome = 'win'`,
+	tower_high: sql` AND outcome = 'win' AND multiplier >= ${TOWER_HIGH_FLOOR}`,
+	tower_trapped: sql` AND outcome = 'lose'`,
+	tower_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`
+};
+
+const SIMPLE_EVENT_QUERIES: Record<string, (query: EventQuery) => SQL> = {
+	invites_joined: ({ id, since }) =>
+		sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`,
+	gamble_wagered: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${NOT_WAGER_FREE}`,
+	gamble_wagered_lost: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${NOT_WAGER_FREE} AND outcome = 'lose'`,
+	xp_stolen: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`,
+	xp_gained: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`,
+	xp_spent: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`,
+	asset_bought: ({ id, since }) =>
+		sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`,
+	asset_sold: ({ id, since }) => sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`,
+	asset_profit: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
+};
+
+const XP_SOURCE_FILTERS: Record<string, SQL> = {
+	xp_from_voice: sql` AND source IN ('voice', 'voice_afk')`,
+	xp_from_voice_active: sql` AND source = 'voice'`,
+	xp_from_voice_afk: sql` AND source = 'voice_afk'`,
+	xp_from_chat: sql` AND source = 'chat'`,
+	xp_from_media: sql` AND source IN ('video', 'stream')`
+};
+
+const LEVEL_EVENT_METRICS: Record<string, LevelEventMetric> = {
+	xp_with_friends: { agg: 'sum', friends: 'with' },
+	friend_ticks: { agg: 'count', friends: 'with' },
+	friends_peak: { agg: 'peakFriends' },
+	friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
+	xp_solo: { agg: 'sum', boost: 'without', friends: 'without', earnedOnly: true },
+	xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
+	xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
+	xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
+	xp_unleeched: { agg: 'sum', leech: 'without', earnedOnly: true }
+};
+
+const SPECIFIC_ITEM_SCOPES: Record<string, SQL> = {
+	item_specific_used: ITEM_USE_ACTIONS,
+	item_specific_bought: sql`action = 'buy'`,
+	discard_specific: sql`action = 'discard'`,
+	item_specific_success: sql`${ITEM_USE_ACTIONS} AND outcome = 'success'`
+};
+
+const COMBO_EVENT_METRICS: Record<string, ComboEventMetric> = {
+	bomb_masked: { actions: ['bomb'], disguised: true },
+	steal_masked: { actions: ['steal'], disguised: true, success: true },
+	attack_masked: { actions: ['steal', 'bomb', 'leech'], disguised: true },
+	buy_lucky: { actions: ['buy'], lucky: true },
+	use_lucky: { anyUse: true, lucky: true },
+	attack_lucky: { actions: ['steal', 'bomb', 'leech'], lucky: true, success: true },
+	bounty_claimed: { actions: ['bounty_collected'] }
+};
+
+const VICTIM_EVENT_METRICS: Record<string, { agg: 'count' | 'sum'; where: SQL }> = {
+	attacked_by_any: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome = 'success'` },
+	stolen_from: { agg: 'count', where: sql`action = 'steal' AND outcome = 'success'` },
+	bombed_by: { agg: 'count', where: sql`action = 'bomb' AND outcome = 'success'` },
+	leeched_by: { agg: 'count', where: sql`action = 'leech' AND outcome = 'success'` },
+	attacks_survived: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome IN ('blocked', 'immune', 'reflected')` },
+	xp_lost_to_attacks: { agg: 'sum', where: sql`action IN ('steal', 'bomb') AND outcome = 'success'` },
+	xp_refunded: { agg: 'sum', where: sql`action = 'insurance' AND outcome = 'refunded'` }
+};
+
+const ITEM_ACTION_FILTERS: Record<string, SQL> = {
+	attack_any: sql`action IN ${ATTACK_ACTIONS}`,
+	attack_success: sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`,
+	attack_failed: sql`action IN ${ATTACK_ACTIONS} AND outcome IS NOT NULL AND outcome <> 'success'`,
+	attack_reflected: sql`action IN ${ATTACK_ACTIONS} AND outcome = 'reflected'`,
+	attack_blocked: sql`action IN ${ATTACK_ACTIONS} AND outcome IN ('blocked', 'immune')`,
+	spy_caught: sql`action = 'spy' AND outcome = 'caught'`,
+	steal_failed: sql`action = 'steal' AND outcome IS NOT NULL AND outcome <> 'success'`,
+	bomb_failed: sql`action = 'bomb' AND outcome IS NOT NULL AND outcome <> 'success'`,
+	leech_landed: sql`action = 'leech' AND outcome = 'success'`,
+	leech_occupied: sql`action = 'leech' AND outcome = 'occupied'`,
+	leech_failed: sql`action = 'leech' AND outcome IS NOT NULL AND outcome <> 'success'`,
+	bounty_paid_out: sql`action = 'bounty_collected'`,
+	attack_on_cooldown: sql`action IN ${ATTACK_ACTIONS} AND outcome = 'cooldown'`
+};
+
+const TRAILING_ITEM_ACTION_FILTERS: Record<string, SQL> = {
+	item_used: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected')`,
+	item_bought: sql`action = 'buy'`,
+	discard_any: sql`action = 'discard'`
+};
+
+async function countScalar(query: SQL): Promise<number> {
+	const rows = (await db.execute(query)) as unknown as ScalarRows<'c'>;
+	return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+}
+
+function sqlList(values: string[]) {
+	return sql.join(
+		values.map((value) => sql`${value}`),
+		sql`, `
+	);
+}
+
+const countGambleEvents: EventCounter = ({ id, since, metric }) =>
+	GAMBLE_EVENT_FILTERS[metric] === undefined
+		? null
+		: countScalar(
+				sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${NOT_WAGER_FREE}${GAMBLE_EVENT_FILTERS[metric]}`
+			);
+
+const countTowerEvents: EventCounter = ({ id, since, metric }) =>
+	TOWER_EVENT_FILTERS[metric] === undefined
+		? null
+		: countScalar(
+				sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since} AND game = ${TOWER_GAME}${TOWER_EVENT_FILTERS[metric]}`
+			);
+
+const countSimpleEvents: EventCounter = (query) => {
+	const build = SIMPLE_EVENT_QUERIES[query.metric];
+	return build ? countScalar(build(query)) : null;
+};
+
+function levelMetricWhere(lm: LevelEventMetric): SQL {
+	const parts: SQL[] = [];
+	if (lm.sources) {
+		parts.push(sql`source IN (${sqlList(lm.sources)})`);
+	}
+	if (lm.friends === 'with') {
+		parts.push(sql`friend_percent IS NOT NULL AND friend_percent > 0`);
+	}
+	if (lm.friends === 'without') {
+		parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
+	}
+	if (lm.boost === 'without') {
+		parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
+	}
+	if (lm.leech === 'without') {
+		parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
+	}
+	if (lm.earnedOnly) {
+		parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share', 'reward')`);
+	}
+	return parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
+}
+
+const countLevelEvents: EventCounter = ({ id, since, metric }) => {
+	const lm = LEVEL_EVENT_METRICS[metric];
+	if (!lm) {
+		return null;
+	}
+	const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
+	return countScalar(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${levelMetricWhere(lm)}`);
+};
+
+const countXpSourceEvents: EventCounter = ({ id, since, metric }) =>
+	XP_SOURCE_FILTERS[metric] === undefined
+		? null
+		: countScalar(
+				sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[metric]}`
+			);
+
+const countSpecificItemEvents: EventCounter = ({ id, since, metric, targetId }) => {
+	const scope = SPECIFIC_ITEM_SCOPES[metric];
+	if (!scope) {
+		return null;
+	}
+	if (targetId <= 0) {
+		return Promise.resolve(0);
+	}
+	return countScalar(
+		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
+	);
+};
+
+function comboWhere(combo: ComboEventMetric): SQL {
+	const parts: SQL[] = [];
+	if (combo.actions) {
+		parts.push(sql`action IN (${sqlList(combo.actions)})`);
+	}
+	if (combo.anyUse) {
+		parts.push(ITEM_USE_ACTIONS);
+	}
+	if (combo.disguised) {
+		parts.push(sql`actor_disguised = 1`);
+	}
+	if (combo.lucky) {
+		parts.push(sql`luck_percent IS NOT NULL AND luck_percent > 0`);
+	}
+	if (combo.success) {
+		parts.push(sql`outcome = 'success'`);
+	}
+	return sql.join(parts, sql` AND `);
+}
+
+const countComboEvents: EventCounter = ({ id, since, metric }) => {
+	const combo = COMBO_EVENT_METRICS[metric];
+	return combo
+		? countScalar(sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${comboWhere(combo)}`)
+		: null;
+};
+
+const countDurationEvents: EventCounter = ({ id, since, metric }) => {
+	const durationMatch = /^duration_([a-z]+)$/.exec(metric);
+	if (!durationMatch) {
+		return null;
+	}
+	return countScalar(
+		sql`SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, GREATEST(a.created_at, ${since}), LEAST(a.expires_at, NOW()))), 0) AS c
+			FROM server_member_item_actives a
+			INNER JOIN server_member_items mi ON mi.id = a.member_item_id
+			INNER JOIN items i ON i.id = mi.item_id
+			WHERE mi.member_id = ${id}
+				AND i.effect_type = ${durationMatch[1]}
+				AND a.expires_at > ${since}
+				AND a.created_at <= NOW()`
+	).then((seconds) => Math.floor(Math.max(0, seconds) / SECONDS_PER_MINUTE));
+};
+
+const countVictimEvents: EventCounter = ({ id, since, metric }) => {
+	const victim = VICTIM_EVENT_METRICS[metric];
+	if (!victim) {
+		return null;
+	}
+	const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : sql`COUNT(*)`;
+	const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
+	return countScalar(sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`);
+};
+
+function itemActionFilter(metric: string): SQL | null {
+	if (ITEM_ACTION_FILTERS[metric]) {
+		return ITEM_ACTION_FILTERS[metric];
+	}
+	const effectMatch = /^use_([a-z]+)$/.exec(metric);
+	if (effectMatch) {
+		return sql`action = ${effectMatch[1]}`;
+	}
+	const successMatch = /^([a-z]+)_success$/.exec(metric);
+	if (successMatch) {
+		return sql`action = ${successMatch[1]} AND outcome = 'success'`;
+	}
+	return TRAILING_ITEM_ACTION_FILTERS[metric] ?? null;
+}
+
+const EVENT_COUNTERS: EventCounter[] = [
+	countGambleEvents,
+	countTowerEvents,
+	countSimpleEvents,
+	countLevelEvents,
+	countXpSourceEvents,
+	countSpecificItemEvents,
+	countComboEvents,
+	countDurationEvents,
+	countVictimEvents
+];
+
+export async function countMemberEventsSince(memberId: number | string, { metric, sinceMs, targetItemId = null }: EventWindow) {
 	await initializeDatabase();
-	const since = toMySQLDateTime(new Date(sinceMs));
-	const id = Number(memberId);
+	const query: EventQuery = { id: Number(memberId), since: toMySQLDateTime(new Date(sinceMs)), metric: String(metric), targetId: Number(targetItemId) || 0 };
 
-	const notTower = sql` AND game NOT IN ${WAGER_FREE_GAMES}`;
-
-	const GAMBLE_FILTERS: Record<string, unknown> = {
-		gamble_played: sql``,
-		gamble_won: sql` AND outcome = 'win'`,
-		gamble_highroll: sql` AND multiplier >= 5`,
-		gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
-		gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
-		gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
-		gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`,
-		gamble_lost: sql` AND outcome = 'lose'`,
-		gamble_lost_big: sql` AND outcome = 'lose' AND multiplier >= 5`
-	};
-
-	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
-		const rows = (await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${GAMBLE_FILTERS[String(metric)]}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const TOWER_FILTERS: Record<string, unknown> = {
-		tower_climbed: sql``,
-		tower_cashed: sql` AND outcome = 'win'`,
-		tower_high: sql` AND outcome = 'win' AND multiplier >= ${TOWER_HIGH_FLOOR}`,
-		tower_trapped: sql` AND outcome = 'lose'`,
-		tower_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`
-	};
-
-	if (TOWER_FILTERS[String(metric)] !== undefined) {
-		const rows = (await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since} AND game = ${TOWER_GAME}${TOWER_FILTERS[String(metric)]}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'invites_joined') {
-		const rows = (await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'gamble_wagered' || metric === 'gamble_wagered_lost') {
-		const lostOnly = metric === 'gamble_wagered_lost' ? sql` AND outcome = 'lose'` : sql``;
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${lostOnly}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const XP_SOURCE_FILTERS: Record<string, unknown> = {
-		xp_from_voice: sql` AND source IN ('voice', 'voice_afk')`,
-		xp_from_voice_active: sql` AND source = 'voice'`,
-		xp_from_voice_afk: sql` AND source = 'voice_afk'`,
-		xp_from_chat: sql` AND source = 'chat'`,
-		xp_from_media: sql` AND source IN ('video', 'stream')`
-	};
-
-	const LEVEL_METRICS: Record<
-		string,
-		{ agg: 'sum' | 'count' | 'peakFriends'; sources?: string[]; friends?: 'with' | 'without'; boost?: 'without'; leech?: 'without'; earnedOnly?: boolean }
-	> = {
-		xp_with_friends: { agg: 'sum', friends: 'with' },
-		friend_ticks: { agg: 'count', friends: 'with' },
-		friends_peak: { agg: 'peakFriends' },
-		friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
-		xp_solo: { agg: 'sum', boost: 'without', friends: 'without', earnedOnly: true },
-		xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
-		xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
-		xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
-		xp_unleeched: { agg: 'sum', leech: 'without', earnedOnly: true }
-	};
-
-	const lm = LEVEL_METRICS[String(metric)];
-	if (lm) {
-		const parts: SQL[] = [];
-		if (lm.sources) {
-			parts.push(
-				sql`source IN (${sql.join(
-					lm.sources.map((s) => sql`${s}`),
-					sql`, `
-				)})`
-			);
+	for (const counter of EVENT_COUNTERS) {
+		const counted = counter(query);
+		if (counted) {
+			return counted;
 		}
-		if (lm.friends === 'with') {
-			parts.push(sql`friend_percent IS NOT NULL AND friend_percent > 0`);
-		}
-		if (lm.friends === 'without') {
-			parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
-		}
-		if (lm.boost === 'without') {
-			parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
-		}
-		if (lm.leech === 'without') {
-			parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
-		}
-		if (lm.earnedOnly) {
-			parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share', 'reward')`);
-		}
-		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
-		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
-		const rows = (await db.execute(
-			sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
-	if (XP_SOURCE_FILTERS[String(metric)] !== undefined) {
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'xp_stolen') {
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'xp_gained') {
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'xp_spent') {
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'asset_bought' || metric === 'asset_sold') {
-		const act = metric === 'asset_bought' ? 'buy' : 'sell';
-		const rows = (await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = ${act}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'asset_profit') {
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const effectMatch = /^use_([a-z]+)$/.exec(String(metric));
-	const targetId = Number(targetItemId) || 0;
-	if (metric === 'item_specific_used' || metric === 'item_specific_bought' || metric === 'discard_specific' || metric === 'item_specific_success') {
-		if (targetId <= 0) {
-			return 0;
-		}
-		const scope =
-			metric === 'item_specific_bought'
-				? sql`action = 'buy'`
-				: metric === 'discard_specific'
-					? sql`action = 'discard'`
-					: metric === 'item_specific_success'
-						? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL AND outcome = 'success'`
-						: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
-		const rows = (await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const COMBO_METRICS: Record<string, { actions?: string[]; anyUse?: boolean; disguised?: boolean; lucky?: boolean; success?: boolean }> = {
-		bomb_masked: { actions: ['bomb'], disguised: true },
-		steal_masked: { actions: ['steal'], disguised: true, success: true },
-		attack_masked: { actions: ['steal', 'bomb', 'leech'], disguised: true },
-		buy_lucky: { actions: ['buy'], lucky: true },
-		use_lucky: { anyUse: true, lucky: true },
-		attack_lucky: { actions: ['steal', 'bomb', 'leech'], lucky: true, success: true },
-		bounty_claimed: { actions: ['bounty_collected'] }
-	};
-
-	const combo = COMBO_METRICS[String(metric)];
-	if (combo) {
-		const parts: SQL[] = [];
-		if (combo.actions) {
-			parts.push(
-				sql`action IN (${sql.join(
-					combo.actions.map((a) => sql`${a}`),
-					sql`, `
-				)})`
-			);
-		}
-		if (combo.anyUse) {
-			parts.push(sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`);
-		}
-		if (combo.disguised) {
-			parts.push(sql`actor_disguised = 1`);
-		}
-		if (combo.lucky) {
-			parts.push(sql`luck_percent IS NOT NULL AND luck_percent > 0`);
-		}
-		if (combo.success) {
-			parts.push(sql`outcome = 'success'`);
-		}
-		const rows = (await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${sql.join(parts, sql` AND `)}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const durationMatch = /^duration_([a-z]+)$/.exec(String(metric));
-	if (durationMatch) {
-		const rows = (await db.execute(
-			sql`SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, GREATEST(a.created_at, ${since}), LEAST(a.expires_at, NOW()))), 0) AS c
-				FROM server_member_item_actives a
-				INNER JOIN server_member_items mi ON mi.id = a.member_item_id
-				INNER JOIN items i ON i.id = mi.item_id
-				WHERE mi.member_id = ${id}
-					AND i.effect_type = ${durationMatch[1]}
-					AND a.expires_at > ${since}
-					AND a.created_at <= NOW()`
-		)) as unknown as ScalarRows<'c'>;
-		const seconds = Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-		return Math.floor(Math.max(0, seconds) / 60);
-	}
-
-	const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
-
-	const VICTIM_METRICS: Record<string, { agg: 'count' | 'sum'; where: unknown }> = {
-		attacked_by_any: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome = 'success'` },
-		stolen_from: { agg: 'count', where: sql`action = 'steal' AND outcome = 'success'` },
-		bombed_by: { agg: 'count', where: sql`action = 'bomb' AND outcome = 'success'` },
-		leeched_by: { agg: 'count', where: sql`action = 'leech' AND outcome = 'success'` },
-		attacks_survived: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome IN ('blocked', 'immune', 'reflected')` },
-		xp_lost_to_attacks: { agg: 'sum', where: sql`action IN ('steal', 'bomb') AND outcome = 'success'` },
-		xp_refunded: { agg: 'sum', where: sql`action = 'insurance' AND outcome = 'refunded'` }
-	};
-
-	const victim = VICTIM_METRICS[String(metric)];
-	if (victim) {
-		const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : sql`COUNT(*)`;
-		const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
-		const rows = (await db.execute(
-			sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`
-		)) as unknown as ScalarRows<'c'>;
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const successMatch = metric === 'attack_success' ? null : /^([a-z]+)_success$/.exec(String(metric));
-
-	const actionFilter =
-		metric === 'attack_any'
-			? sql`action IN ${ATTACK_ACTIONS}`
-			: metric === 'attack_success'
-				? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`
-				: metric === 'attack_failed'
-					? sql`action IN ${ATTACK_ACTIONS} AND outcome IS NOT NULL AND outcome <> 'success'`
-					: metric === 'attack_reflected'
-						? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'reflected'`
-						: metric === 'attack_blocked'
-							? sql`action IN ${ATTACK_ACTIONS} AND outcome IN ('blocked', 'immune')`
-							: metric === 'spy_caught'
-								? sql`action = 'spy' AND outcome = 'caught'`
-								: metric === 'steal_failed'
-									? sql`action = 'steal' AND outcome IS NOT NULL AND outcome <> 'success'`
-									: metric === 'bomb_failed'
-										? sql`action = 'bomb' AND outcome IS NOT NULL AND outcome <> 'success'`
-										: metric === 'leech_landed'
-											? sql`action = 'leech' AND outcome = 'success'`
-											: metric === 'leech_occupied'
-												? sql`action = 'leech' AND outcome = 'occupied'`
-												: metric === 'leech_failed'
-													? sql`action = 'leech' AND outcome IS NOT NULL AND outcome <> 'success'`
-													: metric === 'bounty_paid_out'
-														? sql`action = 'bounty_collected'`
-														: metric === 'attack_on_cooldown'
-															? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'cooldown'`
-															: effectMatch
-																? sql`action = ${effectMatch[1]}`
-																: successMatch
-																	? sql`action = ${successMatch[1]} AND outcome = 'success'`
-																	: metric === 'item_used'
-																		? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected')`
-																		: metric === 'item_bought'
-																			? sql`action = 'buy'`
-																			: metric === 'discard_any'
-																				? sql`action = 'discard'`
-																				: null;
-
+	const actionFilter = itemActionFilter(query.metric);
 	if (!actionFilter) {
 		return 0;
 	}
-
-	const rows = (await db.execute(
-		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${actionFilter}`
-	)) as unknown as ScalarRows<'c'>;
-	return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	return countScalar(sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${query.id} AND created_at >= ${query.since} AND ${actionFilter}`);
 }
 
 export type MemberLevelUpdates = {
@@ -3056,35 +3090,47 @@ export type MemberLevelUpdates = {
 	streamRewardedAt?: string | Date | null;
 };
 
-export async function updateMemberLevelStats(memberId: number | string, updates: MemberLevelUpdates = {}) {
-	await initializeDatabase();
-	if (!memberId) {
-		throw new Error('memberId is required');
-	}
+type LevelIncrementKey =
+	| 'chatIncrement'
+	| 'reactionsIncrement'
+	| 'voiceMinutesActiveIncrement'
+	| 'voiceMinutesAfkIncrement'
+	| 'voiceMinutesVideoIncrement'
+	| 'voiceMinutesStreamingIncrement';
 
-	const clauses: SQL[] = [];
+const LEVEL_INCREMENTS: { key: LevelIncrementKey; set: (amount: number) => SQL }[] = [
+	{ key: 'chatIncrement', set: (amount) => sql`chat_total = chat_total + ${amount}` },
+	{ key: 'reactionsIncrement', set: (amount) => sql`reactions_given = GREATEST(0, reactions_given + ${amount})` },
+	{ key: 'voiceMinutesActiveIncrement', set: (amount) => sql`voice_minutes_active = voice_minutes_active + ${amount}` },
+	{ key: 'voiceMinutesAfkIncrement', set: (amount) => sql`voice_minutes_afk = voice_minutes_afk + ${amount}` },
+	{ key: 'voiceMinutesVideoIncrement', set: (amount) => sql`voice_minutes_video = voice_minutes_video + ${amount}` },
+	{ key: 'voiceMinutesStreamingIncrement', set: (amount) => sql`voice_minutes_streaming = voice_minutes_streaming + ${amount}` }
+];
 
-	if (typeof updates.chatIncrement === 'number' && updates.chatIncrement !== 0) {
-		clauses.push(sql`chat_total = chat_total + ${updates.chatIncrement}`);
-	}
-	if (typeof updates.reactionsIncrement === 'number' && updates.reactionsIncrement !== 0) {
-		clauses.push(sql`reactions_given = GREATEST(0, reactions_given + ${updates.reactionsIncrement})`);
-	}
-	if (typeof updates.voiceMinutesActiveIncrement === 'number' && updates.voiceMinutesActiveIncrement !== 0) {
-		clauses.push(sql`voice_minutes_active = voice_minutes_active + ${updates.voiceMinutesActiveIncrement}`);
-	}
-	if (typeof updates.voiceMinutesAfkIncrement === 'number' && updates.voiceMinutesAfkIncrement !== 0) {
-		clauses.push(sql`voice_minutes_afk = voice_minutes_afk + ${updates.voiceMinutesAfkIncrement}`);
-	}
-	if (typeof updates.voiceMinutesVideoIncrement === 'number' && updates.voiceMinutesVideoIncrement !== 0) {
-		clauses.push(sql`voice_minutes_video = voice_minutes_video + ${updates.voiceMinutesVideoIncrement}`);
-	}
-	if (typeof updates.voiceMinutesStreamingIncrement === 'number' && updates.voiceMinutesStreamingIncrement !== 0) {
-		clauses.push(sql`voice_minutes_streaming = voice_minutes_streaming + ${updates.voiceMinutesStreamingIncrement}`);
-	}
+const LEVEL_FLAGS = [
+	['isInVoice', 'is_in_voice'],
+	['isInVideo', 'is_in_video'],
+	['isInStream', 'is_in_stream']
+] as const;
+
+const LEVEL_REWARD_STAMPS = [
+	['voiceRewardedAt', 'voice_rewarded_at'],
+	['videoRewardedAt', 'video_rewarded_at'],
+	['streamRewardedAt', 'stream_rewarded_at']
+] as const;
+
+function levelIncrementClauses(updates: MemberLevelUpdates): SQL[] {
+	const clauses = LEVEL_INCREMENTS.filter(({ key }) => typeof updates[key] === 'number' && updates[key] !== 0).map(({ key, set }) =>
+		set(updates[key] as number)
+	);
 	if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined) {
 		clauses.push(sql`voice_minutes_total = voice_minutes_active + voice_minutes_afk`);
 	}
+	return clauses;
+}
+
+function levelStateClauses(updates: MemberLevelUpdates): SQL[] {
+	const clauses: SQL[] = [];
 	if (typeof updates.xpIncrement === 'number' && updates.xpIncrement !== 0) {
 		clauses.push(sql`xp = xp + ${updates.xpIncrement}`);
 	}
@@ -3094,59 +3140,46 @@ export async function updateMemberLevelStats(memberId: number | string, updates:
 	if (updates.rank !== undefined) {
 		clauses.push(sql`rank = ${updates.rank}`);
 	}
-	if (typeof updates.isInVoice === 'boolean') {
-		clauses.push(sql`is_in_voice = ${updates.isInVoice ? 1 : 0}`);
+	for (const [key, column] of LEVEL_FLAGS) {
+		const isOn = updates[key];
+		if (typeof isOn === 'boolean') {
+			clauses.push(sql`${sql.raw(column)} = ${isOn ? 1 : 0}`);
+		}
 	}
-	if (typeof updates.isInVideo === 'boolean') {
-		clauses.push(sql`is_in_video = ${updates.isInVideo ? 1 : 0}`);
-	}
-	if (typeof updates.isInStream === 'boolean') {
-		clauses.push(sql`is_in_stream = ${updates.isInStream ? 1 : 0}`);
-	}
+	return clauses;
+}
+
+function levelRewardClauses(updates: MemberLevelUpdates): SQL[] {
+	const clauses: SQL[] = [];
 	if (updates.chatRewardedAt) {
 		clauses.push(sql`chat_rewarded_at = ${toMySQLDateTime(updates.chatRewardedAt)}`);
 	}
-	if (updates.voiceRewardedAt !== undefined) {
-		if (updates.voiceRewardedAt === null) {
-			clauses.push(sql`voice_rewarded_at = NULL`);
-		} else {
-			clauses.push(sql`voice_rewarded_at = ${toMySQLDateTime(updates.voiceRewardedAt)}`);
+	for (const [key, column] of LEVEL_REWARD_STAMPS) {
+		const value = updates[key];
+		if (value !== undefined) {
+			clauses.push(value === null ? sql`${sql.raw(column)} = NULL` : sql`${sql.raw(column)} = ${toMySQLDateTime(value)}`);
 		}
 	}
-	if (updates.videoRewardedAt !== undefined) {
-		if (updates.videoRewardedAt === null) {
-			clauses.push(sql`video_rewarded_at = NULL`);
-		} else {
-			clauses.push(sql`video_rewarded_at = ${toMySQLDateTime(updates.videoRewardedAt)}`);
-		}
-	}
-	if (updates.streamRewardedAt !== undefined) {
-		if (updates.streamRewardedAt === null) {
-			clauses.push(sql`stream_rewarded_at = NULL`);
-		} else {
-			clauses.push(sql`stream_rewarded_at = ${toMySQLDateTime(updates.streamRewardedAt)}`);
-		}
+	return clauses;
+}
+
+export async function updateMemberLevelStats(memberId: number | string, updates: MemberLevelUpdates = {}) {
+	await initializeDatabase();
+	if (!memberId) {
+		throw new Error('memberId is required');
 	}
 
+	const clauses = [...levelIncrementClauses(updates), ...levelStateClauses(updates), ...levelRewardClauses(updates)];
 	if (clauses.length === 0) {
 		return getMemberLevel(memberId);
 	}
 
 	clauses.push(sql`updated_at = ${toMySQLDateTime()}`);
-
 	await db.execute(sql`UPDATE server_member_levels SET ${sql.join(clauses, sql`, `)} WHERE member_id = ${Number(memberId)}`);
 
-	const movedTaskMetric =
-		typeof updates.chatIncrement === 'number' ||
-		typeof updates.reactionsIncrement === 'number' ||
-		typeof updates.voiceMinutesActiveIncrement === 'number' ||
-		typeof updates.voiceMinutesAfkIncrement === 'number' ||
-		typeof updates.voiceMinutesVideoIncrement === 'number' ||
-		typeof updates.voiceMinutesStreamingIncrement === 'number';
-	if (movedTaskMetric) {
+	if (LEVEL_INCREMENTS.some(({ key }) => typeof updates[key] === 'number')) {
 		triggerStreakWatch(memberId);
 	}
-
 	return getMemberLevel(memberId);
 }
 
@@ -3156,7 +3189,7 @@ export async function claimVoiceRewardWindow(memberId: number | string, cooldown
 		throw new Error('memberId is required');
 	}
 	const now = toMySQLDateTime();
-	const cooldownSeconds = Math.max(0, Math.floor(Number(cooldownMs) / 1000));
+	const cooldownSeconds = Math.max(0, Math.floor(Number(cooldownMs) / SECOND_MS));
 	const result = await db.execute(sql`
 		UPDATE server_member_levels
 		SET voice_rewarded_at = ${now}, updated_at = ${now}
@@ -3298,11 +3331,11 @@ export async function getItem(itemId: number | string) {
 	return rows[0] || null;
 }
 
-export async function setItemEnabled(itemId: number | string, enabled: boolean) {
+export async function setItemEnabled(itemId: number | string, isEnabled: boolean) {
 	await initializeDatabase();
 	await db
 		.update(schema.items)
-		.set({ enabled: !!enabled })
+		.set({ enabled: !!isEnabled })
 		.where(eq(schema.items.id, Number(itemId)));
 	return true;
 }
@@ -3488,7 +3521,7 @@ export async function backfillItemLogItemIds() {
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 }
 
-export async function listStaleStreaks(limit = 500) {
+export async function listStaleStreaks(limit = STALE_STREAKS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const nowKey = minuteKeyFor(Date.now());
 	const rows = (await db.execute(sql`
@@ -3509,7 +3542,7 @@ export async function listStaleStreaks(limit = 500) {
 			  AND t.day_key > ${nowKey - DAY_MINUTES}
 		  )
 		ORDER BY s.updated_at ASC
-		LIMIT ${Number(limit) || 500}
+		LIMIT ${Number(limit) || STALE_STREAKS_DEFAULT_LIMIT}
 	`)) as unknown as SelectResult<{
 		member_id: number;
 		current_streak: number;
@@ -3524,13 +3557,15 @@ export async function listStaleStreaks(limit = 500) {
 	return rows?.[0] ?? [];
 }
 
-export async function expireStreak(memberId: unknown, dayKey: number, freezesLeft: number, broke: boolean) {
+type StreakExpiry = { dayKey: number; freezesLeft: number; broke: boolean };
+
+export async function expireStreak(memberId: unknown, { dayKey, freezesLeft, broke: isBroke }: StreakExpiry) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
 		.update(schema.serverMemberStreaks)
 		.set(
-			broke
+			isBroke
 				? { current_streak: 0, freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now }
 				: { freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now }
 		)
@@ -3911,7 +3946,9 @@ export async function stepTowerRun(runId: number | string, fromFloor: number, ne
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function recordLevelFriends(actorMemberId: number | string, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
+type FriendCredit = { perFriendXp?: number; minutes?: number };
+
+export async function recordLevelFriends(actorMemberId: number | string, friendDiscordIds: string[], { perFriendXp = 0, minutes = 1 }: FriendCredit = {}) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
 	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) {
@@ -3955,7 +3992,7 @@ export async function recordLevelFriends(actorMemberId: number | string, friendD
 	}
 }
 
-export async function getMemberLevelFriends(memberId: number | string, limit = 5) {
+export async function getMemberLevelFriends(memberId: number | string, limit = LEVEL_FRIENDS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const mid = Number(memberId);
 	if (!mid) {
@@ -3970,7 +4007,7 @@ export async function getMemberLevelFriends(memberId: number | string, limit = 5
 		INNER JOIN server_members m ON m.id = CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END
 		WHERE t.member_a_id = ${mid} OR t.member_b_id = ${mid}
 		ORDER BY t.ticks DESC
-		LIMIT ${Number(limit) || 5}
+		LIMIT ${Number(limit) || LEVEL_FRIENDS_DEFAULT_LIMIT}
 	`);
 	return ((rows[0] as unknown as { buddy_id: number; name: string | null; avatar: string | null; ticks: number; minutes: number; xp: string }[]) || []).map(
 		(r) => ({
@@ -4078,7 +4115,7 @@ export async function logMemberLevelGain(memberId: number | string, data: Record
 	}
 	await db.insert(schema.serverMemberLevelLogs).values({
 		member_id: Number(memberId),
-		source: String(data.source ?? 'unknown').slice(0, 24),
+		source: String(data.source ?? 'unknown').slice(0, LEVEL_GAIN_SOURCE_MAX_LENGTH),
 		xp,
 		xp_total: data.xp_total != null ? Number(data.xp_total) : null,
 		level: data.level != null ? Number(data.level) : null,
@@ -4426,11 +4463,24 @@ export async function getMemberAssetHistory(memberId: number | string, limit = 6
 	);
 }
 
-export async function getServerEconomyStats(serverId: unknown, priceMap: Record<string, { price: number }> = {}) {
-	await initializeDatabase();
-	const sid = Number(serverId);
+type PriceMap = Record<string, { price: number }>;
 
-	const [posRows, assetLogRows, minigameRows, itemRows] = await Promise.all([
+function valuePositions(positions: DashboardRow[], priceMap: PriceMap) {
+	let invested = 0;
+	let marketValue = 0;
+	for (const p of positions) {
+		const xpInv = Number(p.xp_invested) || 0;
+		const buy = Number(p.buy_price) || 0;
+		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
+		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
+		invested += xpInv;
+		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
+	}
+	return { invested, marketValue };
+}
+
+async function economyAssets(sid: number, priceMap: PriceMap) {
+	const [posRows, assetLogRows] = await Promise.all([
 		db.execute(sql`
 			SELECT a.asset_type, a.asset_id, a.xp_invested, a.buy_price, a.member_id
 			FROM server_member_assets a INNER JOIN server_members sm ON sm.id = a.member_id
@@ -4444,8 +4494,27 @@ export async function getServerEconomyStats(serverId: unknown, priceMap: Record<
 				COUNT(*) AS trade_count
 			FROM server_member_asset_logs al INNER JOIN server_members sm ON sm.id = al.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
+		`)
+	]);
+	const positions = (posRows[0] as unknown as DashboardRow[]) || [];
+	const { invested, marketValue } = valuePositions(positions, priceMap);
+	const al = dashboardRow(assetLogRows);
+	return {
+		assets_invested: invested,
+		assets_market_value: marketValue,
+		assets_unrealized_net: marketValue - invested,
+		assets_open_positions: positions.length,
+		assets_traders: new Set(positions.map((p) => Number(p.member_id))).size,
+		assets_buy_volume: num(al, 'buy_volume'),
+		assets_sell_volume: num(al, 'sell_volume'),
+		assets_realized_net: num(al, 'realized_net'),
+		assets_trade_count: num(al, 'trade_count')
+	};
+}
+
+async function economyMinigames(sid: number) {
+	const mg = dashboardRow(
+		await db.execute(sql`
 			SELECT
 				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.wager ELSE 0 END), 0) AS wagered,
 				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.payout ELSE 0 END), 0) AS paid_out,
@@ -4461,8 +4530,27 @@ export async function getServerEconomyStats(serverId: unknown, priceMap: Record<
 				COUNT(DISTINCT CASE WHEN ml.game = ${TOWER_GAME} THEN ml.member_id END) AS tower_climbers
 			FROM server_member_minigame_logs ml INNER JOIN server_members sm ON sm.id = ml.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
+		`)
+	);
+	return {
+		minigames_wagered: num(mg, 'wagered'),
+		minigames_paid_out: num(mg, 'paid_out'),
+		minigames_net: num(mg, 'net'),
+		minigames_wins: num(mg, 'wins'),
+		minigames_plays: num(mg, 'plays'),
+		minigames_biggest_win: num(mg, 'biggest_win'),
+		tower_climbs: num(mg, 'tower_climbs'),
+		tower_cashed: num(mg, 'tower_cashed'),
+		tower_paid_out: num(mg, 'tower_paid_out'),
+		tower_biggest_win: num(mg, 'tower_biggest_win'),
+		tower_best_floor: Math.round(num(mg, 'tower_best_floor')),
+		tower_climbers: num(mg, 'tower_climbers')
+	};
+}
+
+async function economyItems(sid: number) {
+	const it = dashboardRow(
+		await db.execute(sql`
 			SELECT
 				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS stolen,
 				COALESCE(SUM(CASE WHEN il.action = 'bomb' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS bombed,
@@ -4483,68 +4571,35 @@ export async function getServerEconomyStats(serverId: unknown, priceMap: Record<
 			FROM server_member_item_logs il INNER JOIN server_members sm ON sm.id = il.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`)
-	]);
-
-	const positions = (posRows[0] as unknown as Record<string, unknown>[]) || [];
-	let invested = 0;
-	let marketValue = 0;
-	const traders = new Set<number>();
-	for (const p of positions) {
-		const xpInv = Number(p.xp_invested) || 0;
-		const buy = Number(p.buy_price) || 0;
-		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
-		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
-		invested += xpInv;
-		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
-		traders.add(Number(p.member_id));
-	}
-
-	const al = (assetLogRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const mg = (minigameRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const it = (itemRows[0] as unknown as Record<string, unknown>[])[0] || {};
-
+	);
 	return {
-		assets_invested: invested,
-		assets_market_value: marketValue,
-		assets_unrealized_net: marketValue - invested,
-		assets_open_positions: positions.length,
-		assets_traders: traders.size,
-		assets_buy_volume: Number(al.buy_volume) || 0,
-		assets_sell_volume: Number(al.sell_volume) || 0,
-		assets_realized_net: Number(al.realized_net) || 0,
-		assets_trade_count: Number(al.trade_count) || 0,
-		minigames_wagered: Number(mg.wagered) || 0,
-		minigames_paid_out: Number(mg.paid_out) || 0,
-		minigames_net: Number(mg.net) || 0,
-		minigames_wins: Number(mg.wins) || 0,
-		minigames_plays: Number(mg.plays) || 0,
-		minigames_biggest_win: Number(mg.biggest_win) || 0,
-		tower_climbs: Number(mg.tower_climbs) || 0,
-		tower_cashed: Number(mg.tower_cashed) || 0,
-		tower_paid_out: Number(mg.tower_paid_out) || 0,
-		tower_biggest_win: Number(mg.tower_biggest_win) || 0,
-		tower_best_floor: Math.round(Number(mg.tower_best_floor) || 0),
-		tower_climbers: Number(mg.tower_climbers) || 0,
-		items_stolen: Number(it.stolen) || 0,
-		items_bombed: Number(it.bombed) || 0,
-		items_gifted: Number(it.gifted) || 0,
-		items_steal_attempts: Number(it.steal_attempts) || 0,
-		items_bomb_attempts: Number(it.bomb_attempts) || 0,
-		items_spies: Number(it.spies) || 0,
-		items_bounties_placed: Number(it.bounties_placed) || 0,
-		items_biggest_steal: Number(it.biggest_steal) || 0,
-		items_buys: Number(it.buys) || 0,
-		items_buy_spend: Number(it.buy_spend) || 0,
-		items_gifts: Number(it.gifts) || 0,
-		items_discards: Number(it.discards) || 0,
-		items_activations: Number(it.activations) || 0,
-		items_steals_caught: Number(it.steals_caught) || 0,
-		items_steals_landed: Number(it.steals_landed) || 0,
-		items_distinct_bought: Number(it.distinct_items_bought) || 0
+		items_stolen: num(it, 'stolen'),
+		items_bombed: num(it, 'bombed'),
+		items_gifted: num(it, 'gifted'),
+		items_steal_attempts: num(it, 'steal_attempts'),
+		items_bomb_attempts: num(it, 'bomb_attempts'),
+		items_spies: num(it, 'spies'),
+		items_bounties_placed: num(it, 'bounties_placed'),
+		items_biggest_steal: num(it, 'biggest_steal'),
+		items_buys: num(it, 'buys'),
+		items_buy_spend: num(it, 'buy_spend'),
+		items_gifts: num(it, 'gifts'),
+		items_discards: num(it, 'discards'),
+		items_activations: num(it, 'activations'),
+		items_steals_caught: num(it, 'steals_caught'),
+		items_steals_landed: num(it, 'steals_landed'),
+		items_distinct_bought: num(it, 'distinct_items_bought')
 	};
 }
 
-export async function listPublicDiscordQuests(limit = 300) {
+export async function getServerEconomyStats(serverId: unknown, priceMap: PriceMap = {}) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+	const [assets, minigames, items] = await Promise.all([economyAssets(sid, priceMap), economyMinigames(sid), economyItems(sid)]);
+	return { ...assets, ...minigames, ...items };
+}
+
+export async function listPublicDiscordQuests(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT
@@ -4555,7 +4610,7 @@ export async function listPublicDiscordQuests(limit = 300) {
 			SELECT quest_id, MAX(id) AS id FROM bot_discord_quests GROUP BY quest_id
 		) latest ON latest.id = q.id
 		ORDER BY (q.expires_at IS NOT NULL AND q.expires_at > UTC_TIMESTAMP()) DESC, q.expires_at DESC, q.id DESC
-		LIMIT ${Number(limit) || 300}
+		LIMIT ${Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT}
 	`);
 	return (
 		(rows[0] as unknown as {
@@ -4574,10 +4629,10 @@ export async function listPublicDiscordQuests(limit = 300) {
 	);
 }
 
-export async function listPublicRobloxItems(limit: number | null = 300, offset = 0) {
+export async function listPublicRobloxItems(limit: number | null = PUBLIC_LIST_DEFAULT_LIMIT, offset = 0) {
 	await initializeDatabase();
 	const cap = Number(limit);
-	const capped = Number.isFinite(cap) && cap > 0;
+	const isCapped = Number.isFinite(cap) && cap > 0;
 	const skip = Math.max(0, Math.trunc(Number(offset) || 0));
 	const rows = await db.execute(sql`
 		SELECT
@@ -4594,7 +4649,7 @@ export async function listPublicRobloxItems(limit: number | null = 300, offset =
 			SELECT asset_id, MAX(id) AS id FROM bot_roblox_items GROUP BY asset_id
 		) latest ON latest.id = r.id
 		ORDER BY r.favorite_count DESC, r.id DESC
-		${capped ? sql`LIMIT ${cap} OFFSET ${skip}` : sql``}
+		${isCapped ? sql`LIMIT ${cap} OFFSET ${skip}` : sql``}
 	`);
 	return (
 		(rows[0] as unknown as {
@@ -4614,7 +4669,7 @@ export async function listPublicRobloxItems(limit: number | null = 300, offset =
 	);
 }
 
-export async function listPublicRobloxItemsByNotifications(limit = 6) {
+export async function listPublicRobloxItemsByNotifications(limit = POPULAR_ROBLOX_ITEMS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT
@@ -4628,7 +4683,7 @@ export async function listPublicRobloxItemsByNotifications(limit = 6) {
 		WHERE m.deleted_at IS NULL
 		GROUP BY r.id
 		ORDER BY notification_count DESC, r.favorite_count DESC, r.id DESC
-		LIMIT ${Number(limit) || 6}
+		LIMIT ${Number(limit) || POPULAR_ROBLOX_ITEMS_DEFAULT_LIMIT}
 	`);
 	return (
 		(rows[0] as unknown as {
@@ -4656,11 +4711,8 @@ export async function countPublicRobloxItems(): Promise<number> {
 	return Number(row?.total) || 0;
 }
 
-export async function getServerFeatureStats(serverId: number | string) {
-	await initializeDatabase();
-	const sid = Number(serverId);
-
-	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows, catalogRows] = await Promise.all([
+async function featureGiveaways(sid: number) {
+	const [giveawayRows, entryRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS total,
@@ -4677,8 +4729,22 @@ export async function getServerFeatureStats(serverId: number | string) {
 			INNER JOIN server_member_giveaways g ON g.id = e.giveaway_id
 			INNER JOIN server_members sm ON sm.id = g.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
+		`)
+	]);
+	const gv = dashboardRow(giveawayRows);
+	const en = dashboardRow(entryRows);
+	return {
+		giveaways_total: num(gv, 'total'),
+		giveaways_active: num(gv, 'active'),
+		giveaways_winners: num(gv, 'winners'),
+		giveaways_entrants: num(en, 'unique_entrants'),
+		giveaways_entries: num(en, 'total_entries')
+	};
+}
+
+async function featureStreams(sid: number) {
+	const st = dashboardRow(
+		await db.execute(sql`
 			SELECT
 				COUNT(*) AS total_streams,
 				COUNT(DISTINCT s.member_id) AS creators,
@@ -4692,7 +4758,24 @@ export async function getServerFeatureStats(serverId: number | string) {
 				COALESCE(SUM(s.unique_chatters), 0) AS unique_chatters
 			FROM server_member_content_creator_streams s INNER JOIN server_members sm ON sm.id = s.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
+		`)
+	);
+	return {
+		streams_total: num(st, 'total_streams'),
+		streams_creators: num(st, 'creators'),
+		streams_live_now: num(st, 'live_now'),
+		streams_peak_viewers: num(st, 'peak_viewers'),
+		streams_likes: num(st, 'likes'),
+		streams_chat_messages: num(st, 'chat_messages'),
+		streams_gifts: num(st, 'gifts'),
+		streams_follows: num(st, 'follows'),
+		streams_shares: num(st, 'shares'),
+		streams_unique_chatters: num(st, 'unique_chatters')
+	};
+}
+
+async function featureQuestsAndCatalog(sid: number) {
+	const [questRows, catalogRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COALESCE(SUM(CASE WHEN q.reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed,
@@ -4700,6 +4783,42 @@ export async function getServerFeatureStats(serverId: number | string) {
 			FROM server_member_discord_quests q INNER JOIN server_members sm ON sm.id = q.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
+		db.execute(sql`
+			SELECT
+				(
+					SELECT COUNT(*) FROM bot_discord_quests bq
+					WHERE bq.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+						AND (bq.starts_at IS NULL OR bq.starts_at <= UTC_TIMESTAMP())
+						AND (bq.expires_at IS NULL OR bq.expires_at > UTC_TIMESTAMP())
+				) AS quests_active,
+				(SELECT COUNT(*) FROM server_discord_quests WHERE server_id = ${sid}) AS quests_posted,
+				(
+					SELECT COUNT(*) FROM bot_roblox_items br
+					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+				) AS roblox_items_watched,
+				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted,
+				(
+					SELECT COUNT(*) FROM server_member_roblox_item_notifications n
+					INNER JOIN server_members m ON m.id = n.member_id
+					WHERE m.server_id = ${sid} AND m.deleted_at IS NULL
+				) AS roblox_notifications
+		`)
+	]);
+	const qs = dashboardRow(questRows);
+	const ct = dashboardRow(catalogRows);
+	return {
+		quests_claimed: num(qs, 'claimed'),
+		quests_participants: num(qs, 'participants'),
+		quests_active: num(ct, 'quests_active'),
+		quests_posted: num(ct, 'quests_posted'),
+		roblox_items_watched: num(ct, 'roblox_items_watched'),
+		roblox_items_posted: num(ct, 'roblox_items_posted'),
+		roblox_notifications: num(ct, 'roblox_notifications')
+	};
+}
+
+async function featureCommunity(sid: number) {
+	const [bountyRows, staffReviewRows, feedbackRows, afkRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS placed,
@@ -4724,340 +4843,309 @@ export async function getServerFeatureStats(serverId: number | string) {
 			SELECT COUNT(*) AS active
 			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
-			SELECT
-				(
-					SELECT COUNT(*) FROM bot_discord_quests bq
-					WHERE bq.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
-						AND (bq.starts_at IS NULL OR bq.starts_at <= UTC_TIMESTAMP())
-						AND (bq.expires_at IS NULL OR bq.expires_at > UTC_TIMESTAMP())
-				) AS quests_active,
-				(SELECT COUNT(*) FROM server_discord_quests WHERE server_id = ${sid}) AS quests_posted,
-				(
-					SELECT COUNT(*) FROM bot_roblox_items br
-					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
-				) AS roblox_items_watched,
-				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted,
-				(
-					SELECT COUNT(*) FROM server_member_roblox_item_notifications n
-					INNER JOIN server_members m ON m.id = n.member_id
-					WHERE m.server_id = ${sid} AND m.deleted_at IS NULL
-				) AS roblox_notifications
 		`)
 	]);
-
-	const gv = (giveawayRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const en = (entryRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const st = (streamRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const qs = (questRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const bn = (bountyRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const sr = (staffReviewRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const fb = (feedbackRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const af = (afkRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const ct = (catalogRows[0] as unknown as Record<string, unknown>[])[0] || {};
-
+	const bn = dashboardRow(bountyRows);
+	const sr = dashboardRow(staffReviewRows);
 	return {
-		giveaways_total: Number(gv.total) || 0,
-		giveaways_active: Number(gv.active) || 0,
-		giveaways_winners: Number(gv.winners) || 0,
-		giveaways_entrants: Number(en.unique_entrants) || 0,
-		giveaways_entries: Number(en.total_entries) || 0,
-		streams_total: Number(st.total_streams) || 0,
-		streams_creators: Number(st.creators) || 0,
-		streams_live_now: Number(st.live_now) || 0,
-		streams_peak_viewers: Number(st.peak_viewers) || 0,
-		streams_likes: Number(st.likes) || 0,
-		streams_chat_messages: Number(st.chat_messages) || 0,
-		streams_gifts: Number(st.gifts) || 0,
-		streams_follows: Number(st.follows) || 0,
-		streams_shares: Number(st.shares) || 0,
-		streams_unique_chatters: Number(st.unique_chatters) || 0,
-		quests_claimed: Number(qs.claimed) || 0,
-		quests_participants: Number(qs.participants) || 0,
-		quests_active: Number(ct.quests_active) || 0,
-		quests_posted: Number(ct.quests_posted) || 0,
-		roblox_items_watched: Number(ct.roblox_items_watched) || 0,
-		roblox_items_posted: Number(ct.roblox_items_posted) || 0,
-		roblox_notifications: Number(ct.roblox_notifications) || 0,
-		bounties_placed: Number(bn.placed) || 0,
-		bounties_collected: Number(bn.collected) || 0,
-		bounties_pooled: Number(bn.pooled) || 0,
-		staff_reviews: Number(sr.reviews) || 0,
-		staff_avg_rating: Math.round((Number(sr.avg_rating) || 0) * 10) / 10,
-		feedback_submissions: Number(fb.submissions) || 0,
-		afk_active: Number(af.active) || 0
+		bounties_placed: num(bn, 'placed'),
+		bounties_collected: num(bn, 'collected'),
+		bounties_pooled: num(bn, 'pooled'),
+		staff_reviews: num(sr, 'reviews'),
+		staff_avg_rating: roundTo(num(sr, 'avg_rating'), 1),
+		feedback_submissions: num(dashboardRow(feedbackRows), 'submissions'),
+		afk_active: num(dashboardRow(afkRows), 'active')
 	};
 }
 
-export async function getMemberDashboard(memberId: unknown, priceMap: Record<string, { price: number }> = {}) {
+export async function getServerFeatureStats(serverId: number | string) {
 	await initializeDatabase();
-	const mid = Number(memberId);
+	const sid = Number(serverId);
+	const [giveaways, streams, quests, community] = await Promise.all([
+		featureGiveaways(sid),
+		featureStreams(sid),
+		featureQuestsAndCatalog(sid),
+		featureCommunity(sid)
+	]);
+	return { ...giveaways, ...streams, ...quests, ...community };
+}
 
-	const [posRows, assetLogRows, minigameRows, outgoingRows, incomingRows, giveawayRows, questRows, streamRows, feedbackRows, bountyOnRows] = await Promise.all([
+type DashboardRow = Record<string, unknown>;
+
+function dashboardRow(result: unknown): DashboardRow {
+	return ((result as unknown[])[0] as DashboardRow[])[0] || {};
+}
+
+function num(row: DashboardRow, key: string) {
+	return Number(row[key]) || 0;
+}
+
+async function dashboardAssets(mid: number, priceMap: PriceMap) {
+	const [posRows, assetLogRows] = await Promise.all([
 		db.execute(sql`SELECT asset_type, asset_id, xp_invested, buy_price FROM server_member_assets WHERE member_id = ${mid}`),
 		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_volume,
-					COALESCE(SUM(CASE WHEN action = 'sell' THEN xp ELSE 0 END), 0) AS sell_volume,
-					COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
-					COUNT(*) AS trade_count
-				FROM server_member_asset_logs WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN wager ELSE 0 END), 0) AS wagered,
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN xp ELSE 0 END), 0) AS net,
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN 1 ELSE 0 END), 0) AS plays,
-					COALESCE(MAX(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
-					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
-					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
-					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN payout ELSE 0 END), 0) AS tower_won,
-					COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS tower_biggest_win,
-					COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN multiplier ELSE 0 END), 0) AS tower_best_floor
-				FROM server_member_minigame_logs WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_spend,
-					COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
-					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed,
-					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched,
-					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifted,
-					COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
-					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
-					COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp ELSE 0 END), 0) AS bounty_collected
-				FROM server_member_item_logs WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen_from,
-					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed_by,
-					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched_by,
-					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifts_received
-				FROM server_member_item_logs WHERE target_member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					(SELECT COUNT(*) FROM server_member_giveaways WHERE member_id = ${mid}) AS hosted,
-					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid}) AS entered,
-					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
-			`),
-		db.execute(sql`
-				SELECT COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed
-				FROM server_member_discord_quests WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COUNT(*) AS streams,
-					COALESCE(MAX(peak_viewers), 0) AS peak_viewers,
-					COALESCE(SUM(total_likes), 0) AS likes,
-					COALESCE(SUM(total_gifts), 0) AS gifts
-				FROM server_member_content_creator_streams WHERE member_id = ${mid}
-			`),
-		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
-		db.execute(sql`SELECT COALESCE(SUM(xp), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`)
+			SELECT
+				COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_volume,
+				COALESCE(SUM(CASE WHEN action = 'sell' THEN xp ELSE 0 END), 0) AS sell_volume,
+				COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
+				COUNT(*) AS trade_count
+			FROM server_member_asset_logs WHERE member_id = ${mid}
+		`)
 	]);
 
-	const positions = (posRows[0] as unknown as Record<string, unknown>[]) || [];
-	let invested = 0;
-	let marketValue = 0;
-	for (const p of positions) {
-		const xpInv = Number(p.xp_invested) || 0;
-		const buy = Number(p.buy_price) || 0;
-		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
-		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
-		invested += xpInv;
-		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
-	}
-
-	const al = (assetLogRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const mg = (minigameRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const out = (outgoingRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const inc = (incomingRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const gv = (giveawayRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const qs = (questRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const st = (streamRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const fb = (feedbackRows[0] as unknown as Record<string, unknown>[])[0] || {};
-	const bn = (bountyOnRows[0] as unknown as Record<string, unknown>[])[0] || {};
-
+	const positions = (posRows[0] as unknown as DashboardRow[]) || [];
+	const { invested, marketValue } = valuePositions(positions, priceMap);
+	const al = dashboardRow(assetLogRows);
 	return {
 		assets_invested: invested,
 		assets_market_value: marketValue,
 		assets_open_positions: positions.length,
 		assets_pnl: marketValue - invested,
-		assets_realized_net: Number(al.realized_net) || 0,
-		assets_trade_count: Number(al.trade_count) || 0,
-		minigames_wagered: Number(mg.wagered) || 0,
-		minigames_net: Number(mg.net) || 0,
-		minigames_wins: Number(mg.wins) || 0,
-		minigames_plays: Number(mg.plays) || 0,
-		minigames_biggest_win: Number(mg.biggest_win) || 0,
-		tower_climbs: Number(mg.tower_climbs) || 0,
-		tower_cashed: Number(mg.tower_cashed) || 0,
-		tower_won: Number(mg.tower_won) || 0,
-		tower_biggest_win: Number(mg.tower_biggest_win) || 0,
-		tower_best_floor: Math.round(Number(mg.tower_best_floor) || 0),
-		items_buys: Number(out.buys) || 0,
-		items_buy_spend: Number(out.buy_spend) || 0,
-		items_activations: Number(out.activations) || 0,
-		items_stolen: Number(out.stolen) || 0,
-		items_steals_landed: Number(out.steals_landed) || 0,
-		items_steals_caught: Number(out.steals_caught) || 0,
-		items_bombed: Number(out.bombed) || 0,
-		items_leeched: Number(out.leeched) || 0,
-		items_gifted: Number(out.gifted) || 0,
-		items_spies: Number(out.spies) || 0,
-		items_bounties_placed: Number(out.bounties_placed) || 0,
-		items_bounty_collected: Number(out.bounty_collected) || 0,
-		items_stolen_from: Number(inc.stolen_from) || 0,
-		items_bombed_by: Number(inc.bombed_by) || 0,
-		items_leeched_by: Number(inc.leeched_by) || 0,
-		items_gifts_received: Number(inc.gifts_received) || 0,
-		giveaways_hosted: Number(gv.hosted) || 0,
-		giveaways_entered: Number(gv.entered) || 0,
-		giveaways_won: Number(gv.won) || 0,
-		quests_claimed: Number(qs.claimed) || 0,
-		streams_total: Number(st.streams) || 0,
-		streams_peak_viewers: Number(st.peak_viewers) || 0,
-		streams_likes: Number(st.likes) || 0,
-		streams_gifts: Number(st.gifts) || 0,
-		feedback_submitted: Number(fb.submitted) || 0,
-		bounty_on_me: Number(bn.pooled) || 0,
-		bounty_on_me_count: Number(bn.count) || 0
+		assets_realized_net: num(al, 'realized_net'),
+		assets_trade_count: num(al, 'trade_count')
 	};
 }
 
-type NameHitRow = { name: string | null; hits: string; xp: string | number };
+async function dashboardMinigames(mid: number) {
+	const mg = dashboardRow(
+		await db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN wager ELSE 0 END), 0) AS wagered,
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN xp ELSE 0 END), 0) AS net,
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN 1 ELSE 0 END), 0) AS plays,
+				COALESCE(MAX(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
+				COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
+				COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
+				COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN payout ELSE 0 END), 0) AS tower_won,
+				COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS tower_biggest_win,
+				COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN multiplier ELSE 0 END), 0) AS tower_best_floor
+			FROM server_member_minigame_logs WHERE member_id = ${mid}
+		`)
+	);
+	return {
+		minigames_wagered: num(mg, 'wagered'),
+		minigames_net: num(mg, 'net'),
+		minigames_wins: num(mg, 'wins'),
+		minigames_plays: num(mg, 'plays'),
+		minigames_biggest_win: num(mg, 'biggest_win'),
+		tower_climbs: num(mg, 'tower_climbs'),
+		tower_cashed: num(mg, 'tower_cashed'),
+		tower_won: num(mg, 'tower_won'),
+		tower_biggest_win: num(mg, 'tower_biggest_win'),
+		tower_best_floor: Math.round(num(mg, 'tower_best_floor'))
+	};
+}
 
-export async function getMemberInsights(memberId: number | string, serverId: number | string | null = null) {
+async function dashboardOutgoingItems(mid: number) {
+	const out = dashboardRow(
+		await db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
+				COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_spend,
+				COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen,
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
+				COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed,
+				COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched,
+				COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifted,
+				COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
+				COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
+				COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp ELSE 0 END), 0) AS bounty_collected
+			FROM server_member_item_logs WHERE member_id = ${mid}
+		`)
+	);
+	return {
+		items_buys: num(out, 'buys'),
+		items_buy_spend: num(out, 'buy_spend'),
+		items_activations: num(out, 'activations'),
+		items_stolen: num(out, 'stolen'),
+		items_steals_landed: num(out, 'steals_landed'),
+		items_steals_caught: num(out, 'steals_caught'),
+		items_bombed: num(out, 'bombed'),
+		items_leeched: num(out, 'leeched'),
+		items_gifted: num(out, 'gifted'),
+		items_spies: num(out, 'spies'),
+		items_bounties_placed: num(out, 'bounties_placed'),
+		items_bounty_collected: num(out, 'bounty_collected')
+	};
+}
+
+async function dashboardIncomingItems(mid: number) {
+	const inc = dashboardRow(
+		await db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen_from,
+				COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed_by,
+				COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched_by,
+				COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifts_received
+			FROM server_member_item_logs WHERE target_member_id = ${mid}
+		`)
+	);
+	return {
+		items_stolen_from: num(inc, 'stolen_from'),
+		items_bombed_by: num(inc, 'bombed_by'),
+		items_leeched_by: num(inc, 'leeched_by'),
+		items_gifts_received: num(inc, 'gifts_received')
+	};
+}
+
+async function dashboardCommunity(mid: number) {
+	const [giveawayRows, questRows, streamRows, feedbackRows, bountyOnRows] = await Promise.all([
+		db.execute(sql`
+			SELECT
+				(SELECT COUNT(*) FROM server_member_giveaways WHERE member_id = ${mid}) AS hosted,
+				(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid}) AS entered,
+				(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
+		`),
+		db.execute(
+			sql`SELECT COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed FROM server_member_discord_quests WHERE member_id = ${mid}`
+		),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS streams,
+				COALESCE(MAX(peak_viewers), 0) AS peak_viewers,
+				COALESCE(SUM(total_likes), 0) AS likes,
+				COALESCE(SUM(total_gifts), 0) AS gifts
+			FROM server_member_content_creator_streams WHERE member_id = ${mid}
+		`),
+		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
+		db.execute(sql`SELECT COALESCE(SUM(xp), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`)
+	]);
+	const gv = dashboardRow(giveawayRows);
+	const st = dashboardRow(streamRows);
+	const bn = dashboardRow(bountyOnRows);
+	return {
+		giveaways_hosted: num(gv, 'hosted'),
+		giveaways_entered: num(gv, 'entered'),
+		giveaways_won: num(gv, 'won'),
+		quests_claimed: num(dashboardRow(questRows), 'claimed'),
+		streams_total: num(st, 'streams'),
+		streams_peak_viewers: num(st, 'peak_viewers'),
+		streams_likes: num(st, 'likes'),
+		streams_gifts: num(st, 'gifts'),
+		feedback_submitted: num(dashboardRow(feedbackRows), 'submitted'),
+		bounty_on_me: num(bn, 'pooled'),
+		bounty_on_me_count: num(bn, 'count')
+	};
+}
+
+export async function getMemberDashboard(memberId: unknown, priceMap: PriceMap = {}) {
 	await initializeDatabase();
 	const mid = Number(memberId);
-	const disguisedIds = serverId ? await getDisguisedMemberIds(serverId) : [];
-	const hideDisguised = disguisedIds.length > 0 ? sql`AND m.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+	const [assets, minigames, outgoing, incoming, community] = await Promise.all([
+		dashboardAssets(mid, priceMap),
+		dashboardMinigames(mid),
+		dashboardOutgoingItems(mid),
+		dashboardIncomingItems(mid),
+		dashboardCommunity(mid)
+	]);
+	return { ...assets, ...minigames, ...outgoing, ...incoming, ...community };
+}
 
-	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
-	const q = (query: SQL) => db.execute(query).catch(() => [[]]);
-	const mapName = (rows: unknown) =>
-		(((rows as unknown[])[0] as NameHitRow[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+type NameHitRow = { name: string | null; hits: string; xp: string | number };
+type NamedHits = { name: string; hits: number; xp: number }[];
+type InsightScope = { mid: number; hideDisguised: SQL };
+type PeerSpec = { direction: 'out' | 'in'; filter: SQL; hasXp?: boolean; isXpRanked?: boolean; limit?: number };
+type InsightInteractions = Record<string, { out: NamedHits; in: NamedHits }>;
 
-	const outgoing = (action: string, successOnly: boolean) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-		`);
-	const incoming = (action: string, successOnly: boolean) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.member_id
-			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-		`);
-	const defendedFrom = (actions: string[], outcomes: string[]) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.member_id
-			WHERE il.target_member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
-				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
-		`);
+const INSIGHT_NAME = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+const INSIGHT_GROUP = sql`GROUP BY m.id, m.server_display_name, m.display_name, m.username`;
+const INSIGHT_ATTACKS = sql`il.action IN ('steal','bomb','leech') AND il.outcome = 'success'`;
+const INSIGHT_ITEM_USE = sql`il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')`;
 
-	const attackedInto = (actions: string[], outcomes: string[]) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
-				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
-		`);
+const INSIGHT_INTERACTIONS = [
+	{ key: 'steal', hasIncoming: true, outcome: sql`AND il.outcome = 'success'` },
+	{ key: 'bomb', hasIncoming: true, outcome: sql`AND il.outcome = 'success'` },
+	{ key: 'leech', hasIncoming: true, outcome: sql`` },
+	{ key: 'gift', hasIncoming: true, outcome: sql`` },
+	{ key: 'spy', hasIncoming: false, outcome: sql`` }
+];
 
-	const INTERACTIONS = [
-		{ key: 'steal', out: true, in: true, success: true },
-		{ key: 'bomb', out: true, in: true, success: true },
-		{ key: 'leech', out: true, in: true, success: false },
-		{ key: 'gift', out: true, in: true, success: false },
-		{ key: 'spy', out: true, in: false, success: false }
-	];
+function actionOutcomes(actions: string[], outcomes: string[]) {
+	return sql`il.action IN (${sql.join(actions, sql`, `)}) AND il.outcome IN (${sql.join(outcomes, sql`, `)})`;
+}
 
-	const interactionQueries = INTERACTIONS.flatMap((it) => [
-		...(it.out ? [{ key: it.key, dir: 'out', p: outgoing(it.key, it.success) }] : []),
-		...(it.in ? [{ key: it.key, dir: 'in', p: incoming(it.key, it.success) }] : [])
+const DEFENDED: Omit<PeerSpec, 'direction' | 'filter'> = { hasXp: false, isXpRanked: false };
+
+const INSIGHT_ONE_WAY: [string, PeerSpec][] = [
+	['spy_caught', { direction: 'in', filter: actionOutcomes(['spy'], ['caught']), ...DEFENDED }],
+	['blocked', { direction: 'in', filter: actionOutcomes(['steal', 'bomb'], ['immune']), ...DEFENDED }],
+	['reflected', { direction: 'in', filter: actionOutcomes(['steal', 'bomb'], ['reflected']), ...DEFENDED }],
+	['my_spy_caught', { direction: 'out', filter: actionOutcomes(['spy'], ['caught']), ...DEFENDED }],
+	['my_blocked', { direction: 'out', filter: actionOutcomes(['steal', 'bomb'], ['immune']), ...DEFENDED }],
+	['my_reflected', { direction: 'out', filter: actionOutcomes(['steal', 'bomb'], ['reflected']), ...DEFENDED }],
+	['bounty_collected', { direction: 'out', filter: sql`il.action = 'bounty_collected'` }],
+	['bounty_paid_out', { direction: 'in', filter: sql`il.action = 'bounty_collected'` }],
+	['leech_blocked', { direction: 'in', filter: actionOutcomes(['leech'], ['occupied']), ...DEFENDED }]
+];
+
+function insightQuery(query: SQL): Promise<unknown> {
+	return db.execute(query).catch(() => [[]]);
+}
+
+function insightRows<T>(result: unknown): T[] {
+	return ((result as unknown[])[0] as T[]) || [];
+}
+
+function namedHits(result: unknown): NamedHits {
+	return insightRows<NameHitRow>(result).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+}
+
+function itemLogPeers({ mid, hideDisguised }: InsightScope, spec: PeerSpec) {
+	const own = spec.direction === 'out' ? sql`il.member_id` : sql`il.target_member_id`;
+	const peer = spec.direction === 'out' ? sql`il.target_member_id` : sql`il.member_id`;
+	const xp = spec.hasXp === false ? sql`0` : sql`COALESCE(SUM(il.xp), 0)`;
+	const order = spec.isXpRanked === false ? sql`hits DESC, xp DESC` : sql`xp DESC, hits DESC`;
+	return insightQuery(sql`
+		SELECT ${INSIGHT_NAME} AS name, COUNT(*) AS hits, ${xp} AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = ${peer}
+		WHERE ${own} = ${mid} AND ${spec.filter} ${hideDisguised}
+		${INSIGHT_GROUP} ORDER BY ${order} LIMIT ${sql.raw(String(spec.limit ?? INSIGHT_PEERS_DEFAULT_LIMIT))}
+	`);
+}
+
+function bountyPeers({ mid, hideDisguised }: InsightScope, direction: 'out' | 'in') {
+	const own = direction === 'out' ? sql`b.placed_by_member_id` : sql`b.target_member_id`;
+	const peer = direction === 'out' ? sql`b.target_member_id` : sql`b.placed_by_member_id`;
+	return insightQuery(sql`
+		SELECT ${INSIGHT_NAME} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
+		FROM server_member_item_bounties b
+		INNER JOIN server_members m ON m.id = ${peer}
+		WHERE ${own} = ${mid} ${hideDisguised}
+		${INSIGHT_GROUP} ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+}
+
+async function memberInteractions(scope: InsightScope): Promise<InsightInteractions> {
+	const twoWay = INSIGHT_INTERACTIONS.map(({ key, hasIncoming, outcome }) => {
+		const filter = sql`il.action = ${key} ${outcome}`;
+		return Promise.all([
+			itemLogPeers(scope, { direction: 'out', filter }),
+			hasIncoming ? itemLogPeers(scope, { direction: 'in', filter }) : Promise.resolve([[]])
+		]);
+	});
+	const [pairs, bounty, oneWay] = await Promise.all([
+		Promise.all(twoWay),
+		Promise.all([bountyPeers(scope, 'out'), bountyPeers(scope, 'in')]),
+		Promise.all(INSIGHT_ONE_WAY.map(([, spec]) => itemLogPeers(scope, spec)))
 	]);
 
-	const bountyOut = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
-		FROM server_member_item_bounties b
-		INNER JOIN server_members m ON m.id = b.target_member_id
-		WHERE b.placed_by_member_id = ${mid} ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
-	const bountyIn = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
-		FROM server_member_item_bounties b
-		INNER JOIN server_members m ON m.id = b.placed_by_member_id
-		WHERE b.target_member_id = ${mid} ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
+	const interactions: InsightInteractions = {};
+	INSIGHT_INTERACTIONS.forEach(({ key }, i) => {
+		interactions[key] = { out: namedHits(pairs[i][0]), in: namedHits(pairs[i][1]) };
+	});
+	interactions.bounty = { out: namedHits(bounty[0]), in: namedHits(bounty[1]) };
+	INSIGHT_ONE_WAY.forEach(([key], i) => {
+		interactions[key] = { out: namedHits(oneWay[i]), in: [] };
+	});
+	return interactions;
+}
 
-	const nemesis = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.member_id
-		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
-	`);
-	const favoriteTarget = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.target_member_id
-		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
-	`);
-	const bestAlly = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m
-			ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
-		WHERE il.action = 'gift' AND (
-			(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
-			OR (il.target_member_id = ${mid})
-		) ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 1
-	`);
-
-	const spyCaught = defendedFrom(['spy'], ['caught']);
-	const blocked = defendedFrom(['steal', 'bomb'], ['immune']);
-	const reflected = defendedFrom(['steal', 'bomb'], ['reflected']);
-	const mySpyCaught = attackedInto(['spy'], ['caught']);
-	const leechBlocked = defendedFrom(['leech'], ['occupied']);
-	const myBlocked = attackedInto(['steal', 'bomb'], ['immune']);
-	const myReflected = attackedInto(['steal', 'bomb'], ['reflected']);
-	const bountyCollected = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.target_member_id
-		WHERE il.member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
-	const bountyPaidOut = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.member_id
-		WHERE il.target_member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
-	const defenseSummary = q(sql`
+async function memberDefense({ mid }: InsightScope) {
+	const result = await insightQuery(sql`
 		SELECT
 			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action = 'spy' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS spies_caught,
 			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'immune' THEN 1 ELSE 0 END), 0) AS blocked,
@@ -5068,110 +5156,9 @@ export async function getMemberInsights(memberId: number | string, serverId: num
 		FROM server_member_item_logs il
 		WHERE target_member_id = ${mid} OR member_id = ${mid}
 	`);
-
-	const [
-		topItems,
-		effectUsage,
-		xpFlow,
-		holdings,
-		bountyOutRows,
-		bountyInRows,
-		spyCaughtRows,
-		blockedRows,
-		reflectedRows,
-		mySpyCaughtRows,
-		myBlockedRows,
-		myReflectedRows,
-		bountyCollectedRows,
-		bountyPaidOutRows,
-		leechBlockedRows,
-		defenseRows,
-		nemesisRows,
-		favoriteTargetRows,
-		bestAllyRows,
-		...interactionResults
-	] = await Promise.all([
-		q(sql`
-			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
-			FROM server_member_item_logs il
-			LEFT JOIN items bi ON bi.id = il.item_id
-			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
-			GROUP BY bi.id, bi.name, bi.effect_type
-			ORDER BY uses DESC LIMIT 1
-		`),
-		q(sql`
-			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
-			FROM server_member_item_logs il
-			LEFT JOIN items bi ON bi.id = il.item_id
-			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
-			GROUP BY COALESCE(bi.effect_type, il.action)
-			ORDER BY uses DESC
-		`),
-		q(sql`
-			SELECT d AS day, SUM(net) AS net FROM (
-				SELECT DATE(created_at) AS d, SUM(xp) AS net FROM server_member_minigame_logs
-					WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
-				UNION ALL
-				SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
-					WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
-				UNION ALL
-				SELECT DATE(created_at) AS d,
-					SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp
-						WHEN action = 'gift' THEN -xp WHEN action = 'buy' THEN -xp ELSE 0 END) AS net
-					FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
-			) t GROUP BY d ORDER BY d ASC
-		`),
-		q(sql`
-			SELECT asset_type, asset_id, symbol, asset_name, asset_image, SUM(xp_invested) AS invested
-			FROM server_member_assets WHERE member_id = ${mid}
-			GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
-			ORDER BY invested DESC
-		`),
-		bountyOut,
-		bountyIn,
-		spyCaught,
-		blocked,
-		reflected,
-		mySpyCaught,
-		myBlocked,
-		myReflected,
-		bountyCollected,
-		bountyPaidOut,
-		leechBlocked,
-		defenseSummary,
-		nemesis,
-		favoriteTarget,
-		bestAlly,
-		...interactionQueries.map((iq) => iq.p)
-	]);
-
-	const interactions: Record<string, { out: ReturnType<typeof mapName>; in: ReturnType<typeof mapName> }> = {};
-	interactionQueries.forEach((iq, i) => {
-		if (!interactions[iq.key]) {
-			interactions[iq.key] = { out: [], in: [] };
-		}
-		interactions[iq.key][iq.dir as 'out' | 'in'] = mapName(interactionResults[i]);
-	});
-	interactions.bounty = { out: mapName(bountyOutRows), in: mapName(bountyInRows) };
-	interactions.spy_caught = { out: mapName(spyCaughtRows), in: [] };
-	interactions.blocked = { out: mapName(blockedRows), in: [] };
-	interactions.reflected = { out: mapName(reflectedRows), in: [] };
-	interactions.my_spy_caught = { out: mapName(mySpyCaughtRows), in: [] };
-	interactions.my_blocked = { out: mapName(myBlockedRows), in: [] };
-	interactions.my_reflected = { out: mapName(myReflectedRows), in: [] };
-	interactions.bounty_collected = { out: mapName(bountyCollectedRows), in: [] };
-	interactions.bounty_paid_out = { out: mapName(bountyPaidOutRows), in: [] };
-	interactions.leech_blocked = { out: mapName(leechBlockedRows), in: [] };
-
-	const defRow: Partial<{
-		spies_caught: string;
-		blocked: string;
-		reflected: string;
-		my_steals_caught: string;
-		insurance_covers: string;
-		insurance_xp: string;
-	}> = (defenseRows[0] as unknown as Record<string, string>[])[0] || {};
-	const defense = {
+	const defRow: Partial<Record<'spies_caught' | 'blocked' | 'reflected' | 'my_steals_caught' | 'insurance_covers' | 'insurance_xp', string>> =
+		insightRows<Record<string, string>>(result)[0] || {};
+	return {
 		spies_caught: Number(defRow.spies_caught) || 0,
 		blocked: Number(defRow.blocked) || 0,
 		reflected: Number(defRow.reflected) || 0,
@@ -5179,29 +5166,91 @@ export async function getMemberInsights(memberId: number | string, serverId: num
 		insurance_covers: Number(defRow.insurance_covers) || 0,
 		insurance_xp: Number(defRow.insurance_xp) || 0
 	};
+}
 
-	const one = (rows: unknown) => mapName(rows)[0] ?? null;
-	const relationships = {
-		nemesis: one(nemesisRows),
-		favorite_target: one(favoriteTargetRows),
-		best_ally: one(bestAllyRows)
+async function memberRelationships(scope: InsightScope) {
+	const { mid, hideDisguised } = scope;
+	const [nemesisRows, favoriteTargetRows, bestAllyRows] = await Promise.all([
+		itemLogPeers(scope, { direction: 'in', filter: INSIGHT_ATTACKS, isXpRanked: false, limit: 1 }),
+		itemLogPeers(scope, { direction: 'out', filter: INSIGHT_ATTACKS, isXpRanked: false, limit: 1 }),
+		insightQuery(sql`
+			SELECT ${INSIGHT_NAME} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m
+				ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
+			WHERE il.action = 'gift' AND (
+				(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
+				OR (il.target_member_id = ${mid})
+			) ${hideDisguised}
+			${INSIGHT_GROUP} ORDER BY xp DESC, hits DESC LIMIT 1
+		`)
+	]);
+	const one = (rows: unknown) => namedHits(rows)[0] ?? null;
+	return { nemesis: one(nemesisRows), favorite_target: one(favoriteTargetRows), best_ally: one(bestAllyRows) };
+}
+
+async function memberItemUsage({ mid }: InsightScope) {
+	const [topItems, effectUsage] = await Promise.all([
+		insightQuery(sql`
+			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND ${INSIGHT_ITEM_USE}
+			GROUP BY bi.id, bi.name, bi.effect_type
+			ORDER BY uses DESC LIMIT 1
+		`),
+		insightQuery(sql`
+			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND ${INSIGHT_ITEM_USE}
+			GROUP BY COALESCE(bi.effect_type, il.action)
+			ORDER BY uses DESC
+		`)
+	]);
+	return {
+		favorite_items: insightRows<{ name: string | null; effect_type: string | null; uses: string }>(topItems).map((r) => ({
+			name: r.name || 'Item',
+			effect_type: r.effect_type || null,
+			uses: Number(r.uses) || 0
+		})),
+		effect_usage: insightRows<{ effect_type: string | null; uses: string }>(effectUsage)
+			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
+			.filter((r) => r.uses > 0)
 	};
+}
 
-	const flowRows = ((xpFlow[0] as unknown as { day: string | Date; net: string }[]) || []).map((r) => ({
+async function memberXpFlow({ mid }: InsightScope) {
+	const result = await insightQuery(sql`
+		SELECT d AS day, SUM(net) AS net FROM (
+			SELECT DATE(created_at) AS d, SUM(xp) AS net FROM server_member_minigame_logs
+				WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+			UNION ALL
+			SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
+				WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+			UNION ALL
+			SELECT DATE(created_at) AS d,
+				SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp
+					WHEN action = 'gift' THEN -xp WHEN action = 'buy' THEN -xp ELSE 0 END) AS net
+				FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+		) t GROUP BY d ORDER BY d ASC
+	`);
+	return insightRows<{ day: string | Date; net: string }>(result).map((r) => ({
 		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
 		net: Number(r.net) || 0
 	}));
+}
 
-	const assetHoldings = (
-		(holdings[0] as unknown as {
-			asset_type: string;
-			asset_id: string;
-			symbol: string;
-			asset_name: string;
-			asset_image: string | null;
-			invested: string;
-		}[]) || []
-	)
+type HoldingRow = { asset_type: string; asset_id: string; symbol: string; asset_name: string; asset_image: string | null; invested: string };
+
+async function memberAssetHoldings({ mid }: InsightScope) {
+	const result = await insightQuery(sql`
+		SELECT asset_type, asset_id, symbol, asset_name, asset_image, SUM(xp_invested) AS invested
+		FROM server_member_assets WHERE member_id = ${mid}
+		GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
+		ORDER BY invested DESC
+	`);
+	return insightRows<HoldingRow>(result)
 		.map((r) => ({
 			asset_type: r.asset_type,
 			asset_id: r.asset_id,
@@ -5211,20 +5260,32 @@ export async function getMemberInsights(memberId: number | string, serverId: num
 			invested: Number(r.invested) || 0
 		}))
 		.filter((r) => r.invested > 0);
+}
+
+export async function getMemberInsights(memberId: number | string, serverId: number | string | null = null) {
+	await initializeDatabase();
+	const disguisedIds = serverId ? await getDisguisedMemberIds(serverId) : [];
+	const scope: InsightScope = {
+		mid: Number(memberId),
+		hideDisguised: disguisedIds.length > 0 ? sql`AND m.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``
+	};
+
+	const [usage, interactions, defense, relationships, xpFlow, assetHoldings] = await Promise.all([
+		memberItemUsage(scope),
+		memberInteractions(scope),
+		memberDefense(scope),
+		memberRelationships(scope),
+		memberXpFlow(scope),
+		memberAssetHoldings(scope)
+	]);
 
 	return {
-		favorite_items: ((topItems[0] as unknown as { name: string | null; effect_type: string | null; uses: string }[]) || []).map((r) => ({
-			name: r.name || 'Item',
-			effect_type: r.effect_type || null,
-			uses: Number(r.uses) || 0
-		})),
+		favorite_items: usage.favorite_items,
 		interactions,
 		defense,
 		relationships,
-		effect_usage: ((effectUsage[0] as unknown as { effect_type: string | null; uses: string }[]) || [])
-			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
-			.filter((r) => r.uses > 0),
-		xp_flow: flowRows,
+		effect_usage: usage.effect_usage,
+		xp_flow: xpFlow,
 		asset_holdings: assetHoldings
 	};
 }
@@ -5274,16 +5335,18 @@ export async function getDisguisedMemberIds(serverId: number | string): Promise<
 	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => Number(r.member_id)).filter((n) => Number.isFinite(n));
 }
 
-export async function getServerLeaderboard(serverId: number | string, limit = 3, sortType = 'xp', range: unknown = 'all') {
+type LeaderboardQuery = { limit?: number; sortType?: string; range?: unknown };
+
+export async function getServerLeaderboard(serverId: number | string, { limit = 3, sortType = 'xp', range = 'all' }: LeaderboardQuery = {}) {
 	await initializeDatabase();
 	if (!serverId) {
 		throw new Error('serverId is required');
 	}
-	const safeLimit = Math.max(1, Math.min(50, limit));
+	const safeLimit = Math.max(1, Math.min(SERVER_LEADERBOARD_MAX_LIMIT, limit));
 
 	const r = String(range || 'all');
-	const rangeDays = r === '1d' ? 1 : r === '7d' ? 7 : r === '30d' ? 30 : 0;
-	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000) : null;
+	const rangeDays = r === '1d' ? 1 : r === '7d' ? DAYS_PER_WEEK : r === '30d' ? MONTH_RANGE_DAYS : 0;
+	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * DAY_MS) : null;
 
 	const orderMap: Record<string, SQL[]> = {
 		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
@@ -5715,6 +5778,149 @@ export async function getPanelOverview(panelId: number) {
 	};
 }
 
+type ServerRow = typeof schema.servers.$inferSelect;
+type OverviewRow = Record<string, string | number | Date | null>;
+type OverviewExtras = { economy: Awaited<ReturnType<typeof getServerEconomyStats>> | null; features: Awaited<ReturnType<typeof getServerFeatureStats>> | null };
+
+function overviewRow(raw: unknown): OverviewRow {
+	return (raw as SelectResult<OverviewRow>)[0][0] ?? {};
+}
+
+function overviewNumber(raw: unknown, key: string) {
+	return Number(overviewRow(raw)[key]) || 0;
+}
+
+function overviewLastUpdated(raw: unknown) {
+	return overviewRow(raw).last_updated || null;
+}
+
+function overviewStatQueries(id: number) {
+	return Promise.all([
+		db.execute(
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${id} AND deleted_at IS NULL AND is_bot = 0`
+		),
+		db.execute(
+			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+		),
+		db.execute(
+			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+		),
+		db.execute(
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${id}`
+		),
+		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${id}`),
+		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${id}`),
+		db.execute(
+			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+		),
+		db.execute(
+			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL`
+		)
+	]);
+}
+
+function overviewSyncQueries(id: number) {
+	return Promise.all([
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${id} AND deleted_at IS NULL AND is_bot = 0`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${id}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${id}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${id}`),
+		db.execute(
+			sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+		),
+		db
+			.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
+			.from(schema.serverSettings)
+			.where(eq(schema.serverSettings.server_id, id))
+			.orderBy(asc(schema.serverSettings.component_name))
+	]);
+}
+
+function overviewStats(serverRow: ServerRow, statResults: Awaited<ReturnType<typeof overviewStatQueries>>, { economy, features }: OverviewExtras) {
+	const [memberCounts, leveledCount, afkCount, channelCounts, categoriesCount, rolesCount, levelingStats, customRolesCount] = statResults;
+	const walletXp = Math.round(overviewNumber(levelingStats, 'total_xp'));
+	const assetsValue = economy?.assets_market_value || 0;
+	return {
+		members_total: Number(serverRow.total_members) || overviewNumber(memberCounts, 'total'),
+		members_boosters: serverRow.total_boosters || 0,
+		members_unique_boosters: overviewNumber(memberCounts, 'unique_boosters'),
+		members_with_levels: overviewNumber(leveledCount, 'leveled'),
+		member_afk: overviewNumber(afkCount, 'afk'),
+		members_with_custom_roles: overviewNumber(customRolesCount, 'members_with_custom_roles'),
+		channels_total: Number(serverRow.total_channels) || overviewNumber(channelCounts, 'total'),
+		channels_text: overviewNumber(channelCounts, 'text_count'),
+		channels_announcement: overviewNumber(channelCounts, 'announcement_count'),
+		channels_voice: overviewNumber(channelCounts, 'voice_count'),
+		channels_stage: overviewNumber(channelCounts, 'stage_count'),
+		categories_total: overviewNumber(categoriesCount, 'count'),
+		roles_total: overviewNumber(rolesCount, 'count'),
+		leveling_wallet_xp: walletXp,
+		leveling_assets_value: assetsValue,
+		leveling_total_xp: walletXp + assetsValue,
+		leveling_avg_level: roundTo(overviewNumber(levelingStats, 'avg_level'), 2),
+		leveling_max_level: overviewNumber(levelingStats, 'max_level'),
+		leveling_total_chat: overviewNumber(levelingStats, 'total_chat'),
+		leveling_total_voice_minutes: overviewNumber(levelingStats, 'total_voice_minutes'),
+		leveling_total_voice_active: overviewNumber(levelingStats, 'total_voice_active'),
+		leveling_total_voice_afk: overviewNumber(levelingStats, 'total_voice_afk'),
+		leveling_total_voice_video: overviewNumber(levelingStats, 'total_voice_video'),
+		leveling_total_voice_streaming: overviewNumber(levelingStats, 'total_voice_streaming'),
+		...(economy ?? {}),
+		...(features ?? {})
+	};
+}
+
+function latestSettingsUpdate(settingsRows: { updated_at: Date | null }[]) {
+	return settingsRows.reduce<Date | null>((latest, row) => {
+		if (!row.updated_at) {
+			return latest;
+		}
+		if (!latest) {
+			return row.updated_at;
+		}
+		const rowDate = parseMySQLDateTimeUtc(row.updated_at);
+		const latestDate = parseMySQLDateTimeUtc(latest);
+		return rowDate && latestDate && rowDate > latestDate ? row.updated_at : latest;
+	}, null);
+}
+
+async function featureSettingsServerId(component: string, { serverRow, panelBotId }: { serverRow: ServerRow; panelBotId: number | null }) {
+	if (component === SERVER_SETTINGS.component.notifications) {
+		const alt = await getOfficialBotServerIdForServer(serverRow.id);
+		return alt != null ? Number(alt) : serverRow.id;
+	}
+	if (component === SERVER_SETTINGS.component.forwarder && serverRow.discord_server_id && panelBotId != null) {
+		const officialServer = await getServerByDiscordId(Number(panelBotId), serverRow.discord_server_id);
+		return officialServer?.id != null ? Number(officialServer.id) : serverRow.id;
+	}
+	return serverRow.id;
+}
+
+async function enabledServerFeatures(serverRow: ServerRow, panelBotId: number | null) {
+	const enabledFeatures: { component_name: string; label: string; updated_at: unknown }[] = [];
+	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
+		const sid = await featureSettingsServerId(component, { serverRow, panelBotId });
+		const row = await getServerSettings(sid, component).catch(() => null);
+		const st = row?.settings;
+		if (!!st && typeof st === 'object' && (st as Record<string, unknown>).enabled === true) {
+			enabledFeatures.push({ component_name: component, label: SERVER_SETTINGS.featureLabel(component), updated_at: row?.updated_at ?? null });
+		}
+	}
+	return enabledFeatures.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function overviewSync(syncResults: Awaited<ReturnType<typeof overviewSyncQueries>>) {
+	const [memberSyncTimes, channelSyncTimes, categorySyncTimes, roleSyncTimes, levelSyncTimes, settingsRows] = syncResults;
+	return {
+		members_last_updated: overviewLastUpdated(memberSyncTimes),
+		channels_last_updated: overviewLastUpdated(channelSyncTimes),
+		categories_last_updated: overviewLastUpdated(categorySyncTimes),
+		roles_last_updated: overviewLastUpdated(roleSyncTimes),
+		levels_last_updated: overviewLastUpdated(levelSyncTimes),
+		settings_last_updated: latestSettingsUpdate(settingsRows)
+	};
+}
+
 export async function getServerOverview(serverId: number | string, opts?: { forPublicPage?: boolean; priceMap?: Record<string, { price: number }> }) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') {
@@ -5726,186 +5932,30 @@ export async function getServerOverview(serverId: number | string, opts?: { forP
 		return null;
 	}
 
-	const serverRows = await db.select().from(schema.servers).where(eq(schema.servers.id, id)).limit(1);
-	const serverRow = serverRows[0];
+	const serverRow = (await db.select().from(schema.servers).where(eq(schema.servers.id, id)).limit(1))[0];
 	if (!serverRow) {
 		return null;
 	}
 
-	const forPublic = opts?.forPublicPage === true;
-
-	const statsPromises = [
-		db.execute(
-			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`
-		),
-		db.execute(
-			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
-		),
-		db.execute(
-			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
-		),
-		db.execute(
-			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${Number(serverId)}`
-		),
-		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
-		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
-		db.execute(
-			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
-		),
-		db.execute(
-			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
-		)
-	];
-
-	let memberCounts: any;
-	let leveledCount: any;
-	let afkCount: any;
-	let channelCounts: any;
-	let categoriesCount: any;
-	let rolesCount: any;
-	let levelingStats: any;
-	let customRolesCount: any;
-	let memberSyncTimes: any;
-	let channelSyncTimes: any;
-	let categorySyncTimes: any;
-	let roleSyncTimes: any;
-	let levelSyncTimes: any;
-	let settingsRows: any;
-
-	if (forPublic) {
-		[memberCounts, leveledCount, afkCount, channelCounts, categoriesCount, rolesCount, levelingStats, customRolesCount] = await Promise.all(statsPromises);
-	} else {
-		[
-			memberCounts,
-			leveledCount,
-			afkCount,
-			channelCounts,
-			categoriesCount,
-			rolesCount,
-			levelingStats,
-			customRolesCount,
-			memberSyncTimes,
-			channelSyncTimes,
-			categorySyncTimes,
-			roleSyncTimes,
-			levelSyncTimes,
-			settingsRows
-		] = await Promise.all([
-			...statsPromises,
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`),
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
-			db.execute(
-				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
-			),
-			db
-				.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
-				.from(schema.serverSettings)
-				.where(eq(schema.serverSettings.server_id, Number(serverId)))
-				.orderBy(asc(schema.serverSettings.component_name))
-		]);
-	}
-
+	const isForPublic = opts?.forPublicPage === true;
+	const [statResults, syncResults] = await Promise.all([overviewStatQueries(id), isForPublic ? null : overviewSyncQueries(id)]);
 	const [economy, features] = await Promise.all([
 		getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null),
 		getServerFeatureStats(serverId).catch(() => null)
 	]);
+	const stats = overviewStats(serverRow, statResults, { economy, features });
 
-	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
-
-	const walletXp = Math.round(r(levelingStats).total_xp || 0);
-
-	const stats = {
-		members_total: Number(serverRow.total_members) || r(memberCounts).total || 0,
-		members_boosters: serverRow.total_boosters || 0,
-		members_unique_boosters: r(memberCounts).unique_boosters || 0,
-		members_with_levels: r(leveledCount).leveled || 0,
-		member_afk: r(afkCount).afk || 0,
-		members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
-		channels_total: Number(serverRow.total_channels) || r(channelCounts).total || 0,
-		channels_text: r(channelCounts).text_count || 0,
-		channels_announcement: r(channelCounts).announcement_count || 0,
-		channels_voice: r(channelCounts).voice_count || 0,
-		channels_stage: r(channelCounts).stage_count || 0,
-		categories_total: r(categoriesCount).count || 0,
-		roles_total: r(rolesCount).count || 0,
-		leveling_wallet_xp: walletXp,
-		leveling_assets_value: economy?.assets_market_value || 0,
-		leveling_total_xp: walletXp + (economy?.assets_market_value || 0),
-		leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
-		leveling_max_level: r(levelingStats).max_level || 0,
-		leveling_total_chat: r(levelingStats).total_chat || 0,
-		leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
-		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
-		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
-		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
-		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0,
-		...(economy ?? {}),
-		...(features ?? {})
-	};
-
-	if (forPublic) {
-		return {
-			...serverRow,
-			stats
-		};
+	if (isForPublic || !syncResults) {
+		return { ...serverRow, stats };
 	}
-
-	const settingsLastUpdated = settingsRows.reduce((latest: unknown, row: any) => {
-		if (!row.updated_at) {
-			return latest;
-		}
-		if (!latest) {
-			return row.updated_at;
-		}
-		const rowDate = parseMySQLDateTimeUtc(row.updated_at);
-		const latestDate = parseMySQLDateTimeUtc(latest);
-		return rowDate && latestDate && rowDate > latestDate ? row.updated_at : latest;
-	}, null);
 
 	const panelBotId = await resolveOfficialBotIdForServer(serverRow);
-
-	const enabledFeatures: { component_name: string; label: string; updated_at: unknown }[] = [];
-	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
-		let sid = id;
-		if (component === SERVER_SETTINGS.component.notifications) {
-			const alt = await getOfficialBotServerIdForServer(id);
-			if (alt != null) {
-				sid = Number(alt);
-			}
-		} else if (component === SERVER_SETTINGS.component.forwarder && serverRow.discord_server_id && panelBotId != null) {
-			const officialServer = await getServerByDiscordId(Number(panelBotId), serverRow.discord_server_id);
-			if (officialServer?.id != null) {
-				sid = Number(officialServer.id);
-			}
-		}
-		const row = await getServerSettings(sid, component).catch(() => null);
-		const st = row?.settings;
-		const featureOn = !!st && typeof st === 'object' && (st as Record<string, unknown>).enabled === true;
-		if (featureOn) {
-			enabledFeatures.push({
-				component_name: component,
-				label: SERVER_SETTINGS.featureLabel(component),
-				updated_at: row?.updated_at ?? null
-			});
-		}
-	}
-	enabledFeatures.sort((a, b) => a.label.localeCompare(b.label));
-
 	return {
 		...serverRow,
 		bot_id: panelBotId,
 		stats,
-		sync: {
-			members_last_updated: r(memberSyncTimes).last_updated || null,
-			channels_last_updated: r(channelSyncTimes).last_updated || null,
-			categories_last_updated: r(categorySyncTimes).last_updated || null,
-			roles_last_updated: r(roleSyncTimes).last_updated || null,
-			levels_last_updated: r(levelSyncTimes).last_updated || null,
-			settings_last_updated: settingsLastUpdated
-		},
-		enabledFeatures
+		sync: overviewSync(syncResults),
+		enabledFeatures: await enabledServerFeatures(serverRow, panelBotId)
 	};
 }
 
@@ -6269,7 +6319,7 @@ async function getServerAccountsByServer(serverId: number) {
 		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
 }
 
-const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 24 * 60;
+const SERVER_ACCOUNT_INVITE_TTL_MINUTES = DAY_MINUTES;
 
 async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();
@@ -6531,7 +6581,7 @@ function questIsoToDbDate(iso: string | undefined | null): Date | null {
 
 function questMediaUrlForDb(raw: string | null | undefined): string | null {
 	const s = raw?.trim() || '';
-	if (!s.startsWith('http') || s.length > 512) {
+	if (!s.startsWith('http') || s.length > URL_COLUMN_MAX_LENGTH) {
 		return null;
 	}
 	return s;
@@ -6803,76 +6853,61 @@ function snapshotAssetIdBigInt(assetId: number | bigint): bigint {
 	throw new Error('invalid asset id');
 }
 
-async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
-	await initializeDatabase();
-	if (!items || items.length === 0) {
-		return;
+function robloxItemRow(botId: number, it: RobloxCatalogItemSnapshot, now: Date) {
+	try {
+		return {
+			bot_id: botId,
+			asset_id: snapshotAssetIdBigInt(it.assetId),
+			asset_type: it.assetType == null ? null : Number(it.assetType),
+			category: it.category ?? null,
+			name: it.name ?? null,
+			description: it.description ?? null,
+			creator_name: it.creatorName ?? null,
+			price: snapshotBigIntOrNull(it.price),
+			lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
+			total_quantity: snapshotBigIntOrNull(it.totalQuantity),
+			favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
+			units_available: snapshotBigIntOrNull(it.unitsAvailable),
+			thumbnail_url: it.thumbnailUrl ?? null,
+			item_created_at: it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null,
+			created_at: now
+		};
+	} catch {
+		return null;
 	}
-	const now = toMySQLDateTime();
+}
 
-	const rows = items
-		.filter((it) => !!it)
-		.map((it) => {
-			try {
-				return {
-					bot_id: botId,
-					asset_id: snapshotAssetIdBigInt(it.assetId),
-					asset_type: it.assetType == null ? null : Number(it.assetType),
-					category: it.category ?? null,
-					name: it.name ?? null,
-					description: it.description ?? null,
-					creator_name: it.creatorName ?? null,
-					price: snapshotBigIntOrNull(it.price),
-					lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
-					total_quantity: snapshotBigIntOrNull(it.totalQuantity),
-					favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
-					units_available: snapshotBigIntOrNull(it.unitsAvailable),
-					thumbnail_url: it.thumbnailUrl ?? null,
-					item_created_at: it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null,
-					created_at: now
-				};
-			} catch {
-				return null;
-			}
-		})
-		.filter((r): r is NonNullable<typeof r> => r !== null);
+type RobloxItemRow = NonNullable<ReturnType<typeof robloxItemRow>>;
 
-	if (rows.length === 0) {
-		return;
-	}
+const ROBLOX_ITEM_UPDATE_COLUMNS = [
+	'bot_id',
+	'asset_type',
+	'category',
+	'name',
+	'description',
+	'creator_name',
+	'price',
+	'lowest_resale_price',
+	'total_quantity',
+	'favorite_count',
+	'units_available',
+	'thumbnail_url',
+	'item_created_at',
+	'created_at'
+] as const;
 
-	await batchUpsert(
-		'roblox item',
-		rows,
-		(batch) =>
-			db
-				.insert(schema.botRobloxItems)
-				.values(batch)
-				.onDuplicateKeyUpdate({
-					set: {
-						bot_id: sql`values(${schema.botRobloxItems.bot_id})`,
-						asset_type: sql`values(${schema.botRobloxItems.asset_type})`,
-						category: sql`values(${schema.botRobloxItems.category})`,
-						name: sql`values(${schema.botRobloxItems.name})`,
-						description: sql`values(${schema.botRobloxItems.description})`,
-						creator_name: sql`values(${schema.botRobloxItems.creator_name})`,
-						price: sql`values(${schema.botRobloxItems.price})`,
-						lowest_resale_price: sql`values(${schema.botRobloxItems.lowest_resale_price})`,
-						total_quantity: sql`values(${schema.botRobloxItems.total_quantity})`,
-						favorite_count: sql`values(${schema.botRobloxItems.favorite_count})`,
-						units_available: sql`values(${schema.botRobloxItems.units_available})`,
-						thumbnail_url: sql`values(${schema.botRobloxItems.thumbnail_url})`,
-						item_created_at: sql`values(${schema.botRobloxItems.item_created_at})`,
-						created_at: sql`values(${schema.botRobloxItems.created_at})`
-					}
-				}),
-		(row) => {
+async function upsertRobloxItems(rows: RobloxItemRow[]) {
+	const set = Object.fromEntries(ROBLOX_ITEM_UPDATE_COLUMNS.map((column) => [column, sql`values(${schema.botRobloxItems[column]})`]));
+	await batchUpsert('roblox item', rows, {
+		runBatch: (batch) => db.insert(schema.botRobloxItems).values(batch).onDuplicateKeyUpdate({ set }),
+		runSingle: (row) => {
 			const { asset_id, ...updatable } = row;
 			return db.insert(schema.botRobloxItems).values(row).onDuplicateKeyUpdate({ set: updatable });
 		}
-	);
+	});
+}
 
-	const assetIds = rows.map((r) => r.asset_id);
+async function robloxItemIds(assetIds: bigint[]) {
 	const idRows: { id: number; asset_id: bigint }[] = [];
 	for (const batch of chunkRows(assetIds)) {
 		const found = await db
@@ -6881,26 +6916,42 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 			.where(inArray(schema.botRobloxItems.asset_id, batch));
 		idRows.push(...found);
 	}
+	return idRows;
+}
+
+async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
+	await initializeDatabase();
+	if (!items || items.length === 0) {
+		return;
+	}
+	const now = toMySQLDateTime();
+	const rows = items
+		.filter((it) => !!it)
+		.map((it) => robloxItemRow(botId, it, now))
+		.filter((r): r is RobloxItemRow => r !== null);
+	if (rows.length === 0) {
+		return;
+	}
+
+	await upsertRobloxItems(rows);
+	const idRows = await robloxItemIds(rows.map((r) => r.asset_id));
 	if (idRows.length === 0) {
 		return;
 	}
 
 	const links = idRows.map((r) => ({ server_id: serverId, item_id: r.id, message_posted_at: null }));
-
-	await batchUpsert(
-		'roblox server link',
-		links,
-		(batch) =>
+	await batchUpsert('roblox server link', links, {
+		runBatch: (batch) =>
 			db
 				.insert(schema.serverRobloxItems)
 				.values(batch)
 				.onDuplicateKeyUpdate({ set: { server_id: sql`values(${schema.serverRobloxItems.server_id})` } }),
-		(row) =>
+		runSingle: (row) =>
 			db
 				.insert(schema.serverRobloxItems)
 				.values(row)
 				.onDuplicateKeyUpdate({ set: { server_id: serverId } })
-	);
+	});
 }
 
 async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds: readonly (number | bigint)[]): Promise<bigint[]> {
@@ -7208,7 +7259,7 @@ async function upsertBotCreator(botId: number, profile: CreatorProfile): Promise
 			account_id: profile.accountId,
 			handle: profile.handle,
 			name: profile.name,
-			thumbnail_url: profile.thumbnailUrl?.slice(0, 512) ?? null,
+			thumbnail_url: profile.thumbnailUrl?.slice(0, URL_COLUMN_MAX_LENGTH) ?? null,
 			created_at: toMySQLDateTime()
 		})
 		.onDuplicateKeyUpdate({
@@ -7263,7 +7314,7 @@ async function markBotCreatorChecked(creatorId: number, profile?: Pick<CreatorPr
 			checked_at: toMySQLDateTime(),
 			...(profile?.handle ? { handle: profile.handle } : {}),
 			...(profile?.name ? { name: profile.name } : {}),
-			...(profile?.thumbnailUrl ? { thumbnail_url: profile.thumbnailUrl.slice(0, 512) } : {})
+			...(profile?.thumbnailUrl ? { thumbnail_url: profile.thumbnailUrl.slice(0, URL_COLUMN_MAX_LENGTH) } : {})
 		})
 		.where(eq(schema.botCreators.id, creatorId));
 }
@@ -7300,8 +7351,8 @@ async function recordBotCreatorContents(creatorId: number, contents: CreatorCont
 				content_id: c.contentId,
 				type: c.type,
 				title: c.title,
-				url: c.url.slice(0, 512),
-				thumbnail_url: c.thumbnailUrl?.slice(0, 512) ?? null,
+				url: c.url.slice(0, URL_COLUMN_MAX_LENGTH),
+				thumbnail_url: c.thumbnailUrl?.slice(0, URL_COLUMN_MAX_LENGTH) ?? null,
 				published_at: c.publishedAt ? toMySQLDateTime(c.publishedAt) : null,
 				created_at: now
 			}))
@@ -7578,13 +7629,8 @@ export async function getAFKStatus(serverId: number | string, discordMemberId: s
 		return null;
 	}
 
-	let timestamp: number;
-	if (afkData.created_at instanceof Date) {
-		timestamp = (afkData.created_at as Date).getTime();
-	} else {
-		const parsed = parseMySQLDateTimeUtc(afkData.created_at);
-		timestamp = parsed ? parsed.getTime() : Date.now();
-	}
+	const createdAt = afkData.created_at instanceof Date ? afkData.created_at : parseMySQLDateTimeUtc(afkData.created_at);
+	const timestamp = createdAt ? createdAt.getTime() : Date.now();
 	return { message: afkData.message || 'Away', timestamp, serverDisplayName: afkData.server_display_name };
 }
 
@@ -7748,7 +7794,7 @@ export async function createGiveaway(giveawayData: {
 	await initializeDatabase();
 	const createdAt = new Date();
 	const durationMin = Number(giveawayData.duration_minutes);
-	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * 60_000);
+	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * MINUTE_MS);
 
 	const result = await db.insert(schema.serverMemberGiveaways).values({
 		member_id: giveawayData.member_id,
@@ -7904,22 +7950,29 @@ export async function getActiveGiveawayByMember(serverId: number | string, membe
 	return g;
 }
 
-export async function addGiveawayEntry(giveawayId: number | string, memberId: number | string, increment: boolean | null = true) {
+export async function addGiveawayEntry(giveawayId: number | string, memberId: number | string) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	if (increment) {
-		await db.execute(sql`
-			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
-			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
-			ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
-		`);
-	} else {
-		await db.execute(sql`
-			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
-			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
-			ON DUPLICATE KEY UPDATE updated_at = ${now}
-		`);
-	}
+	await db.execute(sql`
+		INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+		VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
+	`);
+	return getGiveawayEntry(giveawayId, memberId);
+}
+
+export async function enterGiveawayOnce(giveawayId: number | string, memberId: number | string) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+		VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE updated_at = ${now}
+	`);
+	return getGiveawayEntry(giveawayId, memberId);
+}
+
+async function getGiveawayEntry(giveawayId: number | string, memberId: number | string) {
 	const rows = await db
 		.select()
 		.from(schema.serverMemberGiveawayEntries)
@@ -7948,7 +8001,7 @@ export async function getRandomGiveawayWinners(giveawayId: number | string, winn
 
 	const crypto = await import('crypto');
 	const shuffledEntries = [...entries];
-	for (let round = 0; round < 10; round++) {
+	for (let round = 0; round < GIVEAWAY_SHUFFLE_ROUNDS; round++) {
 		for (let i = shuffledEntries.length - 1; i > 0; i--) {
 			const j = crypto.randomInt(0, i + 1);
 			[shuffledEntries[i], shuffledEntries[j]] = [shuffledEntries[j], shuffledEntries[i]];
@@ -7961,7 +8014,7 @@ export async function getRandomGiveawayWinners(giveawayId: number | string, winn
 			weighted.push(entry);
 		}
 	}
-	for (let round = 0; round < 10; round++) {
+	for (let round = 0; round < GIVEAWAY_SHUFFLE_ROUNDS; round++) {
 		for (let i = weighted.length - 1; i > 0; i--) {
 			const j = crypto.randomInt(0, i + 1);
 			[weighted[i], weighted[j]] = [weighted[j], weighted[i]];
@@ -8025,7 +8078,9 @@ export async function getStaffRating(serverId: number | string, staffMemberId: n
 	return rows[0]?.server_member_staff_ratings || null;
 }
 
-export async function upsertStaffRating(serverId: number | string, staffMemberId: number | string, ratingValue: number | string, totalReports: number) {
+type RatingTotals = { ratingValue: number | string; totalReports: number };
+
+export async function upsertStaffRating(serverId: number | string, staffMemberId: number | string, { ratingValue, totalReports }: RatingTotals) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const existing = await getStaffRating(serverId, staffMemberId);
@@ -8047,14 +8102,11 @@ export async function upsertStaffRating(serverId: number | string, staffMemberId
 	return getStaffRating(serverId, staffMemberId);
 }
 
+type StaffReportInput = { reporterMemberId: unknown; reportedStaffId: unknown; rating: number; category: string; description: string; isAnonymous: boolean };
+
 export async function createStaffRatingReport(
 	_serverId: unknown,
-	reporterMemberId: unknown,
-	reportedStaffId: unknown,
-	rating: number,
-	category: string,
-	description: string,
-	isAnonymous: boolean
+	{ reporterMemberId, reportedStaffId, rating, category, description, isAnonymous }: StaffReportInput
 ) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -8137,7 +8189,7 @@ export async function getStaffReportById(serverId: number | string, reportId: nu
 	return (rows[0] as unknown as StaffReportSqlRow[])[0] || null;
 }
 
-export async function updateStaffReportStatus(reportId: number | string, status: string, reviewedByMemberId?: number | string, reviewReason?: string | null) {
+export async function updateStaffReportStatus(reportId: number | string, status: string, { reviewedByMemberId, reviewReason }: ReviewBy = {}) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const payload: Record<string, unknown> = {
@@ -8154,7 +8206,9 @@ export async function updateStaffReportStatus(reportId: number | string, status:
 		.where(eq(schema.serverMemberStaffRatingReviews.id, Number(reportId)));
 }
 
-export async function createContentCreatorApplication(_serverId: unknown, memberId: unknown, tiktokUsername: string, reason: string) {
+type CreatorApplicationInput = { memberId: unknown; tiktokUsername: string; reason: string };
+
+export async function createContentCreatorApplication(_serverId: unknown, { memberId, tiktokUsername, reason }: CreatorApplicationInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverMemberContentCreatorReviews).values({
@@ -8252,11 +8306,12 @@ export async function getContentCreatorApplicationById(serverId: number | string
 	return (rows[0] as unknown as ContentCreatorReviewSqlRow[])[0] || null;
 }
 
+type ReviewBy = { reviewedByMemberId?: number | string; reviewReason?: string | null };
+
 export async function updateContentCreatorApplicationStatus(
 	applicationId: number | string,
 	status: 'pending' | 'approved' | 'rejected',
-	reviewedByMemberId?: number | string,
-	reviewReason?: string | null
+	{ reviewedByMemberId, reviewReason }: ReviewBy = {}
 ) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -8383,23 +8438,25 @@ export async function insertContentCreatorStreamLog(streamId: number, eventType:
 	let jsonPayload: Record<string, unknown> | null = null;
 	try {
 		const s = JSON.stringify(payload, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
-		if (s.length > 60000) {
-			jsonPayload = { _truncated: true, length: s.length, preview: s.slice(0, 8000) };
+		if (s.length > STREAM_LOG_PAYLOAD_MAX_LENGTH) {
+			jsonPayload = { _truncated: true, length: s.length, preview: s.slice(0, STREAM_LOG_PREVIEW_LENGTH) };
 		} else {
 			jsonPayload = JSON.parse(s) as Record<string, unknown>;
 		}
 	} catch {
-		jsonPayload = { _raw: String(payload).slice(0, 8000) };
+		jsonPayload = { _raw: String(payload).slice(0, STREAM_LOG_PREVIEW_LENGTH) };
 	}
 	await db.insert(schema.serverMemberContentCreatorStreamLogs).values({
 		stream_id: Number(streamId),
-		event_type: String(eventType).slice(0, 64),
+		event_type: String(eventType).slice(0, STREAM_LOG_EVENT_TYPE_MAX_LENGTH),
 		occurred_at: now,
 		payload: jsonPayload
 	});
 }
 
-export async function createFeedback(_serverId: unknown, memberId: unknown, description: string, isAnonymous: boolean) {
+type FeedbackInput = { memberId: unknown; description: string; isAnonymous: boolean };
+
+export async function createFeedback(_serverId: unknown, { memberId, description, isAnonymous }: FeedbackInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverFeedback).values({
@@ -8422,9 +8479,9 @@ export async function getFeedback(serverId: number | string, feedbackId: number 
 	return rows[0]?.feedback || null;
 }
 
-export async function getFeedbackByServer(serverId: number | string, limit = 100, offset = 0) {
+export async function getFeedbackByServer(serverId: number | string, limit = FEEDBACK_DEFAULT_LIMIT, offset = 0) {
 	await initializeDatabase();
-	const lim = Math.min(500, Math.max(1, parseInt(String(limit), 10) || 100));
+	const lim = Math.min(FEEDBACK_MAX_LIMIT, Math.max(1, parseInt(String(limit), 10) || FEEDBACK_DEFAULT_LIMIT));
 	const off = Math.max(0, parseInt(String(offset), 10) || 0);
 	return db
 		.select({ feedback: schema.serverFeedback })
@@ -8667,13 +8724,13 @@ export async function revokeModerationCase(id: number | string) {
 	return Number(result?.affectedRows ?? 0);
 }
 
-export async function endActiveModeration(memberId: number, actions: string[], revoked = false) {
+export async function endActiveModeration(memberId: number, actions: string[], isRevoked = false) {
 	if (actions.length === 0) {
 		return 0;
 	}
 	const [result] = await db.execute(sql`
 		UPDATE server_member_moderation_logs
-		SET active = 0, revoked_at = ${revoked ? toMySQLDateTime() : null}
+		SET active = 0, revoked_at = ${isRevoked ? toMySQLDateTime() : null}
 		WHERE member_id = ${memberId} AND active = 1 AND action IN (${sql.join(
 			actions.map((a) => sql`${a}`),
 			sql`, `
@@ -8822,7 +8879,9 @@ export async function getRewardWinnerCounts(serverId: unknown): Promise<Map<numb
 	return new Map(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [Number(r.reward_id), Number(r.winners) || 0]));
 }
 
-export async function earnMemberReward(memberId: number | string, rewardId: number | string, winnerLimit: number | null, delivered = false): Promise<boolean> {
+type RewardEarn = { rewardId: number | string; winnerLimit: number | null; delivered?: boolean };
+
+export async function earnMemberReward(memberId: number | string, { rewardId, winnerLimit, delivered: isDelivered = false }: RewardEarn): Promise<boolean> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const room =
@@ -8831,7 +8890,7 @@ export async function earnMemberReward(memberId: number | string, rewardId: numb
 			: sql`(SELECT COUNT(*) FROM server_member_rewards taken WHERE taken.reward_id = ${Number(rewardId)}) < ${Number(winnerLimit)}`;
 	const result = (await db.execute(sql`
 		INSERT IGNORE INTO server_member_rewards (member_id, reward_id, delivered_at, created_at)
-		SELECT ${Number(memberId)}, ${Number(rewardId)}, ${delivered ? now : null}, ${now}
+		SELECT ${Number(memberId)}, ${Number(rewardId)}, ${isDelivered ? now : null}, ${now}
 		FROM DUAL
 		WHERE ${room}
 	`)) as unknown as WriteResult;
@@ -8921,7 +8980,7 @@ export type ServerMessagePost = {
 };
 
 function messageFromRow(r: Record<string, unknown>, scope: MessageScope = 'server'): ServerMessage {
-	let content = r.content;
+	let { content } = r;
 	if (typeof content === 'string') {
 		try {
 			content = JSON.parse(content);
@@ -8962,7 +9021,7 @@ export async function getServerMessage(serverId: number | string, messageId: num
 	return row ? messageFromRow(row) : null;
 }
 
-export async function saveServerMessage(serverId: number | string, messageId: number | null, name: string, content: MessageDoc): Promise<number | null> {
+export async function saveServerMessage(serverId: number | string, { messageId, name, content }: MessageSave): Promise<number | null> {
 	await initializeDatabase();
 	const sid = Number(serverId);
 	const now = toMySQLDateTime();
@@ -9011,14 +9070,18 @@ export async function getServerMessagePosts(serverId: unknown, messageId: number
 	}));
 }
 
+type ServerPostInput = {
+	messageId: number | string;
+	discordChannelId: string;
+	discordMessageId: string;
+	language: string;
+	mentions: string | null;
+	content: MessageDoc;
+};
+
 export async function addServerMessagePost(
 	serverId: number | string,
-	messageId: number | string,
-	discordChannelId: string,
-	discordMessageId: string,
-	language: string,
-	mentions: string | null,
-	content: MessageDoc
+	{ messageId, discordChannelId, discordMessageId, language, mentions, content }: ServerPostInput
 ): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -9068,7 +9131,9 @@ export async function getGlobalMessage(panelId: number | string, messageId: numb
 	return row ? messageFromRow(row, 'global') : null;
 }
 
-export async function saveGlobalMessage(panelId: number | string, messageId: number | null, name: string, content: MessageDoc): Promise<number | null> {
+type MessageSave = { messageId: number | null; name: string; content: MessageDoc };
+
+export async function saveGlobalMessage(panelId: number | string, { messageId, name, content }: MessageSave): Promise<number | null> {
 	await initializeDatabase();
 	const pid = Number(panelId);
 	const now = toMySQLDateTime();
@@ -9123,15 +9188,19 @@ export async function getGlobalMessagePosts(panelId: unknown, messageId: number 
 	}));
 }
 
+type GlobalPostInput = {
+	messageId: number | string;
+	serverId: number | string;
+	discordChannelId: string;
+	discordMessageId: string;
+	language: string;
+	mentions: string | null;
+	content: MessageDoc;
+};
+
 export async function addGlobalMessagePost(
 	panelId: number | string,
-	messageId: number | string,
-	serverId: number | string,
-	discordChannelId: string,
-	discordMessageId: string,
-	language: string,
-	mentions: string | null,
-	content: MessageDoc
+	{ messageId, serverId, discordChannelId, discordMessageId, language, mentions, content }: GlobalPostInput
 ): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -9164,18 +9233,19 @@ export async function deleteGlobalMessagePost(panelId: number | string, postId: 
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
+type PanelLogEntry = { action: string; changes: { key: string; before: string | null; after: string | null }[] };
+
 export async function createServerPanelLog(
 	serverId: number,
 	actor: { server_account_id?: number | null; account_id?: number | null },
-	action: string,
-	changes: { key: string; before: string | null; after: string | null }[]
+	{ action, changes }: PanelLogEntry
 ) {
 	if (!changes.length) {
 		return;
 	}
 	await db.execute(sql`
 		INSERT INTO server_panel_logs (server_id, server_account_id, account_id, action, changes, created_at)
-		VALUES (${Number(serverId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${action.slice(0, 24)}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
+		VALUES (${Number(serverId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${action.slice(0, PANEL_LOG_ACTION_MAX_LENGTH)}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
 	`);
 }
 
@@ -9237,7 +9307,7 @@ function inviteStatus(row: Record<string, unknown>): 'active' | 'left' | 'fake' 
 	return 'active';
 }
 
-const PRIOR_MEMBER_MARGIN_MS = 5 * 60_000;
+const PRIOR_MEMBER_MARGIN_MS = PRIOR_MEMBER_MARGIN_MINUTES * MINUTE_MS;
 
 type InviteRow = {
 	id: number;
@@ -9273,14 +9343,14 @@ export async function recordMemberJoinInvite(data: {
 		const [priorRows] = (await db.execute(sql`
 			SELECT created_at < ${cutoff} AS prior FROM server_members WHERE id = ${data.member_id} LIMIT 1
 		`)) as unknown as SelectResult<{ prior: number | string | null }>;
-		const prior = Number(priorRows?.[0]?.prior) === 1;
-		const fakeReason = data.fake_reason ?? (prior && data.inviter_member_id != null ? 'rejoin' : null);
+		const hasPrior = Number(priorRows?.[0]?.prior) === 1;
+		const fakeReason = data.fake_reason ?? (hasPrior && data.inviter_member_id != null ? 'rejoin' : null);
 		await db.execute(sql`
 			INSERT INTO server_member_invites (member_id, inviter_member_id, code, source, fake_reason, xp, joined_at, created_at)
 			VALUES (${data.member_id}, ${data.inviter_member_id}, ${data.code}, ${data.source}, ${fakeReason}, 0, ${now}, ${now})
 			ON DUPLICATE KEY UPDATE left_at = NULL, joined_at = VALUES(joined_at)
 		`);
-		return { rejoin: prior };
+		return { rejoin: hasPrior };
 	}
 
 	if (existing.inviter_member_id == null && data.inviter_member_id != null && existing.rewarded_at == null) {
@@ -9571,11 +9641,12 @@ export async function getMemberInviteLogs(memberId: number, limit = 50) {
 	return rows ?? [];
 }
 
+type InviteAdjustment = { amount: number; reason: string | null };
+
 export async function addMemberInviteAdjustment(
 	memberId: number,
 	actor: { server_account_id?: number | null; account_id?: number | null },
-	amount: number,
-	reason: string | null
+	{ amount, reason }: InviteAdjustment
 ) {
 	await initializeDatabase();
 	await db.execute(sql`
@@ -9593,8 +9664,25 @@ export async function assignMemberInviter(inviteeMemberId: number, inviterMember
 	return Number(result?.affectedRows ?? 0) > 0;
 }
 
-export async function getServerInviteStats(serverId: number | string, codeLimit = 10) {
-	await initializeDatabase();
+type InviteTotalsRow = Record<
+	| 'tracked'
+	| 'active'
+	| 'left_count'
+	| 'fake'
+	| 'unknown_count'
+	| 'vanity'
+	| 'server_link'
+	| 'personal'
+	| 'discord'
+	| 'pending'
+	| 'xp_paid'
+	| 'share_xp'
+	| 'inviters',
+	string
+>;
+type InviteCodeRow = { code: string; inviter_name: string | null; inviter_discord_id: string | null; source: string | null; joins: string; active: string };
+
+async function inviteTotals(serverId: number): Promise<Partial<InviteTotalsRow>> {
 	const [rows] = (await db.execute(sql`
 		SELECT
 			COUNT(*) AS tracked,
@@ -9612,47 +9700,49 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 			COUNT(DISTINCT i.inviter_member_id) AS inviters
 		FROM server_member_invites i
 		JOIN server_members m ON m.id = i.member_id
-		WHERE m.server_id = ${Number(serverId)}
-	`)) as unknown as SelectResult<{
-		tracked: string;
-		active: string;
-		left_count: string;
-		fake: string;
-		unknown_count: string;
-		vanity: string;
-		server_link: string;
-		personal: string;
-		discord: string;
-		pending: string;
-		xp_paid: string;
-		share_xp: string;
-		inviters: string;
-	}>;
+		WHERE m.server_id = ${serverId}
+	`)) as unknown as SelectResult<InviteTotalsRow>;
+	return rows?.[0] ?? {};
+}
+
+async function inviteBonus(serverId: number) {
 	const [bonusRows] = (await db.execute(sql`
 		SELECT COALESCE(SUM(l.amount), 0) AS bonus
 		FROM server_member_invite_logs l
 		JOIN server_members m ON m.id = l.member_id
-		WHERE m.server_id = ${Number(serverId)}
+		WHERE m.server_id = ${serverId}
 	`)) as unknown as SelectResult<{ bonus: string }>;
+	return Number(bonusRows?.[0]?.bonus) || 0;
+}
+
+async function inviteCodes(serverId: number, codeLimit: number) {
 	const [codeRows] = (await db.execute(sql`
 		SELECT i.code, ${INVITE_NAME} AS inviter_name, m.discord_member_id AS inviter_discord_id, MAX(i.source) AS source,
 			COUNT(*) AS joins, COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active
 		FROM server_member_invites i
 		JOIN server_members im ON im.id = i.member_id
 		LEFT JOIN server_members m ON m.id = i.inviter_member_id
-		WHERE im.server_id = ${Number(serverId)} AND i.code IS NOT NULL
+		WHERE im.server_id = ${serverId} AND i.code IS NOT NULL
 		GROUP BY i.code, m.id, m.discord_member_id, m.server_display_name, m.display_name, m.username
 		ORDER BY active DESC, joins DESC
-		LIMIT ${Number(codeLimit)}
-	`)) as unknown as SelectResult<{
-		code: string;
-		inviter_name: string | null;
-		inviter_discord_id: string | null;
-		source: string | null;
-		joins: string;
-		active: string;
-	}>;
-	const r: Partial<(typeof rows)[number]> = rows?.[0] ?? {};
+		LIMIT ${codeLimit}
+	`)) as unknown as SelectResult<InviteCodeRow>;
+	return (codeRows ?? []).map((c) => ({
+		code: String(c.code),
+		inviter_name: c.inviter_name ?? null,
+		inviter_discord_id: c.inviter_discord_id ?? null,
+		source: c.source ? String(c.source) : null,
+		joins: Number(c.joins) || 0,
+		active: Number(c.active) || 0
+	}));
+}
+
+export async function getServerInviteStats(serverId: number | string, codeLimit = 10) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+	const r = await inviteTotals(sid);
+	const bonus = await inviteBonus(sid);
+	const codes = await inviteCodes(sid, Number(codeLimit));
 	return {
 		tracked: Number(r.tracked) || 0,
 		active: Number(r.active) || 0,
@@ -9667,15 +9757,8 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 		xp_paid: Number(r.xp_paid) || 0,
 		share_xp: Number(r.share_xp) || 0,
 		inviters: Number(r.inviters) || 0,
-		bonus: Number(bonusRows?.[0]?.bonus) || 0,
-		codes: (codeRows ?? []).map((c) => ({
-			code: String(c.code),
-			inviter_name: c.inviter_name ?? null,
-			inviter_discord_id: c.inviter_discord_id ?? null,
-			source: c.source ? String(c.source) : null,
-			joins: Number(c.joins) || 0,
-			active: Number(c.active) || 0
-		}))
+		bonus,
+		codes
 	};
 }
 
@@ -10202,6 +10285,7 @@ export default {
 	getGiveawayById,
 	getActiveGiveawayByMember,
 	addGiveawayEntry,
+	enterGiveawayOnce,
 	getGiveawayEntries,
 	getRandomGiveawayWinners,
 	markGiveawayEnded,

@@ -9,13 +9,13 @@
 
 	let { data }: PageProps = $props();
 
-	let saving = $state(false);
+	let isSaving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
 	let feedbackChannel = $state<string>(data.settings?.feedback_channel ?? '');
 	let feedbackRole = $state<string>(data.settings?.feedback_role ?? '');
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
 				method: 'POST',
@@ -36,7 +36,7 @@
 				showToast(d.error || 'Failed to save', 'error');
 			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 </script>
@@ -80,10 +80,10 @@
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

@@ -4,24 +4,27 @@ import db from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { postBotWebhook, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { guardMemberAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
+import { HTTP } from '$lib/http.js';
+import { MODERATION_REASON_MAX_LENGTH } from '$lib/moderation-rules.js';
 
+const LOG_REASON_MAX_LENGTH = 500;
 const ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns', 'edit_reason'];
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) {
-		return json({ ok: false, error: 'Authentication required' }, { status: 401 });
+		return json({ ok: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 	const serverId = parseInt(params.id ?? '');
 	if (isNaN(serverId)) {
-		return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
+		return json({ ok: false, error: 'Invalid server ID' }, { status: HTTP.BAD_REQUEST });
 	}
 	if (!(await canUseEmbedBuilder(locals, serverId))) {
-		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const discordId = String(url.searchParams.get('member') ?? '').trim();
 	if (!discordId) {
-		return json({ ok: false, error: 'member is required' }, { status: 400 });
+		return json({ ok: false, error: 'member is required' }, { status: HTTP.BAD_REQUEST });
 	}
 	const cases = await db.getMemberModerationCases(serverId, discordId);
 	return json({
@@ -42,99 +45,128 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	});
 };
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
-	if (!locals.user.authenticated) {
-		return json({ ok: false, error: 'Authentication required' }, { status: 401 });
-	}
+type ModerationBody = Record<string, unknown> | null;
+type CaseRow = NonNullable<Awaited<ReturnType<typeof db.getModerationCase>>>;
+type ServerRow = NonNullable<Awaited<ReturnType<typeof db.getServer>>>;
+type ActionRequest = { serverId: number; action: string; body: ModerationBody; targetDiscordId: string | null };
 
-	const serverId = parseInt(params.id ?? '');
-	if (isNaN(serverId)) {
-		return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
+async function editCaseReason(locals: App.Locals, serverId: number, { caseRow, body }: { caseRow: CaseRow | null; body: ModerationBody }) {
+	if (!caseRow) {
+		return json({ ok: false, error: 'Case not found' }, { status: HTTP.NOT_FOUND });
 	}
-	if (!(await canUseEmbedBuilder(locals, serverId))) {
-		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	const reason =
+		String(body?.reason ?? '')
+			.trim()
+			.slice(0, MODERATION_REASON_MAX_LENGTH) || null;
+	const updated = await db.updateModerationCaseReason(serverId, Number(caseRow.case_number), reason);
+	if (!updated) {
+		return json({ ok: false, error: 'Case not found' }, { status: HTTP.NOT_FOUND });
 	}
-
-	const body = await request.json().catch(() => null);
-	const action = String(body?.action ?? '');
-	if (!ACTIONS.includes(action)) {
-		return json({ ok: false, error: 'Unknown action' }, { status: 400 });
-	}
-
-	const server = await db.getServer(serverId);
-	if (!server) {
-		return json({ ok: false, error: 'Server not found' }, { status: 404 });
-	}
-
-	const caseRow = !body?.target_id && body?.case_number ? await db.getModerationCase(serverId, Number(body.case_number)).catch(() => null) : null;
-	const targetDiscordId = body?.target_id ? String(body.target_id) : caseRow?.discord_member_id ? String(caseRow.discord_member_id) : null;
-	if (targetDiscordId) {
-		const denied = await guardMemberAction(locals, serverId, targetDiscordId);
-		if (denied) {
-			return denied;
-		}
-	}
-
-	if (action === 'edit_reason') {
-		if (!caseRow) {
-			return json({ ok: false, error: 'Case not found' }, { status: 404 });
-		}
-		const reason =
-			String(body?.reason ?? '')
-				.trim()
-				.slice(0, 1000) || null;
-		const updated = await db.updateModerationCaseReason(serverId, Number(caseRow.case_number), reason);
-		if (!updated) {
-			return json({ ok: false, error: 'Case not found' }, { status: 404 });
-		}
-		await db
-			.createServerPanelLog(serverId, panelActorIds(locals), 'moderation', [
+	await db
+		.createServerPanelLog(serverId, panelActorIds(locals), {
+			action: 'moderation',
+			changes: [
 				{ key: 'member', before: null, after: updated.discord_member_id },
 				{ key: 'case', before: null, after: `#${caseRow.case_number}` },
 				{ key: 'reason', before: updated.before, after: reason }
-			])
-			.catch(() => null);
-		return json({ ok: true });
-	}
+			]
+		})
+		.catch(() => null);
+	return json({ ok: true });
+}
 
+async function runningBot(server: ServerRow) {
 	const bot = await resolveActiveBotForServer(server);
 	if (!bot) {
-		return json({ ok: false, error: 'Bot not found' }, { status: 404 });
+		return json({ ok: false, error: 'Bot not found' }, { status: HTTP.NOT_FOUND });
 	}
 	if (bot.status !== 'running') {
-		return json({ ok: false, error: 'Bot is not running' }, { status: 400 });
+		return json({ ok: false, error: 'Bot is not running' }, { status: HTTP.BAD_REQUEST });
 	}
 	if (!bot.port || !bot.secret_key) {
-		return json({ ok: false, error: 'Bot webhook not configured' }, { status: 400 });
+		return json({ ok: false, error: 'Bot webhook not configured' }, { status: HTTP.BAD_REQUEST });
 	}
+	return bot;
+}
 
+async function logModerationAction(locals: App.Locals, request: ActionRequest, caseNumber: unknown) {
+	const { body, targetDiscordId } = request;
+	await db
+		.createServerPanelLog(request.serverId, panelActorIds(locals), {
+			action: 'moderation',
+			changes: [
+				...(targetDiscordId ? [{ key: 'member', before: null, after: targetDiscordId }] : []),
+				{ key: 'action', before: null, after: request.action },
+				...(body?.reason ? [{ key: 'reason', before: null, after: String(body.reason).slice(0, LOG_REASON_MAX_LENGTH) }] : []),
+				...(body?.duration_seconds ? [{ key: 'duration seconds', before: null, after: String(Number(body.duration_seconds)) }] : []),
+				...(caseNumber ? [{ key: 'case', before: null, after: `#${caseNumber}` }] : [])
+			]
+		})
+		.catch(() => null);
+}
+
+async function sendModerationAction(locals: App.Locals, server: ServerRow, request: ActionRequest) {
+	const bot = await runningBot(server);
+	if (bot instanceof Response) {
+		return bot;
+	}
+	const { body, action } = request;
 	const result = await postBotWebhook(bot, {
 		type: 'moderation_action',
 		guild_id: server.discord_server_id,
 		action,
 		target_id: body?.target_id ? String(body.target_id) : undefined,
 		case_number: body?.case_number ? Number(body.case_number) : null,
-		reason: body?.reason ? String(body.reason).slice(0, 1000) : null,
+		reason: body?.reason ? String(body.reason).slice(0, MODERATION_REASON_MAX_LENGTH) : null,
 		duration_seconds: body?.duration_seconds ? Number(body.duration_seconds) : null,
-		staff_name: locals.user.username ?? 'Panel',
+		staff_name: (locals.user.authenticated && locals.user.username) || 'Panel',
 		source: 'panel'
 	});
-
-	if (result.status === 502) {
-		return json({ ok: false, error: 'Bot is unreachable' }, { status: 502 });
+	if (result.status === HTTP.BAD_GATEWAY) {
+		return json({ ok: false, error: 'Bot is unreachable' }, { status: HTTP.BAD_GATEWAY });
 	}
 	const payload = result.body ?? {};
 	if (payload.ok) {
-		const caseNumber = payload.case_number ?? body?.case_number ?? null;
-		await db
-			.createServerPanelLog(serverId, panelActorIds(locals), 'moderation', [
-				...(targetDiscordId ? [{ key: 'member', before: null, after: targetDiscordId }] : []),
-				{ key: 'action', before: null, after: action },
-				...(body?.reason ? [{ key: 'reason', before: null, after: String(body.reason).slice(0, 500) }] : []),
-				...(body?.duration_seconds ? [{ key: 'duration seconds', before: null, after: String(Number(body.duration_seconds)) }] : []),
-				...(caseNumber ? [{ key: 'case', before: null, after: `#${caseNumber}` }] : [])
-			])
-			.catch(() => null);
+		await logModerationAction(locals, request, payload.case_number ?? body?.case_number ?? null);
 	}
-	return json(payload.ok ? payload : { ok: false, error: payload.error || 'Moderation action failed' }, { status: payload.ok ? 200 : result.status || 400 });
+	return json(payload.ok ? payload : { ok: false, error: payload.error || 'Moderation action failed' }, {
+		status: payload.ok ? HTTP.OK : result.status || HTTP.BAD_REQUEST
+	});
+}
+
+export const POST: RequestHandler = async ({ locals, params, request }) => {
+	if (!locals.user.authenticated) {
+		return json({ ok: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
+	}
+
+	const serverId = parseInt(params.id ?? '');
+	if (isNaN(serverId)) {
+		return json({ ok: false, error: 'Invalid server ID' }, { status: HTTP.BAD_REQUEST });
+	}
+	if (!(await canUseEmbedBuilder(locals, serverId))) {
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
+	}
+
+	const body: ModerationBody = await request.json().catch(() => null);
+	const action = String(body?.action ?? '');
+	if (!ACTIONS.includes(action)) {
+		return json({ ok: false, error: 'Unknown action' }, { status: HTTP.BAD_REQUEST });
+	}
+
+	const server = await db.getServer(serverId);
+	if (!server) {
+		return json({ ok: false, error: 'Server not found' }, { status: HTTP.NOT_FOUND });
+	}
+
+	const caseRow = !body?.target_id && body?.case_number ? await db.getModerationCase(serverId, Number(body.case_number)).catch(() => null) : null;
+	const targetDiscordId = body?.target_id ? String(body.target_id) : caseRow?.discord_member_id ? String(caseRow.discord_member_id) : null;
+	const denied = targetDiscordId ? await guardMemberAction(locals, serverId, targetDiscordId) : null;
+	if (denied) {
+		return denied;
+	}
+
+	if (action === 'edit_reason') {
+		return editCaseReason(locals, serverId, { caseRow, body });
+	}
+	return sendModerationAction(locals, server, { serverId, action, body, targetDiscordId });
 };

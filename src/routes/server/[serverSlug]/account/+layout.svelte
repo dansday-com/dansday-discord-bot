@@ -1,6 +1,10 @@
 <script lang="ts">
+	import { legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
+	import { SECOND_MS, SECONDS_PER_MINUTE } from '$lib/utils/time.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
+	import { STREAK_FREEZE_MAX, STREAK_MILESTONES } from '$lib/tasks.js';
 	import '../../../../app.css';
-	import { onDestroy, onMount, setContext } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
@@ -12,14 +16,34 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { xpForLevel as levelThreshold } from '$lib/rewards.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
+	import { setAccountContext, type AssetSummary, type TaskStreak } from '$lib/frontend/accountContext.js';
+	import type { loadItemsShared } from '$lib/backend/public/items/index.js';
+	import type { loadMarketShared } from '$lib/backend/public/market/index.js';
 	import type { LayoutProps } from './$types';
+	import type { PageData as StatsPageData } from './profile/stats/[hash]/$types';
+	import type { PageData as RewardsPageData } from './profile/rewards/[hash]/$types';
+
+	const FLY_ARC_MIDPOINT = 0.5;
+	const FLY_ARC_LIFT_PX = 60;
+	const BAG_PULSE_MS = 520;
+
+	type ItemsShared = Extract<Awaited<ReturnType<typeof loadItemsShared>>, { balance: unknown }>;
+	type MarketShared = Extract<Awaited<ReturnType<typeof loadMarketShared>>, { positions: unknown }>;
+	type AccountPageData = Partial<Omit<ItemsShared, 'hash' | 'memberTheme'>> &
+		Partial<Pick<MarketShared, 'positions' | 'totalInvested' | 'totalValue'>> & {
+			hash?: string;
+			memberTheme?: MemberTheme | null;
+			profile?: Extract<StatsPageData, { profile: unknown }>['profile'];
+			rewards?: Extract<RewardsPageData, { rewards: unknown }>['rewards'];
+			tasks?: { streak?: TaskStreak } | null;
+		};
 
 	let { data, children }: LayoutProps = $props();
 
-	const pd = $derived(page.data as any);
+	const pd = $derived(page.data as AccountPageData);
 
-	const accountBase = $derived(`${(data as any).serverBasePath ?? publicServerPath(data.server.slug)}/account`);
-	const readOnly = false;
+	const accountBase = $derived(`${data.serverBasePath ?? publicServerPath(data.server.slug)}/account`);
+	const isReadOnly = false;
 	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isStats = $derived(/\/account\/profile\/stats\//.test(pathNorm));
@@ -40,22 +64,22 @@
 		return m ? m[1] : 'all';
 	});
 
-	const tasksEnabled = $derived(data.tasksEnabled === true);
-	const itemsEnabled = $derived(data.itemsEnabled === true);
-	const marketEnabled = $derived(data.marketEnabled === true);
-	const minigamesEnabled = $derived(data.minigamesEnabled === true);
+	const areTasksEnabled = $derived(data.tasksEnabled === true);
+	const areItemsEnabled = $derived(data.itemsEnabled === true);
+	const isMarketEnabled = $derived(data.marketEnabled === true);
+	const areMinigamesEnabled = $derived(data.minigamesEnabled === true);
 
 	const disabledFeature = $derived.by(() => {
-		if (isTasks && !tasksEnabled) {
+		if (isTasks && !areTasksEnabled) {
 			return { title: 'Tasks are turned off', message: 'This server has not enabled daily and weekly tasks.', icon: 'fa-list-check' };
 		}
-		if (isItems && !itemsEnabled) {
+		if (isItems && !areItemsEnabled) {
 			return { title: 'Items are turned off', message: 'This server has not enabled the item shop and bag.', icon: 'fa-store' };
 		}
-		if (isMinigames && !minigamesEnabled) {
+		if (isMinigames && !areMinigamesEnabled) {
 			return { title: 'Minigames are turned off', message: 'This server has not enabled minigames.', icon: 'fa-dice' };
 		}
-		if (isMarket && !marketEnabled) {
+		if (isMarket && !isMarketEnabled) {
 			return { title: 'Market is turned off', message: 'This server has not enabled the market.', icon: 'fa-chart-line' };
 		}
 		return null;
@@ -92,22 +116,22 @@
 	];
 
 	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
-	function setAssetSummary(s: any) {
+	function setAssetSummary(s: AssetSummary | null) {
 		assetSummaryLive = s;
 	}
 
-	let taskSummaryLive = $state<any>(null);
-	function setTaskSummary(s: unknown) {
+	let taskSummaryLive = $state<TaskStreak | null>(null);
+	function setTaskSummary(s: TaskStreak | null) {
 		taskSummaryLive = s;
 	}
 	const taskSummary = $derived(taskSummaryLive ?? pd.tasks?.streak ?? null);
 	const rewardItems = $derived((pd.rewards?.items ?? []) as { reached: boolean }[]);
 	const streakPct = $derived.by(() => {
 		const cur = Number(taskSummary?.current) || 0;
-		const next = Number(taskSummary?.nextMilestone?.at) || 7;
-		const prevMarks = [0, 7, 30, 100, 365].filter((m) => m < next);
+		const next = Number(taskSummary?.nextMilestone?.at) || STREAK_MILESTONES[0].at;
+		const prevMarks = [0, ...STREAK_MILESTONES.map((m) => m.at)].filter((m) => m < next);
 		const prev = prevMarks.length ? prevMarks[prevMarks.length - 1] : 0;
-		return Math.max(0, Math.min(100, ((cur - prev) / Math.max(1, next - prev)) * 100));
+		return Math.max(0, Math.min(PERCENT, ((cur - prev) / Math.max(1, next - prev)) * PERCENT));
 	});
 	const assetSummary = $derived.by(() => {
 		if (assetSummaryLive) {
@@ -116,7 +140,7 @@
 		const invested = Number(pd.totalInvested) || 0;
 		const value = Number(pd.totalValue) || 0;
 		const pnl = value - invested;
-		return { invested, value, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, count: (pd.positions ?? []).length };
+		return { invested, value, pnl, pnlPct: invested > 0 ? (pnl / invested) * PERCENT : 0, count: (pd.positions ?? []).length };
 	});
 
 	let now = $state(Date.now());
@@ -132,11 +156,11 @@
 		rank = pd.balance?.rank ?? null;
 	});
 
-	function fmt(n: number): string {
+	function fmt(n: unknown): string {
 		return Number(n ?? 0).toLocaleString();
 	}
 
-	const memberAvatar = $derived(pd.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(pd.memberDiscordId) % 5 || 0}.png`);
+	const memberAvatar = $derived(pd.memberAvatar ?? legacyDefaultAvatarUrl(pd.memberDiscordId));
 
 	const memberTheme = $derived((pd.memberTheme ?? null) as MemberTheme | null);
 	const heroImage = $derived(memberTheme?.image ?? null);
@@ -163,7 +187,7 @@
 		const next = xpForLevel(level + 1);
 		const span = Math.max(1, next - floor);
 		const gained = Math.max(0, liveXp - floor);
-		const pct = Math.max(0, Math.min(100, Math.round((gained / span) * 100)));
+		const pct = Math.max(0, Math.min(PERCENT, Math.round((gained / span) * PERCENT)));
 		return { floor, next, span, gained, pct, toNext: Math.max(0, next - liveXp) };
 	});
 
@@ -228,11 +252,11 @@
 	});
 
 	function remainingLabel(untilMs: number): string {
-		const secs = Math.max(0, Math.floor((untilMs - now) / 1000));
-		if (secs < 60) {
+		const secs = Math.max(0, Math.floor((untilMs - now) / SECOND_MS));
+		if (secs < SECONDS_PER_MINUTE) {
 			return `${secs}s`;
 		}
-		return formatDuration(Math.floor(secs / 60));
+		return formatDuration(Math.floor(secs / SECONDS_PER_MINUTE));
 	}
 
 	const typeTabs = $derived.by(() => {
@@ -248,7 +272,7 @@
 		return tabs.map((t) => ({ label: t.label, icon: t.icon, href: `${accountBase}/${kind}/${t.id}/${navHash}`, active: activeId === t.id }));
 	}
 
-	let bagPulse = $state(false);
+	let isBagPulsing = $state(false);
 
 	const sectionTabs: NavTab[] = $derived([
 		{
@@ -265,23 +289,23 @@
 			icon: 'fa-store',
 			href: `${accountBase}/items/all/${navHash}`,
 			active: isItems,
-			badge: itemsEnabled ? `${pd.bagStock ?? 0}/${BAG_CAPACITY}` : undefined,
-			badgeBump: bagPulse,
-			children: itemsEnabled ? subTabs('items', typeTabs, isItems ? activeCat : null) : undefined
+			badge: areItemsEnabled ? `${pd.bagStock ?? 0}/${BAG_CAPACITY}` : undefined,
+			badgeBump: isBagPulsing,
+			children: areItemsEnabled ? subTabs('items', typeTabs, isItems ? activeCat : null) : undefined
 		},
 		{
 			label: 'Minigames',
 			icon: 'fa-dice',
 			href: `${accountBase}/minigames/all/${navHash}`,
 			active: isMinigames,
-			children: minigamesEnabled ? subTabs('minigames', minigameTabs, isMinigames ? activeCat : null) : undefined
+			children: areMinigamesEnabled ? subTabs('minigames', minigameTabs, isMinigames ? activeCat : null) : undefined
 		},
 		{
 			label: 'Market',
 			icon: 'fa-chart-line',
 			href: `${accountBase}/market/top/${navHash}`,
 			active: isMarket,
-			children: marketEnabled ? subTabs('market', marketTabs, isMarket ? activeCat : null) : undefined
+			children: isMarketEnabled ? subTabs('market', marketTabs, isMarket ? activeCat : null) : undefined
 		},
 		{
 			label: 'History',
@@ -309,7 +333,7 @@
 	let es: EventSource | null = null;
 	onMount(() => {
 		syncTabSession();
-		const t = setInterval(() => (now = Date.now()), 1000);
+		const t = setInterval(() => (now = Date.now()), SECOND_MS);
 		if (pd.memberDiscordId) {
 			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
 			const source = new EventSource(url);
@@ -362,16 +386,20 @@
 		const anim = clone.animate(
 			[
 				{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0 },
-				{ transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy * 0.5 - 60}px)) scale(1.15)`, opacity: 1, offset: 0.6 },
+				{
+					transform: `translate(calc(-50% + ${dx * FLY_ARC_MIDPOINT}px), calc(-50% + ${dy * FLY_ARC_MIDPOINT - FLY_ARC_LIFT_PX}px)) scale(1.15)`,
+					opacity: 1,
+					offset: 0.6
+				},
 				{ transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.3)`, opacity: 0.2, offset: 1 }
 			],
 			{ duration: 620, easing: 'cubic-bezier(0.5, 0, 0.7, 1)' }
 		);
 		anim.onfinish = () => {
 			clone.remove();
-			bagPulse = false;
-			requestAnimationFrame(() => (bagPulse = true));
-			setTimeout(() => (bagPulse = false), 520);
+			isBagPulsing = false;
+			requestAnimationFrame(() => (isBagPulsing = true));
+			setTimeout(() => (isBagPulsing = false), BAG_PULSE_MS);
 		};
 	}
 
@@ -394,14 +422,14 @@
 		if (!SELF_BUFFS.has(effectType)) {
 			return false;
 		}
-		return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
+		return (pd.activeEffects ?? []).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
 	}
 	function activeLuckPercent(): number {
-		const luck = ((pd.activeEffects ?? []) as any[]).find((e) => e.effect_type === 'luck' && e.expiresAt && e.expiresAt > now);
+		const luck = (pd.activeEffects ?? []).find((e) => e.effect_type === 'luck' && e.expiresAt && e.expiresAt > now);
 		return luck ? Number(luck.effect_value) || 0 : 0;
 	}
 
-	setContext('items', {
+	setAccountContext({
 		fmt,
 		canAfford,
 		isBuffActive,
@@ -438,10 +466,10 @@
 			return (pd.bagStock ?? 0) >= BAG_CAPACITY;
 		},
 		get hash() {
-			return pd.hash;
+			return pd.hash ?? '';
 		},
 		get readOnly() {
-			return readOnly;
+			return isReadOnly;
 		},
 		get serverSlug() {
 			return data.server.slug;
@@ -567,7 +595,7 @@
 					</div>
 				{:else if isTasks}
 					<div class="flex flex-col items-center leading-tight">
-						<span class="text-lg font-extrabold text-white tabular-nums">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 3}</span>
+						<span class="text-lg font-extrabold text-white tabular-nums">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? STREAK_FREEZE_MAX}</span>
 						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Freezes</span>
 					</div>
 					{#if rank}

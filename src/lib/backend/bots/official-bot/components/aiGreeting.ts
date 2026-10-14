@@ -5,8 +5,9 @@ import { getRedisClient } from '../../../../redis.js';
 import { SERVER_SETTINGS } from '../../../panelServer.js';
 import { normalizeServerLanguage, serverLanguageEnglishName } from '../../../../languages.js';
 import type { AiInput } from '../../../../database.js';
+import { DAY_SECONDS } from '../../../../utils/time.js';
 
-const CACHE_TTL_SECONDS = 24 * 60 * 60;
+const CACHE_TTL_SECONDS = DAY_SECONDS;
 const REQUEST_TIMEOUT_MS = 20_000;
 const WANTED_LINES = 5;
 const MAX_LINE_LENGTH = 200;
@@ -59,7 +60,7 @@ function stripReasoning(text: string) {
 }
 
 function parseLines(raw: string, kind: string | number) {
-	const required = KINDS[kind as keyof typeof KINDS].required;
+	const { required } = KINDS[kind as keyof typeof KINDS];
 
 	return stripReasoning(raw)
 		.split('\n')
@@ -89,7 +90,9 @@ async function readCache(kind: string, serverId: number | string, lang: string) 
 	}
 }
 
-async function writeCache(kind: string, serverId: number | string, lang: string, lines: string[]) {
+type GreetingKey = { kind: string; serverId: number | string; lang: string };
+
+async function writeCache({ kind, serverId, lang }: GreetingKey, lines: string[]) {
 	const redis = await getRedisClient().catch(() => null);
 	if (!redis) {
 		return;
@@ -99,7 +102,9 @@ async function writeCache(kind: string, serverId: number | string, lang: string,
 	} catch {}
 }
 
-async function generate(kind: string | number, config: AiInput, serverName: string | null, lang: string) {
+type GreetingTarget = { serverName: string | null; lang: string };
+
+async function generate(kind: string | number, config: AiInput, { serverName, lang }: GreetingTarget) {
 	const spec = KINDS[kind as keyof typeof KINDS];
 	const client = new OpenAI({
 		baseURL: normalizeBaseUrl(config.api_url),
@@ -151,13 +156,13 @@ export async function aiGreetingMessages(kind: string, { botId, serverId, server
 	}
 
 	try {
-		const lines = await generate(kind, config, serverName || 'this server', lang);
+		const lines = await generate(kind, config, { serverName: serverName || 'this server', lang });
 		if (!lines.length) {
 			await logger.log(`⚠️ AI ${kind} message generation returned nothing usable, using the built-in messages`);
 			return null;
 		}
 
-		await writeCache(kind, serverId, lang, lines);
+		await writeCache({ kind, serverId, lang }, lines);
 		await logger.log(`✨ AI wrote ${lines.length} ${kind} message(s) for ${serverName || serverId}`);
 		return lines;
 	} catch (error) {

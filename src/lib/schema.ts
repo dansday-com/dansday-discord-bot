@@ -1,5 +1,7 @@
 import { mysqlTable, int, varchar, text, boolean, datetime, mysqlEnum, json, decimal, tinyint, uniqueIndex, index, bigint } from 'drizzle-orm/mysql-core';
 
+const DEFAULT_STREAK_FREEZES = 3;
+
 export const migrations = mysqlTable('migrations', {
 	id: int('id').primaryKey().autoincrement(),
 	name: varchar('name', { length: 255 }).notNull().unique(),
@@ -1138,7 +1140,7 @@ export const serverMemberStreaks = mysqlTable(
 		current_streak: int('current_streak').notNull().default(0),
 		longest_streak: int('longest_streak').notNull().default(0),
 		last_claim_day_key: int('last_claim_day_key'),
-		freezes_available: int('freezes_available').notNull().default(3),
+		freezes_available: int('freezes_available').notNull().default(DEFAULT_STREAK_FREEZES),
 		total_claims: int('total_claims').notNull().default(0),
 		tz_offset_min: int('tz_offset_min'),
 		created_at: datetime('created_at').notNull(),

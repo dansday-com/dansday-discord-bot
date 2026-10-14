@@ -1,10 +1,14 @@
-import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import { FORWARDER, getEmbedConfig } from '../../../config.js';
 import { forwarderKeywordHaystack, forwarderKeywordsMatch } from '../../../../forwarder-settings.js';
-import { logger } from '../../../../utils/index.js';
-import { serverTranslator } from '../i18n.js';
-import type { APIEmbed, ApplicationEmoji, Client, Collection, MessageCreateOptions, GuildTextBasedChannel } from 'discord.js';
+import { logger, attempt } from '../../../../utils/index.js';
+import { serverTranslator, type Translator } from '../i18n.js';
+import type { APIEmbed, ApplicationEmoji, Client, ClientApplication, Collection, MessageCreateOptions, GuildTextBasedChannel } from 'discord.js';
 import type { ForwardedMessage } from '../../../../forwarder-settings.js';
 import type { ForwarderTarget } from '../../../config.js';
+import { notifiedMentions, sendMentionOverflow } from './notifiedMentions.js';
+import { legacyDefaultAvatarUrl, userAvatarUrl } from '../../../../discordAvatars.js';
+
+const EMOJI_NAME_DIGITS = 6;
 
 function extractCustomEmojis(text: string) {
 	const str = text != null ? String(text) : '';
@@ -17,10 +21,9 @@ function extractCustomEmojis(text: string) {
 		['<:([^:]+):(\\d+)>', false],
 		['<a:([^:]+):(\\d+)>', true]
 	] as const;
-	for (const [pattern, animated] of patternSpecs) {
+	for (const [pattern, isAnimated] of patternSpecs) {
 		const regex = new RegExp(pattern, 'g');
-		let m;
-		while ((m = regex.exec(str)) !== null) {
+		for (const m of str.matchAll(regex)) {
 			const name = m[1];
 			const id = m[2];
 			if (typeof name !== 'string' || typeof id !== 'string') {
@@ -31,7 +34,7 @@ function extractCustomEmojis(text: string) {
 				continue;
 			}
 			seen.add(id);
-			out.push({ name: trimmedName, id, animated });
+			out.push({ name: trimmedName, id, animated: isAnimated });
 		}
 	}
 	return out;
@@ -78,8 +81,37 @@ function sanitizeAppEmojiName(name: string) {
 	}
 	const digits = String(name || '')
 		.replace(/\D/g, '')
-		.slice(-6);
+		.slice(-EMOJI_NAME_DIGITS);
 	return `e_${digits}` || 'emoji';
+}
+
+type AppEmojiInput = { attachment: Buffer; name: string };
+
+async function evictAndCreateAppEmoji(app: ClientApplication, emoji: AppEmojiInput, log: LogFn) {
+	try {
+		await app.emojis.cache.first()!.delete();
+		await app.emojis.fetch();
+		return await app.emojis.create(emoji);
+	} catch (retryErr) {
+		if (log) {
+			await log(`⚠️ Forwarder: could not add application emoji :${emoji.name}: (${(retryErr as Error).message})`);
+		}
+		return null;
+	}
+}
+
+async function createAppEmoji(app: ClientApplication, emoji: AppEmojiInput, log: LogFn) {
+	const created = await attempt(() => app.emojis.create(emoji));
+	if (created.ok) {
+		return created.value;
+	}
+	if (isAppEmojiLimitError(created.error) && app.emojis.cache.size > 0) {
+		return evictAndCreateAppEmoji(app, emoji, log);
+	}
+	if (log) {
+		await log(`⚠️ Forwarder: could not add application emoji :${emoji.name}: (${(created.error as Error).message})`);
+	}
+	return null;
 }
 
 async function ensureEmojisOnApplication(client: Client, emojiRefs: EmojiRef[], log: LogFn) {
@@ -95,7 +127,7 @@ async function ensureEmojisOnApplication(client: Client, emojiRefs: EmojiRef[], 
 		return { sourceToTarget };
 	}
 	await app.emojis.fetch();
-	let cache = app.emojis.cache;
+	let { cache } = app.emojis;
 	for (const ref of emojiRefs) {
 		let name = ref.name != null ? String(ref.name).trim() : '';
 		if (!name && ref.id) {
@@ -126,28 +158,7 @@ async function ensureEmojisOnApplication(client: Client, emojiRefs: EmojiRef[], 
 		if (!buffer) {
 			continue;
 		}
-		let created = null;
-		try {
-			created = await app.emojis.create({ attachment: buffer, name });
-		} catch (err) {
-			if (isAppEmojiLimitError(err) && cache.size > 0) {
-				const toRemove = cache.first();
-				try {
-					await toRemove!.delete();
-					await app.emojis.fetch();
-					cache = app.emojis.cache;
-					created = await app.emojis.create({ attachment: buffer, name });
-				} catch (retryErr) {
-					if (log) {
-						await log(`⚠️ Forwarder: could not add application emoji :${name}: (${(retryErr as Error).message})`);
-					}
-				}
-			} else {
-				if (log) {
-					await log(`⚠️ Forwarder: could not add application emoji :${name}: (${(err as Error).message})`);
-				}
-			}
-		}
+		const created = await createAppEmoji(app, { attachment: buffer, name }, log);
 		if (created) {
 			sourceToTarget.set(refId, created.id);
 			cache = app.emojis.cache;
@@ -202,13 +213,12 @@ export async function processMessageFromSelfBot(messageData: ForwardedMessage, c
 		return;
 	}
 
-	let forwarderConfigs;
-	try {
-		forwarderConfigs = await FORWARDER.getForwarderConfigsBySourceChannel(sourceChannelId, sourceGuildId);
-	} catch (err) {
-		await logger.log(`❌ Error finding forwarder config for source channel ${sourceChannelId}: ${(err as Error).message}`);
+	const forwarderConfigsResult = await attempt(() => FORWARDER.getForwarderConfigsBySourceChannel(sourceChannelId, sourceGuildId));
+	if (!forwarderConfigsResult.ok) {
+		await logger.log(`❌ Error finding forwarder config for source channel ${sourceChannelId}: ${(forwarderConfigsResult.error as Error).message}`);
 		return;
 	}
+	const forwarderConfigs = forwarderConfigsResult.value;
 
 	if (!forwarderConfigs || forwarderConfigs.length === 0) {
 		await logger.log(`⚠️ No forwarder config found for channel ${sourceChannelId} in guild ${sourceGuildId}`);
@@ -216,175 +226,116 @@ export async function processMessageFromSelfBot(messageData: ForwardedMessage, c
 	}
 
 	for (const forwarderConfig of forwarderConfigs) {
-		await deliverToForwarder(messageData, client, forwarderConfig, sourceChannelId).catch(() => null);
+		await deliverToForwarder(messageData, client, { forwarderConfig, sourceChannelId }).catch(() => null);
 	}
 }
 
-async function deliverToForwarder(messageData: ForwardedMessage, client: Client, forwarderConfig: ForwarderTarget, sourceChannelId: string) {
-	const targetChannelId = forwarderConfig.target_channel_id;
-	const targetGuildId = forwarderConfig.target_guild_id;
-	const rolePings = Array.isArray(forwarderConfig.role_pings) ? forwarderConfig.role_pings : [];
-	const onlyForwardWhenMentionsSelfBot = forwarderConfig.only_forward_when_mentions_member === true;
+type ForwardRoute = { forwarderConfig: ForwarderTarget; sourceChannelId: string };
+type TextCleaner = (text: string) => string;
+type ForwardStyle = { tr: Translator; embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>; clean: TextCleaner };
 
-	const targetChannel = client.channels.cache.get(targetChannelId) as GuildTextBasedChannel | undefined;
-
-	if (!targetChannel) {
-		await logger.log(`❌ Target channel not found: ${targetChannelId}`);
-		return;
-	}
-
-	if (onlyForwardWhenMentionsSelfBot) {
+function shouldForward(messageData: ForwardedMessage, forwarderConfig: ForwarderTarget) {
+	if (forwarderConfig.only_forward_when_mentions_member === true) {
 		const selfBotId = messageData.selfbot_user_id;
-		const mentionedUserIds = messageData.mentioned_user_ids || [];
-		if (!selfBotId || !mentionedUserIds.includes(selfBotId)) {
-			return;
+		if (!selfBotId || !(messageData.mentioned_user_ids || []).includes(selfBotId)) {
+			return false;
 		}
 	}
+	return forwarderKeywordsMatch(forwarderConfig.keywords, forwarderKeywordHaystack(messageData.content, messageData.embeds));
+}
 
-	if (!forwarderKeywordsMatch(forwarderConfig.keywords, forwarderKeywordHaystack(messageData.content, messageData.embeds))) {
+async function forwardedEmojiMap(client: Client, messageData: ForwardedMessage) {
+	const embedTexts = (messageData.embeds ?? []).flatMap((emb) => [emb.description, emb.title, ...(emb.fields ?? []).flatMap((f) => [f.name, f.value])]);
+	const allTexts = [messageData.content || '', ...embedTexts.filter((text): text is string => Boolean(text))];
+	const pairs = allTexts
+		.flatMap((t) => extractCustomEmojis(t).map((e) => [e.id, e] as const))
+		.filter(([id, r]) => id && r && typeof r.name === 'string' && r.name.length > 0);
+	const { sourceToTarget } = await ensureEmojisOnApplication(client, [...new Map(pairs).values()], logger.log.bind(logger));
+	return sourceToTarget;
+}
+
+function textCleaner(emojiMap: Map<string, string>, shouldStripMentions: boolean): TextCleaner {
+	return (text) => {
+		if (!text) {
+			return text;
+		}
+		const cleaned = cleanMessageContent(replaceEmojiIdsInText(text, emojiMap));
+		return shouldStripMentions && cleaned ? stripMentionsFromText(cleaned) : cleaned;
+	};
+}
+
+function forwardedMessageEmbed(messageData: ForwardedMessage, { tr, embedConfig, clean }: ForwardStyle): APIEmbed {
+	const { author } = messageData;
+	const messageEmbed: APIEmbed = {
+		color: embedConfig.COLOR,
+		title: tr('forwarder.title', { channel: messageData.channel.name }),
+		author: {
+			name: author.displayName || `${author.username}#${author.discriminator}`,
+			icon_url: author.avatar ? userAvatarUrl(author.id, author.avatar) : legacyDefaultAvatarUrl(author.discriminator)
+		},
+		timestamp: new Date(messageData.createdTimestamp).toISOString(),
+		footer: { text: embedConfig.FOOTER }
+	};
+
+	const cleanContent = clean(messageData.content || '');
+	if (cleanContent && cleanContent.trim()) {
+		messageEmbed.description = cleanContent;
+	}
+
+	const attachments = messageData.attachments ?? [];
+	if (attachments.length > 0) {
+		messageEmbed.image = { url: attachments[0].url };
+	}
+	if (attachments.length > 1) {
+		messageEmbed.fields = [
+			...(messageEmbed.fields || []),
+			{
+				name: tr('forwarder.additionalAttachments'),
+				value: attachments
+					.slice(1)
+					.map((att) => `[${att.name}](${att.url})`)
+					.join('\n'),
+				inline: false
+			}
+		];
+	}
+	return messageEmbed;
+}
+
+function forwardedSourceEmbeds(messageData: ForwardedMessage, clean: TextCleaner): APIEmbed[] {
+	return (messageData.embeds ?? []).map((embed) => ({
+		...embed,
+		...(embed.description ? { description: clean(embed.description) } : {}),
+		...(embed.title ? { title: clean(embed.title) } : {}),
+		...(embed.fields && embed.fields.length > 0
+			? { fields: embed.fields.map((field) => ({ ...field, name: clean(field.name), value: clean(field.value) })) }
+			: {})
+	}));
+}
+
+async function deliverToForwarder(messageData: ForwardedMessage, client: Client, { forwarderConfig, sourceChannelId }: ForwardRoute) {
+	const targetGuildId = forwarderConfig.target_guild_id;
+	const rolePings = Array.isArray(forwarderConfig.role_pings) ? forwarderConfig.role_pings : [];
+	const targetChannel = client.channels.cache.get(forwarderConfig.target_channel_id) as GuildTextBasedChannel | undefined;
+	if (!targetChannel) {
+		await logger.log(`❌ Target channel not found: ${forwarderConfig.target_channel_id}`);
+		return;
+	}
+	if (!shouldForward(messageData, forwarderConfig)) {
 		return;
 	}
 
 	try {
-		const embedConfig = await getEmbedConfig(targetGuildId);
-		const tr = await serverTranslator(targetGuildId);
+		const clean = textCleaner(await forwardedEmojiMap(client, messageData), forwarderConfig.only_forward_when_mentions_member === true);
+		const style: ForwardStyle = { tr: await serverTranslator(targetGuildId), embedConfig: await getEmbedConfig(targetGuildId), clean };
+		const embeds = [forwardedMessageEmbed(messageData, style), ...forwardedSourceEmbeds(messageData, clean)];
 
-		const allTexts = [messageData.content || ''];
-		if (messageData.embeds?.length) {
-			for (const emb of messageData.embeds) {
-				if (emb.description) {
-					allTexts.push(emb.description);
-				}
-				if (emb.title) {
-					allTexts.push(emb.title);
-				}
-				if (emb.fields?.length) {
-					for (const f of emb.fields) {
-						if (f.name) {
-							allTexts.push(f.name);
-						}
-						if (f.value) {
-							allTexts.push(f.value);
-						}
-					}
-				}
-			}
-		}
-		const pairs = allTexts
-			.flatMap((t) => extractCustomEmojis(t).map((e) => [e.id, e] as const))
-			.filter(([id, r]) => id && r && typeof r.name === 'string' && r.name.length > 0);
-		const emojiRefs = [...new Map(pairs).values()];
-		const { sourceToTarget: sourceIdToTargetId } = await ensureEmojisOnApplication(client, emojiRefs, logger.log.bind(logger));
-
-		const applyEmojiReplace = (text: string) => replaceEmojiIdsInText(text, sourceIdToTargetId);
-
-		const embeds = [];
-
-		const messageEmbed: APIEmbed = {
-			color: embedConfig.COLOR,
-			title: tr('forwarder.title', { channel: messageData.channel.name }),
-			author: {
-				name: messageData.author.displayName || `${messageData.author.username}#${messageData.author.discriminator}`,
-				icon_url: messageData.author.avatar
-					? `https://cdn.discordapp.com/avatars/${messageData.author.id}/${messageData.author.avatar}.png`
-					: `https://cdn.discordapp.com/embed/avatars/${parseInt(messageData.author.discriminator) % 5}.png`
-			},
-			timestamp: new Date(messageData.createdTimestamp).toISOString(),
-			footer: {
-				text: embedConfig.FOOTER
-			}
-		};
-
-		let cleanContent = applyEmojiReplace(messageData.content || '');
-		cleanContent = cleanMessageContent(cleanContent);
-		if (onlyForwardWhenMentionsSelfBot && cleanContent) {
-			cleanContent = stripMentionsFromText(cleanContent);
-		}
-		if (cleanContent && cleanContent.trim()) {
-			messageEmbed.description = cleanContent;
-		}
-
-		if (messageData.attachments && messageData.attachments.length > 0) {
-			const firstAttachment = messageData.attachments[0];
-
-			messageEmbed.image = {
-				url: firstAttachment.url
-			};
-
-			if (messageData.attachments.length > 1) {
-				messageEmbed.fields = messageEmbed.fields || [];
-				messageEmbed.fields.push({
-					name: tr('forwarder.additionalAttachments'),
-					value: messageData.attachments
-						.slice(1)
-						.map((att) => `[${att.name}](${att.url})`)
-						.join('\n'),
-					inline: false
-				});
-			}
-		}
-
-		embeds.push(messageEmbed);
-
-		if (messageData.embeds && messageData.embeds.length > 0) {
-			const cleanForEmbed = (t: string) => {
-				if (!t) {
-					return t;
-				}
-				let out = applyEmojiReplace(t);
-				out = cleanMessageContent(out);
-				if (onlyForwardWhenMentionsSelfBot && out) {
-					out = stripMentionsFromText(out);
-				}
-				return out;
-			};
-
-			messageData.embeds.forEach((embed) => {
-				const originalEmbed = { ...embed };
-
-				if (originalEmbed.description) {
-					originalEmbed.description = cleanForEmbed(originalEmbed.description);
-				}
-
-				if (originalEmbed.title) {
-					originalEmbed.title = cleanForEmbed(originalEmbed.title);
-				}
-
-				if (originalEmbed.fields && originalEmbed.fields.length > 0) {
-					originalEmbed.fields = originalEmbed.fields.map((field) => ({
-						...field,
-						name: cleanForEmbed(field.name),
-						value: cleanForEmbed(field.value)
-					}));
-				}
-
-				embeds.push(originalEmbed);
-			});
-		}
-
-		const contentParts = [];
-		const autoNotificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(targetGuildId, targetChannelId).catch(() => null);
-		if (autoNotificationMentions && autoNotificationMentions.length > 0) {
-			contentParts.push(autoNotificationMentions[0]);
-		}
-		if (rolePings.length > 0) {
-			contentParts.push(rolePings.map((id: string) => `<@&${id}>`).join(' '));
-		}
-		const messageOptions: MessageCreateOptions = {
-			embeds: embeds
-		};
-		if (contentParts.length > 0) {
-			messageOptions.content = contentParts.join(' ');
-		}
+		const autoNotificationMentions = await notifiedMentions(targetChannel);
+		const contentParts = [...autoNotificationMentions.slice(0, 1), ...(rolePings.length > 0 ? [rolePings.map((id: string) => `<@&${id}>`).join(' ')] : [])];
+		const messageOptions: MessageCreateOptions = { embeds, ...(contentParts.length > 0 ? { content: contentParts.join(' ') } : {}) };
 
 		await targetChannel.send(messageOptions);
-
-		if (autoNotificationMentions && autoNotificationMentions.length > 1) {
-			for (let i = 1; i < autoNotificationMentions.length; i++) {
-				await targetChannel.send({ content: autoNotificationMentions[i] }).catch(() => null);
-			}
-		}
-
+		await sendMentionOverflow(targetChannel, autoNotificationMentions);
 		await logger.log(`✅ Forwarded ${messageData.id} from source channel ${sourceChannelId}`);
 	} catch (err) {
 		await logger.log(`❌ Failed to forward ${messageData.id}: ${(err as Error).message}`);

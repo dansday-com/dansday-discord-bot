@@ -1,6 +1,7 @@
 import db from '$lib/database.js';
-import { EFFECT_TYPE_IDS, ITEM_EFFECTS, effectDefaultCost, effectSummary, getItemEffect } from '$lib/items.js';
+import { EFFECT_TYPE_IDS, ITEM_EFFECTS, effectDefaultCost, effectSummary, getItemEffect, type ItemSchedule } from '$lib/items.js';
 import { logger } from '$lib/utils/index.js';
+import { DAYS_PER_WEEK } from '$lib/utils/time.js';
 import type { AgentPack, AgentReach, AgentSession } from './runtime.server.js';
 
 const MAX_NAME_LENGTH = 150;
@@ -57,8 +58,9 @@ const ITEM_FIELDS = {
 const ID_FIELD = { type: 'integer', description: 'The id of the item, from list_items.' };
 
 type Parsed<T> = { value: T } | { error: string };
+type ItemRow = NonNullable<Awaited<ReturnType<typeof db.getItem>>>;
 
-function parseJson(value: unknown): any {
+function parseJson(value: unknown): unknown {
 	if (typeof value !== 'string') {
 		return value ?? null;
 	}
@@ -69,21 +71,29 @@ function parseJson(value: unknown): any {
 	}
 }
 
-function shown(item: any) {
-	const config = parseJson(item.config) ?? {};
+function settingsOf(item: ItemRow): Record<string, unknown> {
+	return (parseJson(item.config) as Record<string, unknown> | null) ?? {};
+}
+
+function scheduleOf(item: ItemRow): ItemSchedule | null {
+	return parseJson(item.recurring_schedule) as ItemSchedule | null;
+}
+
+function shown(item: ItemRow) {
+	const config = settingsOf(item);
 	return {
 		id: item.id,
 		name: item.name,
 		effect_type: item.effect_type,
 		cost: item.cost,
-		enabled: item.enabled !== false && item.enabled !== 0,
-		usable: item.usable !== false && item.usable !== 0,
+		enabled: item.enabled,
+		usable: item.usable,
 		description: item.description ?? null,
 		settings: config,
 		what_it_does: effectSummary({ effect_type: item.effect_type, description: item.description, config }),
 		available_from: item.available_from ?? null,
 		available_to: item.available_to ?? null,
-		recurring: parseJson(item.recurring_schedule)
+		recurring: scheduleOf(item)
 	};
 }
 
@@ -120,17 +130,15 @@ function wallClock(value: unknown, key: string): Parsed<string | null> {
 	return match ? { value: `${match[1]} ${match[2]}:00` } : { error: `${key} must look like "YYYY-MM-DD HH:MM"` };
 }
 
-function weekly(args: Record<string, unknown>, current: any): Parsed<{ days: number[]; from: string; to: string } | null> {
+function weekly(args: Record<string, unknown>, current: ItemSchedule | null): Parsed<ItemSchedule | null> {
 	if (!('recurring_days' in args) && !('recurring_from' in args) && !('recurring_to' in args)) {
 		return { value: current ?? null };
 	}
-	const days = Array.isArray(args.recurring_days)
-		? [...new Set(args.recurring_days.map(Number))].sort((a, b) => a - b)
-		: ((current?.days ?? []) as number[]).map(Number);
+	const days = Array.isArray(args.recurring_days) ? [...new Set(args.recurring_days.map(Number))].sort((a, b) => a - b) : (current?.days ?? []).map(Number);
 	if (days.length === 0) {
 		return { value: null };
 	}
-	if (days.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) {
+	if (days.some((day) => !Number.isInteger(day) || day < 0 || day >= DAYS_PER_WEEK)) {
 		return { error: 'recurring_days takes whole numbers from 0 for Sunday to 6 for Saturday' };
 	}
 	const from = String(args.recurring_from ?? current?.from ?? '').trim();
@@ -141,7 +149,7 @@ function weekly(args: Record<string, unknown>, current: any): Parsed<{ days: num
 	return { value: { days, from, to } };
 }
 
-function itemData(args: Record<string, unknown>, current: any | null): Parsed<Record<string, unknown>> {
+function itemData(args: Record<string, unknown>, current: ItemRow | null): Parsed<Record<string, unknown>> {
 	const name = String(args.name ?? current?.name ?? '').trim();
 	if (!name) {
 		return { error: 'The item needs a name' };
@@ -160,7 +168,7 @@ function itemData(args: Record<string, unknown>, current: any | null): Parsed<Re
 		return { error: 'cost must be a whole number of 0 or more' };
 	}
 
-	const settings = settingsFor(effectType, args, current && current.effect_type === effectType ? (parseJson(current.config) ?? {}) : {});
+	const settings = settingsFor(effectType, args, current && current.effect_type === effectType ? settingsOf(current) : {});
 	if ('error' in settings) {
 		return settings;
 	}
@@ -173,7 +181,7 @@ function itemData(args: Record<string, unknown>, current: any | null): Parsed<Re
 	if ('error' in to) {
 		return to;
 	}
-	const recurring = weekly(args, current ? parseJson(current.recurring_schedule) : null);
+	const recurring = weekly(args, current ? scheduleOf(current) : null);
 	if ('error' in recurring) {
 		return recurring;
 	}
@@ -185,8 +193,8 @@ function itemData(args: Record<string, unknown>, current: any | null): Parsed<Re
 			description: 'description' in args ? String(args.description ?? '').trim() || null : (current?.description ?? null),
 			cost: Number(cost),
 			config: settings.value,
-			enabled: typeof args.enabled === 'boolean' ? args.enabled : current ? current.enabled !== false && current.enabled !== 0 : true,
-			usable: typeof args.usable === 'boolean' ? args.usable : current ? current.usable !== false && current.usable !== 0 : true,
+			enabled: typeof args.enabled === 'boolean' ? args.enabled : (current?.enabled ?? true),
+			usable: typeof args.usable === 'boolean' ? args.usable : (current?.usable ?? true),
 			available_from: from.value,
 			available_to: to.value,
 			recurring_schedule: recurring.value
@@ -202,11 +210,11 @@ const CATALOG = ITEM_EFFECTS.map((effect) => {
 }).join('\n');
 
 export function itemsPack(reach: AgentReach, session: AgentSession): AgentPack {
-	const panelId = reach.panelId;
+	const { panelId } = reach;
 
-	async function owned(id: unknown): Promise<any | null> {
+	async function owned(id: unknown): Promise<ItemRow | null> {
 		const item = await db.getItem(Number(id)).catch(() => null);
-		return item && Number((item as any).panel_id) === panelId ? item : null;
+		return item && Number(item.panel_id) === panelId ? item : null;
 	}
 
 	return {

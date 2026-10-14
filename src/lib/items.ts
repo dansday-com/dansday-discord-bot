@@ -1,4 +1,12 @@
 import { BRAND_PRIMARY } from './brand.js';
+import { DAY_MS, MINUTE_MS, SECOND_MS, DAY_MINUTES, WEEK_MINUTES, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, DAYS_PER_WEEK } from './utils/time.js';
+import { PERCENT } from './utils/numbers.js';
+import { formatPercentValue } from './utils/format.js';
+
+const KILO = 1_000;
+const MEGA = 1_000_000;
+const LAST_MINUTE_OF_DAY = DAY_MINUTES - 1;
+const LAST_SECOND_OF_MINUTE = SECONDS_PER_MINUTE - 1;
 
 export type ItemEffectId =
 	'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier' | 'luck';
@@ -7,9 +15,9 @@ export const BAG_CAPACITY = 50;
 
 export function effectiveBagStock(inventory: { quantity?: number; enabled?: boolean | number; usable?: boolean | number }[]): number {
 	return inventory.reduce((sum, r) => {
-		const enabled = r.enabled !== false && r.enabled !== 0;
-		const usable = r.usable !== false && r.usable !== 0;
-		if (!enabled && !usable) {
+		const isEnabled = r.enabled !== false && r.enabled !== 0;
+		const isUsable = r.usable !== false && r.usable !== 0;
+		if (!isEnabled && !isUsable) {
 			return sum;
 		}
 		return sum + (Number(r.quantity) || 0);
@@ -22,7 +30,7 @@ export function discountedItemCost(cost: unknown, luckPercent: unknown, effectTy
 	if (luck <= 0 || effectType === 'luck' || effectType === 'gift') {
 		return base;
 	}
-	return Math.max(0, Math.floor(base * (1 - luck / 100)));
+	return Math.max(0, Math.floor(base * (1 - luck / PERCENT)));
 }
 
 function applyLuckBoost(value: number, luckPercent: unknown, max = Infinity): number {
@@ -43,23 +51,23 @@ function applyLuckReduction(value: number, luckPercent: unknown): number {
 
 export const LUCK_ICON = '🍀';
 
-function fmtPct(n: number): string {
-	return Number.isInteger(n) ? `${n}` : n.toFixed(1);
-}
-
 export function luckBoostLabel(base: unknown, luckPercent: unknown, opts: { max?: number; unit?: string } = {}): string {
 	const { max = Infinity, unit = '%' } = opts;
 	const b = Number(base) || 0;
 	const total = applyLuckBoost(b, luckPercent, max);
 	const bonus = total - b;
-	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} +${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
+	return bonus > 0
+		? `${formatPercentValue(total)}${unit} (${formatPercentValue(b)} +${formatPercentValue(bonus)} ${LUCK_ICON})`
+		: `${formatPercentValue(total)}${unit}`;
 }
 
 export function luckReduceLabel(base: unknown, luckPercent: unknown, unit = '%'): string {
 	const b = Number(base) || 0;
 	const total = applyLuckReduction(b, luckPercent);
 	const bonus = b - total;
-	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} −${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
+	return bonus > 0
+		? `${formatPercentValue(total)}${unit} (${formatPercentValue(b)} −${formatPercentValue(bonus)} ${LUCK_ICON})`
+		: `${formatPercentValue(total)}${unit}`;
 }
 
 export function formatDuration(minutes: unknown): string {
@@ -68,9 +76,9 @@ export function formatDuration(minutes: unknown): string {
 		return '0m';
 	}
 	const units: [number, string][] = [
-		[10080, 'w'],
-		[1440, 'd'],
-		[60, 'h'],
+		[WEEK_MINUTES, 'w'],
+		[DAY_MINUTES, 'd'],
+		[MINUTES_PER_HOUR, 'h'],
 		[1, 'm']
 	];
 	const parts: string[] = [];
@@ -86,14 +94,18 @@ export function formatDuration(minutes: unknown): string {
 
 function shortXp(n: unknown): string {
 	const v = Math.max(0, Math.round(Number(n) || 0));
-	if (v >= 1_000_000) {
-		return `${Number.isInteger(v / 1_000_000) ? v / 1_000_000 : (v / 1_000_000).toFixed(1)}M`;
+	if (v >= MEGA) {
+		return `${Number.isInteger(v / MEGA) ? v / MEGA : (v / MEGA).toFixed(1)}M`;
 	}
-	if (v >= 1_000) {
-		return `${Number.isInteger(v / 1_000) ? v / 1_000 : (v / 1_000).toFixed(1)}k`;
+	if (v >= KILO) {
+		return `${Number.isInteger(v / KILO) ? v / KILO : (v / KILO).toFixed(1)}k`;
 	}
 	return `${v}`;
 }
+
+export type ItemConfig = Record<string, unknown>;
+
+export type ItemSchedule = { days: number[]; from: string; to: string };
 
 export type ItemEffect = {
 	id: ItemEffectId;
@@ -106,9 +118,9 @@ export type ItemEffect = {
 	announced: boolean;
 	expiringBuff: boolean;
 	defaultCost: number;
-	defaultConfig: Record<string, any>;
+	defaultConfig: ItemConfig;
 	buffExpiredText?: (effectValue: number) => string;
-	summary: (config: any, luckPercent?: number) => string;
+	summary: (config: ItemConfig, luckPercent?: number) => string;
 };
 
 export const ITEM_EFFECTS: ItemEffect[] = [
@@ -213,7 +225,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 450,
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c, luck) => `Refund ${luckBoostLabel(c.refund_percent ?? 100, luck)} if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Refund ${luckBoostLabel(c.refund_percent ?? PERCENT, luck)} if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'gift',
@@ -259,10 +271,10 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 300,
 		defaultConfig: { spy_chance: 100 },
 		summary: (c, luck) => {
-			const chance = applyLuckBoost(Number(c.spy_chance ?? 100), luck);
-			return chance >= 100
+			const chance = applyLuckBoost(Number(c.spy_chance ?? PERCENT), luck);
+			return chance >= PERCENT
 				? `Reveal a member's bag, active effects and cooldowns.`
-				: `${luckBoostLabel(c.spy_chance ?? 100, luck)} to reveal their bag, effects & cooldowns. Fail and they're alerted.`;
+				: `${luckBoostLabel(c.spy_chance ?? PERCENT, luck)} to reveal their bag, effects & cooldowns. Fail and they're alerted.`;
 		}
 	},
 	{
@@ -352,22 +364,22 @@ export function effectDefaultCost(type: string): number {
 	return EFFECT_BY_ID[type]?.defaultCost ?? 0;
 }
 
-export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }, luckPercent = 0): string {
+export function effectSummary(item: { effect_type: string; description?: string | null; config?: unknown }, luckPercent = 0): string {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) {
 		return item.description ?? '';
 	}
-	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) }, luckPercent);
+	return effect.summary({ ...effect.defaultConfig, ...((item.config as ItemConfig | null) ?? {}) }, luckPercent);
 }
 
 export type EffectMetaChip = { icon: string; label: string };
 
-export function effectMeta(item: { effect_type: string; config?: any }, luckPercent = 0): EffectMetaChip[] {
+export function effectMeta(item: { effect_type: string; config?: unknown }, luckPercent = 0): EffectMetaChip[] {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) {
 		return [];
 	}
-	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, unknown>;
+	const c: ItemConfig = { ...effect.defaultConfig, ...((item.config as ItemConfig | null) ?? {}) };
 	const chips: EffectMetaChip[] = [];
 	const pctRangeBoosted = (min: unknown, max: unknown) => {
 		const lo = Number(min) || 0;
@@ -402,7 +414,7 @@ export function effectMeta(item: { effect_type: string; config?: any }, luckPerc
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'insurance':
-			chips.push({ icon: 'fa-rotate-left', label: boosted(c.refund_percent ?? 100) });
+			chips.push({ icon: 'fa-rotate-left', label: boosted(c.refund_percent ?? PERCENT) });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			if (Number(c.cooldown_minutes) > 0) {
 				chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
@@ -418,7 +430,7 @@ export function effectMeta(item: { effect_type: string; config?: any }, luckPerc
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.bounty_amount)} XP` });
 			break;
 		case 'spy':
-			if (Number(c.spy_chance ?? 100) < 100) {
+			if (Number(c.spy_chance ?? PERCENT) < PERCENT) {
 				chips.push({ icon: 'fa-percent', label: boosted(c.spy_chance) });
 			}
 			break;
@@ -524,7 +536,7 @@ function scheduleMinutesLocal(hhmm: unknown, fallback: number): number {
 	const [h, m] = String(hhmm)
 		.split(':')
 		.map((n) => Number(n) || 0);
-	return h * 60 + m;
+	return h * MINUTES_PER_HOUR + m;
 }
 
 export type ItemWindowState = 'active' | 'upcoming' | 'ended' | 'always';
@@ -542,13 +554,14 @@ export function floatingWallClockMs(value: unknown, offsetMs: number): number | 
 }
 
 export function itemAvailability(
-	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: any; availableUntil?: number | null },
+	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: unknown; availableUntil?: number | null },
 	nowMs: number,
 	tzOffsetMin = 0
 ): { visible: boolean; availableUntil: number | null; state: ItemWindowState; startsAt: number | null } {
-	const schedule = item.recurring_schedule;
-	const hasSchedule = !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
-	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
+	const schedule = item.recurring_schedule as { days?: unknown; from?: unknown; to?: unknown } | null | undefined;
+	const scheduledDays = schedule && Array.isArray(schedule.days) ? (schedule.days as unknown[]) : [];
+	const hasSchedule = scheduledDays.length > 0;
+	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * MINUTE_MS;
 	const fromMs = floatingWallClockMs(item.available_from, offsetMs);
 	const toMs = floatingWallClockMs(item.available_to, offsetMs);
 
@@ -574,21 +587,21 @@ export function itemAvailability(
 
 	const local = new Date(nowMs + offsetMs);
 
-	const days = schedule.days.map(Number);
-	const fromMin = scheduleMinutesLocal(schedule.from, 0);
-	const toMin = scheduleMinutesLocal(schedule.to, 1439);
-	const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
+	const days = scheduledDays.map(Number);
+	const fromMin = scheduleMinutesLocal(schedule?.from, 0);
+	const toMin = scheduleMinutesLocal(schedule?.to, LAST_MINUTE_OF_DAY);
+	const minutes = local.getUTCHours() * MINUTES_PER_HOUR + local.getUTCMinutes();
 	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
 	const uniqueDays = new Set(days);
 
 	if (!days.includes(local.getUTCDay()) || minutes < fromMin || minutes > toMin) {
 		let startsAt: number | null = null;
-		for (let ahead = 0; ahead <= 7; ahead++) {
-			const day = (local.getUTCDay() + ahead) % 7;
+		for (let ahead = 0; ahead <= DAYS_PER_WEEK; ahead++) {
+			const day = (local.getUTCDay() + ahead) % DAYS_PER_WEEK;
 			if (!uniqueDays.has(day)) {
 				continue;
 			}
-			const candidate = startOfLocalDay + ahead * 86400000 + fromMin * 60000;
+			const candidate = startOfLocalDay + ahead * DAY_MS + fromMin * MINUTE_MS;
 			if (candidate > nowMs) {
 				startsAt = candidate;
 				break;
@@ -604,17 +617,17 @@ export function itemAvailability(
 	if (toMs && Number.isFinite(toMs)) {
 		ends.push(toMs);
 	}
-	const isFullDay = fromMin <= 0 && toMin >= 1439;
-	if (isFullDay && uniqueDays.size >= 7) {
+	const isFullDay = fromMin <= 0 && toMin >= LAST_MINUTE_OF_DAY;
+	if (isFullDay && uniqueDays.size >= DAYS_PER_WEEK) {
 		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
 	}
 	let trailingDays = 0;
 	if (isFullDay) {
-		while (trailingDays < 6 && uniqueDays.has((local.getUTCDay() + trailingDays + 1) % 7)) {
+		while (trailingDays < DAYS_PER_WEEK - 1 && uniqueDays.has((local.getUTCDay() + trailingDays + 1) % DAYS_PER_WEEK)) {
 			trailingDays++;
 		}
 	}
-	const endOfWindow = startOfLocalDay + trailingDays * 86400000 + (toMin * 60 + 59) * 1000;
+	const endOfWindow = startOfLocalDay + trailingDays * DAY_MS + (toMin * SECONDS_PER_MINUTE + LAST_SECOND_OF_MINUTE) * SECOND_MS;
 	ends.push(endOfWindow);
 	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
 }
@@ -660,7 +673,18 @@ export type ItemOutcome = {
 	spyReport?: SpyReport | null;
 };
 
-function toMs(value: any): number | null {
+export type ItemUseResult = {
+	outcome?: string;
+	xp?: number;
+	luckPercent?: number;
+	skimPercent?: number;
+	refundPercent?: number;
+	cleared?: number;
+	expiresAt?: Date | string | number | null;
+	spyReport?: SpyReport | null;
+};
+
+function toMs(value: Date | string | number | null | undefined): number | null {
 	if (!value) {
 		return null;
 	}
@@ -668,118 +692,82 @@ function toMs(value: any): number | null {
 	return Number.isFinite(ms) ? ms : null;
 }
 
-export function describeItemOutcome(effectType: string, result: any): ItemOutcome {
-	const r = result ?? {};
-	const outcome = r.outcome;
-	const xp = Number(r.xp) || 0;
+type OutcomeInput = { effectType: string; r: ItemUseResult; xp: number; luckPercent: number };
+type TimedEffect = { title: string; line: (input: OutcomeInput) => string };
 
-	if (effectType === 'steal' || effectType === 'bomb') {
-		const verb = effectType === 'steal' ? 'Robbed' : 'Bombed';
-		if (outcome === 'blocked') {
-			return { tone: 'lose', icon: 'fa-shield', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
-		}
-		if (outcome === 'reflected') {
-			return { tone: 'lose', icon: 'fa-arrows-rotate', title: 'Reflected!', line: `It bounced back and you lost the XP.`, deltaXp: -xp, untilMs: null };
-		}
-		const extra = effectType === 'steal' ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`;
-		return {
-			tone: 'win',
-			icon: effectIcon(effectType),
-			title: `${verb}!`,
-			line: extra,
-			deltaXp: effectType === 'steal' ? xp : 0,
-			untilMs: null
-		};
+const luckNote = (luckPercent: number) => (luckPercent > 0 ? ` (+${luckPercent}% luck 🍀)` : '');
+
+function attackOutcome({ effectType, r, xp }: OutcomeInput): ItemOutcome {
+	if (r.outcome === 'blocked') {
+		return { tone: 'lose', icon: 'fa-shield', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
 	}
-
-	if (effectType === 'spy') {
-		const report = (r.spyReport ?? null) as SpyReport | null;
-		const name = report?.targetName || 'the target';
-		if (outcome === 'caught' || report?.caught) {
-			return {
-				tone: 'lose',
-				icon: 'fa-triangle-exclamation',
-				title: 'Spy Caught',
-				line: `${name} caught you. No intel, and they know it was you.`,
-				deltaXp: null,
-				untilMs: null
-			};
-		}
-		return {
-			tone: 'neutral',
-			icon: effectIcon('spy'),
-			title: 'Spy Report',
-			line: report ? `Here's what ${name} is holding right now.` : `Couldn't gather intel.`,
-			deltaXp: null,
-			untilMs: null,
-			spyReport: report
-		};
+	if (r.outcome === 'reflected') {
+		return { tone: 'lose', icon: 'fa-arrows-rotate', title: 'Reflected!', line: `It bounced back and you lost the XP.`, deltaXp: -xp, untilMs: null };
 	}
+	const isSteal = effectType === 'steal';
+	return {
+		tone: 'win',
+		icon: effectIcon(effectType),
+		title: isSteal ? 'Robbed!' : 'Bombed!',
+		line: isSteal ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`,
+		deltaXp: isSteal ? xp : 0,
+		untilMs: null
+	};
+}
 
-	if (effectType === 'gift') {
-		const luckNote = r.luckPercent > 0 ? ` Your +${r.luckPercent}% luck 🍀 cut the tax.` : '';
+function spyOutcome({ r }: OutcomeInput): ItemOutcome {
+	const report = r.spyReport ?? null;
+	const name = report?.targetName || 'the target';
+	if (r.outcome === 'caught' || report?.caught) {
 		return {
-			tone: 'neutral',
-			icon: effectIcon('gift'),
-			title: 'Gift Sent',
-			line: `They received ${xp.toLocaleString()} XP.${luckNote}`,
+			tone: 'lose',
+			icon: 'fa-triangle-exclamation',
+			title: 'Spy Caught',
+			line: `${name} caught you. No intel, and they know it was you.`,
 			deltaXp: null,
 			untilMs: null
 		};
 	}
-	if (effectType === 'bounty') {
-		return {
-			tone: 'neutral',
-			icon: effectIcon('bounty'),
-			title: 'Bounty Placed',
-			line: `Whoever steals or bombs them next collects it.`,
-			deltaXp: -xp,
-			untilMs: null
-		};
-	}
-	if (effectType === 'leech') {
-		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
-		return {
-			tone: 'neutral',
-			icon: effectIcon('leech'),
-			title: 'Leech Attached',
-			line: `You'll siphon ${r.skimPercent ?? 0}%${luckNote} of their XP while active.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
+	return {
+		tone: 'neutral',
+		icon: effectIcon('spy'),
+		title: 'Spy Report',
+		line: report ? `Here's what ${name} is holding right now.` : `Couldn't gather intel.`,
+		deltaXp: null,
+		untilMs: null,
+		spyReport: report
+	};
+}
 
-	if (effectType === 'shield') {
-		return {
-			tone: 'win',
-			icon: effectIcon('shield'),
-			title: 'Shield Active',
-			line: `You're protected. Incoming steals and bombs will be blocked.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
-	if (effectType === 'reflect') {
-		return {
-			tone: 'win',
-			icon: effectIcon('reflect'),
-			title: 'Reflect Active',
-			line: `The next attack on you bounces back at the attacker.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
-	if (effectType === 'disguise') {
-		return {
-			tone: 'win',
-			icon: effectIcon('disguise'),
-			title: 'Disguise Active',
-			line: `You're anonymous. Your attacks hide your name and you're off the leaderboard.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
-	if (effectType === 'purifier') {
+const OUTCOME_DESCRIBERS: Record<string, (input: OutcomeInput) => ItemOutcome> = {
+	steal: attackOutcome,
+	bomb: attackOutcome,
+	spy: spyOutcome,
+	gift: ({ xp, luckPercent }) => ({
+		tone: 'neutral',
+		icon: effectIcon('gift'),
+		title: 'Gift Sent',
+		line: `They received ${xp.toLocaleString()} XP.${luckPercent > 0 ? ` Your +${luckPercent}% luck 🍀 cut the tax.` : ''}`,
+		deltaXp: null,
+		untilMs: null
+	}),
+	bounty: ({ xp }) => ({
+		tone: 'neutral',
+		icon: effectIcon('bounty'),
+		title: 'Bounty Placed',
+		line: `Whoever steals or bombs them next collects it.`,
+		deltaXp: -xp,
+		untilMs: null
+	}),
+	leech: ({ r, luckPercent }) => ({
+		tone: 'neutral',
+		icon: effectIcon('leech'),
+		title: 'Leech Attached',
+		line: `You'll siphon ${r.skimPercent ?? 0}%${luckNote(luckPercent)} of their XP while active.`,
+		deltaXp: null,
+		untilMs: toMs(r.expiresAt)
+	}),
+	purifier: ({ r }) => {
 		const n = Number(r.cleared) || 0;
 		return {
 			tone: 'win',
@@ -790,37 +778,34 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			untilMs: null
 		};
 	}
-	if (effectType === 'insurance') {
-		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
-		return {
-			tone: 'win',
-			icon: effectIcon('insurance'),
-			title: 'Insurance Active',
-			line: `The next time you're robbed or bombed, ${r.refundPercent ?? 100}%${luckNote} of your loss is refunded.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
-	if (effectType === 'boost') {
-		return {
-			tone: 'win',
-			icon: effectIcon('boost'),
-			title: 'Boost Active',
-			line: `Your XP earnings are multiplied while it lasts.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
-	if (effectType === 'luck') {
-		return {
-			tone: 'win',
-			icon: effectIcon('luck'),
-			title: 'Luck Active',
-			line: `+${r.luckPercent ?? 0}% luck on steal, bomb, minigames, spy, leech, gift tax, insurance, friend boost and shop prices.`,
-			deltaXp: null,
-			untilMs: toMs(r.expiresAt)
-		};
-	}
+};
 
-	return { tone: 'neutral', icon: 'fa-circle-check', title: 'Done', line: `Item used.`, deltaXp: xp || null, untilMs: null };
+const TIMED_EFFECTS: Record<string, TimedEffect> = {
+	shield: { title: 'Shield Active', line: () => `You're protected. Incoming steals and bombs will be blocked.` },
+	reflect: { title: 'Reflect Active', line: () => `The next attack on you bounces back at the attacker.` },
+	disguise: { title: 'Disguise Active', line: () => `You're anonymous. Your attacks hide your name and you're off the leaderboard.` },
+	insurance: {
+		title: 'Insurance Active',
+		line: ({ r, luckPercent }) => `The next time you're robbed or bombed, ${r.refundPercent ?? PERCENT}%${luckNote(luckPercent)} of your loss is refunded.`
+	},
+	boost: { title: 'Boost Active', line: () => `Your XP earnings are multiplied while it lasts.` },
+	luck: {
+		title: 'Luck Active',
+		line: ({ r }) => `+${r.luckPercent ?? 0}% luck on steal, bomb, minigames, spy, leech, gift tax, insurance, friend boost and shop prices.`
+	}
+};
+
+export function describeItemOutcome(effectType: string, result: ItemUseResult | null | undefined): ItemOutcome {
+	const r: ItemUseResult = result ?? {};
+	const input: OutcomeInput = { effectType, r, xp: Number(r.xp) || 0, luckPercent: Number(r.luckPercent) || 0 };
+
+	const describe = OUTCOME_DESCRIBERS[effectType];
+	if (describe) {
+		return describe(input);
+	}
+	const timed = TIMED_EFFECTS[effectType];
+	if (timed) {
+		return { tone: 'win', icon: effectIcon(effectType), title: timed.title, line: timed.line(input), deltaXp: null, untilMs: toMs(r.expiresAt) };
+	}
+	return { tone: 'neutral', icon: 'fa-circle-check', title: 'Done', line: `Item used.`, deltaXp: input.xp || null, untilMs: null };
 }

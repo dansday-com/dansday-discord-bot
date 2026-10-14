@@ -11,8 +11,10 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	return receiveMessageUpload(
 		request,
 		{ scope: 'server', id: access.serverId },
-		messageUploadLimit(access.server.boost_level),
-		"Discord sets it from this server's boost level.",
-		() => pruneMessageFiles(access.serverId)
+		{
+			limit: messageUploadLimit(access.server.boost_level),
+			tooLarge: "Discord sets it from this server's boost level.",
+			pruneUnused: () => pruneMessageFiles(access.serverId)
+		}
 	);
 };

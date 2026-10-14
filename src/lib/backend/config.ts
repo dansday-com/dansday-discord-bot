@@ -5,7 +5,7 @@ import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-s
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
-import { logger } from '../utils/index.js';
+import { attempt, logger } from '../utils/index.js';
 import { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
@@ -13,6 +13,12 @@ import { rewardRuleFlags, type RewardRules } from '../rewards.js';
 import { normalizeServerLanguage } from '../languages.js';
 import { greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
 import type { GuildMember } from 'discord.js';
+import { MINUTE_MS } from '../utils/time.js';
+import { INVITE_SHARE_PERCENT_MAX } from '../invites.js';
+import { mentionChunks } from '../utils/mentions.js';
+import { DEFAULT_LEVELING_SETTINGS } from '../levelingDefaults.js';
+
+const CREATOR_ALERTS_TIKTOK_COOLDOWN_MINUTES = 15;
 
 interface BotConfig {
 	id: number;
@@ -209,11 +215,11 @@ export async function isComponentFeatureEnabled(guildDiscordId: string, componen
 		}
 		const row = await db.getServerSettings(serverId, component);
 		if (!row || Array.isArray(row) || !row.settings || typeof row.settings !== 'object') {
-			return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
+			return !SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName);
 		}
 		return (row.settings as Record<string, unknown>).enabled === true;
 	} catch {
-		return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
+		return !SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName);
 	}
 }
 
@@ -222,17 +228,18 @@ export async function resolveGuildAiConfig<T extends AiInput>(guildDiscordId: st
 		return config;
 	}
 
-	let overrides: ServerAiSettings;
-	try {
+	const loaded = await attempt(async () => {
 		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, serverSettingsComponent.ai);
 		if (serverId == null) {
-			return config;
+			return null;
 		}
 		const row = await getServerSettingsRow(serverId, serverSettingsComponent.ai);
-		overrides = normalizeServerAiSettings(row?.settings ?? null);
-	} catch {
+		return normalizeServerAiSettings(row?.settings ?? null);
+	});
+	if (!loaded.ok || !loaded.value) {
 		return config;
 	}
+	const overrides: ServerAiSettings = loaded.value;
 
 	return {
 		...config,
@@ -352,7 +359,7 @@ export async function getLevelingSettings(guildId: string) {
 			XP: Math.max(0, Number(inviteCfg?.XP ?? DEFAULT_LEVELING_SETTINGS.INVITE.XP)),
 			MIN_ACCOUNT_AGE_DAYS: Math.max(0, Number(inviteCfg?.MIN_ACCOUNT_AGE_DAYS ?? DEFAULT_LEVELING_SETTINGS.INVITE.MIN_ACCOUNT_AGE_DAYS)),
 			HOLD_HOURS: Math.max(0, Number(inviteCfg?.HOLD_HOURS ?? DEFAULT_LEVELING_SETTINGS.INVITE.HOLD_HOURS)),
-			SHARE_PERCENT: Math.max(0, Math.min(25, Number(inviteCfg?.SHARE_PERCENT ?? DEFAULT_LEVELING_SETTINGS.INVITE.SHARE_PERCENT)))
+			SHARE_PERCENT: Math.max(0, Math.min(INVITE_SHARE_PERCENT_MAX, Number(inviteCfg?.SHARE_PERCENT ?? DEFAULT_LEVELING_SETTINGS.INVITE.SHARE_PERCENT)))
 		},
 		REQUIREMENTS: {
 			BASE_XP: req.BASE_XP ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
@@ -536,7 +543,7 @@ export const CREATOR_ALERTS_FETCH_TIMEOUT_MS = 15_000;
 export const CREATOR_ALERTS_YOUTUBE_CONCURRENCY = 4;
 export const CREATOR_ALERTS_TIKTOK_SPACING_MS = 1_500;
 export const CREATOR_ALERTS_TIKTOK_MAX_PER_TICK = 20;
-export const CREATOR_ALERTS_TIKTOK_COOLDOWN_MS = 15 * 60_000;
+export const CREATOR_ALERTS_TIKTOK_COOLDOWN_MS = CREATOR_ALERTS_TIKTOK_COOLDOWN_MINUTES * MINUTE_MS;
 export const CREATOR_ALERTS_HISTORY_LIMIT = 20;
 
 export const creatorAlertsEmbedColors = {
@@ -761,21 +768,7 @@ export const NOTIFICATIONS = {
 			return null;
 		}
 
-		const chunks: string[] = [];
-		let currentChunk = '';
-		for (const id of ids) {
-			const mention = `<@${id}> `;
-			if (currentChunk.length + mention.length > 1950) {
-				chunks.push(currentChunk.trim());
-				currentChunk = mention;
-			} else {
-				currentChunk += mention;
-			}
-		}
-		if (currentChunk) {
-			chunks.push(currentChunk.trim());
-		}
-
+		const chunks = mentionChunks(ids);
 		return chunks.length > 0 ? chunks : null;
 	},
 
@@ -1020,10 +1013,46 @@ export type ForwarderTarget = {
 	keywords: string[];
 };
 
-const FORWARD_INDEX_TTL_MS = 60 * 1000;
+const FORWARD_INDEX_TTL_MS = MINUTE_MS;
 let forwardIndex: Map<string, ForwardMatch[]> | null = null;
 let forwardIndexAt = 0;
 let forwardIndexBuilding: Promise<Map<string, ForwardMatch[]>> | null = null;
+
+type ForwarderIndexing = { targetGuildId: string; isSourceGuildAllowed: (guildId: string) => Promise<boolean> };
+
+function forwarderChannelId(channel: unknown): string {
+	if (typeof channel === 'string') {
+		return channel;
+	}
+	const channelId = channel && typeof channel === 'object' ? (channel as { channel_id?: unknown }).channel_id : '';
+	return String(channelId || '');
+}
+
+async function indexForwarder(index: Map<string, ForwardMatch[]>, forwarder: Record<string, unknown>, indexing: ForwarderIndexing) {
+	if (!Array.isArray(forwarder?.source_channels) || forwarder.source_channels.length === 0) {
+		return;
+	}
+
+	const sourceGuildId = await forwarderSourceGuildId(forwarder);
+	if (!sourceGuildId || !(await indexing.isSourceGuildAllowed(sourceGuildId))) {
+		return;
+	}
+
+	const match: ForwardMatch = {
+		onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
+		keywords: normalizeForwarderKeywords(forwarder.keywords),
+		target_guild_id: indexing.targetGuildId
+	};
+
+	for (const channel of forwarder.source_channels) {
+		const channelId = forwarderChannelId(channel);
+		if (!channelId) {
+			continue;
+		}
+		const key = `${sourceGuildId}:${channelId}`;
+		index.set(key, [...(index.get(key) ?? []), match]);
+	}
+}
 
 async function buildForwardIndex(): Promise<{ index: Map<string, ForwardMatch[]>; failed: number }> {
 	const index = new Map<string, ForwardMatch[]>();
@@ -1038,19 +1067,19 @@ async function buildForwardIndex(): Promise<{ index: Map<string, ForwardMatch[]>
 	const guildAllowed = new Map<string, boolean>();
 
 	const isSourceGuildAllowed = async (guildId: string) => {
-		const cached = guildAllowed.get(guildId);
-		if (cached !== undefined) {
-			return cached;
+		const isCached = guildAllowed.get(guildId);
+		if (isCached !== undefined) {
+			return isCached;
 		}
 
-		let allowed = false;
+		let isAllowed = false;
 		const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
 		if (selfbotServer) {
 			const primarySelfbotId = await db.getPrimarySelfbotIdForSourceGuild(officialBot.id, guildId);
-			allowed = primarySelfbotId === null || String(primarySelfbotId) === String(botConfig!.id);
+			isAllowed = primarySelfbotId === null || String(primarySelfbotId) === String(botConfig!.id);
 		}
-		guildAllowed.set(guildId, allowed);
-		return allowed;
+		guildAllowed.set(guildId, isAllowed);
+		return isAllowed;
 	};
 
 	for (const officialServer of officialServers) {
@@ -1059,37 +1088,7 @@ async function buildForwardIndex(): Promise<{ index: Map<string, ForwardMatch[]>
 			const list = (forwarders.forwarders || []) as Record<string, unknown>[];
 
 			for (const forwarder of list) {
-				if (!Array.isArray(forwarder?.source_channels) || forwarder.source_channels.length === 0) {
-					continue;
-				}
-
-				const sourceGuildId = await forwarderSourceGuildId(forwarder);
-				if (!sourceGuildId) {
-					continue;
-				}
-				if (!(await isSourceGuildAllowed(sourceGuildId))) {
-					continue;
-				}
-
-				const match: ForwardMatch = {
-					onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
-					keywords: normalizeForwarderKeywords(forwarder.keywords),
-					target_guild_id: officialServer.discord_server_id
-				};
-
-				for (const ch of forwarder.source_channels) {
-					const channelId = typeof ch === 'string' ? String(ch) : String(ch?.channel_id || '');
-					if (!channelId) {
-						continue;
-					}
-					const key = `${sourceGuildId}:${channelId}`;
-					const existing = index.get(key);
-					if (existing) {
-						existing.push(match);
-					} else {
-						index.set(key, [match]);
-					}
-				}
+				await indexForwarder(index, forwarder, { targetGuildId: officialServer.discord_server_id, isSourceGuildAllowed });
 			}
 		} catch (error) {
 			failed++;
@@ -1266,11 +1265,8 @@ export const SETUP_CHANNEL_DEFS = [
 
 export { AUTO_ENABLED_COMPONENTS } from './panelServer.js';
 
-export const DEFAULT_LEVELING_SETTINGS = {
-	REQUIREMENTS: { BASE_XP: 100, MULTIPLIER: 1.2 },
-	MESSAGE: { XP: 15, COOLDOWN_SECONDS: 15 },
-	VOICE: { XP_PER_MINUTE: 50, AFK_XP_PER_MINUTE: 10, COOLDOWN_SECONDS: 60 },
-	VIDEO: { XP_PER_MINUTE: 50 },
-	STREAMING: { XP_PER_MINUTE: 50 },
-	INVITE: { XP: 1000, MIN_ACCOUNT_AGE_DAYS: 7, HOLD_HOURS: 24, SHARE_PERCENT: 25 }
-};
+type LevelingDefaults = typeof DEFAULT_LEVELING_SETTINGS;
+
+export type StoredLevelingSettings = { enabled?: unknown } & { [K in keyof LevelingDefaults]?: { [F in keyof LevelingDefaults[K]]?: unknown } };
+
+export { DEFAULT_LEVELING_SETTINGS };

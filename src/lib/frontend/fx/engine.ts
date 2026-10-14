@@ -1,4 +1,5 @@
-import { effectPalette, familySalt, mulberry32, normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { effectPalette, familySalt, normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 
 export type FxVariant = {
 	seed: number;
@@ -57,14 +58,7 @@ function hueOf(hex: string): [number, number, number] {
 		return [0, 0, l * 100];
 	}
 	const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-	let h: number;
-	if (max === r) {
-		h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-	} else if (max === g) {
-		h = ((b - r) / d + 2) / 6;
-	} else {
-		h = ((r - g) / d + 4) / 6;
-	}
+	const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) / 6 : max === g ? ((b - r) / d + 2) / 6 : ((r - g) / d + 4) / 6;
 	return [h * 360, s * 100, l * 100];
 }
 
@@ -149,7 +143,7 @@ export function plot(s: FxScene, x: number, y: number, r: number, g: number, b: 
 		return;
 	}
 	const i = ((y | 0) * s.w + (x | 0)) * 4;
-	const px = s.px;
+	const { px } = s;
 	const na = a * 255;
 	px[i] = Math.min(255, px[i] + r * a);
 	px[i + 1] = Math.min(255, px[i + 1] + g * a);
@@ -220,7 +214,7 @@ export function paint(s: FxScene, x: number, y: number, r: number, g: number, b:
 		return;
 	}
 	const i = ((y | 0) * s.w + (x | 0)) * 4;
-	const px = s.px;
+	const { px } = s;
 	const k = 1 - a;
 	px[i] = r * a + px[i] * k;
 	px[i + 1] = g * a + px[i + 1] * k;

@@ -1,5 +1,5 @@
 import { makeCrown, makeCupcake, makeGem } from './cute.js';
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { makeCandle, makeDice, makeFishtank, makeMoney, makePopcorn, makeRainglass, makeVinyl } from './objects.js';
 import { blit, clear, edge, hsl, plot, type FxProgram, type FxScene } from './engine.js';
 import { makeArc, makeBolt, makeConfetti, makeEcg, makeEclipse, makeFacets, makeIdler, makeSprite, makeVortex, withSky } from './extra.js';
@@ -100,11 +100,11 @@ function makeFire(rows: number, decay: number, feed: number, reach: number): FxP
 			const coals: number[][] = [];
 			const n = 3 + ((r() * 4) | 0);
 			for (let i = 0; i < 7; i++) {
-				const keep = i < n;
+				const shouldKeep = i < n;
 				const cx = 0.08 + r() * 0.84;
 				const cw = 0.1 + r() * 0.22;
 				const cs = 0.45 + r() * 0.55;
-				if (keep) {
+				if (shouldKeep) {
 					coals.push([cx, cw, cs]);
 				}
 			}
@@ -255,7 +255,8 @@ function makeFall(
 			clear(s);
 			const wind = opts.wind * (0.55 + s.v.drift * 0.65) * s.v.dir;
 			const rate = opts.fall ?? 1.5;
-			const splashes = ((s as any).splashes ??= [] as number[][]);
+			s.splashes ??= [] as number[][];
+			const splashes = s.splashes as number[][];
 			const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.5, 92);
 			for (let i = 0; i < s.n; i++) {
 				const o = i * P;
@@ -307,7 +308,7 @@ function makeFall(
 	};
 }
 
-function makeFountain(rows: number, stride: number, gravity: number, spread: number, vent = false): FxProgram {
+function makeFountain(rows: number, stride: number, gravity: number, spread: number, isVenting = false): FxProgram {
 	const mouth = (sc: FxScene) => {
 		const r = mulberry32(sc.v.seed + 7311);
 		const cx = sc.w * (0.5 + sc.v.tilt * 0.14);
@@ -317,7 +318,7 @@ function makeFountain(rows: number, stride: number, gravity: number, spread: num
 	};
 	const spawn = (sc: FxScene, i: number) => {
 		const p = sc.parts;
-		if (vent) {
+		if (isVenting) {
 			const [mx, my, mw] = mouth(sc);
 			p[i * P] = mx + (sc.rnd() - 0.5) * mw * 2;
 			p[i * P + 1] = my;
@@ -444,13 +445,13 @@ function makeStarfield(rows: number, stride: number, band: number): FxProgram {
 			seedParticles(s, (sc, i) => {
 				const p = sc.parts;
 				const x = sc.rnd();
-				const near = sc.rnd() < band;
+				const isNear = sc.rnd() < band;
 				const line = 0.86 - (0.5 + sc.v.drift * 0.3) * x;
 				p[i * P] = x * sc.w;
-				p[i * P + 1] = (near ? line + (sc.rnd() - 0.5) * 0.42 : sc.rnd()) * sc.h;
+				p[i * P + 1] = (isNear ? line + (sc.rnd() - 0.5) * 0.42 : sc.rnd()) * sc.h;
 				p[i * P + 2] = 0.25 + sc.rnd() * 0.75;
 				p[i * P + 3] = sc.rnd() * Math.PI * 2 + sc.v.tilt;
-				p[i * P + 4] = near ? 1 : 0.55;
+				p[i * P + 4] = isNear ? 1 : 0.55;
 			});
 		},
 		frame(s) {

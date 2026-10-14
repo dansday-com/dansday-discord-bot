@@ -1,7 +1,17 @@
 import { APP_DOMAIN, APP_NAME } from '$lib/backend/panelServer.js';
 import type { Person, Scene } from '../types.js';
+import { defaultAvatarUrl } from '$lib/discordAvatars.js';
 
-export const avatar = (n: number) => `https://cdn.discordapp.com/embed/avatars/${n}.png`;
+export const avatar = defaultAvatarUrl;
+
+const DEFAULT_AVATAR_OF = { kai: 0, mira: 2, rin: 3, jun: 4 };
+
+export const CAST = {
+	kai: { name: 'Kai', avatar: avatar(DEFAULT_AVATAR_OF.kai) },
+	mira: { name: 'Mira', avatar: avatar(DEFAULT_AVATAR_OF.mira) },
+	rin: { name: 'Rin', avatar: avatar(DEFAULT_AVATAR_OF.rin) },
+	jun: { name: 'Jun', avatar: avatar(DEFAULT_AVATAR_OF.jun) }
+} satisfies Record<string, Person>;
 
 export const BOT: Person = { name: APP_NAME, avatar: '/favicon-96x96.png', app: true };
 

@@ -1,21 +1,15 @@
 <script lang="ts" generics="V extends string | string[]">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
+	import { channelTypeName, type ChannelTypeName } from '$lib/utils/discordChannels.js';
 	import { CHANNEL_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
+	import type { PickerCategory as Category, PickerChannel as Channel } from './pickerTypes.js';
 
-	interface Channel {
-		discord_channel_id: string;
-		name: string | null;
-		type: string | number | null;
-		category_id: number | null;
-		position: number | null;
-	}
-
-	interface Category {
-		id: number;
-		discord_category_id: string;
-		name: string | null;
-		position: number | null;
-	}
+	const CHANNEL_TYPE_LABELS: Partial<Record<ChannelTypeName, string>> = {
+		GUILD_TEXT: 'Text',
+		GUILD_VOICE: 'Voice',
+		GUILD_NEWS: 'Announcement',
+		GUILD_STAGE_VOICE: 'Stage'
+	};
 
 	interface Props {
 		channels: Channel[];
@@ -29,7 +23,7 @@
 
 	let { channels, categories = [], value, placeholder = 'Select channel...', emptyText = 'No channels found', multi = false, onchange }: Props = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
 	let pending = $state<string[]>([]);
 
@@ -37,19 +31,8 @@
 	const selected = $derived(!multi ? channels.find((c) => c.discord_channel_id === (value as string)) : null);
 
 	function channelType(type: string | number | null): string {
-		if (type === 'GUILD_TEXT' || type === '0' || type === 0) {
-			return 'Text';
-		}
-		if (type === 'GUILD_VOICE' || type === '2' || type === 2) {
-			return 'Voice';
-		}
-		if (type === 'GUILD_NEWS' || type === '5' || type === 5) {
-			return 'Announcement';
-		}
-		if (type === 'GUILD_STAGE_VOICE' || type === '13' || type === 13) {
-			return 'Stage';
-		}
-		return 'Other';
+		const name = channelTypeName(typeof type === 'string' && /^\d+$/.test(type) ? Number(type) : type);
+		return (name && CHANNEL_TYPE_LABELS[name]) || 'Other';
 	}
 
 	const grouped = $derived.by(() => {
@@ -83,7 +66,7 @@
 
 	function openModal() {
 		pending = [...currentIds];
-		open = true;
+		isOpen = true;
 		search = '';
 	}
 
@@ -101,7 +84,7 @@
 		} else {
 			onchange([...pending] as V);
 		}
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -110,7 +93,7 @@
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -152,7 +135,7 @@
 	</div>
 {/if}
 
-{#if open}
+{#if isOpen}
 	<div use:scrollLocked class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"

@@ -1,5 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { answerAssistant, describeAssistant } from '$lib/frontend/agent/assistant.server.js';
+import { HTTP } from '$lib/http.js';
 
 const HEARTBEAT_MS = 15_000;
 
@@ -8,7 +9,7 @@ export const GET: RequestHandler = ({ locals, url }) => describeAssistant(locals
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const body = await request.json().catch(() => null);
 	const encoder = new TextEncoder();
-	let heartbeat: ReturnType<typeof setInterval>;
+	let heartbeat: ReturnType<typeof setInterval> | undefined = undefined;
 
 	const stream = new ReadableStream({
 		start(controller) {
@@ -23,7 +24,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			heartbeat = setInterval(() => send(': working\n\n'), HEARTBEAT_MS);
 			answerAssistant(locals, body)
 				.then(async (response) => answer(response.status, await response.json()))
-				.catch(() => answer(500, { ok: false, error: 'The assistant request failed. Try again in a moment.' }))
+				.catch(() => answer(HTTP.INTERNAL_ERROR, { ok: false, error: 'The assistant request failed. Try again in a moment.' }))
 				.finally(() => {
 					clearInterval(heartbeat);
 					try {

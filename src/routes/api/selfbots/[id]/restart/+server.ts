@@ -4,25 +4,26 @@ import db from '$lib/database.js';
 import { restartBotById } from '$lib/botControl.js';
 import { logger } from '$lib/utils/index.js';
 import { canManagePanelSelfbots } from '$lib/backend/panelServer.js';
+import { HTTP } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		return json({ success: false, error: 'Authentication required' }, { status: 401 });
+		return json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 
 	const selfbotId = Number(params.id);
 	if (!Number.isFinite(selfbotId)) {
-		return json({ success: false, error: 'Invalid id' }, { status: 400 });
+		return json({ success: false, error: 'Invalid id' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	try {
 		if (!(await canManagePanelSelfbots(locals, selfbotId))) {
-			return json({ success: false, error: 'Access denied' }, { status: 403 });
+			return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 		}
 
 		const selfbot = await db.getSelfbotById(selfbotId);
 		if (!selfbot) {
-			return json({ success: false, error: 'Bot not found' }, { status: 404 });
+			return json({ success: false, error: 'Bot not found' }, { status: HTTP.NOT_FOUND });
 		}
 
 		const result = await restartBotById(selfbot.id, selfbot);
@@ -31,6 +32,6 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		}
 		return json(result);
 	} catch (error) {
-		return json({ success: false, error: (error as Error).message }, { status: 500 });
+		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

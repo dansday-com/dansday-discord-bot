@@ -6,6 +6,7 @@ import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
 import { rewardGoalLabel, rewardProgress, rewardRuleFlags, rewardStates } from '$lib/rewards.js';
 import { rewardImageUrl } from '$lib/backend/storage/rewards.js';
+import { HTTP } from '$lib/http.js';
 
 async function loadRewards(serverId: number, memberId: number) {
 	const [main, roles, held, rewards, earnings, winners, stats] = await Promise.all([
@@ -20,7 +21,7 @@ async function loadRewards(serverId: number, memberId: number) {
 	const roleById = new Map(roles.map((r) => [String(r.discord_role_id), r]));
 	const rules = { rewards, ...rewardRuleFlags(main?.settings) };
 	const progress = rewardProgress(stats);
-	const states = rewardStates(rules, progress, held, earnings, winners);
+	const states = rewardStates(rules, { progress, heldRoleIds: held, earnings }, winners);
 	return {
 		keep: rules.keep,
 		stack: rules.stack,
@@ -52,15 +53,15 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);
 	if ('notFound' in shared) {
-		redirect(303, apexHome());
+		redirect(HTTP.SEE_OTHER, apexHome());
 	}
 	if ('guest' in shared || !shared.member) {
-		redirect(303, serverBasePath || '/');
+		redirect(HTTP.SEE_OTHER, serverBasePath || '/');
 	}
 
 	const leveling = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
-	const levelingEnabled = (leveling as any)?.settings?.enabled === true;
-	const rewards = levelingEnabled ? await loadRewards(Number(server.id), Number(shared.member.id)).catch(() => null) : null;
+	const isLevelingEnabled = leveling?.settings?.enabled === true;
+	const rewards = isLevelingEnabled ? await loadRewards(Number(server.id), Number(shared.member.id)).catch(() => null) : null;
 
-	return { ...shared, levelingEnabled, rewards };
+	return { ...shared, levelingEnabled: isLevelingEnabled, rewards };
 };

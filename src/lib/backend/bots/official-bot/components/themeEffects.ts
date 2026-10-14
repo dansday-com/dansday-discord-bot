@@ -6,6 +6,7 @@ import { getSpendableXp, spendXp } from './xp-economy.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { serverTranslator } from '../i18n.js';
 import type { Client } from 'discord.js';
+import { EMBED_COLORS } from './embedColors.js';
 
 const ANNOUNCE_DELAY_MS = 7000;
 
@@ -14,7 +15,7 @@ async function resolveServerMemberId(serverId: number | string, discordId: numbe
 	return member?.id ?? null;
 }
 
-export async function handleThemeEffectSet(payload: any) {
+export async function handleThemeEffectSet(payload: { guild_id?: string; actor_discord_id?: string; effect?: unknown; seed?: unknown }) {
 	const { guild_id, actor_discord_id, effect, seed } = payload || {};
 	if (!guild_id || !actor_discord_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -27,10 +28,8 @@ export async function handleThemeEffectSet(payload: any) {
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
@@ -49,7 +48,7 @@ export async function handleThemeEffectSet(payload: any) {
 	return { ok: true, result: { effect: family, seed: picked, label: effectMeta(family)?.label ?? family } };
 }
 
-export async function handleThemeEffectSpin(client: Client, payload: any) {
+export async function handleThemeEffectSpin(client: Client, payload: { guild_id?: string; actor_discord_id?: string }) {
 	const { guild_id, actor_discord_id } = payload || {};
 	if (!guild_id || !actor_discord_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -57,10 +56,8 @@ export async function handleThemeEffectSpin(client: Client, payload: any) {
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
@@ -109,7 +106,13 @@ function fmtXp(v: unknown): string {
 	return `${Math.abs(Number(v) || 0).toLocaleString()} XP`;
 }
 
-async function announceEffectSpin(client: Client, ctx: any) {
+type EffectSpinAnnouncement = {
+	guildId: string;
+	actorDiscordId: string;
+	result: { effect: string; seed: number; cost: number; label: string };
+};
+
+async function announceEffectSpin(client: Client, ctx: EffectSpinAnnouncement) {
 	const { guildId, actorDiscordId, result } = ctx;
 	if (!result) {
 		return;
@@ -133,13 +136,13 @@ async function announceEffectSpin(client: Client, ctx: any) {
 
 		const { EmbedBuilder } = await import('discord.js');
 		const tr = await serverTranslator(guildId);
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: EMBED_COLORS.gold, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const actorMention = actor ? `${actor}` : tr('minigames.someone');
 
 		const embed = new EmbedBuilder()
-			.setColor(0xc8911a)
+			.setColor(EMBED_COLORS.gold)
 			.setTitle(tr('themeEffects.spin.title'))
 			.setDescription(tr('themeEffects.spin.description', { member: actorMention, cost: fmtXp(result.cost), effect: result.label }))
 			.addFields(

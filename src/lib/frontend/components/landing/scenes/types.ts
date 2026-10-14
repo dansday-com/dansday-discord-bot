@@ -42,7 +42,7 @@ export type SceneField = { label: string; value: string; placeholder?: string; t
 
 export type SceneModal = { at: number; submitAt: number; title: string; fields: SceneField[] };
 
-export type SceneCallMember = { who: string; joinAt?: number; talk?: [number, number][] };
+export type SceneCallMember = { who: string; joinAt?: number; talk?: { from: number; to: number }[] };
 
 export type SceneCall = {
 	channel: string;

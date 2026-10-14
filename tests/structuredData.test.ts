@@ -42,7 +42,7 @@ test('software and article nodes carry what they were given', () => {
 	assert.ok(software.length > 0);
 	assert.ok(JSON.stringify(software).includes('Leveling'));
 	assert.ok(JSON.stringify(software).includes('A Discord bot'));
-	const article = techArticleNode('https://example.test/docs', 'Docs', 'Setup guide', ['Install', 'Configure']);
+	const article = techArticleNode('https://example.test/docs', { headline: 'Docs', description: 'Setup guide', sections: ['Install', 'Configure'] });
 	assert.equal(article.headline, 'Docs');
 	assert.ok(JSON.stringify(article).includes('Configure'));
 });

@@ -2,17 +2,20 @@ import db from '$lib/database.js';
 import type { AgentTool } from '$lib/backend/agent/core.js';
 import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import type { AgentPack, AgentReach } from './runtime.server.js';
+import type { ServerRow } from '$lib/schema.js';
 
-async function reachServers(reach: AgentReach): Promise<any[]> {
+type ToolSpec = { name: string; description?: string; parameters: Record<string, unknown> & { properties?: Record<string, unknown> } };
+
+async function reachServers(reach: AgentReach): Promise<ServerRow[]> {
 	if (!reach.all) {
 		return reach.server ? [reach.server] : [];
 	}
 	const bots = await db.getAllBots(reach.panelId).catch(() => []);
-	const lists = await Promise.all((bots as Record<string, unknown>[]).map((bot) => db.getServersForBot(Number(bot.id)).catch(() => [])));
+	const lists = await Promise.all(bots.map((bot) => db.getServersForBot(Number(bot.id)).catch(() => [])));
 	return lists.flat();
 }
 
-async function toolSpecs(servers: any[], all: boolean): Promise<any[]> {
+async function toolSpecs(servers: ServerRow[], isAll: boolean): Promise<ToolSpec[]> {
 	const asked = new Set<number>();
 	for (const server of servers) {
 		const botId = Number(server.bot_id);
@@ -20,9 +23,9 @@ async function toolSpecs(servers: any[], all: boolean): Promise<any[]> {
 			continue;
 		}
 		asked.add(botId);
-		const call = await callMessageBot(server, 'agent_tools', { all }).catch(() => null);
+		const call = await callMessageBot(server, 'agent_tools', { all: isAll }).catch(() => null);
 		if (Array.isArray(call?.body?.tools)) {
-			return call.body.tools;
+			return call.body.tools as ToolSpec[];
 		}
 	}
 	return [];
@@ -30,7 +33,7 @@ async function toolSpecs(servers: any[], all: boolean): Promise<any[]> {
 
 export async function serverDataPack(reach: AgentReach): Promise<AgentPack> {
 	const servers = await reachServers(reach);
-	const byId = new Map<number, Record<string, unknown>>(servers.map((server) => [Number(server.id), server]));
+	const byId = new Map(servers.map((server) => [Number(server.id), server]));
 	const specs = await toolSpecs(reach.server ? [reach.server, ...servers] : servers, reach.all);
 
 	const serverIdParam = {

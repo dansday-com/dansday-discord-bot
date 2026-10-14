@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;
@@ -62,7 +62,7 @@ export function makeFrost(rows: number): FxProgram {
 			const phase = (s.t * s.v.speed) % cycle;
 			if (phase < 1.4) {
 				ice.fill(0);
-				runs.length = 0;
+				runs.splice(0);
 			}
 			const grow = Math.min(1, phase / (cycle * 0.5));
 			const melt = phase > cycle * 0.68 ? (phase - cycle * 0.68) / (cycle * 0.32) : 0;

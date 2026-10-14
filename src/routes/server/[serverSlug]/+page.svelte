@@ -7,6 +7,13 @@
 	import type { PageProps } from './$types';
 	import type { PublicPageStats } from '$lib/frontend/public/statistics/index.js';
 	import { compact, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
+	import { MINUTES_PER_HOUR } from '$lib/utils/time.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
+
+	const STAFF_RATING_MAX = 5;
+	const METER_MIN_VISIBLE_PERCENT = 4;
+	const EASE_OUT_POWER = 3;
+	const WIDE_GRID_COLS = 3;
 
 	let { data }: PageProps = $props();
 
@@ -37,7 +44,7 @@
 			{ n: data.stats.members_total, label: 'members' },
 			{ n: data.stats.leveling_total_xp, label: 'XP earned' },
 			{ n: data.stats.leveling_total_chat, label: 'messages' },
-			{ n: Number(data.stats.leveling_total_voice_minutes ?? 0) / 60, label: 'voice hours' }
+			{ n: Number(data.stats.leveling_total_voice_minutes ?? 0) / MINUTES_PER_HOUR, label: 'voice hours' }
 		]
 			.map((f) => ({ ...f, n: Math.round(Number(f.n ?? 0)) }))
 			.filter((f) => f.n > 0)
@@ -55,12 +62,12 @@
 			{ n: data.stats.members_total, label: 'members' },
 			{ n: data.stats.leveling_total_xp, label: 'XP earned' },
 			{ n: data.stats.leveling_total_chat, label: 'messages' },
-			{ n: Number(data.stats.leveling_total_voice_minutes ?? 0) / 60, label: 'voice hours' }
+			{ n: Number(data.stats.leveling_total_voice_minutes ?? 0) / MINUTES_PER_HOUR, label: 'voice hours' }
 		]
 			.filter((f) => Number(f.n ?? 0) >= 1)
 			.map((f) => `**${compact(f.n)}** ${f.label}`);
 		const lines = [facts.slice(0, 2).join(' · '), facts.slice(2).join(' · ')].filter(Boolean);
-		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl, 'Live server statistics', lines);
+		return serverLinkEmbed({ ...data.server, name: serverName }, { url: data.canonicalUrl, subtitle: 'Live server statistics', lines });
 	});
 
 	const membersWithoutLevels = $derived(Math.max(0, (liveStats.members_total ?? 0) - (liveStats.members_with_levels ?? 0)));
@@ -70,11 +77,11 @@
 	);
 
 	const stealHitRate = $derived(
-		(liveStats.items_steal_attempts ?? 0) > 0 ? Math.round((Number(liveStats.items_steals_landed) / Number(liveStats.items_steal_attempts)) * 100) : 0
+		(liveStats.items_steal_attempts ?? 0) > 0 ? Math.round((Number(liveStats.items_steals_landed) / Number(liveStats.items_steal_attempts)) * PERCENT) : 0
 	);
 
 	const minigamesWinRate = $derived(
-		(liveStats.minigames_plays ?? 0) > 0 ? Math.round((Number(liveStats.minigames_wins) / Number(liveStats.minigames_plays)) * 100) : 0
+		(liveStats.minigames_plays ?? 0) > 0 ? Math.round((Number(liveStats.minigames_wins) / Number(liveStats.minigames_plays)) * PERCENT) : 0
 	);
 
 	function pct(part: number | null | undefined, whole: number | null | undefined): number {
@@ -82,7 +89,7 @@
 		if (w <= 0) {
 			return 0;
 		}
-		return Math.min(100, Math.max(0, (Number(part) / w) * 100));
+		return Math.min(PERCENT, Math.max(0, (Number(part) / w) * PERCENT));
 	}
 
 	function split(parts: number[]): number[] {
@@ -91,14 +98,14 @@
 		if (total <= 0) {
 			return clean.map(() => 0);
 		}
-		return clean.map((p) => (p / total) * 100);
+		return clean.map((p) => (p / total) * PERCENT);
 	}
 
 	const marketProfit = $derived(Number(liveStats.assets_realized_net) || 0);
 	const marketUnrealized = $derived(Number(liveStats.assets_unrealized_net) || 0);
 
 	const giveawayClaimPct = $derived(pct(liveStats.giveaways_winners, liveStats.giveaways_entrants));
-	const staffRatingPct = $derived(pct(liveStats.staff_avg_rating, 5));
+	const staffRatingPct = $derived(pct(liveStats.staff_avg_rating, STAFF_RATING_MAX));
 
 	const avgVoiceMinutes = $derived(
 		(liveStats.members_with_levels ?? 0) > 0
@@ -118,7 +125,7 @@
 		if (maxL <= 0) {
 			return 0;
 		}
-		return Math.min(100, Math.max(4, (avgL / maxL) * 100));
+		return Math.min(PERCENT, Math.max(METER_MIN_VISIBLE_PERCENT, (avgL / maxL) * PERCENT));
 	});
 
 	const boostersCount = $derived(Number(liveStats.members_unique_boosters ?? liveStats.members_boosters) || 0);
@@ -153,7 +160,7 @@
 		const dur = 900;
 		const tick = (now: number) => {
 			const u = Math.min(1, (now - start) / dur);
-			const e = 1 - Math.pow(1 - u, 3);
+			const e = 1 - (1 - u) ** EASE_OUT_POWER;
 			heroXpDisplay = Math.round(from + (target - from) * e);
 			if (u < 1) {
 				rafXp = requestAnimationFrame(tick);
@@ -275,7 +282,7 @@
 			hint="Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_xp)} wallet + {fmt(liveStats.leveling_assets_value)} in market"
 		/>
 		<MeterBar head="Average vs peak level" meta="{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}" pct={avgLevelBarPct} />
-		<MiniGrid cols={3}>
+		<MiniGrid cols={WIDE_GRID_COLS}>
 			<MiniStat icon="fa-comments" value={fmt(liveStats.leveling_total_chat)} label="Messages" />
 			<MiniStat icon="fa-chart-line" value={avgXP} label="Avg XP / member" />
 			<MiniStat icon="fa-crown" value={fmt(liveStats.leveling_max_level)} label="Highest level" />
@@ -303,7 +310,7 @@
 				{ label: 'AFK', pct: voiceSplit[1], color: FILL.neutral }
 			]}
 		/>
-		<MiniGrid cols={3}>
+		<MiniGrid cols={WIDE_GRID_COLS}>
 			<MiniStat icon="fa-check-circle" value={fmt(liveStats.leveling_total_voice_active)} label="Active min" />
 			<MiniStat icon="fa-chart-line" value={avgVoiceMinutes} label="Avg / member" />
 			<MiniStat icon="fa-chart-bar" value={avgVoiceActive} label="Avg active" />
@@ -328,7 +335,7 @@
 				{ label: `Cashed out ${fmt(liveStats.assets_sell_volume)}`, pct: marketSplit[1], color: FILL.muted }
 			]}
 		/>
-		<MiniGrid cols={3}>
+		<MiniGrid cols={WIDE_GRID_COLS}>
 			<MiniStat icon="fa-right-left" value={fmt(liveStats.assets_trade_count)} label="Trades" />
 			<MiniStat icon="fa-users" value={fmt(liveStats.assets_traders)} label="Traders" />
 			<MiniStat icon="fa-briefcase" value={fmt(liveStats.assets_open_positions)} label="Open assets" />
@@ -358,7 +365,7 @@
 				{ label: `Caught ${fmt(liveStats.items_steals_caught)}`, pct: heistSplit[1], color: FILL.muted }
 			]}
 		/>
-		<MiniGrid cols={3}>
+		<MiniGrid cols={WIDE_GRID_COLS}>
 			<MiniStat icon="fa-wand-magic-sparkles" value={fmt(liveStats.items_activations)} label="Activations" />
 			<MiniStat icon="fa-hand" value={fmt(liveStats.items_stolen)} label="XP stolen" />
 			<MiniStat icon="fa-bomb" value={fmt(liveStats.items_bombed)} label="XP bombed" />
@@ -383,7 +390,7 @@
 				{ label: `Tower ${fmt(liveStats.tower_climbs)}`, pct: gameSplit[1], color: FILL.accent }
 			]}
 		/>
-		<MiniGrid cols={3}>
+		<MiniGrid cols={WIDE_GRID_COLS}>
 			<MiniStat icon="fa-percent" value="{minigamesWinRate}%" label="Gamble wins" />
 			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net >= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="Gamble net" />
 			<MiniStat icon="fa-trophy" value={fmt(liveStats.minigames_biggest_win)} label="Biggest gamble" />
@@ -399,7 +406,7 @@
 			value={fmt(liveStats.giveaways_total)}
 			hint="{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members"
 		/>
-		<MeterBar head="Odds of winning" meta="{giveawayClaimPct.toFixed(1)}%" pct={Math.max(4, giveawayClaimPct)} />
+		<MeterBar head="Odds of winning" meta="{giveawayClaimPct.toFixed(1)}%" pct={Math.max(METER_MIN_VISIBLE_PERCENT, giveawayClaimPct)} />
 		<MiniGrid cols={2}>
 			<MiniStat icon="fa-medal" value={fmt(liveStats.giveaways_winners)} label="Winners drawn" />
 			<MiniStat icon="fa-hourglass-half" value={fmt(liveStats.giveaways_active)} label="Running now" />
@@ -423,7 +430,7 @@
 				{ label: `Shares ${fmt(liveStats.streams_shares)}`, pct: streamSplit[3], color: FILL.muted }
 			]}
 		/>
-		<MiniGrid cols={3}>
+		<MiniGrid cols={WIDE_GRID_COLS}>
 			<MiniStat icon="fa-user-plus" value={fmt(liveStats.streams_follows)} label="Follows" />
 			<MiniStat icon="fa-share-nodes" value={fmt(liveStats.streams_shares)} label="Shares" />
 			<MiniStat icon="fa-user-group" value={fmt(liveStats.streams_unique_chatters)} label="Chatters" />
@@ -439,7 +446,11 @@
 
 	<StatCard icon="fa-shield-halved" title="Staff & feedback" tone="violet">
 		<StatHero label="Staff reviews" value={fmt(liveStats.staff_reviews)} />
-		<MeterBar head="Average staff rating" meta="{liveStats.staff_avg_rating || '—'} / 5" pct={Math.max(4, staffRatingPct)} />
+		<MeterBar
+			head="Average staff rating"
+			meta="{liveStats.staff_avg_rating || '—'} / {STAFF_RATING_MAX}"
+			pct={Math.max(METER_MIN_VISIBLE_PERCENT, staffRatingPct)}
+		/>
 		<MiniGrid cols={2}>
 			<MiniStat icon="fa-comment-dots" value={fmt(liveStats.feedback_submissions)} label="Feedback" />
 			<MiniStat icon="fa-moon" value={fmt(liveStats.afk_active)} label="AFK now" />

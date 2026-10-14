@@ -5,12 +5,15 @@ import { Worker } from 'node:worker_threads';
 import { logger } from '../../../../utils/index.js';
 
 const MODEL_FILES = ['melspectrogram.onnx', 'embedding_model.onnx', 'hey_stupid.onnx'];
+const MODEL_DIR_SEARCH_DEPTH = 24;
+const DEFAULT_DETECT_THRESHOLD = 0.2;
+const WARM_TIMEOUT_MS = 15_000;
 
 function findModelDir() {
 	const hasModels = (dir: string) => MODEL_FILES.every((file) => fs.existsSync(path.join(dir, file)));
 
 	let dir = path.dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 24; i++) {
+	for (let i = 0; i < MODEL_DIR_SEARCH_DEPTH; i++) {
 		const candidate = path.join(dir, 'static', 'wakeword');
 		if (hasModels(candidate)) {
 			return candidate;
@@ -29,7 +32,7 @@ function findModelDir() {
 const MODEL_DIR = findModelDir();
 const [MEL_PATH, EMB_PATH, WAKE_PATH] = MODEL_FILES.map((file) => path.join(MODEL_DIR, file));
 
-const DETECT_THRESHOLD = Number(process.env.WAKE_THRESHOLD ?? 0.2);
+const DETECT_THRESHOLD = Number(process.env.WAKE_THRESHOLD ?? DEFAULT_DETECT_THRESHOLD);
 const REFRACTORY_MS = 2000;
 const DEBUG_WAKE = process.env.WAKE_DEBUG === '1';
 
@@ -40,13 +43,13 @@ function workerPath() {
 }
 
 let worker: Worker | null = null;
-let workerFailed = false;
-let reportedUnavailable = false;
+let hasWorkerFailed = false;
+let wasReportedUnavailable = false;
 
 const listeners = new Set<(userId: string, score: number) => void>();
 
 export function wakeModelAvailable() {
-	if (workerFailed) {
+	if (hasWorkerFailed) {
 		return false;
 	}
 
@@ -55,15 +58,15 @@ export function wakeModelAvailable() {
 		return true;
 	}
 
-	if (!reportedUnavailable) {
-		reportedUnavailable = true;
+	if (!wasReportedUnavailable) {
+		wasReportedUnavailable = true;
 		logger.log(`🔇 Wake word unavailable, missing: ${missing.join(', ')} (dir=${MODEL_DIR}, cwd=${process.cwd()})`);
 	}
 	return false;
 }
 
 function getWorker() {
-	if (worker || workerFailed) {
+	if (worker || hasWorkerFailed) {
 		return worker;
 	}
 	if (!wakeModelAvailable()) {
@@ -72,7 +75,7 @@ function getWorker() {
 
 	const file = workerPath();
 	if (!fs.existsSync(file)) {
-		workerFailed = true;
+		hasWorkerFailed = true;
 		logger.log(`❌ Wake word worker script missing at ${file}`);
 		return null;
 	}
@@ -108,7 +111,7 @@ function getWorker() {
 		});
 
 		worker.on('error', (error: Record<string, unknown>) => {
-			workerFailed = true;
+			hasWorkerFailed = true;
 			worker = null;
 			logger.log(`❌ Wake word worker crashed: ${error?.message ?? String(error)}`);
 		});
@@ -120,7 +123,7 @@ function getWorker() {
 			}
 		});
 	} catch (error) {
-		workerFailed = true;
+		hasWorkerFailed = true;
 		worker = null;
 		logger.log(`❌ Wake word worker failed to start: ${(error as Error).message}`);
 	}
@@ -139,7 +142,7 @@ export async function warmWakeModel() {
 		const timer = setTimeout(() => {
 			target.off('message', onMessage);
 			resolve(false);
-		}, 15_000);
+		}, WARM_TIMEOUT_MS);
 
 		function onMessage(msg: Record<string, unknown>) {
 			if (msg?.type !== 'ready' && msg?.type !== 'error') {
@@ -149,7 +152,7 @@ export async function warmWakeModel() {
 			target.off('message', onMessage);
 			if (msg.type === 'error') {
 				logger.log(`❌ Wake word model failed to load: ${msg.message}`);
-				workerFailed = true;
+				hasWorkerFailed = true;
 				resolve(false);
 				return;
 			}

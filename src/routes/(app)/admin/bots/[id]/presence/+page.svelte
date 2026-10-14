@@ -32,14 +32,14 @@
 	}
 
 	let presence = $state(presenceFromServer(data.botPresence));
-	let savingPresence = $state(false);
+	let isSavingPresence = $state(false);
 
 	$effect(() => {
 		presence = presenceFromServer(data.botPresence);
 	});
 
 	async function savePresence() {
-		savingPresence = true;
+		isSavingPresence = true;
 		try {
 			const urlStr = typeof presence.activity_url === 'string' ? presence.activity_url.trim() : '';
 			const stateStr = typeof presence.activity_state === 'string' ? presence.activity_state.trim() : '';
@@ -64,7 +64,7 @@
 			showToast('Discord presence saved', 'success');
 			await invalidateAll();
 		} finally {
-			savingPresence = false;
+			isSavingPresence = false;
 		}
 	}
 </script>
@@ -160,10 +160,10 @@
 		<button
 			type="button"
 			onclick={savePresence}
-			disabled={savingPresence}
+			disabled={isSavingPresence}
 			class="text-ash-100 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			{#if savingPresence}
+			{#if isSavingPresence}
 				<i class="fas fa-spinner fa-spin mr-2"></i>Saving…
 			{:else}
 				<i class="fas fa-save mr-2"></i>Save presence

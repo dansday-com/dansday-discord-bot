@@ -10,18 +10,19 @@ import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
 import { memberThemeFilename, memberThemeKey, removeMemberTheme, resolveMemberThemeForClient, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
 import { normalizeAccent } from '$lib/themes.js';
 import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { HTTP } from '$lib/http.js';
 
 async function resolveActor(serverSlug: string, card: unknown) {
 	const resolved = await resolvePublicServerBySlug(String(serverSlug || '').trim());
 	if (!resolved) {
-		return { error: 'Not found', status: 404 } as const;
+		return { error: 'Not found', status: HTTP.NOT_FOUND } as const;
 	}
 	if (!card) {
-		return { error: 'Missing card', status: 400 } as const;
+		return { error: 'Missing card', status: HTTP.BAD_REQUEST } as const;
 	}
 	const member = await resolveMemberByCardToken(resolved.server.id, String(card));
 	if (!member) {
-		return { error: 'Member not found', status: 404 } as const;
+		return { error: 'Member not found', status: HTTP.NOT_FOUND } as const;
 	}
 	return { member, serverId: resolved.server.id } as const;
 }
@@ -33,7 +34,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		if (!contentType.includes('multipart/form-data')) {
 			const body = await request.json().catch(() => null);
 			if (!body) {
-				return json({ success: false, error: 'Invalid body' }, { status: 400 });
+				return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
 			}
 
 			const actor = await resolveActor(params.serverSlug ?? '', body.card);
@@ -50,7 +51,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			if (body.accent !== undefined) {
 				const accent = normalizeAccent(body.accent);
 				if (!accent) {
-					return json({ success: false, error: 'Invalid colour' }, { status: 400 });
+					return json({ success: false, error: 'Invalid colour' }, { status: HTTP.BAD_REQUEST });
 				}
 				updates.accentColor = accent;
 				updates.accentAuto = body.accent_auto === true;
@@ -66,7 +67,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			}
 
 			if (Object.keys(updates).length === 0) {
-				return json({ success: false, error: 'Nothing to update' }, { status: 400 });
+				return json({ success: false, error: 'Nothing to update' }, { status: HTTP.BAD_REQUEST });
 			}
 
 			const cleared = updates.image === null ? await db.getMemberTheme(actor.member.id).catch(() => null) : null;
@@ -110,7 +111,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: true, theme: resolveMemberThemeForClient(row) });
 	} catch (error) {
 		logger.log(`❌ Error saving member theme: ${(error as Error).message}`);
-		return json({ success: false, error: 'Could not save your theme.' }, { status: 500 });
+		return json({ success: false, error: 'Could not save your theme.' }, { status: HTTP.INTERNAL_ERROR });
 	}
 };
 
@@ -118,7 +119,7 @@ export const DELETE: RequestHandler = async ({ params, request }) => {
 	try {
 		const body = await request.json().catch(() => null);
 		if (!body) {
-			return json({ success: false, error: 'Invalid body' }, { status: 400 });
+			return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const actor = await resolveActor(params.serverSlug ?? '', body.card);
@@ -136,6 +137,6 @@ export const DELETE: RequestHandler = async ({ params, request }) => {
 		return json({ success: true, theme: remaining ?? null });
 	} catch (error) {
 		logger.log(`❌ Error clearing member theme: ${(error as Error).message}`);
-		return json({ success: false, error: 'Could not reset your theme.' }, { status: 500 });
+		return json({ success: false, error: 'Could not reset your theme.' }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

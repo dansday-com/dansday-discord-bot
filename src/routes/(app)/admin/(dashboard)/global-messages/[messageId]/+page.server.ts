@@ -5,13 +5,14 @@ import { DEFAULT_SERVER_LANGUAGE } from '$lib/languages.js';
 import { APP_DOMAIN, APP_NAME } from '$lib/backend/panelServer.js';
 import { ADMIN_TAB_PATHS, DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MESSAGE_LIMITS, messageUploadLimit } from '$lib/messages.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
 	const panelId = Number(locals.user.panel_id);
@@ -20,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const messages = await db.getGlobalMessages(panelId).catch(() => []);
 	const current = isNew ? null : (messages.find((message) => message.id === Number(params.messageId)) ?? null);
 	if (!isNew && !current) {
-		redirect(302, listPath);
+		redirect(HTTP.FOUND, listPath);
 	}
 	const copy = isNew ? (messages.find((message) => message.id === Number(url.searchParams.get('copy'))) ?? null) : null;
 

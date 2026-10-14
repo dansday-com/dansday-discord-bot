@@ -46,7 +46,7 @@
 				? 'tab-active from-secondary to-primary text-primary-content bg-linear-to-br shadow-sm'
 				: 'text-base-content/45'}"
 			aria-selected={tab.active}
-			onpointerenter={(e) => !tab.active && e.pointerType === 'mouse' && sfx.detent(i, depth > 0)}
+			onpointerenter={(e) => !tab.active && e.pointerType === 'mouse' && (depth > 0 ? sfx.highDetent(i) : sfx.detent(i))}
 			onclick={() => select(tab)}
 		>
 			{#if tab.icon}<i class="fas {tab.icon}"></i>{/if}

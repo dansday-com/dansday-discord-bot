@@ -5,20 +5,24 @@ import { logger } from '$lib/utils/index.js';
 import { randomBytes } from 'crypto';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
+import { HTTP } from '$lib/http.js';
+import { INVITE_TOKEN_BYTES } from '$lib/accounts.js';
+
+const EMAIL_MASK_VISIBLE_CHARS = 3;
 
 function maskEmail(email: string) {
 	const at = email.indexOf('@');
 	if (at <= 0) {
-		return `${email.slice(0, 3)}***`;
+		return `${email.slice(0, EMAIL_MASK_VISIBLE_CHARS)}***`;
 	}
 	const local = email.slice(0, at);
 	const domain = email.slice(at + 1);
-	const prefix = local.slice(0, 3);
+	const prefix = local.slice(0, EMAIL_MASK_VISIBLE_CHARS);
 	return `${prefix}***@${domain}`;
 }
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
-	const user = locals.user;
+	const { user } = locals;
 	if (!user.authenticated) {
 		return false;
 	}
@@ -35,7 +39,7 @@ async function canManageAccounts(locals: App.Locals, serverId: number): Promise<
 export const GET: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
 	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
@@ -54,11 +58,11 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const serverId = Number(params.id);
 	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	if (!locals.user.authenticated) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const body = await request.json();
@@ -70,10 +74,10 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	}
 	const validTypes: string[] = invitableAccountTypes(panelActorOf(locals.user));
 	if (!account_type || !validTypes.includes(account_type)) {
-		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
+		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const token = randomBytes(32).toString('hex');
+	const token = randomBytes(INVITE_TOKEN_BYTES).toString('hex');
 
 	await db.createServerAccountInvite({
 		token,
@@ -83,7 +87,10 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	logger.log(`${locals.user.username} generated server invite for ${account_type} (server ${serverId})`);
 	await db
-		.createServerPanelLog(serverId, panelActorIds(locals), 'account_invite', [{ key: 'invite link', before: null, after: `${account_type}, copied link` }])
+		.createServerPanelLog(serverId, panelActorIds(locals), {
+			action: 'account_invite',
+			changes: [{ key: 'invite link', before: null, after: `${account_type}, copied link` }]
+		})
 		.catch(() => null);
 
 	const fullUrl = `${url.origin}/register?token=${token}`;

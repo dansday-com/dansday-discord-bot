@@ -10,7 +10,7 @@ export function memberThemeFilename(extension: string): string {
 	return uploadFilename(extension);
 }
 
-export function memberThemeKey(serverId: any, memberId: any, filename: string): string {
+export function memberThemeKey(serverId: string | number, memberId: string | number, filename: string): string {
 	return store.key([serverId, memberId], filename);
 }
 

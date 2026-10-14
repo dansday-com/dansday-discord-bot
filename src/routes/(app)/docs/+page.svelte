@@ -44,12 +44,11 @@
 	description={DESCRIPTION}
 	path="/docs"
 	jsonLd={[
-		techArticleNode(
-			DOCS_URL,
-			DOCS_HERO.heading.replace('{app}', APP_NAME),
-			DESCRIPTION,
-			sections.map((s) => s.heading)
-		)
+		techArticleNode(DOCS_URL, {
+			headline: DOCS_HERO.heading.replace('{app}', APP_NAME),
+			description: DESCRIPTION,
+			sections: sections.map((s) => s.heading)
+		})
 	]}
 />
 

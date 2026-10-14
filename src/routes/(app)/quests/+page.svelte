@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -9,12 +9,12 @@
 	const when = (v: string | null) => (v ? dateFmt.format(new Date(v)) : '');
 
 	let query = $state('');
-	let liveOnly = $state(false);
+	let isLiveOnly = $state(false);
 	const broken = $state<Record<string, boolean>>({});
 
 	const filtered = $derived(
 		data.quests.filter((q) => {
-			if (liveOnly && !q.live) {
+			if (isLiveOnly && !q.live) {
 				return false;
 			}
 			const needle = query.trim().toLowerCase();
@@ -52,9 +52,9 @@
 					</label>
 					<button
 						type="button"
-						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {liveOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
-						onclick={() => (liveOnly = !liveOnly)}
-						aria-pressed={liveOnly}
+						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {isLiveOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
+						onclick={() => (isLiveOnly = !isLiveOnly)}
+						aria-pressed={isLiveOnly}
 					>
 						<span class="size-1.5 rounded-full bg-current motion-safe:animate-pulse"></span>
 						Live only
@@ -66,7 +66,7 @@
 						<article
 							use:reveal
 							class="{REVEAL_CLASS} border-base-300 bg-base-100 flex flex-col overflow-hidden rounded-sm border"
-							style="transition-delay: {Math.min(i, 8) * 60}ms"
+							style="transition-delay: {cappedListDelay(i)}"
 						>
 							{#if (quest.banner_url || quest.thumbnail_url) && !broken[quest.quest_id]}
 								<img

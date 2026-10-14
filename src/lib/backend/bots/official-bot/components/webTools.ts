@@ -68,12 +68,15 @@ export async function runSearchTool(config: AiInput, args: Record<string, unknow
 	const searchType = args?.search_type === 'news' ? 'news' : 'web';
 
 	try {
-		const payload = await postJson(resolveToolUrl(endpoint.api_url, SEARCH_PATH), endpoint.api_key, {
-			model: endpoint.model,
-			query,
-			search_type: searchType,
-			max_results: clampResults(args?.max_results)
-		});
+		const payload = await postJson(
+			{ url: resolveToolUrl(endpoint.api_url, SEARCH_PATH), apiKey: endpoint.api_key },
+			{
+				model: endpoint.model,
+				query,
+				search_type: searchType,
+				max_results: clampResults(args?.max_results)
+			}
+		);
 
 		const results: Record<string, unknown>[] = Array.isArray(payload?.results) ? payload.results : [];
 		if (!results.length) {
@@ -88,14 +91,14 @@ export async function runSearchTool(config: AiInput, args: Record<string, unknow
 		}));
 
 		const answer = payload?.answer ?? null;
-		const thin = !answer && mapped.every((entry) => (entry.snippet ?? '').trim().length < THIN_SNIPPET_LENGTH);
+		const isThin = !answer && mapped.every((entry) => (entry.snippet ?? '').trim().length < THIN_SNIPPET_LENGTH);
 
 		return {
 			ok: true,
 			query,
 			answer,
 			results: mapped,
-			...(thin ? { next_step: SEARCH_THIN_HINT } : {})
+			...(isThin ? { next_step: SEARCH_THIN_HINT } : {})
 		};
 	} catch (error) {
 		await logger.log(`❌ Web search failed: ${(error as Error).message}`);
@@ -115,12 +118,15 @@ export async function runFetchTool(config: AiInput, args: Record<string, unknown
 	}
 
 	try {
-		const payload = await postJson(resolveToolUrl(endpoint.api_url, FETCH_PATH), endpoint.api_key, {
-			model: endpoint.model,
-			url,
-			format: 'markdown',
-			max_characters: MAX_FETCH_CHARACTERS
-		});
+		const payload = await postJson(
+			{ url: resolveToolUrl(endpoint.api_url, FETCH_PATH), apiKey: endpoint.api_key },
+			{
+				model: endpoint.model,
+				url,
+				format: 'markdown',
+				max_characters: MAX_FETCH_CHARACTERS
+			}
+		);
 
 		const text = payload?.content?.text ?? '';
 		if (!text) {

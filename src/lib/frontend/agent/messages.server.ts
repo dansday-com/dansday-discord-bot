@@ -8,6 +8,7 @@ import { callMessageBot } from '$lib/frontend/serverMessages.server.js';
 import { MESSAGE_LIMITS, isSelfAssignableRole, normalizeMessageDoc, type MessageOwner, type MessageScope } from '$lib/messages.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 import { agentModel, type AgentAnswer, type AgentPack, type AgentReach, type AgentSession } from './runtime.server.js';
+import type { ServerRow } from '$lib/schema.js';
 
 const TRANSLATION_TIMEOUT_MS = 90_000;
 
@@ -15,7 +16,7 @@ export type MessageRequest = { scope: MessageScope; id: unknown; name: unknown; 
 
 type Library = Pick<MessageAgentContext, 'serverName' | 'messages' | 'roles' | 'emojis' | 'defaults'> & { posted: (messageId: number) => Promise<boolean> };
 
-async function serverLibrary(server: Record<string, unknown>): Promise<Library> {
+async function serverLibrary(server: ServerRow): Promise<Library> {
 	const serverId = Number(server.id);
 	const [messages, roles, mainRow, emojis] = await Promise.all([
 		db.getServerMessages(serverId).catch(() => []),
@@ -52,10 +53,11 @@ function shape(result: MessageAgentResult): AgentAnswer {
 	return { reply: result.reply, message: { name: result.name, content: result.content } };
 }
 
-export function messageRequest(raw: any): MessageRequest | null {
-	if (!raw || typeof raw !== 'object') {
+export function messageRequest(input: unknown): MessageRequest | null {
+	if (!input || typeof input !== 'object') {
 		return null;
 	}
+	const raw = input as Record<string, unknown>;
 	return raw.scope === 'server' || raw.scope === 'global' ? { scope: raw.scope, id: raw.id, name: raw.name, content: raw.content } : null;
 }
 
@@ -126,7 +128,7 @@ export async function builderDoorPack(reach: AgentReach, session: AgentSession):
 						return opening;
 					}
 
-					let server = reach.server;
+					let { server } = reach;
 					let messages = serverMessages;
 					if (reach.all && args.server_id != null && Number(args.server_id) !== Number(reach.server?.id)) {
 						const other = await db.getServer(Number(args.server_id)).catch(() => null);
@@ -138,7 +140,7 @@ export async function builderDoorPack(reach: AgentReach, session: AgentSession):
 					}
 
 					session.navigate = adminServerSectionPath(
-						server.bot_id,
+						String(server.bot_id),
 						server.id,
 						`messages/${messages.some((message) => message.id === messageId) ? messageId : 'new'}`
 					);
@@ -149,10 +151,17 @@ export async function builderDoorPack(reach: AgentReach, session: AgentSession):
 	};
 }
 
+function serverInReach(reach: AgentReach): ServerRow {
+	if (!reach.server) {
+		throw new Error('A server message needs a server the admin can reach');
+	}
+	return reach.server;
+}
+
 export async function messageBuilderPack(reach: AgentReach, request: MessageRequest): Promise<AgentPack> {
-	const global = request.scope === 'global';
-	const owner: MessageOwner = global ? { scope: 'global', id: reach.panelId } : { scope: 'server', id: Number(reach.server.id) };
-	const [library, model] = await Promise.all([global ? globalLibrary(reach.panelId) : serverLibrary(reach.server), agentModel(reach.panelId)]);
+	const isGlobal = request.scope === 'global';
+	const owner: MessageOwner = isGlobal ? { scope: 'global', id: reach.panelId } : { scope: 'server', id: Number(serverInReach(reach).id) };
+	const [library, model] = await Promise.all([isGlobal ? globalLibrary(reach.panelId) : serverLibrary(serverInReach(reach)), agentModel(reach.panelId)]);
 	const ownsUpload = (key: string) => messageFileBelongsTo(key, owner);
 
 	const requestedId = Math.trunc(Number(request.id));
@@ -170,7 +179,7 @@ export async function messageBuilderPack(reach: AgentReach, request: MessageRequ
 		roles: library.roles,
 		emojis: library.emojis,
 		ownsUpload,
-		ask: model ? (system, user) => completeText(model, system, user, TRANSLATION_TIMEOUT_MS) : undefined
+		ask: model ? (system, user) => completeText(model, { system, user }, TRANSLATION_TIMEOUT_MS) : undefined
 	});
 
 	return {

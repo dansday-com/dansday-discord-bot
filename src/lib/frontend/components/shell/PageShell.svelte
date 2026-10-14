@@ -2,13 +2,16 @@
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import { BRAND_PRIMARY } from '$lib/brand.js';
-	import { type MemberTheme, themeVars } from '$lib/themes.js';
+	import { themeVars } from '$lib/themes.js';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 	import { registerScroller } from '../../scrollLock.js';
 	import { onFirstInteraction } from '../../firstInteraction.js';
 
-	const memberTheme = $derived(((page.data as any)?.memberTheme ?? null) as MemberTheme | null);
+	const FIRST_FRAME_MS = 16;
+	const MAX_FRAME_MS = 34;
+
+	const memberTheme = $derived(page.data.memberTheme ?? null);
 	const themeBackdrop = $derived(memberTheme?.image ?? null);
 
 	let {
@@ -43,7 +46,7 @@
 
 		const tick = (time: number) => {
 			frame = 0;
-			clock += last < 0 ? 16 : Math.min(34, time - last);
+			clock += last < 0 ? FIRST_FRAME_MS : Math.min(MAX_FRAME_MS, time - last);
 			last = time;
 			lenis?.raf(clock);
 			if (lenis?.isScrolling === 'smooth') {

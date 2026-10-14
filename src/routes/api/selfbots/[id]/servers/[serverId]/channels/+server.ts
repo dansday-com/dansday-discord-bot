@@ -2,10 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canReadSelfbotTopology } from '$lib/backend/panelServer.js';
+import { HTTP } from '$lib/http.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
+		return json({ error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 
 	try {
@@ -14,16 +15,16 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 		const selfbot = await db.getSelfbotById(selfbotId);
 		if (!selfbot) {
-			return json({ error: 'Selfbot not found' }, { status: 404 });
+			return json({ error: 'Selfbot not found' }, { status: HTTP.NOT_FOUND });
 		}
 
 		if (!(await canReadSelfbotTopology(locals, selfbotId))) {
-			return json({ error: 'Access denied' }, { status: 403 });
+			return json({ error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 		}
 
 		const linked = await db.getSelfbotServer(selfbotId, selfbotServerId);
 		if (!linked) {
-			return json({ error: 'Server not found' }, { status: 404 });
+			return json({ error: 'Server not found' }, { status: HTTP.NOT_FOUND });
 		}
 
 		const [rawChannels, categories] = await Promise.all([db.getSelfbotChannelsForServer(selfbotServerId), db.getSelfbotCategoriesForServer(selfbotServerId)]);
@@ -40,6 +41,6 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 		return json({ channels, categories });
 	} catch (error) {
-		return json({ error: (error as Error).message }, { status: 500 });
+		return json({ error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

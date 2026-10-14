@@ -17,6 +17,7 @@ import {
 import { serverDataPack } from './serverData.server.js';
 import { settingsPack } from './settings.server.js';
 import { wikisPack } from './wikis.server.js';
+import { HTTP } from '$lib/http.js';
 
 const MAX_REPLY_LENGTH = 6000;
 
@@ -97,7 +98,7 @@ async function scopeFor(locals: App.Locals, rawServerId: unknown, message: Messa
 export async function describeAssistant(locals: App.Locals, url: URL): Promise<Response> {
 	const scope = await scopeFor(locals, url.searchParams.get('server_id'), messageRequest({ scope: url.searchParams.get('message') }));
 	if (!scope) {
-		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	return json({
@@ -110,12 +111,12 @@ export async function describeAssistant(locals: App.Locals, url: URL): Promise<R
 export async function answerAssistant(locals: App.Locals, body: Record<string, unknown>): Promise<Response> {
 	const scope = await scopeFor(locals, body?.server_id, messageRequest(body?.message));
 	if (!scope) {
-		return json({ ok: false, error: 'Access denied' }, { status: 403 });
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const turns = agentTurns(body?.history, body?.prompt);
 	if (!turns) {
-		return json({ ok: false, error: 'Tell the assistant what you need.' }, { status: 400 });
+		return json({ ok: false, error: 'Tell the assistant what you need.' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const capabilities = CAPABILITIES.filter((capability) => capability.available(scope));
@@ -136,7 +137,7 @@ export async function answerAssistant(locals: App.Locals, body: Record<string, u
 	};
 
 	const where = scope.reach.server ? ` on server "${scope.reach.server.name || scope.reach.server.id}"` : '';
-	const reply = await runPanelAgent(scope.reach, task, turns, `${scope.session.actor} asked the assistant${where}`);
+	const reply = await runPanelAgent(scope.reach, task, { turns, label: `${scope.session.actor} asked the assistant${where}` });
 	const effects = { changed: [...scope.session.changed], navigate: scope.session.navigate };
 
 	if (reply.ok) {

@@ -4,15 +4,17 @@
 	import type { LiveGainBatch } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 	import { BRAND_PRIMARY } from '$lib/brand.js';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
+	import { attemptSync } from '$lib/utils/attempt.js';
+	import { GlobeView, type GlobePulse } from './globe.js';
 
 	type Props = { gains: LiveGainBatch | null; avoid?: (HTMLElement | null)[] };
-	type Pulse = { id: number; place: GlobePlace; xp: number; born: number };
+	type Pulse = GlobePulse;
 
 	let { gains, avoid = [] }: Props = $props();
 
 	let canvasHost: HTMLDivElement | null = $state(null);
 	let stage: HTMLDivElement | null = $state(null);
-	let webgl = $state(true);
+	let hasWebgl = $state(true);
 	let pulses = $state<Pulse[]>([]);
 
 	const labelEls: Record<number, HTMLElement | undefined> = {};
@@ -25,16 +27,27 @@
 	const PULSE_MS = 5600;
 	const MAX_RIGS = 8;
 	const MAX_PER_BATCH = 5;
+	const RECENT_PLACES_KEPT = 8;
+	const RANDOM_PLACE_TRIES = 12;
+	const PULSE_STAGGER_MS = 260;
+	const PULSE_JITTER_MS = 180;
+	const IDLE_FALLBACK_MS = 300;
+	const NARROW_PIXEL_RATIO_CAP = 1.25;
+	const PIXEL_RATIO_CAP = 1.5;
+	const POINTER_CENTER_FRACTION = 0.5;
+	const REDUCED_PRUNE_INTERVAL_MS = 1400;
+	const NARROW_FRAME_GAP_MS = 32;
 
 	let seq = 0;
 	const recent: string[] = [];
 	let dispose: (() => void) | null = null;
 	let requestFrame: (() => void) | null = null;
 	let pickFacing: ((exclude: string[]) => GlobePlace | null) | null = null;
+	let isOnScreen = true;
 
 	function remember(place: GlobePlace): GlobePlace {
 		recent.push(place.name);
-		if (recent.length > 8) {
+		if (recent.length > RECENT_PLACES_KEPT) {
 			recent.shift();
 		}
 		return place;
@@ -45,7 +58,7 @@
 		if (facing) {
 			return remember(facing);
 		}
-		for (let i = 0; i < 12; i++) {
+		for (let i = 0; i < RANDOM_PLACE_TRIES; i++) {
 			const place = GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
 			if (!recent.includes(place.name)) {
 				return remember(place);
@@ -68,494 +81,205 @@
 			return;
 		}
 		untrack(() => {
-			batch.items.slice(-MAX_PER_BATCH).forEach((xp, index) => spawn(xp, index * 260 + Math.random() * 180));
+			batch.items.slice(-MAX_PER_BATCH).forEach((xp, index) => spawn(xp, index * PULSE_STAGGER_MS + Math.random() * PULSE_JITTER_MS));
 		});
 	});
 
-	onMount(async () => {
-		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-		const narrow = window.matchMedia('(max-width: 640px)');
-
-		const reduced = motion.matches;
-
-		await new Promise<void>((resolve) => {
-			if (reduced) {
-				if ('requestIdleCallback' in window) {
-					requestIdleCallback(() => resolve(), { timeout: 2500 });
-				} else {
-					setTimeout(resolve, 300);
-				}
+	function waitForStart(isReduced: boolean) {
+		return new Promise<void>((resolve) => {
+			if (!isReduced) {
+				dispose = onFirstInteraction(resolve);
 				return;
 			}
-			dispose = onFirstInteraction(resolve);
+			if ('requestIdleCallback' in window) {
+				requestIdleCallback(() => resolve(), { timeout: 2500 });
+			} else {
+				setTimeout(resolve, IDLE_FALLBACK_MS);
+			}
 		});
-		dispose = null;
+	}
 
-		const startFallback = () => {
-			webgl = false;
-		};
-
-		let THREE: typeof import('three');
-		try {
-			THREE = await import('three');
-		} catch (_) {
-			startFallback();
-			return;
+	async function createView(isReduced: boolean, isNarrow: boolean): Promise<GlobeView | null> {
+		const THREE = await import('three').catch(() => null);
+		if (!THREE) {
+			hasWebgl = false;
+			return null;
 		}
 		if (!canvasHost) {
-			return;
+			return null;
 		}
 
-		let renderer: import('three').WebGLRenderer;
-		try {
-			renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
-		} catch (_) {
-			startFallback();
-			return;
+		const rendererResult = attemptSync(() => new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' }));
+		if (!rendererResult.ok) {
+			hasWebgl = false;
+			return null;
 		}
+		const renderer = rendererResult.value;
 
-		renderer.setPixelRatio(Math.min(window.devicePixelRatio, narrow.matches ? 1.25 : 1.5));
+		renderer.setPixelRatio(Math.min(window.devicePixelRatio, isNarrow ? NARROW_PIXEL_RATIO_CAP : PIXEL_RATIO_CAP));
 		renderer.setClearAlpha(0);
 		canvasHost.appendChild(renderer.domElement);
-		renderer.domElement.style.cssText = reduced
+		renderer.domElement.style.cssText = isReduced
 			? 'width:100%;height:100%;display:block'
 			: 'width:100%;height:100%;display:block;opacity:0;transition:opacity 0.9s ease-out';
 
-		const scene = new THREE.Scene();
-		const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+		return new GlobeView(THREE, { renderer, maxRigs: MAX_RIGS, pulseMs: PULSE_MS, isReduced });
+	}
 
-		const read = (token: string, fallback: string) => {
-			const value = getComputedStyle(canvasHost as HTMLElement)
-				.getPropertyValue(token)
-				.trim();
-			return /^(#|rgb)/i.test(value) ? value : fallback;
-		};
+	function readToken(token: string, fallback: string) {
+		const value = getComputedStyle(canvasHost as HTMLElement)
+			.getPropertyValue(token)
+			.trim();
+		return /^(#|rgb)/i.test(value) ? value : fallback;
+	}
 
-		const globe = new THREE.Group();
-		globe.rotation.z = -0.41;
-		scene.add(globe);
-
-		const bodyMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: true });
-		const body = new THREE.Mesh(new THREE.SphereGeometry(0.992, 48, 32), bodyMat);
-		body.renderOrder = -1;
-		globe.add(body);
-
-		const gridMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.07 });
-		const rimMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.16 });
-		const landMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.38 });
-
-		const toVec = (lat: number, lon: number, r = 1) => {
-			const phi = ((90 - lat) * Math.PI) / 180;
-			const theta = ((lon + 180) * Math.PI) / 180;
-			return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
-		};
-
-		const gridPoints: number[] = [];
-		for (let lat = -60; lat <= 60; lat += 30) {
-			for (let lon = -180; lon < 180; lon += 6) {
-				const a = toVec(lat, lon, 1.001);
-				const b = toVec(lat, lon + 6, 1.001);
-				gridPoints.push(a.x, a.y, a.z, b.x, b.y, b.z);
-			}
-		}
-		for (let lon = -180; lon < 180; lon += 30) {
-			for (let lat = -84; lat < 84; lat += 6) {
-				const a = toVec(lat, lon, 1.001);
-				const b = toVec(lat + 6, lon, 1.001);
-				gridPoints.push(a.x, a.y, a.z, b.x, b.y, b.z);
-			}
-		}
-		const gridGeo = new THREE.BufferGeometry();
-		gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gridPoints, 3));
-		globe.add(new THREE.LineSegments(gridGeo, gridMat));
-
-		const rimPoints: number[] = [];
-		for (let i = 0; i <= 128; i++) {
-			const a = (i / 128) * Math.PI * 2;
-			const b = ((i + 1) / 128) * Math.PI * 2;
-			rimPoints.push(Math.cos(a), Math.sin(a), 0, Math.cos(b), Math.sin(b), 0);
-		}
-		const rimGeo = new THREE.BufferGeometry();
-		rimGeo.setAttribute('position', new THREE.Float32BufferAttribute(rimPoints, 3));
-		scene.add(new THREE.LineSegments(rimGeo, rimMat));
-
-		let landGeo: import('three').BufferGeometry | null = null;
-
-		const rigs = Array.from({ length: MAX_RIGS }, () => {
-			const group = new THREE.Group();
-			group.visible = false;
-
-			const dotMat = new THREE.MeshBasicMaterial({ transparent: true });
-			const dot = new THREE.Mesh(new THREE.SphereGeometry(0.013, 10, 8), dotMat);
-
-			const ringMat = new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide });
-			const ring = new THREE.Mesh(new THREE.RingGeometry(0.058, 0.076, 40), ringMat);
-
-			const beamGeo = new THREE.CylinderGeometry(0.0035, 0.0035, 1, 6);
-			beamGeo.rotateX(Math.PI / 2);
-			beamGeo.translate(0, 0, 0.5);
-			const beamMat = new THREE.MeshBasicMaterial({ transparent: true });
-			const beam = new THREE.Mesh(beamGeo, beamMat);
-
-			group.add(dot, ring, beam);
-			globe.add(group);
-			return { group, dot, ring, beam, dotMat, ringMat, beamMat, pulseId: 0 };
-		});
-
-		const paint = () => {
-			bodyMat.color.set(read('--color-base-200', '#e3e0d6'));
-			gridMat.color.set(read('--color-base-content', '#2e211b'));
-			rimMat.color.set(read('--color-primary', BRAND_PRIMARY));
-			landMat.color.set(read('--color-primary', BRAND_PRIMARY));
-			const primary = read('--color-primary', BRAND_PRIMARY);
-			const secondary = read('--color-secondary', '#d6536d');
-			for (const rig of rigs) {
-				rig.dotMat.color.set(primary);
-				rig.ringMat.color.set(primary);
-				rig.beamMat.color.set(secondary);
-			}
-		};
-		paint();
-
+	function loadCoastlines(view: GlobeView) {
 		fetch('/geo/coastlines.json')
 			.then((res) => (res.ok ? res.json() : null))
 			.then((arcs: number[][] | null) => {
 				if (!arcs?.length) {
 					return;
 				}
-				const positions: number[] = [];
-				for (const arc of arcs) {
-					for (let i = 0; i + 3 < arc.length; i += 2) {
-						const a = toVec(arc[i + 1], arc[i], 1.004);
-						const b = toVec(arc[i + 3], arc[i + 2], 1.004);
-						positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
-					}
-				}
-				landGeo = new THREE.BufferGeometry();
-				landGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-				globe.add(new THREE.LineSegments(landGeo, landMat));
+				view.addCoastlines(arcs);
 				requestFrame?.();
 			})
 			.catch(() => {});
+	}
 
-		let boxesAt = -Infinity;
-		const target = { x: 0, y: 0 };
-		const smooth = { x: 0, y: 0 };
+	function drawFrame(view: GlobeView, now: number) {
+		const active = pulses;
+		const expired = view.render(now, active);
+		const { placements, hidden } = view.layoutLabels(now, active, { stage, avoid, elements: labelEls, sizes: labelSizes });
+
+		for (const el of hidden) {
+			el.style.opacity = '0';
+		}
+		for (const place of placements) {
+			place.el.style.transform = `translate(${Math.round(place.x)}px, ${Math.round(place.y)}px) translateY(-100%)`;
+			place.el.style.opacity = String(place.opacity);
+		}
+
+		if (expired.length) {
+			for (const id of expired) {
+				labelSizes.delete(id);
+			}
+			pulses = pulses.filter((pulse) => !expired.includes(pulse.id));
+		}
+	}
+
+	function observe(view: GlobeView, host: HTMLDivElement): () => void {
 		const onPointer = (event: PointerEvent) => {
-			target.x = (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
-			target.y = (event.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
+			view.pointTo(
+				(event.clientX / Math.max(1, window.innerWidth) - POINTER_CENTER_FRACTION) * 2,
+				(event.clientY / Math.max(1, window.innerHeight) - POINTER_CENTER_FRACTION) * 2
+			);
 		};
 		window.addEventListener('pointermove', onPointer, { passive: true });
 
 		const resize = () => {
-			if (!canvasHost) {
-				return;
-			}
-			const { clientWidth: w, clientHeight: h } = canvasHost;
+			const { clientWidth: w, clientHeight: h } = host;
 			if (!w || !h) {
 				return;
 			}
-			renderer.setSize(w, h, false);
-			camera.aspect = w / h;
-			const half = Math.tan((camera.fov * Math.PI) / 360);
-			const fit = 1.04;
-			camera.position.z = Math.max(fit / half, fit / (half * camera.aspect));
-			camera.updateProjectionMatrix();
-			boxesAt = -Infinity;
+			view.resize(w, h);
 			requestFrame?.();
 		};
 		const ro = new ResizeObserver(resize);
-		ro.observe(canvasHost);
+		ro.observe(host);
 		resize();
 
-		let onScreen = true;
 		const io = new IntersectionObserver(
 			(entries) => {
-				onScreen = entries.some((entry) => entry.isIntersecting);
-				if (onScreen) {
+				isOnScreen = entries.some((entry) => entry.isIntersecting);
+				if (isOnScreen) {
 					requestFrame?.();
 				}
 			},
 			{ threshold: 0 }
 		);
-		io.observe(canvasHost);
+		io.observe(host);
 
 		const themeWatch = new MutationObserver(() => {
-			paint();
+			view.paint(readToken, BRAND_PRIMARY);
 			requestFrame?.();
 		});
 		themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
 
-		const facingPoint = new THREE.Vector3();
-		const facingToCamera = new THREE.Vector3();
-
-		pickFacing = (exclude: string[]) => {
-			const candidates: GlobePlace[] = [];
-			for (const place of GLOBE_PLACES) {
-				if (exclude.includes(place.name)) {
-					continue;
-				}
-				facingPoint.copy(toVec(place.lat, place.lon, 1)).applyQuaternion(globe.quaternion);
-				facingToCamera.copy(camera.position).sub(facingPoint).normalize();
-				if (facingPoint.normalize().dot(facingToCamera) > 0.38) {
-					candidates.push(place);
-				}
-			}
-			return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : null;
-		};
-
-		const world = new THREE.Vector3();
-		const toCamera = new THREE.Vector3();
-		const normal = new THREE.Vector3();
-		const axisZ = new THREE.Vector3(0, 0, 1);
-
-		type Placement = { el: HTMLElement; x: number; y: number; opacity: number };
-		type Box = { left: number; top: number; right: number; bottom: number };
-
-		let boxes: Box[] = [];
-		const measure = (now: number) => {
-			if (!stage || now - boxesAt < 1000) {
-				return;
-			}
-			boxesAt = now;
-			const origin = stage.getBoundingClientRect();
-			boxes = avoid
-				.filter((el): el is HTMLElement => !!el)
-				.map((el) => {
-					const rect = el.getBoundingClientRect();
-					return { left: rect.left - origin.left, top: rect.top - origin.top, right: rect.right - origin.left, bottom: rect.bottom - origin.top };
-				});
-		};
-
-		const frame = (now: number) => {
-			const active = pulses;
-
-			for (const rig of rigs) {
-				if (rig.pulseId && !active.some((pulse) => pulse.id === rig.pulseId)) {
-					rig.pulseId = 0;
-					rig.group.visible = false;
-				}
-			}
-
-			for (const pulse of active) {
-				if (rigs.some((rig) => rig.pulseId === pulse.id)) {
-					continue;
-				}
-				const free = rigs.find((rig) => !rig.pulseId);
-				if (!free) {
-					continue;
-				}
-				free.pulseId = pulse.id;
-				free.group.position.copy(toVec(pulse.place.lat, pulse.place.lon, 1.004));
-				normal.copy(free.group.position).normalize();
-				free.group.quaternion.setFromUnitVectors(axisZ, normal);
-				free.group.visible = true;
-			}
-
-			const expired: number[] = [];
-
-			if (!reduced) {
-				smooth.x += (target.x - smooth.x) * 0.05;
-				smooth.y += (target.y - smooth.y) * 0.05;
-				globe.rotation.y = now * 0.000055 + smooth.x * 0.18;
-				globe.rotation.x = smooth.y * 0.12;
-			}
-
-			for (const rig of rigs) {
-				if (!rig.pulseId) {
-					continue;
-				}
-				const pulse = active.find((item) => item.id === rig.pulseId);
-				if (!pulse) {
-					continue;
-				}
-				const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
-				if (life >= 1) {
-					expired.push(pulse.id);
-					continue;
-				}
-				rig.group.visible = life >= 0;
-				if (life < 0) {
-					continue;
-				}
-				const fade = Math.pow(1 - life, 1.5);
-				const exit = Math.min(1, (1 - life) / 0.25);
-				rig.ring.scale.setScalar(0.4 + life * 1.5);
-				rig.ringMat.opacity = fade * 0.65;
-				rig.dotMat.opacity = 0.9 * exit;
-				rig.beam.scale.z = 0.2 * Math.min(1, life * 4);
-				rig.beamMat.opacity = fade * 0.5;
-			}
-
-			renderer.render(scene, camera);
-
-			const placements: Placement[] = [];
-			const hidden: HTMLElement[] = [];
-
-			if (stage) {
-				const width = renderer.domElement.clientWidth;
-				const height = renderer.domElement.clientHeight;
-				measure(now);
-				const blocked = boxes.slice();
-				const clashes = (left: number, top: number, w: number, h: number) =>
-					blocked.some((rect) => left < rect.right + 8 && left + w > rect.left - 8 && top < rect.bottom + 8 && top + h > rect.top - 8);
-
-				for (let i = active.length - 1; i >= 0; i--) {
-					const pulse = active[i];
-					const el = labelEls[pulse.id];
-					const rig = rigs.find((item) => item.pulseId === pulse.id);
-					if (!el) {
-						continue;
-					}
-					if (!rig) {
-						hidden.push(el);
-						continue;
-					}
-
-					if (!labelSizes.has(pulse.id) && el.offsetWidth > 0) {
-						labelSizes.set(pulse.id, { w: el.offsetWidth, h: el.offsetHeight });
-					}
-					const size = labelSizes.get(pulse.id);
-
-					rig.group.getWorldPosition(world);
-					normal.copy(world).normalize();
-					toCamera.copy(camera.position).sub(world).normalize();
-					const facing = normal.dot(toCamera);
-					const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
-
-					if (!size || facing <= 0.14 || life < 0 || life >= 1) {
-						hidden.push(el);
-						continue;
-					}
-
-					world.project(camera);
-					const x = Math.min(Math.max((world.x * 0.5 + 0.5) * width + 12, 4), Math.max(4, width - size.w - 4));
-					const y = Math.min(Math.max((-world.y * 0.5 + 0.5) * height - 10, size.h + 4), Math.max(size.h + 4, height - 4));
-
-					const step = size.h + 6;
-					const floor = size.h + 4;
-					const ceiling = Math.max(floor, height - 4);
-					let slot = -1;
-					for (const offset of [0, -step, step]) {
-						const candidate = Math.min(Math.max(y + offset, floor), ceiling);
-						if (Math.abs(candidate - y) > step) {
-							continue;
-						}
-						if (!clashes(x, candidate - size.h, size.w, size.h)) {
-							slot = candidate;
-							break;
-						}
-					}
-					if (slot < 0) {
-						hidden.push(el);
-						continue;
-					}
-
-					const top = slot - size.h;
-					blocked.push({ left: x, top, right: x + size.w, bottom: top + size.h });
-					const enter = Math.min(1, life / 0.12);
-					const exit = Math.min(1, (1 - life) / 0.25);
-					placements.push({ el, x, y: slot, opacity: Math.min(enter, exit) * Math.min(1, (facing - 0.14) / 0.22) });
-				}
-			} else {
-				for (const pulse of active) {
-					const el = labelEls[pulse.id];
-					if (el) {
-						hidden.push(el);
-					}
-				}
-			}
-
-			for (const el of hidden) {
-				el.style.opacity = '0';
-			}
-			for (const place of placements) {
-				place.el.style.transform = `translate(${Math.round(place.x)}px, ${Math.round(place.y)}px) translateY(-100%)`;
-				place.el.style.opacity = String(place.opacity);
-			}
-
-			if (expired.length) {
-				for (const id of expired) {
-					labelSizes.delete(id);
-				}
-				pulses = pulses.filter((pulse) => !expired.includes(pulse.id));
-			}
-		};
-
-		let raf = 0;
-		let pending = false;
-
-		if (reduced) {
-			requestFrame = () => {
-				if (pending) {
-					return;
-				}
-				pending = true;
-				requestAnimationFrame((now) => {
-					pending = false;
-					frame(now);
-				});
-			};
-			const slow = setInterval(() => {
-				const now = performance.now();
-				if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
-					pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
-					requestFrame?.();
-				}
-			}, 1400);
-			requestFrame();
-			dispose = () => {
-				clearInterval(slow);
-				teardown();
-			};
-		} else {
-			let last = -Infinity;
-			const minGap = narrow.matches ? 32 : 0;
-			const tick = (now: number) => {
-				raf = requestAnimationFrame(tick);
-				if (!onScreen || document.hidden || now - last < minGap) {
-					return;
-				}
-				last = now;
-				frame(now);
-			};
-			requestFrame = () => {};
-			raf = requestAnimationFrame((now) => {
-				tick(now);
-				renderer.domElement.style.opacity = '1';
-			});
-			dispose = () => {
-				cancelAnimationFrame(raf);
-				teardown();
-			};
-		}
-
-		function teardown() {
+		return () => {
 			window.removeEventListener('pointermove', onPointer);
 			ro.disconnect();
 			io.disconnect();
 			themeWatch.disconnect();
-			body.geometry.dispose();
-			bodyMat.dispose();
-			gridGeo.dispose();
-			gridMat.dispose();
-			rimGeo.dispose();
-			rimMat.dispose();
-			landGeo?.dispose();
-			landMat.dispose();
-			for (const rig of rigs) {
-				rig.dot.geometry.dispose();
-				rig.ring.geometry.dispose();
-				rig.beam.geometry.dispose();
-				rig.dotMat.dispose();
-				rig.ringMat.dispose();
-				rig.beamMat.dispose();
+		};
+	}
+
+	function startReducedLoop(view: GlobeView): () => void {
+		let isPending = false;
+		requestFrame = () => {
+			if (isPending) {
+				return;
 			}
-			renderer.dispose();
-			renderer.domElement.remove();
+			isPending = true;
+			requestAnimationFrame((now) => {
+				isPending = false;
+				drawFrame(view, now);
+			});
+		};
+		const slow = setInterval(() => {
+			const now = performance.now();
+			if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
+				pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
+				requestFrame?.();
+			}
+		}, REDUCED_PRUNE_INTERVAL_MS);
+		requestFrame();
+		return () => clearInterval(slow);
+	}
+
+	function startMotionLoop(view: GlobeView, minGap: number): () => void {
+		let raf = 0;
+		let last = -Infinity;
+		const tick = (now: number) => {
+			raf = requestAnimationFrame(tick);
+			if (!isOnScreen || document.hidden || now - last < minGap) {
+				return;
+			}
+			last = now;
+			drawFrame(view, now);
+		};
+		requestFrame = () => {};
+		raf = requestAnimationFrame((now) => {
+			tick(now);
+			view.canvas.style.opacity = '1';
+		});
+		return () => cancelAnimationFrame(raf);
+	}
+
+	onMount(async () => {
+		const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const isNarrow = window.matchMedia('(max-width: 640px)').matches;
+
+		await waitForStart(isReduced);
+		dispose = null;
+
+		const view = await createView(isReduced, isNarrow);
+		if (!view || !canvasHost) {
+			return;
+		}
+
+		view.paint(readToken, BRAND_PRIMARY);
+		loadCoastlines(view);
+		const unobserve = observe(view, canvasHost);
+		pickFacing = (exclude: string[]) => view.pickFacing(exclude);
+		const stopLoop = isReduced ? startReducedLoop(view) : startMotionLoop(view, isNarrow ? NARROW_FRAME_GAP_MS : 0);
+
+		dispose = () => {
+			stopLoop();
+			unobserve();
+			view.dispose();
 			requestFrame = null;
 			pickFacing = null;
-		}
+		};
 	});
 
 	onDestroy(() => {
@@ -564,7 +288,7 @@
 	});
 </script>
 
-{#if webgl}
+{#if hasWebgl}
 	<div class="pointer-events-none absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 overflow-hidden" aria-hidden="true">
 		<div bind:this={stage} class="absolute inset-0">
 			<div bind:this={canvasHost} class="absolute inset-0"></div>

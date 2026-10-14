@@ -61,9 +61,9 @@ test('parseMessageEmoji accepts custom and unicode emoji and rejects plain text'
 });
 
 test('a component custom id survives a round trip', () => {
-	const plain = messageCustomId('server', 12, 'abc123', 'en');
+	const plain = messageCustomId('server', { messageId: 12, partId: 'abc123', lang: 'en' });
 	assert.deepEqual(parseMessageCustomId(plain), { scope: 'server', messageId: 12, partId: 'abc123', lang: 'en', pinned: false, post: null });
-	const pinned = messageCustomId('global', 3, 'part9', 'en', true, 7);
+	const pinned = messageCustomId('global', { messageId: 3, partId: 'part9', lang: 'en', pinned: true, post: 7 });
 	assert.deepEqual(parseMessageCustomId(pinned), { scope: 'global', messageId: 3, partId: 'part9', lang: 'en', pinned: true, post: 7 });
 });
 
@@ -71,8 +71,8 @@ test('parseMessageCustomId rejects ids that are not from the message builder', (
 	assert.equal(parseMessageCustomId(null), null);
 	assert.equal(parseMessageCustomId('x|1|a|en'), null);
 	assert.equal(parseMessageCustomId('menu_cat|leveling'), null);
-	assert.equal(parseMessageCustomId(messageCustomId('server', 0, 'a', 'en')), null);
-	assert.equal(parseMessageCustomId(messageCustomId('server', 1, '', 'en')), null);
+	assert.equal(parseMessageCustomId(messageCustomId('server', { messageId: 0, partId: 'a', lang: 'en' })), null);
+	assert.equal(parseMessageCustomId(messageCustomId('server', { messageId: 1, partId: '', lang: 'en' })), null);
 });
 
 test('a new message document is already in normal form and anything unreadable becomes an empty one', () => {

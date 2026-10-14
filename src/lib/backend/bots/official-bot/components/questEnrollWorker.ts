@@ -4,10 +4,13 @@ import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { serverTranslator } from '../i18n.js';
 import { questResultText, questRewardText } from './questText.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
+import { EMBED_COLORS } from './embedColors.js';
 
 const activeEnrollUsers = new Set<string>();
 
 const CLAIM_ALL_QUEST_GAP_MS = 5_000;
+const ERROR_DETAIL_MAX_LENGTH = 3400;
 
 export function isUserEnrollRunning(requesterId: string): boolean {
 	return activeEnrollUsers.has(requesterId);
@@ -58,14 +61,22 @@ async function postQuestResult(job: QuestEnrollJob | QuestClaimAllJob, result: Q
 	const tr = await serverTranslator(job.guildId);
 	const text = questResultText(tr, result);
 	const embed = new EmbedBuilder()
-		.setColor(result.ok ? embedConfig.COLOR : 0xed4245)
-		.setTitle(text.title.slice(0, 256))
-		.setDescription(text.description.slice(0, 4096))
-		.addFields({ name: tr('questEnroll.result.reward'), value: questRewardText(tr, result.rewardLine).slice(0, 1024), inline: false })
+		.setColor(result.ok ? embedConfig.COLOR : EMBED_COLORS.danger)
+		.setTitle(text.title.slice(0, DISCORD_LIMITS.EMBED_TITLE))
+		.setDescription(text.description.slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION))
+		.addFields({
+			name: tr('questEnroll.result.reward'),
+			value: questRewardText(tr, result.rewardLine).slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE),
+			inline: false
+		})
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(result.questUrl).setLabel(tr('questEnroll.result.openInDiscord').slice(0, 80)).setEmoji('🖥️')
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Link)
+			.setURL(result.questUrl)
+			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
+			.setEmoji('🖥️')
 	);
 	await channel.send({ content: `<@${job.requesterId}>`, embeds: [embed], components: [row] });
 }
@@ -81,21 +92,21 @@ async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: s
 		new ButtonBuilder()
 			.setStyle(ButtonStyle.Link)
 			.setURL(`https://discord.com/quests/${questId}`)
-			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, 80))
+			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
 			.setEmoji('🖥️')
 	);
 	await channel.send({
 		content: `<@${job.requesterId}>`,
 		embeds: [
 			new EmbedBuilder()
-				.setColor(0xed4245)
+				.setColor(EMBED_COLORS.danger)
 				.setTitle(tr('questEnroll.result.errorTitle'))
 				.setDescription(
 					tr('questEnroll.result.errorDescription', {
 						member: `<@${job.requesterId}>`,
 						tag: job.requesterTag,
 						quest: questId,
-						error: message.slice(0, 3400)
+						error: message.slice(0, ERROR_DETAIL_MAX_LENGTH)
 					})
 				)
 				.setFooter({ text: embedConfig.FOOTER })

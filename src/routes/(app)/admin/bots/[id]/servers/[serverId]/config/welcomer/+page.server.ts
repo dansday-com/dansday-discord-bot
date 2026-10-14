@@ -3,10 +3,11 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { greetingMessagesFor } from '$lib/localizedDefaults.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 	const [row, mainRow] = await Promise.all([
 		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.welcomer).catch((): { settings?: undefined } => ({})),

@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 function chip(dx: number, dy: number, key: number) {
@@ -83,14 +83,14 @@ export function makeCupcake(rows: number): FxProgram {
 			const stuck = s.stuck as number[][];
 			const spill = s.spill as number[][];
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
-			if (cyc < (s as any).lastc) {
-				fall.length = 0;
-				stuck.length = 0;
-				spill.length = 0;
+			if (cyc < (s.lastc as number)) {
+				fall.splice(0);
+				stuck.splice(0);
+				spill.splice(0);
 			}
 			s.lastc = cyc;
 
-			const fhue = id.fhue;
+			const { fhue } = id;
 			const pipe = cyc < 0.14 ? 0 : Math.min(1, (cyc - 0.14) / 0.3);
 			const shake = cyc > 0.48 && cyc < 0.64 ? Math.sin(((cyc - 0.48) / 0.16) * Math.PI) : 0;
 			const dropT = cyc <= 0.64 ? 0 : Math.min(1, (cyc - 0.64) / 0.13);
@@ -345,8 +345,8 @@ export function makeCupcake(rows: number): FxProgram {
 				drawTopper(s, cx, crest - 1.6, 2.5, id.topper, fhue, s.v.dir);
 			}
 
-			const bagIn = cyc > 0.085 && cyc < 0.53;
-			if (bagIn) {
+			const isBagEntering = cyc > 0.085 && cyc < 0.53;
+			if (isBagEntering) {
 				let bx = nozX;
 				let by = nozY - tipR;
 				if (cyc < 0.14) {
@@ -685,7 +685,7 @@ export function makeGem(rows: number): FxProgram {
 						continue;
 					}
 					const a2 = Math.atan2(dy, dx) + whA;
-					let l;
+					let l = 0;
 					if (d > Rw - rimW) {
 						const grit = chip((Math.cos(a2) * 52) | 0, (Math.sin(a2) * 52) | 0, 11) % 100;
 						l = 16 + grit * 0.46 + Math.max(0, rimW - (Rw - d)) * 2.2;
@@ -725,7 +725,7 @@ export function makeGem(rows: number): FxProgram {
 			}
 
 			const laF = (i: number) => (i / nf) * 6.28318 + (id.ang[i] - 0.5) * 0.4 + id.tilt + s.v.tilt * 0.4;
-			let rot;
+			let rot = 0;
 			if (cur < 0) {
 				rot = ca - laF(cyc < g0 ? 0 : nf - 1);
 			} else {
@@ -781,9 +781,9 @@ export function makeGem(rows: number): FxProgram {
 					if (rr > lim) {
 						continue;
 					}
-					let hue = id.hue;
+					let { hue } = id;
 					let sat = 60;
-					let l;
+					let l = 0;
 					if (best >= 0) {
 						const face = Math.max(0, Math.cos(laF(best) + rot - lightA));
 						const sq = face * face;
@@ -1018,11 +1018,11 @@ export function makeCrown(rows: number): FxProgram {
 			clear(s);
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
-			const fall = cyc < 0.34 ? 1 - Math.pow(cyc / 0.34, 2.6) : 0;
+			const fall = cyc < 0.34 ? 1 - (cyc / 0.34) ** 2.6 : 0;
 			const land = cyc >= 0.34 && cyc < 0.42 ? 1 - (cyc - 0.34) / 0.08 : 0;
 			const reign = cyc < 0.34 ? 0 : cyc < 0.82 ? Math.min(1, (cyc - 0.34) / 0.07) : Math.max(0, 1 - (cyc - 0.82) / 0.06);
 			const rise = cyc < 0.88 ? 0 : (cyc - 0.88) / 0.12;
-			const hit = cyc >= 0.335 && cyc < 0.35;
+			const isHitting = cyc >= 0.335 && cyc < 0.35;
 
 			const floorY = Math.round(s.h * 0.86);
 			const cx = s.w * 0.5 + s.v.tilt * s.w * 0.03;
@@ -1120,7 +1120,7 @@ export function makeCrown(rows: number): FxProgram {
 			}
 
 			const sq = s.squash as number;
-			if (hit) {
+			if (isHitting) {
 				s.squash = 1;
 			} else if (sq > 0) {
 				s.squash = Math.max(0, sq - 0.055);
@@ -1270,7 +1270,7 @@ export function makeCrown(rows: number): FxProgram {
 				}
 			}
 
-			if (hit) {
+			if (isHitting) {
 				for (let k = 0; k < 40; k++) {
 					const a2 = s.rnd() * 6.28318;
 					const sp = 0.7 + s.rnd() * 2.6;

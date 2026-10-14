@@ -3,6 +3,7 @@
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { DashGrid, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
 	import { INVITE_SOURCE_LABEL } from '$lib/invites.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -30,8 +31,8 @@
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
 
 	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_xp ?? 0) / s.members_with_levels).toLocaleString() : '0');
-	const minigamesWinRate = $derived((s.minigames_plays ?? 0) > 0 ? Math.round((Number(s.minigames_wins) / Number(s.minigames_plays)) * 100) : 0);
-	const towerCashRate = $derived((s.tower_climbs ?? 0) > 0 ? Math.round((Number(s.tower_cashed) / Number(s.tower_climbs)) * 100) : 0);
+	const minigamesWinRate = $derived((s.minigames_plays ?? 0) > 0 ? Math.round((Number(s.minigames_wins) / Number(s.minigames_plays)) * PERCENT) : 0);
+	const towerCashRate = $derived((s.tower_climbs ?? 0) > 0 ? Math.round((Number(s.tower_cashed) / Number(s.tower_climbs)) * PERCENT) : 0);
 
 	const avgVoiceMinutes = $derived(
 		(s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_voice_minutes ?? 0) / s.members_with_levels).toLocaleString() : '0'
@@ -268,7 +269,7 @@
 			<div class="flex flex-col gap-2">
 				{#each syncRows as row}
 					<RowStat icon={row.icon} label={row.label}>
-						<LocalTime value={row.at} includeSeconds class="text-base-content shrink-0 truncate text-right text-xs font-bold sm:text-sm" />
+						<LocalTime value={row.at} precision="second" class="text-base-content shrink-0 truncate text-right text-xs font-bold sm:text-sm" />
 					</RowStat>
 				{/each}
 			</div>
@@ -289,7 +290,7 @@
 						<span class="font-medium">{cfg.label}</span>
 						{#if cfg.updated_at}
 							<span class="text-base-content/45 text-[0.65rem] sm:text-xs">
-								Updated <LocalTime value={cfg.updated_at} includeSeconds class="inline" />
+								Updated <LocalTime value={cfg.updated_at} precision="second" class="inline" />
 							</span>
 						{/if}
 					</span>

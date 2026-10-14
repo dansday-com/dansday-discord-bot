@@ -7,9 +7,10 @@ import { inviteJoinPath, isValidInviteSlug, normalizeInviteSlug } from '$lib/inv
 import { serverThemeUrl } from '$lib/backend/storage/serverThemes.js';
 import { DEFAULT_ACCENT, normalizeAccent, type MemberTheme } from '$lib/themes.js';
 import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { HTTP } from '$lib/http.js';
 
-function inviteTheme(settings: Record<string, any> | null | undefined): MemberTheme | null {
-	const image = serverThemeUrl(settings?.invite_theme_image);
+function inviteTheme(settings: Record<string, unknown> | null | undefined): MemberTheme | null {
+	const image = serverThemeUrl(typeof settings?.invite_theme_image === 'string' ? settings.invite_theme_image : null);
 	const accent = normalizeAccent(settings?.invite_theme_accent);
 	const effect = normalizeEffect(settings?.invite_theme_effect);
 	if (!image && !accent && effect === 'none') {
@@ -32,10 +33,10 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (publicServer) {
 		const settingsRow = await db.getServerSettings(publicServer.server.id, SERVER_SETTINGS.component.public).catch(() => null);
 		if (!publicSubfeatureEnabled(settingsRow?.settings, 'invite')) {
-			error(404, 'Invite not found');
+			error(HTTP.NOT_FOUND, 'Invite not found');
 		}
 		if (publicServer.computedSlug !== raw) {
-			redirect(301, inviteJoinPath(publicServer.computedSlug));
+			redirect(HTTP.MOVED_PERMANENTLY, inviteJoinPath(publicServer.computedSlug));
 		}
 		const slug = publicServer.computedSlug;
 		const server = await db.getServer(publicServer.server.id);
@@ -51,21 +52,21 @@ export const load: PageServerLoad = async ({ params }) => {
 			},
 			serverSlug: slug,
 			indexable: true,
-			memberTheme: inviteTheme((settingsRow as any)?.settings)
+			memberTheme: inviteTheme(settingsRow?.settings)
 		};
 	}
 
 	const slug = normalizeInviteSlug(raw);
 	if (!isValidInviteSlug(slug)) {
-		error(404, 'Invite not found');
+		error(HTTP.NOT_FOUND, 'Invite not found');
 	}
 	if (slug !== raw) {
-		redirect(301, inviteJoinPath(slug));
+		redirect(HTTP.MOVED_PERMANENTLY, inviteJoinPath(slug));
 	}
 
 	const link = await db.getInviteLinkBySlug(slug);
 	if (!link) {
-		error(404, 'Invite not found');
+		error(HTTP.NOT_FOUND, 'Invite not found');
 	}
 
 	const serverSlug = await computePublicServerSlugForServerId(Number(link.server_id)).catch(() => null);

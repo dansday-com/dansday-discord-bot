@@ -2,6 +2,8 @@
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { MEMBER_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
 
+	const SEARCH_DEBOUNCE_MS = 250;
+
 	interface Member {
 		id: number;
 		discord_member_id: string;
@@ -23,9 +25,9 @@
 
 	let { serverId, value, single = true, showMultiChips = true, disabled = false, placeholder = 'Select member...', onchange }: Props = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
-	let loading = $state(false);
+	let isLoading = $state(false);
 	let results = $state<Member[]>([]);
 	let pending = $state<string[]>([]);
 	let labelById = $state<Record<string, string>>({});
@@ -54,12 +56,12 @@
 		}
 		timer = setTimeout(() => {
 			runSearch();
-		}, 250);
+		}, SEARCH_DEBOUNCE_MS);
 	}
 
 	async function runSearch() {
 		const q = search.trim();
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/members?q=${encodeURIComponent(q)}&limit=25`, { credentials: 'include' });
 			const d = await res.json();
@@ -67,7 +69,7 @@
 		} catch {
 			results = [];
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
@@ -75,7 +77,7 @@
 		if (!single) {
 			pending = [...currentIds];
 		}
-		open = true;
+		isOpen = true;
 		search = '';
 		runSearch();
 	}
@@ -89,7 +91,7 @@
 			labelById = { [id]: label(m) };
 			onchange(id);
 		}
-		open = false;
+		isOpen = false;
 		search = '';
 		results = [];
 	}
@@ -106,13 +108,13 @@
 
 	function confirmMulti() {
 		onchange([...pending]);
-		open = false;
+		isOpen = false;
 		search = '';
 		results = [];
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 		results = [];
 	}
@@ -173,7 +175,7 @@
 	</div>
 {/if}
 
-{#if open}
+{#if isOpen}
 	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
@@ -196,7 +198,7 @@
 					placeholder="Search members..."
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
-				{#if loading}
+				{#if isLoading}
 					<i class="{MEMBER_PICKER_ACCENT.searchSpinner} absolute top-1/2 right-3 -translate-y-1/2"></i>
 				{:else}
 					<i class="{MEMBER_PICKER_ACCENT.searchIcon} absolute top-1/2 right-3 -translate-y-1/2"></i>
@@ -215,7 +217,7 @@
 				{/if}
 
 				{#if results.length === 0}
-					<p class="text-ash-500 py-4 text-center text-sm">{loading ? 'Loading members...' : 'No members found'}</p>
+					<p class="text-ash-500 py-4 text-center text-sm">{isLoading ? 'Loading members...' : 'No members found'}</p>
 				{:else}
 					{#each results as m (m.discord_member_id)}
 						<button

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db, { aiFromDbRow, AI_REASONING_LEVELS, AI_VOICE_THINKING_LEVELS, type AiInput, type AiReasoning, type AiVoiceThinking } from '$lib/database.js';
 import { GEMINI_VOICE_NAMES } from '$lib/geminiVoices.js';
+import { HTTP } from '$lib/http.js';
 
 const MAX_MODEL_LENGTH = 191;
 const MAX_SYSTEM_PROMPT_LENGTH = 8000;
@@ -20,16 +21,16 @@ function maskConfig(config: AiInput) {
 
 function authorize(locals: App.Locals) {
 	if (!locals.user.authenticated) {
-		return { error: json({ success: false, error: 'Authentication required' }, { status: 401 }) };
+		return { error: json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED }) };
 	}
 
 	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		return { error: json({ success: false, error: 'Access denied' }, { status: 403 }) };
+		return { error: json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN }) };
 	}
 
 	const panelId = Number(locals.user.panel_id);
 	if (!Number.isFinite(panelId) || panelId <= 0) {
-		return { error: json({ success: false, error: 'No panel available' }, { status: 404 }) };
+		return { error: json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND }) };
 	}
 
 	return { panelId };
@@ -45,6 +46,99 @@ export const GET: RequestHandler = async ({ locals }) => {
 	return json({ ai: maskConfig(aiFromDbRow(row)) });
 };
 
+type AiBody = Record<string, unknown>;
+
+function optionalText(value: unknown): string | null {
+	return value === null || value === undefined ? null : String(value).trim() || null;
+}
+
+function keyOrExisting(value: unknown, existing: string | null): string | null {
+	const raw = value === null || value === undefined ? '' : String(value).trim();
+	return raw || existing;
+}
+
+function readAiInput(body: AiBody, existing: AiInput): AiInput {
+	return {
+		enabled: body.enabled === true,
+		api_url: optionalText(body.api_url),
+		api_key: keyOrExisting(body.api_key, existing.api_key),
+		model: optionalText(body.model),
+		system_prompt: optionalText(body.system_prompt),
+		reasoning: (body.reasoning === null || body.reasoning === undefined ? 'none' : String(body.reasoning)) as AiReasoning,
+		voice_enabled: body.voice_enabled === true,
+		voice_model: optionalText(body.voice_model),
+		voice_name: optionalText(body.voice_name),
+		voice_thinking: (body.voice_thinking === null || body.voice_thinking === undefined ? 'low' : String(body.voice_thinking)) as AiVoiceThinking,
+		voice_api_key: keyOrExisting(body.voice_api_key, existing.voice_api_key),
+		voice_system_prompt: optionalText(body.voice_system_prompt),
+		search_api_url: optionalText(body.search_api_url),
+		search_api_key: keyOrExisting(body.search_api_key, existing.search_api_key),
+		search_model: optionalText(body.search_model),
+		fetch_api_url: optionalText(body.fetch_api_url),
+		fetch_api_key: keyOrExisting(body.fetch_api_key, existing.fetch_api_key),
+		fetch_model: optionalText(body.fetch_model),
+		image_api_url: optionalText(body.image_api_url),
+		image_api_key: keyOrExisting(body.image_api_key, existing.image_api_key),
+		image_model: optionalText(body.image_model)
+	};
+}
+
+function voiceInputError(input: AiInput): string | null {
+	if (input.voice_model && input.voice_model.length > MAX_MODEL_LENGTH) {
+		return `Voice model name must be at most ${MAX_MODEL_LENGTH} characters`;
+	}
+	if (input.voice_name && !GEMINI_VOICE_NAMES.includes(input.voice_name)) {
+		return 'Unknown voice name';
+	}
+	if (input.voice_enabled && (!input.voice_api_key || !input.voice_model)) {
+		return 'Voice API key and voice model are required to enable voice AI';
+	}
+	return input.voice_enabled && !input.enabled ? 'Enable AI chat first — voice is triggered by asking the bot in chat' : null;
+}
+
+function limitsError(input: AiInput): string | null {
+	const urls = [
+		['API URL', input.api_url],
+		['Web search API URL', input.search_api_url],
+		['Web fetch API URL', input.fetch_api_url],
+		['Image API URL', input.image_api_url]
+	] as const;
+	const badUrl = urls.find(([, url]) => url && !/^https?:\/\//i.test(url));
+	if (badUrl) {
+		return `${badUrl[0]} must start with http:// or https://`;
+	}
+	const models = [
+		['Model', input.model],
+		['Web search model', input.search_model],
+		['Web fetch model', input.fetch_model],
+		['Image model', input.image_model]
+	] as const;
+	const longModel = models.find(([, name]) => name && name.length > MAX_MODEL_LENGTH);
+	if (longModel) {
+		return `${longModel[0]} name must be at most ${MAX_MODEL_LENGTH} characters`;
+	}
+	const prompts = [
+		['System prompt', input.system_prompt],
+		['Voice system prompt', input.voice_system_prompt]
+	] as const;
+	const longPrompt = prompts.find(([, prompt]) => prompt && prompt.length > MAX_SYSTEM_PROMPT_LENGTH);
+	return longPrompt ? `${longPrompt[0]} must be at most ${MAX_SYSTEM_PROMPT_LENGTH} characters` : null;
+}
+
+function aiInputError(input: AiInput): string | null {
+	if (!AI_REASONING_LEVELS.includes(input.reasoning)) {
+		return 'Invalid reasoning level';
+	}
+	if (!AI_VOICE_THINKING_LEVELS.includes(input.voice_thinking)) {
+		return 'Invalid voice thinking level';
+	}
+	const invalid = voiceInputError(input) ?? limitsError(input);
+	if (invalid) {
+		return invalid;
+	}
+	return input.enabled && (!input.api_url || !input.api_key || !input.model) ? 'API URL, API key, and model are required to enable AI chat' : null;
+}
+
 export const PATCH: RequestHandler = async ({ locals, request }) => {
 	const auth = authorize(locals);
 	if (auth.error) {
@@ -52,126 +146,17 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 	}
 	const panelId = auth.panelId!;
 
-	let body: Record<string, unknown>;
-	try {
-		body = await request.json();
-	} catch {
-		return json({ success: false, error: 'Invalid JSON' }, { status: 400 });
+	const body: AiBody | null = await request.json().catch(() => null);
+	if (!body) {
+		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const existing = aiFromDbRow(await db.getAi(panelId));
-
-	const enabled = body.enabled === true;
-	const api_url = body.api_url === null || body.api_url === undefined ? null : String(body.api_url).trim() || null;
-	const model = body.model === null || body.model === undefined ? null : String(body.model).trim() || null;
-	const system_prompt = body.system_prompt === null || body.system_prompt === undefined ? null : String(body.system_prompt).trim() || null;
-
-	const rawKey = body.api_key === null || body.api_key === undefined ? '' : String(body.api_key).trim();
-	const api_key = rawKey ? rawKey : existing.api_key;
-
-	const reasoning = (body.reasoning === null || body.reasoning === undefined ? 'none' : String(body.reasoning)) as AiReasoning;
-	if (!AI_REASONING_LEVELS.includes(reasoning)) {
-		return json({ success: false, error: 'Invalid reasoning level' }, { status: 400 });
+	const input = readAiInput(body, aiFromDbRow(await db.getAi(panelId)));
+	const invalid = aiInputError(input);
+	if (invalid) {
+		return json({ success: false, error: invalid }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const voice_enabled = body.voice_enabled === true;
-	const voice_model = body.voice_model === null || body.voice_model === undefined ? null : String(body.voice_model).trim() || null;
-	const voice_name = body.voice_name === null || body.voice_name === undefined ? null : String(body.voice_name).trim() || null;
-	const voice_thinking = (body.voice_thinking === null || body.voice_thinking === undefined ? 'low' : String(body.voice_thinking)) as AiVoiceThinking;
-	if (!AI_VOICE_THINKING_LEVELS.includes(voice_thinking)) {
-		return json({ success: false, error: 'Invalid voice thinking level' }, { status: 400 });
-	}
-	const voice_system_prompt =
-		body.voice_system_prompt === null || body.voice_system_prompt === undefined ? null : String(body.voice_system_prompt).trim() || null;
-
-	const rawVoiceKey = body.voice_api_key === null || body.voice_api_key === undefined ? '' : String(body.voice_api_key).trim();
-	const voice_api_key = rawVoiceKey ? rawVoiceKey : existing.voice_api_key;
-
-	const search_api_url = body.search_api_url === null || body.search_api_url === undefined ? null : String(body.search_api_url).trim() || null;
-	const search_model = body.search_model === null || body.search_model === undefined ? null : String(body.search_model).trim() || null;
-	const rawSearchKey = body.search_api_key === null || body.search_api_key === undefined ? '' : String(body.search_api_key).trim();
-	const search_api_key = rawSearchKey ? rawSearchKey : existing.search_api_key;
-
-	const fetch_api_url = body.fetch_api_url === null || body.fetch_api_url === undefined ? null : String(body.fetch_api_url).trim() || null;
-	const fetch_model = body.fetch_model === null || body.fetch_model === undefined ? null : String(body.fetch_model).trim() || null;
-	const rawFetchKey = body.fetch_api_key === null || body.fetch_api_key === undefined ? '' : String(body.fetch_api_key).trim();
-	const fetch_api_key = rawFetchKey ? rawFetchKey : existing.fetch_api_key;
-
-	const image_api_url = body.image_api_url === null || body.image_api_url === undefined ? null : String(body.image_api_url).trim() || null;
-	const image_model = body.image_model === null || body.image_model === undefined ? null : String(body.image_model).trim() || null;
-	const rawImageKey = body.image_api_key === null || body.image_api_key === undefined ? '' : String(body.image_api_key).trim();
-	const image_api_key = rawImageKey ? rawImageKey : existing.image_api_key;
-
-	if (voice_model && voice_model.length > MAX_MODEL_LENGTH) {
-		return json({ success: false, error: `Voice model name must be at most ${MAX_MODEL_LENGTH} characters` }, { status: 400 });
-	}
-	if (voice_name && !GEMINI_VOICE_NAMES.includes(voice_name)) {
-		return json({ success: false, error: 'Unknown voice name' }, { status: 400 });
-	}
-	if (voice_enabled && (!voice_api_key || !voice_model)) {
-		return json({ success: false, error: 'Voice API key and voice model are required to enable voice AI' }, { status: 400 });
-	}
-	if (voice_enabled && !enabled) {
-		return json({ success: false, error: 'Enable AI chat first — voice is triggered by asking the bot in chat' }, { status: 400 });
-	}
-
-	for (const [label, url] of [
-		['API URL', api_url],
-		['Web search API URL', search_api_url],
-		['Web fetch API URL', fetch_api_url],
-		['Image API URL', image_api_url]
-	] as const) {
-		if (url && !/^https?:\/\//i.test(url)) {
-			return json({ success: false, error: `${label} must start with http:// or https://` }, { status: 400 });
-		}
-	}
-
-	for (const [label, name] of [
-		['Model', model],
-		['Web search model', search_model],
-		['Web fetch model', fetch_model],
-		['Image model', image_model]
-	] as const) {
-		if (name && name.length > MAX_MODEL_LENGTH) {
-			return json({ success: false, error: `${label} name must be at most ${MAX_MODEL_LENGTH} characters` }, { status: 400 });
-		}
-	}
-
-	for (const [label, prompt] of [
-		['System prompt', system_prompt],
-		['Voice system prompt', voice_system_prompt]
-	] as const) {
-		if (prompt && prompt.length > MAX_SYSTEM_PROMPT_LENGTH) {
-			return json({ success: false, error: `${label} must be at most ${MAX_SYSTEM_PROMPT_LENGTH} characters` }, { status: 400 });
-		}
-	}
-
-	if (enabled && (!api_url || !api_key || !model)) {
-		return json({ success: false, error: 'API URL, API key, and model are required to enable AI chat' }, { status: 400 });
-	}
-
-	const saved = await db.upsertAi(panelId, {
-		enabled,
-		api_url,
-		api_key,
-		model,
-		system_prompt,
-		reasoning,
-		voice_enabled,
-		voice_model,
-		voice_name,
-		voice_thinking,
-		voice_api_key,
-		voice_system_prompt,
-		search_api_url,
-		search_api_key,
-		search_model,
-		fetch_api_url,
-		fetch_api_key,
-		fetch_model,
-		image_api_url,
-		image_api_key,
-		image_model
-	});
+	const saved = await db.upsertAi(panelId, input);
 	return json({ success: true, ai: maskConfig(aiFromDbRow(saved)) });
 };

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { maskEmail } from '$lib/accounts.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -10,6 +11,8 @@
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { canActOnAccount, invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
 
+	const COPY_FEEDBACK_MS = 2000;
+
 	let { data }: PageProps = $props();
 
 	const actor = $derived(panelActorOf(data.user));
@@ -17,7 +20,7 @@
 	let generatedLink = $state<string | null>(null);
 	let copyIcon = $state('fa-copy');
 	let selectedDiscordMemberIds = $state<string[]>([]);
-	let inviting = $state(false);
+	let isInviting = $state(false);
 
 	const validTypes = $derived(invitableAccountTypes(actor));
 	const inviteTypeOptions = $derived<LabeledSelectOption[]>(validTypes.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })));
@@ -32,7 +35,7 @@
 			showToast('Select at least one member', 'error');
 			return;
 		}
-		inviting = true;
+		isInviting = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/accounts/invite-dm`, {
 				method: 'POST',
@@ -59,12 +62,12 @@
 		} catch {
 			showToast('Failed to send invite', 'error');
 		} finally {
-			inviting = false;
+			isInviting = false;
 		}
 	}
 
 	async function generateLink() {
-		inviting = true;
+		isInviting = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/accounts`, {
 				method: 'POST',
@@ -83,7 +86,7 @@
 		} catch {
 			showToast('Failed to generate link', 'error');
 		} finally {
-			inviting = false;
+			isInviting = false;
 		}
 	}
 
@@ -93,13 +96,13 @@
 		}
 		await navigator.clipboard.writeText(generatedLink);
 		copyIcon = 'fa-check';
-		setTimeout(() => (copyIcon = 'fa-copy'), 2000);
+		setTimeout(() => (copyIcon = 'fa-copy'), COPY_FEEDBACK_MS);
 	}
 
 	type PendingAction =
 		{ kind: 'account'; accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string } | { kind: 'invite'; inviteId: number; label: string };
 	let pending = $state<PendingAction | null>(null);
-	let confirming = $state(false);
+	let isConfirming = $state(false);
 
 	function confirmDelete(accountId: number, name: string) {
 		pending = { kind: 'account', accountId, type: 'delete', label: name };
@@ -117,7 +120,7 @@
 		if (!pending) {
 			return;
 		}
-		confirming = true;
+		isConfirming = true;
 		try {
 			if (pending.kind === 'invite') {
 				const res = await fetch(`/api/servers/${data.serverId}/accounts/invites/${pending.inviteId}/expire`, {
@@ -159,23 +162,12 @@
 				}
 			}
 		} finally {
-			confirming = false;
+			isConfirming = false;
 			pending = null;
 		}
 	}
 
 	const isSuperadmin = $derived(data.user.authenticated && data.user.account_source === 'accounts');
-
-	function maskEmail(email: string) {
-		const at = email.indexOf('@');
-		if (at <= 0) {
-			return `${email.slice(0, 3)}***`;
-		}
-		const local = email.slice(0, at);
-		const domain = email.slice(at + 1);
-		const prefix = local.slice(0, 3);
-		return `${prefix}***@${domain}`;
-	}
 
 	function typeBadgeClass(type: string) {
 		if (type === 'owner') {
@@ -210,16 +202,16 @@
 				/>
 				<button
 					type="button"
-					disabled={!canInvite || inviting || selectedDiscordMemberIds.length === 0}
+					disabled={!canInvite || isInviting || selectedDiscordMemberIds.length === 0}
 					onclick={sendInvite}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{#if inviting}<i class="fas fa-spinner fa-spin text-amber-300"></i>{:else}<i class="fas fa-paper-plane text-amber-300"></i>{/if}
+					{#if isInviting}<i class="fas fa-spinner fa-spin text-amber-300"></i>{:else}<i class="fas fa-paper-plane text-amber-300"></i>{/if}
 					Send DM
 				</button>
 				<button
 					type="button"
-					disabled={!canInvite || inviting}
+					disabled={!canInvite || isInviting}
 					onclick={generateLink}
 					class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 				>
@@ -314,7 +306,7 @@
 								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
 								<p class="text-ash-300 mt-1 text-xs">
 									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
-									Expires {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry set{/if}
+									Expires {#if invite.expires_at}<LocalTime value={invite.expires_at} precision="second" class="inline" />{:else}no expiry set{/if}
 								</p>
 							</div>
 							{#if canActOnAccount(actor, invite.account_type)}
@@ -353,7 +345,7 @@
 				: `Unfreeze "${pending?.label}"? They will regain access immediately.`}
 	confirmLabel={pending?.kind === 'invite' ? 'Expire link' : pending?.type === 'delete' ? 'Remove' : pending?.type === 'freeze' ? 'Freeze' : 'Unfreeze'}
 	dangerous={pending?.kind === 'invite' ? false : pending?.type === 'delete'}
-	loading={confirming}
+	loading={isConfirming}
 	onconfirm={executeConfirmed}
 	oncancel={() => (pending = null)}
 />

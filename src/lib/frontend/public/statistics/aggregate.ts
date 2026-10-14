@@ -39,7 +39,8 @@ export function aggregatePanelStatistics(snapshots: (PublicPageStats | null | un
 				out[key] = Math.max(out[key], val);
 			} else if (avgSet.has(key)) {
 				const weight = key === 'staff_avg_rating' ? Number(row.staff_reviews) || 0 : Number(row.members_with_levels) || 0;
-				const acc = (avgWeights[key] ??= { sum: 0, weight: 0 });
+				avgWeights[key] ??= { sum: 0, weight: 0 };
+				const acc = avgWeights[key];
 				acc.sum += val * weight;
 				acc.weight += weight;
 			} else {

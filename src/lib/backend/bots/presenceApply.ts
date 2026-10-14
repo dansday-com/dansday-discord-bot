@@ -34,8 +34,10 @@ export type PresenceFields = {
 	activity_state?: string | null;
 };
 
+type PresenceActivity = { name: string; type: ActivityType; url?: string; state?: string };
+
 export type PresenceSetter = {
-	setPresence: (data: { status: PresenceStatusData; activities: any[] }) => any;
+	setPresence(data: { status: PresenceStatusData; activities: PresenceActivity[] }): unknown;
 };
 
 export async function applyPresenceFromFields(user: PresenceSetter | null, row: PresenceFields | null | undefined, logContext: string): Promise<void> {

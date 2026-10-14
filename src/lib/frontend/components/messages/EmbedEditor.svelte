@@ -13,6 +13,7 @@
 
 	const GROUP = 'border-ash-700 border-t pt-3';
 	const SUMMARY = 'text-ash-200 flex cursor-pointer items-center gap-2 text-xs font-semibold select-none';
+	const DESCRIPTION_ROWS = 5;
 
 	$effect(() => {
 		nonce;
@@ -46,7 +47,7 @@
 			max={MESSAGE_LIMITS.description}
 			multiline
 			quiet
-			rows={5}
+			rows={DESCRIPTION_ROWS}
 			placeholder="Markdown works here: **bold**, *italic*, [links](https://), lists and # headings."
 		/>
 	</div>

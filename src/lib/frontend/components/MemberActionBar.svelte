@@ -4,6 +4,8 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { DURATION_UNITS, MODERATION_ACTION_META, MODERATION_REASON_OPTIONAL, MODERATION_TIMED_ACTIONS, moderateEach } from '$lib/frontend/moderation.js';
 
+	const DEFAULT_DURATION_AMOUNT = 10;
+
 	type Target = { id: string; role_ids: string[]; warnings: number; timeout_until: unknown };
 
 	interface Props {
@@ -26,16 +28,16 @@
 	let action = $state('warn');
 	let reason = $state('');
 	let preset = $state('');
-	let amount = $state(10);
+	let amount = $state(DEFAULT_DURATION_AMOUNT);
 	let unit = $state('60');
 	let actionRoleId = $state('');
-	let busy = $state(false);
+	let isBusy = $state(false);
 	let progress = $state<{ done: number; total: number } | null>(null);
 	let confirm = $state<{ title: string; message: string; run: () => Promise<void> } | null>(null);
 
 	const isRole = $derived(ROLE_ACTIONS.includes(action));
 	const isTimed = $derived(MODERATION_TIMED_ACTIONS.includes(action));
-	const reasonOptional = $derived(MODERATION_REASON_OPTIONAL.includes(action));
+	const isReasonOptional = $derived(MODERATION_REASON_OPTIONAL.includes(action));
 	const meta = $derived(MODERATION_ACTION_META[action]);
 
 	const actionOptions = $derived(
@@ -101,7 +103,7 @@
 			showToast('Pick a role', 'error');
 			return;
 		}
-		if (!reasonOptional && !reason.trim()) {
+		if (!isReasonOptional && !reason.trim()) {
 			showToast('Enter a reason', 'error');
 			return;
 		}
@@ -124,15 +126,13 @@
 	}
 
 	async function runEach(ids: string[]) {
-		busy = true;
+		isBusy = true;
 		progress = { done: 0, total: ids.length };
 		try {
-			const out = await moderateEach(
-				serverId,
-				ids,
-				{ action, reason: reason.trim() || null, duration_seconds: isTimed ? Math.round(amount * Number(unit)) : null },
-				(done) => (progress = { done, total: ids.length })
-			);
+			const out = await moderateEach(serverId, ids, {
+				body: { action, reason: reason.trim() || null, duration_seconds: isTimed ? Math.round(amount * Number(unit)) : null },
+				onprogress: (done) => (progress = { done, total: ids.length })
+			});
 			const parts = [`Done for ${out.done.toLocaleString()}`];
 			if (out.escalated > 0) {
 				parts.push(`${out.escalated} auto-escalated`);
@@ -146,13 +146,13 @@
 			}
 			await ondone?.(out.failedIds);
 		} finally {
-			busy = false;
+			isBusy = false;
 			progress = null;
 		}
 	}
 
 	async function runRoles(ids: string[]) {
-		busy = true;
+		isBusy = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation/bulk`, {
 				method: 'POST',
@@ -169,7 +169,7 @@
 		} catch {
 			showToast('Bulk action failed', 'error');
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
@@ -214,7 +214,7 @@
 			type="text"
 			maxlength="1000"
 			bind:value={reason}
-			placeholder={reasonOptional ? 'Reason (optional)' : 'Reason'}
+			placeholder={isReasonOptional ? 'Reason (optional)' : 'Reason'}
 			aria-label="Reason"
 			class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
 		/>
@@ -222,7 +222,7 @@
 	<button
 		type="button"
 		onclick={apply}
-		disabled={busy}
+		disabled={isBusy}
 		class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:self-start"
 	>
 		{#if progress}

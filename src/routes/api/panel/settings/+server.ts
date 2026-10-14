@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { setAutoQuest } from '$lib/frontend/panelSettings.server.js';
 import { logger } from '$lib/utils/index.js';
+import { HTTP } from '$lib/http.js';
 
 function panelIdFor(locals: App.Locals): number | null {
 	if (!locals.user.authenticated) {
@@ -16,12 +17,12 @@ function panelIdFor(locals: App.Locals): number | null {
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const panelId = panelIdFor(locals);
 	if (panelId == null) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const body = await request.json();
 	if (typeof body.auto_quest !== 'boolean') {
-		return json({ success: false, error: 'auto_quest must be a boolean' }, { status: 400 });
+		return json({ success: false, error: 'auto_quest must be a boolean' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	await setAutoQuest(panelId, body.auto_quest);

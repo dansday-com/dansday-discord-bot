@@ -20,6 +20,8 @@
 
 	let { data }: PageProps = $props();
 
+	const FIRST_REWARD_UNITS = 5;
+
 	const BLOCK_REASONS: Record<string, string> = {
 		deleted: 'was deleted in Discord.',
 		managed: 'belongs to an integration, so no bot can give it.',
@@ -52,17 +54,17 @@
 	const IMAGE_LIMIT = imageSizeLabel(REWARD_IMAGE_MAX_BYTES);
 
 	let rows = $state<Draft[]>([]);
-	let keep = $state(true);
-	let stack = $state(true);
-	let busy = $state(false);
+	let shouldKeep = $state(true);
+	let shouldStack = $state(true);
+	let isBusy = $state(false);
 	let preparing = $state<number | null>(null);
 	let delivering = $state<string | null>(null);
 	let blocked = $state<{ role_id: string; reason: string }[]>([]);
 
 	$effect(() => {
 		rows = data.rewards.map((r) => ({ ...r, file: null, preview: null, original: null }));
-		keep = data.rules.keep;
-		stack = data.rules.stack;
+		shouldKeep = data.rules.keep;
+		shouldStack = data.rules.stack;
 	});
 
 	const roleById = $derived(new Map(data.roles.map((r) => [r.id, r])));
@@ -101,7 +103,7 @@
 			{
 				id: null,
 				goal_type: last?.goal_type ?? 'level',
-				units: (Number(last?.units) || 0) + (last ? rewardGoalMeta(last.goal_type).min : 5),
+				units: (Number(last?.units) || 0) + (last ? rewardGoalMeta(last.goal_type).min : FIRST_REWARD_UNITS),
 				kind: 'role',
 				role_id: '',
 				xp: 1000,
@@ -202,7 +204,7 @@
 			showToast('Name every custom reward', 'error');
 			return;
 		}
-		busy = true;
+		isBusy = true;
 		try {
 			for (const row of rows) {
 				if (row.kind === 'custom' && !(await uploadImage(row))) {
@@ -223,7 +225,7 @@
 			const res = await fetch(`/api/servers/${data.serverId}/rewards`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ rewards, keep, stack })
+				body: JSON.stringify({ rewards, keep: shouldKeep, stack: shouldStack })
 			});
 			const out = await res.json().catch(() => ({}));
 			if (!res.ok || !out.ok) {
@@ -237,7 +239,7 @@
 			);
 			await invalidateAll();
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
@@ -443,7 +445,7 @@
 										type="file"
 										accept={IMAGE_ACCEPT}
 										class="hidden"
-										disabled={preparing !== null || busy}
+										disabled={preparing !== null || isBusy}
 										onchange={(e) => pickImage(row, i, e.currentTarget)}
 									/>
 								{/if}
@@ -487,14 +489,14 @@
 			label="Keep rewards when a level drops"
 			description="On: a member who loses XP to a steal or bomb keeps what they earned. Off: it is taken back until they climb back to that level. XP already paid and delivered rewards always stay."
 			labelIconClass="fas fa-shield-halved text-sky-400"
-			bind:enabled={keep}
+			bind:enabled={shouldKeep}
 			disabled={!data.canEdit}
 		/>
 		<ConfigToggleRow
 			label="Keep lower rewards"
 			description="On: members keep every reward they pass. Off: on the same goal, a higher reward replaces the lower one. XP already paid and delivered rewards always stay."
 			labelIconClass="fas fa-layer-group text-violet-400"
-			bind:enabled={stack}
+			bind:enabled={shouldStack}
 			disabled={!data.canEdit}
 		/>
 	</section>
@@ -503,10 +505,10 @@
 		<button
 			type="button"
 			onclick={save}
-			disabled={busy}
+			disabled={isBusy}
 			class="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50 sm:w-auto"
 		>
-			<i class="fas {busy ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>Save rewards
+			<i class="fas {isBusy ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>Save rewards
 		</button>
 	{/if}
 </div>

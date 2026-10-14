@@ -8,13 +8,13 @@
 
 	let { data }: PageProps = $props();
 
-	let saving = $state(false);
-	let testing = $state(false);
+	let isSaving = $state(false);
+	let isTesting = $state(false);
 	let featureEnabled = $state(data.settings.enabled === true);
 	let channelId = $state(data.settings.channel_id || '');
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
 				method: 'POST',
@@ -34,12 +34,12 @@
 				showToast(d.error || 'Failed to save', 'error');
 			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 
 	async function testNotifier() {
-		testing = true;
+		isTesting = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/quest-notifier/test`, {
 				method: 'POST',
@@ -60,7 +60,7 @@
 		} catch {
 			showToast('Network error — could not reach the server.', 'error');
 		} finally {
-			testing = false;
+			isTesting = false;
 		}
 	}
 </script>
@@ -127,19 +127,19 @@
 
 	<button
 		onclick={testNotifier}
-		disabled={testing || !channelId || !featureEnabled || !data.hasQuests}
+		disabled={isTesting || !channelId || !featureEnabled || !data.hasQuests}
 		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
-		{testing ? 'Testing…' : 'Test — latest quest'}
+		{#if isTesting}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
+		{isTesting ? 'Testing…' : 'Test — latest quest'}
 	</button>
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

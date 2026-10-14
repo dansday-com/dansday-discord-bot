@@ -2,6 +2,7 @@ import { getRedisClient } from '../../../redis.js';
 import { listLivePublicServers } from '../../../backend/public/server-slug/index.js';
 import { resolvePublicStatisticsSnapshot } from '../../../backend/public/statistics/stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
+import { MINUTES_PER_HOUR } from '../../../utils/time.js';
 
 const REDIS_KEY = 'dansday:server_directory';
 const TTL_SECONDS = 300;
@@ -67,7 +68,7 @@ export async function resolveServerDirectory(): Promise<ServerDirectory> {
 				xp: Number(s?.leveling_total_xp) || 0,
 				members: Number(s?.members_total) || 0,
 				messages: Number(s?.leveling_total_chat) || 0,
-				voice_hours: Math.round((Number(s?.leveling_total_voice_minutes) || 0) / 60),
+				voice_hours: Math.round((Number(s?.leveling_total_voice_minutes) || 0) / MINUTES_PER_HOUR),
 				max_level: Number(s?.leveling_max_level) || 0
 			};
 		})

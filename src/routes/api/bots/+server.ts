@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/database.js';
+import db, { DEFAULT_BOT_PORT } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
+import { HTTP } from '$lib/http.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return json({ error: 'Admin access required' }, { status: HTTP.FORBIDDEN });
 	}
 
 	try {
@@ -45,13 +46,13 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		return json(botsWithDetails);
 	} catch (error) {
-		return json({ error: (error as Error).message }, { status: 500 });
+		return json({ error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
-		return json({ success: false, error: 'Admin access required' }, { status: 403 });
+		return json({ success: false, error: 'Admin access required' }, { status: HTTP.FORBIDDEN });
 	}
 
 	try {
@@ -59,34 +60,34 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		const account = await db.getAccountById(locals.user.account_id);
 		if (!account) {
-			return json({ success: false, error: 'Account not found' }, { status: 401 });
+			return json({ success: false, error: 'Account not found' }, { status: HTTP.UNAUTHORIZED });
 		}
 
 		if (!token) {
-			return json({ success: false, error: 'Token is required' }, { status: 400 });
+			return json({ success: false, error: 'Token is required' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		if (!application_id) {
-			return json({ success: false, error: 'Application ID is required' }, { status: 400 });
+			return json({ success: false, error: 'Application ID is required' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		if (!port) {
-			return json({ success: false, error: 'Port is required' }, { status: 400 });
+			return json({ success: false, error: 'Port is required' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		if (!secret_key) {
-			return json({ success: false, error: 'Secret Key is required' }, { status: 400 });
+			return json({ success: false, error: 'Secret Key is required' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const existingBots = await db.getAllBots();
-		const portInUse = existingBots.some((b) => b.port === port);
-		if (portInUse) {
-			return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: 400 });
+		const isPortInUse = existingBots.some((b) => b.port === port);
+		if (isPortInUse) {
+			return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const panel = await db.getPanel(account.id);
 		if (!panel) {
-			return json({ success: false, error: 'Panel not found for this account' }, { status: 500 });
+			return json({ success: false, error: 'Panel not found for this account' }, { status: HTTP.INTERNAL_ERROR });
 		}
 
 		const bot = await db.createBot({
@@ -94,7 +95,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			token,
 			application_id,
 			bot_icon: bot_icon || null,
-			port: port || 7777,
+			port: port || DEFAULT_BOT_PORT,
 			secret_key: secret_key || null,
 			panel_id: panel.id
 		});
@@ -103,6 +104,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		return json({ success: true, bot });
 	} catch (error) {
-		return json({ success: false, error: (error as Error).message }, { status: 500 });
+		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

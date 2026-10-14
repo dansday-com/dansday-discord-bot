@@ -1,8 +1,9 @@
 import { load } from 'cheerio';
 import db from '../../../../database.js';
 import { cachedLookup } from './aiCache.js';
-import { logger } from '../../../../utils/index.js';
+import { attempt, logger } from '../../../../utils/index.js';
 import type { Wiki } from '../../../../database.js';
+import { MINUTE_MS } from '../../../../utils/time.js';
 
 type WikiHit = { title: string; snippet: string };
 type WikiApiPage = { title: string; missing?: boolean; canonicalurl?: string; fullurl?: string };
@@ -37,7 +38,9 @@ export const WIKI_USER_AGENT = 'DansdayBot/1.0 (https://github.com/dansday-com/d
 const USER_AGENT = WIKI_USER_AGENT;
 const SEARCH_LIMIT = 4;
 const PAGES_TO_READ = 2;
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MINUTES = 10;
+const CACHE_TTL_MS = CACHE_TTL_MINUTES * MINUTE_MS;
+const TEMPLATE_EXPAND_MAX_PASSES = 8;
 const ENABLED_WIKIS_TTL_SEC = 30;
 const CACHE_MAX_ENTRIES = 200;
 
@@ -133,7 +136,7 @@ function cleanWikiValue(value: string) {
 		.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
 		.replace(/\[\[([^\]]*)\]\]/g, '$1');
 
-	let previous;
+	let previous = out;
 	let guard = 0;
 	do {
 		previous = out;
@@ -149,7 +152,7 @@ function cleanWikiValue(value: string) {
 			}
 			return /^[^A-Za-z0-9]+$/.test(label) ? `${values.join(' ')} ${label}` : values.join(' ');
 		});
-	} while (out !== previous && ++guard < 8);
+	} while (out !== previous && ++guard < TEMPLATE_EXPAND_MAX_PASSES);
 
 	return out
 		.replace(/'''?/g, '')
@@ -363,7 +366,7 @@ function titleCase(text: string) {
 	return text.replace(/\b[a-z]/g, (char: string) => char.toUpperCase());
 }
 
-async function exactTitle(wiki: Wiki, query: string, { strict = false } = {}) {
+async function exactTitle(wiki: Wiki, query: string, { strict: isStrict = false } = {}) {
 	const candidates = [...new Set([query, titleCase(query)].filter(Boolean))];
 
 	const data = await apiGet(wiki, { action: 'query', titles: candidates.join('|'), redirects: '1' }).catch(() => null);
@@ -382,7 +385,7 @@ async function exactTitle(wiki: Wiki, query: string, { strict = false } = {}) {
 		return followed.title;
 	}
 
-	return strict ? null : (pages.find((entry) => !entry.missing)?.title ?? null);
+	return isStrict ? null : (pages.find((entry) => !entry.missing)?.title ?? null);
 }
 
 function promote(hits: WikiHit[], title: string | null) {
@@ -460,34 +463,36 @@ async function readPage(wiki: Wiki, title: string): Promise<WikiPage | null> {
 	};
 }
 
-export async function searchWiki(wiki: Wiki, query: unknown, page: unknown, mainPage = false): Promise<WikiSearchResult> {
+type WikiQuery = { query: unknown; page: unknown; mainPage?: boolean };
+
+export async function searchWiki(wiki: Wiki, { query, page, mainPage: isMainPage = false }: WikiQuery): Promise<WikiSearchResult> {
 	const trimmed = String(query ?? '').trim();
 	const requestedPage = String(page ?? '').trim();
-	if (!trimmed && !requestedPage && !mainPage) {
+	if (!trimmed && !requestedPage && !isMainPage) {
 		return { ok: false, reason: 'empty_query' };
 	}
 
-	const cacheKey = `${wiki.api_url}::${mainPage ? 'MAIN' : ''}::${requestedPage.toLowerCase()}::${trimmed.toLowerCase()}`;
+	const cacheKey = `${wiki.api_url}::${isMainPage ? 'MAIN' : ''}::${requestedPage.toLowerCase()}::${trimmed.toLowerCase()}`;
 	const cached = cacheGet(cacheKey);
 	if (cached) {
 		return cached;
 	}
 
-	let hits: WikiHit[];
-	try {
-		if (mainPage) {
-			const front = await mainPageTitle(wiki);
-			hits = front ? [{ title: front, snippet: '' }] : [];
-			if (!hits.length) {
-				throw new Error('main page title unavailable');
-			}
-		} else {
-			hits = await searchTitles(wiki, trimmed || requestedPage, requestedPage);
+	const found = await attempt(async (): Promise<WikiHit[]> => {
+		if (!isMainPage) {
+			return searchTitles(wiki, trimmed || requestedPage, requestedPage);
 		}
-	} catch (error) {
-		await logger.log(`❌ Wiki search failed (${wiki.name}): ${(error as Error).message}`);
+		const front = await mainPageTitle(wiki);
+		if (!front) {
+			throw new Error('main page title unavailable');
+		}
+		return [{ title: front, snippet: '' }];
+	});
+	if (!found.ok) {
+		await logger.log(`❌ Wiki search failed (${wiki.name}): ${(found.error as Error).message}`);
 		return { ok: false, reason: 'wiki_unreachable', wiki: wiki.name };
 	}
+	const hits = found.value;
 
 	if (!hits.length) {
 		const miss = { ok: true, wiki: wiki.name, query: trimmed || requestedPage, pages: [], note: 'No page on this wiki matches that query.' };
@@ -571,7 +576,8 @@ const HINT_MULTIPLIER = 3;
 const CLEAR_WINNER_RATIO = 1.5;
 const MAX_FAN_OUT = 2;
 const MAX_CANDIDATES = 4;
-const STICKY_TTL_MS = 15 * 60 * 1000;
+const STICKY_TTL_MINUTES = 15;
+const STICKY_TTL_MS = STICKY_TTL_MINUTES * MINUTE_MS;
 const STICKY_MAX_ENTRIES = 500;
 
 const routeIndexCache = new WeakMap<Wiki[], WikiRouteEntry[]>();
@@ -806,8 +812,8 @@ export async function runWikiTool(wikis: Wiki[], args: Record<string, unknown>, 
 		};
 	}
 
-	const mainPage = args?.main_page === true || args?.main_page === 'true';
-	const results = await Promise.all(routed.picks.map((wiki) => searchWiki(wiki, args?.query, args?.page, mainPage)));
+	const isMainPage = args?.main_page === true || args?.main_page === 'true';
+	const results = await Promise.all(routed.picks.map((wiki) => searchWiki(wiki, { query: args?.query, page: args?.page, mainPage: isMainPage })));
 	const usable = results.filter((result) => result?.ok !== false && result?.pages?.length);
 
 	if (!usable.length) {

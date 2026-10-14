@@ -1,5 +1,5 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, StringSelectMenuBuilder } from 'discord.js';
-import type { ButtonInteraction, StringSelectMenuInteraction } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, StringSelectMenuBuilder, MessageFlags } from 'discord.js';
+import type { ButtonInteraction, GuildTextBasedChannel, MessageActionRowComponentBuilder, StringSelectMenuInteraction } from 'discord.js';
 import { randomInt } from 'node:crypto';
 import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../database.js';
 import { isUsableRobloxThumbnail } from '../../../../roblox-thumbnails.js';
@@ -18,12 +18,15 @@ import {
 	ROBLOX_CATALOG_POLL_MS,
 	serverSettingsComponent,
 	streamCatalogPages,
-	NOTIFICATIONS,
 	type RobloxCatalogItem,
 	type RobloxCatalogItemRef
 } from '../../../config.js';
 import { serverTranslator, translate, type Translator } from '../i18n.js';
 import { logger } from '../../../../utils/index.js';
+import { sendWithWatcherMentions } from './notifiedMentions.js';
+import { SECOND_MS } from '../../../../utils/time.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
+import { isoDay } from '../../../../utils/datetime.js';
 
 export const ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX = 'roblox_item_notification:';
 export const ROBLOX_ITEM_NOTIFICATION_TYPES_SELECT_PREFIX = 'roblox_item_notification_types:';
@@ -42,7 +45,7 @@ const ROBLOX_NOTIFICATION_TYPE_EMOJI: Record<RobloxNotificationType, string> = {
 };
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
-let tickRunning = false;
+let isTickRunning = false;
 
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
@@ -56,7 +59,7 @@ function shuffledCatalogPollOrder(): (typeof robloxCatalogStreamPollOrder)[numbe
 }
 
 function catalogAssetBi(item: Pick<RobloxCatalogItem, 'id'>): bigint {
-	const id = item.id;
+	const { id } = item;
 	if (typeof id !== 'number' || !Number.isInteger(id) || !Number.isFinite(id)) {
 		throw new Error(`[roblox-catalog-notifier] invalid asset id (expected finite integer): ${String(id)}`);
 	}
@@ -72,10 +75,13 @@ function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {
 }
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
+const FREE_ROBUX = 0n;
+const NEW_OFFICIAL_ITEM_COLOR = 0xffd700;
+const MENU_SUBSCRIPTIONS_SHOWN = DISCORD_LIMITS.SELECT_OPTIONS;
 
 function formatRobux(n: number | bigint, tr: Translator): string {
 	const b = typeof n === 'bigint' ? n : BigInt(Math.trunc(Number(n)));
-	if (b === 0n) {
+	if (b === FREE_ROBUX) {
 		return tr('robloxCatalog.post.free');
 	}
 	if (b > MAX_SAFE_BIGINT || b < -MAX_SAFE_BIGINT) {
@@ -107,31 +113,13 @@ function formatQuantityRatio(item: RobloxCatalogItem): string {
 	return '—';
 }
 
-function mentionChunks(discordIds: string[]): string[] {
-	const chunks: string[] = [];
-	let current = '';
-	for (const id of discordIds) {
-		const mention = `<@${id}> `;
-		if (current.length + mention.length > 1950) {
-			chunks.push(current.trim());
-			current = mention;
-		} else {
-			current += mention;
-		}
-	}
-	if (current.trim()) {
-		chunks.push(current.trim());
-	}
-	return chunks;
-}
-
 type ServerTarget = {
 	serverId: number;
 	guildId: string;
 	channelId: string;
 	embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>;
 	tr: Translator;
-	channel: any;
+	channel: GuildTextBasedChannel;
 };
 
 function toSnapshot(x: RobloxCatalogItem) {
@@ -153,13 +141,13 @@ function toSnapshot(x: RobloxCatalogItem) {
 }
 
 function utcDay(utcStr: string): string {
-	return new Date(utcStr).toISOString().slice(0, 10);
+	return isoDay(new Date(utcStr));
 }
 
 function utcCalendarDayMinusDays(offsetDays: number): string {
 	const d = new Date();
 	const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - offsetDays);
-	return new Date(t).toISOString().slice(0, 10);
+	return isoDay(new Date(t));
 }
 
 function announceDayFromMergedFirstPages(items: RobloxCatalogItem[]): string | null {
@@ -272,105 +260,98 @@ function formatChangeLines(changes: RobloxItemChange[], tr: Translator): string 
 		.join('\n');
 }
 
-async function sendItemEmbed(
-	target: ServerTarget,
-	item: RobloxCatalogItem,
-	isNew: boolean,
-	changes: RobloxItemChange[],
-	fromOfficialRobloxCatalogQuery: boolean
-) {
-	const { tr } = target;
-	const changeLines = isNew ? undefined : formatChangeLines(changes, tr);
-	const isOfficial = isOfficialRobloxAccount(item) || fromOfficialRobloxCatalogQuery;
-	const isNewOfficial = isNew && isOfficial;
-	const url = robloxCatalogItemUrl(item.id);
-	const price = typeof item.price === 'number' ? formatRobux(item.price, tr) : '—';
-	const quantity = formatQuantityRatio(item);
-	const category = item.category?.trim() || '—';
-	const favorites = typeof item.favoriteCount === 'number' ? formatCount(item.favoriteCount) : '—';
-	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
+type ItemPostFlags = { isNew: boolean; changes: RobloxItemChange[]; fromOfficialRobloxCatalogQuery: boolean };
 
-	const resaleOrSaleFields: { name: string; value: string; inline: boolean }[] = [];
+type EmbedField = { name: string; value: string; inline: boolean };
+type ItemLook = { isNew: boolean; isOfficial: boolean; hasChanges: boolean };
+
+function resaleOrSaleFields(item: RobloxCatalogItem, tr: Translator): EmbedField[] {
 	if (item.hasResellers && typeof item.lowestResalePrice === 'number') {
-		resaleOrSaleFields.push({
-			name: tr('robloxCatalog.post.fields.resalePrice'),
-			value: formatRobux(item.lowestResalePrice, tr),
-			inline: true
-		});
-	} else if (item.offSaleDeadline) {
-		const ts = Math.floor(new Date(item.offSaleDeadline).getTime() / 1000);
-		if (Number.isFinite(ts)) {
-			resaleOrSaleFields.push({ name: tr('robloxCatalog.post.fields.saleEnds'), value: `<t:${ts}:F>`, inline: true });
-		}
+		return [{ name: tr('robloxCatalog.post.fields.resalePrice'), value: formatRobux(item.lowestResalePrice, tr), inline: true }];
 	}
+	const ts = item.offSaleDeadline ? Math.floor(new Date(item.offSaleDeadline).getTime() / SECOND_MS) : NaN;
+	return Number.isFinite(ts) ? [{ name: tr('robloxCatalog.post.fields.saleEnds'), value: `<t:${ts}:F>`, inline: true }] : [];
+}
 
-	const itemName = item.name || tr('robloxCatalog.itemFallback', { id: item.id });
-	const title = (isNew ? itemName : tr('robloxCatalog.post.updatedTitle', { name: itemName })).slice(0, 256);
+function itemDetailFields(item: RobloxCatalogItem, { tr, watcherCount }: { tr: Translator; watcherCount: number }): EmbedField[] {
+	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / SECOND_MS)}:D>` : '—';
+	return [
+		{ name: tr('robloxCatalog.post.fields.category'), value: (item.category?.trim() || '—').slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE), inline: true },
+		{ name: tr('robloxCatalog.post.fields.price'), value: typeof item.price === 'number' ? formatRobux(item.price, tr) : '—', inline: true },
+		{
+			name: tr('robloxCatalog.post.fields.creator'),
+			value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE),
+			inline: true
+		},
+		{ name: tr('robloxCatalog.post.fields.quantity'), value: formatQuantityRatio(item), inline: true },
+		{ name: tr('robloxCatalog.post.fields.favorites'), value: typeof item.favoriteCount === 'number' ? formatCount(item.favoriteCount) : '—', inline: true },
+		...resaleOrSaleFields(item, tr),
+		{ name: tr('robloxCatalog.post.fields.created'), value: createdAt, inline: true },
+		...(watcherCount > 0 ? [{ name: tr('robloxCatalog.post.fields.notifications'), value: `🔔 ${formatCount(watcherCount)}`, inline: true }] : [])
+	];
+}
 
+function itemEmbedColor({ isNew, isOfficial, hasChanges }: ItemLook, fallback: number) {
+	if (isNew && isOfficial) {
+		return NEW_OFFICIAL_ITEM_COLOR;
+	}
+	if (isOfficial) {
+		return robloxCatalogEmbedColors.fromOfficialQuery;
+	}
+	return hasChanges ? robloxCatalogEmbedColors.itemUpdated : fallback;
+}
+
+function itemButtons(item: RobloxCatalogItem, tr: Translator) {
+	return new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Link)
+			.setURL(robloxCatalogItemUrl(item.id))
+			.setLabel(tr('robloxCatalog.post.openOnRoblox').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
+			.setEmoji('🛍️'),
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Secondary)
+			.setCustomId(`${ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX}${item.id}`)
+			.setLabel(tr('robloxCatalog.post.notifyMe').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
+			.setEmoji('🔔')
+	);
+}
+
+async function itemWatchers(target: ServerTarget, item: RobloxCatalogItem, { isNew, changes }: { isNew: boolean; changes: RobloxItemChange[] }) {
 	const watcherDiscordIds = await db.listServerRobloxItemNotificationDiscordIds(target.serverId, catalogAssetBi(item)).catch(() => [] as string[]);
 	const changedFields = changes.map((c) => c.field);
 	const notificationDiscordIds =
 		isNew || changedFields.length === 0
 			? watcherDiscordIds
 			: await db.listServerRobloxItemNotificationDiscordIds(target.serverId, catalogAssetBi(item), changedFields).catch(() => [] as string[]);
+	return { watcherDiscordIds, notificationDiscordIds };
+}
+
+async function sendItemEmbed(
+	target: ServerTarget,
+	item: RobloxCatalogItem,
+	{ isNew, changes, fromOfficialRobloxCatalogQuery: isFromOfficialRobloxCatalogQuery }: ItemPostFlags
+) {
+	const { tr } = target;
+	const changeLines = isNew ? undefined : formatChangeLines(changes, tr);
+	const isOfficial = isOfficialRobloxAccount(item) || isFromOfficialRobloxCatalogQuery;
+	const itemName = item.name || tr('robloxCatalog.itemFallback', { id: item.id });
+	const { watcherDiscordIds, notificationDiscordIds } = await itemWatchers(target, item, { isNew, changes });
 
 	const embed = new EmbedBuilder()
-		.setColor(
-			isNewOfficial
-				? 0xffd700
-				: isOfficial
-					? robloxCatalogEmbedColors.fromOfficialQuery
-					: changeLines
-						? robloxCatalogEmbedColors.itemUpdated
-						: target.embedConfig.COLOR
-		)
-		.setTitle(title)
-		.addFields(
-			{ name: tr('robloxCatalog.post.fields.category'), value: category.slice(0, 1024), inline: true },
-			{ name: tr('robloxCatalog.post.fields.price'), value: price, inline: true },
-			{
-				name: tr('robloxCatalog.post.fields.creator'),
-				value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024),
-				inline: true
-			},
-			{ name: tr('robloxCatalog.post.fields.quantity'), value: quantity, inline: true },
-			{ name: tr('robloxCatalog.post.fields.favorites'), value: favorites, inline: true },
-			...resaleOrSaleFields,
-			{ name: tr('robloxCatalog.post.fields.created'), value: createdAt, inline: true },
-			...(watcherDiscordIds.length > 0
-				? [{ name: tr('robloxCatalog.post.fields.notifications'), value: `🔔 ${formatCount(watcherDiscordIds.length)}`, inline: true }]
-				: [])
-		)
+		.setColor(itemEmbedColor({ isNew, isOfficial, hasChanges: !!changeLines }, target.embedConfig.COLOR))
+		.setTitle((isNew ? itemName : tr('robloxCatalog.post.updatedTitle', { name: itemName })).slice(0, DISCORD_LIMITS.EMBED_TITLE))
+		.addFields(itemDetailFields(item, { tr, watcherCount: watcherDiscordIds.length }))
 		.setFooter({ text: target.embedConfig.FOOTER });
 
-	if (changeLines) {
-		embed.setDescription(changeLines.slice(0, 4096));
-	} else if (item.description?.trim()) {
-		embed.setDescription(item.description.trim().slice(0, 4096));
+	const description = changeLines || item.description?.trim();
+	if (description) {
+		embed.setDescription(description.slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION));
 	}
 	if (isUsableRobloxThumbnail(item.thumbnailUrl)) {
 		embed.setThumbnail(item.thumbnailUrl as string);
 	}
 
-	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel(tr('robloxCatalog.post.openOnRoblox').slice(0, 80)).setEmoji('🛍️'),
-		new ButtonBuilder()
-			.setStyle(ButtonStyle.Secondary)
-			.setCustomId(`${ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX}${item.id}`)
-			.setLabel(tr('robloxCatalog.post.notifyMe').slice(0, 80))
-			.setEmoji('🔔')
-	);
-
-	const channelMentions = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null)) ?? [];
-	const alreadyMentioned = channelMentions.join(' ');
-	const notificationDirectMentions = mentionChunks(notificationDiscordIds.filter((id) => !alreadyMentioned.includes(`<@${id}>`)));
-	const mentionParts = [...channelMentions, ...notificationDirectMentions];
-
-	await target.channel.send({ content: mentionParts[0], embeds: [embed], components: [btnRow] });
-
-	for (let i = 1; i < mentionParts.length; i++) {
-		await target.channel.send({ content: mentionParts[i] }).catch(() => null);
-	}
+	await sendWithWatcherMentions(target.channel, { embeds: [embed], components: [itemButtons(item, tr)] }, notificationDiscordIds);
 }
 
 async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
@@ -421,7 +402,7 @@ async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 				continue;
 			}
 			try {
-				await sendItemEmbed(target, item, true, [], assetIdsFromOfficialQuery.has(catalogAssetBi(item)));
+				await sendItemEmbed(target, item, { isNew: true, changes: [], fromOfficialRobloxCatalogQuery: assetIdsFromOfficialQuery.has(catalogAssetBi(item)) });
 				await db.markServerRobloxItemMessagePosted(target.serverId, catalogAssetBi(item));
 				await logger.log(`🛍️ Roblox catalog: seeded item ${item.id} → ${target.channelId}`);
 			} catch (err) {
@@ -435,20 +416,24 @@ async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 
 let processPageCount: Record<string, number> = {};
 
+type PageBatch = {
+	items: RobloxCatalogItem[];
+	seen: Set<bigint>;
+	fromOfficialRobloxCatalogQuery: boolean;
+	allowCatalogFirstMessage: boolean;
+	logLabel?: string;
+};
+
 async function processPage(
 	officialBotId: number,
 	targets: ServerTarget[],
-	items: RobloxCatalogItem[],
-	seen: Set<bigint>,
-	fromOfficialRobloxCatalogQuery: boolean,
-	allowCatalogFirstMessage: boolean,
-	logLabel?: string
+	{ items, seen, fromOfficialRobloxCatalogQuery: isFromOfficialRobloxCatalogQuery, allowCatalogFirstMessage: isAllowCatalogFirstMessage, logLabel }: PageBatch
 ) {
 	const newItems = items.filter((x) => !seen.has(catalogAssetBi(x)));
 	for (const x of newItems) {
 		seen.add(catalogAssetBi(x));
 	}
-	const logKey = logLabel ?? (fromOfficialRobloxCatalogQuery ? 'official' : 'limited');
+	const logKey = logLabel ?? (isFromOfficialRobloxCatalogQuery ? 'official' : 'limited');
 	processPageCount[logKey] = (processPageCount[logKey] ?? 0) + 1;
 	const pageNum = processPageCount[logKey];
 	if (newItems.length === 0) {
@@ -459,7 +444,7 @@ async function processPage(
 
 	const snapshots = newItems.map(toSnapshot);
 	const todayUtcDay = utcCalendarDayMinusDays(0);
-	const announceDay = allowCatalogFirstMessage ? todayUtcDay : null;
+	const announceDay = isAllowCatalogFirstMessage ? todayUtcDay : null;
 
 	const perServerChanges = new Map<number, Map<bigint, RobloxItemChange[]>>();
 	const perServerUnposted = new Map<number, Set<bigint>>();
@@ -498,7 +483,7 @@ async function processPage(
 			}
 
 			try {
-				await sendItemEmbed(target, item, isNew, itemChanges, fromOfficialRobloxCatalogQuery);
+				await sendItemEmbed(target, item, { isNew, changes: itemChanges, fromOfficialRobloxCatalogQuery: isFromOfficialRobloxCatalogQuery });
 
 				if (isNew) {
 					await db.markServerRobloxItemMessagePosted(target.serverId, aid);
@@ -540,13 +525,23 @@ async function runNotificationPriorityPass(officialBotId: number, targets: Serve
 		return;
 	}
 
-	await processPage(officialBotId, targets, items, new Set<bigint>(), false, false, 'notification');
+	await processPage(officialBotId, targets, {
+		items,
+		seen: new Set<bigint>(),
+		fromOfficialRobloxCatalogQuery: false,
+		allowCatalogFirstMessage: false,
+		logLabel: 'notification'
+	});
 }
 
-async function maybeRunNotificationPriorityPass(officialBotId: number, targets: ServerTarget[], force = false) {
-	if (!force && Date.now() - lastNotificationPassAt < ROBLOX_CATALOG_NOTIFICATION_INTERVAL_MS) {
+async function maybeRunNotificationPriorityPass(officialBotId: number, targets: ServerTarget[]) {
+	if (Date.now() - lastNotificationPassAt < ROBLOX_CATALOG_NOTIFICATION_INTERVAL_MS) {
 		return;
 	}
+	await forceNotificationPriorityPass(officialBotId, targets);
+}
+
+async function forceNotificationPriorityPass(officialBotId: number, targets: ServerTarget[]) {
 	lastNotificationPassAt = Date.now();
 	await runNotificationPriorityPass(officialBotId, targets).catch((err) =>
 		logger.log(`⚠️ Roblox catalog: notification priority pass error: ${err?.message || err}`)
@@ -564,7 +559,12 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 		const stream = robloxCatalogStreams[pollOrder[i]];
 		await streamCatalogPages(stream.params, async (items) => {
 			await maybeRunNotificationPriorityPass(officialBotId, targets);
-			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
+			await processPage(officialBotId, targets, {
+				items,
+				seen,
+				fromOfficialRobloxCatalogQuery: stream.useOfficialCatalogEmbedStyle,
+				allowCatalogFirstMessage: false
+			});
 		});
 	}
 
@@ -572,10 +572,10 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 }
 
 async function runTick(client: Client, officialBotId: number) {
-	if (tickRunning) {
+	if (isTickRunning) {
 		return;
 	}
-	tickRunning = true;
+	isTickRunning = true;
 	try {
 		const targets = await getActiveServers(client, officialBotId);
 		if (targets.length === 0) {
@@ -591,7 +591,7 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<bigint>();
 		processPageCount = {};
 
-		await maybeRunNotificationPriorityPass(officialBotId, targets, true);
+		await forceNotificationPriorityPass(officialBotId, targets);
 
 		const pollOrder = shuffledCatalogPollOrder();
 		for (let i = 0; i < pollOrder.length; i++) {
@@ -601,11 +601,16 @@ async function runTick(client: Client, officialBotId: number) {
 			const stream = robloxCatalogStreams[pollOrder[i]];
 			await streamCatalogPages(stream.params, async (items) => {
 				await maybeRunNotificationPriorityPass(officialBotId, targets);
-				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);
+				await processPage(officialBotId, targets, {
+					items,
+					seen,
+					fromOfficialRobloxCatalogQuery: stream.useOfficialCatalogEmbedStyle,
+					allowCatalogFirstMessage: true
+				});
 			});
 		}
 	} finally {
-		tickRunning = false;
+		isTickRunning = false;
 	}
 }
 
@@ -663,13 +668,13 @@ function sanitizeNotificationTypes(values: string[]): RobloxNotificationType[] {
 }
 
 async function notificationTypeLabel(type: RobloxNotificationType, guildId: string, userId: string): Promise<string> {
-	return await translate(`robloxCatalog.notifications.types.${type}.label`, guildId, userId);
+	return await translate(`robloxCatalog.notifications.types.${type}.label`, { guildId, userId });
 }
 
 async function formatActiveTypes(types: string[], guildId: string, userId: string): Promise<string> {
 	const valid = sanitizeNotificationTypes(types);
 	if (valid.length === 0) {
-		return await translate('robloxCatalog.notifications.noTypes', guildId, userId);
+		return await translate('robloxCatalog.notifications.noTypes', { guildId, userId });
 	}
 	const labels = await Promise.all(valid.map(async (t) => `${ROBLOX_NOTIFICATION_TYPE_EMOJI[t]} ${await notificationTypeLabel(t, guildId, userId)}`));
 	return labels.join(', ');
@@ -687,59 +692,62 @@ async function resolveMemberContext(guildId: string, discordUserId: string) {
 	return { server, member };
 }
 
-async function buildItemTypesPayload(
-	guildId: string,
-	userId: string,
-	item: { id: number; asset_id: bigint; name: string | null },
-	selectedTypes: string[],
-	fromMenu: boolean,
-	statusLine?: string
-) {
+type ItemTypesView = { item: { id: number; asset_id: bigint; name: string | null }; selectedTypes: string[]; fromMenu: boolean; statusLine?: string };
+
+async function buildItemTypesPayload(guildId: string, userId: string, { item, selectedTypes, fromMenu: isFromMenu, statusLine }: ItemTypesView) {
 	const embedConfig = await getEmbedConfig(guildId);
-	const itemName = item.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, userId, { id: item.asset_id.toString() }));
+	const itemName = item.name?.trim() || (await translate('robloxCatalog.itemFallback', { guildId, userId }, { id: item.asset_id.toString() }));
 	const selected = sanitizeNotificationTypes(selectedTypes);
 
-	const title = await translate('robloxCatalog.notifications.item.title', guildId, userId);
-	const description = await translate('robloxCatalog.notifications.item.description', guildId, userId, {
-		item: itemName,
-		url: robloxCatalogItemUrl(Number(item.asset_id))
-	});
-	const activeLabel = await translate('robloxCatalog.notifications.item.active', guildId, userId, {
-		types: await formatActiveTypes(selected, guildId, userId)
-	});
+	const title = await translate('robloxCatalog.notifications.item.title', { guildId, userId });
+	const description = await translate(
+		'robloxCatalog.notifications.item.description',
+		{ guildId, userId },
+		{
+			item: itemName,
+			url: robloxCatalogItemUrl(Number(item.asset_id))
+		}
+	);
+	const activeLabel = await translate(
+		'robloxCatalog.notifications.item.active',
+		{ guildId, userId },
+		{
+			types: await formatActiveTypes(selected, guildId, userId)
+		}
+	);
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
 		.setTitle(title)
-		.setDescription([description, activeLabel, statusLine].filter(Boolean).join('\n\n').slice(0, 4096))
+		.setDescription([description, activeLabel, statusLine].filter(Boolean).join('\n\n').slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION))
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
 	const options = await Promise.all(
 		ROBLOX_NOTIFICATION_TYPES.map(async (type) => ({
-			label: (await notificationTypeLabel(type, guildId, userId)).slice(0, 100),
+			label: (await notificationTypeLabel(type, guildId, userId)).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT),
 			value: type,
-			description: (await translate(`robloxCatalog.notifications.types.${type}.description`, guildId, userId)).slice(0, 100),
+			description: (await translate(`robloxCatalog.notifications.types.${type}.description`, { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT),
 			emoji: ROBLOX_NOTIFICATION_TYPE_EMOJI[type],
 			default: selected.includes(type)
 		}))
 	);
 
 	const selectMenu = new StringSelectMenuBuilder()
-		.setCustomId(`${ROBLOX_ITEM_NOTIFICATION_TYPES_SELECT_PREFIX}${item.asset_id.toString()}${fromMenu ? ':menu' : ''}`)
-		.setPlaceholder((await translate('robloxCatalog.notifications.item.placeholder', guildId, userId)).slice(0, 150))
+		.setCustomId(`${ROBLOX_ITEM_NOTIFICATION_TYPES_SELECT_PREFIX}${item.asset_id.toString()}${isFromMenu ? ':menu' : ''}`)
+		.setPlaceholder((await translate('robloxCatalog.notifications.item.placeholder', { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_PLACEHOLDER))
 		.setMinValues(0)
 		.setMaxValues(options.length)
 		.addOptions(options);
 
-	const rows: ActionRowBuilder<any>[] = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
+	const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
 
-	if (fromMenu) {
+	if (isFromMenu) {
 		rows.push(
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder()
 					.setCustomId(ROBLOX_NOTIFICATIONS_MENU_BUTTON_ID)
-					.setLabel(await translate('menu.back', guildId, userId))
+					.setLabel(await translate('menu.back', { guildId, userId }))
 					.setStyle(ButtonStyle.Secondary)
 			)
 		);
@@ -748,21 +756,27 @@ async function buildItemTypesPayload(
 	return { embeds: [embed], components: rows };
 }
 
-async function buildRobloxNotificationsMenuPayload(guildId: string, userId: string, memberId: number, statusLine?: string) {
+type NotificationsMenuView = { memberId: number; statusLine?: string };
+
+async function buildRobloxNotificationsMenuPayload(guildId: string, userId: string, { memberId, statusLine }: NotificationsMenuView) {
 	const embedConfig = await getEmbedConfig(guildId);
 	const subscriptions = await db.listServerMemberRobloxItemNotifications(memberId).catch(() => []);
 
-	const title = await translate('robloxCatalog.notifications.menu.title', guildId, userId);
+	const title = await translate('robloxCatalog.notifications.menu.title', { guildId, userId });
 	const description =
 		subscriptions.length === 0
-			? await translate('robloxCatalog.notifications.menu.empty', guildId, userId, {
-					button: (await serverTranslator(guildId))('robloxCatalog.post.notifyMe')
-				})
-			: await translate('robloxCatalog.notifications.menu.description', guildId, userId, { count: formatCount(subscriptions.length) });
+			? await translate(
+					'robloxCatalog.notifications.menu.empty',
+					{ guildId, userId },
+					{
+						button: (await serverTranslator(guildId))('robloxCatalog.post.notifyMe')
+					}
+				)
+			: await translate('robloxCatalog.notifications.menu.description', { guildId, userId }, { count: formatCount(subscriptions.length) });
 
 	const lines = await Promise.all(
-		subscriptions.slice(0, 25).map(async (sub) => {
-			const name = sub.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, userId, { id: sub.assetId.toString() }));
+		subscriptions.slice(0, MENU_SUBSCRIPTIONS_SHOWN).map(async (sub) => {
+			const name = sub.name?.trim() || (await translate('robloxCatalog.itemFallback', { guildId, userId }, { id: sub.assetId.toString() }));
 			return `**${name}**\n${await formatActiveTypes(sub.types, guildId, userId)}`;
 		})
 	);
@@ -770,18 +784,21 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
 		.setTitle(title)
-		.setDescription([description, lines.join('\n'), statusLine].filter(Boolean).join('\n\n').slice(0, 4096))
+		.setDescription([description, lines.join('\n'), statusLine].filter(Boolean).join('\n\n').slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION))
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
-	const rows: ActionRowBuilder<any>[] = [];
+	const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
 
 	if (subscriptions.length > 0) {
 		const options = await Promise.all(
-			subscriptions.slice(0, 25).map(async (sub) => ({
-				label: (sub.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, userId, { id: sub.assetId.toString() }))).slice(0, 100),
+			subscriptions.slice(0, MENU_SUBSCRIPTIONS_SHOWN).map(async (sub) => ({
+				label: (sub.name?.trim() || (await translate('robloxCatalog.itemFallback', { guildId, userId }, { id: sub.assetId.toString() }))).slice(
+					0,
+					DISCORD_LIMITS.SELECT_OPTION_TEXT
+				),
 				value: sub.assetId.toString(),
-				description: (await formatActiveTypes(sub.types, guildId, userId)).slice(0, 100)
+				description: (await formatActiveTypes(sub.types, guildId, userId)).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT)
 			}))
 		);
 
@@ -789,7 +806,7 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				new StringSelectMenuBuilder()
 					.setCustomId(ROBLOX_NOTIFICATIONS_SELECT_ID)
-					.setPlaceholder((await translate('robloxCatalog.notifications.menu.placeholder', guildId, userId)).slice(0, 150))
+					.setPlaceholder((await translate('robloxCatalog.notifications.menu.placeholder', { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_PLACEHOLDER))
 					.setMinValues(1)
 					.setMaxValues(1)
 					.addOptions(options)
@@ -800,7 +817,7 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 	const buttons = [
 		new ButtonBuilder()
 			.setCustomId('bot_notifications')
-			.setLabel(await translate('menu.back', guildId, userId))
+			.setLabel(await translate('menu.back', { guildId, userId }))
 			.setStyle(ButtonStyle.Secondary)
 	];
 
@@ -808,7 +825,7 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 		buttons.unshift(
 			new ButtonBuilder()
 				.setCustomId(ROBLOX_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID)
-				.setLabel(await translate('robloxCatalog.notifications.menu.disableAll', guildId, userId))
+				.setLabel(await translate('robloxCatalog.notifications.menu.disableAll', { guildId, userId }))
 				.setStyle(ButtonStyle.Danger)
 		);
 	}
@@ -818,16 +835,14 @@ async function buildRobloxNotificationsMenuPayload(guildId: string, userId: stri
 	return { embeds: [embed], components: rows };
 }
 
-async function respondEphemeral(interaction: ButtonInteraction | StringSelectMenuInteraction, payload: any, preferUpdate: boolean) {
+type EphemeralPayload = { content?: string; embeds?: EmbedBuilder[]; components?: ActionRowBuilder<MessageActionRowComponentBuilder>[] };
+
+async function respondEphemeral(interaction: ButtonInteraction | StringSelectMenuInteraction, payload: EphemeralPayload) {
 	if (interaction.replied || interaction.deferred) {
 		await interaction.editReply(payload).catch(() => null);
 		return;
 	}
-	if (preferUpdate) {
-		await (interaction as any).update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
-		return;
-	}
-	await interaction.reply({ ...payload, flags: 64 }).catch(() => null);
+	await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => null));
 }
 
 export async function handleRobloxItemNotificationButton(interaction: ButtonInteraction): Promise<void> {
@@ -838,29 +853,29 @@ export async function handleRobloxItemNotificationButton(interaction: ButtonInte
 
 	const assetId = assetIdFromCustomId(interaction.customId, ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX);
 	if (assetId == null) {
-		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
-	await interaction.deferReply({ flags: 64 });
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) {
-		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', guildId, interaction.user.id);
+		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', { guildId, userId: interaction.user.id });
 		await interaction.editReply({ content: message }).catch(() => null);
 		return;
 	}
 
 	const item = await db.getBotRobloxItemByAssetId(assetId).catch(() => null);
 	if (!item) {
-		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', { guildId, userId: interaction.user.id });
 		await interaction.editReply({ content: message }).catch(() => null);
 		return;
 	}
 
 	const currentTypes = await db.getServerMemberRobloxItemNotificationTypes(context.member.id, item.id).catch(() => [] as string[]);
-	const payload = await buildItemTypesPayload(guildId, interaction.user.id, item, currentTypes, false);
+	const payload = await buildItemTypesPayload(guildId, interaction.user.id, { item, selectedTypes: currentTypes, fromMenu: false });
 	await interaction.editReply(payload).catch(() => null);
 }
 
@@ -871,36 +886,35 @@ export async function handleRobloxItemNotificationTypesSelect(interaction: Strin
 	}
 
 	const assetId = assetIdFromCustomId(interaction.customId, ROBLOX_ITEM_NOTIFICATION_TYPES_SELECT_PREFIX);
-	const fromMenu = interaction.customId.endsWith(':menu');
+	const isFromMenu = interaction.customId.endsWith(':menu');
 	if (assetId == null) {
-		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) {
-		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const item = await db.getBotRobloxItemByAssetId(assetId).catch(() => null);
 	if (!item) {
-		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const types = sanitizeNotificationTypes(interaction.values || []);
 	const action = await db.setServerMemberRobloxItemNotificationTypes(context.member.id, item.id, types);
-	const itemName = item.name?.trim() || (await translate('robloxCatalog.itemFallback', guildId, interaction.user.id, { id: assetId.toString() }));
+	const itemName = item.name?.trim() || (await translate('robloxCatalog.itemFallback', { guildId, userId: interaction.user.id }, { id: assetId.toString() }));
 	const watchers = await db.countServerRobloxItemNotifications(context.server.id, item.id).catch(() => 0);
 
 	const statusLine = await translate(
 		action === 'removed' ? 'robloxCatalog.notifications.removed' : 'robloxCatalog.notifications.saved',
-		guildId,
-		interaction.user.id,
+		{ guildId, userId: interaction.user.id },
 		{
 			item: itemName,
 			types: await formatActiveTypes(types, guildId, interaction.user.id),
@@ -908,8 +922,8 @@ export async function handleRobloxItemNotificationTypesSelect(interaction: Strin
 		}
 	);
 
-	const payload = await buildItemTypesPayload(guildId, interaction.user.id, item, types, fromMenu, statusLine);
-	await respondEphemeral(interaction, payload, true);
+	const payload = await buildItemTypesPayload(guildId, interaction.user.id, { item, selectedTypes: types, fromMenu: isFromMenu, statusLine });
+	await respondEphemeral(interaction, payload);
 
 	await logger.log(
 		`🔔 Roblox catalog: ${interaction.user.tag} ${action} notification types [${types.join(', ')}] for asset ${assetId.toString()} (${watchers} watching)`
@@ -924,13 +938,13 @@ export async function handleRobloxNotificationsMenuButton(interaction: ButtonInt
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) {
-		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
-	const payload = await buildRobloxNotificationsMenuPayload(guildId, interaction.user.id, context.member.id);
-	await respondEphemeral(interaction, payload, true);
+	const payload = await buildRobloxNotificationsMenuPayload(guildId, interaction.user.id, { memberId: context.member.id });
+	await respondEphemeral(interaction, payload);
 }
 
 export async function handleRobloxNotificationsSelect(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -941,28 +955,28 @@ export async function handleRobloxNotificationsSelect(interaction: StringSelectM
 
 	const raw = (interaction.values || [])[0] || '';
 	if (!/^\d+$/.test(raw)) {
-		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) {
-		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const item = await db.getBotRobloxItemByAssetId(BigInt(raw)).catch(() => null);
 	if (!item) {
-		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const currentTypes = await db.getServerMemberRobloxItemNotificationTypes(context.member.id, item.id).catch(() => [] as string[]);
-	const payload = await buildItemTypesPayload(guildId, interaction.user.id, item, currentTypes, true);
-	await respondEphemeral(interaction, payload, true);
+	const payload = await buildItemTypesPayload(guildId, interaction.user.id, { item, selectedTypes: currentTypes, fromMenu: true });
+	await respondEphemeral(interaction, payload);
 }
 
 export async function handleRobloxNotificationsDisableAll(interaction: ButtonInteraction): Promise<void> {
@@ -973,15 +987,15 @@ export async function handleRobloxNotificationsDisableAll(interaction: ButtonInt
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
 	if (!context) {
-		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', guildId, interaction.user.id);
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', { guildId, userId: interaction.user.id });
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
 	const cleared = await db.clearServerMemberRobloxItemNotifications(context.member.id).catch(() => 0);
-	const statusLine = await translate('robloxCatalog.notifications.menu.disabledAll', guildId, interaction.user.id, { count: formatCount(cleared) });
-	const payload = await buildRobloxNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, statusLine);
-	await respondEphemeral(interaction, payload, true);
+	const statusLine = await translate('robloxCatalog.notifications.menu.disabledAll', { guildId, userId: interaction.user.id }, { count: formatCount(cleared) });
+	const payload = await buildRobloxNotificationsMenuPayload(guildId, interaction.user.id, { memberId: context.member.id, statusLine });
+	await respondEphemeral(interaction, payload);
 
 	await logger.log(`🔕 Roblox catalog: ${interaction.user.tag} disabled all ${cleared} item notifications`);
 }

@@ -1,5 +1,7 @@
 import { BRAND_PRIMARY } from './brand.js';
 import { type EffectFamily, normalizeEffect, normalizeSeed } from './effects.js';
+import { RGB_MAX } from './utils/numbers.js';
+import { type Rgb, hexToRgb, rgbToHex, relativeLuminance as rgbLuminance, weightedLightness } from './utils/rgb.js';
 
 export type MemberTheme = {
 	image: string | null;
@@ -24,6 +26,20 @@ export const DEFAULT_ACCENT = BRAND_PRIMARY;
 
 const ACCENT_MIN_L = 0.3;
 const ACCENT_MAX_L = 0.62;
+const ACCENT_BLACK_L = 0.01;
+const INK_LUMINANCE_THRESHOLD = 0.45;
+const SECONDARY_SHIFT = 0.2;
+const ACCENT_SHIFT = -0.25;
+const DEEP_SHIFT = -0.45;
+const SOFT_SHIFT = 0.35;
+const ACCENT_SAMPLE_EDGE_PX = 32;
+const RGBA_STRIDE = 4;
+const ALPHA_OFFSET = 3;
+const MIN_OPAQUE_ALPHA = 128;
+const SAMPLE_MIN_LIGHTNESS = 0.12;
+const SAMPLE_MAX_LIGHTNESS = 0.92;
+const SATURATION_WEIGHT = 3;
+const BUCKET_BITS = 4;
 
 export function normalizeAccent(value: unknown): string | null {
 	if (value == null) {
@@ -37,54 +53,40 @@ export function normalizeAccent(value: unknown): string | null {
 	return withHash.toLowerCase();
 }
 
-function toRgb(hex: string): [number, number, number] {
-	return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
-}
-
-function toHex(r: number, g: number, b: number): string {
-	const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
-	return `#${[clamp(r), clamp(g), clamp(b)].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function channelLuminance(c: number): number {
-	const s = c / 255;
-	return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-}
+const towardWhite = ([r, g, b]: Rgb, amount: number): Rgb => [r + (RGB_MAX - r) * amount, g + (RGB_MAX - g) * amount, b + (RGB_MAX - b) * amount];
 
 export function relativeLuminance(hex: string): number {
-	const [r, g, b] = toRgb(hex);
-	return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
+	return rgbLuminance(hexToRgb(hex));
 }
 
 export function accentInk(hex: unknown): string {
 	const accent = normalizeAccent(hex) ?? DEFAULT_ACCENT;
-	return relativeLuminance(accent) > 0.45 ? '#241a16' : '#ffffff';
+	return relativeLuminance(accent) > INK_LUMINANCE_THRESHOLD ? '#241a16' : '#ffffff';
 }
 
 export function shiftAccent(hex: unknown, amount: number): string {
 	const accent = normalizeAccent(hex) ?? DEFAULT_ACCENT;
-	const [r, g, b] = toRgb(accent);
+	const [r, g, b] = hexToRgb(accent);
 	if (amount >= 0) {
-		return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
+		return rgbToHex(towardWhite([r, g, b], amount));
 	}
 	const k = 1 + amount;
-	return toHex(r * k, g * k, b * k);
+	return rgbToHex([r * k, g * k, b * k]);
 }
 
-function clampAccentLightness(r: number, g: number, b: number): string {
-	const l = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+function clampAccentLightness([r, g, b]: Rgb): string {
+	const l = weightedLightness([r, g, b]);
 	if (l >= ACCENT_MIN_L && l <= ACCENT_MAX_L) {
-		return toHex(r, g, b);
+		return rgbToHex([r, g, b]);
 	}
-	if (l <= 0.01) {
+	if (l <= ACCENT_BLACK_L) {
 		return DEFAULT_ACCENT;
 	}
 	const target = l < ACCENT_MIN_L ? ACCENT_MIN_L : ACCENT_MAX_L;
 	if (l < ACCENT_MIN_L) {
-		const t = (target - l) / (1 - l);
-		return toHex(r + (255 - r) * t, g + (255 - g) * t, b + (255 - b) * t);
+		return rgbToHex(towardWhite([r, g, b], (target - l) / (1 - l)));
 	}
-	return toHex((r * target) / l, (g * target) / l, (b * target) / l);
+	return rgbToHex([(r * target) / l, (g * target) / l, (b * target) / l]);
 }
 
 export function resolveMemberTheme(row: MemberThemeRow | null | undefined): MemberTheme | null {
@@ -94,7 +96,7 @@ export function resolveMemberTheme(row: MemberThemeRow | null | undefined): Memb
 	const image = row.image ? String(row.image) : null;
 	const accent = normalizeAccent(row.accent_color);
 	const ownedEffect = normalizeEffect(row.effect);
-	const effectEnabled = row.effect_enabled !== false && row.effect_enabled !== 0;
+	const isEffectEnabled = row.effect_enabled !== false && row.effect_enabled !== 0;
 	if (!image && !accent && ownedEffect === 'none') {
 		return null;
 	}
@@ -102,9 +104,9 @@ export function resolveMemberTheme(row: MemberThemeRow | null | undefined): Memb
 		image,
 		accent: accent ?? DEFAULT_ACCENT,
 		accentAuto: row.accent_auto !== false && row.accent_auto !== 0,
-		effect: effectEnabled ? ownedEffect : 'none',
+		effect: isEffectEnabled ? ownedEffect : 'none',
 		ownedEffect,
-		effectEnabled,
+		effectEnabled: isEffectEnabled,
 		effectSeed: normalizeSeed(row.effect_seed)
 	};
 }
@@ -114,12 +116,12 @@ export function themeVars(theme: MemberTheme | null | undefined): string {
 		return '';
 	}
 	const accent = normalizeAccent(theme.accent) ?? DEFAULT_ACCENT;
-	const secondary = shiftAccent(accent, 0.2);
-	const deep = shiftAccent(accent, -0.25);
+	const secondary = shiftAccent(accent, SECONDARY_SHIFT);
+	const deep = shiftAccent(accent, ACCENT_SHIFT);
 	return [
 		`--theme-accent: ${accent}`,
-		`--theme-accent-deep: ${shiftAccent(accent, -0.45)}`,
-		`--theme-accent-soft: ${shiftAccent(accent, 0.35)}`,
+		`--theme-accent-deep: ${shiftAccent(accent, DEEP_SHIFT)}`,
+		`--theme-accent-soft: ${shiftAccent(accent, SOFT_SHIFT)}`,
 		`--theme-ink: ${accentInk(accent)}`,
 		`--color-primary: ${accent}`,
 		`--color-primary-content: ${accentInk(accent)}`,
@@ -209,7 +211,7 @@ export function extractAccentFromUrl(src: string): Promise<string> {
 }
 
 function accentFromImage(img: HTMLImageElement): string {
-	const size = 32;
+	const size = ACCENT_SAMPLE_EDGE_PX;
 	const canvas = document.createElement('canvas');
 	canvas.width = size;
 	canvas.height = size;
@@ -227,9 +229,9 @@ function accentFromImage(img: HTMLImageElement): string {
 		let fallbackB = 0;
 		let fallbackN = 0;
 
-		for (let i = 0; i < data.length; i += 4) {
-			const a = data[i + 3];
-			if (a < 128) {
+		for (let i = 0; i < data.length; i += RGBA_STRIDE) {
+			const a = data[i + ALPHA_OFFSET];
+			if (a < MIN_OPAQUE_ALPHA) {
 				continue;
 			}
 			const r = data[i];
@@ -243,15 +245,15 @@ function accentFromImage(img: HTMLImageElement): string {
 
 			const max = Math.max(r, g, b);
 			const min = Math.min(r, g, b);
-			const lightness = (max + min) / 510;
-			if (lightness < 0.12 || lightness > 0.92) {
+			const lightness = (max + min) / (2 * RGB_MAX);
+			if (lightness < SAMPLE_MIN_LIGHTNESS || lightness > SAMPLE_MAX_LIGHTNESS) {
 				continue;
 			}
 			const delta = max - min;
-			const saturation = delta === 0 ? 0 : delta / (255 - Math.abs(max + min - 255));
+			const saturation = delta === 0 ? 0 : delta / (RGB_MAX - Math.abs(max + min - RGB_MAX));
 
-			const weight = 1 + saturation * 3;
-			const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+			const weight = 1 + saturation * SATURATION_WEIGHT;
+			const key = ((r >> BUCKET_BITS) << (2 * BUCKET_BITS)) | ((g >> BUCKET_BITS) << BUCKET_BITS) | (b >> BUCKET_BITS);
 			const bucket = buckets.get(key);
 			if (bucket) {
 				bucket.r += r * weight;
@@ -271,10 +273,10 @@ function accentFromImage(img: HTMLImageElement): string {
 		}
 
 		if (best) {
-			return clampAccentLightness(best.r / best.weight, best.g / best.weight, best.b / best.weight);
+			return clampAccentLightness([best.r / best.weight, best.g / best.weight, best.b / best.weight]);
 		}
 		if (fallbackN > 0) {
-			return clampAccentLightness(fallbackR / fallbackN, fallbackG / fallbackN, fallbackB / fallbackN);
+			return clampAccentLightness([fallbackR / fallbackN, fallbackG / fallbackN, fallbackB / fallbackN]);
 		}
 		return DEFAULT_ACCENT;
 	} catch {

@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
+	type GridCols = 1 | 2 | 3 | 4;
+
 	let {
 		cols = 2,
 		children
 	}: {
-		cols?: 1 | 2 | 3 | 4;
+		cols?: GridCols;
 		children: Snippet;
 	} = $props();
 

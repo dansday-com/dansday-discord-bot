@@ -1,4 +1,4 @@
-import { ChannelType, PermissionFlagsBits } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, RESTJSONErrorCodes } from 'discord.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import {
@@ -14,8 +14,7 @@ import {
 import { awardInviteXp } from './leveling.js';
 import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
 import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, NewsChannel, PartialGuildMember, TextChannel } from 'discord.js';
-
-type BotServer = Awaited<ReturnType<typeof getServerForCurrentBot>>;
+import { DAY_MS, HOUR_MS, MINUTE_MS } from '../../../../utils/time.js';
 
 type CachedInvite = { uses: number; inviterId: string | null; maxUses: number; expiresAt: number | null };
 type GuildInviteState = { invites: Map<string, CachedInvite>; vanityCode: string | null; vanityUses: number | null };
@@ -31,12 +30,15 @@ export type JoinInviteResult = {
 	inviterTotal: number | null;
 };
 
-const REWARD_SWEEP_MS = 5 * 60_000;
+const REWARD_SWEEP_MINUTES = 5;
+const REWARD_SWEEP_MS = REWARD_SWEEP_MINUTES * MINUTE_MS;
 const DELETED_INVITE_GRACE_MS = 15_000;
 const JOIN_RESULT_TTL_MS = 60_000;
 const WARMUP_GAP_MS = 750;
-const UNKNOWN_MEMBER_CODES = new Set([10007, 10013]);
-const SERVER_INVITE_CHECK_MS = 30 * 60_000;
+const UNKNOWN_MEMBER_CODES = new Set<number>([RESTJSONErrorCodes.UnknownMember, RESTJSONErrorCodes.UnknownUser]);
+const SERVER_INVITE_CHECK_MINUTES = 30;
+const SERVER_INVITE_CHECK_MS = SERVER_INVITE_CHECK_MINUTES * MINUTE_MS;
+const REWARD_BATCH_SIZE = 50;
 
 const guildStates = new Map<string, GuildInviteState>();
 const guildQueues = new Map<string, Promise<unknown>>();
@@ -164,17 +166,15 @@ async function resolveInviterMember(guild: Guild, serverId: number, discordId: s
 }
 
 async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResult | null> {
-	const guild = member.guild;
+	const { guild } = member;
 	const before = guildStates.get(guild.id) ?? null;
 	const after = await snapshotGuild(guild);
 	if (after) {
 		guildStates.set(guild.id, after);
 	}
 
-	let server: BotServer;
-	try {
-		server = await getServerForCurrentBot(guild.id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild.id).catch(() => null);
+	if (!server) {
 		return null;
 	}
 
@@ -183,7 +183,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 		holdBackUses(after, attribution, extra);
 	}
 
-	let inviterDiscordId = attribution.inviterDiscordId;
+	let { inviterDiscordId } = attribution;
 	let source: string = attribution.source;
 	if (attribution.code && attribution.source === 'invite') {
 		const owners = await db.getInviteLinkOwners(server.id).catch(() => []);
@@ -206,7 +206,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 
 	const settings = await loadInviteSettings(guild.id);
 	const inviter = inviterDiscordId ? await resolveInviterMember(guild, server.id, inviterDiscordId) : null;
-	const accountAgeDays = member.user?.createdTimestamp ? (Date.now() - member.user.createdTimestamp) / 86_400_000 : Infinity;
+	const accountAgeDays = member.user?.createdTimestamp ? (Date.now() - member.user.createdTimestamp) / DAY_MS : Infinity;
 
 	let fakeReason: string | null = null;
 	if (inviterDiscordId && inviterDiscordId === member.id) {
@@ -217,7 +217,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 		fakeReason = 'account_age';
 	}
 
-	const { rejoin } = await db.recordMemberJoinInvite({
+	const { rejoin: isRejoin } = await db.recordMemberJoinInvite({
 		member_id: Number(invitee.id),
 		inviter_member_id: inviter?.id ? Number(inviter.id) : null,
 		code: attribution.code,
@@ -234,7 +234,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 	const storedSource = stored?.source ?? attribution.source;
 	const sourceLabel = storedSource === 'invite' || storedSource === 'personal' ? `${storedSource} code ${stored?.code ?? attribution.code}` : storedSource;
 	await logger.log(
-		`📨 Join attributed: ${member.user?.tag || member.id} → ${storedInviterId ? `inviter ${storedInviterId}` : 'no inviter'} (${sourceLabel}${storedFake ? `, fake: ${storedFake}` : ''}${rejoin ? ', rejoin' : ''})`
+		`📨 Join attributed: ${member.user?.tag || member.id} → ${storedInviterId ? `inviter ${storedInviterId}` : 'no inviter'} (${sourceLabel}${storedFake ? `, fake: ${storedFake}` : ''}${isRejoin ? ', rejoin' : ''})`
 	);
 
 	if (settings.HOLD_HOURS === 0 && storedInviter?.id && !storedFake) {
@@ -247,7 +247,7 @@ async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResu
 		code: stored?.code ?? attribution.code,
 		source: storedSource,
 		fakeReason: storedFake,
-		rejoin,
+		rejoin: isRejoin,
 		inviterTotal
 	};
 }
@@ -275,11 +275,9 @@ export function attributeJoin(member: GuildMember): Promise<JoinInviteResult | n
 }
 
 async function recordLeave(member: GuildMember | PartialGuildMember) {
-	const guild = member.guild;
-	let server: BotServer;
-	try {
-		server = await getServerForCurrentBot(guild.id);
-	} catch (_) {
+	const { guild } = member;
+	const server = await getServerForCurrentBot(guild.id).catch(() => null);
+	if (!server) {
 		return;
 	}
 	const dbMember = await db.getMemberByDiscordId(server.id, member.id, { includeDeleted: true }).catch(() => null);
@@ -318,12 +316,12 @@ async function fetchGuildMember(guild: Guild, discordId: string): Promise<{ memb
 
 async function processGuildRewards(guild: Guild, serverId: number) {
 	const settings = await loadInviteSettings(guild.id);
-	const levelingOn = await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling).catch(() => false);
-	const cutoff = new Date(Date.now() - settings.HOLD_HOURS * 3_600_000);
-	const due = await db.getDueInviteRewards(serverId, cutoff, 50);
+	const isLevelingOn = await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling).catch(() => false);
+	const cutoff = new Date(Date.now() - settings.HOLD_HOURS * HOUR_MS);
+	const due = await db.getDueInviteRewards(serverId, cutoff, REWARD_BATCH_SIZE);
 
 	for (const row of due) {
-		if (!levelingOn || settings.XP <= 0) {
+		if (!isLevelingOn || settings.XP <= 0) {
 			await db.claimInviteReward(Number(row.id), 0);
 			continue;
 		}
@@ -347,7 +345,7 @@ async function processGuildRewards(guild: Guild, serverId: number) {
 		if (!(await db.claimInviteReward(Number(row.id), xp))) {
 			continue;
 		}
-		const awarded = await awardInviteXp(guild, inviter, xp, { multiplier, inviteeName: row.invitee_name ?? null });
+		const awarded = await awardInviteXp(guild, inviter, { xp, meta: { multiplier, inviteeName: row.invitee_name ?? null } });
 		if (!awarded) {
 			await db.releaseInviteReward(Number(row.id));
 		}
@@ -376,7 +374,7 @@ async function sweepRewards() {
 
 export function pickInviteChannel(guild: Guild) {
 	const me = guild.members.me!;
-	const everyone = guild.roles.everyone;
+	const { everyone } = guild.roles;
 	const usable = (channel: GuildBasedChannel | null) =>
 		channel &&
 		(channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) &&
@@ -401,10 +399,8 @@ async function ensureServerInvite(guild: Guild) {
 		return;
 	}
 
-	let server: BotServer;
-	try {
-		server = await getServerForCurrentBot(guild.id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild.id).catch(() => null);
+	if (!server) {
 		return;
 	}
 	const current = (await db.getServer(server.id).catch(() => null))?.invite_code ?? null;

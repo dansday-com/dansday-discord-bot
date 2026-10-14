@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { messageShownIds } from '$lib/messages.js';
 import { globalPanelAccess, logGlobalMessageAction, pruneGlobalMessageFiles, syncGlobalMessagePosts } from '$lib/frontend/globalMessages.server.js';
+import { HTTP } from '$lib/http.js';
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const access = globalPanelAccess(locals);
@@ -13,7 +14,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const { panelId } = access;
 	const messageId = parseInt(params.messageId ?? '');
 	if (isNaN(messageId)) {
-		return json({ ok: false, error: 'Invalid message ID' }, { status: 400 });
+		return json({ ok: false, error: 'Invalid message ID' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	try {
@@ -27,12 +28,12 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		if (usedBy) {
 			return json(
 				{ ok: false, error: `"${usedBy.name}" has a button or dropdown that shows this message. Point it at another message first, then delete this one.` },
-				{ status: 400 }
+				{ status: HTTP.BAD_REQUEST }
 			);
 		}
 
 		const posts = await db.getGlobalMessagePosts(panelId, messageId);
-		const sync = await syncGlobalMessagePosts(locals, panelId, message, false);
+		const sync = await syncGlobalMessagePosts({ locals, panelId }, message, { interactive: false });
 		await db.deleteGlobalMessage(panelId, messageId);
 		await logGlobalMessageAction(
 			locals,
@@ -50,6 +51,6 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		return json({ ok: true, stripped: sync.failed.length === 0 && sync.unreached === 0 });
 	} catch (error) {
 		logger.log(`❌ Error deleting global message: ${(error as Error).message}`);
-		return json({ ok: false, error: 'Could not delete the message. Try again in a moment.' }, { status: 500 });
+		return json({ ok: false, error: 'Could not delete the message. Try again in a moment.' }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

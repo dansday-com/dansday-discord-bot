@@ -54,7 +54,7 @@ test('moderateEach posts once per member and reports what happened to each', asy
 	}) as typeof fetch;
 	try {
 		const progress: number[] = [];
-		const result = await moderateEach(7, ['1', '2', '3', '4'], { action: 'warn', reason: 'Spam' }, (done) => progress.push(done));
+		const result = await moderateEach(7, ['1', '2', '3', '4'], { body: { action: 'warn', reason: 'Spam' }, onprogress: (done) => progress.push(done) });
 		assert.deepEqual(result, { done: 2, failed: 2, failedIds: ['3', '4'], escalated: 1, error: 'No permission' });
 		assert.deepEqual(progress, [1, 2, 3, 4]);
 		assert.deepEqual(
@@ -68,5 +68,5 @@ test('moderateEach posts once per member and reports what happened to each', asy
 });
 
 test('moderateEach with nobody selected does nothing', async () => {
-	assert.deepEqual(await moderateEach(7, [], { action: 'warn' }), { done: 0, failed: 0, failedIds: [], escalated: 0, error: null });
+	assert.deepEqual(await moderateEach(7, [], { body: { action: 'warn' } }), { done: 0, failed: 0, failedIds: [], escalated: 0, error: null });
 });

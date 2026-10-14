@@ -1,3 +1,4 @@
+import { DAY_SECONDS, HOUR_SECONDS, SECONDS_PER_MINUTE } from '../utils/time.js';
 export const MODERATION_ACTION_META: Record<string, { label: string; icon: string; color: string }> = {
 	warn: { label: 'Warn', icon: 'fa-triangle-exclamation', color: 'text-amber-400' },
 	timeout: { label: 'Timeout', icon: 'fa-volume-xmark', color: 'text-orange-400' },
@@ -25,31 +26,28 @@ export function formatDuration(seconds: number | null | undefined): string | nul
 	if (!seconds) {
 		return null;
 	}
-	const d = Math.floor(seconds / 86400);
-	const h = Math.floor((seconds % 86400) / 3600);
-	const m = Math.floor((seconds % 3600) / 60);
+	const d = Math.floor(seconds / DAY_SECONDS);
+	const h = Math.floor((seconds % DAY_SECONDS) / HOUR_SECONDS);
+	const m = Math.floor((seconds % HOUR_SECONDS) / SECONDS_PER_MINUTE);
 	return [d && `${d}d`, h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ') || `${seconds}s`;
 }
 
 export function splitDuration(seconds: number | null | undefined): { amount: number; unit: string } {
 	const s = Number(seconds) || 0;
-	if (s > 0 && s % 86400 === 0) {
-		return { amount: s / 86400, unit: '86400' };
+	if (s > 0 && s % DAY_SECONDS === 0) {
+		return { amount: s / DAY_SECONDS, unit: '86400' };
 	}
-	if (s > 0 && s % 3600 === 0) {
-		return { amount: s / 3600, unit: '3600' };
+	if (s > 0 && s % HOUR_SECONDS === 0) {
+		return { amount: s / HOUR_SECONDS, unit: '3600' };
 	}
-	return { amount: Math.max(1, Math.round(s / 60)), unit: '60' };
+	return { amount: Math.max(1, Math.round(s / SECONDS_PER_MINUTE)), unit: '60' };
 }
 
 export type ModerateEachResult = { done: number; failed: number; failedIds: string[]; escalated: number; error: string | null };
 
-export async function moderateEach(
-	serverId: number | string,
-	targetIds: string[],
-	body: Record<string, unknown>,
-	onprogress?: (done: number) => void
-): Promise<ModerateEachResult> {
+type BulkRequest = { body: Record<string, unknown>; onprogress?: (done: number) => void };
+
+export async function moderateEach(serverId: number | string, targetIds: string[], { body, onprogress }: BulkRequest): Promise<ModerateEachResult> {
 	const result: ModerateEachResult = { done: 0, failed: 0, failedIds: [], escalated: 0, error: null };
 	for (const [index, targetId] of targetIds.entries()) {
 		try {

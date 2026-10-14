@@ -10,6 +10,14 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PageProps } from './$types';
 	import { md, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
+	import { PERCENT, roundTo } from '$lib/utils/numbers.js';
+
+	const PODIUM_SIZE = 3;
+	const PODIUM_VALUE_LONG_CHARS = 12;
+	const PODIUM_VALUE_MEDIUM_CHARS = 9;
+	const EASE_OUT_POWER = 4;
+	const CHAMPION_AVATAR_PX = 84;
+	const PODIUM_AVATAR_PX = 66;
 
 	let { data }: PageProps = $props();
 
@@ -38,14 +46,16 @@
 		{ id: 'week', label: 'This week' }
 	];
 
-	const tabPrefetch = new Map<string, any[]>();
+	type Row = (typeof data.rows)[number];
+
+	const tabPrefetch = new Map<string, Row[]>();
 	const prefetchKey = (m: Metric, p: Period) => `${m}:${p}`;
 
 	let metric = $state<Metric>(data.metric);
 	let period = $state<Period>(data.period);
 	let rows = $state(data.rows);
 	let es: EventSource | null = null;
-	let streamConnected = $state(false);
+	let isStreamConnected = $state(false);
 
 	const isVoiceGroup = $derived(VOICE_METRICS.includes(metric));
 	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
@@ -58,15 +68,15 @@
 	const isGiftGroup = $derived(GIFT_METRICS.includes(metric));
 	const isInvites = $derived(metric === 'invites');
 
-	const top3 = $derived(rows.slice(0, 3));
-	const rest = $derived(rows.slice(3));
+	const top3 = $derived(rows.slice(0, PODIUM_SIZE));
+	const rest = $derived(rows.slice(PODIUM_SIZE));
 	const maxValue = $derived(Math.max(1, ...rows.map((r) => metricValueNumber(r, metric))));
 
 	let anim = $state<Record<string, number>>({});
 	let animKey = $state('');
 	let raf: number | null = null;
 	const tabKey = $derived(`${metric}|${period}`);
-	let mounted = $state(false);
+	let isMounted = $state(false);
 
 	function cleanName(s: string): string {
 		return s.replace(/^\s*(\[AFK\]\s*)+/gi, '').trim();
@@ -82,12 +92,12 @@
 		return normalizeAccent(r.theme_accent);
 	}
 
-	function metricValueNumber(r: unknown, m: string) {
+	function metricValueNumber(r: Row, m: string) {
 		const n = rawMetricValue(r, m);
 		return Number.isFinite(n) ? n : 0;
 	}
 
-	function rawMetricValue(r: any, m: string) {
+	function rawMetricValue(r: Row, m: string) {
 		if (m === 'chat') {
 			return Number(r.chat_total || 0);
 		}
@@ -165,22 +175,22 @@
 			return safe.toFixed(2);
 		}
 		if (isRateMetric(m)) {
-			return (Math.round(safe * 10) / 10).toLocaleString();
+			return roundTo(safe, 1).toLocaleString();
 		}
 		return Math.round(safe).toLocaleString();
 	}
 
-	function metricValueAnimated(r: any, m: string) {
+	function metricValueAnimated(r: Row, m: string) {
 		const live = animKey === tabKey ? anim[r.discord_member_id] : undefined;
 		return formatMetric(live ?? metricValueNumber(r, m), m);
 	}
 
-	function podiumValueSize(r: unknown, m: string) {
+	function podiumValueSize(r: Row, m: string) {
 		const len = formatMetric(metricValueNumber(r, m), m).length;
-		if (len > 12) {
+		if (len > PODIUM_VALUE_LONG_CHARS) {
 			return 'text-[12px]';
 		}
-		if (len > 9) {
+		if (len > PODIUM_VALUE_MEDIUM_CHARS) {
 			return 'text-[15px]';
 		}
 		return 'text-lg';
@@ -205,7 +215,7 @@
 		return 'xp';
 	}
 
-	function itemsSub(r: any, m: string) {
+	function itemsSub(r: Row, m: string) {
 		if (m.startsWith('minigames_color_')) {
 			const total = Number(r.minigame_total || 0);
 			const games = `${total} game${total === 1 ? '' : 's'}`;
@@ -246,16 +256,16 @@
 		return '';
 	}
 
-	function rowSub(r: any) {
+	function rowSub(r: Row) {
 		return isItemsGroup || isMinigamesGroup || isInvites ? itemsSub(r, metric) : `Level ${r.level ?? 0}`;
 	}
 
-	function barWidthPct(r: any, m: string) {
+	function barWidthPct(r: Row, m: string) {
 		const v = metricValueNumber(r, m);
 		if (v <= 0) {
 			return 0;
 		}
-		return Math.max(1, Math.round((v / maxValue) * 100));
+		return Math.max(1, Math.round((v / maxValue) * PERCENT));
 	}
 
 	function animateToCurrentValues() {
@@ -267,7 +277,7 @@
 		const sameTab = animKey === key;
 		const start = performance.now();
 		const targets: Record<string, number> = {};
-		for (const r of rows as any[]) {
+		for (const r of rows) {
 			targets[r.discord_member_id] = metricValueNumber(r, metric);
 		}
 		const initial: Record<string, number> = {};
@@ -279,7 +289,7 @@
 
 		const tick = (now: number) => {
 			const t = Math.min(1, (now - start) / duration);
-			const e = 1 - Math.pow(1 - t, 4);
+			const e = 1 - (1 - t) ** EASE_OUT_POWER;
 			const next: Record<string, number> = {};
 			for (const [id, target] of Object.entries(targets)) {
 				const a = initial[id] ?? 0;
@@ -303,7 +313,7 @@
 		es = myEs;
 		myEs.onopen = () => {
 			if (es === myEs) {
-				streamConnected = true;
+				isStreamConnected = true;
 			}
 		};
 		myEs.onmessage = (e) => {
@@ -323,15 +333,15 @@
 			if (es !== myEs) {
 				return;
 			}
-			streamConnected = false;
+			isStreamConnected = false;
 		};
 	}
 
 	onMount(() => {
 		tabPrefetch.set(prefetchKey(data.metric, data.period), data.rows);
-		anim = Object.fromEntries((rows as Record<string, unknown>[]).map((r) => [r.discord_member_id, metricValueNumber(r, metric)]));
+		anim = Object.fromEntries(rows.map((r) => [r.discord_member_id, metricValueNumber(r, metric)]));
 		animKey = tabKey;
-		mounted = true;
+		isMounted = true;
 		return onFirstInteraction(() => {
 			const prefetchPeriod = period;
 			for (const m of METRICS) {
@@ -496,24 +506,24 @@
 	);
 
 	const podiumOrder = $derived(
-		top3.length >= 3
+		top3.length >= PODIUM_SIZE
 			? [
 					{ r: top3[1], rank: 2 },
 					{ r: top3[0], rank: 1 },
 					{ r: top3[2], rank: 3 }
 				]
-			: top3.map((r: any, i: number) => ({ r, rank: i + 1 }))
+			: top3.map((r, i) => ({ r, rank: i + 1 }))
 	);
 
 	const linkEmbed = $derived.by(() => {
 		const medals = ['🥇', '🥈', '🥉'];
-		const lines = top3.map((r: Record<string, unknown>, i: number) => {
+		const lines = top3.map((r, i) => {
 			const sub = rowSub(r);
 			return `${medals[i]} **${md(displayName(r))}** · ${formatMetric(metricValueNumber(r, metric), metric)} ${metricUnit(metric)}${sub ? ` · ${md(sub)}` : ''}`;
 		});
 		const query = metric !== 'xp' || period !== 'all' ? `?metric=${metric}&period=${period}` : '';
 		const periodLabel = PERIODS.find((p) => p.id === period)?.label ?? '';
-		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl + query, `Leaderboard · ${periodLabel}`, lines);
+		return serverLinkEmbed({ ...data.server, name: serverName }, { url: data.canonicalUrl + query, subtitle: `Leaderboard · ${periodLabel}`, lines });
 	});
 </script>
 
@@ -536,7 +546,7 @@
 		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">
 			{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}
 		</span>
-		{#if streamConnected}
+		{#if isStreamConnected}
 			<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent gap-1.5 font-semibold">
 				<span class="bg-primary size-1.5 animate-pulse rounded-full" aria-hidden="true"></span>
 				Live
@@ -567,7 +577,7 @@
 		<div class="flex items-end justify-center">
 			{#each podiumOrder as { r, rank }}
 				<div
-					class="relative isolate flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {mounted
+					class="relative isolate flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {isMounted
 						? 'translate-y-0 opacity-100'
 						: 'translate-y-6 opacity-0'}"
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
@@ -585,7 +595,7 @@
 					{/if}
 
 					<div class="mb-2.5">
-						<RankAvatar src={r.avatar} name={displayName(r)} size={rank === 1 ? 84 : 66} {rank} badge />
+						<RankAvatar src={r.avatar} name={displayName(r)} size={rank === 1 ? CHAMPION_AVATAR_PX : PODIUM_AVATAR_PX} {rank} badge />
 					</div>
 
 					<div class="mb-2 w-full min-w-0 overflow-hidden px-1 text-center">
@@ -649,7 +659,7 @@
 					class="list-row border-base-300 relative isolate items-center gap-3 rounded-none border-b px-3 py-2.5 sm:px-4"
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
 				>
-					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>
+					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + PODIUM_SIZE + 1}</span>
 
 					<div class="border-base-300 bg-base-300 size-10 shrink-0 overflow-hidden rounded-full border">
 						{#if r.avatar}

@@ -3,8 +3,10 @@ import { deleteObject, getObject, listObjectKeys, publicUrl, putObject } from '.
 import { imageContentType } from '../../images.js';
 import { uploadTimestampMs } from './uploadStore.js';
 import { MESSAGE_UPLOAD_ROOTS, MESSAGE_VIDEO_TYPES, isMessageUploadKey, type MessageOwner } from '../../messages.js';
+import { DAY_MS } from '../../utils/time.js';
 
-const UNSAVED_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const UNSAVED_MAX_AGE_MS = DAY_MS;
+const KEY_RANDOM_BYTES = 12;
 
 function folder(owner: MessageOwner): string {
 	const id = Math.trunc(Number(owner.id));
@@ -22,7 +24,7 @@ function assertKey(key: string): string {
 }
 
 export function messageFileKey(owner: MessageOwner, extension: string): string {
-	return assertKey(`${folder(owner)}/${Date.now()}-${randomBytes(12).toString('hex')}.${extension}`);
+	return assertKey(`${folder(owner)}/${Date.now()}-${randomBytes(KEY_RANDOM_BYTES).toString('hex')}.${extension}`);
 }
 
 export function messageFileKeyFor(owner: MessageOwner, filename: string): string {

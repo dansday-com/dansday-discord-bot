@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
-import type { S3Client } from '@aws-sdk/client-s3';
+import type { ListObjectsV2CommandOutput, S3Client } from '@aws-sdk/client-s3';
+import { attemptSync } from '../../utils/attempt.js';
+import { HTTP } from '../../http.js';
 
 type S3Settings = {
 	bucket: string;
@@ -15,7 +17,7 @@ type S3Settings = {
 
 const localRoot = join(process.cwd(), 'data');
 
-let cachedSettings: S3Settings | null | undefined;
+let cachedSettings: S3Settings | null | undefined = undefined;
 let cachedClient: Promise<S3Client> | null = null;
 
 function env(name: string): string {
@@ -94,9 +96,10 @@ function remoteKey(settings: S3Settings, key: string): string {
 	return settings.prefix ? `${settings.prefix}/${cleaned}` : cleaned;
 }
 
-function isMissing(error: any): boolean {
-	const status = error?.$metadata?.httpStatusCode;
-	return status === 404 || error?.name === 'NoSuchKey' || error?.name === 'NotFound' || error?.Code === 'NoSuchKey';
+function isMissing(error: unknown): boolean {
+	const e = error as { $metadata?: { httpStatusCode?: number }; name?: string; Code?: string } | null | undefined;
+	const status = e?.$metadata?.httpStatusCode;
+	return status === HTTP.NOT_FOUND || e?.name === 'NoSuchKey' || e?.name === 'NotFound' || e?.Code === 'NoSuchKey';
 }
 
 export async function putObject(key: string, data: Buffer, contentType: string): Promise<void> {
@@ -179,13 +182,11 @@ export async function deleteObject(key: string): Promise<void> {
 
 function listLocalKeys(dir: string, prefix: string): string[] {
 	const out: string[] = [];
-	let entries: string[];
-	try {
-		entries = readdirSync(dir);
-	} catch {
+	const listed = attemptSync(() => readdirSync(dir));
+	if (!listed.ok) {
 		return out;
 	}
-	for (const name of entries) {
+	for (const name of listed.value) {
 		const full = join(dir, name);
 		try {
 			const stat = statSync(full);
@@ -216,10 +217,12 @@ export async function listObjectKeys(folder: string): Promise<string[]> {
 	const scope = remoteKey(settings, cleaned);
 	const strip = settings.prefix ? settings.prefix.length + 1 : 0;
 	const keys: string[] = [];
-	let token: string | undefined;
+	let token: string | undefined = undefined;
 
 	do {
-		const result = await client.send(new ListObjectsV2Command({ Bucket: settings.bucket, Prefix: `${scope}/`, ContinuationToken: token }));
+		const result: ListObjectsV2CommandOutput = await client.send(
+			new ListObjectsV2Command({ Bucket: settings.bucket, Prefix: `${scope}/`, ContinuationToken: token })
+		);
 		for (const item of result.Contents ?? []) {
 			if (!item.Key || item.Key.endsWith('/')) {
 				continue;

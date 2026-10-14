@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } from 'discord.js';
 import { getEmbedConfig, getLevelingSettings, getServerForCurrentBot, DEFAULT_LEVELING_SETTINGS, publicSiteOrigin } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import db from '../../../../../database.js';
@@ -13,6 +13,9 @@ export const INVITE_SLUG_BUTTON_ID = 'invites_slug';
 export const INVITE_SLUG_MODAL_ID = 'invites_slug_modal';
 const SLUG_INPUT_ID = 'invites_slug_value';
 const SLUG_ATTEMPTS = 50;
+const SLUG_SUFFIX_RESERVE = 6;
+const RANDOM_SUFFIX_RADIX = 36;
+const RANDOM_SUFFIX_LENGTH = 5;
 
 async function isServerSlug(slug: string): Promise<boolean> {
 	const servers = await listSluggedPublicServers().catch(() => []);
@@ -28,7 +31,7 @@ async function claimSlug(memberId: number, slug: string): Promise<boolean> {
 
 async function claimDefaultSlug(memberId: number, name: string): Promise<string | null> {
 	let base = normalizeInviteSlug(name)
-		.slice(0, INVITE_SLUG_MAX - 6)
+		.slice(0, INVITE_SLUG_MAX - SLUG_SUFFIX_RESERVE)
 		.replace(/-+$/, '');
 	if (base.length < INVITE_SLUG_MIN) {
 		base = base ? `${base}-member` : 'member';
@@ -39,11 +42,17 @@ async function claimDefaultSlug(memberId: number, name: string): Promise<string 
 			return candidate;
 		}
 	}
-	const fallback = `${base}-${Math.random().toString(36).slice(2, 7)}`;
+	const fallback = `${base}-${Math.random()
+		.toString(RANDOM_SUFFIX_RADIX)
+		.slice(2, 2 + RANDOM_SUFFIX_LENGTH)}`;
 	return (await claimSlug(memberId, fallback)) ? fallback : null;
 }
 
-async function ensurePersonalInvite(guild: Guild, member: any, userTag: string): Promise<{ code: string; slug: string | null } | null> {
+async function ensurePersonalInvite(
+	guild: Guild,
+	member: { id: number | string; username?: string | null; display_name?: string | null },
+	userTag: string
+): Promise<{ code: string; slug: string | null } | null> {
 	const memberId = Number(member.id);
 	const stored = await db.getMemberInviteLink(memberId).catch(() => null);
 	let code: string | null = null;
@@ -75,7 +84,7 @@ function joinUrl(link: { code: string; slug: string | null }) {
 }
 
 async function buildInvitesView(interaction: RepliableInteraction<'cached'>) {
-	const guild = interaction.guild;
+	const { guild } = interaction;
 	const g = guild.id;
 	const u = interaction.user.id;
 
@@ -99,32 +108,34 @@ async function buildInvitesView(interaction: RepliableInteraction<'cached'>) {
 	]);
 
 	const embedConfig = await getEmbedConfig(g);
-	const hold = settings.HOLD_HOURS > 0 ? await translate('invites.hold', g, u, { hours: settings.HOLD_HOURS }) : '';
-	const staffNote = reward.multiplier > 1 ? `\n${await translate('invites.staffNote', g, u, { multiplier: reward.multiplier })}` : '';
+	const hold = settings.HOLD_HOURS > 0 ? await translate('invites.hold', { guildId: g, userId: u }, { hours: settings.HOLD_HOURS }) : '';
+	const staffNote = reward.multiplier > 1 ? `\n${await translate('invites.staffNote', { guildId: g, userId: u }, { multiplier: reward.multiplier })}` : '';
 	const sharePercent = settings.SHARE_PERCENT * reward.multiplier;
-	const shareLine = sharePercent > 0 ? `\n${await translate('invites.share', g, u, { percent: sharePercent })}` : '';
-	const rewardLine = `${await translate('invites.reward', g, u, { xp: reward.xp.toLocaleString(), hold })}${staffNote}${shareLine}`;
-	const linkLine = link ? await translate('invites.link', g, u, { url: joinUrl(link) }) : await translate('invites.noLink', g, u);
+	const shareLine = sharePercent > 0 ? `\n${await translate('invites.share', { guildId: g, userId: u }, { percent: sharePercent })}` : '';
+	const rewardLine = `${await translate('invites.reward', { guildId: g, userId: u }, { xp: reward.xp.toLocaleString(), hold })}${staffNote}${shareLine}`;
+	const linkLine = link
+		? await translate('invites.link', { guildId: g, userId: u }, { url: joinUrl(link) })
+		: await translate('invites.noLink', { guildId: g, userId: u });
 
 	const fields = [
-		{ name: await translate('invites.fields.total', g, u), value: stats.total.toLocaleString(), inline: true },
-		{ name: await translate('invites.fields.active', g, u), value: stats.active.toLocaleString(), inline: true },
-		{ name: await translate('invites.fields.left', g, u), value: stats.left.toLocaleString(), inline: true },
-		{ name: await translate('invites.fields.fake', g, u), value: stats.fake.toLocaleString(), inline: true },
-		{ name: await translate('invites.fields.bonus', g, u), value: stats.bonus.toLocaleString(), inline: true },
-		{ name: await translate('invites.fields.xp', g, u), value: stats.xp.toLocaleString(), inline: true },
-		{ name: await translate('invites.fields.shareXp', g, u), value: stats.share_xp.toLocaleString(), inline: true }
+		{ name: await translate('invites.fields.total', { guildId: g, userId: u }), value: stats.total.toLocaleString(), inline: true },
+		{ name: await translate('invites.fields.active', { guildId: g, userId: u }), value: stats.active.toLocaleString(), inline: true },
+		{ name: await translate('invites.fields.left', { guildId: g, userId: u }), value: stats.left.toLocaleString(), inline: true },
+		{ name: await translate('invites.fields.fake', { guildId: g, userId: u }), value: stats.fake.toLocaleString(), inline: true },
+		{ name: await translate('invites.fields.bonus', { guildId: g, userId: u }), value: stats.bonus.toLocaleString(), inline: true },
+		{ name: await translate('invites.fields.xp', { guildId: g, userId: u }), value: stats.xp.toLocaleString(), inline: true },
+		{ name: await translate('invites.fields.shareXp', { guildId: g, userId: u }), value: stats.share_xp.toLocaleString(), inline: true }
 	];
 	if (stats.pending > 0) {
-		fields.push({ name: await translate('invites.fields.pending', g, u), value: stats.pending.toLocaleString(), inline: true });
+		fields.push({ name: await translate('invites.fields.pending', { guildId: g, userId: u }), value: stats.pending.toLocaleString(), inline: true });
 	}
 	if (inviter?.inviter_discord_id) {
-		fields.push({ name: await translate('invites.fields.invitedBy', g, u), value: `<@${inviter.inviter_discord_id}>`, inline: true });
+		fields.push({ name: await translate('invites.fields.invitedBy', { guildId: g, userId: u }), value: `<@${inviter.inviter_discord_id}>`, inline: true });
 	}
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('invites.title', g, u))
+		.setTitle(await translate('invites.title', { guildId: g, userId: u }))
 		.setDescription(`${rewardLine}\n\n${linkLine}`)
 		.addFields(fields)
 		.setFooter({ text: embedConfig.FOOTER })
@@ -134,12 +145,12 @@ async function buildInvitesView(interaction: RepliableInteraction<'cached'>) {
 	if (link) {
 		row.addComponents(
 			new ButtonBuilder()
-				.setLabel(await translate('invites.copyButton', g, u))
+				.setLabel(await translate('invites.copyButton', { guildId: g, userId: u }))
 				.setURL(joinUrl(link))
 				.setStyle(ButtonStyle.Link),
 			new ButtonBuilder()
 				.setCustomId(INVITE_SLUG_BUTTON_ID)
-				.setLabel(await translate('invites.customizeButton', g, u))
+				.setLabel(await translate('invites.customizeButton', { guildId: g, userId: u }))
 				.setStyle(ButtonStyle.Secondary)
 		);
 	}
@@ -156,13 +167,13 @@ export async function handleInvitesButton(interaction: ButtonInteraction<'cached
 		await interaction.deferUpdate();
 		const view = await buildInvitesView(interaction);
 		if (!view) {
-			await interaction.followUp({ content: await translate('common.errors.memberNotFound', g, u), flags: 64 });
+			await interaction.followUp({ content: await translate('common.errors.memberNotFound', { guildId: g, userId: u }), flags: MessageFlags.Ephemeral });
 			return;
 		}
 		await interaction.editReply(view);
 	} catch (error) {
 		await logger.log(`❌ Invites menu error: ${(error as Error).message}`);
-		await interaction.followUp({ content: await translate('invites.error', g, u), flags: 64 }).catch(() => null);
+		await interaction.followUp({ content: await translate('invites.error', { guildId: g, userId: u }), flags: MessageFlags.Ephemeral }).catch(() => null);
 	}
 }
 
@@ -175,7 +186,7 @@ export async function handleInviteSlugButton(interaction: MessageComponentIntera
 
 	const input = new TextInputBuilder()
 		.setCustomId(SLUG_INPUT_ID)
-		.setLabel(await translate('invites.slugLabel', g, u, { min: INVITE_SLUG_MIN, max: INVITE_SLUG_MAX }))
+		.setLabel(await translate('invites.slugLabel', { guildId: g, userId: u }, { min: INVITE_SLUG_MIN, max: INVITE_SLUG_MAX }))
 		.setStyle(TextInputStyle.Short)
 		.setMinLength(INVITE_SLUG_MIN)
 		.setMaxLength(INVITE_SLUG_MAX)
@@ -186,7 +197,7 @@ export async function handleInviteSlugButton(interaction: MessageComponentIntera
 
 	const modal = new ModalBuilder()
 		.setCustomId(INVITE_SLUG_MODAL_ID)
-		.setTitle(await translate('invites.slugTitle', g, u))
+		.setTitle(await translate('invites.slugTitle', { guildId: g, userId: u }))
 		.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
 	await interaction.showModal(modal);
 }
@@ -194,11 +205,11 @@ export async function handleInviteSlugButton(interaction: MessageComponentIntera
 export async function handleInviteSlugModal(interaction: ModalSubmitInteraction<'cached'>) {
 	const g = interaction.guild.id;
 	const u = interaction.user.id;
-	await interaction.deferReply({ flags: 64 });
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 	const slug = normalizeInviteSlug(interaction.fields.getTextInputValue(SLUG_INPUT_ID));
 	if (!isValidInviteSlug(slug)) {
-		await interaction.editReply({ content: await translate('invites.slugInvalid', g, u, { min: INVITE_SLUG_MIN, max: INVITE_SLUG_MAX }) });
+		await interaction.editReply({ content: await translate('invites.slugInvalid', { guildId: g, userId: u }, { min: INVITE_SLUG_MIN, max: INVITE_SLUG_MAX }) });
 		return;
 	}
 
@@ -206,21 +217,21 @@ export async function handleInviteSlugModal(interaction: ModalSubmitInteraction<
 	const dbMember = await db.getMemberByDiscordId(server.id, u).catch(() => null);
 	const link = dbMember?.id ? await db.getMemberInviteLink(Number(dbMember.id)).catch(() => null) : null;
 	if (!dbMember?.id || !link) {
-		await interaction.editReply({ content: await translate('invites.noLink', g, u) });
+		await interaction.editReply({ content: await translate('invites.noLink', { guildId: g, userId: u }) });
 		return;
 	}
 
 	if (link.slug !== slug && !(await claimSlug(Number(dbMember.id), slug))) {
-		await interaction.editReply({ content: await translate('invites.slugTaken', g, u, { slug }) });
+		await interaction.editReply({ content: await translate('invites.slugTaken', { guildId: g, userId: u }, { slug }) });
 		return;
 	}
 
 	const url = `${publicSiteOrigin()}${inviteJoinPath(slug)}`;
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder()
-			.setLabel(await translate('invites.copyButton', g, u))
+			.setLabel(await translate('invites.copyButton', { guildId: g, userId: u }))
 			.setURL(url)
 			.setStyle(ButtonStyle.Link)
 	);
-	await interaction.editReply({ content: await translate('invites.slugSaved', g, u, { url }), components: [row] });
+	await interaction.editReply({ content: await translate('invites.slugSaved', { guildId: g, userId: u }, { url }), components: [row] });
 }

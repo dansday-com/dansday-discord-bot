@@ -11,7 +11,7 @@ const PRESENCE_POLL_MS = 30_000;
 let presencePollTimer: ReturnType<typeof setInterval> | null = null;
 let singletonLock: BotSingletonLock | null = null;
 
-let BOT_TOKEN: string | undefined;
+let BOT_TOKEN: string | null = null;
 (async () => {
 	await initializeConfig();
 	BOT_TOKEN = getBotToken('selfbot');
@@ -20,7 +20,7 @@ let BOT_TOKEN: string | undefined;
 	process.exit(1);
 });
 
-const BOT_ID = process.env.BOT_ID;
+const { BOT_ID } = process.env;
 const client = new Client({
 	makeCache: Options.cacheWithLimits({
 		...Options.defaultMakeCacheSettings,
@@ -37,15 +37,15 @@ const client = new Client({
 	})
 });
 
-let initialized = false;
+let isInitialized = false;
 
 client.on('ready', async () => {
 	logger.info('Self-bot logged in', { userTag: client.user?.tag });
 
-	if (initialized) {
+	if (isInitialized) {
 		return;
 	}
-	initialized = true;
+	isInitialized = true;
 
 	if (!BOT_TOKEN) {
 		await initializeConfig();

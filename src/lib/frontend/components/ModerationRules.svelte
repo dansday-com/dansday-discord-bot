@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HOUR_SECONDS } from '$lib/utils/time.js';
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { DURATION_UNITS, MODERATION_ACTION_META, splitDuration } from '$lib/frontend/moderation.js';
@@ -29,11 +30,11 @@
 	let steps = $state<StepDraft[]>([]);
 	let presets = $state<string[]>([]);
 	let newPreset = $state('');
-	let busy = $state(false);
+	let isBusy = $state(false);
 
 	$effect(() => {
 		expiryDays = rules.warn_expiry_days;
-		steps = rules.escalation.map((s) => ({ warns: s.warns, action: s.action, ...splitDuration(s.duration_seconds ?? 3600) }));
+		steps = rules.escalation.map((s) => ({ warns: s.warns, action: s.action, ...splitDuration(s.duration_seconds ?? HOUR_SECONDS) }));
 		presets = [...rules.reason_presets];
 	});
 
@@ -56,7 +57,7 @@
 	}
 
 	async function save() {
-		busy = true;
+		isBusy = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation/rules`, {
 				method: 'POST',
@@ -79,7 +80,7 @@
 			showToast('Rules saved', 'success');
 			await onsaved?.();
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 </script>
@@ -193,8 +194,8 @@
 <button
 	type="button"
 	onclick={save}
-	disabled={busy}
+	disabled={isBusy}
 	class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50 sm:w-auto"
 >
-	<i class="fas {busy ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>Save rules
+	<i class="fas {isBusy ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>Save rules
 </button>

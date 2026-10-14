@@ -4,13 +4,14 @@ import { fileURLToPath } from 'url';
 import { DEFAULT_SERVER_LANGUAGE, SERVER_LANGUAGE_CODES } from './languages.js';
 
 const LOCALES_PATH = 'src/lib/backend/bots/official-bot/locales';
+const MAX_PARENT_DEPTH = 24;
 const moduleDir = dirname(fileURLToPath(import.meta.url));
-const translations = new Map<string, Record<string, any>>();
+const translations = new Map<string, Record<string, unknown>>();
 
 function resolveLocalesDir(): string | null {
 	const candidates = [join(moduleDir, 'backend/bots/official-bot/locales')];
 	let dir = moduleDir;
-	for (let i = 0; i < 24; i++) {
+	for (let i = 0; i < MAX_PARENT_DEPTH; i++) {
 		candidates.push(join(dir, LOCALES_PATH));
 		const parent = dirname(dir);
 		if (parent === dir) {
@@ -41,9 +42,9 @@ function loadTranslations() {
 loadTranslations();
 
 function lookup(lang: string, keys: string[]): unknown {
-	let value: any = translations.get(lang);
+	let value: unknown = translations.get(lang);
 	for (const k of keys) {
-		value = value?.[k];
+		value = value != null && typeof value === 'object' ? (value as Record<string, unknown>)[k] : undefined;
 		if (value == null || value === '') {
 			return undefined;
 		}
@@ -51,7 +52,7 @@ function lookup(lang: string, keys: string[]): unknown {
 	return value;
 }
 
-export function localeValue(key: string, lang: string = DEFAULT_SERVER_LANGUAGE): any {
+export function localeValue(key: string, lang: string = DEFAULT_SERVER_LANGUAGE): unknown {
 	if (!key) {
 		return undefined;
 	}
@@ -59,25 +60,25 @@ export function localeValue(key: string, lang: string = DEFAULT_SERVER_LANGUAGE)
 	return lookup(lang, keys) ?? lookup(DEFAULT_SERVER_LANGUAGE, keys);
 }
 
-export function t(key: string, lang: string = DEFAULT_SERVER_LANGUAGE, params: Record<string, any> = {}): any {
+export function t(key: string, lang: string = DEFAULT_SERVER_LANGUAGE, params: Record<string, unknown> = {}): string {
 	if (!key) {
 		return '';
 	}
-	let value = localeValue(key, lang);
+	const value = localeValue(key, lang);
 	if (value === undefined) {
 		return key;
 	}
-
-	if (typeof value === 'string') {
-		value = value.replace(/\\n/g, '\n');
-		if (Object.keys(params).length > 0) {
-			value = value.replace(/\{(\w+)\}/g, (_match: string, paramKey: string) => {
-				return params[paramKey] !== undefined ? String(params[paramKey]) : _match;
-			});
-		}
+	if (typeof value !== 'string') {
+		return String(value);
 	}
 
-	return value;
+	const text = value.replace(/\\n/g, '\n');
+	if (Object.keys(params).length === 0) {
+		return text;
+	}
+	return text.replace(/\{(\w+)\}/g, (_match: string, paramKey: string) => {
+		return params[paramKey] !== undefined ? String(params[paramKey]) : _match;
+	});
 }
 
 export function loadedLocales(): string[] {

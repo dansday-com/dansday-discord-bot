@@ -3,12 +3,14 @@ import { aiImageEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { postJson, resolveToolUrl } from './aiToolHttp.js';
 import type { AiInput } from '../../../../database.js';
+import { BYTES_PER_MB } from '../../../../utils/numbers.js';
 
 const IMAGE_PATH = '/images/generations';
 
 const IMAGE_TIMEOUT_MS = 120_000;
 const IMAGE_SIZE = '512x512';
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_MB = 8;
+const MAX_IMAGE_BYTES = MAX_IMAGE_MB * BYTES_PER_MB;
 
 const FLAGGED_RE = /flagged|moderation|safety|nsfw|content[\s_-]?polic|prohibited|not[\s_-]allowed/i;
 
@@ -41,8 +43,7 @@ export async function runImageTool(config: AiInput, args: Record<string, unknown
 
 	try {
 		const payload = await postJson(
-			resolveToolUrl(endpoint.api_url, IMAGE_PATH),
-			endpoint.api_key,
+			{ url: resolveToolUrl(endpoint.api_url, IMAGE_PATH), apiKey: endpoint.api_key },
 			{ model: endpoint.model, prompt, size: IMAGE_SIZE, n: 1, response_format: 'b64_json' },
 			IMAGE_TIMEOUT_MS
 		);

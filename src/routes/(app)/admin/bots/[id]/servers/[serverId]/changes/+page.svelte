@@ -99,7 +99,7 @@
 						{#if log.role}
 							<span class="rounded px-1.5 py-0.5 text-xs {ROLE_CLASS[log.role]}">{log.role}</span>
 						{/if}
-						<span class="text-ash-500 text-xs sm:ml-auto"><LocalTime value={log.created_at} includeSeconds class="inline" /></span>
+						<span class="text-ash-500 text-xs sm:ml-auto"><LocalTime value={log.created_at} precision="second" class="inline" /></span>
 					</div>
 					<ul class="mt-2 space-y-1.5">
 						{#each log.changes as change, i (i)}

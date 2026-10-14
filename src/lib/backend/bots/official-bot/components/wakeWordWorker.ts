@@ -12,10 +12,18 @@ const MEL_STRIDE_FRAMES = 8;
 const MEL_BUFFER_MAX_FRAMES = 970;
 const EMBEDDING_DIM = 96;
 const FEATURE_BUFFER_MAX_ROWS = 120;
-const RAW_BUFFER_MAX_SAMPLES = SAMPLE_RATE * 10;
+const RAW_BUFFER_SECONDS = 10;
+const RAW_BUFFER_MAX_SAMPLES = SAMPLE_RATE * RAW_BUFFER_SECONDS;
 const PREDICTION_WARMUP = 5;
 const DEBUG_INTERVAL_MS = 2000;
 const IDLE_EVICT_MS = 60_000;
+const DEFAULT_WAKE_INPUT_ROWS = 16;
+const STATS_REPORT_INTERVAL_MS = 10_000;
+const USER_ID_LOG_SUFFIX_LENGTH = 4;
+const SCORE_LOG_DECIMALS = 5;
+const LEVEL_RMS_SMOOTHING = 0.05;
+const MEL_SCALE_DIVISOR = 10;
+const PREDICTION_HISTORY = 30;
 
 let sessions: {
 	mel: InferenceSession;
@@ -41,8 +49,9 @@ async function loadSessions() {
 		ort.InferenceSession.create(wakePath)
 	]);
 
-	const shape = (wake as any).inputMetadata?.[wake.inputNames[0]]?.dimensions;
-	const wakeInputRows = Array.isArray(shape) && typeof shape[1] === 'number' && shape[1] > 0 ? shape[1] : 16;
+	const input = wake.inputMetadata.find((m) => m.name === wake.inputNames[0]);
+	const rows = input?.isTensor ? input.shape[1] : undefined;
+	const wakeInputRows = typeof rows === 'number' && rows > 0 ? rows : DEFAULT_WAKE_INPUT_ROWS;
 
 	sessions = { mel, emb, wake, wakeInputRows, Tensor: ort.Tensor };
 	return sessions;
@@ -69,7 +78,7 @@ type Detector = {
 
 const detectors = new Map<string, Detector>();
 let queue: Array<{ userId: string; samples: Float32Array }> = [];
-let draining = false;
+let isDraining = false;
 let lastDebugAt = 0;
 let framesReceived = 0;
 let stepsProcessed = 0;
@@ -77,7 +86,7 @@ let stepsProcessed = 0;
 function reportStats() {
 	const parts = [...detectors.entries()].map(
 		([userId, state]) =>
-			`${userId.slice(-4)}:last=${state.lastScore.toFixed(5)}/peak=${state.peakScore.toFixed(5)}/allpeak=${state.allTimePeak.toFixed(5)}/melmin=${state.melMin.toFixed(2)}/melmax=${state.melMax.toFixed(2)}/feat=${state.features.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}`
+			`${userId.slice(-USER_ID_LOG_SUFFIX_LENGTH)}:last=${state.lastScore.toFixed(SCORE_LOG_DECIMALS)}/peak=${state.peakScore.toFixed(SCORE_LOG_DECIMALS)}/allpeak=${state.allTimePeak.toFixed(SCORE_LOG_DECIMALS)}/melmin=${state.melMin.toFixed(2)}/melmax=${state.melMax.toFixed(2)}/feat=${state.features.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}`
 	);
 	post({
 		type: 'debug',
@@ -92,7 +101,7 @@ setInterval(() => {
 	if (detectors.size || framesReceived) {
 		reportStats();
 	}
-}, 10_000).unref();
+}, STATS_REPORT_INTERVAL_MS).unref();
 
 function createDetector(): Detector {
 	const mels: Float32Array[] = [];
@@ -124,12 +133,12 @@ function resetDetector(state: Detector) {
 	state.rawFilled = 0;
 	state.remainder = new Float32Array(0);
 	state.accumulated = 0;
-	state.mels.length = 0;
+	state.mels.splice(0);
 	for (let i = 0; i < MEL_WINDOW_FRAMES; i++) {
 		state.mels.push(new Float32Array(MEL_BINS).fill(1));
 	}
-	state.features.length = 0;
-	state.predictions.length = 0;
+	state.features.splice(0);
+	state.predictions.splice(0);
 }
 
 function evictIdle() {
@@ -163,7 +172,7 @@ function trackLevel(state: Detector, samples: Float32Array) {
 		sum += samples[i] * samples[i];
 	}
 	const rms = Math.sqrt(sum / Math.max(1, samples.length));
-	state.levelRms = state.levelRms ? state.levelRms + 0.05 * (rms - state.levelRms) : rms;
+	state.levelRms = state.levelRms ? state.levelRms + LEVEL_RMS_SMOOTHING * (rms - state.levelRms) : rms;
 }
 
 async function computeMelFrames(active: NonNullable<typeof sessions>, state: Detector, nSamples: number) {
@@ -179,7 +188,7 @@ async function computeMelFrames(active: NonNullable<typeof sessions>, state: Det
 	for (let i = 0; i < frames; i++) {
 		const frame = new Float32Array(MEL_BINS);
 		for (let j = 0; j < MEL_BINS; j++) {
-			const v = data[i * MEL_BINS + j] / 10 + 2;
+			const v = data[i * MEL_BINS + j] / MEL_SCALE_DIVISOR + 2;
 			frame[j] = v;
 			if (v < lo) {
 				lo = v;
@@ -315,7 +324,7 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 		score = 0;
 	}
 	state.predictions.push(score);
-	if (state.predictions.length > 30) {
+	if (state.predictions.length > PREDICTION_HISTORY) {
 		state.predictions.shift();
 	}
 
@@ -330,7 +339,7 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 	const now = Date.now();
 	if (score >= threshold && now - state.lastDetectionAt > refractoryMs) {
 		state.lastDetectionAt = now;
-		state.predictions.length = 0;
+		state.predictions.splice(0);
 		for (let i = 0; i < PREDICTION_WARMUP; i++) {
 			state.predictions.push(0);
 		}
@@ -339,10 +348,10 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 }
 
 async function drain() {
-	if (draining) {
+	if (isDraining) {
 		return;
 	}
-	draining = true;
+	isDraining = true;
 
 	try {
 		const active = await loadSessions();
@@ -362,7 +371,7 @@ async function drain() {
 			}
 
 			for (const [userId, chunks] of byUser) {
-				let state: Detector | undefined;
+				let state: Detector | null = null;
 				for (const samples of chunks) {
 					state = ingest(userId, samples);
 				}
@@ -385,7 +394,7 @@ async function drain() {
 		post({ type: 'error', message: (error as Error)?.message ?? String(error) });
 		queue = [];
 	} finally {
-		draining = false;
+		isDraining = false;
 		if (queue.length) {
 			drain();
 		}

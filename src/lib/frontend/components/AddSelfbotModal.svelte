@@ -10,13 +10,13 @@
 
 	let { open, onclose, onadded }: Props = $props();
 
-	let loading = $state(false);
+	let isLoading = $state(false);
 	let token = $state('');
-	let showToken = $state(false);
+	let isTokenShown = $state(false);
 
 	function reset() {
 		token = '';
-		showToken = false;
+		isTokenShown = false;
 	}
 
 	function close() {
@@ -30,7 +30,7 @@
 			return;
 		}
 
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch('/api/panel/selfbots', {
 				method: 'POST',
@@ -50,7 +50,7 @@
 		} catch (_) {
 			showToast('Failed to add selfbot. Please try again.', 'error');
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 </script>
@@ -87,18 +87,18 @@
 					<div class="relative">
 						<input
 							id="selfbotToken"
-							type={showToken ? 'text' : 'password'}
+							type={isTokenShown ? 'text' : 'password'}
 							bind:value={token}
 							placeholder="Enter user token"
 							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 						/>
 						<button
 							type="button"
-							aria-label={showToken ? 'Hide token' : 'Show token'}
-							onclick={() => (showToken = !showToken)}
+							aria-label={isTokenShown ? 'Hide token' : 'Show token'}
+							onclick={() => (isTokenShown = !isTokenShown)}
 							class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2"
 						>
-							<i class="fas {showToken ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+							<i class="fas {isTokenShown ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
 						</button>
 					</div>
 				</div>
@@ -120,11 +120,11 @@
 					</button>
 					<button
 						type="submit"
-						disabled={loading}
+						disabled={isLoading}
 						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 					>
-						{#if loading}<i class="fas fa-spinner fa-spin text-violet-200"></i>{/if}
-						{loading ? 'Adding...' : 'Add Selfbot'}
+						{#if isLoading}<i class="fas fa-spinner fa-spin text-violet-200"></i>{/if}
+						{isLoading ? 'Adding...' : 'Add Selfbot'}
 					</button>
 				</div>
 			</form>

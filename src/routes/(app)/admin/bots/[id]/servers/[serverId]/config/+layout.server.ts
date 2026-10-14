@@ -3,10 +3,11 @@ import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerPath } from '$lib/frontend/redirect.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 
 	const serverId = Number(params.serverId);
@@ -17,13 +18,13 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 			const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 			const targetBot = ob ?? fallback;
 			if (targetBot != null) {
-				redirect(302, adminServerPath(targetBot, locals.user.server_id));
+				redirect(HTTP.FOUND, adminServerPath(targetBot, locals.user.server_id));
 			}
-			redirect(302, DASHBOARD_PATH);
+			redirect(HTTP.FOUND, DASHBOARD_PATH);
 		}
 		const canonical = await getOfficialBotIdForServer(serverId);
 		if (canonical != null && Number(params.id) !== canonical) {
-			redirect(302, adminServerPath(canonical, serverId));
+			redirect(HTTP.FOUND, adminServerPath(canonical, serverId));
 		}
 	}
 
@@ -46,11 +47,11 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 			const sid = await settingsRowServerId(params.serverId, c);
 			const row = await db.getServerSettings(sid, c).catch(() => null);
 			const raw = row && !Array.isArray(row) ? row.settings : null;
-			let on = false;
+			let isOn = false;
 			if (raw && typeof raw === 'object') {
-				on = (raw as Record<string, unknown>).enabled === true;
+				isOn = (raw as Record<string, unknown>).enabled === true;
 			}
-			return [c, on] as const;
+			return [c, isOn] as const;
 		})
 	);
 

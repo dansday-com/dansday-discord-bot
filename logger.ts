@@ -5,6 +5,7 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 const serviceName = process.env.OTEL_SERVICE_NAME || 'dansday-discord-bot';
+const FLUSH_INTERVAL_MS = 5000;
 
 let loggerProvider: LoggerProvider | null = null;
 if (endpoint?.trim()) {
@@ -17,7 +18,7 @@ if (endpoint?.trim()) {
 			resource,
 			processors: [new BatchLogRecordProcessor({ exporter: logExporter })]
 		});
-		const flushInterval = setInterval(() => loggerProvider?.forceFlush().catch(() => {}), 5000);
+		const flushInterval = setInterval(() => loggerProvider?.forceFlush().catch(() => {}), FLUSH_INTERVAL_MS);
 		if (flushInterval.unref) {
 			flushInterval.unref();
 		}

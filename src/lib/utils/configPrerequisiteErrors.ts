@@ -5,12 +5,12 @@ const MAIN = 'Configuration → Main';
 export function collectMainAppearanceIssues(mainSettingsRaw: unknown): string[] {
 	const { color, footer } = normalizeMainConfigForPanel(mainSettingsRaw);
 	const issues: string[] = [];
-	const colorOk = color.replace(/#/g, '').trim().length > 0;
-	if (!colorOk) {
+	const isColorOk = color.replace(/#/g, '').trim().length > 0;
+	if (!isColorOk) {
 		issues.push(`Set a default embed color under ${MAIN} (bot appearance).`);
 	}
-	const footerOk = footer.trim().length > 0;
-	if (!footerOk) {
+	const isFooterOk = footer.trim().length > 0;
+	if (!isFooterOk) {
 		issues.push(`Set a default embed footer under ${MAIN} (bot appearance).`);
 	}
 	return issues;

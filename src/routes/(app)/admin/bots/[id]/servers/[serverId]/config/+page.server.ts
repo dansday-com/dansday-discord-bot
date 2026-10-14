@@ -4,10 +4,11 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfig.js';
 import { defaultMainEmbedFooters } from '$lib/localizedDefaults.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.main).catch(() => null);
 	return { settings: normalizeMainConfigForPanel(row?.settings ?? {}), defaultFooters: defaultMainEmbedFooters() };

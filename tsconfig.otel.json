@@ -6,6 +6,10 @@
 		"outDir": "./otel",
 		"rootDir": ".",
 		"strict": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"noFallthroughCasesInSwitch": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
 		"declaration": false

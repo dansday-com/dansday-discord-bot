@@ -6,17 +6,17 @@
 	let { data }: PageProps = $props();
 
 	let autoQuest = $state(data.autoQuestEnrollment === true);
-	let savingAutoQuest = $state(false);
+	let isSavingAutoQuest = $state(false);
 
 	$effect(() => {
 		autoQuest = data.autoQuestEnrollment === true;
 	});
 
 	async function saveAutoQuest(next: boolean) {
-		if (savingAutoQuest) {
+		if (isSavingAutoQuest) {
 			return;
 		}
-		savingAutoQuest = true;
+		isSavingAutoQuest = true;
 		try {
 			const res = await fetch('/api/panel/settings', {
 				method: 'POST',
@@ -35,7 +35,7 @@
 			autoQuest = !next;
 			showToast('Failed to save', 'error');
 		} finally {
-			savingAutoQuest = false;
+			isSavingAutoQuest = false;
 		}
 	}
 </script>
@@ -54,7 +54,7 @@
 			description="Instance-wide. When on, members can claim open Discord quests by pasting their own user token — a Discord ToS risk they take on their own account. Off by default."
 			labelIconClass="fas fa-bolt text-amber-400"
 			bind:enabled={autoQuest}
-			disabled={savingAutoQuest}
+			disabled={isSavingAutoQuest}
 			onchange={saveAutoQuest}
 			ariaLabel="Toggle auto quest enrollment for this instance"
 		/>

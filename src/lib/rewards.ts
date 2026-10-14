@@ -1,10 +1,14 @@
+import { BYTES_PER_MB } from './utils/numbers.js';
+
+const REWARD_IMAGE_MAX_MB = 2;
+
 export const MAX_REWARDS = 25;
 export const MAX_REWARD_LEVEL = 1000;
 export const MAX_REWARD_GOAL = 10_000_000;
 export const MAX_REWARD_XP = 10_000_000;
 export const MAX_REWARD_NAME = 64;
 export const MAX_REWARD_WINNERS = 100_000;
-export const REWARD_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+export const REWARD_IMAGE_MAX_BYTES = REWARD_IMAGE_MAX_MB * BYTES_PER_MB;
 
 export const REWARD_GOALS = [
 	{ id: 'level', label: 'Level', icon: 'fa-star', column: 'level', perUnit: 1, min: 2, max: MAX_REWARD_LEVEL },
@@ -186,7 +190,7 @@ export function normalizeRewardDrafts(raw: unknown, knownRoleIds: Set<string>): 
 
 type Standing = { reward: Reward; reached: boolean; active: boolean; settled: boolean; earned: boolean };
 
-function standings(rules: RewardRules, progress: RewardProgress, heldRoleIds: Iterable<string>, earnings: Map<number, RewardEarning>): Standing[] {
+function standings(rules: RewardRules, { progress, heldRoleIds, earnings }: MemberStanding): Standing[] {
 	const held = new Set(heldRoleIds);
 	const out: Standing[] = [];
 	for (const goal of REWARD_GOALS) {
@@ -200,18 +204,18 @@ function standings(rules: RewardRules, progress: RewardProgress, heldRoleIds: It
 
 		const rows = ladder.map((reward) => {
 			const row = earnings.get(reward.id);
-			const settled = !!row && (reward.kind === 'xp' || row.delivered);
-			const kept = !!row && (rules.keep || value >= reward.goal);
-			const reached =
-				settled ||
+			const isSettled = !!row && (reward.kind === 'xp' || row.delivered);
+			const isKept = !!row && (rules.keep || value >= reward.goal);
+			const isReached =
+				isSettled ||
 				(reward.winner_limit !== null
-					? kept
+					? isKept
 					: reward.kind === 'role'
 						? roleValue >= reward.goal
 						: reward.kind === 'custom' && row
-							? kept
+							? isKept
 							: value >= reward.goal);
-			return { reward, reached, active: reached, settled, earned: !!row };
+			return { reward, reached: isReached, active: isReached, settled: isSettled, earned: !!row };
 		});
 
 		if (!rules.stack) {
@@ -227,12 +231,9 @@ function standings(rules: RewardRules, progress: RewardProgress, heldRoleIds: It
 	return out;
 }
 
-export function limitedRewardCandidates(
-	rules: RewardRules,
-	progress: RewardProgress,
-	earnings: Map<number, RewardEarning>,
-	before: Partial<RewardProgress> | null | undefined
-): Reward[] {
+type CandidateInput = { progress: RewardProgress; earnings: Map<number, RewardEarning>; before: Partial<RewardProgress> | null | undefined };
+
+export function limitedRewardCandidates(rules: RewardRules, { progress, earnings, before }: CandidateInput): Reward[] {
 	if (!before) {
 		return [];
 	}
@@ -247,15 +248,13 @@ export function limitedRewardCandidates(
 
 export function planRewards(
 	rules: RewardRules,
-	progress: RewardProgress,
-	heldRoleIds: Iterable<string>,
-	earnings: Map<number, RewardEarning>
+	{ progress, heldRoleIds, earnings }: MemberStanding
 ): { addRoles: string[]; removeRoles: string[]; earn: Reward[]; withdraw: Reward[] } {
 	const held = new Set(heldRoleIds);
 	const target = new Set<string>();
 	const earn: Reward[] = [];
 	const withdraw: Reward[] = [];
-	for (const s of standings(rules, progress, held, earnings)) {
+	for (const s of standings(rules, { progress, heldRoleIds: held, earnings })) {
 		const r = s.reward;
 		if (r.kind === 'role') {
 			if (s.active && r.role_id) {
@@ -283,18 +282,14 @@ export function planRewards(
 	};
 }
 
-export function rewardStates(
-	rules: RewardRules,
-	progress: RewardProgress,
-	heldRoleIds: Iterable<string>,
-	earnings: Map<number, RewardEarning>,
-	winners: Map<number, number>
-): Map<number, RewardState> {
+type MemberStanding = { progress: RewardProgress; heldRoleIds: Iterable<string>; earnings: Map<number, RewardEarning> };
+
+export function rewardStates(rules: RewardRules, { progress, heldRoleIds, earnings }: MemberStanding, winners: Map<number, number>): Map<number, RewardState> {
 	const out = new Map<number, RewardState>();
-	for (const s of standings(rules, progress, heldRoleIds, earnings)) {
+	for (const s of standings(rules, { progress, heldRoleIds, earnings })) {
 		const r = s.reward;
-		const full = r.winner_limit !== null && !s.earned && (winners.get(r.id) ?? 0) >= r.winner_limit;
-		if (full) {
+		const isFull = r.winner_limit !== null && !s.earned && (winners.get(r.id) ?? 0) >= r.winner_limit;
+		if (isFull) {
 			out.set(r.id, 'gone');
 		} else if (r.winner_limit !== null && !s.earned) {
 			out.set(r.id, (progress[r.goal_type] ?? 0) >= r.goal ? 'passed' : 'locked');
@@ -318,5 +313,5 @@ export function xpForLevel(level: number, baseXp: number, multiplier: number): n
 	if (multiplier === 1) {
 		return Math.ceil(baseXp * (level - 1));
 	}
-	return Math.ceil((baseXp * (Math.pow(multiplier, level - 1) - 1)) / (multiplier - 1));
+	return Math.ceil((baseXp * (multiplier ** (level - 1) - 1)) / (multiplier - 1));
 }

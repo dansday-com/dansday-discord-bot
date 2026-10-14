@@ -1,3 +1,4 @@
+import { RESTJSONErrorCodes } from 'discord.js';
 import db from '../../../database.js';
 import { getBotConfig, SERVER_SETTINGS } from '../../config.js';
 import { loadedLocales, t } from '../../../localeStore.js';
@@ -69,7 +70,9 @@ export async function getUserLanguage(guildId: string, userId: string): Promise<
 	}
 }
 
-export async function translate(key: string, guildId: string, userId: string, params: Record<string, unknown> = {}) {
+type MemberScope = { guildId: string; userId: string };
+
+export async function translate(key: string, { guildId, userId }: MemberScope, params: Record<string, unknown> = {}) {
 	const lang = await getUserLanguage(guildId, userId);
 	return t(key, lang, params);
 }
@@ -78,7 +81,7 @@ export async function translateServer(key: string, guildId: string, params: Reco
 	return t(key, await getServerLanguage(guildId), params);
 }
 
-export type Translator = ((key: string, params?: Record<string, any>) => string) & { lang: string };
+export type Translator = ((key: string, params?: Record<string, unknown>) => string) & { lang: string };
 
 export function translatorFor(lang: string): Translator {
 	const tr = ((key: string, params: Record<string, unknown> = {}) => t(key, lang, params)) as Translator;
@@ -95,17 +98,18 @@ export async function memberTranslator(guildId: string, userId: string): Promise
 }
 
 const API_ERROR_REASONS: Record<number, string> = {
-	10003: 'unknownChannel',
-	10007: 'unknownMember',
-	10011: 'unknownRole',
-	30005: 'maxRoles',
-	50001: 'missingAccess',
-	50013: 'missingPermissions',
-	50035: 'invalidInput'
+	[RESTJSONErrorCodes.UnknownChannel]: 'unknownChannel',
+	[RESTJSONErrorCodes.UnknownMember]: 'unknownMember',
+	[RESTJSONErrorCodes.UnknownRole]: 'unknownRole',
+	[RESTJSONErrorCodes.MaximumNumberOfGuildRolesReached]: 'maxRoles',
+	[RESTJSONErrorCodes.MissingAccess]: 'missingAccess',
+	[RESTJSONErrorCodes.MissingPermissions]: 'missingPermissions',
+	[RESTJSONErrorCodes.InvalidFormBodyOrContentType]: 'invalidInput'
 };
 
-export function errorReasonFor(tr: Translator, error: any): string {
-	return tr(`common.errors.reasons.${API_ERROR_REASONS[error?.code] ?? 'unexpected'}`);
+export function errorReasonFor(tr: Translator, error: unknown): string {
+	const code = Number((error as { code?: unknown } | null)?.code);
+	return tr(`common.errors.reasons.${API_ERROR_REASONS[code] ?? 'unexpected'}`);
 }
 
 export async function errorReason(error: unknown, guildId: string, userId: string): Promise<string> {

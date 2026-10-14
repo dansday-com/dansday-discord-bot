@@ -5,7 +5,16 @@ import { fileURLToPath } from 'url';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import db, { type BotRunStatus } from './database.js';
 import { getRedisClient, isRedisConfigured } from './redis.js';
-import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate } from './utils/index.js';
+import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate, attemptSync } from './utils/index.js';
+import { MINUTE_MS, SECOND_MS } from './utils/time.js';
+
+const PROJECT_ROOT_SEARCH_DEPTH = 24;
+const EARLY_EXIT_CHECK_MS = 500;
+const RUNNING_CONFIRM_DELAY_MS = 2000;
+const FORCE_KILL_DELAY_MS = 2000;
+const EXIT_POLL_MS = 200;
+const EXIT_WAIT_TIMEOUT_MS = 8000;
+const RESTART_PAUSE_MS = 2000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,7 +29,7 @@ function findProjectRoot(): string {
 	}
 
 	let dir = __dirname;
-	for (let i = 0; i < 24; i++) {
+	for (let i = 0; i < PROJECT_ROOT_SEARCH_DEPTH; i++) {
 		if (isProjectRoot(dir)) {
 			return dir;
 		}
@@ -56,13 +65,15 @@ export interface BotProcessInfo {
 }
 
 const RESTART_BASE_DELAY_MS = 35_000;
-const RESTART_MAX_DELAY_MS = 5 * 60_000;
+const RESTART_MAX_DELAY_MINUTES = 5;
+const RESTART_MAX_DELAY_MS = RESTART_MAX_DELAY_MINUTES * MINUTE_MS;
 const RESTART_MAX_ATTEMPTS = 5;
-const RESTART_STABLE_UPTIME_MS = 10 * 60_000;
+const RESTART_STABLE_UPTIME_MINUTES = 10;
+const RESTART_STABLE_UPTIME_MS = RESTART_STABLE_UPTIME_MINUTES * MINUTE_MS;
 const SHUTDOWN_GRACE_MS = 7_000;
 
 let spawnCounter = 0;
-let shuttingDown = false;
+let isShuttingDown = false;
 let shutdownPromise: Promise<void> | null = null;
 const manualStopSpawns = new Set<number>();
 const restartAttempts = new Map<string, number>();
@@ -140,7 +151,9 @@ async function publishRunnerMessage(channel: string, payload: object): Promise<v
 	} catch (_) {}
 }
 
-function emitBotStatus(mapKey: string, status: string, process_id: number | null, uptime_started_at: number | null) {
+type BotStatusUpdate = { status: string; process_id: number | null; uptime_started_at: number | null };
+
+function emitBotStatus(mapKey: string, { status, process_id, uptime_started_at }: BotStatusUpdate) {
 	const event: BotStatusEvent = { status, process_id, uptime_started_at };
 	for (const fn of statusListeners.get(mapKey) ?? []) {
 		fn(event);
@@ -241,218 +254,210 @@ async function stopConnectedSelfbots(officialBotId: number): Promise<void> {
 	await Promise.allSettled(alive.map((sb) => stopBotById(sb.id, sb)));
 }
 
-export async function startBotById(
-	botId: number,
-	bot: BotProcessRow,
-	options: { linkedSelfbots?: boolean } = {}
-): Promise<{ success: boolean; error?: string; pid?: number }> {
+type BotChild = ReturnType<typeof spawn>;
+type SpawnRecord = { mapKey: string; botId: number; bot: BotProcessRow; spawnId: number; spawnedAt: number; isSelfbotProcess: boolean };
+type BotStartResult = { success: boolean; error?: string; pid?: number };
+
+function botScriptLocation(isSelfbotProcess: boolean) {
+	const botsRoot = existsSync(join(projectRoot, 'bots', 'backend', 'bots'))
+		? join(projectRoot, 'bots', 'backend', 'bots')
+		: existsSync(join(projectRoot, 'bots', 'bots'))
+			? join(projectRoot, 'bots', 'bots')
+			: join(projectRoot, 'src', 'lib', 'backend', 'bots');
+	const botPath = join(botsRoot, isSelfbotProcess ? 'self-bot' : 'official-bot');
+	return { botPath, scriptPath: join(botPath, isSelfbotProcess ? 'selfbot.js' : 'officialbot.js') };
+}
+
+async function markProcessStopped(mapKey: string, bot: BotProcessRow) {
+	try {
+		await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
+	} catch (_) {}
+	emitBotStatus(mapKey, { status: 'stopped', process_id: null, uptime_started_at: null });
+}
+
+function releaseProcessInfo(info: BotProcessInfo | undefined) {
+	if (!info) {
+		return;
+	}
+	info.status = 'stopped';
+	info.pid = null;
+	info.startTime = null;
+	info.process = null;
+}
+
+function scheduleRestart(record: SpawnRecord) {
+	const { mapKey, botId, bot } = record;
+	if (Date.now() - record.spawnedAt >= RESTART_STABLE_UPTIME_MS) {
+		restartAttempts.delete(mapKey);
+	}
+
+	const attempt = (restartAttempts.get(mapKey) ?? 0) + 1;
+	if (attempt > RESTART_MAX_ATTEMPTS) {
+		logger.log(`🛑 Bot ${mapKey} crashed ${RESTART_MAX_ATTEMPTS} times without staying up, giving up until started by hand`);
+		return;
+	}
+	restartAttempts.set(mapKey, attempt);
+
+	const delay = Math.min(RESTART_BASE_DELAY_MS * 2 ** (attempt - 1), RESTART_MAX_DELAY_MS);
+	logger.log(`🔁 Bot ${mapKey} crashed, restarting in ${Math.round(delay / SECOND_MS)}s (attempt ${attempt}/${RESTART_MAX_ATTEMPTS})`);
+
+	cancelScheduledRestart(mapKey);
+	const timer = setTimeout(async () => {
+		restartTimers.delete(mapKey);
+		if (hasLiveChildProcess(mapKey)) {
+			return;
+		}
+		const fresh = await (record.isSelfbotProcess ? db.getSelfbotById(Number(botId)) : db.getBot(botId)).catch(() => null);
+		const result = await startBotById(botId, fresh ?? bot).catch((err) => ({ success: false, error: String(err?.message || err) }));
+		if (!result.success) {
+			logger.log(`⚠️  Auto-restart of ${mapKey} failed: ${result.error ?? 'unknown error'}`);
+		}
+	}, delay);
+	timer.unref?.();
+	restartTimers.set(mapKey, timer);
+}
+
+async function handleBotExit(record: SpawnRecord, { code, signal }: { code: number | null; signal: string | null }) {
+	const { mapKey, bot, botId } = record;
+	const wasStoppedByHand = manualStopSpawns.delete(record.spawnId);
+
+	const info = botProcesses.get(mapKey);
+	if (info !== undefined && info.spawnId !== record.spawnId) {
+		return;
+	}
+	releaseProcessInfo(info);
+	await markProcessStopped(mapKey, bot);
+	if (isShuttingDown) {
+		return;
+	}
+	if (code !== 0 && code !== null) {
+		logger.log(`❌ Bot ${mapKey} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
+	}
+
+	if (!record.isSelfbotProcess && !isOfficialProcessAlive(bot)) {
+		if (wasStoppedByHand) {
+			await stopConnectedSelfbots(botId).catch(() => {});
+		} else {
+			logger.log(`🔗 Official bot ${mapKey} exited unexpectedly, leaving connected selfbot(s) running`);
+		}
+	}
+
+	const hasCrashed = code === null ? signal !== 'SIGINT' && signal !== 'SIGTERM' : code !== 0;
+	if (wasStoppedByHand || !hasCrashed) {
+		restartAttempts.delete(mapKey);
+		if (!wasStoppedByHand) {
+			logger.log(`⏹️  Bot ${mapKey} exited cleanly on its own, not restarting`);
+		}
+		return;
+	}
+	scheduleRestart(record);
+}
+
+async function handleBotSpawnError(record: SpawnRecord, err: Error) {
+	manualStopSpawns.delete(record.spawnId);
+	const info = botProcesses.get(record.mapKey);
+	if (info && info.spawnId !== record.spawnId) {
+		return;
+	}
+	releaseProcessInfo(info);
+	await markProcessStopped(record.mapKey, record.bot);
+	logger.log(`❌ Failed to start bot ${record.mapKey}: ${err.message}`);
+}
+
+async function confirmBotRunning(record: SpawnRecord, botProcess: BotChild) {
+	const { mapKey, bot } = record;
+	try {
+		if (botProcess.exitCode !== null) {
+			return;
+		}
+		if (botProcess.pid) {
+			process.kill(botProcess.pid, 0);
+		}
+		const startedAt = Date.now();
+		try {
+			await updateBotStatus(bot, { status: 'running', process_id: botProcess.pid, uptime_started_at: getCurrentDateTime() });
+			emitBotStatus(mapKey, { status: 'running', process_id: botProcess.pid ?? null, uptime_started_at: startedAt });
+			logger.log(`✅ Updated bot ${mapKey} status to running (PID: ${botProcess.pid})`);
+		} catch (_) {}
+	} catch (e) {
+		await markProcessStopped(mapKey, bot);
+	}
+}
+
+function spawnBotProcess(botId: number, bot: BotProcessRow): { botProcess: BotChild; record: SpawnRecord } {
+	const mapKey = processKeyForBot(bot);
+	const isSelfbotProcess = isSelfbot(bot);
+	const { botPath, scriptPath } = botScriptLocation(isSelfbotProcess);
+	const botProcess = spawn(resolveNodeBin(), [scriptPath], {
+		cwd: botPath,
+		stdio: ['ignore', 'pipe', 'pipe'],
+		shell: false,
+		detached: false,
+		env: {
+			...process.env,
+			BOT_TOKEN: bot.token as string,
+			BOT_ID: String(botId),
+			BOT_KIND: isSelfbotProcess ? 'selfbot' : 'official'
+		}
+	});
+
+	const record: SpawnRecord = { mapKey, botId, bot, spawnId: ++spawnCounter, spawnedAt: Date.now(), isSelfbotProcess };
+	cancelScheduledRestart(mapKey);
+	botProcesses.set(mapKey, { process: botProcess, pid: botProcess.pid ?? null, startTime: record.spawnedAt, status: 'running', spawnId: record.spawnId });
+
+	botProcess.stdout?.on('data', (data: Buffer) => {
+		console.log(`[Bot ${mapKey}] ${data.toString()}`);
+	});
+	botProcess.stderr?.on('data', (data: Buffer) => {
+		console.error(`[Bot ${mapKey} Error] ${data.toString()}`);
+	});
+	botProcess.on('exit', (code: number | null, signal: string | null) => handleBotExit(record, { code, signal }));
+	botProcess.on('error', (err: Error) => handleBotSpawnError(record, err));
+
+	setTimeout(async () => {
+		if (botProcess.exitCode !== null) {
+			await markProcessStopped(mapKey, bot);
+		}
+	}, EARLY_EXIT_CHECK_MS);
+	setTimeout(() => confirmBotRunning(record, botProcess), RUNNING_CONFIRM_DELAY_MS);
+	return { botProcess, record };
+}
+
+function isAlreadyRunning(existing: BotProcessInfo | undefined): string | null {
+	if (existing && existing.process && !existing.process.killed && existing.process.exitCode === null) {
+		return 'Bot is already running';
+	}
+	if (!existing?.pid) {
+		return null;
+	}
+	return attemptSync(() => process.kill(existing.pid!, 0)).ok ? 'Bot process is already running' : null;
+}
+
+export async function startBotById(botId: number, bot: BotProcessRow, options: { linkedSelfbots?: boolean } = {}): Promise<BotStartResult> {
 	const mapKey = processKeyForBot(bot);
 
-	if (shuttingDown) {
+	if (isShuttingDown) {
 		return { success: false, error: 'Server is shutting down' };
 	}
 
 	try {
 		await updateBotStatus(bot, { status: 'starting', auto_start: true });
-		emitBotStatus(mapKey, 'starting', null, null);
+		emitBotStatus(mapKey, { status: 'starting', process_id: null, uptime_started_at: null });
 	} catch (err) {
 		logger.log(`⚠️  Failed to update bot status: ${(err as Error).message}`);
 	}
 
-	const existing = botProcesses.get(mapKey);
-	if (existing && existing.process && !existing.process.killed && existing.process.exitCode === null) {
-		return { success: false, error: 'Bot is already running' };
-	}
-
-	if (existing && existing.pid) {
-		try {
-			process.kill(existing.pid, 0);
-			return { success: false, error: 'Bot process is already running' };
-		} catch (_) {}
+	const running = isAlreadyRunning(botProcesses.get(mapKey));
+	if (running) {
+		return { success: false, error: running };
 	}
 
 	try {
-		const botsRoot = existsSync(join(projectRoot, 'bots', 'backend', 'bots'))
-			? join(projectRoot, 'bots', 'backend', 'bots')
-			: existsSync(join(projectRoot, 'bots', 'bots'))
-				? join(projectRoot, 'bots', 'bots')
-				: join(projectRoot, 'src', 'lib', 'backend', 'bots');
-
-		const selfbot = isSelfbot(bot);
-		const botPath = join(botsRoot, selfbot ? 'self-bot' : 'official-bot');
-		const botScript = selfbot ? 'selfbot.js' : 'officialbot.js';
-		const scriptPath = join(botPath, botScript);
-		const nodeBin = resolveNodeBin();
-
-		const botProcess = spawn(nodeBin, [scriptPath], {
-			cwd: botPath,
-			stdio: ['ignore', 'pipe', 'pipe'],
-			shell: false,
-			detached: false,
-			env: {
-				...process.env,
-				BOT_TOKEN: bot.token as string,
-				BOT_ID: String(botId),
-				BOT_KIND: selfbot ? 'selfbot' : 'official'
-			}
-		});
-
-		const spawnId = ++spawnCounter;
-		const spawnedAt = Date.now();
-
-		const processInfo: BotProcessInfo = {
-			process: botProcess,
-			pid: botProcess.pid ?? null,
-			startTime: spawnedAt,
-			status: 'running',
-			spawnId
-		};
-
-		cancelScheduledRestart(mapKey);
-		botProcesses.set(mapKey, processInfo);
-
-		botProcess.stdout?.on('data', (data: Buffer) => {
-			console.log(`[Bot ${mapKey}] ${data.toString()}`);
-		});
-
-		botProcess.stderr?.on('data', (data: Buffer) => {
-			console.error(`[Bot ${mapKey} Error] ${data.toString()}`);
-		});
-
-		botProcess.on('exit', async (code: number | null, signal: string | null) => {
-			const stoppedByHand = manualStopSpawns.delete(spawnId);
-
-			const info = botProcesses.get(mapKey);
-			if (info !== undefined && info.spawnId !== spawnId) {
-				return;
-			}
-
-			if (info) {
-				info.status = 'stopped';
-				info.pid = null;
-				info.startTime = null;
-				info.process = null;
-			}
-			try {
-				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-			} catch (_) {}
-			emitBotStatus(mapKey, 'stopped', null, null);
-			if (shuttingDown) {
-				return;
-			}
-			if (code !== 0 && code !== null) {
-				logger.log(`❌ Bot ${mapKey} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
-			}
-
-			if (!selfbot && !isOfficialProcessAlive(bot)) {
-				if (stoppedByHand) {
-					await stopConnectedSelfbots(botId).catch(() => {});
-				} else {
-					logger.log(`🔗 Official bot ${mapKey} exited unexpectedly, leaving connected selfbot(s) running`);
-				}
-			}
-
-			if (stoppedByHand) {
-				restartAttempts.delete(mapKey);
-				return;
-			}
-
-			const crashed = code === null ? signal !== 'SIGINT' && signal !== 'SIGTERM' : code !== 0;
-			if (!crashed) {
-				restartAttempts.delete(mapKey);
-				logger.log(`⏹️  Bot ${mapKey} exited cleanly on its own, not restarting`);
-				return;
-			}
-
-			if (Date.now() - spawnedAt >= RESTART_STABLE_UPTIME_MS) {
-				restartAttempts.delete(mapKey);
-			}
-
-			const attempt = (restartAttempts.get(mapKey) ?? 0) + 1;
-			if (attempt > RESTART_MAX_ATTEMPTS) {
-				logger.log(`🛑 Bot ${mapKey} crashed ${RESTART_MAX_ATTEMPTS} times without staying up, giving up until started by hand`);
-				return;
-			}
-			restartAttempts.set(mapKey, attempt);
-
-			const delay = Math.min(RESTART_BASE_DELAY_MS * Math.pow(2, attempt - 1), RESTART_MAX_DELAY_MS);
-			logger.log(`🔁 Bot ${mapKey} crashed, restarting in ${Math.round(delay / 1000)}s (attempt ${attempt}/${RESTART_MAX_ATTEMPTS})`);
-
-			cancelScheduledRestart(mapKey);
-			const timer = setTimeout(async () => {
-				restartTimers.delete(mapKey);
-				if (hasLiveChildProcess(mapKey)) {
-					return;
-				}
-				const fresh = await (selfbot ? db.getSelfbotById(Number(botId)) : db.getBot(botId)).catch(() => null);
-				const target = fresh ?? bot;
-				const result = await startBotById(botId, target).catch((err) => ({ success: false, error: String(err?.message || err) }));
-				if (!result.success) {
-					logger.log(`⚠️  Auto-restart of ${mapKey} failed: ${result.error ?? 'unknown error'}`);
-				}
-			}, delay);
-			timer.unref?.();
-			restartTimers.set(mapKey, timer);
-		});
-
-		botProcess.on('error', async (err: Error) => {
-			manualStopSpawns.delete(spawnId);
-			const info = botProcesses.get(mapKey);
-			if (info && info.spawnId !== spawnId) {
-				return;
-			}
-			if (info) {
-				info.status = 'stopped';
-				info.pid = null;
-				info.startTime = null;
-				info.process = null;
-			}
-			try {
-				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-			} catch (_) {}
-			emitBotStatus(mapKey, 'stopped', null, null);
-			logger.log(`❌ Failed to start bot ${mapKey}: ${err.message}`);
-		});
-
-		setTimeout(async () => {
-			if (botProcess.exitCode !== null) {
-				try {
-					await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-				} catch (_) {}
-				emitBotStatus(mapKey, 'stopped', null, null);
-			}
-		}, 500);
-
-		setTimeout(async () => {
-			try {
-				if (botProcess.exitCode !== null) {
-					return;
-				}
-				if (botProcess.pid) {
-					process.kill(botProcess.pid, 0);
-				}
-				const startedAt = Date.now();
-				try {
-					await updateBotStatus(bot, {
-						status: 'running',
-						process_id: botProcess.pid,
-						uptime_started_at: getCurrentDateTime()
-					});
-					emitBotStatus(mapKey, 'running', botProcess.pid ?? null, startedAt);
-					logger.log(`✅ Updated bot ${mapKey} status to running (PID: ${botProcess.pid})`);
-				} catch (_) {}
-			} catch (e) {
-				try {
-					await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-				} catch (_) {}
-				emitBotStatus(mapKey, 'stopped', null, null);
-			}
-		}, 2000);
-
+		const { botProcess, record } = spawnBotProcess(botId, bot);
 		logger.log(`✅ Started bot ${mapKey} with PID ${botProcess.pid}`);
 
 		let connectedSelfbotsScheduled = 0;
-		if (!selfbot && options.linkedSelfbots !== false) {
+		if (!record.isSelfbotProcess && options.linkedSelfbots !== false) {
 			const linked = await getConnectedSelfbots(botId);
 			connectedSelfbotsScheduled = linked.length;
 			startConnectedSelfbotsInBackground(linked, botId);
@@ -461,11 +466,37 @@ export async function startBotById(
 		return {
 			success: true,
 			pid: botProcess.pid,
-			...(!selfbot && connectedSelfbotsScheduled > 0 ? { connected_selfbots_scheduled: connectedSelfbotsScheduled } : {})
+			...(!record.isSelfbotProcess && connectedSelfbotsScheduled > 0 ? { connected_selfbots_scheduled: connectedSelfbotsScheduled } : {})
 		};
 	} catch (error) {
 		return { success: false, error: (error as Error).message };
 	}
+}
+
+async function persistStopped(botId: number, bot: BotProcessRow | undefined): Promise<boolean> {
+	const stopped = { status: 'stopped', process_id: null, uptime_started_at: null } as const;
+	try {
+		await (bot ? updateBotStatus(bot, stopped) : db.updateBot(botId, stopped));
+		return true;
+	} catch (_) {
+		return false;
+	}
+}
+
+function signalAdoptedProcess(pid: number, scriptName: string): boolean {
+	try {
+		process.kill(pid, 'SIGINT');
+	} catch (_) {
+		return false;
+	}
+	setTimeout(() => {
+		try {
+			if (pidMatchesBotScript(pid, scriptName)) {
+				process.kill(pid, 'SIGKILL');
+			}
+		} catch (_) {}
+	}, FORCE_KILL_DELAY_MS);
+	return true;
 }
 
 export async function stopBotById(botId: number, bot?: BotProcessRow): Promise<{ success: boolean; error?: string; message?: string }> {
@@ -485,12 +516,12 @@ export async function stopBotById(botId: number, bot?: BotProcessRow): Promise<{
 	if (bot) {
 		try {
 			await updateBotStatus(bot, { status: 'stopping', auto_start: false });
-			emitBotStatus(mapKey, 'stopping', null, null);
+			emitBotStatus(mapKey, { status: 'stopping', process_id: null, uptime_started_at: null });
 		} catch (_) {}
 	} else {
 		try {
 			await db.updateBot(botId, { status: 'stopping', auto_start: false });
-			emitBotStatus(mapKey, 'stopping', null, null);
+			emitBotStatus(mapKey, { status: 'stopping', process_id: null, uptime_started_at: null });
 		} catch (_) {}
 	}
 
@@ -499,45 +530,13 @@ export async function stopBotById(botId: number, bot?: BotProcessRow): Promise<{
 	const scriptName = bot && isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
 
 	if (!botInfo || !botInfo.process) {
-		if (botInfo && botInfo.pid && pidMatchesBotScript(botInfo.pid, scriptName)) {
-			const adoptedPid = botInfo.pid;
-			try {
-				process.kill(adoptedPid, 'SIGINT');
-				setTimeout(() => {
-					try {
-						if (pidMatchesBotScript(adoptedPid, scriptName)) {
-							process.kill(adoptedPid, 'SIGKILL');
-						}
-					} catch (_) {}
-				}, 2000);
-				botProcesses.delete(mapKey);
-				try {
-					if (bot) {
-						await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-					} else {
-						await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-					}
-				} catch (_) {}
-				return { success: true, message: 'Stopped bot process' };
-			} catch (_) {
-				try {
-					if (bot) {
-						await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-					} else {
-						await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-					}
-				} catch (_) {}
-				return { success: false, error: 'Bot is not running' };
-			}
+		const adoptedPid = botInfo?.pid;
+		const wasSignalled = adoptedPid ? pidMatchesBotScript(adoptedPid, scriptName) && signalAdoptedProcess(adoptedPid, scriptName) : false;
+		if (wasSignalled) {
+			botProcesses.delete(mapKey);
 		}
-		try {
-			if (bot) {
-				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-			} else {
-				await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-			}
-		} catch (_) {}
-		return { success: false, error: 'Bot is not running' };
+		await persistStopped(botId, bot);
+		return wasSignalled ? { success: true, message: 'Stopped bot process' } : { success: false, error: 'Bot is not running' };
 	}
 
 	const childProcess = botInfo.process;
@@ -559,21 +558,16 @@ export async function stopBotById(botId: number, bot?: BotProcessRow): Promise<{
 				process.kill(childPid, 'SIGKILL');
 			} catch (_) {}
 		}
-	}, 2000);
+	}, FORCE_KILL_DELAY_MS);
 
 	botInfo.status = 'stopped';
 	botInfo.pid = null;
 	botInfo.startTime = null;
 	botInfo.process = null;
 
-	try {
-		if (bot) {
-			await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
-		} else {
-			await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-		}
-		emitBotStatus(mapKey, 'stopped', null, null);
-	} catch (_) {}
+	if (await persistStopped(botId, bot)) {
+		emitBotStatus(mapKey, { status: 'stopped', process_id: null, uptime_started_at: null });
+	}
 
 	logger.log(`⏹️  Stopped bot ${mapKey}`);
 
@@ -607,7 +601,7 @@ async function waitForProcessExit(pid: number, scriptName: string, timeoutMs: nu
 		if (!pidMatchesBotScript(pid, scriptName)) {
 			return;
 		}
-		await new Promise((resolve) => setTimeout(resolve, 200));
+		await new Promise((resolve) => setTimeout(resolve, EXIT_POLL_MS));
 	}
 	if (pidMatchesBotScript(pid, scriptName)) {
 		try {
@@ -628,9 +622,9 @@ export async function restartBotById(botId: number, bot: BotProcessRow): Promise
 	}
 
 	if (previousPid) {
-		await waitForProcessExit(previousPid, scriptName, 8000);
+		await waitForProcessExit(previousPid, scriptName, EXIT_WAIT_TIMEOUT_MS);
 	} else {
-		await new Promise((resolve) => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, RESTART_PAUSE_MS));
 	}
 
 	return startBotById(botId, bot);
@@ -651,7 +645,7 @@ async function verifyOne(kind: BotProcessKind, row: BotProcessRow, scriptName: s
 
 	if (!row.process_id) {
 		await markStopped();
-		emitBotStatus(mapKey, 'stopped', null, null);
+		emitBotStatus(mapKey, { status: 'stopped', process_id: null, uptime_started_at: null });
 		return;
 	}
 
@@ -660,7 +654,7 @@ async function verifyOne(kind: BotProcessKind, row: BotProcessRow, scriptName: s
 		if (!pidMatchesBotScript(row.process_id, scriptName)) {
 			botProcesses.delete(mapKey);
 			await markStopped();
-			emitBotStatus(mapKey, 'stopped', null, null);
+			emitBotStatus(mapKey, { status: 'stopped', process_id: null, uptime_started_at: null });
 			return;
 		}
 		if (botProcesses.get(mapKey)?.pid !== row.process_id) {
@@ -670,7 +664,7 @@ async function verifyOne(kind: BotProcessKind, row: BotProcessRow, scriptName: s
 	} catch (_) {
 		botProcesses.delete(mapKey);
 		await markStopped();
-		emitBotStatus(mapKey, 'stopped', null, null);
+		emitBotStatus(mapKey, { status: 'stopped', process_id: null, uptime_started_at: null });
 	}
 }
 
@@ -706,7 +700,7 @@ export async function resumeAutoStartBots(): Promise<void> {
 		}
 		logger.log(`▶️  Resuming ${bots.length} official bot(s) and ${selfbots.length} selfbot(s) marked to run`);
 		for (const row of [...bots, ...selfbots]) {
-			if (shuttingDown) {
+			if (isShuttingDown) {
 				return;
 			}
 			const result = await startBotById(row.id, row, { linkedSelfbots: false }).catch((err) => ({ success: false, error: String(err?.message || err) }));
@@ -741,7 +735,7 @@ export function shutdownAllBots(): Promise<void> {
 	if (shutdownPromise) {
 		return shutdownPromise;
 	}
-	shuttingDown = true;
+	isShuttingDown = true;
 	for (const mapKey of [...restartTimers.keys()]) {
 		cancelScheduledRestart(mapKey);
 	}
@@ -776,8 +770,8 @@ const LEADER_RELEASE_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then ret
 const RUNNER_ALIVE_FILE = join(tmpdir(), 'bot-runner.alive');
 const leaderToken = `${process.pid}:${process.hrtime.bigint().toString()}`;
 
-let runnerStarted = false;
-let leadershipHeldElsewhere = false;
+let hasRunnerStarted = false;
+let isLeadershipHeldElsewhere = false;
 let leaderTimer: ReturnType<typeof setInterval> | null = null;
 
 function markRunnerAlive(): void {
@@ -792,9 +786,9 @@ async function claimLeadership(): Promise<boolean> {
 		if (!redis) {
 			return false;
 		}
-		const claimed = (await redis.set(RUNNER_LEADER_KEY, leaderToken, { NX: true, EX: LEADER_TTL_SECONDS })) === 'OK';
+		const isClaimed = (await redis.set(RUNNER_LEADER_KEY, leaderToken, { NX: true, EX: LEADER_TTL_SECONDS })) === 'OK';
 		markRunnerAlive();
-		return claimed;
+		return isClaimed;
 	} catch (_) {
 		return false;
 	}
@@ -808,11 +802,11 @@ async function renewLeadership(): Promise<void> {
 		}
 		const renewed = await redis.eval(LEADER_RENEW_SCRIPT, { keys: [RUNNER_LEADER_KEY], arguments: [leaderToken, String(LEADER_TTL_SECONDS)] });
 		markRunnerAlive();
-		const held = renewed === 1 || (await claimLeadership());
-		if (!held && !leadershipHeldElsewhere) {
+		const isHeld = renewed === 1 || (await claimLeadership());
+		if (!isHeld && !isLeadershipHeldElsewhere) {
 			logger.log('⚠️  Bot runner leadership is held by another runner, still managing the bots started here');
 		}
-		leadershipHeldElsewhere = !held;
+		isLeadershipHeldElsewhere = !isHeld;
 	} catch (_) {}
 }
 
@@ -822,18 +816,18 @@ async function waitForLeadership(): Promise<void> {
 		setInterval(markRunnerAlive, LEADER_RENEW_MS).unref?.();
 		return;
 	}
-	let standingBy = false;
-	while (!shuttingDown && !(await claimLeadership())) {
-		if (!standingBy) {
-			standingBy = true;
+	let isStandingBy = false;
+	while (!isShuttingDown && !(await claimLeadership())) {
+		if (!isStandingBy) {
+			isStandingBy = true;
 			logger.log('⏳ Another bot runner is active, standing by until it stops');
 		}
 		await new Promise((resolve) => setTimeout(resolve, LEADER_POLL_MS));
 	}
-	if (shuttingDown) {
+	if (isShuttingDown) {
 		return;
 	}
-	if (standingBy) {
+	if (isStandingBy) {
 		logger.log('▶️  Bot runner took over leadership');
 	}
 	leaderTimer = setInterval(() => {
@@ -883,12 +877,11 @@ async function serveRunnerCommands(): Promise<void> {
 	subscriber.on('error', (err: Error) => logger.error('Bot runner command subscriber error', { error: String(err?.message || err) }));
 	await subscriber.connect();
 	await subscriber.subscribe(RUNNER_COMMAND_CHANNEL, (raw) => {
-		let command: RunnerCommand;
-		try {
-			command = JSON.parse(raw);
-		} catch (_) {
+		const commandResult = attemptSync<RunnerCommand>(() => JSON.parse(raw));
+		if (!commandResult.ok) {
 			return;
 		}
+		const command = commandResult.value;
 		if (!command?.requestId) {
 			return;
 		}
@@ -899,17 +892,17 @@ async function serveRunnerCommands(): Promise<void> {
 }
 
 export async function startRunner(): Promise<void> {
-	if (runnerStarted) {
+	if (hasRunnerStarted) {
 		return;
 	}
-	runnerStarted = true;
+	hasRunnerStarted = true;
 	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 		process.on(signal, () => {
 			stopRunner().finally(() => process.exit(0));
 		});
 	}
 	await waitForLeadership();
-	if (shuttingDown) {
+	if (isShuttingDown) {
 		return;
 	}
 	await verifyBotStatuses();
@@ -929,13 +922,8 @@ export function getBotUptimeMs(bot: Record<string, unknown>): number {
 		return 0;
 	}
 	try {
-		let startTime: ReturnType<typeof getDateTimeFromJSDate> | null;
-		if (bot.uptime_started_at instanceof Date) {
-			startTime = getDateTimeFromJSDate(bot.uptime_started_at);
-		} else {
-			const parsed = parseMySQLDateTimeUtc(bot.uptime_started_at);
-			startTime = parsed ? getDateTimeFromJSDate(parsed) : null;
-		}
+		const startedAt = bot.uptime_started_at instanceof Date ? bot.uptime_started_at : parseMySQLDateTimeUtc(bot.uptime_started_at);
+		const startTime = startedAt ? getDateTimeFromJSDate(startedAt) : null;
 		if (startTime && startTime.isValid) {
 			const now = getNowUtc();
 			return now.diff(startTime, 'milliseconds').milliseconds;

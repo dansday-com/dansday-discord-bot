@@ -92,7 +92,9 @@ function parse(answer: string): Record<string, unknown> | null {
 	}
 }
 
-async function run(job: Job, source: ServerLanguage, note: string, ask: TranslationAsk): Promise<boolean> {
+type TranslationRun = { source: ServerLanguage; note: string; ask: TranslationAsk };
+
+async function run(job: Job, { source, note, ask }: TranslationRun): Promise<boolean> {
 	for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
 		const answer = await ask(system(source, job.target, note), JSON.stringify(job.items)).catch(() => '');
 		const translated = parse(answer);
@@ -123,11 +125,11 @@ export async function translateMessage(
 	const source = doc.language;
 	const targets = doc.languages.filter((code) => code !== source);
 	const before = new Map(messageTexts(original).map((text) => [text.key, text.value]));
-	const sameSource = original.language === source;
+	const isSameSource = original.language === source;
 	const jobs: Job[] = [];
 
 	for (const target of targets) {
-		const again = options.retranslate.includes(target);
+		const shouldRetranslate = options.retranslate.includes(target);
 		let job: Job | null = null;
 		let size = 0;
 		let next = 0;
@@ -137,12 +139,12 @@ export async function translateMessage(
 			if (!text) {
 				continue;
 			}
-			if (!again && (entry.value[target] ?? '').trim()) {
+			if (!shouldRetranslate && (entry.value[target] ?? '').trim()) {
 				continue;
 			}
 
 			const old = before.get(entry.key);
-			const kept = sameSource && !again && old && (old[source] ?? '').trim() === text ? (old[target] ?? '').trim() : '';
+			const kept = isSameSource && !shouldRetranslate && old && (old[source] ?? '').trim() === text ? (old[target] ?? '').trim() : '';
 			if (kept) {
 				entry.value[target] = old![target];
 				continue;
@@ -160,7 +162,7 @@ export async function translateMessage(
 		}
 	}
 
-	const ask = options.ask;
+	const { ask } = options;
 	if (!ask) {
 		return { translated: [], failed: [] };
 	}
@@ -171,7 +173,7 @@ export async function translateMessage(
 		Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
 			while (cursor < jobs.length) {
 				const job = jobs[cursor++];
-				if (!(await run(job, source, options.note, ask))) {
+				if (!(await run(job, { source, note: options.note, ask }))) {
 					failed.add(job.target);
 				}
 			}

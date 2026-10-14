@@ -21,6 +21,7 @@
 	import { discordMarkdown, type MarkdownContext } from './discordMarkdown.js';
 
 	const NOTHING = new Set<string>();
+	const GALLERY_MAX_COLUMNS = 3;
 
 	let {
 		doc,
@@ -270,7 +271,7 @@
 		</div>
 	{:else if block.type === 'gallery'}
 		{@const items = editable ? block.items : block.items.filter((item) => item.media)}
-		<div class="dc-gallery dc-gallery-{Math.max(1, Math.min(items.length, 3))} {mark(block.id)}" {...hit(block.id)}>
+		<div class="dc-gallery dc-gallery-{Math.max(1, Math.min(items.length, GALLERY_MAX_COLUMNS))} {mark(block.id)}" {...hit(block.id)}>
 			{#each items as item (item.id)}
 				{@render media(item.media, item.id, false, text(item.caption), '')}
 			{:else}

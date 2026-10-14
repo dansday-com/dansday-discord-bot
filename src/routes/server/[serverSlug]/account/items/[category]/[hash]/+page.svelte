@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { defaultAvatarUrl, legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
+	import { MINUTE_MS } from '$lib/utils/time.js';
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
-	import { getContext } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { sfx } from '$lib/frontend/sfx';
@@ -16,15 +18,19 @@
 		formatDuration,
 		TARGETED_EFFECTS as TARGETED,
 		ITEM_EFFECTS,
-		type ItemOutcome
+		type ItemOutcome,
+		type ItemUseResult
 	} from '$lib/items.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
-	import { EmptyState, OutcomeModal, TargetPicker } from '$lib/frontend/components/public';
+	import { EmptyState, OutcomeModal, TargetPicker, RESULT_POPUP_MS } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
+
+	const BUY_BURST_MS = 600;
+	const TARGET_ROLES_SHOWN = 3;
 
 	let { data }: PageProps = $props();
 
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 	const { fmt, canAfford, isBuffActive } = ctx;
 
 	const tzOffset = () => -new Date().getTimezoneOffset();
@@ -41,6 +47,10 @@
 			.filter((item) => item.enabled !== false || item.usable !== false)
 			.filter((item) => item._state === 'active' || item._state === 'upcoming' || item._buyable || (Number(item.owned_quantity) || 0) > 0)
 	);
+
+	type ShopItem = (typeof shopItems)[number] & { original_cost?: number };
+	type ActiveEffect = NonNullable<typeof data.activeEffects>[number];
+	type Target = NonNullable<typeof data.targets>[number];
 
 	const groups = $derived.by(() => {
 		const list = [...shopItems].sort(byCost);
@@ -61,7 +71,7 @@
 		return out;
 	});
 
-	async function buy(item: any, ev?: MouseEvent) {
+	async function buy(item: ShopItem, ev?: MouseEvent) {
 		if (ctx.bagFull) {
 			showToast(`Your items are full (max ${ctx.bagCapacity})`, 'error');
 			return;
@@ -84,7 +94,7 @@
 			if (d.success) {
 				sfx.buy();
 				ctx.setBurst(item.id);
-				setTimeout(() => ctx.setBurst(null), 600);
+				setTimeout(() => ctx.setBurst(null), BUY_BURST_MS);
 				ctx.setLiveXp(optimistic);
 				ctx.flyToBag(medallion, effectIcon(item.effect_type));
 				await ctx.invalidateAll();
@@ -98,7 +108,7 @@
 		}
 	}
 
-	let pickingTargetFor = $state<any | null>(null);
+	let pickingTargetFor = $state<ShopItem | null>(null);
 	let targetSearch = $state('');
 	let outcome = $state<ItemOutcome | null>(null);
 	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -111,13 +121,13 @@
 		return lockScroll();
 	});
 
-	function showOutcome(effectType: string, result: unknown) {
+	function showOutcome(effectType: string, result: ItemUseResult | null | undefined) {
 		if (outcomeTimer) {
 			clearTimeout(outcomeTimer);
 		}
 		outcome = describeItemOutcome(effectType, result);
 		if (!outcome.spyReport) {
-			outcomeTimer = setTimeout(() => (outcome = null), 3500);
+			outcomeTimer = setTimeout(() => (outcome = null), RESULT_POPUP_MS);
 		}
 	}
 	function showFailOutcome(title: string, line: string) {
@@ -125,7 +135,7 @@
 			clearTimeout(outcomeTimer);
 		}
 		outcome = { tone: 'lose', icon: 'fa-triangle-exclamation', title, line, deltaXp: null, untilMs: null };
-		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+		outcomeTimer = setTimeout(() => (outcome = null), RESULT_POPUP_MS);
 	}
 	function dismissOutcome() {
 		if (outcomeTimer) {
@@ -141,13 +151,13 @@
 		return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 	}
 	function relUntil(ms: number): string {
-		const mins = Math.max(0, Math.round((ms - Date.now()) / 60000));
+		const mins = Math.max(0, Math.round((ms - Date.now()) / MINUTE_MS));
 		if (mins <= 0) {
 			return 'now';
 		}
 		return formatDuration(mins);
 	}
-	function effectLine(e: any): string {
+	function effectLine(e: ActiveEffect): string {
 		if (e.effect_type === 'boost') {
 			return `${e.effect_value || 2}× Boost`;
 		}
@@ -172,7 +182,7 @@
 		immunity: 'Immune to attacks'
 	};
 
-	async function useItem(item: any, targetDiscordId?: string) {
+	async function useItem(item: ShopItem, targetDiscordId?: string) {
 		ctx.setBusy(item.member_item_id);
 		try {
 			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/use`, {
@@ -192,7 +202,7 @@
 		}
 	}
 
-	function onUse(item: any) {
+	function onUse(item: ShopItem) {
 		if (item.usable === false) {
 			showToast(`${item.name} can't be used right now.`, 'error');
 			return;
@@ -209,7 +219,7 @@
 		}
 	}
 
-	async function pickTarget(item: any, targetDiscordId: string) {
+	async function pickTarget(item: ShopItem, targetDiscordId: string) {
 		await useItem(item, targetDiscordId);
 		pickingTargetFor = null;
 	}
@@ -241,7 +251,7 @@
 		anim.onfinish = () => clone.remove();
 	}
 
-	async function discard(item: any, ev?: MouseEvent) {
+	async function discard(item: ShopItem, ev?: MouseEvent) {
 		const card = (ev?.currentTarget as HTMLElement | undefined)?.closest('[data-item-card]');
 		const medallion = card?.querySelector('[data-item-medallion]') as HTMLElement | null;
 		discardingId = item.member_item_id;
@@ -269,12 +279,12 @@
 
 	const visibleTargets = $derived.by(() => {
 		const q = targetSearch.trim().toLowerCase();
-		const list = q ? (data.targets ?? []).filter((t: any) => (t.name ?? '').toLowerCase().includes(q)) : (data.targets ?? []);
-		return [...list].sort((a: any, b: any) => (b.xp ?? 0) - (a.xp ?? 0));
+		const list = q ? (data.targets ?? []).filter((t) => (t.name ?? '').toLowerCase().includes(q)) : (data.targets ?? []);
+		return [...list].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0));
 	});
 
-	function targetAvatar(t: any): string {
-		return t.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(t.discord_member_id) % 5 || 0}.png`;
+	function targetAvatar(t: Target): string {
+		return t.avatar ?? legacyDefaultAvatarUrl(t.discord_member_id);
 	}
 
 	const assetDir = (pnl: number) => (pnl > 0 ? '#1a7f57' : pnl < 0 ? '#b23b2e' : 'var(--color-base-content)');
@@ -282,7 +292,7 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Items | {APP_NAME} Discord Bot</title></svelte:head>
 
-{#snippet card(item: any)}
+{#snippet card(item: ShopItem)}
 	{@const affordable = canAfford(item)}
 	{@const owned = Number(item.owned_quantity) || 0}
 	{@const buffActive = isBuffActive(item.effect_type)}
@@ -405,7 +415,7 @@
 								style="background: linear-gradient(135deg, var(--cat), color-mix(in srgb, var(--cat) 68%, black 22%));"
 								disabled={ctx.busy === item.member_item_id || !canUse}
 								title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
-								onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
+								onclick={() => onUse({ ...item, member_item_id: item.member_item_id, usable: canUse })}
 							>
 								{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"></i>{/if}
 								{actionVerb(item.effect_type).label}
@@ -461,23 +471,24 @@
 {/if}
 
 {#if pickingTargetFor}
+	{@const picking = pickingTargetFor}
 	<TargetPicker
 		bind:search={targetSearch}
-		placeholder="Search a member to {actionVerb(pickingTargetFor.effect_type).label.toLowerCase()}…"
+		placeholder="Search a member to {actionVerb(picking.effect_type).label.toLowerCase()}…"
 		hasTargets={(data.targets ?? []).length > 0}
 		matches={visibleTargets.length}
 		onback={() => (pickingTargetFor = null)}
 	>
 		{#snippet label()}
-			Pick a target for <strong>{pickingTargetFor.name}</strong>:
+			Pick a target for <strong>{picking.name}</strong>:
 		{/snippet}
 
 		{#each visibleTargets as t (t.discord_member_id)}
 			<li>
 				<button
 					class="border-base-300 bg-base-100 text-base-content hover:border-primary/40 flex w-full items-center gap-[11px] rounded-xl border px-3 py-2.5 text-left transition-colors"
-					disabled={ctx.busy === pickingTargetFor.member_item_id}
-					onclick={() => pickTarget(pickingTargetFor, t.discord_member_id)}
+					disabled={ctx.busy === picking.member_item_id}
+					onclick={() => pickTarget(picking, t.discord_member_id)}
 				>
 					<span class="text-base-content/60 min-w-[30px] shrink-0 text-center text-xs font-bold">{t.rank != null ? `#${t.rank}` : '—'}</span>
 					<img
@@ -485,7 +496,7 @@
 						src={targetAvatar(t)}
 						alt={t.name}
 						loading="lazy"
-						onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
+						onerror={(e) => ((e.currentTarget as HTMLImageElement).src = defaultAvatarUrl(0))}
 					/>
 					<span class="flex min-w-0 flex-auto flex-col gap-0.5">
 						<span class="truncate text-[13.5px] font-semibold">{t.name}</span>
@@ -494,7 +505,7 @@
 						</span>
 						{#if t.roles.length > 0}
 							<span class="mt-0.5 flex flex-wrap gap-1">
-								{#each t.roles.slice(0, 3) as role}
+								{#each t.roles.slice(0, TARGET_ROLES_SHOWN) as role}
 									<span
 										class="rounded-full border px-[7px] py-[3px] text-[10px] leading-none font-semibold whitespace-nowrap"
 										style="--rc: {role.color ||

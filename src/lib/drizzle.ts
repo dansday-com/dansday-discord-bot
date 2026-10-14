@@ -3,6 +3,8 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import * as schema from './schema.js';
 
+const DEFAULT_POOL_SIZE = 25;
+
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
 
@@ -51,7 +53,7 @@ function getDb() {
 		const pool = mysql.createPool({
 			...getConnectionConfig(),
 			waitForConnections: true,
-			connectionLimit: Number(process.env.DB_POOL_SIZE) || 25,
+			connectionLimit: Number(process.env.DB_POOL_SIZE) || DEFAULT_POOL_SIZE,
 			queueLimit: 0,
 			dateStrings: true,
 			timezone: tzOffset,
@@ -65,7 +67,7 @@ function getDb() {
 
 export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 	get(_target, prop) {
-		return (getDb() as any)[prop];
+		return Reflect.get(getDb(), prop);
 	}
 });
 

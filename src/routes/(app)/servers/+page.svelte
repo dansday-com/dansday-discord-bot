@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/backend/panelServer.js';
+	import { MINUTES_PER_HOUR } from '$lib/utils/time.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath } from '$lib/url.js';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, statDelay } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -33,8 +35,8 @@
 
 			{#if data.entries.length > 0}
 				<div class="border-base-300 mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
-					{#each [{ label: 'Servers', value: fmt(data.entries.length) }, { label: 'Members', value: fmt(data.totals.members_total) }, { label: 'XP earned', value: fmt(data.totals.leveling_total_xp) }, { label: 'Voice hours', value: fmt(data.totals.leveling_total_voice_minutes / 60) }] as stat, i}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
+					{#each [{ label: 'Servers', value: fmt(data.entries.length) }, { label: 'Members', value: fmt(data.totals.members_total) }, { label: 'XP earned', value: fmt(data.totals.leveling_total_xp) }, { label: 'Voice hours', value: fmt(data.totals.leveling_total_voice_minutes / MINUTES_PER_HOUR) }] as stat, i}
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {statDelay(i)}">
 							<p class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{stat.value}</p>
 							<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
 						</div>
@@ -56,8 +58,12 @@
 							href={publicServerPath(entry.slug)}
 							class="group border-base-300 grid grid-cols-[2.2rem_38px_1fr] items-center gap-3 border-b py-3 sm:grid-cols-[2.6rem_38px_1fr_auto]"
 						>
-							<span class="flex items-center gap-1.5 text-[13px] font-black tabular-nums {entry.rank <= 3 ? MEDAL[entry.rank - 1] : 'text-base-content/30'}">
-								{#if entry.rank <= 3}
+							<span
+								class="flex items-center gap-1.5 text-[13px] font-black tabular-nums {entry.rank <= MEDAL.length
+									? MEDAL[entry.rank - 1]
+									: 'text-base-content/30'}"
+							>
+								{#if entry.rank <= MEDAL.length}
 									<i class="fas fa-medal text-[11px]"></i>
 								{/if}
 								{entry.rank}
@@ -89,12 +95,12 @@
 									{/if}
 								</span>
 								<span class="bg-base-300 mt-2 block h-1 w-full max-w-xs overflow-hidden rounded-full sm:hidden">
-									<span class="bg-primary block h-full rounded-full" style="width: {topXp > 0 ? Math.max(2, (entry.xp / topXp) * 100) : 0}%"></span>
+									<span class="bg-primary block h-full rounded-full" style="width: {topXp > 0 ? Math.max(2, (entry.xp / topXp) * PERCENT) : 0}%"></span>
 								</span>
 							</span>
 							<span class="hidden shrink-0 items-center gap-3 sm:flex">
 								<span class="bg-base-300 block h-1 w-32 overflow-hidden rounded-full">
-									<span class="bg-primary block h-full rounded-full" style="width: {topXp > 0 ? Math.max(2, (entry.xp / topXp) * 100) : 0}%"></span>
+									<span class="bg-primary block h-full rounded-full" style="width: {topXp > 0 ? Math.max(2, (entry.xp / topXp) * PERCENT) : 0}%"></span>
 								</span>
 								<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
 							</span>

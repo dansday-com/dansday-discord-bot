@@ -1,16 +1,30 @@
 <script lang="ts">
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { invalidateAll } from '$app/navigation';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SEED_RANGE, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
-	import { ConfirmModal, GameModal, REEL_CURVE, REEL_SECONDS, ReelStrip } from '$lib/frontend/components/public';
+	import {
+		ConfirmModal,
+		GameModal,
+		REEL_CURVE,
+		REEL_SECONDS,
+		ReelStrip,
+		reelCellOffset,
+		SPIN_REEL_CELLS,
+		IDLE_REEL_CELLS,
+		REEL_RESULT_DELAY_MS
+	} from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { sfx } from '$lib/frontend/sfx';
-	import { getContext } from 'svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
+
+	const SPIN_PAYOUT_QUALITY = 0.7;
+	const REEL_FRAME_WIDTH_PX = 88;
+	const REEL_FRAME_WIDTH_LG_PX = 96;
 
 	let { data }: PageProps = $props();
 
@@ -21,29 +35,29 @@
 	let pendingPreview = $state<string | null>(null);
 	let pendingAccent = $state<string | null>(null);
 	let colorDraft = $state<string | null>(null);
-	let busy = $state(false);
-	let converting = $state(false);
+	let isBusy = $state(false);
+	let isConverting = $state(false);
 	let originalSize = $state<number | null>(null);
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 
 	let reel = $state<string[]>([]);
 	let reelOffset = $state(0);
-	let reelAnimating = $state(false);
+	let isReelAnimating = $state(false);
 	let reelResult = $state<{ effect: string; seed: number; label: string } | null>(null);
 	let reelSeeds = $state<number[]>([]);
-	let spinning = $state(false);
+	let isSpinning = $state(false);
 	let reelWrapEl = $state<HTMLDivElement | undefined>();
-	let playing = $state(false);
-	let confirmingReset = $state(false);
+	let isPlaying = $state(false);
+	let isConfirmingReset = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
 	const previewImage = $derived(pendingPreview ?? savedImage);
 	const accent = $derived(colorDraft ?? pendingAccent ?? theme?.accent ?? DEFAULT_ACCENT);
 	const ink = $derived(accentInk(accent));
 	const owned = $derived(theme?.ownedEffect ?? 'none');
-	const effectOn = $derived(theme?.effectEnabled !== false);
+	const isEffectOn = $derived(theme?.effectEnabled !== false);
 	const canSpin = $derived((ctx?.liveXp ?? 0) >= EFFECT_SPIN_COST);
-	const dirty = $derived(pendingFile != null || (colorDraft != null && colorDraft !== theme?.accent));
+	const isDirty = $derived(pendingFile != null || (colorDraft != null && colorDraft !== theme?.accent));
 	const hasTheme = $derived(theme != null || pendingFile != null);
 
 	async function pickFile(event: Event) {
@@ -64,7 +78,7 @@
 			return;
 		}
 
-		converting = true;
+		isConverting = true;
 		try {
 			const prepared = await prepareThemeUpload(file);
 			if (prepared.file.size > MEMBER_THEME_MAX_BYTES) {
@@ -81,7 +95,7 @@
 			colorDraft = null;
 			pendingAccent = prepared.accent;
 		} finally {
-			converting = false;
+			isConverting = false;
 		}
 	}
 
@@ -106,35 +120,34 @@
 
 	function closeSpin() {
 		sfx.close();
-		playing = false;
+		isPlaying = false;
+	}
+
+	function imageRequest(file: File): RequestInit {
+		const form = new FormData();
+		form.set('card', String(data.hash));
+		form.set('image', file);
+		form.set('accent', colorDraft ?? pendingAccent ?? DEFAULT_ACCENT);
+		return { method: 'POST', body: form };
+	}
+
+	function accentRequest(): RequestInit {
+		const payload: Record<string, unknown> = { card: data.hash };
+		if (colorDraft != null) {
+			payload.accent = colorDraft;
+			payload.accent_auto = false;
+		}
+		return { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
 	}
 
 	async function save() {
-		if (busy || !dirty) {
+		if (isBusy || !isDirty) {
 			return;
 		}
-		busy = true;
+		isBusy = true;
 
 		try {
-			let response: Response;
-			if (pendingFile) {
-				const form = new FormData();
-				form.set('card', String(data.hash));
-				form.set('image', pendingFile);
-				form.set('accent', colorDraft ?? pendingAccent ?? DEFAULT_ACCENT);
-				response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, { method: 'POST', body: form });
-			} else {
-				const payload: Record<string, unknown> = { card: data.hash };
-				if (colorDraft != null) {
-					payload.accent = colorDraft;
-					payload.accent_auto = false;
-				}
-				response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload)
-				});
-			}
+			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, pendingFile ? imageRequest(pendingFile) : accentRequest());
 
 			const body = await response.json().catch(() => null);
 			if (!response.ok || !body?.success) {
@@ -149,15 +162,15 @@
 		} catch {
 			showToast('Could not save your theme.', 'error');
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
 	async function removeImage() {
-		if (busy || !savedImage) {
+		if (isBusy || !savedImage) {
 			return;
 		}
-		busy = true;
+		isBusy = true;
 
 		try {
 			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
@@ -178,16 +191,16 @@
 		} catch {
 			showToast('Could not remove the image.', 'error');
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
 	async function toggleEffect() {
-		if (busy || spinning) {
+		if (isBusy || isSpinning) {
 			return;
 		}
-		const next = !effectOn;
-		busy = true;
+		const next = !isEffectOn;
+		isBusy = true;
 		try {
 			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
 				method: 'POST',
@@ -209,15 +222,15 @@
 		} catch {
 			showToast('Could not change the effect.', 'error');
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
 	async function reset() {
-		if (busy) {
+		if (isBusy) {
 			return;
 		}
-		busy = true;
+		isBusy = true;
 
 		try {
 			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}`, {
@@ -238,8 +251,8 @@
 		} catch {
 			showToast('Could not reset your theme.', 'error');
 		} finally {
-			busy = false;
-			confirmingReset = false;
+			isBusy = false;
+			isConfirmingReset = false;
 		}
 	}
 
@@ -264,12 +277,12 @@
 	});
 
 	function openSpin() {
-		playing = true;
+		isPlaying = true;
 		initReel();
 	}
 
 	$effect(() => {
-		if (!playing && !confirmingReset) {
+		if (!isPlaying && !isConfirmingReset) {
 			return;
 		}
 		return lockScroll();
@@ -281,33 +294,28 @@
 
 	function centerCell(index: number) {
 		requestAnimationFrame(() => {
-			const wrapW = reelWrapEl?.clientWidth ?? 360;
-			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
-			if (!cell) {
-				return;
-			}
-			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
+			reelOffset = reelCellOffset(reelWrapEl, index) ?? reelOffset;
 		});
 	}
 
 	function initReel() {
-		reel = randomCells(14);
+		reel = randomCells(IDLE_REEL_CELLS);
 		reelSeeds = reel.map(() => randomSeed());
 		reelOffset = 0;
 		reelResult = null;
-		reelAnimating = false;
+		isReelAnimating = false;
 		centerCell(2);
 	}
 
 	let ownerEffect = $state<string>(SPINNABLE_EFFECTS[0]);
 	let ownerSeed = $state('');
-	let applyingOwner = $state(false);
+	let isApplyingOwner = $state(false);
 
 	async function applyOwnerEffect() {
-		if (applyingOwner) {
+		if (isApplyingOwner) {
 			return;
 		}
-		applyingOwner = true;
+		isApplyingOwner = true;
 		try {
 			const raw = ownerSeed.trim();
 			const response = await fetch(`/api/themes/${encodeURIComponent(data.server.slug)}/set`, {
@@ -327,16 +335,16 @@
 		} catch {
 			showToast('Could not set effect.', 'error');
 		} finally {
-			applyingOwner = false;
+			isApplyingOwner = false;
 		}
 	}
 
 	async function spin() {
-		if (spinning || busy || !canSpin) {
+		if (isSpinning || isBusy || !canSpin) {
 			return;
 		}
 		sfx.press();
-		spinning = true;
+		isSpinning = true;
 		reelResult = null;
 
 		try {
@@ -348,37 +356,37 @@
 			const body = await response.json().catch(() => null);
 			if (!response.ok || !body?.success) {
 				showToast(body?.error ?? 'Spin failed.', 'error');
-				spinning = false;
+				isSpinning = false;
 				return;
 			}
 
 			const won = body.result as { effect: string; seed: number; label: string };
-			reel = randomCells(40);
+			reel = randomCells(SPIN_REEL_CELLS);
 			reelSeeds = reel.map(() => randomSeed());
 			const landIndex = 32;
 			reel[landIndex] = won.effect;
 			reelSeeds[landIndex] = won.seed;
 
-			reelAnimating = false;
+			isReelAnimating = false;
 			reelOffset = 0;
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			reelWrapEl?.offsetHeight;
 			centerCell(2);
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
-			reelAnimating = true;
+			isReelAnimating = true;
 			centerCell(landIndex);
 			sfx.reel(landIndex - 2, REEL_SECONDS, REEL_CURVE);
 
 			setTimeout(async () => {
 				reelResult = won;
-				sfx.payout(0.7);
+				sfx.payout(SPIN_PAYOUT_QUALITY);
 				ctx?.setLiveXp?.(Math.max(0, (ctx?.liveXp ?? 0) - EFFECT_SPIN_COST));
-				spinning = false;
+				isSpinning = false;
 				await invalidateAll();
-			}, 7000);
+			}, REEL_RESULT_DELAY_MS);
 		} catch {
 			showToast('Spin failed.', 'error');
-			spinning = false;
+			isSpinning = false;
 		}
 	}
 
@@ -415,15 +423,15 @@
 			</div>
 
 			<div class="flex flex-wrap gap-2">
-				<button class="btn btn-primary btn-sm" onclick={() => fileInput?.click()} disabled={busy || converting}>
-					{#if converting}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-arrow-up-from-bracket"></i>{/if}{previewImage
+				<button class="btn btn-primary btn-sm" onclick={() => fileInput?.click()} disabled={isBusy || isConverting}>
+					{#if isConverting}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-arrow-up-from-bracket"></i>{/if}{previewImage
 						? 'Replace image'
 						: 'Choose image'}
 				</button>
 				{#if pendingFile}
-					<button class="btn btn-ghost btn-sm" onclick={dropPending} disabled={busy}>Discard</button>
+					<button class="btn btn-ghost btn-sm" onclick={dropPending} disabled={isBusy}>Discard</button>
 				{:else if savedImage}
-					<button class="btn btn-ghost btn-sm text-error" onclick={removeImage} disabled={busy}>
+					<button class="btn btn-ghost btn-sm text-error" onclick={removeImage} disabled={isBusy}>
 						<i class="fas fa-trash-can"></i>Remove image
 					</button>
 				{/if}
@@ -457,7 +465,7 @@
 					>
 						<i class="fas fa-pen"></i>
 					</span>
-					<input type="color" value={accent} class="absolute inset-0 cursor-pointer opacity-0" oninput={onColorInput} disabled={busy} />
+					<input type="color" value={accent} class="absolute inset-0 cursor-pointer opacity-0" oninput={onColorInput} disabled={isBusy} />
 				</label>
 
 				<div class="min-w-0 flex-1">
@@ -468,7 +476,7 @@
 				</div>
 
 				{#if pendingFile}
-					<button class="btn btn-ghost btn-sm" onclick={recolorFromImage} disabled={busy}>
+					<button class="btn btn-ghost btn-sm" onclick={recolorFromImage} disabled={isBusy}>
 						<i class="fas fa-wand-magic-sparkles"></i>Auto
 					</button>
 				{/if}
@@ -494,7 +502,7 @@
 				<i class="fas fa-wand-magic-sparkles text-base-content/45"></i>Effect
 			</span>
 			<span class="text-base-content/45 text-[11px] font-medium">
-				{owned === 'none' ? 'None yet' : effectOn ? effectMeta(owned)?.label : `${effectMeta(owned)?.label} · off`}
+				{owned === 'none' ? 'None yet' : isEffectOn ? effectMeta(owned)?.label : `${effectMeta(owned)?.label} · off`}
 			</span>
 		</div>
 
@@ -503,14 +511,14 @@
 				<button
 					class="btn btn-sm w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black whitespace-nowrap text-white sm:w-auto"
 					onclick={openSpin}
-					disabled={busy || !canSpin}
+					disabled={isBusy || !canSpin}
 				>
 					<i class="fas fa-dice"></i>Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
 				</button>
 				{#if owned !== 'none'}
 					<div class="flex gap-2">
-						<button class="btn btn-ghost btn-sm flex-1 whitespace-nowrap sm:flex-none" onclick={toggleEffect} disabled={busy}>
-							<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
+						<button class="btn btn-ghost btn-sm flex-1 whitespace-nowrap sm:flex-none" onclick={toggleEffect} disabled={isBusy}>
+							<i class="fas {isEffectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{isEffectOn ? 'Disable' : 'Enable'}
 						</button>
 					</div>
 				{/if}
@@ -531,7 +539,7 @@
 			<div class="flex flex-wrap items-end gap-2">
 				<label class="flex min-w-45 flex-1 flex-col gap-1">
 					<span class="text-base-content/50 text-[10px] font-medium">Effect</span>
-					<select class="select select-sm select-bordered w-full" bind:value={ownerEffect} disabled={applyingOwner}>
+					<select class="select select-sm select-bordered w-full" bind:value={ownerEffect} disabled={isApplyingOwner}>
 						{#each SPINNABLE_EFFECTS as id (id)}
 							<option value={id}>{effectMeta(id)?.label ?? id}</option>
 						{/each}
@@ -546,13 +554,13 @@
 						max={SEED_RANGE - 1}
 						placeholder="random"
 						bind:value={ownerSeed}
-						disabled={applyingOwner}
+						disabled={isApplyingOwner}
 					/>
 				</label>
-				<button class="btn btn-sm btn-warning" onclick={applyOwnerEffect} disabled={applyingOwner}>
-					{#if applyingOwner}<span class="loading loading-spinner loading-xs"></span>{/if}Apply
+				<button class="btn btn-sm btn-warning" onclick={applyOwnerEffect} disabled={isApplyingOwner}>
+					{#if isApplyingOwner}<span class="loading loading-spinner loading-xs"></span>{/if}Apply
 				</button>
-				<button class="btn btn-sm btn-ghost" onclick={() => (ownerSeed = String(randomSeed()))} disabled={applyingOwner} title="Random seed">
+				<button class="btn btn-sm btn-ghost" onclick={() => (ownerSeed = String(randomSeed()))} disabled={isApplyingOwner} title="Random seed">
 					<i class="fas fa-dice"></i>
 				</button>
 			</div>
@@ -563,28 +571,28 @@
 	{/if}
 
 	<div class="flex flex-wrap items-center gap-2">
-		<button class="btn btn-primary btn-sm" onclick={save} disabled={busy || !dirty}>
-			{#if busy}<span class="loading loading-spinner loading-xs"></span>{/if}Save theme
+		<button class="btn btn-primary btn-sm" onclick={save} disabled={isBusy || !isDirty}>
+			{#if isBusy}<span class="loading loading-spinner loading-xs"></span>{/if}Save theme
 		</button>
 		{#if hasTheme}
-			<button class="btn btn-ghost btn-sm" onclick={() => (confirmingReset = true)} disabled={busy}>Reset to default</button>
+			<button class="btn btn-ghost btn-sm" onclick={() => (isConfirmingReset = true)} disabled={isBusy}>Reset to default</button>
 		{/if}
-		{#if dirty}
+		{#if isDirty}
 			<span class="text-base-content/45 text-[11px] font-medium">Unsaved changes</span>
 		{/if}
 	</div>
 </div>
 
-{#if playing}
-	<GameModal icon="fa-wand-magic-sparkles" title="Effect spin" state={reelResult ? 'win' : 'idle'} closable={!spinning} onclose={() => (playing = false)}>
+{#if isPlaying}
+	<GameModal icon="fa-wand-magic-sparkles" title="Effect spin" state={reelResult ? 'win' : 'idle'} closable={!isSpinning} onclose={() => (isPlaying = false)}>
 		<div class="mb-3.5">
 			<ReelStrip
 				bind:wrap={reelWrapEl}
 				items={reel}
 				offset={reelOffset}
-				animating={reelAnimating}
-				frameWidth={88}
-				frameWidthLg={96}
+				animating={isReelAnimating}
+				frameWidth={REEL_FRAME_WIDTH_PX}
+				frameWidthLg={REEL_FRAME_WIDTH_LG_PX}
 				padLeft="92px"
 				padLeftLg="100px"
 				cellClass="basis-21 h-[70px] min-[600px]:basis-23 min-[600px]:h-[76px]"
@@ -613,16 +621,16 @@
 			<button
 				class="btn animate-game-charge w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white"
 				onclick={spin}
-				disabled={spinning || !canSpin}
+				disabled={isSpinning || !canSpin}
 			>
-				{#if spinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
+				{#if isSpinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
 				Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
 			</button>
 		{/if}
 	</GameModal>
 {/if}
 
-{#if confirmingReset}
+{#if isConfirmingReset}
 	<ConfirmModal
 		icon="fa-rotate-left"
 		title="Reset to default?"
@@ -630,8 +638,8 @@
 			? 'Your banner image and accent colour will be removed. This cannot be undone.'
 			: `Your banner image and accent colour will be removed. Your ${effectMeta(owned)?.label} effect stays — spins are never lost.`}
 		confirmLabel="Reset"
-		loading={busy}
+		loading={isBusy}
 		onconfirm={reset}
-		oncancel={() => (confirmingReset = false)}
+		oncancel={() => (isConfirmingReset = false)}
 	/>
 {/if}

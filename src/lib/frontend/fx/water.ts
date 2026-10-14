@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 const P = 6;
@@ -156,7 +156,7 @@ export function makeWaterfall(rows: number): FxProgram {
 					for (let x = cx - hw * spread; x <= cx + hw * spread; x++) {
 						const e = 1 - Math.abs(x - cx) / (hw * spread + 0.5);
 						const streak = 0.84 + 0.16 * Math.sin(x * 1.4 + hash2(x, 0, id.grain) * 6.28 + s.t * 0.3 * s.v.speed);
-						paint(s, x, y, wr * 0.78, wg * 0.84, wb, sheetA * Math.pow(e, 0.42) * streak);
+						paint(s, x, y, wr * 0.78, wg * 0.84, wb, sheetA * e ** 0.42 * streak);
 					}
 				}
 			}
@@ -184,8 +184,8 @@ export function makeWaterfall(rows: number): FxProgram {
 					p[o] = f.x * s.w + (s.rnd() - 0.5) * hw * 1.8;
 					continue;
 				}
-				const inSheet = Math.abs(p[o] - f.x * s.w) < hw * 0.85;
-				const a = p[o + 4] * edge(p[o + 1], lipY - 2, poolY + 2, s.h * 0.1) * (0.45 + drop * 0.55) * (inSheet ? 0.4 : 1);
+				const isInSheet = Math.abs(p[o] - f.x * s.w) < hw * 0.85;
+				const a = p[o + 4] * edge(p[o + 1], lipY - 2, poolY + 2, s.h * 0.1) * (0.45 + drop * 0.55) * (isInSheet ? 0.4 : 1);
 				const len = 1 + p[o + 2] * 3.2;
 				for (let k = 0; k < len; k++) {
 					plot(s, p[o], p[o + 1] - k, wr, wg, wb, a * (1 - k / len) * 0.85);
@@ -406,7 +406,9 @@ export function makeRipple(rows: number): FxProgram {
 				}
 			}
 
-			if (--(s as any).next <= 0) {
+			const next = (s.next as number) - 1;
+			s.next = next;
+			if (next <= 0) {
 				s.next = id.cadence * (0.3 + s.rnd() * 1.2) * (1 - storm * 0.82);
 				const squall = 1 + ((s.rnd() * s.rnd() * 4) | 0) + ((storm * 5) | 0);
 				for (let q = 0; q < squall; q++) {
@@ -639,13 +641,13 @@ export function makeDrip(rows: number): FxProgram {
 			}
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
-			if (cyc < (s as any).last) {
+			if (cyc < (s.last as number)) {
 				s.chunk = null;
 				s.chip = 0;
 			}
 			s.last = cyc;
 			const strain = cyc > 0.62 && cyc < 0.78 ? (cyc - 0.62) / 0.16 : 0;
-			const broken = cyc >= 0.78;
+			const isBroken = cyc >= 0.78;
 
 			const ceil = s.h * 0.1;
 			const bright = (x: number, y: number) => 1 + Math.max(0, 1 - Math.abs(x - sx) / (s.w * 0.3)) * beam * 0.85 * (0.4 + (y / s.h) * 0.8);
@@ -685,8 +687,8 @@ export function makeDrip(rows: number): FxProgram {
 			for (let i = 0; i < 9; i++) {
 				const tx = id.tips[i] * s.w;
 				const isHero = i === id.hero;
-				const gone = isHero && broken;
-				const len = id.lens[i] * s.h * (gone ? 0.38 : 1);
+				const isGone = isHero && isBroken;
+				const len = id.lens[i] * s.h * (isGone ? 0.38 : 1);
 				const shake = isHero ? Math.sin(s.t * 0.9) * strain * 1.2 : 0;
 				for (let k = 0; k < len; k++) {
 					const f = k / len;
@@ -700,7 +702,7 @@ export function makeDrip(rows: number): FxProgram {
 					}
 					paint(s, tx + half + sw, ceil + k, er, eg, eb, 0.5);
 				}
-				if (isHero && strain > 0.05 && !gone) {
+				if (isHero && strain > 0.05 && !isGone) {
 					const cy = ceil + len * 0.3;
 					for (let q = -3; q <= 3; q++) {
 						const jag = Math.sin(q * 2.1 + id.offs[i] * 9) * 1.2;

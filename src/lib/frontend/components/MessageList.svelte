@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
+
+	const MESSAGE_INPUT_ROWS = 6;
+
 	interface Props {
 		label: string;
 		values: string[];
@@ -19,20 +22,20 @@
 		onchange
 	}: Props = $props();
 
-	let modalOpen = $state(false);
+	let isModalOpen = $state(false);
 	let editIndex = $state<number | null>(null);
 	let draftText = $state('');
 
 	function openAdd() {
 		editIndex = null;
 		draftText = '';
-		modalOpen = true;
+		isModalOpen = true;
 	}
 
 	function openEdit(i: number) {
 		editIndex = i;
 		draftText = values[i];
-		modalOpen = true;
+		isModalOpen = true;
 	}
 
 	function saveModal() {
@@ -46,7 +49,7 @@
 		} else {
 			onchange([...values, draftText]);
 		}
-		modalOpen = false;
+		isModalOpen = false;
 	}
 
 	function remove(i: number) {
@@ -100,7 +103,7 @@
 	{/if}
 </div>
 
-{#if modalOpen}
+{#if isModalOpen}
 	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 		<div class="bg-ash-800 border-ash-700 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-5">
 			<div class="mb-4 flex items-center justify-between">
@@ -108,7 +111,7 @@
 					<i class="fas fa-comment-dots {iconAccent}"></i>
 					{editIndex !== null ? 'Edit Message' : 'Add Message'}
 				</h3>
-				<button onclick={() => (modalOpen = false)} aria-label="Close" class="text-ash-400 hover:text-ash-100 transition-colors">
+				<button onclick={() => (isModalOpen = false)} aria-label="Close" class="text-ash-400 hover:text-ash-100 transition-colors">
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>
@@ -118,7 +121,7 @@
 				<textarea
 					id="message-input"
 					bind:value={draftText}
-					rows={6}
+					rows={MESSAGE_INPUT_ROWS}
 					{placeholder}
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 				></textarea>
@@ -141,7 +144,7 @@
 			<div class="border-ash-700 flex gap-2 border-t pt-3">
 				<button
 					type="button"
-					onclick={() => (modalOpen = false)}
+					onclick={() => (isModalOpen = false)}
 					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
 				>
 					Cancel

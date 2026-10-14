@@ -4,15 +4,16 @@ import db from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { MAX_SAVED_MESSAGES, messageButtons, messageSelects, messageSummary } from '$lib/messages.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		redirect(302, '/login');
+		redirect(HTTP.FOUND, '/login');
 	}
 
 	const serverId = Number(params.serverId);
 	if (!(await canUseEmbedBuilder(locals, serverId))) {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 	const [messages, posts] = await Promise.all([db.getServerMessages(serverId).catch(() => []), db.getServerMessagePosts(serverId).catch(() => [])]);
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { CAPTCHA_LENGTH } from '$lib/accounts.js';
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto } from '$app/navigation';
@@ -6,6 +7,9 @@
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
+
+	const DEMO_REDIRECT_DELAY_MS = 300;
+	const LOGIN_REDIRECT_DELAY_MS = 500;
 
 	let { data }: PageProps = $props();
 
@@ -15,16 +19,16 @@
 			goto('/login', { replaceState: true, noScroll: true });
 		}
 	});
-	let loading = $state(false);
-	let showPassword = $state(false);
+	let isLoading = $state(false);
+	let isPasswordShown = $state(false);
 	let usernameOrEmail = $state('');
 	let password = $state('');
 
-	let showCaptchaModal = $state(false);
+	let isCaptchaModalShown = $state(false);
 	let captchaInput = $state('');
 	let captchaToken = $state('');
 	let captchaSvg = $state('');
-	let captchaLoading = $state(false);
+	let isCaptchaLoading = $state(false);
 
 	async function refreshDemoCaptcha() {
 		await openDemoCaptcha();
@@ -34,23 +38,23 @@
 		captchaInput = '';
 		captchaToken = '';
 		captchaSvg = '';
-		captchaLoading = true;
+		isCaptchaLoading = true;
 		try {
 			const res = await fetch('/api/panel/demo-login', { method: 'GET', credentials: 'include' });
 			const data = await res.json();
 			captchaToken = data.token ?? '';
 			captchaSvg = data.image_svg ?? '';
-			showCaptchaModal = true;
+			isCaptchaModalShown = true;
 		} catch (_) {
 			showToast('Failed to load captcha. Please try again.', 'error');
 		} finally {
-			captchaLoading = false;
+			isCaptchaLoading = false;
 		}
 	}
 
 	async function handleDemoLogin() {
-		loading = true;
-		showCaptchaModal = false;
+		isLoading = true;
+		isCaptchaModalShown = false;
 		try {
 			const res = await fetch('/api/panel/demo-login', {
 				method: 'POST',
@@ -61,14 +65,14 @@
 			const data = await res.json();
 			if (data.success) {
 				showToast('Logged in to demo (10 minutes)', 'success');
-				setTimeout(() => goto(DASHBOARD_PATH), 300);
+				setTimeout(() => goto(DASHBOARD_PATH), DEMO_REDIRECT_DELAY_MS);
 			} else {
 				showToast(data.error || 'Demo login failed', 'error');
 			}
 		} catch (_) {
 			showToast('Demo login failed. Please try again.', 'error');
 		} finally {
-			loading = false;
+			isLoading = false;
 			captchaInput = '';
 			captchaToken = '';
 			captchaSvg = '';
@@ -81,7 +85,7 @@
 			return;
 		}
 
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch('/api/panel/login', {
 				method: 'POST',
@@ -93,14 +97,14 @@
 
 			if (data.success) {
 				showToast(data.message || 'Login successful!', 'success');
-				setTimeout(() => goto(DASHBOARD_PATH), 500);
+				setTimeout(() => goto(DASHBOARD_PATH), LOGIN_REDIRECT_DELAY_MS);
 			} else {
 				showToast(data.error || 'Login failed', 'error');
 			}
 		} catch (_) {
 			showToast('Login failed. Please try again.', 'error');
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 </script>
@@ -146,7 +150,7 @@
 			<div class="relative">
 				<input
 					id="password"
-					type={showPassword ? 'text' : 'password'}
+					type={isPasswordShown ? 'text' : 'password'}
 					bind:value={password}
 					placeholder="Enter your password"
 					autocomplete="current-password"
@@ -154,22 +158,22 @@
 				/>
 				<button
 					type="button"
-					aria-label={showPassword ? 'Hide password' : 'Show password'}
-					onclick={() => (showPassword = !showPassword)}
+					aria-label={isPasswordShown ? 'Hide password' : 'Show password'}
+					onclick={() => (isPasswordShown = !isPasswordShown)}
 					class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
 				>
-					<i class="fas {showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+					<i class="fas {isPasswordShown ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
 				</button>
 			</div>
 		</div>
 
 		<button
 			type="submit"
-			disabled={loading}
+			disabled={isLoading}
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
-			{#if loading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
-			{loading ? 'Processing...' : 'Login'}
+			{#if isLoading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
+			{isLoading ? 'Processing...' : 'Login'}
 		</button>
 
 		<div class="flex items-center gap-3">
@@ -180,11 +184,11 @@
 
 		<button
 			type="button"
-			disabled={loading || captchaLoading}
+			disabled={isLoading || isCaptchaLoading}
 			onclick={openDemoCaptcha}
 			class="bg-ash-700 border-ash-600 text-ash-100 hover:bg-ash-650 flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
-			{#if captchaLoading}
+			{#if isCaptchaLoading}
 				<i class="fas fa-spinner fa-spin text-cyan-300"></i>
 			{:else}
 				<i class="fas fa-flask text-cyan-300"></i>
@@ -203,7 +207,7 @@
 	</form>
 </div>
 
-{#if showCaptchaModal}
+{#if isCaptchaModalShown}
 	<div
 		use:scrollLocked
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
@@ -211,13 +215,13 @@
 		tabindex="-1"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) {
-				showCaptchaModal = false;
+				isCaptchaModalShown = false;
 				captchaInput = '';
 			}
 		}}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
-				showCaptchaModal = false;
+				isCaptchaModalShown = false;
 				captchaInput = '';
 			}
 		}}
@@ -238,7 +242,7 @@
 					<button
 						type="button"
 						onclick={() => {
-							showCaptchaModal = false;
+							isCaptchaModalShown = false;
 							captchaInput = '';
 						}}
 						class="text-ash-400 hover:text-ash-200 rounded-lg px-2 py-1 transition-colors"
@@ -261,7 +265,7 @@
 				type="text"
 				bind:value={captchaInput}
 				placeholder="Enter characters above"
-				maxlength="6"
+				maxlength={CAPTCHA_LENGTH}
 				autocapitalize="none"
 				autocomplete="off"
 				autocorrect="off"
@@ -278,7 +282,7 @@
 				<button
 					type="button"
 					onclick={() => {
-						showCaptchaModal = false;
+						isCaptchaModalShown = false;
 						captchaInput = '';
 					}}
 					class="bg-ash-700 border-ash-600 text-ash-200 hover:bg-ash-600 flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all"
@@ -287,7 +291,7 @@
 				</button>
 				<button
 					type="button"
-					disabled={captchaInput.length !== 6}
+					disabled={captchaInput.length !== CAPTCHA_LENGTH}
 					onclick={handleDemoLogin}
 					class="flex-1 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 transition-all hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
 				>

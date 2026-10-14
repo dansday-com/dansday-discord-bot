@@ -34,13 +34,21 @@
 
 	const editor = messageEditor();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let query = $state('');
 	let active = $state(0);
-	let found = $state<any[]>([]);
+	type FoundMember = {
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+	};
+
+	let found = $state<FoundMember[]>([]);
 	let start = 0;
 	let request = 0;
-	let timer: ReturnType<typeof setTimeout> | undefined;
+	let timer: ReturnType<typeof setTimeout> | undefined = undefined;
 
 	const options = $derived<Option[]>([
 		...['everyone', 'here']
@@ -75,7 +83,7 @@
 	]);
 
 	function close() {
-		open = false;
+		isOpen = false;
 		request++;
 		clearTimeout(timer);
 	}
@@ -110,12 +118,12 @@
 			return close();
 		}
 		const next = match[1].toLowerCase();
-		if (!open || next !== query) {
+		if (!isOpen || next !== query) {
 			active = 0;
 		}
 		start = caret - match[1].length - 1;
 		query = next;
-		open = true;
+		isOpen = true;
 		search();
 	}
 
@@ -141,7 +149,7 @@
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (!open || options.length === 0) {
+		if (!isOpen || options.length === 0) {
 			return;
 		}
 		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -184,7 +192,7 @@
 	});
 </script>
 
-{#if open && options.length > 0}
+{#if isOpen && options.length > 0}
 	<div
 		role="listbox"
 		tabindex="-1"

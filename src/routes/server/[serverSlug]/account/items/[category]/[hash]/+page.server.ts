@@ -2,21 +2,22 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server, serverBasePath, itemsEnabled } = await parent();
+	const { server, serverBasePath, itemsEnabled: areItemsEnabled } = await parent();
 
-	if (!itemsEnabled) {
+	if (!areItemsEnabled) {
 		return { featureDisabled: true, category: 'all' };
 	}
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');
 	if ('notFound' in shared) {
-		redirect(303, `${serverBasePath}/account/profile/stats/${params.hash}`);
+		redirect(HTTP.SEE_OTHER, `${serverBasePath}/account/profile/stats/${params.hash}`);
 	}
 	if ('guest' in shared) {
-		redirect(303, serverBasePath || '/');
+		redirect(HTTP.SEE_OTHER, serverBasePath || '/');
 	}
 
 	const category = String(params.category || 'all');

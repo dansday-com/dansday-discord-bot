@@ -127,10 +127,8 @@ async function poll() {
 	if (listeners.size === 0) {
 		return;
 	}
-	let snapshot: GlobalStatisticsSnapshot;
-	try {
-		snapshot = await resolveGlobalStatistics();
-	} catch (_) {
+	const snapshot = await resolveGlobalStatistics().catch(() => null);
+	if (!snapshot) {
 		return;
 	}
 	const json = JSON.stringify(snapshot.totals);

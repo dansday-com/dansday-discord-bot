@@ -30,6 +30,11 @@ declare global {
 				| { authenticated: false; can_register: boolean };
 			sessionId: string | null;
 		}
+		interface PageData {
+			serverBasePath?: string;
+			hash?: string;
+			memberTheme?: import('$lib/themes.js').MemberTheme | null;
+		}
 	}
 }
 

@@ -2,7 +2,7 @@ import { PERMISSIONS } from '../../../config.js';
 import type { Guild, Role } from 'discord.js';
 
 function botTopPosition(guild: Guild) {
-	const me = guild.members.me;
+	const { me } = guild.members;
 	const highest = me?.roles?.highest;
 	return typeof highest?.position === 'number' ? highest.position : null;
 }

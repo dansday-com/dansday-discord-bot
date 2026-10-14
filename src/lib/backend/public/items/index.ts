@@ -5,6 +5,12 @@ import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENT
 import { resolveMemberThemeForClient } from '../../storage/memberThemes.js';
 import type { BotRow, ServerRow } from '../../../schema.js';
 import type { MemberListRow } from '../../../database.js';
+import { HTTP } from '../../../http.js';
+import { DAY_MINUTES, MINUTE_MS, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, SECOND_MS } from '../../../utils/time.js';
+import { DEFAULT_LEVELING_SETTINGS } from '../../../levelingDefaults.js';
+
+const LAST_MINUTE_OF_DAY = DAY_MINUTES - 1;
+const LAST_SECOND_OF_MINUTE = SECONDS_PER_MINUTE - 1;
 
 type ItemDbRow = Omit<Awaited<ReturnType<typeof db.listItems>>[number], 'enabled' | 'usable'> & { enabled: boolean | number; usable: boolean | number };
 
@@ -88,7 +94,7 @@ function scheduleMinutes(hhmm: unknown, fallback: number): number {
 	const [h, m] = String(hhmm)
 		.split(':')
 		.map((n) => Number(n) || 0);
-	return h * 60 + m;
+	return h * MINUTES_PER_HOUR + m;
 }
 
 function availableUntilMs(item: { available_to: string | null; recurring_schedule: unknown }): number | null {
@@ -102,8 +108,9 @@ function availableUntilMs(item: { available_to: string | null; recurring_schedul
 	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
 		const now = new Date();
-		const toMin = scheduleMinutes(schedule.to, 1439);
-		const endOfWindow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + (toMin * 60 + 59) * 1000;
+		const toMin = scheduleMinutes(schedule.to, LAST_MINUTE_OF_DAY);
+		const endOfWindow =
+			Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + (toMin * SECONDS_PER_MINUTE + LAST_SECOND_OF_MINUTE) * SECOND_MS;
 		if (Number.isFinite(endOfWindow)) {
 			ends.push(endOfWindow);
 		}
@@ -122,7 +129,7 @@ export async function loadItemsCatalog(serverId: number): Promise<CatalogItem[]>
 	const all = await db.listItems(panelId).catch(() => []);
 	const out: CatalogItem[] = [];
 	for (const i of all as ItemDbRow[]) {
-		const enabled = i.enabled !== false && i.enabled !== 0;
+		const isEnabled = i.enabled !== false && i.enabled !== 0;
 
 		const mapped = {
 			id: i.id,
@@ -130,7 +137,7 @@ export async function loadItemsCatalog(serverId: number): Promise<CatalogItem[]>
 			effect_type: i.effect_type,
 			description: i.description,
 			cost: i.cost,
-			enabled,
+			enabled: isEnabled,
 			usable: i.usable !== false && i.usable !== 0,
 			availableUntil: availableUntilMs(i),
 			available_from: i.available_from ?? null,
@@ -138,11 +145,109 @@ export async function loadItemsCatalog(serverId: number): Promise<CatalogItem[]>
 			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
 			config: (typeof i.config === 'string' ? safeParse(i.config) : i.config) as Record<string, unknown> | null
 		};
-		const state = itemAvailability(mapped, Date.now(), 0).state;
-		const listed = mapped.enabled || mapped.usable;
-		out.push({ ...mapped, live: listed && (state === 'active' || state === 'upcoming') });
+		const { state } = itemAvailability(mapped, Date.now(), 0);
+		const isListed = mapped.enabled || mapped.usable;
+		out.push({ ...mapped, live: isListed && (state === 'active' || state === 'upcoming') });
 	}
 	return out;
+}
+
+type CardMember = NonNullable<Awaited<ReturnType<typeof resolveMemberByCardToken>>>;
+type EffectRow = Awaited<ReturnType<typeof db.getActiveEffectsForMember>>[number];
+type AttackAction = 'steal' | 'bomb';
+type AttackLimits = { cooldownMin: Record<AttackAction, number>; immunityMin: Record<AttackAction, number>; insuranceCooldownMin: number };
+
+const ATTACK_ACTIONS = ['steal', 'bomb'] as const;
+
+async function levelRequirement(serverId: number, levelingComponent: string) {
+	const levelingRow = await db.getServerSettings(serverId, levelingComponent).catch(() => null);
+	const req = (levelingRow?.settings?.REQUIREMENTS as { BASE_XP?: unknown; MULTIPLIER?: unknown } | undefined) ?? {};
+	return {
+		baseXp: Number(req.BASE_XP) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
+		multiplier: Number(req.MULTIPLIER) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.MULTIPLIER
+	};
+}
+
+function memberLabel(sdn: string | null, dn: string | null, un: string | null) {
+	return sdn || dn || un || 'a member';
+}
+
+async function leechPartner(e: EffectRow, isVictim: boolean) {
+	if (!isVictim) {
+		return memberLabel(e.target_server_display_name, e.target_display_name, e.target_username);
+	}
+	return (await isMemberDisguised(e.beneficiary_member_id))
+		? DISGUISED_MENTION
+		: memberLabel(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username);
+}
+
+function memberActiveEffects(member: CardMember, effectRows: EffectRow[]) {
+	return Promise.all(
+		effectRows.map(async (e) => {
+			const isLeech = e.effect_type === 'leech';
+			const isVictim = Number(e.target_member_id) === Number(member.id);
+			return {
+				effect_type: e.effect_type,
+				effect_value: Number(e.effect_value) || 0,
+				expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
+				leechRole: isLeech ? (isVictim ? 'victim' : 'attacker') : (null as 'attacker' | 'victim' | null),
+				leechWith: isLeech ? await leechPartner(e, isVictim) : (null as string | null)
+			};
+		})
+	);
+}
+
+function pricedCatalog(items: CatalogItem[], luckPercent: number) {
+	return items.map((i) => {
+		const original = Number(i.cost) || 0;
+		const cost = discountedItemCost(original, luckPercent, i.effect_type);
+		return cost !== original ? { ...i, cost, original_cost: original } : i;
+	});
+}
+
+function attackLimits(items: CatalogItem[]): AttackLimits {
+	const limits: AttackLimits = { cooldownMin: { steal: 0, bomb: 0 }, immunityMin: { steal: 0, bomb: 0 }, insuranceCooldownMin: 0 };
+	for (const it of items) {
+		const cfg = it.config || {};
+		if (it.effect_type === 'insurance') {
+			limits.insuranceCooldownMin = Math.max(limits.insuranceCooldownMin, Number(cfg.cooldown_minutes) || 0);
+		}
+		if (it.effect_type === 'steal' || it.effect_type === 'bomb') {
+			limits.cooldownMin[it.effect_type] = Math.max(limits.cooldownMin[it.effect_type], Number(cfg.cooldown_minutes) || 0);
+			limits.immunityMin[it.effect_type] = Math.max(limits.immunityMin[it.effect_type], Number(cfg.immunity_minutes) || 0);
+		}
+	}
+	return limits;
+}
+
+function endsAfter(last: Date | null, minutes: number): number | null {
+	if (!last || minutes <= 0) {
+		return null;
+	}
+	const ends = last.getTime() + minutes * MINUTE_MS;
+	return ends > Date.now() ? ends : null;
+}
+
+async function memberAttackTimings(memberId: number, limits: AttackLimits) {
+	const attackCooldowns: { action: AttackAction; until: number }[] = [];
+	let immuneUntil: number | null = null;
+	for (const action of ATTACK_ACTIONS) {
+		const cooldownMin = limits.cooldownMin[action];
+		const cooldownEnds = cooldownMin > 0 ? endsAfter(await db.getLastAttackActionByActor(memberId, [action]).catch(() => null), cooldownMin) : null;
+		if (cooldownEnds !== null) {
+			attackCooldowns.push({ action, until: cooldownEnds });
+		}
+	}
+	for (const action of ATTACK_ACTIONS) {
+		const immunityMin = limits.immunityMin[action];
+		const immunityEnds = immunityMin > 0 ? endsAfter(await db.getLastActionAgainstTarget(memberId, [action]).catch(() => null), immunityMin) : null;
+		if (immunityEnds !== null && (immuneUntil === null || immunityEnds > immuneUntil)) {
+			immuneUntil = immunityEnds;
+		}
+	}
+	const insuranceCooldownUntil =
+		limits.insuranceCooldownMin > 0 ? endsAfter(await db.getLastActionByActor(memberId, 'insurance').catch(() => null), limits.insuranceCooldownMin) : null;
+	return { attackCooldowns, immuneUntil, insuranceCooldownUntil };
 }
 
 export async function loadItemsShared(server: Pick<ServerRow, 'id'>, hash: string, subKey?: 'items' | 'market' | 'minigames' | null) {
@@ -154,115 +259,24 @@ export async function loadItemsShared(server: Pick<ServerRow, 'id'>, hash: strin
 		return { notFound: true } as const;
 	}
 
-	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
-	const req = (levelingRow?.settings?.REQUIREMENTS as { BASE_XP?: unknown; MULTIPLIER?: unknown } | undefined) ?? {};
-	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
-
+	const levelReq = await levelRequirement(server.id, SERVER_SETTINGS.component.leveling);
 	const items = await loadItemsCatalog(server.id);
 	const enabledCategories = [...new Set(items.filter((i) => i.live).map((i) => i.effect_type))];
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
-
 	if (!member) {
 		return { guest: true as const };
 	}
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
 	const bagStock = effectiveBagStock(invRows);
-
 	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
-	const nameOf = (sdn: string | null, dn: string | null, un: string | null) => sdn || dn || un || 'a member';
-	const activeEffects = await Promise.all(
-		effectRows.map(async (e) => {
-			const base = {
-				effect_type: e.effect_type,
-				effect_value: Number(e.effect_value) || 0,
-				expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
-				leechRole: null as 'attacker' | 'victim' | null,
-				leechWith: null as string | null
-			};
-			if (e.effect_type === 'leech') {
-				const isVictim = Number(e.target_member_id) === Number(member.id);
-				base.leechRole = isVictim ? 'victim' : 'attacker';
-				base.leechWith = isVictim
-					? (await isMemberDisguised(e.beneficiary_member_id))
-						? DISGUISED_MENTION
-						: nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username)
-					: nameOf(e.target_server_display_name, e.target_display_name, e.target_username);
-			}
-			return base;
-		})
-	);
+	const activeEffects = await memberActiveEffects(member, effectRows);
 
 	const luckEffect = effectRows.find((e) => e.effect_type === 'luck');
 	const luckPercent = luckEffect ? Number(luckEffect.effect_value) || 0 : 0;
-	const pricedItems = items.map((i) => {
-		const original = Number(i.cost) || 0;
-		const cost = discountedItemCost(original, luckPercent, i.effect_type);
-		return cost !== original ? { ...i, cost, original_cost: original } : i;
-	});
-
-	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
-	const immunityMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
-	for (const it of items) {
-		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') {
-			continue;
-		}
-		const cfg = it.config || {};
-		const action = it.effect_type as 'steal' | 'bomb';
-		cooldownMinByAction[action] = Math.max(cooldownMinByAction[action], Number(cfg.cooldown_minutes) || 0);
-		immunityMinByAction[action] = Math.max(immunityMinByAction[action], Number(cfg.immunity_minutes) || 0);
-	}
-
-	const attackCooldowns: { action: 'steal' | 'bomb'; until: number }[] = [];
-	for (const action of ['steal', 'bomb'] as const) {
-		const min = cooldownMinByAction[action];
-		if (min <= 0) {
-			continue;
-		}
-		const last = await db.getLastAttackActionByActor(member.id, [action]).catch(() => null);
-		if (!last) {
-			continue;
-		}
-		const ends = last.getTime() + min * 60000;
-		if (ends > Date.now()) {
-			attackCooldowns.push({ action, until: ends });
-		}
-	}
-
-	let immuneUntil: number | null = null;
-	for (const action of ['steal', 'bomb'] as const) {
-		const min = immunityMinByAction[action];
-		if (min <= 0) {
-			continue;
-		}
-		const last = await db.getLastActionAgainstTarget(member.id, [action]).catch(() => null);
-		if (!last) {
-			continue;
-		}
-		const ends = last.getTime() + min * 60000;
-		if (ends > Date.now() && (immuneUntil === null || ends > immuneUntil)) {
-			immuneUntil = ends;
-		}
-	}
-
-	let insuranceCooldownUntil: number | null = null;
-	let maxInsuranceCooldownMin = 0;
-	for (const it of items) {
-		if (it.effect_type !== 'insurance') {
-			continue;
-		}
-		maxInsuranceCooldownMin = Math.max(maxInsuranceCooldownMin, Number((it.config || {}).cooldown_minutes) || 0);
-	}
-	if (maxInsuranceCooldownMin > 0) {
-		const last = await db.getLastActionByActor(member.id, 'insurance').catch(() => null);
-		if (last) {
-			const ends = last.getTime() + maxInsuranceCooldownMin * 60000;
-			if (ends > Date.now()) {
-				insuranceCooldownUntil = ends;
-			}
-		}
-	}
+	const pricedItems = pricedCatalog(items, luckPercent);
+	const { attackCooldowns, immuneUntil, insuranceCooldownUntil } = await memberAttackTimings(member.id, attackLimits(items));
 
 	const bountyTotal = await db.getActiveBountyTotal(member.id).catch(() => 0);
 	const memberTheme = resolveMemberThemeForClient(await db.getMemberTheme(member.id).catch(() => null));
@@ -298,7 +312,9 @@ export async function loadItemsShared(server: Pick<ServerRow, 'id'>, hash: strin
 	};
 }
 
-export function postBotWebhook(bot: any, payload: unknown): Promise<{ status: number; body: any }> {
+export type BotWebhookBody = { ok?: boolean; error?: string; details?: string; [field: string]: unknown };
+
+export function postBotWebhook(bot: Pick<BotRow, 'port' | 'secret_key'>, payload: unknown): Promise<{ status: number; body: BotWebhookBody | null }> {
 	const body = JSON.stringify(payload);
 	return new Promise((resolve) => {
 		const req = httpRequest(
@@ -307,7 +323,7 @@ export function postBotWebhook(bot: any, payload: unknown): Promise<{ status: nu
 				port: bot.port,
 				path: '/',
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key }
+				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key ?? '' }
 			},
 			(res) => {
 				let data = '';
@@ -316,14 +332,14 @@ export function postBotWebhook(bot: any, payload: unknown): Promise<{ status: nu
 				});
 				res.on('end', () => {
 					try {
-						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
+						resolve({ status: res.statusCode ?? HTTP.INTERNAL_ERROR, body: JSON.parse(data) });
 					} catch {
-						resolve({ status: res.statusCode ?? 500, body: null });
+						resolve({ status: res.statusCode ?? HTTP.INTERNAL_ERROR, body: null });
 					}
 				});
 			}
 		);
-		req.on('error', () => resolve({ status: 502, body: null }));
+		req.on('error', () => resolve({ status: HTTP.BAD_GATEWAY, body: null }));
 		req.write(body);
 		req.end();
 	});

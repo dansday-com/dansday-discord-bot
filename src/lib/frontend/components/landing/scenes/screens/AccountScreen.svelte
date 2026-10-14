@@ -1,11 +1,16 @@
 <script lang="ts">
+	import { cubicOut } from 'svelte/easing';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { xpForLevel } from '$lib/rewards.js';
 	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
-	import { avatar } from '../scripts/common.js';
+	import { CAST } from '../scripts/common.js';
+	import { isTapped } from '../clock.svelte.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
 	import type { SceneScreenProps } from '../types.js';
 
 	let { t }: SceneScreenProps = $props();
+
+	const STEAL_PERCENT = 8;
 
 	const BASE_XP = 100;
 	const MULTIPLIER = 1.2;
@@ -20,12 +25,18 @@
 
 	const START_XP = 3600;
 	const TARGETS = [
-		{ rank: 1, name: 'Kai', avatar: avatar(0), xp: 18240 },
-		{ rank: 2, name: 'Rin', avatar: avatar(3), xp: 15880 },
-		{ rank: 5, name: 'Jun', avatar: avatar(4), xp: 10410 }
+		{ rank: 1, ...CAST.kai, xp: 18240 },
+		{ rank: 2, ...CAST.rin, xp: 15880 },
+		{ rank: 5, ...CAST.jun, xp: 10410 }
+	];
+	const DEMO_SHOP = [
+		{ cat: '#c0392b', icon: 'fa-hand', name: 'Pickpocket', desc: "Take 1–25% of a member's XP.", price: 400 },
+		{ cat: '#1d6f8a', icon: 'fa-shield', name: 'Shield', desc: 'Block the next steal, bomb or leech.', price: 600 },
+		{ cat: '#d35400', icon: 'fa-bomb', name: 'Bomb', desc: "Burn 1–50% of a member's XP.", price: 600 },
+		{ cat: '#4b6584', icon: 'fa-magnifying-glass', name: 'Spy', desc: "Scout a member's bag before you strike.", price: 300 }
 	];
 	const VICTIM = TARGETS[2];
-	const STOLEN = Math.floor((VICTIM.xp * 8) / 100);
+	const STOLEN = Math.floor((VICTIM.xp * STEAL_PERCENT) / PERCENT);
 
 	const PRESS = 2300;
 	const SHEET = { from: 2600, to: 4800 };
@@ -42,15 +53,15 @@
 			return START_XP + STOLEN;
 		}
 		const p = (t - COUNT.from) / (COUNT.to - COUNT.from);
-		return START_XP + STOLEN * (1 - Math.pow(1 - p, 3));
+		return START_XP + STOLEN * cubicOut(p);
 	});
 	const level = $derived(levelAt(xp));
 	const floor = $derived(xpForLevel(level, BASE_XP, MULTIPLIER));
 	const next = $derived(xpForLevel(level + 1, BASE_XP, MULTIPLIER));
-	const pct = $derived(Math.round(((xp - floor) / (next - floor)) * 100));
-	const sheetOpen = $derived(t >= SHEET.from && t < SHEET.to);
-	const outcomeOpen = $derived(t >= OUTCOME.from && t < OUTCOME.to);
-	const tapped = (at: number) => t >= at && t < at + 520;
+	const pct = $derived(Math.round(((xp - floor) / (next - floor)) * PERCENT));
+	const isSheetOpen = $derived(t >= SHEET.from && t < SHEET.to);
+	const isOutcomeOpen = $derived(t >= OUTCOME.from && t < OUTCOME.to);
+	const tapped = (at: number) => isTapped(t, at);
 </script>
 
 <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -61,7 +72,7 @@
 	</div>
 
 	<div class="from-primary relative isolate mx-3 mt-1 flex shrink-0 items-center gap-3 overflow-hidden rounded-2xl bg-linear-to-br to-[#7a1e06] px-3.5 py-3">
-		<img src={avatar(2)} alt="" class="size-10 shrink-0 rounded-full ring-2 ring-white/60" loading="lazy" />
+		<img src={CAST.mira.avatar} alt="" class="size-10 shrink-0 rounded-full ring-2 ring-white/60" loading="lazy" />
 		<div class="min-w-0 flex-1">
 			<p class="flex items-center gap-1 text-[9px] font-bold tracking-[0.08em] text-white/60 uppercase"><i class="fas fa-wallet"></i>Wallet</p>
 			<p class="truncate text-[13px] font-extrabold text-white">Mira</p>
@@ -88,7 +99,7 @@
 		</div>
 	</div>
 
-	{#snippet itemCard(cat: string, icon: string, name: string, desc: string, price: number, owned: boolean)}
+	{#snippet itemCard({ cat, icon, name, desc, price }: (typeof DEMO_SHOP)[number], owned: boolean)}
 		<article
 			class="relative flex flex-col gap-1.5 overflow-hidden rounded-[14px] border p-2.5"
 			style="--cat: {cat}; background: radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--cat) 22%, transparent), transparent 60%), linear-gradient(170deg, color-mix(in srgb, var(--cat) 10%, var(--color-base-100)), var(--color-base-100) 70%); border-color: color-mix(in srgb, var(--cat) 26%, var(--color-base-300));"
@@ -128,10 +139,9 @@
 	{/snippet}
 
 	<div class="mx-3 mt-2.5 grid shrink-0 grid-cols-2 gap-2">
-		{@render itemCard('#c0392b', 'fa-hand', 'Pickpocket', "Take 1–25% of a member's XP.", 400, t < PICK)}
-		{@render itemCard('#1d6f8a', 'fa-shield', 'Shield', 'Block the next steal, bomb or leech.', 600, false)}
-		{@render itemCard('#d35400', 'fa-bomb', 'Bomb', "Burn 1–50% of a member's XP.", 600, false)}
-		{@render itemCard('#4b6584', 'fa-magnifying-glass', 'Spy', "Scout a member's bag before you strike.", 300, false)}
+		{#each DEMO_SHOP as item, i (item.name)}
+			{@render itemCard(item, i === 0 && t < PICK)}
+		{/each}
 	</div>
 
 	<span
@@ -148,9 +158,9 @@
 		</span>
 	</span>
 
-	<div class="account-overlay absolute inset-0 bg-black/40" class:account-overlay-on={sheetOpen || outcomeOpen}></div>
+	<div class="account-overlay absolute inset-0 bg-black/40" class:account-overlay-on={isSheetOpen || isOutcomeOpen}></div>
 
-	<div class="account-sheet bg-base-100 absolute inset-x-0 bottom-0 rounded-t-2xl px-3.5 pt-3 pb-4 shadow-2xl" class:account-sheet-on={sheetOpen}>
+	<div class="account-sheet bg-base-100 absolute inset-x-0 bottom-0 rounded-t-2xl px-3.5 pt-3 pb-4 shadow-2xl" class:account-sheet-on={isSheetOpen}>
 		<span class="bg-base-300 mx-auto mb-3 block h-1 w-10 rounded-full"></span>
 		<p class="text-base-content/70 text-[12.5px]">Pick a target for <strong class="text-base-content">Pickpocket</strong>:</p>
 		<span class="border-base-300 text-base-content/45 mt-2 flex h-8 items-center gap-2 rounded-lg border px-2.5 text-[11.5px]">
@@ -179,7 +189,7 @@
 
 	<div
 		class="account-modal border-base-300 border-t-success bg-base-100 absolute top-1/2 left-1/2 w-[82%] rounded-2xl border border-t-4 px-4 pt-5 pb-4 text-center shadow-2xl"
-		class:account-modal-on={outcomeOpen}
+		class:account-modal-on={isOutcomeOpen}
 	>
 		<span class="bg-primary/14 border-primary/35 text-primary mx-auto mb-2.5 grid size-14 place-items-center rounded-full border text-[24px]">
 			<i class="fas fa-hand"></i>

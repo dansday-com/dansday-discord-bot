@@ -3,7 +3,7 @@
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
-	import { DiscordIcon, PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { DiscordIcon, PageMeta, PageShell, reveal, REVEAL_CLASS, listDelay, statDelay } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
 	import LazyScenePlayer from '$lib/frontend/components/landing/scenes/LazyScenePlayer.svelte';
 	import { nearView } from '$lib/frontend/nearView.js';
@@ -12,11 +12,16 @@
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
 	import { faq, features, fmt, LANDING_DESCRIPTION, LANDING_FACTS, LANDING_TITLE } from '$lib/landing.js';
 	import { faqNode, softwareNodes } from '$lib/structuredData.js';
+	import { MINUTES_PER_HOUR } from '$lib/utils/time.js';
+
+	const SCROLLED_THRESHOLD_PX = 40;
+	const COUNT_UP_DURATION_MS = 900;
+	const COUNT_UP_EASE_POWER = 3;
 
 	let { data }: PageProps = $props();
 
 	const feed = createLiveGlobalStatistics(data.totals);
-	let marqueeOn = $state(false);
+	let isMarqueeOn = $state(false);
 	$effect(() => {
 		let disconnect: (() => void) | null = null;
 		const stop = onFirstInteraction(() => (disconnect = feed.connect()));
@@ -42,9 +47,9 @@
 			.join('')
 			.toUpperCase() || '?';
 
-	let scrolled = $state(false);
+	let isScrolled = $state(false);
 	$effect(() => {
-		const onScroll = () => (scrolled = window.scrollY > 40);
+		const onScroll = () => (isScrolled = window.scrollY > SCROLLED_THRESHOLD_PX);
 		onScroll();
 		window.addEventListener('scroll', onScroll, { passive: true });
 		return () => window.removeEventListener('scroll', onScroll);
@@ -64,8 +69,8 @@
 				io.disconnect();
 				const started = performance.now();
 				const tick = (now: number) => {
-					const t = Math.min(1, (now - started) / 900);
-					node.textContent = fmt(target * (1 - Math.pow(1 - t, 3)));
+					const t = Math.min(1, (now - started) / COUNT_UP_DURATION_MS);
+					node.textContent = fmt(target * (1 - (1 - t) ** COUNT_UP_EASE_POWER));
 					if (t < 1) {
 						raf = requestAnimationFrame(tick);
 					} else {
@@ -89,7 +94,7 @@
 		[
 			{ label: 'Members', raw: feed.totals.members_total },
 			{ label: 'XP tracked', raw: feed.totals.leveling_total_xp },
-			{ label: 'Voice hours', raw: feed.totals.leveling_total_voice_minutes / 60 }
+			{ label: 'Voice hours', raw: feed.totals.leveling_total_voice_minutes / MINUTES_PER_HOUR }
 		].filter((s) => Math.round(s.raw) > 0)
 	);
 
@@ -157,7 +162,7 @@
 				{#if hasLive && heroStats.length > 0}
 					<div class="border-base-300 grid grid-cols-3 gap-x-6 gap-y-4 border-t pt-5">
 						{#each heroStats as stat, i}
-							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
+							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {statDelay(i)}">
 								<p use:countUp={stat.raw} class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{fmt(stat.raw)}</p>
 								<p class="text-base-content/70 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">{stat.label}</p>
 							</div>
@@ -169,7 +174,7 @@
 					<a
 						href="#different"
 						aria-label="Scroll to what is different"
-						class="text-primary hover:text-accent flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:text-[14px] {scrolled
+						class="text-primary hover:text-accent flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:text-[14px] {isScrolled
 							? 'pointer-events-none translate-y-1 opacity-0'
 							: 'opacity-100'}"
 					>
@@ -271,7 +276,7 @@
 				</article>
 			{/snippet}
 
-			{#if marqueeOn}
+			{#if isMarqueeOn}
 				<div class="{FULLBLEED} marquee" style="--marquee-duration: 120s" aria-hidden="true">
 					<div class="marquee-row gap-3 px-1.5">
 						{#each [...rowA, ...rowA] as card}
@@ -287,7 +292,7 @@
 					</div>
 				</div>
 			{:else}
-				<div use:nearView={() => (marqueeOn = true)} class="min-h-[520px]" aria-hidden="true"></div>
+				<div use:nearView={() => (isMarqueeOn = true)} class="min-h-[520px]" aria-hidden="true"></div>
 			{/if}
 
 			<ul class="sr-only">
@@ -316,7 +321,7 @@
 							href={publicServerPath(server.slug)}
 							use:reveal
 							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[1.6rem_34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
-							style="transition-delay: {i * 60}ms"
+							style="transition-delay: {listDelay(i)}"
 						>
 							<span class="text-primary/70 text-[13px] font-black tabular-nums">{server.rank}</span>
 							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px] leading-none">
@@ -366,7 +371,7 @@
 						<div
 							use:reveal
 							class="{REVEAL_CLASS} border-base-300 bg-base-100 flex items-center gap-3 rounded-sm border p-3.5"
-							style="transition-delay: {i * 60}ms"
+							style="transition-delay: {listDelay(i)}"
 						>
 							<span class="bg-base-200 text-primary grid size-10 shrink-0 place-items-center overflow-hidden rounded-sm text-[14px] leading-none">
 								{#if source.server_icon && !broken[source.discord_server_id]}
@@ -413,7 +418,7 @@
 							href="/quests"
 							use:reveal
 							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[44px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
-							style="transition-delay: {i * 60}ms"
+							style="transition-delay: {listDelay(i)}"
 						>
 							<span class="bg-base-200 text-primary grid h-[30px] w-[44px] place-items-center overflow-hidden rounded-sm text-[12px] leading-none">
 								{#if (quest.thumbnail_url || quest.banner_url) && !broken[quest.quest_id]}
@@ -474,7 +479,7 @@
 				</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 					{#each data.topRoblox as item, i (item.asset_id)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {listDelay(i)}">
 							<a
 								href="/roblox"
 								class="group border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-sm border transition-colors"
@@ -547,7 +552,7 @@
 						<div
 							use:reveal
 							class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
-							style="transition-delay: {i * 60}ms"
+							style="transition-delay: {listDelay(i)}"
 						>
 							<dt class="min-w-0">
 								<span class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -621,7 +626,7 @@
 				</div>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{#each data.topItems as item, i (item.id)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {listDelay(i)}">
 							<a href="/shop" class="border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col rounded-sm border p-4 transition-colors sm:p-5">
 								<div class="mb-3 flex items-start justify-between gap-3">
 									<i class="fas {effectIcon(item.effect_type)} text-[18px] leading-none" style="color: {effectAccentHex(item.effect_type)}"></i>
@@ -649,7 +654,7 @@
 			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
 				{#each panel as item, i}
-					<p use:reveal class="{REVEAL_CLASS} text-base-content/70 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {i * 70}ms">
+					<p use:reveal class="{REVEAL_CLASS} text-base-content/70 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {statDelay(i)}">
 						<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
 						{item.desc}
 					</p>
@@ -667,7 +672,7 @@
 					<div
 						use:reveal
 						class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
-						style="transition-delay: {i * 60}ms"
+						style="transition-delay: {listDelay(i)}"
 					>
 						<dt class="text-base-content min-w-0 text-[clamp(15px,2.4cqw,24px)] leading-[1.05] font-black tracking-[-0.02em] uppercase">{item.q}</dt>
 						<dd class="text-base-content/70 min-w-0 text-[12.5px] leading-[1.5]">{item.a}</dd>

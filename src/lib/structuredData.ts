@@ -89,7 +89,9 @@ export function faqNode(faq: { q: string; a: string }[]): LdNode {
 	};
 }
 
-export function techArticleNode(url: string, headline: string, description: string, sections: string[]): LdNode {
+type ArticleText = { headline: string; description: string; sections: string[] };
+
+export function techArticleNode(url: string, { headline, description, sections }: ArticleText): LdNode {
 	return {
 		'@type': 'TechArticle',
 		headline,

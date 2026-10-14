@@ -21,8 +21,8 @@ export function normalizeForwarderSettings(raw: unknown): { forwarders: unknown[
 	}
 	const s = raw as Record<string, unknown>;
 	const forwarders = Array.isArray(s.forwarders) ? s.forwarders : [];
-	const enabled = typeof s.enabled === 'boolean' ? s.enabled : undefined;
-	return enabled === undefined ? { forwarders } : { forwarders, enabled };
+	const isEnabled = typeof s.enabled === 'boolean' ? s.enabled : undefined;
+	return isEnabled === undefined ? { forwarders } : { forwarders, enabled: isEnabled };
 }
 
 export function normalizeForwarderKeywords(raw: unknown): string[] {
@@ -44,6 +44,14 @@ export function normalizeForwarderKeywords(raw: unknown): string[] {
 		keywords.push(value);
 	}
 	return keywords;
+}
+
+function fieldTexts(field: unknown): string[] {
+	if (!field || typeof field !== 'object') {
+		return [];
+	}
+	const { name, value } = field as { name?: unknown; value?: unknown };
+	return [name, value].filter((text): text is string => typeof text === 'string');
 }
 
 export function forwarderKeywordHaystack(content: unknown, embeds: unknown): string {
@@ -70,14 +78,7 @@ export function forwarderKeywordHaystack(content: unknown, embeds: unknown): str
 				parts.push(e.footer.text);
 			}
 			if (Array.isArray(e.fields)) {
-				for (const field of e.fields) {
-					if (typeof field?.name === 'string') {
-						parts.push(field.name);
-					}
-					if (typeof field?.value === 'string') {
-						parts.push(field.value);
-					}
-				}
+				parts.push(...e.fields.flatMap(fieldTexts));
 			}
 		}
 	}

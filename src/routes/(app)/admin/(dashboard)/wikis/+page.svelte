@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { WIKI_NAME_MAX_LENGTH, WIKI_DESCRIPTION_MAX_LENGTH } from '$lib/wikiLimits.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -12,10 +13,10 @@
 	}
 
 	let draft = $state(blankDraft());
-	let saving = $state(false);
-	let testing = $state(false);
+	let isSaving = $state(false);
+	let isTesting = $state(false);
 	let pendingDelete = $state<{ id: number; name: string } | null>(null);
-	let deleting = $state(false);
+	let isDeleting = $state(false);
 
 	const isEditing = $derived(draft.id !== null);
 
@@ -36,7 +37,7 @@
 	}
 
 	async function testConnection() {
-		testing = true;
+		isTesting = true;
 		try {
 			const res = await fetch('/api/admin/wikis/test', {
 				method: 'POST',
@@ -50,22 +51,22 @@
 				return;
 			}
 			if (!draft.name.trim() && d.sitename) {
-				draft.name = String(d.sitename).slice(0, 64);
+				draft.name = String(d.sitename).slice(0, WIKI_NAME_MAX_LENGTH);
 			}
 			if (!draft.site_url.trim() && d.site_url) {
 				draft.site_url = new URL(d.site_url).origin;
 			}
 			if (!draft.description.trim() && d.description) {
-				draft.description = String(d.description).slice(0, 255);
+				draft.description = String(d.description).slice(0, WIKI_DESCRIPTION_MAX_LENGTH);
 			}
 			showToast(d.via_relay ? `Connected to ${d.sitename} through the relay` : `Connected to ${d.sitename}`, 'success');
 		} finally {
-			testing = false;
+			isTesting = false;
 		}
 	}
 
 	async function saveWiki() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch('/api/admin/wikis', {
 				method: isEditing ? 'PATCH' : 'POST',
@@ -91,7 +92,7 @@
 			resetDraft();
 			await invalidateAll();
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 
@@ -123,7 +124,7 @@
 		if (!pendingDelete) {
 			return;
 		}
-		deleting = true;
+		isDeleting = true;
 		try {
 			const res = await fetch('/api/admin/wikis', {
 				method: 'DELETE',
@@ -142,7 +143,7 @@
 			showToast('Wiki removed', 'success');
 			await invalidateAll();
 		} finally {
-			deleting = false;
+			isDeleting = false;
 			pendingDelete = null;
 		}
 	}
@@ -179,10 +180,10 @@
 				<button
 					type="button"
 					onclick={testConnection}
-					disabled={testing || !draft.api_url.trim()}
+					disabled={isTesting || !draft.api_url.trim()}
 					class="bg-ash-700 hover:bg-ash-600 text-ash-200 shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{#if testing}
+					{#if isTesting}
 						<i class="fas fa-spinner fa-spin"></i>
 					{:else}
 						Test
@@ -196,7 +197,7 @@
 			<input
 				id="wiki-name"
 				type="text"
-				maxlength="64"
+				maxlength={WIKI_NAME_MAX_LENGTH}
 				autocomplete="off"
 				bind:value={draft.name}
 				placeholder="Fisch"
@@ -253,7 +254,7 @@
 			<input
 				id="wiki-description"
 				type="text"
-				maxlength="255"
+				maxlength={WIKI_DESCRIPTION_MAX_LENGTH}
 				autocomplete="off"
 				bind:value={draft.description}
 				placeholder="Roblox fishing game — rods, fish, bait, locations"
@@ -266,10 +267,10 @@
 		<button
 			type="button"
 			onclick={saveWiki}
-			disabled={saving}
+			disabled={isSaving}
 			class="text-ash-100 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			{#if saving}
+			{#if isSaving}
 				<i class="fas fa-spinner fa-spin mr-2"></i>Saving…
 			{:else}
 				<i class="fas fa-save mr-2"></i>{isEditing ? 'Save changes' : 'Add wiki'}
@@ -335,7 +336,7 @@
 	message="Remove &quot;{pendingDelete?.name ?? ''}&quot;? The AI will stop looking things up there."
 	confirmLabel="Remove"
 	dangerous
-	loading={deleting}
+	loading={isDeleting}
 	onconfirm={confirmDelete}
 	oncancel={() => (pendingDelete = null)}
 />

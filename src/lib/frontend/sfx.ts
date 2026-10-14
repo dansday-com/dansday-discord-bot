@@ -1,7 +1,7 @@
 type ToneOptions = { type?: OscillatorType; gain?: number; dur?: number; delay?: number; glide?: number };
 type NoiseOptions = { gain?: number; dur?: number; q?: number; delay?: number };
 type TickAxis = 'h' | 's' | 'b';
-type Curve = [number, number, number, number];
+export type Curve = { x1: number; y1: number; x2: number; y2: number };
 
 const TICK_GAP_MS = 14;
 const DETENT_GAP_MS = 28;
@@ -18,8 +18,8 @@ const TICKS: Record<TickAxis, { freq: number; dur: number; gain: number }> = {
 };
 const SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
 
-let primed = false;
-let live = false;
+let isPrimed = false;
+let isLive = false;
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
 let hiss: AudioBuffer | null = null;
@@ -29,11 +29,11 @@ let lastKey = 0;
 let cues = 0;
 
 function audio(): AudioContext | null {
-	if (typeof window === 'undefined' || !primed || !live) {
+	if (typeof window === 'undefined' || !isPrimed || !isLive) {
 		return null;
 	}
 	if (!context) {
-		const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
+		const Ctor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 		if (!Ctor) {
 			return null;
 		}
@@ -52,7 +52,7 @@ function audio(): AudioContext | null {
 }
 
 function prime() {
-	primed = true;
+	isPrimed = true;
 	audio();
 }
 
@@ -135,7 +135,7 @@ function click(axis: TickAxis, ratio: number) {
 	}
 	lastTick = now;
 	const t = TICKS[axis];
-	const bend = (1.25 - 0.5 * unit(ratio)) * Math.pow(2, (Math.random() - 0.5) / 8);
+	const bend = (1.25 - 0.5 * unit(ratio)) * 2 ** ((Math.random() - 0.5) / 8);
 	noise(t.freq * bend, { gain: t.gain * (0.7 + Math.random() * 0.6), dur: t.dur });
 }
 
@@ -145,7 +145,7 @@ function curvePoint(a: number, b: number, s: number): number {
 }
 
 export function curveCrossings(curve: Curve, count: number): number[] {
-	const [x1, y1, x2, y2] = curve;
+	const { x1, y1, x2, y2 } = curve;
 	const SAMPLES = 4000;
 	const times: number[] = [];
 	let next = 0;
@@ -159,6 +159,15 @@ export function curveCrossings(curve: Curve, count: number): number[] {
 	return times;
 }
 
+function detentTone(index: number, octave: number) {
+	const now = performance.now();
+	if (now - lastDetent < DETENT_GAP_MS) {
+		return;
+	}
+	lastDetent = now;
+	tone(SCALE[Math.abs(index) % SCALE.length] * octave, { type: 'triangle', gain: 0.05, dur: 0.05 });
+}
+
 export const sfx = {
 	press() {
 		tone(520, { type: 'triangle', gain: 0.07, dur: 0.07 });
@@ -168,8 +177,11 @@ export const sfx = {
 		tone(294, { gain: 0.09, dur: 0.26, glide: 440 });
 		noise(900, { gain: 0.035, dur: 0.12, q: 0.8 });
 	},
-	second(last: boolean) {
-		tone(last ? 880 : 620, { gain: last ? 0.09 : 0.065, dur: last ? 0.14 : 0.08 });
+	second() {
+		tone(620, { gain: 0.065, dur: 0.08 });
+	},
+	lastSecond() {
+		tone(880, { gain: 0.09, dur: 0.14 });
 	},
 	go() {
 		tone(880, { type: 'triangle', gain: 0.1, dur: 0.12 });
@@ -187,7 +199,7 @@ export const sfx = {
 		noise(1200, { gain: 0.05, dur: 0.03, q: 1.2 });
 	},
 	count(progress: number) {
-		tone(440 * Math.pow(2, 1.75 * unit(progress)), { type: 'triangle', gain: 0.05, dur: 0.045 });
+		tone(440 * 2 ** (1.75 * unit(progress)), { type: 'triangle', gain: 0.05, dur: 0.045 });
 	},
 	land(quality: number) {
 		if (quality >= 0.9) {
@@ -238,14 +250,15 @@ export const sfx = {
 			tone(150, { gain: 0.1, dur: 0.07, glide: 92, delay });
 		});
 	},
-	flip(delay = 0, soft = false) {
-		noise(1400, { gain: soft ? 0.022 : 0.05, dur: 0.1, q: 0.9, delay });
-		if (!soft) {
-			tone(460, { type: 'triangle', gain: 0.04, dur: 0.1, glide: 820, delay });
-		}
+	flip(delay = 0) {
+		noise(1400, { gain: 0.05, dur: 0.1, q: 0.9, delay });
+		tone(460, { type: 'triangle', gain: 0.04, dur: 0.1, glide: 820, delay });
+	},
+	softFlip(delay = 0) {
+		noise(1400, { gain: 0.022, dur: 0.1, q: 0.9, delay });
 	},
 	gem(step: number) {
-		const freq = 523.25 * Math.pow(2, Math.max(0, step - 1) / 6);
+		const freq = 523.25 * 2 ** (Math.max(0, step - 1) / 6);
 		tone(freq, { gain: 0.09, dur: 0.28 });
 		tone(freq * 1.5, { gain: 0.05, dur: 0.32, delay: 0.05 });
 		tone(freq * 2, { gain: 0.04, dur: 0.4, delay: 0.1 });
@@ -262,13 +275,11 @@ export const sfx = {
 	close() {
 		tone(587.33, { gain: 0.05, dur: 0.13, glide: 370 });
 	},
-	detent(index: number, high = false) {
-		const now = performance.now();
-		if (now - lastDetent < DETENT_GAP_MS) {
-			return;
-		}
-		lastDetent = now;
-		tone(SCALE[Math.abs(index) % SCALE.length] * (high ? 2 : 1), { type: 'triangle', gain: 0.05, dur: 0.05 });
+	detent(index: number) {
+		detentTone(index, 1);
+	},
+	highDetent(index: number) {
+		detentTone(index, 2);
 	},
 	select() {
 		tone(783.99, { type: 'triangle', gain: 0.09, dur: 0.1 });
@@ -304,7 +315,7 @@ export const sfx = {
 			return;
 		}
 		lastKey = now;
-		noise(2400 * Math.pow(2, (Math.random() - 0.5) / 4), { gain: 0.022, dur: 0.006 });
+		noise(2400 * 2 ** ((Math.random() - 0.5) / 4), { gain: 0.022, dur: 0.006 });
 	}
 };
 
@@ -346,12 +357,12 @@ function onChange(e: Event) {
 }
 
 export function attachSfx(): () => void {
-	live = true;
+	isLive = true;
 	window.addEventListener('click', onClick, true);
 	window.addEventListener('input', onInput, true);
 	window.addEventListener('change', onChange, true);
 	return () => {
-		live = false;
+		isLive = false;
 		window.removeEventListener('click', onClick, true);
 		window.removeEventListener('input', onInput, true);
 		window.removeEventListener('change', onChange, true);

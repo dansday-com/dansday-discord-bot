@@ -6,7 +6,7 @@ export function rewardImageFilename(extension: string): string {
 	return uploadFilename(extension);
 }
 
-export function rewardImageKey(serverId: any, filename: string): string {
+export function rewardImageKey(serverId: string | number, filename: string): string {
 	return store.key([serverId], filename);
 }
 

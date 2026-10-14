@@ -5,6 +5,7 @@
 
 	type Token = { kind: 'text' | 'bold' | 'code' | 'user' | 'channel' | 'link'; value: string };
 
+	const BOLD_MARK = '**';
 	const TOKEN = /(\*\*.+?\*\*|`[^`]+`|<@[^>]+>|<#[^>]+>|\[[^\]]+\]\([^)]*\))/g;
 
 	const tokens = $derived(
@@ -12,8 +13,8 @@
 			.split(TOKEN)
 			.filter(Boolean)
 			.map((part): Token => {
-				if (part.startsWith('**')) {
-					return { kind: 'bold', value: part.slice(2, -2) };
+				if (part.startsWith(BOLD_MARK)) {
+					return { kind: 'bold', value: part.slice(BOLD_MARK.length, -BOLD_MARK.length) };
 				}
 				if (part.startsWith('`')) {
 					return { kind: 'code', value: part.slice(1, -1) };

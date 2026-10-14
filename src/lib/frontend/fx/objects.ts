@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, type FxProgram, type FxScene } from './engine.js';
 
 function hash2m(x: number, y: number, g: number) {
@@ -51,9 +51,9 @@ function vaultIdent(s: FxScene): Vault {
 function drawBill(s: FxScene, x: number, y: number, flip: number, sz: number, tone: number, key: number) {
 	const hw = sz * 2 * Math.max(0.12, Math.abs(Math.cos(flip)));
 	const hh = sz;
-	const edgeOn = Math.abs(Math.cos(flip)) < 0.34;
-	const back = Math.cos(flip) < 0;
-	const [pr, pg, pb] = hsl(96 + tone * 34, 26 + s.v.sat * 0.18, back ? 34 : 46);
+	const isEdgeOn = Math.abs(Math.cos(flip)) < 0.34;
+	const isBackFacing = Math.cos(flip) < 0;
+	const [pr, pg, pb] = hsl(96 + tone * 34, 26 + s.v.sat * 0.18, isBackFacing ? 34 : 46);
 	for (let dy = -hh; dy <= hh; dy++) {
 		for (let dx = -hw; dx <= hw; dx++) {
 			const ux = Math.abs(dx) / (hw + 0.4);
@@ -67,18 +67,18 @@ function drawBill(s: FxScene, x: number, y: number, flip: number, sz: number, to
 				k *= 0.86;
 			}
 			paint(s, x + dx, y + dy, pr * k, pg * k, pb * k, 1);
-			if (!edgeOn && !back && ux < 0.34 && uy < 0.66) {
+			if (!isEdgeOn && !isBackFacing && ux < 0.34 && uy < 0.66) {
 				const oval = Math.hypot(dx / (hw * 0.34), dy / (hh * 0.7));
 				if (oval < 1) {
 					paint(s, x + dx, y + dy, 226, 230, 214, (1 - oval) * 0.5);
 				}
 			}
-			if (!edgeOn && ux > 0.7 && ux < 0.9 && uy < 0.82) {
+			if (!isEdgeOn && ux > 0.7 && ux < 0.9 && uy < 0.82) {
 				plot(s, x + dx, y + dy, 200, 226, 190, 0.22);
 			}
 		}
 	}
-	if (!edgeOn) {
+	if (!isEdgeOn) {
 		for (let dx = -hw; dx <= hw; dx++) {
 			paint(s, x + dx, y - hh, 236, 240, 222, 0.35);
 			paint(s, x + dx, y + hh, 12, 22, 12, 0.35);
@@ -410,17 +410,17 @@ export function makeCandle(rows: number): FxProgram {
 			const ry = halfW * 0.34;
 
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
-			const inGust = cyc > id.gustAt && cyc < id.gustAt + id.gustLen;
-			const gu = inGust ? (cyc - id.gustAt) / id.gustLen : 0;
-			const gust = inGust ? Math.sin(gu * Math.PI) ** 0.6 : 0;
+			const isInGust = cyc > id.gustAt && cyc < id.gustAt + id.gustLen;
+			const gu = isInGust ? (cyc - id.gustAt) / id.gustLen : 0;
+			const gust = isInGust ? Math.sin(gu * Math.PI) ** 0.6 : 0;
 			const flare = cyc > id.gustAt + id.gustLen && cyc < id.gustAt + id.gustLen + 0.09 ? 1 - (cyc - id.gustAt - id.gustLen) / 0.09 : 0;
 			const near = Math.max(0, gust - 0.62) / 0.38;
 			const life = Math.max(0.1, 1 - near * 0.92) * (1 + flare * 0.7);
 			const flick = 0.86 + 0.14 * Math.sin(s.t * 0.31 + id.grain) + 0.08 * Math.sin(s.t * 0.77);
 			const heat = life * flick;
 			const dir = s.v.dir > 0 ? 1 : -1;
-			(s as any).bend += (gust * 2.6 * dir * s.v.drift + Math.sin(s.t * 0.06) * 0.22 - (s as any).bend) * 0.22;
-			const bend = s.bend as number;
+			const bend = (s.bend as number) + (gust * 2.6 * dir * s.v.drift + Math.sin(s.t * 0.06) * 0.22 - (s.bend as number)) * 0.22;
+			s.bend = bend;
 
 			const wy = topY - 1;
 			const glowR = s.h * (0.62 + heat * 0.34);
@@ -747,12 +747,12 @@ export function makeVinyl(rows: number): FxProgram {
 			const onRecord = Math.max(0, cueIn - cueOut);
 			const play = Math.min(1, Math.max(0, (cyc - 0.1) / 0.06)) * (1 - Math.min(1, Math.max(0, (cyc - 0.9) / 0.04)));
 			const skip = cyc > id.skipAt && cyc < id.skipAt + 0.03 ? 1 - (cyc - id.skipAt) / 0.03 : 0;
-			(s as any).rpm += (play - (s as any).rpm) * 0.045;
-			const rpm = s.rpm as number;
-			(s as any).spin += rpm * 0.085 * s.v.speed * s.v.dir;
-			const spin = s.spin as number;
-			(s as any).jolt = Math.max((s as any).jolt * 0.82, skip);
-			const jolt = s.jolt as number;
+			const rpm = (s.rpm as number) + (play - (s.rpm as number)) * 0.045;
+			s.rpm = rpm;
+			const spin = (s.spin as number) + rpm * 0.085 * s.v.speed * s.v.dir;
+			s.spin = spin;
+			const jolt = Math.max((s.jolt as number) * 0.82, skip);
+			s.jolt = jolt;
 			const shake = jolt * Math.sin(s.t * 2.3) * 2.2;
 
 			const px = Math.min(s.w - 5, cx + R * 1.24);
@@ -1059,24 +1059,24 @@ function drawFish(s: FxScene, x: number, y: number, dir: number, sz: number, wag
 		for (let dx = -bl - 3; dx <= bl + 3; dx++) {
 			const u = dx / bl;
 			const v = dy / bh;
-			let inside = false;
+			let isInside = false;
 			let shade = 0;
 			if (u > -1 && u < 0.72) {
 				const prof = Math.sqrt(Math.max(0, 1 - ((u - 0.05) / 0.82) ** 2)) * (u < 0 ? 1 : 1 - u * 0.3);
 				if (Math.abs(v) <= prof) {
-					inside = true;
+					isInside = true;
 					shade = 0.4 + (1 - Math.abs(v) / (prof + 0.01)) * 0.4 + Math.max(0, -v) * 0.45;
 				}
 			}
-			if (!inside && u > 0.6) {
+			if (!isInside && u > 0.6) {
 				const tu = (u - 0.6) / 0.55;
 				const swing = Math.sin(wag) * tu * 0.7;
 				if (tu <= 1 && Math.abs(v - swing) <= 0.25 + tu * 1.05) {
-					inside = true;
+					isInside = true;
 					shade = 0.3 + (1 - tu) * 0.4;
 				}
 			}
-			if (!inside) {
+			if (!isInside) {
 				continue;
 			}
 			const stripe = Math.sin(u * 9 + tone * 6) > 0.62 ? 0.78 : 1;
@@ -1128,7 +1128,7 @@ export function makeFishtank(rows: number): FxProgram {
 			const bed = Math.round(s.h * id.bedY);
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
 			const cycle = Math.floor((s.t * s.v.speed) / id.period);
-			const feeding = cyc > id.feedAt && cyc < id.feedAt + 0.06;
+			const isFeeding = cyc > id.feedAt && cyc < id.feedAt + 0.06;
 
 			for (let y = surf; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
@@ -1215,7 +1215,7 @@ export function makeFishtank(rows: number): FxProgram {
 				}
 			}
 
-			if (feeding && s.lastFeed !== cycle) {
+			if (isFeeding && s.lastFeed !== cycle) {
 				s.lastFeed = cycle;
 				for (let q = 0; q < 12; q++) {
 					flakes.push([s.rnd() * s.w * 0.7 + s.w * 0.15, surf + 1, (s.rnd() - 0.5) * 0.2, 0.1 + s.rnd() * 0.12, s.rnd() * 6.28, 1]);
@@ -1294,8 +1294,8 @@ export function makeFishtank(rows: number): FxProgram {
 						tyy = fl[1];
 					}
 				}
-				const hungry = tx >= 0 && best < s.w * 0.9;
-				if (hungry) {
+				const isHungry = tx >= 0 && best < s.w * 0.9;
+				if (isHungry) {
 					excite += 1;
 					const ax = (tx - f[0]) / (best + 1);
 					const ay = (tyy - f[1]) / (best + 1);
@@ -1496,8 +1496,8 @@ export function makePopcorn(rows: number): FxProgram {
 				for (let i = 0; i < st.length; i++) {
 					st[i] = 0;
 				}
-				puffs.length = 0;
-				shards.length = 0;
+				puffs.splice(0);
+				shards.splice(0);
 				pile.fill(0);
 			}
 			const heat = cyc < 0.1 ? cyc / 0.1 : cyc < 0.82 ? 1 : Math.max(0, 1 - (cyc - 0.82) / 0.1);
@@ -1682,13 +1682,13 @@ export function makePopcorn(rows: number): FxProgram {
 					pf[4] += pf[5];
 					flying += 1;
 					const px = Math.max(0, Math.min(s.w - 1, Math.round(pf[0])));
-					const inside = pf[0] > pl + wall && pf[0] < pr - wall;
-					if (!inside && pf[1] > rim && pf[3] > 0) {
+					const isInside = pf[0] > pl + wall && pf[0] < pr - wall;
+					if (!isInside && pf[1] > rim && pf[3] > 0) {
 						if (pf[0] >= pl - 1 && pf[0] <= pr + 1) {
 							pf[0] += pf[0] < (pl + pr) * 0.5 ? -1.4 : 1.4;
 						}
 					}
-					const floor = inside ? oilY : counter - 1;
+					const floor = isInside ? oilY : counter - 1;
 					const rest = floor - pile[px];
 					if (pf[1] >= rest && pf[3] > 0) {
 						pf[1] = rest;
@@ -1698,7 +1698,7 @@ export function makePopcorn(rows: number): FxProgram {
 						} else {
 							pf[7] = 1;
 							const half = Math.max(1, pf[6] * 1.1) | 0;
-							if (inside && floor - pile[px] < rim + 3) {
+							if (isInside && floor - pile[px] < rim + 3) {
 								pf[7] = 0;
 								pf[3] = -0.7;
 								pf[2] = (pf[0] < (pl + pr) * 0.5 ? -1 : 1) * (0.8 + s.rnd() * 0.6);
@@ -1738,8 +1738,9 @@ export function makePopcorn(rows: number): FxProgram {
 				}
 			}
 
-			(s as any).kick *= 0.86;
-			s.out = Math.min(1, heat * 0.28 + flying * 0.1 + (s as any).kick * 0.7);
+			const kick = (s.kick as number) * 0.86;
+			s.kick = kick;
+			s.out = Math.min(1, heat * 0.28 + flying * 0.1 + kick * 0.7);
 			blit(s);
 		}
 	};
@@ -1885,15 +1886,16 @@ export function makeRainglass(rows: number): FxProgram {
 				}
 			}
 
-			(s as any).acc += rain * 0.16;
-			while ((s as any).acc > 1) {
-				(s as any).acc -= 1;
+			let acc = (s.acc as number) + rain * 0.16;
+			while (acc > 1) {
+				acc -= 1;
 				if (drops.length > 74) {
 					break;
 				}
 				const q0 = s.rnd();
 				drops.push([s.rnd() * sw, s.rnd() * sh, 0.26 + q0 * q0 * 1.1, 0, 1.4 + s.rnd() ** 2 * 2.5, s.rnd() * 6.28, 0]);
 			}
+			s.acc = acc;
 			if (cyc > 0.5 && s.lastGust !== cycle) {
 				s.lastGust = cycle;
 				for (let q = 0; q < 7; q++) {
@@ -2159,8 +2161,8 @@ function drawCube(s: FxScene, cx: number, cy: number, sc: number, a: number, b: 
 		}
 		const u = rv(F[3], F[4], F[5]);
 		const v = rv(F[6], F[7], F[8]);
-		px.length = 0;
-		py.length = 0;
+		px.splice(0);
+		py.splice(0);
 		for (const [su, sv] of [
 			[-1, -1],
 			[1, -1],
@@ -2273,10 +2275,10 @@ function drawChip(s: FxScene, x: number, y: number, rr: number, cr: number, cg: 
 				paint(s, x + dx, y + dy, cr * 0.44 * lit, cg * 0.44 * lit, cb * 0.44 * lit, 1);
 				continue;
 			}
-			const ring = d > 0.66 && d < 0.88;
-			const wedge = ring && ((Math.atan2(dy / ry, dx / rr) * 2.2) | 0) % 2 === 0;
+			const isRing = d > 0.66 && d < 0.88;
+			const isWedge = isRing && ((Math.atan2(dy / ry, dx / rr) * 2.2) | 0) % 2 === 0;
 			const k = (0.72 + (1 - d) * 0.44) * lit;
-			if (wedge) {
+			if (isWedge) {
 				paint(s, x + dx, y + dy, 232 * k, 234 * k, 238 * k, 1);
 			} else {
 				paint(s, x + dx, y + dy, cr * k, cg * k, cb * k, 1);
@@ -2345,8 +2347,8 @@ export function makeDice(rows: number): FxProgram {
 				}
 			}
 
-			(s as any).jolt *= 0.82;
-			const jolt = s.jolt as number;
+			const jolt = (s.jolt as number) * 0.82;
+			s.jolt = jolt;
 			const jx = Math.sin(s.t * 3.3) * jolt * 1.7;
 			const jy = Math.sin(s.t * 4.1) * jolt * 0.9;
 
@@ -2410,11 +2412,11 @@ export function makeDice(rows: number): FxProgram {
 			const stackX = id.stackX * (s.w - 10) + 5;
 			const stackY = wallY + (s.h - wallY) * 0.72;
 			const chipR = Math.max(2.4, s.h * 0.085);
-			let stackN = id.stackN;
-			if ((s as any).verdict > 0 && cyc > 0.62) {
+			let { stackN } = id;
+			if ((s.verdict as number) > 0 && cyc > 0.62) {
 				stackN += 2;
 			}
-			if ((s as any).verdict < 0 && cyc > 0.62) {
+			if ((s.verdict as number) < 0 && cyc > 0.62) {
 				stackN = Math.max(0, stackN - 2);
 			}
 			for (let k = 0; k < stackN; k++) {
@@ -2442,7 +2444,7 @@ export function makeDice(rows: number): FxProgram {
 							d[9] *= 0.8;
 							d[10] *= 0.8;
 							d[11] *= 0.8;
-							(s as any).jolt = Math.min(1, (s as any).jolt + 0.5);
+							s.jolt = Math.min(1, (s.jolt as number) + 0.5);
 							for (let q = 0; q < 8; q++) {
 								puff.push([d[0], d[1], (s.rnd() - 0.5) * 1.5, -s.rnd() * 0.7, 0]);
 							}
@@ -2506,7 +2508,7 @@ export function makeDice(rows: number): FxProgram {
 						paint(s, d[0] + dx + jx, d[1] + dy + jy, 0, 0, 0, (1 - q) * shA);
 					}
 				}
-				const hot = (s as any).verdict > 0 && cyc > 0.56 ? Math.max(0, Math.sin((cyc - 0.56) * 9)) * 0.42 : 0;
+				const hot = (s.verdict as number) > 0 && cyc > 0.56 ? Math.max(0, Math.sin((cyc - 0.56) * 9)) * 0.42 : 0;
 				const top = drawCube(s, sx, sy, sc, d[6], d[7], d[8], [232, 230, 226], [186, 32, 44], 0.42, hot);
 				if (!d[12]) {
 					d[13] = top;

@@ -1,7 +1,7 @@
 import { blit, clear, edge, hsl, paint, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 import { LETTER_D, LETTER_V, type Mask } from './sprites.js';
 import { funnelAxis } from './structure.js';
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 
 const P = 6;
 
@@ -10,6 +10,8 @@ function seed(s: FxScene, fn: (s: FxScene, i: number) => void) {
 		fn(s, i);
 	}
 }
+
+type BoltScene = FxScene & { path: number[][]; until: number };
 
 export function makeBolt(rows: number, period: number): FxProgram {
 	return {
@@ -21,7 +23,7 @@ export function makeBolt(rows: number, period: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
+			const st = s as BoltScene;
 			const phase = s.t % period;
 			if (phase === 0) {
 				const path: number[][] = [];
@@ -42,7 +44,7 @@ export function makeBolt(rows: number, period: number): FxProgram {
 					}
 				}
 				const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.5, 94);
-				const land = (st.path as number[][])[s.h - 1] ?? [s.w / 2, s.h];
+				const land = st.path[s.h - 1] ?? [s.w / 2, s.h];
 				const gy = s.h - 1;
 				const heat = (st.until - s.t) / 8;
 				for (let d = 0; d < s.w * 0.3; d++) {
@@ -57,7 +59,7 @@ export function makeBolt(rows: number, period: number): FxProgram {
 					const d = (1 - heat) * s.h * 0.45;
 					plot(s, land[0] + Math.cos(th) * d * 1.3, gy + Math.sin(th) * d, r, g, b, heat * 0.9);
 				}
-				for (const [x, y] of st.path as number[][]) {
+				for (const [x, y] of st.path) {
 					plot(s, x, y, r, g, b, 1);
 					plot(s, x - 1, y, r, g, b, 0.45);
 					plot(s, x + 1, y, r, g, b, 0.45);
@@ -173,7 +175,7 @@ export function makeConfetti(rows: number, stride: number, hues: number): FxProg
 	};
 }
 
-export function makeFacets(rows: number, stride: number, crack: boolean): FxProgram {
+export function makeFacets(rows: number, stride: number, isCracking: boolean): FxProgram {
 	return {
 		rows,
 		stride,
@@ -202,7 +204,7 @@ export function makeFacets(rows: number, stride: number, crack: boolean): FxProg
 				const bq = Math.sin(p[o + 4] + s.v.tilt);
 				for (let k = -len; k <= len; k++) {
 					plot(s, p[o] + a * k, p[o + 1] + bq * k, r, g, b, shine * 0.8 * (1 - Math.abs(k) / len));
-					if (crack) {
+					if (isCracking) {
 						plot(s, p[o] - bq * k * 0.5, p[o + 1] + a * k * 0.5, r, g, b, shine * 0.4);
 					}
 				}
@@ -281,16 +283,16 @@ export function makeSprite(
 		source?: (sc: FxScene) => [number, number];
 	}
 ): FxProgram {
-	const place = (sc: FxScene, i: number, fresh: boolean) => {
+	const place = (sc: FxScene, i: number, isFresh: boolean) => {
 		const p = sc.parts;
 		const top = (o.from ?? 0) * sc.h;
 		if (o.source) {
 			const [sx, sy] = o.source(sc);
 			p[i * P] = sx;
-			p[i * P + 1] = fresh ? sy : sy + sc.rnd() * (sc.h - sy);
+			p[i * P + 1] = isFresh ? sy : sy + sc.rnd() * (sc.h - sy);
 		} else {
 			p[i * P] = sc.rnd() * sc.w;
-			p[i * P + 1] = fresh ? (o.fall > 0 ? top - m.h : sc.h + m.h) : top + sc.rnd() * (sc.h - top);
+			p[i * P + 1] = isFresh ? (o.fall > 0 ? top - m.h : sc.h + m.h) : top + sc.rnd() * (sc.h - top);
 		}
 		p[i * P + 2] = 0.3 + sc.rnd() * 0.8;
 		p[i * P + 3] = sc.rnd() * Math.PI * 2;
@@ -394,8 +396,8 @@ export function clouds(s: FxScene, count: number, light: number, drift: number) 
 					if (x * x * 0.5 + y * y * 1.6 > rad * rad) {
 						continue;
 					}
-					const under = y > rad * 0.25;
-					plot(s, lx + x, ly + y + rad * 0.5, under ? dr : r, under ? dg : g, under ? db : b, under ? 0.5 : 0.72);
+					const isUnder = y > rad * 0.25;
+					plot(s, lx + x, ly + y + rad * 0.5, isUnder ? dr : r, isUnder ? dg : g, isUnder ? db : b, isUnder ? 0.5 : 0.72);
 				}
 			}
 		}
@@ -488,7 +490,7 @@ export function makeEclipse(rows: number): FxProgram {
 			};
 			const cyc = ((s.t * s.v.speed) % id.period) / id.period;
 			const u = (cyc - 0.5) * 2;
-			const march = Math.sign(u) * Math.pow(Math.abs(u), 1.7) * 0.5;
+			const march = Math.sign(u) * Math.abs(u) ** 1.7 * 0.5;
 			const R = Math.min(s.w, s.h) * 0.29;
 			const M = R * id.ratio;
 			const sx = s.w * id.sunX;
@@ -501,20 +503,20 @@ export function makeEclipse(rows: number): FxProgram {
 			const covMax = Math.min(1, id.ratio * id.ratio);
 			const prog = lens(dist, R, M) / covMax;
 			const cov = prog * covMax;
-			const amb = Math.pow(1 - cov, 0.42);
+			const amb = (1 - cov) ** 0.42;
 			const deep = Math.max(0, (prog - 0.9) / 0.1);
 			const total = M >= R ? deep : 0;
 			const annular = M < R ? deep : 0;
 			const sliver = Math.max(0, 1 - Math.abs(1 - prog - 0.014) / 0.014);
-			s.out = Math.min(1, Math.pow(Math.max(0, prog), 3.2) * 0.6 + deep * 0.4);
+			s.out = Math.min(1, Math.max(0, prog) ** 3.2 * 0.6 + deep * 0.4);
 
-			const twi = Math.pow(deep, 1.3);
+			const twi = deep ** 1.3;
 			const [tr, tg, tb] = hsl(s.v.hue2, s.v.sat * 0.55, 3 + amb * 24);
 			const [hr2, hg2, hb2] = hsl(s.v.hue2, s.v.sat * 0.7, 5 + amb * 16);
 			const [wr, wg, wb] = hsl(s.v.hue, s.v.sat, 58);
 			for (let y = 0; y < s.h; y++) {
 				const f = y / s.h;
-				const horizon = Math.pow(f, 3.4) * twi;
+				const horizon = f ** 3.4 * twi;
 				for (let x = 0; x < s.w; x++) {
 					const gd = Math.hypot(x - sx, y - sy);
 					const scint = 1 + 0.5 * Math.sin(gd * 0.55 - s.t * 0.22 * s.v.speed) * Math.sin(Math.atan2(y - sy, x - sx) * 6 + s.t * 0.13);
@@ -577,7 +579,7 @@ export function makeEclipse(rows: number): FxProgram {
 						Math.sin(lon * 7.3 - s.t * 0.055 * s.v.speed) * Math.sin(lat * 6.9 + s.t * 0.046) * 0.7;
 					const gran = 0.62 + 0.38 * (cell * 0.5 + 0.5) + Math.sin(lon * 13 + lat * 11 - s.t * 0.42 * s.v.speed) * 0.12;
 					const spot = Math.max(0, 1 - Math.hypot(lon - Math.sin(id.band) * 3 - 1.2, lat - id.miss * 4) / 0.55);
-					const k = Math.pow(mu, 0.42) * gran * (1 - spot * 0.72);
+					const k = mu ** 0.42 * gran * (1 - spot * 0.72);
 					paint(s, x, y, er + (fr - er) * k, eg + (fg - eg) * k, eb + (fb - eb) * k, 0.97);
 				}
 			}
@@ -619,7 +621,7 @@ export function makeEclipse(rows: number): FxProgram {
 					}
 					const toSun = Math.cos(th - sun) * (d / lr);
 					const crescent = Math.max(0, toSun - (1 - face * 1.6)) * face;
-					const shade = 0.06 + Math.pow(crescent, 0.7) * 0.94;
+					const shade = 0.06 + crescent ** 0.7 * 0.94;
 					let dim = 1;
 					for (const [mxp, myp, mrad] of id.maria) {
 						if (Math.hypot(dx / M - mxp, dy / M - myp) < mrad) {
@@ -776,6 +778,25 @@ export function withSky(inner: FxProgram, count: number, light: number, drift: n
 	};
 }
 
+type IdlerScene = FxScene & {
+	bw: number;
+	bh: number;
+	gw: number;
+	gh: number;
+	crown: number;
+	mark: Uint8Array;
+	halo: Uint8Array;
+	hues: number[];
+	ci: number;
+	x: number;
+	y: number;
+	vx: number;
+	vy: number;
+	burn: Float32Array;
+	scuffs: number[][];
+	flash: number;
+};
+
 export function makeIdler(rows: number): FxProgram {
 	const PAD = 3;
 	return {
@@ -881,51 +902,42 @@ export function makeIdler(rows: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
-			const bw = st.bw as number;
-			const bh = st.bh as number;
-			const gw = st.gw as number;
-			const gh = st.gh as number;
-			const crown = st.crown as number;
-			const mark = st.mark as Uint8Array;
-			const halo = st.halo as Uint8Array;
-			const burn = st.burn as Float32Array;
-			const scuffs = st.scuffs as number[][];
-			const hues = st.hues as number[];
+			const st = s as IdlerScene;
+			const { bw, bh, gw, gh, crown, mark, halo, burn, scuffs, hues } = st;
 
 			st.x += st.vx * s.v.speed * 1.15;
 			st.y += st.vy * s.v.speed * 1.15;
 
-			let hitX = false;
-			let hitY = false;
+			let hasHitX = false;
+			let hasHitY = false;
 			if (st.x <= 0) {
 				st.x = 0;
 				st.vx = -st.vx;
-				hitX = true;
+				hasHitX = true;
 			} else if (st.x + bw >= s.w) {
 				st.x = s.w - bw;
 				st.vx = -st.vx;
-				hitX = true;
+				hasHitX = true;
 			}
 			if (st.y <= 0) {
 				st.y = 0;
 				st.vy = -st.vy;
-				hitY = true;
+				hasHitY = true;
 			} else if (st.y + bh >= s.h) {
 				st.y = s.h - bh;
 				st.vy = -st.vy;
-				hitY = true;
+				hasHitY = true;
 			}
 
-			if (hitX || hitY) {
+			if (hasHitX || hasHitY) {
 				st.ci = (st.ci + 1) % hues.length;
 				const tol = Math.max(1.5, s.h * 0.08);
-				const nearY = st.y <= tol || st.y + bh >= s.h - tol;
-				const nearX = st.x <= tol || st.x + bw >= s.w - tol;
-				if ((hitX && nearY) || (hitY && nearX)) {
+				const isNearY = st.y <= tol || st.y + bh >= s.h - tol;
+				const isNearX = st.x <= tol || st.x + bw >= s.w - tol;
+				if ((hasHitX && isNearY) || (hasHitY && isNearX)) {
 					st.flash = 1;
 				}
-				scuffs.push([hitX ? (st.x <= 0 ? 0 : s.w - 1) : st.x + bw / 2, hitY ? (st.y <= 0 ? 0 : s.h - 1) : st.y + bh / 2, 0]);
+				scuffs.push([hasHitX ? (st.x <= 0 ? 0 : s.w - 1) : st.x + bw / 2, hasHitY ? (st.y <= 0 ? 0 : s.h - 1) : st.y + bh / 2, 0]);
 				if (scuffs.length > 18) {
 					scuffs.shift();
 				}
@@ -956,9 +968,9 @@ export function makeIdler(rows: number): FxProgram {
 					continue;
 				}
 				const life = 1 - sc[2] / 46;
-				const vertical = sc[0] <= 0 || sc[0] >= s.w - 1;
+				const isVertical = sc[0] <= 0 || sc[0] >= s.w - 1;
 				for (let d = -3; d <= 3; d++) {
-					plot(s, sc[0] + (vertical ? 0 : d), sc[1] + (vertical ? d : 0), lr, lg, lb, life * 0.5 * (1 - Math.abs(d) / 4));
+					plot(s, sc[0] + (isVertical ? 0 : d), sc[1] + (isVertical ? d : 0), lr, lg, lb, life * 0.5 * (1 - Math.abs(d) / 4));
 				}
 			}
 
@@ -975,8 +987,8 @@ export function makeIdler(rows: number): FxProgram {
 					const kind = mark[y * gw + x];
 					const bi = (py | 0) * s.w + (px | 0);
 					if (kind === 2) {
-						const top = y < crown;
-						plot(s, px, py, top ? lr : cr, top ? lg : cg, top ? lb : cb, 0.96);
+						const isTop = y < crown;
+						plot(s, px, py, isTop ? lr : cr, isTop ? lg : cg, isTop ? lb : cb, 0.96);
 						burn[bi] = Math.min(1, burn[bi] + gain);
 					} else if (kind === 1) {
 						plot(s, px, py, dr, dg, db, 0.9);

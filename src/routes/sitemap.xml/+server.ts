@@ -2,10 +2,10 @@ import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/backend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 import { TERMS_URL, PRIVACY_URL, LEGAL_LAST_UPDATED } from '$lib/legal.js';
-import { APP_URL } from '$lib/backend/panelServer.js';
+import { APP_URL, SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 import db from '$lib/database.js';
 import { inviteJoinPath } from '$lib/invites.js';
-import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
+import { attemptSync } from '$lib/utils/attempt.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -21,35 +21,28 @@ function escapeXml(unsafe: string): string {
 	);
 }
 
-export const GET: RequestHandler = async () => {
-	const baseUrl = APP_URL;
+type PublicServer = Awaited<ReturnType<typeof listPublicServerSlugs>>[number];
+type UrlEntry = { loc: string; changefreq: string; priority: number; lastmod?: string };
 
-	const servers = await listPublicServerSlugs();
+function toLastmod(d: unknown) {
+	const dt = attemptSync(() => (d instanceof Date ? d : parseMySQLDateTimeUtc(d)));
+	return dt.ok && dt.value && !Number.isNaN(dt.value.getTime()) ? dt.value.toISOString() : undefined;
+}
 
-	const toLastmod = (d: unknown) => {
-		try {
-			const dt = d instanceof Date ? d : parseMySQLDateTimeUtc(d);
-			if (!dt || Number.isNaN(dt.getTime())) {
-				return undefined;
-			}
-			return dt.toISOString();
-		} catch {
-			return undefined;
-		}
-	};
-
-	const root = `${baseUrl}/server`;
-
-	const publicPageRows = servers.flatMap((s) => {
+function publicPageRows(servers: PublicServer[]): UrlEntry[] {
+	const root = `${APP_URL}/server`;
+	return servers.flatMap((s) => {
 		const enc = encodeURIComponent(String(s.slug));
-		const base = { lastmod: toLastmod(s.updated_at), changefreq: 'hourly' as const, priority: 0.8 };
+		const base = { lastmod: toLastmod(s.updated_at), changefreq: 'hourly', priority: 0.8 };
 		return [
 			{ loc: `${root}/${enc}`, ...base },
 			{ loc: `${root}/${enc}/leaderboard`, ...base },
 			{ loc: `${root}/${enc}/members`, ...base }
 		];
 	});
+}
 
+async function joinRows(servers: PublicServer[]): Promise<UrlEntry[]> {
 	const inviteSlugs = await db.listInviteSlugsForServers(servers.map((s) => Number(s.id))).catch(() => []);
 	const inviteServers = (
 		await Promise.all(
@@ -58,65 +51,56 @@ export const GET: RequestHandler = async () => {
 				return publicSubfeatureEnabled(row?.settings, 'invite') ? s : null;
 			})
 		)
-	).filter((s): s is (typeof servers)[number] => s != null);
-	const serverJoinRows = inviteServers.map((s) => ({
-		loc: `${baseUrl}${inviteJoinPath(String(s.slug))}`,
-		lastmod: toLastmod(s.updated_at),
-		changefreq: 'weekly' as const,
-		priority: 0.7
-	}));
-	const joinRows = inviteSlugs.map((i) => ({
-		loc: `${baseUrl}${inviteJoinPath(i.slug)}`,
-		lastmod: toLastmod(i.created_at),
-		changefreq: 'weekly' as const,
-		priority: 0.6
-	}));
+	).filter((s): s is PublicServer => s != null);
+	return [
+		...inviteServers.map((s) => ({
+			loc: `${APP_URL}${inviteJoinPath(String(s.slug))}`,
+			lastmod: toLastmod(s.updated_at),
+			changefreq: 'weekly',
+			priority: 0.7
+		})),
+		...inviteSlugs.map((i) => ({ loc: `${APP_URL}${inviteJoinPath(i.slug)}`, lastmod: toLastmod(i.created_at), changefreq: 'weekly', priority: 0.6 }))
+	];
+}
 
-	const newestServer = publicPageRows.reduce<string | undefined>((max, r) => (r.lastmod && (!max || r.lastmod > max) ? r.lastmod : max), undefined);
+function staticPages(newestServer: string | undefined): UrlEntry[] {
 	const legalLastmod = toLastmod(new Date(`${LEGAL_LAST_UPDATED} UTC`));
-
-	const staticPages = [
-		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: newestServer },
-		{ loc: `${baseUrl}/servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: newestServer },
-		{ loc: `${baseUrl}/tasks`, changefreq: 'weekly' as const, priority: 0.8 },
-		{ loc: `${baseUrl}/shop`, changefreq: 'daily' as const, priority: 0.8 },
-		{ loc: `${baseUrl}/quests`, changefreq: 'daily' as const, priority: 0.9 },
-		{ loc: `${baseUrl}/roblox`, changefreq: 'daily' as const, priority: 0.9 },
-		{ loc: `${baseUrl}/wikis`, changefreq: 'weekly' as const, priority: 0.8 },
-		{ loc: `${baseUrl}/forwarder-servers`, changefreq: 'daily' as const, priority: 0.9 },
-		{ loc: `${baseUrl}/docs`, changefreq: 'monthly' as const, priority: 0.7 },
-		{ loc: TERMS_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: legalLastmod },
-		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: legalLastmod }
+	return [
+		{ loc: `${APP_URL}/`, changefreq: 'weekly', priority: 1.0, lastmod: newestServer },
+		{ loc: `${APP_URL}/servers`, changefreq: 'daily', priority: 0.9, lastmod: newestServer },
+		{ loc: `${APP_URL}/tasks`, changefreq: 'weekly', priority: 0.8 },
+		{ loc: `${APP_URL}/shop`, changefreq: 'daily', priority: 0.8 },
+		{ loc: `${APP_URL}/quests`, changefreq: 'daily', priority: 0.9 },
+		{ loc: `${APP_URL}/roblox`, changefreq: 'daily', priority: 0.9 },
+		{ loc: `${APP_URL}/wikis`, changefreq: 'weekly', priority: 0.8 },
+		{ loc: `${APP_URL}/forwarder-servers`, changefreq: 'daily', priority: 0.9 },
+		{ loc: `${APP_URL}/docs`, changefreq: 'monthly', priority: 0.7 },
+		{ loc: TERMS_URL, changefreq: 'monthly', priority: 0.5, lastmod: legalLastmod },
+		{ loc: PRIVACY_URL, changefreq: 'monthly', priority: 0.5, lastmod: legalLastmod }
 	];
+}
 
-	const allUrlData: { loc: string; changefreq: string; priority: number; lastmod?: string }[] = [
-		...staticPages,
-		...publicPageRows,
-		...serverJoinRows,
-		...joinRows
-	];
-
-	const urlElements = allUrlData
-		.map(({ loc, lastmod, changefreq, priority }) => {
-			const lastmodElement = lastmod ? `<lastmod>${lastmod}</lastmod>` : '';
-			return `
+function urlElement({ loc, lastmod, changefreq, priority }: UrlEntry) {
+	const lastmodElement = lastmod ? `<lastmod>${lastmod}</lastmod>` : '';
+	return `
     <url>
       <loc>${escapeXml(loc)}</loc>${lastmodElement}
       <changefreq>${changefreq}</changefreq>
       <priority>${priority.toFixed(1)}</priority>
     </url>`;
-		})
-		.join('');
+}
+
+export const GET: RequestHandler = async () => {
+	const servers = await listPublicServerSlugs();
+	const serverRows = publicPageRows(servers);
+	const newestServer = serverRows.reduce<string | undefined>((max, r) => (r.lastmod && (!max || r.lastmod > max) ? r.lastmod : max), undefined);
+	const allUrlData = [...staticPages(newestServer), ...serverRows, ...(await joinRows(servers))];
 
 	return new Response(
 		`<?xml version="1.0" encoding="UTF-8" ?>
 		<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-			${urlElements}
+			${allUrlData.map(urlElement).join('')}
 		</urlset>`.trim(),
-		{
-			headers: {
-				'Content-Type': 'application/xml'
-			}
-		}
+		{ headers: { 'Content-Type': 'application/xml' } }
 	);
 };

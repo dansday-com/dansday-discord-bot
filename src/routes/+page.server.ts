@@ -21,7 +21,8 @@ import { isUsableRobloxThumbnail } from '$lib/roblox-thumbnails.js';
 const ROW_PREVIEW = 5;
 const GRID_PREVIEW = 6;
 const TASK_PREVIEW = 24;
-const ROBLOX_POOL = GRID_PREVIEW * 8;
+const ROBLOX_POOL_GRIDS = 8;
+const ROBLOX_POOL = GRID_PREVIEW * ROBLOX_POOL_GRIDS;
 
 export const load: PageServerLoad = async () => {
 	const [directory, quests, roblox, robloxTracked, robloxNotified, items, wikis, forwarderSources] = await Promise.all([

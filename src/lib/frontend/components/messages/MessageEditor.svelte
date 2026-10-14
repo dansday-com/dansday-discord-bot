@@ -4,7 +4,8 @@
 	import { page } from '$app/state';
 	import { agentDock, type AgentMessageEditor } from '$lib/frontend/agent.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
-	import { showToast } from '$lib/frontend/toast.svelte';
+	import { showToast, TOAST_MS } from '$lib/frontend/toast.svelte';
+	import { deleteMessage } from './messageActions';
 	import { serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
 	import {
 		MESSAGE_LIMITS,
@@ -28,8 +29,12 @@
 	import { setMessageEditor, type EditorEmoji, type EditorRole, type MessageEditorContext } from './editorContext.js';
 	import type { MarkdownContext } from './discordMarkdown.js';
 	import { uploadMedia } from './mediaUpload.js';
+	import type { PickerCategory, PickerChannel } from '../pickerTypes.js';
 	import { containerOf, locatePart, type PostedCopy, type Selection } from './selection.js';
 	import { GHOST_BUTTON, PANEL } from './styles.js';
+
+	const SAVE_ERROR_TOAST_MS = 6000;
+	const PARTIAL_TOAST_MS = 9000;
 
 	let {
 		data
@@ -44,8 +49,8 @@
 			draft: { name: string; content: MessageDoc } | null;
 			messages: { id: number; name: string; content: MessageDoc }[];
 			posts: PostedCopy[];
-			channels: any[];
-			categories: any[];
+			channels: PickerChannel[];
+			categories: PickerCategory[];
 			roles: (EditorRole & { position: number | null })[];
 			defaults: { language: ServerLanguage; color: string; footer: string };
 			bot: { name: string; avatar: string | null };
@@ -75,21 +80,21 @@
 	let mode = $state<'edit' | 'try'>('edit');
 	let selection = $state<Selection>(null);
 	let nonce = $state(0);
-	let menuOpen = $state(false);
+	let isMenuOpen = $state(false);
 	let uploading = $state<number | null>(null);
 	let sendOpen = $state(messageId !== null && initial().send);
 	let nameInput = $state<HTMLInputElement>();
 
-	let saving = $state(false);
-	let sending = $state(false);
+	let isSaving = $state(false);
+	let isSending = $state(false);
 	let removing = $state<number | 'all' | null>(null);
 	let updating = $state<number | 'all' | null>(null);
-	let deleting = $state(false);
-	let confirmDelete = $state(false);
+	let isDeleting = $state(false);
+	let isConfirmingDelete = $state(false);
 	let confirmLanguage = $state<ServerLanguage | null>(null);
 	let confirmPost = $state<PostedCopy | 'all' | null>(null);
 	let leaveTo = $state<URL | null>(null);
-	let leaving = false;
+	let isLeaving = false;
 	let beforeAgent: { name: string; doc: MessageDoc } | null = null;
 	const memberNames = $state<Record<string, string>>(Object.fromEntries(initial().members));
 
@@ -117,7 +122,7 @@
 			? GROUP_MENTIONS
 			: [...EVERYONE_MENTIONS, ...data.roles.map((role) => ({ discord_role_id: role.id, name: role.name, color: role.color ?? '', position: role.position }))]
 	);
-	const dirty = $derived(serialize(name, doc) !== saved);
+	const isDirty = $derived(serialize(name, doc) !== saved);
 	const issues = $derived<MessageIssue[]>([
 		...(name.trim() ? [] : [{ part: 'name', text: 'Give the message a name at the top so you can find it later.' }]),
 		...messageDocIssues(doc)
@@ -133,7 +138,7 @@
 		global ? `${servers} ${servers === 1 ? 'server' : 'servers'}` : `${data.posts.length} posted ${data.posts.length === 1 ? 'copy' : 'copies'}`
 	);
 	const box = $derived(selection ? containerOf(doc, selection.id) : null);
-	const editingPart = $derived(!!selection && selection.id !== 'text' && !!locatePart(doc, selection.id));
+	const isEditingPart = $derived(!!selection && selection.id !== 'text' && !!locatePart(doc, selection.id));
 
 	const editorContext: MessageEditorContext = {
 		get lang() {
@@ -181,7 +186,7 @@
 	setMessageEditor(editorContext);
 
 	beforeNavigate((navigation) => {
-		if (!dirty || leaving) {
+		if (!isDirty || isLeaving) {
 			return;
 		}
 		navigation.cancel();
@@ -255,7 +260,7 @@
 		if (target.length >= (target === doc.blocks ? MESSAGE_LIMITS.blocks : MESSAGE_LIMITS.innerBlocks)) {
 			return showToast('That is as many parts as fit here. Remove one first.', 'error');
 		}
-		const block: any = newMessageBlock(type as MessageBlockType, data.defaults.color);
+		const block = newMessageBlock(type as MessageBlockType, data.defaults.color);
 		target.push(block);
 		if (block.type === 'buttons') {
 			select(block.buttons[0].id);
@@ -268,7 +273,7 @@
 
 	async function addFile(file: File) {
 		try {
-			const key = await uploadMedia(editorContext, file, true, (fraction) => (uploading = fraction));
+			const key = await uploadMedia(editorContext, file, { video: true, onProgress: (fraction) => (uploading = fraction) });
 			if (!key) {
 				return;
 			}
@@ -339,11 +344,11 @@
 
 	async function save(thenSend = false): Promise<boolean> {
 		if (issues.length > 0) {
-			showToast(issues[0].text, 'error', 6000);
+			showToast(issues[0].text, 'error', SAVE_ERROR_TOAST_MS);
 			openIssue(issues[0]);
 			return false;
 		}
-		saving = true;
+		isSaving = true;
 		try {
 			const content = $state.snapshot(doc) as MessageDoc;
 			const res = await fetch(data.apiBase, {
@@ -353,7 +358,7 @@
 			});
 			const out = await res.json().catch(() => ({}));
 			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Could not save the message', 'error', 6000);
+				showToast(out.error || 'Could not save the message', 'error', SAVE_ERROR_TOAST_MS);
 				return false;
 			}
 			saved = serialize(name, doc);
@@ -361,7 +366,7 @@
 				if (!thenSend) {
 					showToast('Message saved. Press Send to post it.', 'success');
 				}
-				leaving = true;
+				isLeaving = true;
 				await goto(`${data.listPath}/${out.id}${thenSend ? '?send=1' : ''}`, { replaceState: true });
 				return true;
 			}
@@ -369,12 +374,12 @@
 			await invalidateAll();
 			return true;
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 
 	async function openSend() {
-		if ((dirty || messageId === null) && !(await save(true))) {
+		if ((isDirty || messageId === null) && !(await save(true))) {
 			return;
 		}
 		if (messageId !== null) {
@@ -383,7 +388,7 @@
 	}
 
 	async function send(target: { channelIds: string[]; mentionIds: string[]; language: string }): Promise<boolean> {
-		sending = true;
+		isSending = true;
 		try {
 			const res = await fetch(`${data.apiBase}/${messageId}/send`, {
 				method: 'POST',
@@ -394,7 +399,7 @@
 			});
 			const out = await res.json().catch(() => ({}));
 			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Could not send the message', 'error', 8000);
+				showToast(out.error || 'Could not send the message', 'error', TOAST_MS.error);
 				return false;
 			}
 			const where = global ? (out.sent === 1 ? 'server' : 'servers') : out.sent === 1 ? 'channel' : 'channels';
@@ -403,16 +408,20 @@
 				out.skipped > 0 ? `${out.skipped} skipped, no Bot Updates Channel set.` : '',
 				out.offline > 0 ? `${out.offline} ${out.offline === 1 ? 'bot is' : 'bots are'} offline.` : ''
 			].filter(Boolean);
-			showToast([`Sent to ${out.sent} ${where}.`, ...notes].join(' '), notes.length > 0 ? 'info' : 'success', notes.length > 0 ? 9000 : 4000);
+			showToast(
+				[`Sent to ${out.sent} ${where}.`, ...notes].join(' '),
+				notes.length > 0 ? 'info' : 'success',
+				notes.length > 0 ? PARTIAL_TOAST_MS : TOAST_MS.short
+			);
 			await invalidateAll();
 			return true;
 		} finally {
-			sending = false;
+			isSending = false;
 		}
 	}
 
 	async function updatePost(target: PostedCopy | 'all') {
-		if (dirty && !(await save())) {
+		if (isDirty && !(await save())) {
 			return;
 		}
 		updating = target === 'all' ? 'all' : target.id;
@@ -420,13 +429,13 @@
 			const res = await fetch(`${data.apiBase}/${messageId}/posts/${target === 'all' ? 'all' : target.id}`, { method: 'POST' });
 			const out = await res.json().catch(() => ({}));
 			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Could not update it', 'error', 7000);
+				showToast(out.error || 'Could not update it', 'error', TOAST_MS.long);
 				return;
 			}
 			if (out.failed?.length > 0) {
-				showToast(`Updated ${out.updated}, but ${out.failed[0]}`, 'error', 9000);
+				showToast(`Updated ${out.updated}, but ${out.failed[0]}`, 'error', PARTIAL_TOAST_MS);
 			} else if (out.unreached > 0) {
-				showToast(`Updated ${out.updated}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
+				showToast(`Updated ${out.updated}. ${out.unreached} sit on a bot that is offline.`, 'info', TOAST_MS.long);
 			} else {
 				showToast(out.updated === 1 ? 'Posted copy updated.' : `Updated ${out.updated} posted copies.`, 'success');
 			}
@@ -442,13 +451,13 @@
 			const res = await fetch(`${data.apiBase}/${messageId}/posts/${target === 'all' ? 'all' : target.id}`, { method: 'DELETE' });
 			const out = await res.json().catch(() => ({}));
 			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Could not remove it', 'error', 7000);
+				showToast(out.error || 'Could not remove it', 'error', TOAST_MS.long);
 				return;
 			}
 			if (out.failed?.length > 0) {
-				showToast(`Removed ${out.removed}, but ${out.failed[0]}`, 'error', 9000);
+				showToast(`Removed ${out.removed}, but ${out.failed[0]}`, 'error', PARTIAL_TOAST_MS);
 			} else if (out.unreached > 0) {
-				showToast(`Removed ${out.removed}. ${out.unreached} sit on a bot that is offline.`, 'info', 7000);
+				showToast(`Removed ${out.removed}. ${out.unreached} sit on a bot that is offline.`, 'info', TOAST_MS.long);
 			} else {
 				showToast(target === 'all' ? 'Removed from every server.' : `Removed from #${target.channel_name}.`, 'success');
 			}
@@ -460,24 +469,16 @@
 	}
 
 	async function remove() {
-		deleting = true;
+		isDeleting = true;
 		try {
-			const res = await fetch(`${data.apiBase}/${messageId}`, { method: 'DELETE' });
-			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) {
-				showToast(out.error || 'Could not delete the message', 'error', 8000);
+			if (!(await deleteMessage(`${data.apiBase}/${messageId}`))) {
 				return;
 			}
-			showToast(
-				out.stripped ? 'Message deleted.' : 'Message deleted. A bot is offline, so some posted copies keep their buttons until it is back.',
-				out.stripped ? 'success' : 'info',
-				7000
-			);
-			leaving = true;
+			isLeaving = true;
 			await goto(data.listPath);
 		} finally {
-			deleting = false;
-			confirmDelete = false;
+			isDeleting = false;
+			isConfirmingDelete = false;
 		}
 	}
 </script>
@@ -504,21 +505,21 @@
 		class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 min-w-0 flex-1 basis-48 rounded-lg border px-3 py-2 text-sm font-semibold focus:ring-2 focus:outline-none"
 	/>
 	{#if messageId !== null}
-		<button type="button" class="{GHOST_BUTTON} py-2" onclick={() => (confirmDelete = true)}><i class="fas fa-trash text-red-300"></i>Delete</button>
+		<button type="button" class="{GHOST_BUTTON} py-2" onclick={() => (isConfirmingDelete = true)}><i class="fas fa-trash text-red-300"></i>Delete</button>
 	{/if}
 	<button
 		type="button"
 		onclick={() => save()}
-		disabled={saving || (!dirty && messageId !== null)}
+		disabled={isSaving || (!isDirty && messageId !== null)}
 		class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 	>
-		<i class="fas {saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>
-		{#if !dirty && messageId !== null}Saved{:else}Save{/if}
+		<i class="fas {isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>
+		{#if !isDirty && messageId !== null}Saved{:else}Save{/if}
 	</button>
 	<button
 		type="button"
 		onclick={openSend}
-		disabled={saving}
+		disabled={isSaving}
 		class="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		<i class="fas fa-paper-plane"></i>Send
@@ -534,7 +535,7 @@
 			bind:doc
 			bind:lang
 			bind:mode
-			bind:menuOpen
+			bind:menuOpen={isMenuOpen}
 			channel={global ? 'bot-updates' : 'your-channel'}
 			server={data.serverName}
 			bot={data.bot}
@@ -551,18 +552,18 @@
 			onaddbutton={addButton}
 			onaddinside={(containerId) => {
 				select(containerId);
-				menuOpen = true;
+				isMenuOpen = true;
 			}}
 			onremovelanguage={(code) => (confirmLanguage = code)}
 		/>
 	</div>
 
 	<aside
-		class="{PANEL} min-w-0 {editingPart
+		class="{PANEL} min-w-0 {isEditingPart
 			? 'fixed inset-x-0 bottom-0 z-40 max-h-[55vh] overflow-y-auto rounded-b-none shadow-2xl lg:sticky lg:inset-x-auto lg:top-4 lg:bottom-auto lg:z-auto lg:max-h-[calc(100vh-2rem)] lg:rounded-xl lg:shadow-none'
 			: 'lg:sticky lg:top-4'}"
 	>
-		{#if editingPart}
+		{#if isEditingPart}
 			<PartInspector bind:doc bind:selection {nonce} />
 		{:else}
 			<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold"><i class="fas fa-wand-magic-sparkles text-fuchsia-300"></i>How it works</h3>
@@ -581,7 +582,7 @@
 			{/if}
 		{/if}
 
-		{#if issues.length > 0 && !editingPart}
+		{#if issues.length > 0 && !isEditingPart}
 			<div class="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
 				<p class="flex items-center gap-2 text-sm font-semibold text-amber-200"><i class="fas fa-triangle-exclamation text-amber-400"></i>Fix before saving</p>
 				<ul class="mt-2 flex flex-col gap-1">
@@ -603,7 +604,7 @@
 	</aside>
 </div>
 
-{#if editingPart}
+{#if isEditingPart}
 	<div class="h-[55vh] lg:hidden"></div>
 {/if}
 
@@ -623,7 +624,7 @@
 	{mentionRoles}
 	languages={doc.languages}
 	posts={data.posts}
-	{sending}
+	sending={isSending}
 	{removing}
 	{updating}
 	onsend={send}
@@ -632,16 +633,16 @@
 />
 
 <ConfirmModal
-	open={confirmDelete}
+	open={isConfirmingDelete}
 	title="Delete this message?"
 	message={data.posts.length > 0
 		? `"${name}" is deleted from the panel. Its copies in ${copies} stay in Discord, but buttons and dropdowns are taken off because they would stop working.`
 		: `"${name}" is deleted from the panel. This cannot be undone.`}
 	confirmLabel="Delete"
 	dangerous
-	loading={deleting}
+	loading={isDeleting}
 	onconfirm={remove}
-	oncancel={() => (confirmDelete = false)}
+	oncancel={() => (isConfirmingDelete = false)}
 />
 
 <ConfirmModal
@@ -679,7 +680,7 @@
 	onconfirm={() => {
 		const target = leaveTo;
 		leaveTo = null;
-		leaving = true;
+		isLeaving = true;
 		if (target) {
 			goto(target);
 		}

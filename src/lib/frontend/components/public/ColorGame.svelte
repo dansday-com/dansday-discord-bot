@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { SECOND_MS } from '$lib/utils/time.js';
+	import { FULL_TURN_DEGREES } from '$lib/utils/numbers.js';
 	import { onMount } from 'svelte';
 	import { Tween, prefersReducedMotion } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
@@ -47,27 +49,48 @@
 	type Phase = 'idle' | 'memorize' | 'dial' | 'reveal' | 'summary';
 
 	const THUMB = 14;
+	const HUE_STEP_DEGREES = 30;
+	const BURST_SPARKS = 18;
+	const BURST_ANGLE_JITTER = 0.2;
+	const BURST_REACH_PX = 70;
+	const BURST_REACH_RINGS = 3;
+	const BURST_REACH_STEP_PX = 22;
+	const BURST_VERTICAL_SQUASH = 0.5;
+	const BURST_DELAY_GROUPS = 4;
+	const BURST_DELAY_STEP_MS = 35;
+	const BANK_TWEEN_MS = 480;
+	const GOOD_SCORE_SHARE = 0.8;
+	const FAIR_SCORE_SHARE = 0.5;
+	const LIGHT_LUMA = 0.6;
+	const PAGE_STEP = 10;
+	const COUNT_BASE_MS = 500;
+	const COUNT_SCALE_MS = 700;
+	const COUNT_TICKS = 25;
 	const PIPS = Array.from({ length: COLOR_ROUNDS }, (_, i) => i);
-	const HUE_STOPS = Array.from({ length: 13 }, (_, i) => `hsl(${i * 30} 100% 50%)`).join(', ');
+	const HUE_STOPS = Array.from({ length: FULL_TURN_DEGREES / HUE_STEP_DEGREES + 1 }, (_, i) => `hsl(${i * HUE_STEP_DEGREES} 100% 50%)`).join(', ');
 	const AXIS_LABEL: Record<ColorAxis, string> = { h: 'Hue', s: 'Saturation', b: 'Brightness' };
 	const STEPS = [
-		{ icon: 'fa-eye', text: `See a color for ${COLOR_MEMORIZE_MS / 1000} seconds` },
+		{ icon: 'fa-eye', text: `See a color for ${COLOR_MEMORIZE_MS / SECOND_MS} seconds` },
 		{ icon: 'fa-sliders', text: 'Rebuild it on the three strips' },
 		{ icon: 'fa-bullseye', text: `Up to ${COLOR_MAX_SCORE} XP a round, ${COLOR_MAX_TOTAL} a game` }
 	];
-	const REMARKS: [number, string][] = [
-		[0.97, 'Dead on.'],
-		[0.9, 'A shade off.'],
-		[0.8, 'Sharp eye.'],
-		[0.65, 'Close call.'],
-		[0.45, 'Right family.'],
-		[0.25, 'Wrong aisle.'],
-		[0, 'Not even close.']
+	const REMARKS = [
+		{ min: 0.97, text: 'Dead on.' },
+		{ min: 0.9, text: 'A shade off.' },
+		{ min: 0.8, text: 'Sharp eye.' },
+		{ min: 0.65, text: 'Close call.' },
+		{ min: 0.45, text: 'Right family.' },
+		{ min: 0.25, text: 'Wrong aisle.' },
+		{ min: 0, text: 'Not even close.' }
 	];
-	const BURST = Array.from({ length: 18 }, (_, i) => {
-		const angle = (i / 18) * Math.PI * 2 + (i % 2) * 0.2;
-		const reach = 70 + (i % 3) * 22;
-		return { x: Math.round(Math.cos(angle) * reach), y: Math.round(Math.sin(angle) * reach * 0.5), delay: (i % 4) * 35 };
+	const BURST = Array.from({ length: BURST_SPARKS }, (_, i) => {
+		const angle = (i / BURST_SPARKS) * Math.PI * 2 + (i % 2) * BURST_ANGLE_JITTER;
+		const reach = BURST_REACH_PX + (i % BURST_REACH_RINGS) * BURST_REACH_STEP_PX;
+		return {
+			x: Math.round(Math.cos(angle) * reach),
+			y: Math.round(Math.sin(angle) * reach * BURST_VERTICAL_SQUASH),
+			delay: (i % BURST_DELAY_GROUPS) * BURST_DELAY_STEP_MS
+		};
 	});
 	const LABEL = 'text-[10px] font-bold tracking-[0.08em] uppercase';
 	const GOLD = 'border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] text-white';
@@ -83,18 +106,18 @@
 	let result = $state<{ total: number; payout: number } | null>(null);
 	let remaining = $state(COLOR_MEMORIZE_MS);
 	let shownScore = $state(0);
-	let settled = $state(false);
+	let isSettled = $state(false);
 	let dragging = $state<ColorAxis | null>(null);
-	let busy = $state(false);
+	let isBusy = $state(false);
 	let burst = $state(0);
 
 	let countdown = 0;
 	let counter = 0;
 
 	const roundNo = $derived(phase === 'reveal' || phase === 'summary' ? rounds.length : Math.min(COLOR_ROUNDS, rounds.length + 1));
-	const playing = $derived(phase === 'memorize' || phase === 'dial' || phase === 'reveal');
+	const isPlaying = $derived(phase === 'memorize' || phase === 'dial' || phase === 'reveal');
 	const banked = $derived(colorXp(colorTotal(rounds.slice(0, landed).map((r) => r.score))));
-	const won = $derived(phase === 'summary' && !!result && result.payout > 0);
+	const hasWon = $derived(phase === 'summary' && !!result && result.payout > 0);
 	const spoken = $derived.by(() => {
 		if (phase === 'memorize') {
 			return 'Memorize this color.';
@@ -102,36 +125,36 @@
 		if (phase === 'dial') {
 			return 'Rebuild the color with the hue, saturation and brightness sliders.';
 		}
-		if (phase === 'reveal' && settled && last) {
+		if (phase === 'reveal' && isSettled && last) {
 			return `Round ${last.round} scored ${last.score.toFixed(2)}. ${remark(last.score)}`;
 		}
-		if (phase === 'summary' && settled && result) {
+		if (phase === 'summary' && isSettled && result) {
 			return `Final score ${result.total.toFixed(2)}. You won ${result.payout} XP.`;
 		}
 		return '';
 	});
 
-	const shown = new Tween(0, { duration: 480, easing: cubicOut });
+	const shown = new Tween(0, { duration: BANK_TWEEN_MS, easing: cubicOut });
 	$effect(() => {
-		shown.set(banked, { duration: prefersReducedMotion.current ? 0 : 480 });
+		shown.set(banked, { duration: prefersReducedMotion.current ? 0 : BANK_TWEEN_MS });
 	});
 
 	function remark(score: number, max = COLOR_MAX_SCORE): string {
-		return REMARKS.find(([min]) => score / max >= min)?.[1] ?? '';
+		return REMARKS.find(({ min }) => score / max >= min)?.text ?? '';
 	}
 
 	function scoreTone(score: number, max = COLOR_MAX_SCORE): string {
-		if (score >= max * 0.8) {
+		if (score >= max * GOOD_SCORE_SHARE) {
 			return 'text-success';
 		}
-		if (score >= max * 0.5) {
+		if (score >= max * FAIR_SCORE_SHARE) {
 			return 'text-warning';
 		}
 		return 'text-error';
 	}
 
 	function ink(c: Hsb): string {
-		return colorLuma(c) > 0.6 ? '#141414' : '#ffffff';
+		return colorLuma(c) > LIGHT_LUMA ? '#141414' : '#ffffff';
 	}
 
 	function ratio(axis: ColorAxis, value: number): number {
@@ -170,7 +193,7 @@
 	}
 
 	function grab(e: PointerEvent, axis: ColorAxis) {
-		if (phase !== 'dial' || busy) {
+		if (phase !== 'dial' || isBusy) {
 			return;
 		}
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -179,27 +202,22 @@
 	}
 
 	function drag(e: PointerEvent, axis: ColorAxis) {
-		if (dragging !== axis || phase !== 'dial' || busy) {
+		if (dragging !== axis || phase !== 'dial' || isBusy) {
 			return;
 		}
 		setAxis(axis, pointerValue(e, axis));
 	}
 
 	function nudge(e: KeyboardEvent, axis: ColorAxis) {
-		if (phase !== 'dial' || busy) {
+		if (phase !== 'dial' || isBusy) {
 			return;
 		}
 		const max = COLOR_AXIS_MAX[axis];
 		const up = axis === 'h' ? -1 : 1;
-		const steps: Record<string, number> = { ArrowUp: up, ArrowDown: -up, PageUp: up * 10, PageDown: -up * 10 };
-		let value: number;
-		if (steps[e.key]) {
-			value = Math.min(max, Math.max(0, guess[axis] + steps[e.key]));
-		} else if (e.key === 'Home') {
-			value = axis === 'h' ? 0 : max;
-		} else if (e.key === 'End') {
-			value = axis === 'h' ? max : 0;
-		} else {
+		const steps: Record<string, number> = { ArrowUp: up, ArrowDown: -up, PageUp: up * PAGE_STEP, PageDown: -up * PAGE_STEP };
+		const edges: Record<string, number> = { Home: axis === 'h' ? 0 : max, End: axis === 'h' ? max : 0 };
+		const value = steps[e.key] ? Math.min(max, Math.max(0, guess[axis] + steps[e.key])) : edges[e.key];
+		if (value === undefined) {
 			return;
 		}
 		e.preventDefault();
@@ -215,7 +233,7 @@
 		target = null;
 		last = null;
 		result = null;
-		settled = false;
+		isSettled = false;
 	}
 
 	async function send(action: string, pick?: Hsb): Promise<ColorReply | null> {
@@ -250,10 +268,10 @@
 		if (ended.payout > 0) {
 			onpayout(ended.payout);
 		}
-		settled = false;
+		isSettled = false;
 		phase = 'summary';
 		countTo(ended.total, COLOR_MAX_TOTAL, () => {
-			settled = true;
+			isSettled = true;
 			burst += 1;
 			sfx.payout(ended.total / COLOR_MAX_TOTAL);
 		});
@@ -272,15 +290,15 @@
 	}
 
 	async function quit() {
-		if (busy) {
+		if (isBusy) {
 			return;
 		}
 		if (!game?.active) {
 			return onclose();
 		}
-		busy = true;
+		isBusy = true;
 		const shown = await settle();
-		busy = false;
+		isBusy = false;
 		if (!shown) {
 			onclose();
 		}
@@ -295,12 +313,12 @@
 		}
 		shownScore = 0;
 		const from = performance.now();
-		const ms = 500 + (value / max) * 700;
+		const ms = COUNT_BASE_MS + (value / max) * COUNT_SCALE_MS;
 		let beat = -1;
 		const frame = (t: number) => {
 			const p = Math.min(1, Math.max(0, (t - from) / ms));
 			shownScore = value * cubicOut(p);
-			const at = Math.floor((shownScore / max) * 25);
+			const at = Math.floor((shownScore / max) * COUNT_TICKS);
 			if (p < 1 && at !== beat) {
 				beat = at;
 				sfx.count(shownScore / max);
@@ -321,19 +339,23 @@
 		cancelAnimationFrame(countdown);
 		guess = colorOpeningGuess(target);
 		last = null;
-		settled = false;
+		isSettled = false;
 		remaining = COLOR_MEMORIZE_MS;
 		phase = 'memorize';
 		sfx.show();
 
 		const until = performance.now() + COLOR_MEMORIZE_MS;
-		let beat = Math.ceil(COLOR_MEMORIZE_MS / 1000);
+		let beat = Math.ceil(COLOR_MEMORIZE_MS / SECOND_MS);
 		const frame = (t: number) => {
 			remaining = Math.min(COLOR_MEMORIZE_MS, Math.max(0, until - t));
-			const left = Math.ceil(remaining / 1000);
+			const left = Math.ceil(remaining / SECOND_MS);
 			if (left > 0 && left < beat) {
 				beat = left;
-				sfx.second(left === 1);
+				if (left === 1) {
+					sfx.lastSecond();
+				} else {
+					sfx.second();
+				}
 			}
 			if (remaining > 0) {
 				countdown = requestAnimationFrame(frame);
@@ -346,13 +368,13 @@
 	}
 
 	async function begin() {
-		if (busy || !game) {
+		if (isBusy || !game) {
 			return;
 		}
 		sfx.press();
-		busy = true;
+		isBusy = true;
 		const d = await send('start');
-		busy = false;
+		isBusy = false;
 		if (!d?.target) {
 			return;
 		}
@@ -363,15 +385,15 @@
 	}
 
 	async function lockIn() {
-		if (busy || phase !== 'dial') {
+		if (isBusy || phase !== 'dial') {
 			return;
 		}
-		busy = true;
+		isBusy = true;
 		dragging = null;
 		sfx.lock();
 		const before = game;
 		const d = await send('guess', guess);
-		busy = false;
+		isBusy = false;
 		const step = d?.step;
 		if (!d || !step) {
 			if (game !== before) {
@@ -392,14 +414,14 @@
 		}
 		phase = 'reveal';
 		countTo(step.score, COLOR_MAX_SCORE, () => {
-			settled = true;
+			isSettled = true;
 			landed = rounds.length;
 			sfx.land(step.score / COLOR_MAX_SCORE);
 		});
 	}
 
 	function advance() {
-		if (phase !== 'reveal' || !settled) {
+		if (phase !== 'reveal' || !isSettled) {
 			return;
 		}
 		sfx.press();
@@ -409,18 +431,18 @@
 			startRound();
 			return;
 		}
-		settled = false;
+		isSettled = false;
 		phase = 'summary';
 		countTo(final.total, COLOR_MAX_TOTAL, () => {
-			settled = true;
+			isSettled = true;
 			burst += 1;
 			sfx.payout(final.total / COLOR_MAX_TOTAL);
 		});
 	}
 
 	onMount(() => {
-		busy = true;
-		settle().finally(() => (busy = false));
+		isBusy = true;
+		settle().finally(() => (isBusy = false));
 		return () => {
 			cancelAnimationFrame(countdown);
 			cancelAnimationFrame(counter);
@@ -432,10 +454,10 @@
 	<span class="inline-flex gap-1.5 tabular-nums"><span>H{c.h}</span><span>S{c.s}</span><span>B{c.b}</span></span>
 {/snippet}
 
-<GameModal icon="fa-eye-dropper" title="Color" state={won ? 'win' : 'idle'} closable={!busy} onclose={quit}>
+<GameModal icon="fa-eye-dropper" title="Color" state={hasWon ? 'win' : 'idle'} closable={!isBusy} onclose={quit}>
 	{#if !game}
 		<div class="text-base-content/50 grid h-[410px] place-items-center text-2xl">
-			{#if busy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-triangle-exclamation"></i>{/if}
+			{#if isBusy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-triangle-exclamation"></i>{/if}
 		</div>
 	{:else}
 		<span class="sr-only" aria-live="polite">{spoken}</span>
@@ -454,7 +476,7 @@
 				<div class="flex h-[27.5px] items-center gap-1" aria-hidden="true">
 					{#each PIPS as i (i)}
 						<span
-							class="h-3.5 flex-1 rounded-[5px] border transition-colors duration-300 {playing && i === roundNo - 1 && i >= landed
+							class="h-3.5 flex-1 rounded-[5px] border transition-colors duration-300 {isPlaying && i === roundNo - 1 && i >= landed
 								? 'border-[#d9a528] bg-[#d9a528]/20'
 								: 'border-base-300 bg-base-300'}"
 							style={pipStyle(i)}
@@ -468,7 +490,7 @@
 			<div class="border-base-300 bg-base-200 relative isolate min-w-0 flex-1 overflow-hidden rounded-2xl border">
 				{#if phase === 'memorize' && target}
 					<div class="flex h-full flex-col justify-end p-3.5" style="background: {hsbToCss(target)}; color: {ink(target)}">
-						<div class="text-[40px] leading-none font-black tabular-nums">{(remaining / 1000).toFixed(2)}</div>
+						<div class="text-[40px] leading-none font-black tabular-nums">{(remaining / SECOND_MS).toFixed(2)}</div>
 						<div class="mt-1.5 opacity-70 {LABEL}">Seconds to remember</div>
 						<span class="absolute inset-x-0 bottom-0 h-1 origin-left bg-current opacity-55" style="transform: scaleX({remaining / COLOR_MEMORIZE_MS})"></span>
 					</div>
@@ -491,7 +513,7 @@
 					<div class="pointer-events-none absolute inset-0 grid place-items-center">
 						<div class="motion-safe:animate-tower-pop border-base-300 bg-base-100 rounded-2xl border-2 px-4 py-1.5 text-center shadow-xl">
 							<div class="text-[26px] leading-tight font-black tabular-nums {scoreTone(last.score)}">{shownScore.toFixed(2)}</div>
-							<div class="text-base-content/60 h-4 text-[11px] leading-4 font-bold whitespace-nowrap">{settled ? remark(last.score) : ''}</div>
+							<div class="text-base-content/60 h-4 text-[11px] leading-4 font-bold whitespace-nowrap">{isSettled ? remark(last.score) : ''}</div>
 						</div>
 					</div>
 				{:else if phase === 'summary' && result}
@@ -502,7 +524,7 @@
 								{shownScore.toFixed(2)}<span class="text-base-content/40 ml-1 text-[14px]">/ {COLOR_MAX_TOTAL}</span>
 							</div>
 							<div class="relative mt-1.5 grid h-[46px] place-items-center">
-								{#if settled}
+								{#if isSettled}
 									{#key burst}
 										{#if result.payout > 0}
 											<span class="absolute top-1/2 left-1/2" aria-hidden="true">
@@ -608,18 +630,23 @@
 		{#if phase === 'memorize'}
 			<button type="button" class="btn h-auto w-full py-3.5 text-[15px] font-black" disabled><i class="fas fa-eye"></i>Memorize</button>
 		{:else if phase === 'dial'}
-			<button type="button" class="btn h-auto w-full py-3.5 text-[15px] font-black {GOLD} {busy ? '' : 'animate-game-charge'}" disabled={busy} onclick={lockIn}>
-				{#if busy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-lock"></i>{/if}Lock in
+			<button
+				type="button"
+				class="btn h-auto w-full py-3.5 text-[15px] font-black {GOLD} {isBusy ? '' : 'animate-game-charge'}"
+				disabled={isBusy}
+				onclick={lockIn}
+			>
+				{#if isBusy}<i class="fas fa-circle-notch fa-spin"></i>{:else}<i class="fas fa-lock"></i>{/if}Lock in
 			</button>
 		{:else if phase === 'reveal'}
-			<button type="button" class="btn h-auto w-full py-3.5 text-[15px] font-black {settled ? GOLD : ''}" disabled={!settled} onclick={advance}>
+			<button type="button" class="btn h-auto w-full py-3.5 text-[15px] font-black {isSettled ? GOLD : ''}" disabled={!isSettled} onclick={advance}>
 				<i class="fas {result ? 'fa-flag-checkered' : 'fa-forward'}"></i>{result ? 'See results' : 'Next color'}
 			</button>
 		{:else}
 			<button
 				type="button"
-				class="btn h-auto w-full py-3.5 text-[15px] font-black {GOLD} {busy ? '' : 'animate-game-charge'}"
-				disabled={busy || (phase === 'summary' && !settled)}
+				class="btn h-auto w-full py-3.5 text-[15px] font-black {GOLD} {isBusy ? '' : 'animate-game-charge'}"
+				disabled={isBusy || (phase === 'summary' && !isSettled)}
 				onclick={begin}
 			>
 				<i class="fas fa-eye-dropper"></i>{phase === 'summary' ? 'Play again' : 'Play'}

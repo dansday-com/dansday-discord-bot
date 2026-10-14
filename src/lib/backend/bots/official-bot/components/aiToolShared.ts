@@ -3,6 +3,7 @@ import { formatDuration } from '../../../../items.js';
 import { SERVER_SETTINGS, publicSubfeatureEnabled } from '../../../panelServer.js';
 import { isComponentFeatureEnabled } from '../../../config.js';
 import { cachedLookup } from './aiCache.js';
+import { MINUTE_MS } from '../../../../utils/time.js';
 
 const TOOL_FEATURES_TTL_SEC = 30;
 
@@ -28,7 +29,7 @@ export function num(value: unknown) {
 }
 
 export function formatMs(ms: number) {
-	return formatDuration(Math.max(0, num(ms)) / 60000);
+	return formatDuration(Math.max(0, num(ms)) / MINUTE_MS);
 }
 
 export function safeConfig(raw: unknown): Record<string, unknown> {
@@ -123,7 +124,7 @@ async function loadToolFeatures(botId: number, guildId: string, off: ToolFeature
 
 	const componentOn = (component: string) => isComponentFeatureEnabled(guildId, component).catch(() => false);
 
-	const [giveaway, staffRating, quests] = await Promise.all([
+	const [isGiveaway, isStaffRating, isQuests] = await Promise.all([
 		componentOn(SERVER_SETTINGS.component.giveaway),
 		componentOn(SERVER_SETTINGS.component.staff_rating),
 		componentOn(SERVER_SETTINGS.component.discord_quest_notifier)
@@ -135,9 +136,9 @@ async function loadToolFeatures(botId: number, guildId: string, off: ToolFeature
 		market: publicSubfeatureEnabled(settings, 'market'),
 		minigames: publicSubfeatureEnabled(settings, 'minigames'),
 		tasks: publicSubfeatureEnabled(settings, 'tasks'),
-		giveaway,
-		staffRating,
-		quests
+		giveaway: isGiveaway,
+		staffRating: isStaffRating,
+		quests: isQuests
 	};
 }
 

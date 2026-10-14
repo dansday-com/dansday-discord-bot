@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import {
 		BASICS as basics,
@@ -17,7 +17,7 @@
 
 	let { data }: PageProps = $props();
 
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 
 	const guideItems = $derived.by(() => buildGuideItems(data.items ?? []));
 
@@ -31,7 +31,7 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Guide | {APP_NAME} Discord Bot</title></svelte:head>
 
-{#snippet cardGrid(cards: any[])}
+{#snippet cardGrid(cards: { icon: string; accent: string; title: string; desc: string }[])}
 	<div class="flex flex-wrap gap-3">
 		{#each cards as c}
 			<AccentCard icon={c.icon} accent={c.accent} title={c.title} text={c.desc} />

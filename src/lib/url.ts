@@ -27,6 +27,22 @@ export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members' |
 
 const APP_PROTOCOL = APP_URL.startsWith('http://') ? 'http:' : 'https:';
 
+const PUNYCODE_PREFIX = 'xn--';
+const PUNYCODE_BASE = 36;
+const PUNYCODE_TMIN = 1;
+const PUNYCODE_TMAX = 26;
+const PUNYCODE_SKEW = 38;
+const PUNYCODE_DAMP = 700;
+const PUNYCODE_INITIAL_N = 128;
+const PUNYCODE_INITIAL_BIAS = 72;
+const ALPHABET_LETTERS = 26;
+const CHAR_CODE_DIGIT_0 = 48;
+const CHAR_CODE_DIGIT_9 = 57;
+const CHAR_CODE_LOWER_A = 97;
+const CHAR_CODE_LOWER_Z = 122;
+const MAX_CODE_POINT = 0x10ffff;
+const DNS_LABEL_MAX_LENGTH = 63;
+
 const RESERVED_SUBDOMAIN_LABELS = new Set([
 	'www',
 	'api',
@@ -100,38 +116,43 @@ function subdomainRootHost(): string {
 function punycodeDecode(input: string): string | null {
 	const cut = input.lastIndexOf('-');
 	const out = cut > 0 ? Array.from(input.slice(0, cut), (c) => c.charCodeAt(0)) : [];
-	let n = 128;
-	let bias = 72;
+	let n = PUNYCODE_INITIAL_N;
+	let bias = PUNYCODE_INITIAL_BIAS;
 	let i = 0;
 	for (let pos = cut > 0 ? cut + 1 : 0; pos < input.length;) {
 		const start = i;
-		for (let w = 1, k = 36; ; k += 36) {
+		for (let w = 1, k = PUNYCODE_BASE; ; k += PUNYCODE_BASE) {
 			if (pos >= input.length) {
 				return null;
 			}
 			const c = input.charCodeAt(pos++);
-			const digit = c >= 48 && c <= 57 ? c - 22 : c >= 97 && c <= 122 ? c - 97 : -1;
+			const digit =
+				c >= CHAR_CODE_DIGIT_0 && c <= CHAR_CODE_DIGIT_9
+					? c - CHAR_CODE_DIGIT_0 + ALPHABET_LETTERS
+					: c >= CHAR_CODE_LOWER_A && c <= CHAR_CODE_LOWER_Z
+						? c - CHAR_CODE_LOWER_A
+						: -1;
 			if (digit < 0) {
 				return null;
 			}
 			i += digit * w;
-			const t = k <= bias ? 1 : k >= bias + 26 ? 26 : k - bias;
+			const t = k <= bias ? PUNYCODE_TMIN : k >= bias + PUNYCODE_TMAX ? PUNYCODE_TMAX : k - bias;
 			if (digit < t) {
 				break;
 			}
-			w *= 36 - t;
+			w *= PUNYCODE_BASE - t;
 		}
 		const len = out.length + 1;
-		let delta = Math.floor((i - start) / (start === 0 ? 700 : 2));
+		let delta = Math.floor((i - start) / (start === 0 ? PUNYCODE_DAMP : 2));
 		delta += Math.floor(delta / len);
 		let k = 0;
-		for (; delta > 455; k += 36) {
-			delta = Math.floor(delta / 35);
+		for (; delta > ((PUNYCODE_BASE - PUNYCODE_TMIN) * PUNYCODE_TMAX) / 2; k += PUNYCODE_BASE) {
+			delta = Math.floor(delta / (PUNYCODE_BASE - PUNYCODE_TMIN));
 		}
-		bias = k + Math.floor((36 * delta) / (delta + 38));
+		bias = k + Math.floor((PUNYCODE_BASE * delta) / (delta + PUNYCODE_SKEW));
 		n += Math.floor(i / len);
 		i %= len;
-		if (n > 0x10ffff) {
+		if (n > MAX_CODE_POINT) {
 			return null;
 		}
 		out.splice(i++, 0, n);
@@ -153,7 +174,7 @@ export function publicServerSlugFromHost(hostname: string | null | undefined): s
 	if (!label || label.includes('.')) {
 		return null;
 	}
-	const decoded = label.startsWith('xn--') ? punycodeDecode(label.slice(4)) : label;
+	const decoded = label.startsWith(PUNYCODE_PREFIX) ? punycodeDecode(label.slice(PUNYCODE_PREFIX.length)) : label;
 	if (!decoded || !/^[\p{L}\p{M}\p{Nd}]+(?:-[0-9]+)?$/u.test(decoded)) {
 		return null;
 	}
@@ -170,7 +191,7 @@ export function publicServerSubdomainOrigin(slug: string): string | null {
 	}
 	try {
 		const url = new URL(`${APP_PROTOCOL}//${label}.${APP_DOMAIN}`);
-		if (url.hostname.split('.')[0].length > 63 || publicServerSlugFromHost(url.hostname) !== slug) {
+		if (url.hostname.split('.')[0].length > DNS_LABEL_MAX_LENGTH || publicServerSlugFromHost(url.hostname) !== slug) {
 			return null;
 		}
 		return url.origin;

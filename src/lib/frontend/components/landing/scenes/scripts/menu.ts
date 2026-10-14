@@ -1,9 +1,10 @@
 import { BRAND_PRIMARY } from '$lib/brand.js';
 import { APP_DOMAIN, APP_NAME } from '$lib/backend/panelServer.js';
 import type { SceneButton, SceneEmbed, SceneEvent, SceneRow } from '../types.js';
-import { BOT, FOOTER, at, avatar, defineScene } from './common.js';
+import { BOT, CAST, FOOTER, at, defineScene } from './common.js';
 
 const OK = '#57f287';
+const MEMBER_MENU_PRESS_MS = 1300;
 const MENU_CHANNEL = '「💻」menu';
 const BACK: SceneButton = { label: '⬅️ Back' };
 
@@ -71,11 +72,7 @@ export const setup = defineScene({
 	channel: 'general',
 	duration: 15000,
 	rest: 13800,
-	people: {
-		bot: BOT,
-		kai: { name: 'Kai', avatar: avatar(0) },
-		rin: { name: 'Rin', avatar: avatar(3) }
-	},
+	people: { bot: BOT, kai: CAST.kai, rin: CAST.rin },
 	commands: [{ name: 'setup', desc: 'Set up the bot: pick the server language, then create the menu and channels. Admins only.' }],
 	context: [
 		{ id: 'c1', at: -1, who: 'rin', time: at('20:56'), text: 'is the bot in yet?' },
@@ -156,7 +153,7 @@ export const member = defineScene({
 	duration: 16000,
 	rest: 14800,
 	people: { bot: BOT },
-	context: [panel(1300)],
+	context: [panel(MEMBER_MENU_PRESS_MS)],
 	events: [
 		{ id: 'menu', at: 1700, who: 'bot', time: at('21:14'), ephemeral: true, ...mainMenu({ me: 4000 }) },
 		{

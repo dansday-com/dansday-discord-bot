@@ -2,6 +2,7 @@ import { BRAND_TAGLINE } from './brand.js';
 import { APP_NAME, APP_NAME_PLAIN } from './backend/panelServer.js';
 import { serverLanguageList } from './languages.js';
 import type { AggregatedPanelStats } from './frontend/public/statistics/aggregate.js';
+import { MINUTES_PER_HOUR } from './utils/time.js';
 
 type Totals = AggregatedPanelStats;
 export type Live = { label: string; value: string; live?: boolean };
@@ -117,7 +118,7 @@ export const features: Feature[] = [
 		stat: (s: Totals): Live[] => [
 			{ label: 'XP earned', value: fmt(s.leveling_total_xp) },
 			{ label: 'Top level', value: fmt(s.leveling_max_level) },
-			{ label: 'Voice hours', value: fmt(s.leveling_total_voice_minutes / 60) }
+			{ label: 'Voice hours', value: fmt(s.leveling_total_voice_minutes / MINUTES_PER_HOUR) }
 		]
 	},
 	{

@@ -7,7 +7,7 @@ const RETRY_MS = 8000;
 
 export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 	let totals = $state(initial);
-	let live = $state(false);
+	let isLive = $state(false);
 	let updatedAt = $state(0);
 	let gains = $state<LiveGainBatch | null>(null);
 
@@ -22,7 +22,7 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 
 		totals = payload.totals;
 		updatedAt = Number(payload.updated_at) || Date.now();
-		live = true;
+		isLive = true;
 
 		const items = (Array.isArray(payload.gains) ? payload.gains : []).map((xp) => Number(xp) || 0).filter((xp) => xp > 0);
 		if (items.length) {
@@ -41,7 +41,7 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 			} catch (_) {}
 		};
 		source.onerror = () => {
-			live = false;
+			isLive = false;
 			source?.close();
 			source = null;
 			if (!retry) {
@@ -55,7 +55,7 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 			return totals;
 		},
 		get live() {
-			return live;
+			return isLive;
 		},
 		get updatedAt() {
 			return updatedAt;
@@ -72,7 +72,7 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 				retry = null;
 				source?.close();
 				source = null;
-				live = false;
+				isLive = false;
 			};
 		}
 	};

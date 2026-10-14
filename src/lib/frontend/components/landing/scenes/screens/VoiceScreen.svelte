@@ -3,16 +3,17 @@
 	import { quintOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
-	import { avatar } from '../scripts/common.js';
+	import { CAST } from '../scripts/common.js';
+	import { SCENE_ANIM_MS } from '../clock.svelte.js';
 	import type { SceneScreenProps } from '../types.js';
 
 	let { t, still }: SceneScreenProps = $props();
 
 	const PEOPLE = [
-		{ id: 'mira', name: 'Mira', avatar: avatar(2), muted: false },
+		{ id: 'mira', ...CAST.mira, muted: false },
 		{ id: 'bot', name: APP_NAME, avatar: '/favicon-96x96.png', muted: false },
-		{ id: 'kai', name: 'Kai', avatar: avatar(0), muted: true },
-		{ id: 'rin', name: 'Rin', avatar: avatar(3), muted: false }
+		{ id: 'kai', ...CAST.kai, muted: true },
+		{ id: 'rin', ...CAST.rin, muted: false }
 	];
 
 	const SPEECH = [
@@ -23,14 +24,17 @@
 		{ id: 's5', who: 'mira', from: 10300, to: 11200, text: "nice, I'm done" }
 	];
 	const AWAKE = { from: 1800, to: 11700 };
+	const HEARD_DELAY_MS = 150;
+	const TRANSCRIPT_LINES = 3;
+	const SLEEP_DELAY_MS = 200;
 
 	const nameOf = (id: string) => PEOPLE.find((p) => p.id === id)?.name ?? '';
 	const speaking = (id: string) => SPEECH.some((s) => s.who === id && t >= s.from && t < s.to);
-	const botMuted = $derived(t < AWAKE.from || t >= AWAKE.to);
-	const heardCount = $derived(SPEECH.filter((s) => t >= s.from + 150).length);
-	const heard = $derived(SPEECH.slice(0, heardCount).slice(-3));
-	const asleep = $derived(t >= AWAKE.to + 200);
-	const animMs = $derived(still ? 0 : 320);
+	const isBotMuted = $derived(t < AWAKE.from || t >= AWAKE.to);
+	const heardCount = $derived(SPEECH.filter((s) => t >= s.from + HEARD_DELAY_MS).length);
+	const heard = $derived(SPEECH.slice(0, heardCount).slice(-TRANSCRIPT_LINES));
+	const isAsleep = $derived(t >= AWAKE.to + SLEEP_DELAY_MS);
+	const animMs = $derived(still ? 0 : SCENE_ANIM_MS);
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col bg-[#1a1b1e]">
@@ -46,7 +50,7 @@
 	<div class="grid shrink-0 grid-cols-2 gap-2 px-3 pt-1">
 		{#each PEOPLE as p (p.id)}
 			{@const talking = speaking(p.id)}
-			{@const muted = p.id === 'bot' ? botMuted : p.muted}
+			{@const muted = p.id === 'bot' ? isBotMuted : p.muted}
 			<div class="voice-tile bg-ash-800 relative grid aspect-[4/3.3] place-items-center rounded-2xl" class:voice-tile-on={talking}>
 				<img src={p.avatar} alt="" class="voice-avatar size-[60px] rounded-full" class:voice-avatar-on={talking} loading="lazy" />
 				{#if p.id === 'bot' && talking}
@@ -78,7 +82,7 @@
 					{line.text}
 				</p>
 			{/each}
-			{#if asleep}
+			{#if isAsleep}
 				<p in:fly={{ y: 8, duration: animMs, easing: quintOut }} class="text-ash-200 text-[12px] italic">
 					<i class="fas fa-microphone-slash mr-1 text-[10px] text-[#f23f43]"></i>{APP_NAME} muted itself. Say "hey stupid" to wake it.
 				</p>

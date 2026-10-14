@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { randomBytes } from 'crypto';
 import { logger } from '$lib/utils/index.js';
-import { postBotWebhook } from '$lib/backend/public/items/index.js';
+import { postBotWebhook } from '$lib/botControl.js';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
@@ -31,7 +31,7 @@ type InviteFailure = { discord_member_id: string; error: string };
 type InviteContext = {
 	locals: App.Locals;
 	server: NonNullable<Awaited<ReturnType<typeof db.getServer>>>;
-	bot: Pick<NonNullable<Awaited<ReturnType<typeof db.getBot>>>, 'port' | 'secret_key'>;
+	bot: Pick<NonNullable<Awaited<ReturnType<typeof db.getBot>>>, 'id' | 'port' | 'secret_key'>;
 	accountType: 'owner' | 'staff';
 	origin: string;
 };

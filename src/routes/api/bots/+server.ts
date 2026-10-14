@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
 import { HTTP } from '$lib/http.js';
+import { hasLostBotProcess } from '$lib/botControl.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
@@ -15,15 +16,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		const botsWithDetails = await Promise.all(
 			bots.map(async (bot) => {
-				if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
-					try {
-						process.kill(bot.process_id, 0);
-					} catch (_) {
-						await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-						bot.status = 'stopped';
-						bot.process_id = null;
-						bot.uptime_started_at = null;
-					}
+				if (hasLostBotProcess(bot)) {
+					await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+					bot.status = 'stopped';
+					bot.process_id = null;
+					bot.uptime_started_at = null;
 				}
 
 				const botData: Record<string, unknown> = {

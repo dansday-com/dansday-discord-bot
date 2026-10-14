@@ -5,6 +5,7 @@ import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, webRouteUp, isBotSectionPath, adminServerPath } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/backend/panelServer.js';
 import { HTTP } from '$lib/http.js';
+import { hasLostBotProcess } from '$lib/botControl.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) {
@@ -35,13 +36,9 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 		redirect(HTTP.FOUND, webRouteUp(url.pathname));
 	}
 
-	if ((rawBot.status === 'running' || rawBot.status === 'starting' || rawBot.status === 'stopping') && rawBot.process_id) {
-		try {
-			process.kill(rawBot.process_id, 0);
-		} catch (_) {
-			await db.updateBot(rawBot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-			Object.assign(rawBot, await db.getBot(params.id));
-		}
+	if (hasLostBotProcess(rawBot)) {
+		await db.updateBot(rawBot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+		Object.assign(rawBot, await db.getBot(params.id));
 	}
 
 	const { token, ...bot }: typeof rawBot & { uptime_ms?: number } = rawBot;

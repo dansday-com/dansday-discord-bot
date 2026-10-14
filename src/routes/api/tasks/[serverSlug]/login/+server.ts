@@ -3,7 +3,8 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
-import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/backend/public/items/index.js';
+import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
+import { postBotWebhook } from '$lib/botControl.js';
 import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
 import { HTTP } from '$lib/http.js';
 

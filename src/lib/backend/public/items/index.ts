@@ -1,11 +1,9 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { request as httpRequest } from 'http';
 import db from '../../../database.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
 import { resolveMemberThemeForClient } from '../../storage/memberThemes.js';
 import type { BotRow, ServerRow } from '../../../schema.js';
 import type { MemberListRow } from '../../../database.js';
-import { HTTP } from '../../../http.js';
 import { DAY_MINUTES, MINUTE_MS, MINUTES_PER_HOUR, SECONDS_PER_MINUTE, SECOND_MS } from '../../../utils/time.js';
 import { DEFAULT_LEVELING_SETTINGS } from '../../../levelingDefaults.js';
 
@@ -310,37 +308,4 @@ export async function loadItemsShared(server: Pick<ServerRow, 'id'>, hash: strin
 		levelReq,
 		luckPercent
 	};
-}
-
-export type BotWebhookBody = { ok?: boolean; error?: string; details?: string; [field: string]: unknown };
-
-export function postBotWebhook(bot: Pick<BotRow, 'port' | 'secret_key'>, payload: unknown): Promise<{ status: number; body: BotWebhookBody | null }> {
-	const body = JSON.stringify(payload);
-	return new Promise((resolve) => {
-		const req = httpRequest(
-			{
-				hostname: 'localhost',
-				port: bot.port,
-				path: '/',
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key ?? '' }
-			},
-			(res) => {
-				let data = '';
-				res.on('data', (chunk) => {
-					data += chunk;
-				});
-				res.on('end', () => {
-					try {
-						resolve({ status: res.statusCode ?? HTTP.INTERNAL_ERROR, body: JSON.parse(data) });
-					} catch {
-						resolve({ status: res.statusCode ?? HTTP.INTERNAL_ERROR, body: null });
-					}
-				});
-			}
-		);
-		req.on('error', () => resolve({ status: HTTP.BAD_GATEWAY, body: null }));
-		req.write(body);
-		req.end();
-	});
 }

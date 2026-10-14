@@ -1,10 +1,10 @@
-import process from 'node:process';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { presenceFromDbRow } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { ADMIN_TAB_PATHS } from '$lib/frontend/redirect.js';
 import { HTTP } from '$lib/http.js';
+import { hasLostBotProcess } from '$lib/botControl.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
@@ -26,15 +26,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		redirect(HTTP.FOUND, ADMIN_TAB_PATHS.selfbots);
 	}
 
-	if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
-		try {
-			process.kill(bot.process_id, 0);
-		} catch (_) {
-			await db.updateSelfbot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
-			const refreshed = await db.getSelfbotById(selfbotId);
-			if (refreshed) {
-				bot = refreshed;
-			}
+	if (hasLostBotProcess(bot)) {
+		await db.updateSelfbot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+		const refreshed = await db.getSelfbotById(selfbotId);
+		if (refreshed) {
+			bot = refreshed;
 		}
 	}
 

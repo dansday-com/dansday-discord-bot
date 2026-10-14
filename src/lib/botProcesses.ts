@@ -6,6 +6,7 @@ import db, { type BotRunStatus } from './database.js';
 import { getRedisClient, isRedisConfigured } from './redis.js';
 import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate, attemptSync } from './utils/index.js';
 import { MINUTE_MS, SECOND_MS } from './utils/time.js';
+import { postToLocalBot, type BotWebhookResult } from './botWebhook.js';
 
 const PROJECT_ROOT_SEARCH_DEPTH = 24;
 const EARLY_EXIT_CHECK_MS = 500;
@@ -93,9 +94,9 @@ export const RUNNER_COMMAND_CHANNEL = 'bot:runner:cmd';
 export const RUNNER_REPLY_CHANNEL = 'bot:runner:reply';
 export const RUNNER_STATUS_CHANNEL = 'bot:runner:status';
 
-export type RunnerAction = 'start' | 'stop' | 'restart';
-export type RunnerCommand = { requestId: string; action: RunnerAction; kind: BotProcessKind; id: number };
-export type RunnerResult = { success: boolean; error?: string; pid?: number; message?: string };
+export type RunnerAction = 'start' | 'stop' | 'restart' | 'webhook';
+export type RunnerCommand = { requestId: string; action: RunnerAction; kind: BotProcessKind; id: number; payload?: unknown };
+export type RunnerResult = { success: boolean; error?: string; pid?: number; message?: string; webhook?: BotWebhookResult };
 
 export type BotProcessRow = {
 	id: number;
@@ -864,6 +865,9 @@ async function runRunnerCommand(command: RunnerCommand): Promise<RunnerResult> {
 	}
 	if (command.action === 'restart') {
 		return restartBotById(row.id, row);
+	}
+	if (command.action === 'webhook' && command.kind === 'official' && 'port' in row) {
+		return { success: true, webhook: await postToLocalBot(row, command.payload) };
 	}
 	return { success: false, error: 'Unknown bot runner command' };
 }

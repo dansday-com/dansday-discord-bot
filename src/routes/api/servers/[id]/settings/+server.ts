@@ -13,6 +13,7 @@ import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { isServerLanguage } from '$lib/languages.js';
 import { attemptSync } from '$lib/utils/attempt.js';
 import { HTTP } from '$lib/http.js';
+import { postBotWebhook } from '$lib/botControl.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -86,77 +87,30 @@ function diffSettings(before: Record<string, unknown>, after: Record<string, unk
 	return changes;
 }
 
-async function postOfficialBotWebhook(
-	bot: { port: number | null; secret_key: string | null } | null | undefined,
-	payload: Record<string, unknown>
-): Promise<void> {
+type OfficialBot = { id: number; port: number | null; secret_key: string | null; status?: string | null };
+
+async function postOfficialBotWebhook(bot: OfficialBot | null | undefined, payload: Record<string, unknown>): Promise<void> {
 	if (!bot?.port || !bot.secret_key) {
 		return;
 	}
-	const { request } = await import('http');
-	const body = JSON.stringify(payload);
-	const options = {
-		hostname: 'localhost',
-		port: bot.port,
-		path: '/',
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Content-Length': Buffer.byteLength(body),
-			'X-Secret-Key': bot.secret_key
-		}
-	};
-	await new Promise<void>((resolve) => {
-		const req = request(options, () => resolve());
-		req.on('error', () => resolve());
-		req.write(body);
-		req.end();
-	});
+	await postBotWebhook(bot, payload);
 }
 
-async function callOfficialBotWebhook(
-	bot: { port: number | null; secret_key: string | null; status?: string | null } | null | undefined,
-	payload: Record<string, unknown>
-): Promise<{ status: number; body: unknown }> {
+async function callOfficialBotWebhook(bot: OfficialBot | null | undefined, payload: Record<string, unknown>): Promise<{ status: number; body: unknown }> {
 	if (!bot || bot.status !== 'running') {
 		return { status: HTTP.SERVICE_UNAVAILABLE, body: { error: 'Bot is not running' } };
 	}
 	if (!bot.port || !bot.secret_key) {
 		return { status: HTTP.SERVICE_UNAVAILABLE, body: { error: 'Bot webhook not configured' } };
 	}
-	const { request } = await import('http');
-	const body = JSON.stringify(payload);
-	return new Promise((resolve) => {
-		const req = request(
-			{
-				hostname: 'localhost',
-				port: bot.port!,
-				path: '/',
-				method: 'POST',
-				timeout: 30_000,
-				headers: {
-					'Content-Type': 'application/json',
-					'Content-Length': Buffer.byteLength(body),
-					'X-Secret-Key': bot.secret_key!
-				}
-			},
-			(res) => {
-				let data = '';
-				res.on('data', (chunk) => (data += chunk));
-				res.on('end', () => {
-					try {
-						resolve({ status: res.statusCode ?? HTTP.INTERNAL_ERROR, body: JSON.parse(data) });
-					} catch {
-						resolve({ status: res.statusCode ?? HTTP.INTERNAL_ERROR, body: { error: data } });
-					}
-				});
-			}
-		);
-		req.on('timeout', () => req.destroy(new Error('Bot did not respond in time')));
-		req.on('error', (err) => resolve({ status: HTTP.BAD_GATEWAY, body: { error: err.message } }));
-		req.write(body);
-		req.end();
-	});
+	const result = await postBotWebhook(bot, payload);
+	if (result.body) {
+		return result;
+	}
+	return {
+		status: result.status,
+		body: { error: result.status === HTTP.BAD_GATEWAY ? 'Could not reach the bot. Check that it is running.' : 'The bot sent an unreadable reply.' }
+	};
 }
 
 function parseBotProfileImage(kind: BotProfileImageKind, value: unknown): string | null | undefined {

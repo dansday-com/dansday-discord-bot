@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import db, { type GlobalMessagePost, type ServerMessage } from '$lib/database.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { postBotWebhook } from '$lib/backend/public/items/index.js';
+import { postBotWebhook } from '$lib/botControl.js';
 import { messageUploadKeys } from '$lib/messages.js';
 import { pruneMessageFiles } from '$lib/backend/storage/messageFiles.js';
 import { HTTP } from '$lib/http.js';

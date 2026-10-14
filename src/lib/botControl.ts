@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { getRedisClient } from './redis.js';
-import { logger } from './utils/index.js';
+import { logger, attemptSync } from './utils/index.js';
+import { HTTP } from './http.js';
+import { postToLocalBot, type BotWebhookResult, type BotWebhookTarget } from './botWebhook.js';
 import {
 	RUNNER_COMMAND_CHANNEL,
 	RUNNER_LEADER_KEY,
@@ -80,7 +82,9 @@ function connectRunnerSubscriber(): Promise<boolean> {
 	return subscriberReady;
 }
 
-async function sendRunnerCommand(action: RunnerAction, kind: BotProcessKind, id: number): Promise<RunnerResult> {
+type RunnerRequest = { action: RunnerAction; kind: BotProcessKind; id: number; payload?: unknown };
+
+async function sendRunnerCommand({ action, kind, id, payload }: RunnerRequest): Promise<RunnerResult> {
 	if (!(await connectRunnerSubscriber())) {
 		return { success: false, error: 'The bot runner needs Redis, and Redis is not reachable' };
 	}
@@ -106,22 +110,42 @@ async function sendRunnerCommand(action: RunnerAction, kind: BotProcessKind, id:
 		};
 		const timer = setTimeout(() => settle({ success: false, error: 'The bot runner did not answer in time' }), COMMAND_TIMEOUT_MS);
 		pendingCommands.set(requestId, settle);
-		redis.publish(RUNNER_COMMAND_CHANNEL, JSON.stringify({ requestId, action, kind, id })).catch((err) => {
+		redis.publish(RUNNER_COMMAND_CHANNEL, JSON.stringify({ requestId, action, kind, id, payload })).catch((err) => {
 			settle({ success: false, error: String(err?.message || err) });
 		});
 	});
 }
 
 export function startBotById(botId: number, bot: BotProcessRow): Promise<RunnerResult> {
-	return isExternalRunner ? sendRunnerCommand('start', botKindOf(bot), botId) : startBotInProcess(botId, bot);
+	return isExternalRunner ? sendRunnerCommand({ action: 'start', kind: botKindOf(bot), id: botId }) : startBotInProcess(botId, bot);
 }
 
 export function stopBotById(botId: number, bot?: BotProcessRow): Promise<RunnerResult> {
-	return isExternalRunner ? sendRunnerCommand('stop', bot ? botKindOf(bot) : 'official', botId) : stopBotInProcess(botId, bot);
+	return isExternalRunner ? sendRunnerCommand({ action: 'stop', kind: bot ? botKindOf(bot) : 'official', id: botId }) : stopBotInProcess(botId, bot);
 }
 
 export function restartBotById(botId: number, bot: BotProcessRow): Promise<RunnerResult> {
-	return isExternalRunner ? sendRunnerCommand('restart', botKindOf(bot), botId) : restartBotInProcess(botId, bot);
+	return isExternalRunner ? sendRunnerCommand({ action: 'restart', kind: botKindOf(bot), id: botId }) : restartBotInProcess(botId, bot);
+}
+
+export type { BotWebhookBody } from './botWebhook.js';
+
+export async function postBotWebhook(bot: BotWebhookTarget & { id: number }, payload: unknown): Promise<BotWebhookResult> {
+	if (!isExternalRunner) {
+		return postToLocalBot(bot, payload);
+	}
+	const result = await sendRunnerCommand({ action: 'webhook', kind: 'official', id: bot.id, payload });
+	return result.webhook ?? { status: HTTP.BAD_GATEWAY, body: null };
+}
+
+const LIVE_STATUSES = new Set(['running', 'starting', 'stopping']);
+
+export function hasLostBotProcess(row: { status?: string | null; process_id?: number | null }): boolean {
+	const pid = row.process_id;
+	if (isExternalRunner || !pid || !LIVE_STATUSES.has(String(row.status))) {
+		return false;
+	}
+	return !attemptSync(() => process.kill(pid, 0)).ok;
 }
 
 export function subscribeBotStatus(kind: BotProcessKind, botNumericId: number, fn: StatusListener): () => void {

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { DEFAULT_BOT_PORT } from '$lib/database.js';
+import db from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
 import { HTTP } from '$lib/http.js';
@@ -95,7 +95,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			token,
 			application_id,
 			bot_icon: bot_icon || null,
-			port: port || DEFAULT_BOT_PORT,
+			port,
 			secret_key: secret_key || null,
 			panel_id: panel.id
 		});

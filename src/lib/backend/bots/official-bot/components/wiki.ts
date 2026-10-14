@@ -136,10 +136,8 @@ function cleanWikiValue(value: string) {
 		.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
 		.replace(/\[\[([^\]]*)\]\]/g, '$1');
 
-	let previous = out;
-	let guard = 0;
-	do {
-		previous = out;
+	for (let pass = 0; pass < TEMPLATE_EXPAND_MAX_PASSES; pass++) {
+		const previous = out;
 		out = out.replace(/\{\{([^{}|]*)\|?([^{}]*)\}\}/g, (match, name, args) => {
 			const label = String(name).trim();
 			const values = String(args)
@@ -152,7 +150,10 @@ function cleanWikiValue(value: string) {
 			}
 			return /^[^A-Za-z0-9]+$/.test(label) ? `${values.join(' ')} ${label}` : values.join(' ');
 		});
-	} while (out !== previous && ++guard < TEMPLATE_EXPAND_MAX_PASSES);
+		if (out === previous) {
+			break;
+		}
+	}
 
 	return out
 		.replace(/'''?/g, '')

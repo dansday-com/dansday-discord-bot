@@ -738,6 +738,27 @@ export function makeGem(rows: number): FxProgram {
 
 			const lightA = Math.atan2(ly - cy, lx - cx);
 			const dpF = (i: number) => 0.58 + id.dep[i] * 0.28;
+			const facetTone = (best: number, rr: number, lim: number) => {
+				const face = Math.max(0, Math.cos(laF(best) + rot - lightA));
+				const sq = face * face;
+				return {
+					hue: id.hue + (id.hue2 - id.hue) * (id.dep[best] * 0.45) + flash * (((best * 53) % 90) - 45),
+					sat: 56 + id.dep[best] * 22,
+					l: 14 + sq * 48 + (1 - rr / lim) * 14 + flash * (20 + sq * 48)
+				};
+			};
+			const groundTone = (dx: number, dy: number, rr: number, lim: number, th: number) => {
+				const bx = dx * Math.cos(-rot) - dy * Math.sin(-rot);
+				const by = dx * Math.sin(-rot) + dy * Math.cos(-rot);
+				const cell = Math.floor(bx * 3.4 + 8) * 7 + Math.floor(by * 3.4 + 8) * 19;
+				const fz = (chip(Math.floor(bx * 3.4), Math.floor(by * 3.4), 41 + id.grain) % 100) / 100;
+				const shade = Math.max(0, Math.cos(th - lightA));
+				return {
+					hue: id.hue + fz * 12,
+					sat: 22 + fz * 14,
+					l: 16 + fz * 13 + shade * shade * 20 + (1 - rr / lim) * 10 + ((cell % 3) - 1) * 2.4
+				};
+			};
 			const gx0 = Math.max(0, Math.floor(cx - R * 1.6));
 			const gx1 = Math.min(s.w, Math.ceil(cx + R * 1.6));
 			const gy0 = Math.max(0, Math.floor(cy - R * 1.6));
@@ -779,27 +800,9 @@ export function makeGem(rows: number): FxProgram {
 					if (rr > lim) {
 						continue;
 					}
-					let { hue } = id;
-					let sat = 60;
-					let l = 0;
-					if (best >= 0) {
-						const face = Math.max(0, Math.cos(laF(best) + rot - lightA));
-						const sq = face * face;
-						l = 14 + sq * 48 + (1 - rr / lim) * 14;
-						hue = id.hue + (id.hue2 - id.hue) * (id.dep[best] * 0.45);
-						sat = 56 + id.dep[best] * 22;
-						l += flash * (20 + sq * 48);
-						hue += flash * (((best * 53) % 90) - 45);
-					} else {
-						const bx = dx * Math.cos(-rot) - dy * Math.sin(-rot);
-						const by = dx * Math.sin(-rot) + dy * Math.cos(-rot);
-						const cell = Math.floor(bx * 3.4 + 8) * 7 + Math.floor(by * 3.4 + 8) * 19;
-						const fz = (chip(Math.floor(bx * 3.4), Math.floor(by * 3.4), 41 + id.grain) % 100) / 100;
-						const shade = Math.max(0, Math.cos(th - lightA));
-						l = 16 + fz * 13 + shade * shade * 20 + (1 - rr / lim) * 10 + ((cell % 3) - 1) * 2.4;
-						sat = 22 + fz * 14;
-						hue = id.hue + fz * 12;
-					}
+					const tone = best >= 0 ? facetTone(best, rr, lim) : groundTone(dx, dy, rr, lim, th);
+					const { hue } = tone;
+					let { sat, l } = tone;
 					if (rr < id.table) {
 						l = Math.max(l, 32 + flash * 32 + Math.max(0, Math.cos(th - lightA)) * 12);
 						sat *= 0.66;

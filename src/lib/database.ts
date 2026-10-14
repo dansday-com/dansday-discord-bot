@@ -24,7 +24,7 @@ import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfil
 import { DAY_MS, MINUTE_MS, SECOND_MS, DAY_MINUTES, DAYS_PER_WEEK, SECONDS_PER_MINUTE } from './utils/time.js';
 import { roundTo } from './utils/numbers.js';
 
-export const DEFAULT_BOT_PORT = 7777;
+const DEFAULT_BOT_PORT = 7777;
 const SLUG_SUFFIX_LIMIT = 10_000;
 const PUBLIC_LIST_DEFAULT_LIMIT = 300;
 const PUBLIC_LIST_MAX_LIMIT = 500;

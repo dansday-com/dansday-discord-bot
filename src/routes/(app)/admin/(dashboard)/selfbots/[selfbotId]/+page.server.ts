@@ -44,7 +44,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const selfbotPresence = presenceFromDbRow(statusRow);
 
 	const { token: _token, ...botPublic } = bot as typeof bot & { token?: string };
-	_token;
 
 	return {
 		bot: {

@@ -227,18 +227,9 @@ export function makeMycelium(rows: number): FxProgram {
 			const isBursting = cyc >= 0.775 && cyc < 0.83;
 			const isCracking = cyc >= 0.2 && cyc < 0.215;
 
-			const [ar, ag, ab] = hsl(id.soil + 16, 20, 13);
 			const beamX = id.side > 0.5 ? s.w * 0.26 : s.w * 0.74;
 			const slope = id.side > 0.5 ? 0.42 : -0.42;
 			const [lr, lg, lb] = hsl(48, 46, 74);
-			ar;
-			ag;
-			ab;
-			beamX;
-			slope;
-			lr;
-			lg;
-			lb;
 
 			const [dr, dg, db] = hsl(id.soil, 38, 26);
 			for (let y = litY | 0; y < s.h; y++) {

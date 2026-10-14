@@ -63,7 +63,6 @@ export function makeSwarm(rows: number): FxProgram {
 			clear(s);
 			const id = s.id as Flock;
 			const p = s.parts;
-			const [br, bg, bb] = hsl(s.v.hue, s.v.sat * 0.3, 14);
 			const [wr, wg, wb] = hsl(s.v.hue2, s.v.sat * 0.4, 72);
 
 			const dusk = s.h * 0.82;
@@ -81,9 +80,6 @@ export function makeSwarm(rows: number): FxProgram {
 				}
 			}
 
-			br;
-			bg;
-			bb;
 			const [gr, gg, gb] = hsl(s.v.hue + 18, s.v.sat * 0.36, 13);
 			for (let y = dusk; y < s.h; y++) {
 				const f = (y - dusk) / (s.h - dusk);

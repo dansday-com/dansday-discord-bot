@@ -84,10 +84,6 @@ export function makeCircuit(rows: number): FxProgram {
 			const flick = cyc > 0.62 && cyc < 0.72 ? (Math.sin(s.t * 1.7) > 0.2 ? 0.45 : 1) : 1;
 			const live = (x: number) => (isBlown ? 0.06 : Math.min(1, Math.max(0, (sweep * 1.18 - x / s.w) * 6)) * flick);
 
-			sub;
-			subg;
-			subb;
-
 			for (const [vx, vy] of id.vias) {
 				const x0 = vx * s.w;
 				const y0 = vy * s.h;
@@ -361,9 +357,6 @@ export function makePrism(rows: number): FxProgram {
 			const sunUp = cyc < 0.46 ? Math.min(1, cyc / 0.12) : 1;
 			const beam = Math.max(0.05, sunUp * (1 - shade * 0.94));
 
-			wr;
-			wg;
-			wb;
 			const shw = s.w * 0.3;
 			const shc = s.w * id.px;
 			for (let y = shelfY; y < s.h; y++) {

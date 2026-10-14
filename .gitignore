@@ -6,6 +6,7 @@
 .claude
 .omc
 /graphify-out
+/.runtime
 /scripts
 .probe
 /brag-output

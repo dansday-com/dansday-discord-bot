@@ -142,7 +142,6 @@ export function makeCupcake(rows: number): FxProgram {
 				}
 			}
 
-			const dry = half * 2.6;
 			const drx = half * 1.7;
 			for (let dy = -3.2; dy <= 3.2; dy++) {
 				for (let dx = -drx; dx <= drx; dx++) {
@@ -159,7 +158,6 @@ export function makeCupcake(rows: number): FxProgram {
 					paint(s, cx + dx, caseBot - 1 + dy * 0.5, 210 * lace, 202 * lace, 196 * lace, Math.min(1, scallop * 1.4) * 0.85);
 				}
 			}
-			dry;
 
 			const [lr2, lg2, lb2] = hsl(id.chue, 46 + s.v.sat * 0.2, 52);
 			for (let y = caseTop; y <= caseBot; y++) {

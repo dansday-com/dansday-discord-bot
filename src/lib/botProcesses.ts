@@ -1,8 +1,7 @@
 import { spawn, spawnSync } from 'child_process';
 import { join, dirname } from 'path';
-import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
-import { readFileSync, existsSync, writeFileSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import db, { type BotRunStatus } from './database.js';
 import { getRedisClient, isRedisConfigured } from './redis.js';
 import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate, attemptSync } from './utils/index.js';
@@ -767,7 +766,7 @@ const LEADER_POLL_MS = 2_000;
 const VERIFY_INTERVAL_MS = 30_000;
 const LEADER_RENEW_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) else return 0 end`;
 const LEADER_RELEASE_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
-const RUNNER_ALIVE_FILE = join(tmpdir(), 'bot-runner.alive');
+const RUNNER_ALIVE_FILE = join(process.cwd(), '.runtime', 'bot-runner.alive');
 const leaderToken = `${process.pid}:${process.hrtime.bigint().toString()}`;
 
 let hasRunnerStarted = false;
@@ -776,6 +775,7 @@ let leaderTimer: ReturnType<typeof setInterval> | null = null;
 
 function markRunnerAlive(): void {
 	try {
+		mkdirSync(dirname(RUNNER_ALIVE_FILE), { recursive: true });
 		writeFileSync(RUNNER_ALIVE_FILE, String(Date.now()));
 	} catch (_) {}
 }

@@ -68,12 +68,8 @@ export function makeFrost(rows: number): FxProgram {
 			const melt = phase > cycle * 0.68 ? (phase - cycle * 0.68) / (cycle * 0.32) : 0;
 
 			const horizon = s.h * 0.62;
-			const [skr, skg, skb] = hsl(s.v.hue2, s.v.sat * 0.5, 22);
 			const [snr, sng, snb] = hsl(s.v.hue, s.v.sat * 0.3, 58);
 			const [trr, trg, trb] = hsl(s.v.hue2, s.v.sat * 0.4, 14);
-			skr;
-			skg;
-			skb;
 			const mx = id.moon[0] * s.w;
 			const my = id.moon[1] * s.h;
 			const mrd = id.moon[2] * s.h * 0.08;
@@ -313,8 +309,6 @@ export function makeFog(rows: number): FxProgram {
 
 			const sunX = id.sun * s.w;
 			const sunY = s.h * (0.46 - day * 0.32);
-			const [skr, skg, skb] = hsl(s.v.hue2, 30 + s.v.sat * 0.4, 20 + day * 26);
-			const [wr2, wg2, wb2] = hsl(s.v.hue2, 24 + s.v.sat * 0.3, 18 + day * 14);
 			const [fr, fg, fb] = hsl(s.v.hue, 8 + s.v.sat * 0.22, 74 + day * 14);
 
 			const srd = s.h * 0.075;
@@ -330,12 +324,6 @@ export function makeFog(rows: number): FxProgram {
 			}
 
 			const waterY = id.water * s.h;
-			wr2;
-			wg2;
-			wb2;
-			skr;
-			skg;
-			skb;
 			let cover = 0;
 			for (let L = 0; L < 6; L++) {
 				const p = id.bands[L];
@@ -442,7 +430,6 @@ export function makeSmoke(rows: number): FxProgram {
 			const px = id.pitX * s.w;
 			const blaze = (0.55 + 0.45 * Math.sin(s.t * 0.13) * Math.sin(s.t * 0.071 + 1.3)) * (1 + flare * 1.6);
 
-			const [nr, ng, nb] = hsl(s.v.hue2, 18 + s.v.sat * 0.2, 9);
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const glow = Math.max(0, 1 - Math.hypot((x - px) / (s.w * 0.46), (y - fy) / (s.h * 0.55))) ** 2 * blaze;
@@ -452,9 +439,6 @@ export function makeSmoke(rows: number): FxProgram {
 					plot(s, x, y, glow * 150, glow * 72, glow * 26, 1);
 				}
 			}
-			nr;
-			ng;
-			nb;
 
 			const [gr, gg, gb] = hsl(s.v.hue, 16 + s.v.sat * 0.2, 17);
 			const ghw = s.w * 0.3;

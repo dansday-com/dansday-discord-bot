@@ -30,8 +30,6 @@ function log(message: string, meta?: object) {
 	info(message, meta);
 }
 
-function init(_client: unknown) {
-	_client;
-}
+function init(_client: unknown) {}
 
 export default { init, log, info, debug, warn, error };

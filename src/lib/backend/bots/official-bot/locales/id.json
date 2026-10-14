@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "Token terlalu pendek.",
 		"invalidTokenTitle": "Token tidak valid",
-		"invalidTokenDescription": "Token yang kamu berikan sepertinya tidak valid atau sudah kedaluwarsa.\n`{error}`",
+		"invalidTokenDescription": "Token yang kamu berikan sepertinya tidak valid atau sudah kedaluwarsa. Salin token baru lalu kirim lagi.",
 		"invalidQuestId": "ID quest tidak valid.",
 		"missingQuestOrToken": "ID quest tidak ada atau token terlalu pendek.",
 		"taskTypes": {

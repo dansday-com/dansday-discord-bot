@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { defaultAvatarUrl, legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
+	import { defaultAvatarUrl, memberDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { MINUTE_MS } from '$lib/utils/time.js';
 	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
@@ -284,7 +284,7 @@
 	});
 
 	function targetAvatar(t: Target): string {
-		return t.avatar ?? legacyDefaultAvatarUrl(t.discord_member_id);
+		return t.avatar ?? memberDefaultAvatarUrl(t.discord_member_id);
 	}
 
 	const assetDir = (pnl: number) => (pnl > 0 ? '#1a7f57' : pnl < 0 ? '#b23b2e' : 'var(--color-base-content)');

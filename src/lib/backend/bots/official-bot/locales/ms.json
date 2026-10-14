@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "Token terlalu pendek.",
 		"invalidTokenTitle": "Token tidak sah",
-		"invalidTokenDescription": "Token yang anda berikan nampaknya tidak sah atau telah tamat tempoh.\n`{error}`",
+		"invalidTokenDescription": "Token yang anda berikan nampaknya tidak sah atau telah tamat tempoh. Salin token baharu dan hantar semula.",
 		"invalidQuestId": "ID quest tidak sah.",
 		"missingQuestOrToken": "ID quest tiada atau token terlalu pendek.",
 		"taskTypes": {

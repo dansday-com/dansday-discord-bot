@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "トークンが短すぎます。",
 		"invalidTokenTitle": "無効なトークン",
-		"invalidTokenDescription": "入力されたトークンは無効か、期限切れのようです。\n`{error}`",
+		"invalidTokenDescription": "入力されたトークンは無効か、期限切れのようです。新しいトークンをコピーして、もう一度送信してください。",
 		"invalidQuestId": "無効なクエストIDです。",
 		"missingQuestOrToken": "クエストIDがないか、トークンが短すぎます。",
 		"taskTypes": {

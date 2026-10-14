@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "Token te kort.",
 		"invalidTokenTitle": "Ongeldig token",
-		"invalidTokenDescription": "Het token dat je hebt opgegeven lijkt ongeldig of verlopen.\n`{error}`",
+		"invalidTokenDescription": "Het token dat je hebt opgegeven lijkt ongeldig of verlopen. Kopieer een nieuw token en verstuur het opnieuw.",
 		"invalidQuestId": "Ongeldige quest-ID.",
 		"missingQuestOrToken": "Quest-ID ontbreekt of token is te kort.",
 		"taskTypes": {

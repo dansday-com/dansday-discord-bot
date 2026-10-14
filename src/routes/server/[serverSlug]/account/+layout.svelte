@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
+	import { memberDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { SECOND_MS, SECONDS_PER_MINUTE } from '$lib/utils/time.js';
 	import { PERCENT } from '$lib/utils/numbers.js';
 	import { STREAK_FREEZE_MAX, STREAK_MILESTONES } from '$lib/tasks.js';
@@ -160,7 +160,7 @@
 		return Number(n ?? 0).toLocaleString();
 	}
 
-	const memberAvatar = $derived(pd.memberAvatar ?? legacyDefaultAvatarUrl(pd.memberDiscordId));
+	const memberAvatar = $derived(pd.memberAvatar ?? memberDefaultAvatarUrl(pd.memberDiscordId));
 
 	const memberTheme = $derived((pd.memberTheme ?? null) as MemberTheme | null);
 	const heroImage = $derived(memberTheme?.image ?? null);

@@ -2,6 +2,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { xpForLevel } from '$lib/rewards.js';
+	import { effectAccentHex, effectDefaultCost, effectIcon } from '$lib/items.js';
 	import DiscordIcon from '$lib/frontend/components/shell/DiscordIcon.svelte';
 	import { CAST } from '../scripts/common.js';
 	import { isTapped } from '../clock.svelte.js';
@@ -29,11 +30,18 @@
 		{ rank: 2, ...CAST.rin, xp: 15880 },
 		{ rank: 5, ...CAST.jun, xp: 10410 }
 	];
+	const demoItem = (type: string, name: string, desc: string) => ({
+		cat: effectAccentHex(type),
+		icon: effectIcon(type),
+		name,
+		desc,
+		price: effectDefaultCost(type)
+	});
 	const DEMO_SHOP = [
-		{ cat: '#c0392b', icon: 'fa-hand', name: 'Pickpocket', desc: "Take 1–25% of a member's XP.", price: 400 },
-		{ cat: '#1d6f8a', icon: 'fa-shield', name: 'Shield', desc: 'Block the next steal, bomb or leech.', price: 600 },
-		{ cat: '#d35400', icon: 'fa-bomb', name: 'Bomb', desc: "Burn 1–50% of a member's XP.", price: 600 },
-		{ cat: '#4b6584', icon: 'fa-magnifying-glass', name: 'Spy', desc: "Scout a member's bag before you strike.", price: 300 }
+		demoItem('steal', 'Pickpocket', "Take 1–25% of a member's XP."),
+		demoItem('shield', 'Shield', 'Block the next steal, bomb or leech.'),
+		demoItem('bomb', 'Bomb', "Burn 1–50% of a member's XP."),
+		demoItem('spy', 'Spy', "Scout a member's bag before you strike.")
 	];
 	const VICTIM = TARGETS[2];
 	const STOLEN = Math.floor((VICTIM.xp * STEAL_PERCENT) / PERCENT);

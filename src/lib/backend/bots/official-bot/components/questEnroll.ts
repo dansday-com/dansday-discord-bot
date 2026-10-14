@@ -45,7 +45,6 @@ const TOKEN_MIN_LENGTH = 20;
 const TOKEN_MAX_LENGTH = 4000;
 const REWARD_PREVIEW_MAX_LENGTH = 120;
 const QUEST_LIST_MAX_LENGTH = 4000;
-const ERROR_DETAIL_MAX_LENGTH = 500;
 const SKIPPED_BLOCK_MAX_LENGTH = 2000;
 
 export function isQuestEnrollButtonId(customId: string): boolean {
@@ -319,10 +318,10 @@ async function memberQuestsPayload(interaction: ModalSubmitInteraction, token: s
 		return { payload: questsResult.value };
 	}
 	const scope = { guildId: interaction.guild!.id, userId: interaction.user.id };
-	const msg = questsResult.error instanceof Error ? questsResult.error.message : String(questsResult.error);
+	await logger.log(`⚠️ Quest token check failed: ${questsResult.error instanceof Error ? questsResult.error.message : String(questsResult.error)}`);
 	const invalidEmbed = await noticeEmbed(scope.guildId, {
 		title: await translate('questEnroll.invalidTokenTitle', scope),
-		description: await translate('questEnroll.invalidTokenDescription', scope, { error: msg.slice(0, ERROR_DETAIL_MAX_LENGTH) })
+		description: await translate('questEnroll.invalidTokenDescription', scope)
 	});
 	await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
 	return null;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
+	import { memberDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
@@ -200,7 +200,7 @@
 	}
 
 	function avatarSrc(m: (typeof members)[number]): string {
-		return m.avatar ?? legacyDefaultAvatarUrl(m.discord_member_id);
+		return m.avatar ?? memberDefaultAvatarUrl(m.discord_member_id);
 	}
 
 	function highestRole(m: (typeof members)[number]) {

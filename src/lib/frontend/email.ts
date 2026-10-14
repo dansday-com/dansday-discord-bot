@@ -24,8 +24,9 @@ function getTransporter() {
 		host,
 		port,
 		secure: false,
+		requireTLS: true,
 		auth: { user: username, pass: password },
-		tls: { rejectUnauthorized: false, requireTLS: true, ciphers: 'SSLv3' }
+		tls: { rejectUnauthorized: false, ciphers: 'SSLv3' }
 	});
 }
 

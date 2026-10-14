@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "التوكن قصير جدًا.",
 		"invalidTokenTitle": "توكن غير صالح",
-		"invalidTokenDescription": "يبدو أن التوكن الذي قدمته غير صالح أو منتهي الصلاحية.\n`{error}`",
+		"invalidTokenDescription": "يبدو أن التوكن الذي قدمته غير صالح أو منتهي الصلاحية. انسخ توكنًا جديدًا وأرسله مرة أخرى.",
 		"invalidQuestId": "معرّف المهمة غير صالح.",
 		"missingQuestOrToken": "معرّف المهمة مفقود أو التوكن قصير جدًا.",
 		"taskTypes": {

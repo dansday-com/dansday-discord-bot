@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "Token zu kurz.",
 		"invalidTokenTitle": "Ungültiger Token",
-		"invalidTokenDescription": "Der angegebene Token scheint ungültig oder abgelaufen zu sein.\n`{error}`",
+		"invalidTokenDescription": "Der angegebene Token scheint ungültig oder abgelaufen zu sein. Kopiere einen neuen Token und sende ihn erneut.",
 		"invalidQuestId": "Ungültige Quest-ID.",
 		"missingQuestOrToken": "Quest-ID fehlt oder Token zu kurz.",
 		"taskTypes": {

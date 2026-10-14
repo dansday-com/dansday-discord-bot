@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "Token demasiado corto.",
 		"invalidTokenTitle": "Token no válido",
-		"invalidTokenDescription": "El token que proporcionaste parece no ser válido o haber caducado.\n`{error}`",
+		"invalidTokenDescription": "El token que proporcionaste parece no ser válido o haber caducado. Copia un token nuevo y vuelve a enviarlo.",
 		"invalidQuestId": "ID de misión no válido.",
 		"missingQuestOrToken": "Falta el ID de la misión o el token es demasiado corto.",
 		"taskTypes": {

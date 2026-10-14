@@ -3,7 +3,7 @@ import { getEmbedConfig, getBotConfig, MODERATION_CONFIG } from '../../../config
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { escalationStepFor, MODERATION_REASON_MAX_LENGTH } from '../../../../moderation-rules.js';
-import { memberTranslator, serverTranslator, type Translator } from '../i18n.js';
+import { errorReasonFor, memberTranslator, serverTranslator, translatorFor, type Translator } from '../i18n.js';
 import { parseLocalizedDuration } from '../localizedInput.js';
 import type { APIEmbedField, GuildBan, GuildMember, GuildTextBasedChannel, PartialGuildMember, Client, Guild, Role, User } from 'discord.js';
 import { notifiedMentions, sendMentionOverflow } from './notifiedMentions.js';
@@ -439,7 +439,7 @@ async function moderateTarget(ctx: ModerationContext, targetId: string): Promise
 		}
 	} catch (err) {
 		await logger.log(`❌ Moderation ${ctx.action} failed for ${targetId}: ${(err as Error).message}`);
-		return failure(`Discord rejected the ${ctx.action}: ${(err as Error).message}`);
+		return failure(`Discord rejected the ${ctx.action}: ${errorReasonFor(translatorFor('en'), err)}`);
 	}
 
 	await syncActiveModeration(ctx, targetId);

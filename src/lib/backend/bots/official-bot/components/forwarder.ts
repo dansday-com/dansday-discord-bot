@@ -6,7 +6,7 @@ import type { APIEmbed, ApplicationEmoji, Client, ClientApplication, Collection,
 import type { ForwardedMessage } from '../../../../forwarder-settings.js';
 import type { ForwarderTarget } from '../../../config.js';
 import { notifiedMentions, sendMentionOverflow } from './notifiedMentions.js';
-import { legacyDefaultAvatarUrl, userAvatarUrl } from '../../../../discordAvatars.js';
+import { memberDefaultAvatarUrl, userAvatarUrl } from '../../../../discordAvatars.js';
 
 const EMOJI_NAME_DIGITS = 6;
 
@@ -271,7 +271,7 @@ function forwardedMessageEmbed(messageData: ForwardedMessage, { tr, embedConfig,
 		title: tr('forwarder.title', { channel: messageData.channel.name }),
 		author: {
 			name: author.displayName || `${author.username}#${author.discriminator}`,
-			icon_url: author.avatar ? userAvatarUrl(author.id, author.avatar) : legacyDefaultAvatarUrl(author.discriminator)
+			icon_url: author.avatar ? userAvatarUrl(author.id, author.avatar) : memberDefaultAvatarUrl(author.id, author.discriminator)
 		},
 		timestamp: new Date(messageData.createdTimestamp).toISOString(),
 		footer: { text: embedConfig.FOOTER }

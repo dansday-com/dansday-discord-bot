@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "Token 太短。",
 		"invalidTokenTitle": "Token 無效",
-		"invalidTokenDescription": "你提供的 Token 似乎無效或已過期。\n`{error}`",
+		"invalidTokenDescription": "你提供的 Token 似乎無效或已過期。請複製新的 Token 並重新提交。",
 		"invalidQuestId": "任務 ID 無效。",
 		"missingQuestOrToken": "缺少任務 ID，或 Token 太短。",
 		"taskTypes": {

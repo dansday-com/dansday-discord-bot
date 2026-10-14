@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ISO_MINUTE_LENGTH } from '$lib/utils/datetime.js';
-	import { legacyDefaultAvatarUrl } from '$lib/discordAvatars.js';
+	import { memberDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -338,7 +338,7 @@
 	});
 
 	function giftAvatar(m: GiftMember): string {
-		return m.avatar || legacyDefaultAvatarUrl(m.discord_member_id);
+		return m.avatar || memberDefaultAvatarUrl(m.discord_member_id);
 	}
 
 	function giftMemberName(m: GiftMember): string {

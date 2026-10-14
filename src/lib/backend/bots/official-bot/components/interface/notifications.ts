@@ -2,7 +2,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelec
 import { getEmbedConfig, NOTIFICATIONS, serverSettingsComponent } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { logger } from '../../../../../utils/index.js';
-import { translate } from '../../i18n.js';
+import { translate, errorReason } from '../../i18n.js';
 import { menuBackButton } from './menuBack.js';
 import { featureAvailable } from './availability.js';
 import { DISCORD_LIMITS } from '../../../../../discordLimits.js';
@@ -78,7 +78,9 @@ export async function handleNotificationsButton(interaction: MessageComponentInt
 		}
 	} catch (error) {
 		logger.log(`❌ Notifications hub error: ${(error as Error).message}`);
-		await interaction.reply({ content: `❌ ${(error as Error).message}`, flags: MessageFlags.Ephemeral }).catch(() => null);
+		await interaction
+			.reply({ content: `❌ ${await errorReason(error, interaction.guild.id, interaction.user.id)}`, flags: MessageFlags.Ephemeral })
+			.catch(() => null);
 	}
 }
 
@@ -164,7 +166,9 @@ export async function handleNotificationChannelsButton(interaction: ButtonIntera
 		}
 	} catch (error) {
 		logger.log(`❌ Notification channels button error: ${(error as Error).message}`);
-		await interaction.reply({ content: `❌ ${(error as Error).message}`, flags: MessageFlags.Ephemeral }).catch(() => null);
+		await interaction
+			.reply({ content: `❌ ${await errorReason(error, interaction.guild.id, interaction.user.id)}`, flags: MessageFlags.Ephemeral })
+			.catch(() => null);
 	}
 }
 
@@ -214,7 +218,7 @@ export async function handleNotificationsSelect(interaction: StringSelectMenuInt
 		logger.log(`❌ Notifications select error: ${(error as Error).message}`);
 		await interaction
 			.reply({
-				content: `❌ ${(error as Error).message}`,
+				content: `❌ ${await errorReason(error, interaction.guild.id, interaction.user.id)}`,
 				flags: MessageFlags.Ephemeral
 			})
 			.catch(() => null);

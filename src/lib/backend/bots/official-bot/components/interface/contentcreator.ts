@@ -41,9 +41,8 @@ type LiveConnection = {
 	disconnect?(): Promise<unknown> | void;
 };
 type LiveConnectionCtor = new (uniqueId: string, options: Record<string, unknown>) => LiveConnection;
-type LegacyTikTokModule = {
-	WebcastPushConnection?: LiveConnectionCtor;
-	default?: { WebcastPushConnection?: LiveConnectionCtor };
+type TikTokLiveModule = {
+	TikTokLiveConnection?: LiveConnectionCtor;
 	WebcastEvent?: Record<string, string>;
 	ControlEvent?: Record<string, string>;
 };
@@ -244,10 +243,11 @@ async function loadTikTokModule() {
 		return tiktokModule;
 	}
 	try {
-		const lib = (await import('tiktok-live-connector')) as LegacyTikTokModule;
-		const Ctor = lib?.WebcastPushConnection || lib?.default?.WebcastPushConnection || null;
+		const lib = (await import('tiktok-live-connector')) as unknown as TikTokLiveModule;
+		const Ctor = lib.TikTokLiveConnection ?? null;
 		if (!Ctor) {
 			hasTiktokLoadFailed = true;
+			await logger.log('⚠️ TikTok connector unavailable: tiktok-live-connector has no TikTokLiveConnection export');
 			return null;
 		}
 		tiktokModule = {

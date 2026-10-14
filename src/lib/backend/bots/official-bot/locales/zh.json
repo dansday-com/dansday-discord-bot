@@ -711,7 +711,7 @@
 		},
 		"tokenTooShort": "令牌太短。",
 		"invalidTokenTitle": "令牌无效",
-		"invalidTokenDescription": "你提供的令牌似乎无效或已过期。\n`{error}`",
+		"invalidTokenDescription": "你提供的令牌似乎无效或已过期。请复制新的令牌并重新提交。",
 		"invalidQuestId": "任务 ID 无效。",
 		"missingQuestOrToken": "缺少任务 ID 或令牌太短。",
 		"taskTypes": {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { effectLabel, effectIcon, effectAccentHex } from '$lib/items.js';
 	import {
@@ -26,10 +26,17 @@
 		sharePct
 	} from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
+	import { PERCENT } from '$lib/utils/numbers.js';
+
+	const XP_SOURCE_BAR_MIN_PERCENT = 3;
+	const FLOW_CHART_WIDTH = 300;
+	const FLOW_CHART_HEIGHT = 90;
+	const GOOD_RATE_PERCENT = 50;
+	const WIDE_GRID_COLS = 3;
 
 	let { data }: PageProps = $props();
 
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 	const { fmt } = ctx;
 
 	const growth = growOnMount();
@@ -37,9 +44,11 @@
 
 	const p = $derived(data.profile);
 	const inv = $derived(p.invites);
-	const showInvites = $derived(!!inv && (inv.joins > 0 || inv.bonus !== 0 || !!p.invitedBy));
+	const areInvitesShown = $derived(!!inv && (inv.joins > 0 || inv.bonus !== 0 || !!p.invitedBy));
 	const d = $derived((data.dashboard ?? {}) as Record<string, number>);
-	const ins = $derived(data.insights ?? { favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] });
+	const ins = $derived(
+		data.insights ?? ({ favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] } as Partial<NonNullable<typeof data.insights>>)
+	);
 
 	const signed = (v: number) => `${v >= 0 ? '+' : '−'}${fmt(Math.abs(v))}`;
 
@@ -49,7 +58,7 @@
 	const xpSourceSegments = $derived(
 		xpSources.map((s) => ({
 			label: undefined,
-			pct: xpSourceTotal > 0 ? (s.xp / xpSourceTotal) * 100 : 0,
+			pct: xpSourceTotal > 0 ? (s.xp / xpSourceTotal) * PERCENT : 0,
 			color: s.color
 		}))
 	);
@@ -62,7 +71,7 @@
 			pct: sharePct(
 				s.xp,
 				xpSources.map((x) => x.xp),
-				3
+				XP_SOURCE_BAR_MIN_PERCENT
 			),
 			value: fmt(s.xp)
 		}))
@@ -76,8 +85,10 @@
 			{ label: 'Stream', value: Math.max(0, p.voiceStreaming || 0), color: '#c8911a' }
 		];
 		const total = rows.reduce((s, r) => s + r.value, 0);
-		if (total <= 0) return null;
-		return { total, segments: rows.map((r) => ({ label: r.label, pct: (r.value / total) * 100, color: r.color })) };
+		if (total <= 0) {
+			return null;
+		}
+		return { total, segments: rows.map((r) => ({ label: r.label, pct: (r.value / total) * PERCENT, color: r.color })) };
 	});
 
 	const activityBars = $derived.by(() => {
@@ -101,7 +112,8 @@
 		}));
 	});
 
-	const interactions = $derived((ins.interactions ?? {}) as Record<string, { out: any[]; in: any[] }>);
+	type InteractionRow = { name: string; hits: number; xp: number };
+	const interactions = $derived((ins.interactions ?? {}) as Record<string, { out: InteractionRow[]; in: InteractionRow[] }>);
 	const defense = $derived((ins.defense ?? {}) as Record<string, number>);
 	const relationships = $derived((ins.relationships ?? {}) as Record<string, { name: string; hits: number; xp: number } | null>);
 
@@ -138,7 +150,7 @@
 
 	const interactionLists = $derived(
 		INTERACTION_LISTS.map((l) => {
-			const raw = (interactions[l.key]?.[l.dir as 'out' | 'in'] ?? []) as any[];
+			const raw = interactions[l.key]?.[l.dir as 'out' | 'in'] ?? [];
 			const weights = raw.map((r) => r.xp || r.hits);
 			return {
 				...l,
@@ -171,8 +183,8 @@
 
 	const assetsPnl = $derived(Number(d.assets_pnl) || 0);
 	const minigamesNet = $derived(Number(d.minigames_net) || 0);
-	const minigamesWinRate = $derived((d.minigames_plays ?? 0) > 0 ? Math.round((Number(d.minigames_wins) / Number(d.minigames_plays)) * 100) : 0);
-	const towerCashRate = $derived((d.tower_climbs ?? 0) > 0 ? Math.round((Number(d.tower_cashed) / Number(d.tower_climbs)) * 100) : 0);
+	const minigamesWinRate = $derived((d.minigames_plays ?? 0) > 0 ? Math.round((Number(d.minigames_wins) / Number(d.minigames_plays)) * PERCENT) : 0);
+	const towerCashRate = $derived((d.tower_climbs ?? 0) > 0 ? Math.round((Number(d.tower_cashed) / Number(d.tower_climbs)) * PERCENT) : 0);
 
 	const usagePie = $derived.by(() => {
 		const rows = (ins.effect_usage ?? []) as { effect_type: string; uses: number }[];
@@ -229,8 +241,8 @@
 		let cum = 0;
 		return buildArea(
 			flow.map((f) => (cum += f.net)),
-			300,
-			90
+			FLOW_CHART_WIDTH,
+			FLOW_CHART_HEIGHT
 		);
 	});
 
@@ -279,10 +291,10 @@
 		<BarList rows={activityBars} {grow} />
 	</StatCard>
 
-	{#if showInvites && inv}
+	{#if areInvitesShown && inv}
 		<StatCard icon="fa-user-plus" title="Invites" tone="cyan" note={p.invitedBy ? `Invited by ${p.invitedBy}` : undefined}>
 			<StatHero label="invites" value={fmt(inv.total)} countTo={inv.total} />
-			<MiniGrid cols={3}>
+			<MiniGrid cols={WIDE_GRID_COLS}>
 				<MiniStat icon="fa-right-to-bracket" value={fmt(inv.joins)} label="Joins" />
 				<MiniStat icon="fa-user-check" value={fmt(inv.active)} label="Still here" />
 				<MiniStat icon="fa-user-minus" value={fmt(inv.left)} label="Left" />
@@ -353,7 +365,7 @@
 		</StatCard>
 
 		<StatCard icon="fa-dice" title="Gamble" tone="pink">
-			<RingStat pct={minigamesWinRate} label="win rate" {grow} color={minigamesWinRate >= 50 ? 'var(--color-success)' : 'var(--color-warning)'}>
+			<RingStat pct={minigamesWinRate} label="win rate" {grow} color={minigamesWinRate >= GOOD_RATE_PERCENT ? 'var(--color-success)' : 'var(--color-warning)'}>
 				{#snippet side()}
 					<div>
 						<span class="text-base-content block text-lg font-extrabold tabular-nums">{fmt(d.minigames_plays)}</span>
@@ -372,7 +384,7 @@
 		</StatCard>
 
 		<StatCard icon="fa-tower-observation" title="Tower" tone="amber">
-			<RingStat pct={towerCashRate} label="cashed out" {grow} color={towerCashRate >= 50 ? 'var(--color-success)' : 'var(--color-warning)'}>
+			<RingStat pct={towerCashRate} label="cashed out" {grow} color={towerCashRate >= GOOD_RATE_PERCENT ? 'var(--color-success)' : 'var(--color-warning)'}>
 				{#snippet side()}
 					<div>
 						<span class="text-base-content block text-lg font-extrabold tabular-nums">{fmt(d.tower_climbs)}</span>
@@ -465,7 +477,7 @@
 				</div>
 				<SegBar segments={duelSegments} spaced />
 			</div>
-			<MiniGrid cols={3}>
+			<MiniGrid cols={WIDE_GRID_COLS}>
 				<MiniStat icon="fa-hand" value={fmt(d.items_stolen)} label="XP stolen" />
 				<MiniStat icon="fa-shield-halved" value={fmt(d.items_stolen_from)} label="Stolen from you" />
 				<MiniStat icon="fa-bomb" value={fmt(d.items_bombed)} label="XP bombed" />
@@ -488,7 +500,7 @@
 		</StatCard>
 
 		<StatCard icon="fa-fire" title="Your engagement" tone="cyan">
-			<MiniGrid cols={3}>
+			<MiniGrid cols={WIDE_GRID_COLS}>
 				<MiniStat icon="fa-ticket" value={fmt(d.giveaways_entered)} label="Giveaways entered" />
 				<MiniStat icon="fa-medal" value={fmt(d.giveaways_won)} label="Giveaways won" />
 				<MiniStat icon="fa-gift" value={fmt(d.giveaways_hosted)} label="Hosted" />

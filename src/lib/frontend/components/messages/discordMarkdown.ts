@@ -1,3 +1,4 @@
+import { SECOND_MS } from '../../../utils/time.js';
 export type MarkdownContext = {
 	roles: Map<string, { name: string; color: string | null }>;
 	channels: Map<string, string>;
@@ -5,6 +6,8 @@ export type MarkdownContext = {
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
+const LIST_INDENT_MAX_CHARS = 8;
+const LIST_INDENT_PX_PER_CHAR = 8;
 
 function escapeHtml(value: string): string {
 	return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -34,9 +37,10 @@ export function discordMarkdown(source: string, ctx: MarkdownContext): string {
 		keep(`<pre class="dc-codeblock">${escapeHtml(String(code).replace(/\n$/, ''))}</pre>`)
 	);
 	text = text.replace(/`([^`\n]+)`/g, (_, code) => keep(`<code class="dc-code">${escapeHtml(code)}</code>`));
-	text = text.replace(/<(a?):([A-Za-z0-9_]{2,32}):(\d{5,25})>/g, (_, animated, name, id) =>
-		keep(`<img class="dc-emoji" src="https://cdn.discordapp.com/emojis/${id}.${animated ? 'gif' : 'webp'}?size=48" alt=":${name}:" />`)
-	);
+	text = text.replace(/<(a?):([A-Za-z0-9_]{2,32}):(\d{5,25})>/g, (...parts: string[]) => {
+		const [, animated, name, id] = parts;
+		return keep(`<img class="dc-emoji" src="https://cdn.discordapp.com/emojis/${id}.${animated ? 'gif' : 'webp'}?size=48" alt=":${name}:" />`);
+	});
 	text = text.replace(/<@&(\d{5,25})>/g, (_, id) => {
 		const role = ctx.roles.get(id);
 		const color = role?.color && HEX.test(role.color) && role.color !== '#000000' ? role.color : null;
@@ -45,24 +49,31 @@ export function discordMarkdown(source: string, ctx: MarkdownContext): string {
 	text = text.replace(/<@!?(\d{5,25})>/g, (_, id) => keep(`<span class="dc-mention">@${escapeHtml(ctx.members.get(id) ?? 'member')}</span>`));
 	text = text.replace(/<#(\d{5,25})>/g, (_, id) => keep(`<span class="dc-mention">#${escapeHtml(ctx.channels.get(id) ?? 'deleted-channel')}</span>`));
 	text = text.replace(/<t:(\d{1,13})(?::[tTdDfFR])?>/g, (_, unix) =>
-		keep(`<span class="dc-time">${escapeHtml(new Date(Number(unix) * 1000).toLocaleString())}</span>`)
+		keep(`<span class="dc-time">${escapeHtml(new Date(Number(unix) * SECOND_MS).toLocaleString())}</span>`)
 	);
 	text = text.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => keep(link(url, escapeHtml(label))));
 	text = text.replace(/https?:\/\/[^\s<]*[^\s<.,:;"')\]]/g, (url) => keep(link(url, escapeHtml(url))));
 
 	const lines = text.split('\n').map((raw) => {
 		const heading = raw.match(/^(#{1,3}) +(\S.*)$/);
-		if (heading) return `<div class="dc-h${heading[1].length}">${inline(escapeHtml(heading[2]))}</div>`;
+		if (heading) {
+			return `<div class="dc-h${heading[1].length}">${inline(escapeHtml(heading[2]))}</div>`;
+		}
 		const subtext = raw.match(/^-# +(\S.*)$/);
-		if (subtext) return `<div class="dc-subtext">${inline(escapeHtml(subtext[1]))}</div>`;
+		if (subtext) {
+			return `<div class="dc-subtext">${inline(escapeHtml(subtext[1]))}</div>`;
+		}
 		const quote = raw.match(/^> ?(.*)$/);
-		if (quote) return `<div class="dc-quote">${inline(escapeHtml(quote[1])) || '&nbsp;'}</div>`;
+		if (quote) {
+			return `<div class="dc-quote">${inline(escapeHtml(quote[1])) || '&nbsp;'}</div>`;
+		}
 		const bullet = raw.match(/^(\s*)[-*] +(\S.*)$/);
-		if (bullet)
-			return `<div class="dc-li" style="margin-left:${Math.min(bullet[1].length, 8) * 8}px"><span>•</span><span>${inline(escapeHtml(bullet[2]))}</span></div>`;
+		if (bullet) {
+			return `<div class="dc-li" style="margin-left:${Math.min(bullet[1].length, LIST_INDENT_MAX_CHARS) * LIST_INDENT_PX_PER_CHAR}px"><span>•</span><span>${inline(escapeHtml(bullet[2]))}</span></div>`;
+		}
 		const numbered = raw.match(/^(\s*)(\d{1,3})\. +(\S.*)$/);
 		if (numbered) {
-			return `<div class="dc-li" style="margin-left:${Math.min(numbered[1].length, 8) * 8}px"><span>${numbered[2]}.</span><span>${inline(escapeHtml(numbered[3]))}</span></div>`;
+			return `<div class="dc-li" style="margin-left:${Math.min(numbered[1].length, LIST_INDENT_MAX_CHARS) * LIST_INDENT_PX_PER_CHAR}px"><span>${numbered[2]}.</span><span>${inline(escapeHtml(numbered[3]))}</span></div>`;
 		}
 		return raw.trim() ? `<div class="dc-line">${inline(escapeHtml(raw))}</div>` : '<div class="dc-blank"></div>';
 	});

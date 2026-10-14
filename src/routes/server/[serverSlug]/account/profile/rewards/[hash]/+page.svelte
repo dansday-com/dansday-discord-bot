@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
 	import { EmptyState, Rewards } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 </script>
 
 <svelte:head><title>Rewards — {data.server.name}</title></svelte:head>

@@ -12,13 +12,14 @@
 	const MODE_OPTIONS = MESSAGE_ROLE_MODES.map((mode) => ({ value: mode.id, label: mode.label }));
 	const HEADING = 'text-ash-200 flex shrink-0 items-center gap-1.5 text-xs';
 	const BELOW = 'order-last min-w-0 basis-full';
+	const REPLY_TEXT_ROWS = 3;
 
 	const messageOptions = $derived([
 		{ value: '', label: 'Pick a message' },
 		...editor.messages.map((message) => ({ value: String(message.id), label: message.id === editor.selfId ? `${message.name} (this message)` : message.name }))
 	]);
 	const used = $derived(new Set(actions.map((action) => action.type)));
-	const replies = $derived(used.has('text') || used.has('attachment') || used.has('show'));
+	const hasReplies = $derived(used.has('text') || used.has('attachment') || used.has('show'));
 
 	function roleOptions(current: string) {
 		const taken = new Set(actions.flatMap((action) => (action.type === 'role' && action.role_id !== current ? [action.role_id] : [])));
@@ -37,7 +38,14 @@
 				{#if action.type === 'text'}
 					<span class={HEADING}><i class="fas fa-comment text-violet-300"></i>Message</span>
 					<div class={BELOW}>
-						<LocalizedField bind:value={action.text} label="Text" max={MESSAGE_LIMITS.text} multiline rows={3} placeholder="Write what the member gets back" />
+						<LocalizedField
+							bind:value={action.text}
+							label="Text"
+							max={MESSAGE_LIMITS.text}
+							multiline
+							rows={REPLY_TEXT_ROWS}
+							placeholder="Write what the member gets back"
+						/>
 					</div>
 				{:else if action.type === 'attachment'}
 					<span class={HEADING}><i class="fas fa-paperclip text-amber-300"></i>Attachment</span>
@@ -90,7 +98,7 @@
 			{/if}
 		</div>
 	{/if}
-	{#if replies}
+	{#if hasReplies}
 		<p class="text-ash-500 mt-2 text-xs">Only the member who clicked sees the reply. A message and its attachments arrive together.</p>
 	{/if}
 	{#if used.has('role') && editor.roles.some((role) => role.assignable === false)}

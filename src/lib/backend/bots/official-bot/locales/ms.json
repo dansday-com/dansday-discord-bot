@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Pendaftaran pemilik",
 			"setupNotOwnerTitle": "Kebenaran ditolak",
 			"setupNotOwnerBody": "Hanya **pemilik server** boleh guna `/setup`.",
-			"setupNotTextChannelTitle": "Channel tidak sah",
-			"setupNotTextChannelBody": "Sila pilih **channel teks**.",
 			"joinTitle": "Terima kasih kerana tambah {botName}!",
 			"joinBody": "Jalankan `/setup` untuk buat channel dan siapkan tetapan.",
 			"joinAskAi": "Tak pasti nak mula di mana? Sebut {botMention} dan terus tanya — ia membaca dokumentasi dan boleh pandu anda buat tetapan.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Halaman awam dimatikan untuk server ini. Minta pentadbir server hidupkannya dalam panel konfigurasi bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Server ini belum disambungkan sepenuhnya dengan bot. Cuba lagi dalam beberapa minit, dan minta pentadbir server semak panel konfigurasi bot jika ia berterusan.",
-			"createRecordFailed": "❌ Gagal buat rekod ahli. Sila cuba lagi."
+			"notRegistered": "⚠️ Server ini belum disambungkan sepenuhnya dengan bot. Cuba lagi dalam beberapa minit, dan minta pentadbir server semak panel konfigurasi bot jika ia berterusan."
 		},
 		"fields": {
 			"level": "⭐ Tahap",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Laporkan Staf",
 			"ratingLabel": "Penilaian (1-5 bintang)",
-			"ratingPlaceholder": "1 = Sangat Teruk, 5 = Cemerlang",
 			"categoryLabel": "Kategori",
 			"descriptionLabel": "Penerangan",
 			"descriptionPlaceholder": "Sila ceritakan pengalaman anda dengan staf ini...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Laporan Dihantar",
 			"description": "Laporan anda berjaya dihantar dan sedang menunggu kelulusan admin. Kami akan maklumkan anda sebaik sahaja ia disemak.",
-			"anonymous": "\\n\\n🔒 Laporan anda dihantar tanpa nama.",
-			"roleUpdated": "\\n\\n⭐ **Penilaian Staf Dikemas Kini**\\n{roleName}\\nPenilaian: {rating}/5.00 ({totalReports} laporan)"
+			"anonymous": "\\n\\n🔒 Laporan anda dihantar tanpa nama."
 		},
 		"dm": {
 			"approved": "Laporan anda tentang {staff} dalam **{server}** telah diluluskan.\\n\\n**Penilaian:** {rating}/5\\n**Kategori:** {category}\\n**Maklum balas:** {description}\\n\\n**Nota staf:** {reason}\\n\\nTerima kasih kerana membantu kami menjaga kualiti pasukan.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Perangai Biadab"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Sila pilih staf yang mahu dilaporkan.",
 			"invalidRating": "❌ **Penilaian Tidak Sah**\\n\\nPenilaian mesti nombor antara 1 hingga 5.",
 			"invalidCategory": "❌ **Kategori Tidak Sah**\\n\\nSila pilih kategori daripada senarai.",
 			"emptyDescription": "❌ **Penerangan Diperlukan**\\n\\nSila berikan penerangan tentang pengalaman anda.",
@@ -717,7 +711,7 @@
 		},
 		"tokenTooShort": "Token terlalu pendek.",
 		"invalidTokenTitle": "Token tidak sah",
-		"invalidTokenDescription": "Token yang anda berikan nampaknya tidak sah atau telah tamat tempoh.\n`{error}`",
+		"invalidTokenDescription": "Token yang anda berikan nampaknya tidak sah atau telah tamat tempoh. Salin token baharu dan hantar semula.",
 		"invalidQuestId": "ID quest tidak sah.",
 		"missingQuestOrToken": "ID quest tiada atau token terlalu pendek.",
 		"taskTypes": {

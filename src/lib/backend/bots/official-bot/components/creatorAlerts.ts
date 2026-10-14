@@ -8,9 +8,16 @@ import {
 	StringSelectMenuBuilder,
 	TextInputBuilder,
 	TextInputStyle,
-	type ModalActionRowComponentBuilder
+	type ModalActionRowComponentBuilder,
+	MessageFlags
 } from 'discord.js';
-import type { ButtonInteraction, ModalSubmitInteraction, StringSelectMenuInteraction } from 'discord.js';
+import type {
+	ButtonInteraction,
+	GuildTextBasedChannel,
+	MessageActionRowComponentBuilder,
+	ModalSubmitInteraction,
+	StringSelectMenuInteraction
+} from 'discord.js';
 import db from '../../../../database.js';
 import {
 	creatorAlertsEmbedColors,
@@ -25,15 +32,22 @@ import {
 	CREATOR_ALERTS_HISTORY_LIMIT,
 	CREATOR_ALERTS_POLL_MS,
 	CREATOR_PLATFORM_TYPES,
-	NOTIFICATIONS,
 	type CreatorContent,
 	type CreatorContentType,
 	type CreatorPlatform,
-	type CreatorProfile,
-	type CreatorRef
+	type CreatorRef,
+	type CreatorSnapshot
 } from '../../../config.js';
 import { serverTranslator, translate, type Translator } from '../i18n.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
+import type { ServerRow } from '../../../../schema.js';
+import { sendWithWatcherMentions } from './notifiedMentions.js';
+import { SECOND_MS } from '../../../../utils/time.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
+
+const FOLLOW_INPUT_MAX_LENGTH = 200;
+const RECENT_TITLE_MAX_LENGTH = 80;
+const RECENT_DESCRIPTION_MAX_LENGTH = 4000;
 
 export const CREATOR_NOTIFICATIONS_MENU_BUTTON_ID = 'notifications_creators';
 export const CREATOR_NOTIFICATIONS_SELECT_ID = 'creator_notifications_select';
@@ -69,7 +83,7 @@ const TYPE_EMOJI: Record<CreatorContentType, string> = {
 };
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
-let tickRunning = false;
+let isTickRunning = false;
 
 type CreatorRow = Awaited<ReturnType<typeof db.listNotifiedCreatorsForBot>>[number];
 
@@ -78,28 +92,18 @@ type ServerTarget = {
 	guildId: string;
 	embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>;
 	tr: Translator;
-	channel: any | null;
+	channel: GuildTextBasedChannel | null;
 };
 
-function mentionChunks(discordIds: string[]): string[] {
-	const chunks: string[] = [];
-	let current = '';
-	for (const id of discordIds) {
-		const mention = `<@${id}> `;
-		if (current.length + mention.length > 1950) {
-			chunks.push(current.trim());
-			current = mention;
-		} else {
-			current += mention;
-		}
-	}
-	if (current.trim()) chunks.push(current.trim());
-	return chunks;
-}
+type PostTarget = ServerTarget & { channel: GuildTextBasedChannel };
 
 export function creatorProfileUrl(platform: CreatorPlatform, accountId: string, handle: string | null): string {
-	if (platform === 'twitch') return `https://www.twitch.tv/${handle ?? accountId}`;
-	if (platform === 'tiktok') return `https://www.tiktok.com/@${handle ?? accountId}`;
+	if (platform === 'twitch') {
+		return `https://www.twitch.tv/${handle ?? accountId}`;
+	}
+	if (platform === 'tiktok') {
+		return `https://www.tiktok.com/@${handle ?? accountId}`;
+	}
 	return handle ? `https://www.youtube.com/${handle}` : `https://www.youtube.com/channel/${accountId}`;
 }
 
@@ -111,14 +115,20 @@ async function readTargetChannelId(serverId: number): Promise<string> {
 
 async function resolveServerTarget(client: Client, server: { id: number; discord_server_id: string | null }): Promise<ServerTarget | null> {
 	const guildId = server.discord_server_id;
-	if (!guildId) return null;
-	if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.creator_alerts))) return null;
+	if (!guildId) {
+		return null;
+	}
+	if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.creator_alerts))) {
+		return null;
+	}
 
 	const channelId = await readTargetChannelId(server.id);
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const tr = await serverTranslator(guildId);
-	if (!channelId) return { serverId: server.id, guildId, embedConfig, tr, channel: null };
+	if (!channelId) {
+		return { serverId: server.id, guildId, embedConfig, tr, channel: null };
+	}
 
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	const channel = guild ? await guild.channels.fetch(channelId).catch(() => null) : null;
@@ -126,7 +136,7 @@ async function resolveServerTarget(client: Client, server: { id: number; discord
 }
 
 async function sendContentEmbed(
-	target: ServerTarget,
+	target: PostTarget,
 	creator: CreatorRow & { name: string | null; thumbnailUrl: string | null },
 	content: CreatorContent & { id: number }
 ) {
@@ -140,8 +150,12 @@ async function sendContentEmbed(
 
 	const embed = new EmbedBuilder()
 		.setColor(creatorAlertsEmbedColors[creator.platform])
-		.setAuthor({ name: creatorName.slice(0, 256), url: profileUrl, ...(creator.thumbnailUrl ? { iconURL: creator.thumbnailUrl } : {}) })
-		.setTitle((content.title?.split('\n')[0]?.trim() || typeLabel).slice(0, 256))
+		.setAuthor({
+			name: creatorName.slice(0, DISCORD_LIMITS.EMBED_AUTHOR_NAME),
+			url: profileUrl,
+			...(creator.thumbnailUrl ? { iconURL: creator.thumbnailUrl } : {})
+		})
+		.setTitle((content.title?.split('\n')[0]?.trim() || typeLabel).slice(0, DISCORD_LIMITS.EMBED_TITLE))
 		.setURL(content.url)
 		.addFields(
 			{ name: tr('creatorAlerts.post.platform'), value: platformName, inline: true },
@@ -150,45 +164,110 @@ async function sendContentEmbed(
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });
 
-	if (content.title && content.title.includes('\n')) embed.setDescription(content.title.slice(0, 4096));
-	if (content.thumbnailUrl) embed.setImage(content.thumbnailUrl);
-	if (content.publishedAt) embed.setTimestamp(new Date(content.publishedAt));
+	if (content.title && content.title.includes('\n')) {
+		embed.setDescription(content.title.slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION));
+	}
+	if (content.thumbnailUrl) {
+		embed.setImage(content.thumbnailUrl);
+	}
+	if (content.publishedAt) {
+		embed.setTimestamp(new Date(content.publishedAt));
+	}
 
 	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder()
 			.setStyle(ButtonStyle.Link)
 			.setURL(content.url)
-			.setLabel(tr('creatorAlerts.post.openOn', { platform: platformName }).slice(0, 80)),
+			.setLabel(tr('creatorAlerts.post.openOn', { platform: platformName }).slice(0, DISCORD_LIMITS.BUTTON_LABEL)),
 		new ButtonBuilder()
 			.setStyle(ButtonStyle.Secondary)
 			.setCustomId(`${CREATOR_FOLLOW_BUTTON_PREFIX}${creator.id}`)
-			.setLabel(tr('creatorAlerts.post.notifyMe').slice(0, 80))
+			.setLabel(tr('creatorAlerts.post.notifyMe').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
 			.setEmoji('🔔')
 	);
 
-	const channelMentions = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null)) ?? [];
-	const alreadyMentioned = channelMentions.join(' ');
-	const notificationDirectMentions = mentionChunks(notificationDiscordIds.filter((id) => !alreadyMentioned.includes(`<@${id}>`)));
-	const mentionParts = [...channelMentions, ...notificationDirectMentions];
+	await sendWithWatcherMentions(target.channel, { embeds: [embed], components: [btnRow] }, notificationDiscordIds);
+}
 
-	await target.channel.send({ content: mentionParts[0], embeds: [embed], components: [btnRow] });
+type TickContext = { officialBotId: number; targetFor: (serverId: number) => Promise<ServerTarget | null> };
+type AlertCreator = CreatorRow & { name: string | null; thumbnailUrl: string | null };
+type StoredContent = CreatorContent & { id: number };
 
-	for (let i = 1; i < mentionParts.length; i++) {
-		await target.channel.send({ content: mentionParts[i] }).catch(() => null);
+function newerContentIds(feeds: CreatorContent[][], freshIds: Set<string>): Set<string> {
+	const newerIds = new Set<string>();
+	for (const feed of feeds) {
+		const newestKnown = feed.findIndex((c) => !freshIds.has(c.contentId));
+		const newer = newestKnown === -1 ? (feed.length === 1 ? feed : []) : feed.slice(0, newestKnown);
+		for (const c of newer) {
+			newerIds.add(c.contentId);
+		}
+	}
+	return newerIds;
+}
+
+async function postContentToServer(target: ServerTarget, creator: AlertCreator, content: StoredContent) {
+	try {
+		await db.addServerCreatorContent(target.serverId, content.id);
+		if (!target.channel) {
+			return;
+		}
+		await sendContentEmbed({ ...target, channel: target.channel }, creator, content);
+		await db.markServerCreatorContentMessagePosted(target.serverId, content.id);
+		await logger.log(`📡 Creator alerts: ${creator.platform} ${content.type} ${content.contentId} → server ${target.serverId}`);
+	} catch (err) {
+		await logger.log(`❌ Creator alerts: failed ${creator.platform} ${content.contentId} for server ${target.serverId}: ${(err as Error)?.message || err}`);
+	}
+}
+
+async function deliverContent(tick: TickContext, creator: AlertCreator, content: StoredContent) {
+	const serverIds = await db.listCreatorFollowerServerIds(tick.officialBotId, creator.id, content.type).catch(() => [] as number[]);
+	for (const serverId of serverIds) {
+		const target = await tick.targetFor(serverId);
+		if (target) {
+			await postContentToServer(target, creator, content);
+		}
+	}
+}
+
+async function announceCreatorSnapshot(tick: TickContext, creator: CreatorRow, snap: CreatorSnapshot) {
+	const isBaseline = creator.checkedAt == null;
+	const fresh = await db.recordBotCreatorContents(creator.id, snap.feeds.flat()).catch(() => null);
+	if (!fresh) {
+		return;
+	}
+	await db.markBotCreatorChecked(creator.id, snap.profile).catch(() => null);
+
+	const newerIds = isBaseline ? new Set<string>() : newerContentIds(snap.feeds, new Set(fresh.map((c) => c.contentId)));
+	const announce = fresh.filter((c) => c.type === 'live' || newerIds.has(c.contentId));
+	if (fresh.length > announce.length) {
+		await logger.log(`📡 Creator alerts: baselined ${fresh.length - announce.length} ${creator.platform} items for ${creator.handle ?? creator.accountId}`);
+	}
+	if (announce.length === 0) {
+		return;
+	}
+
+	const stored = await db.getBotCreatorById(creator.id).catch(() => null);
+	const creatorInfo = { ...creator, name: stored?.name ?? null, thumbnailUrl: stored?.thumbnail_url ?? null };
+	for (const content of [...announce].reverse()) {
+		await deliverContent(tick, creatorInfo, content);
 	}
 }
 
 async function runTick(client: Client, officialBotId: number) {
-	if (tickRunning) return;
-	tickRunning = true;
+	if (isTickRunning) {
+		return;
+	}
+	isTickRunning = true;
 	try {
 		const creators = await db.listNotifiedCreatorsForBot(officialBotId);
-		if (creators.length === 0) return;
+		if (creators.length === 0) {
+			return;
+		}
 
 		const refs: CreatorRef[] = creators.map((c) => ({ platform: c.platform, accountId: c.accountId, handle: c.handle }));
 		const snapshots = await fetchCreatorSnapshots(refs);
 
-		const servers = new Map((await db.getServersForBot(officialBotId)).map((s: any) => [Number(s.id), s]));
+		const servers = new Map((await db.getServersForBot(officialBotId)).map((s) => [Number(s.id), s]));
 		const targets = new Map<number, ServerTarget | null>();
 		const targetFor = async (serverId: number) => {
 			if (!targets.has(serverId)) {
@@ -198,52 +277,15 @@ async function runTick(client: Client, officialBotId: number) {
 			return targets.get(serverId) ?? null;
 		};
 
+		const tick: TickContext = { officialBotId, targetFor };
 		for (const creator of creators) {
 			const snap = snapshots.get(creatorRefKey(creator));
-			if (!snap) continue;
-
-			const baseline = creator.checkedAt == null;
-			const fresh = await db.recordBotCreatorContents(creator.id, snap.feeds.flat()).catch(() => null);
-			if (!fresh) continue;
-			await db.markBotCreatorChecked(creator.id, snap.profile).catch(() => null);
-
-			const freshIds = new Set(fresh.map((c) => c.contentId));
-			const newerIds = new Set<string>();
-			if (!baseline) {
-				for (const feed of snap.feeds) {
-					const newestKnown = feed.findIndex((c) => !freshIds.has(c.contentId));
-					const newer = newestKnown === -1 ? (feed.length === 1 ? feed : []) : feed.slice(0, newestKnown);
-					for (const c of newer) newerIds.add(c.contentId);
-				}
-			}
-			const announce = fresh.filter((c) => c.type === 'live' || newerIds.has(c.contentId));
-			if (fresh.length > announce.length) {
-				await logger.log(`📡 Creator alerts: baselined ${fresh.length - announce.length} ${creator.platform} items for ${creator.handle ?? creator.accountId}`);
-			}
-			if (announce.length === 0) continue;
-
-			const stored = await db.getBotCreatorById(creator.id).catch(() => null);
-			const creatorInfo = { ...creator, name: stored?.name ?? null, thumbnailUrl: stored?.thumbnail_url ?? null };
-
-			for (const content of [...announce].reverse()) {
-				const serverIds = await db.listCreatorFollowerServerIds(officialBotId, creator.id, content.type).catch(() => [] as number[]);
-				for (const serverId of serverIds) {
-					const target = await targetFor(serverId);
-					if (!target) continue;
-					try {
-						await db.addServerCreatorContent(serverId, content.id);
-						if (!target.channel) continue;
-						await sendContentEmbed(target, creatorInfo, content);
-						await db.markServerCreatorContentMessagePosted(serverId, content.id);
-						await logger.log(`📡 Creator alerts: ${creator.platform} ${content.type} ${content.contentId} → server ${serverId}`);
-					} catch (err: any) {
-						await logger.log(`❌ Creator alerts: failed ${creator.platform} ${content.contentId} for server ${serverId}: ${err?.message || err}`);
-					}
-				}
+			if (snap) {
+				await announceCreatorSnapshot(tick, creator, snap);
 			}
 		}
 	} finally {
-		tickRunning = false;
+		isTickRunning = false;
 	}
 }
 
@@ -311,7 +353,9 @@ function menuOrigin(customId: string): string {
 
 function creatorIdFromCustomId(customId: string, prefix: string): number | null {
 	const raw = customId.slice(prefix.length).split(':')[0].trim();
-	if (!/^\d+$/.test(raw)) return null;
+	if (!/^\d+$/.test(raw)) {
+		return null;
+	}
 	const id = Number(raw);
 	return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
@@ -326,83 +370,92 @@ function sanitizeCreatorTypes(platform: CreatorPlatform, values: string[]): Crea
 	return Array.from(new Set(values.filter((v) => allowed.has(v)))) as CreatorContentType[];
 }
 
-async function formatActiveTypes(platform: CreatorPlatform, types: string[], guildId: string, userId: string): Promise<string> {
+type MemberScope = { guildId: string; userId: string };
+
+async function formatActiveTypes(platform: CreatorPlatform, types: string[], { guildId, userId }: MemberScope): Promise<string> {
 	const valid = sanitizeCreatorTypes(platform, types);
-	if (valid.length === 0) return await translate('creatorAlerts.noTypes', guildId, userId);
-	const labels = await Promise.all(valid.map(async (t) => `${TYPE_EMOJI[t]} ${await translate(`creatorAlerts.types.${t}.label`, guildId, userId)}`));
+	if (valid.length === 0) {
+		return await translate('creatorAlerts.noTypes', { guildId, userId });
+	}
+	const labels = await Promise.all(valid.map(async (t) => `${TYPE_EMOJI[t]} ${await translate(`creatorAlerts.types.${t}.label`, { guildId, userId })}`));
 	return labels.join(', ');
 }
 
 async function platformLabel(platform: CreatorPlatform, guildId: string, userId: string): Promise<string> {
-	return `${PLATFORM_EMOJI[platform]} ${await translate(`creatorAlerts.platforms.${platform}`, guildId, userId)}`;
+	return `${PLATFORM_EMOJI[platform]} ${await translate(`creatorAlerts.platforms.${platform}`, { guildId, userId })}`;
 }
 
 async function resolveMemberContext(guildId: string, discordUserId: string) {
 	const server = await getServerForCurrentBot(guildId).catch(() => null);
-	if (!server) return null;
+	if (!server) {
+		return null;
+	}
 	const member = await db.getMemberByDiscordId(server.id, discordUserId).catch(() => null);
-	if (!member) return null;
+	if (!member) {
+		return null;
+	}
 	return { server, member };
 }
 
 async function replyError(interaction: ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction, key: string, guildId: string) {
-	const content = await translate(key, guildId, interaction.user.id);
+	const content = await translate(key, { guildId, userId: interaction.user.id });
 	if (interaction.replied || interaction.deferred) {
 		await interaction.editReply({ content, embeds: [], components: [] }).catch(() => null);
 		return;
 	}
-	await interaction.reply({ content, flags: 64 }).catch(() => null);
+	await interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => null);
 }
 
-async function respondEphemeral(interaction: ButtonInteraction | StringSelectMenuInteraction, payload: any, preferUpdate: boolean) {
+type EphemeralPayload = { content?: string; embeds?: EmbedBuilder[]; components?: ActionRowBuilder<MessageActionRowComponentBuilder>[] };
+
+async function respondEphemeral(interaction: ButtonInteraction | StringSelectMenuInteraction, payload: EphemeralPayload) {
 	if (interaction.replied || interaction.deferred) {
 		await interaction.editReply(payload).catch(() => null);
 		return;
 	}
-	if (preferUpdate) {
-		await (interaction as any).update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
-		return;
-	}
-	await interaction.reply({ ...payload, flags: 64 }).catch(() => null);
+	await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => null));
 }
 
 function backToMenuButton(label: string, origin: string) {
 	return new ButtonBuilder().setCustomId(`${CREATOR_NOTIFICATIONS_MENU_BUTTON_ID}${origin}`).setLabel(label).setStyle(ButtonStyle.Secondary);
 }
 
-async function buildCreatorTypesPayload(
-	guildId: string,
-	userId: string,
-	creator: CreatorIdentity,
-	selectedTypes: string[],
-	origin: string | null,
-	statusLine?: string
-) {
+type CreatorTypesView = { creator: CreatorIdentity; selectedTypes: string[]; origin: string | null; statusLine?: string };
+
+async function buildCreatorTypesPayload(guildId: string, userId: string, { creator, selectedTypes, origin, statusLine }: CreatorTypesView) {
 	const embedConfig = await getEmbedConfig(guildId);
 	const selected = sanitizeCreatorTypes(creator.platform, selectedTypes);
 	const name = creatorDisplayName(creator, creator.account_id);
 
-	const description = await translate('creatorAlerts.creator.description', guildId, userId, {
-		creator: name,
-		url: creatorProfileUrl(creator.platform, creator.account_id, creator.handle),
-		platform: await platformLabel(creator.platform, guildId, userId)
-	});
-	const activeLabel = await translate('creatorAlerts.creator.active', guildId, userId, {
-		types: await formatActiveTypes(creator.platform, selected, guildId, userId)
-	});
+	const description = await translate(
+		'creatorAlerts.creator.description',
+		{ guildId, userId },
+		{
+			creator: name,
+			url: creatorProfileUrl(creator.platform, creator.account_id, creator.handle),
+			platform: await platformLabel(creator.platform, guildId, userId)
+		}
+	);
+	const activeLabel = await translate(
+		'creatorAlerts.creator.active',
+		{ guildId, userId },
+		{
+			types: await formatActiveTypes(creator.platform, selected, { guildId, userId })
+		}
+	);
 
 	const embed = new EmbedBuilder()
 		.setColor(creatorAlertsEmbedColors[creator.platform])
-		.setTitle(await translate('creatorAlerts.creator.title', guildId, userId))
-		.setDescription([description, activeLabel, statusLine].filter(Boolean).join('\n\n').slice(0, 4096))
+		.setTitle(await translate('creatorAlerts.creator.title', { guildId, userId }))
+		.setDescription([description, activeLabel, statusLine].filter(Boolean).join('\n\n').slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION))
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
 	const options = await Promise.all(
 		CREATOR_PLATFORM_TYPES[creator.platform].map(async (type) => ({
-			label: (await translate(`creatorAlerts.types.${type}.label`, guildId, userId)).slice(0, 100),
+			label: (await translate(`creatorAlerts.types.${type}.label`, { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT),
 			value: type,
-			description: (await translate(`creatorAlerts.types.${type}.description`, guildId, userId)).slice(0, 100),
+			description: (await translate(`creatorAlerts.types.${type}.description`, { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT),
 			emoji: TYPE_EMOJI[type],
 			default: selected.includes(type)
 		}))
@@ -410,51 +463,53 @@ async function buildCreatorTypesPayload(
 
 	const selectMenu = new StringSelectMenuBuilder()
 		.setCustomId(`${CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX}${creator.id}${origin == null ? '' : `:menu${origin}`}`)
-		.setPlaceholder((await translate('creatorAlerts.creator.placeholder', guildId, userId)).slice(0, 150))
+		.setPlaceholder((await translate('creatorAlerts.creator.placeholder', { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_PLACEHOLDER))
 		.setMinValues(0)
 		.setMaxValues(options.length)
 		.addOptions(options);
 
-	const rows: ActionRowBuilder<any>[] = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
+	const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
 
 	if (origin != null) {
-		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', guildId, userId), origin)));
+		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', { guildId, userId }), origin)));
 	}
 
 	return { embeds: [embed], components: rows };
 }
 
-async function buildCreatorNotificationsMenuPayload(guildId: string, userId: string, memberId: number, origin: string, statusLine?: string) {
+type NotificationsMenuView = { memberId: number; origin: string; statusLine?: string };
+
+async function buildCreatorNotificationsMenuPayload(guildId: string, userId: string, { memberId, origin, statusLine }: NotificationsMenuView) {
 	const embedConfig = await getEmbedConfig(guildId);
 	const subscriptions = await db.listServerMemberCreatorNotifications(memberId).catch(() => []);
 
 	const description =
 		subscriptions.length === 0
-			? await translate('creatorAlerts.menu.empty', guildId, userId)
-			: await translate('creatorAlerts.menu.description', guildId, userId, { count: formatCount(subscriptions.length) });
+			? await translate('creatorAlerts.menu.empty', { guildId, userId })
+			: await translate('creatorAlerts.menu.description', { guildId, userId }, { count: formatCount(subscriptions.length) });
 
 	const lines = await Promise.all(
-		subscriptions.slice(0, 25).map(async (sub) => {
+		subscriptions.slice(0, DISCORD_LIMITS.SELECT_OPTIONS).map(async (sub) => {
 			const name = creatorDisplayName(sub, `#${sub.creatorId}`);
-			return `**${name}** · ${await platformLabel(sub.platform, guildId, userId)}\n${await formatActiveTypes(sub.platform, sub.types, guildId, userId)}`;
+			return `**${name}** · ${await platformLabel(sub.platform, guildId, userId)}\n${await formatActiveTypes(sub.platform, sub.types, { guildId, userId })}`;
 		})
 	);
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('creatorAlerts.menu.title', guildId, userId))
-		.setDescription([description, lines.join('\n'), statusLine].filter(Boolean).join('\n\n').slice(0, 4096))
+		.setTitle(await translate('creatorAlerts.menu.title', { guildId, userId }))
+		.setDescription([description, lines.join('\n'), statusLine].filter(Boolean).join('\n\n').slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION))
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
-	const rows: ActionRowBuilder<any>[] = [];
+	const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
 
 	if (subscriptions.length > 0) {
 		const options = await Promise.all(
-			subscriptions.slice(0, 25).map(async (sub) => ({
-				label: creatorDisplayName(sub, `#${sub.creatorId}`).slice(0, 100),
+			subscriptions.slice(0, DISCORD_LIMITS.SELECT_OPTIONS).map(async (sub) => ({
+				label: creatorDisplayName(sub, `#${sub.creatorId}`).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT),
 				value: String(sub.creatorId),
-				description: (await formatActiveTypes(sub.platform, sub.types, guildId, userId)).slice(0, 100),
+				description: (await formatActiveTypes(sub.platform, sub.types, { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT),
 				emoji: PLATFORM_EMOJI[sub.platform]
 			}))
 		);
@@ -463,7 +518,7 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				new StringSelectMenuBuilder()
 					.setCustomId(`${CREATOR_NOTIFICATIONS_SELECT_ID}${origin}`)
-					.setPlaceholder((await translate('creatorAlerts.menu.placeholder', guildId, userId)).slice(0, 150))
+					.setPlaceholder((await translate('creatorAlerts.menu.placeholder', { guildId, userId })).slice(0, DISCORD_LIMITS.SELECT_PLACEHOLDER))
 					.setMinValues(1)
 					.setMaxValues(1)
 					.addOptions(options)
@@ -474,7 +529,7 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 	const buttons = [
 		new ButtonBuilder()
 			.setCustomId(`${CREATOR_NOTIFICATIONS_FOLLOW_BUTTON_ID}${origin}`)
-			.setLabel(await translate('creatorAlerts.menu.follow', guildId, userId))
+			.setLabel(await translate('creatorAlerts.menu.follow', { guildId, userId }))
 			.setStyle(ButtonStyle.Primary)
 	];
 
@@ -482,13 +537,13 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(`${CREATOR_NOTIFICATIONS_RECENT_BUTTON_ID}${origin}`)
-				.setLabel(await translate('creatorAlerts.menu.recent', guildId, userId))
+				.setLabel(await translate('creatorAlerts.menu.recent', { guildId, userId }))
 				.setStyle(ButtonStyle.Secondary)
 		);
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(`${CREATOR_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID}${origin}`)
-				.setLabel(await translate('creatorAlerts.menu.disableAll', guildId, userId))
+				.setLabel(await translate('creatorAlerts.menu.disableAll', { guildId, userId }))
 				.setStyle(ButtonStyle.Danger)
 		);
 	}
@@ -496,7 +551,7 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 	buttons.push(
 		new ButtonBuilder()
 			.setCustomId(origin ? 'bot_content_creator' : 'bot_notifications')
-			.setLabel(await translate('menu.back', guildId, userId))
+			.setLabel(await translate('menu.back', { guildId, userId }))
 			.setStyle(ButtonStyle.Secondary)
 	);
 
@@ -507,60 +562,89 @@ async function buildCreatorNotificationsMenuPayload(guildId: string, userId: str
 
 export async function handleCreatorNotificationsMenuButton(interaction: ButtonInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	}
 
-	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, menuOrigin(interaction.customId));
-	await respondEphemeral(interaction, payload, true);
+	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, {
+		memberId: context.member.id,
+		origin: menuOrigin(interaction.customId)
+	});
+	await respondEphemeral(interaction, payload);
 }
 
 export async function handleCreatorNotificationsSelect(interaction: StringSelectMenuInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 
 	const raw = (interaction.values || [])[0] || '';
 	const creatorId = /^\d+$/.test(raw) ? Number(raw) : null;
-	if (!creatorId) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!creatorId) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	}
 
 	const creator = await db.getBotCreatorById(creatorId).catch(() => null);
-	if (!creator) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!creator) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
 	const currentTypes = await db.getServerMemberCreatorNotificationTypes(context.member.id, creator.id).catch(() => [] as string[]);
-	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, creator, currentTypes, menuOrigin(interaction.customId));
-	await respondEphemeral(interaction, payload, true);
+	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, {
+		creator,
+		selectedTypes: currentTypes,
+		origin: menuOrigin(interaction.customId)
+	});
+	await respondEphemeral(interaction, payload);
 }
 
 export async function handleCreatorNotificationsDisableAll(interaction: ButtonInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	}
 
 	const cleared = await db.clearServerMemberCreatorNotifications(context.member.id).catch(() => 0);
-	const statusLine = await translate('creatorAlerts.menu.disabledAll', guildId, interaction.user.id, { count: formatCount(cleared) });
-	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, context.member.id, menuOrigin(interaction.customId), statusLine);
-	await respondEphemeral(interaction, payload, true);
+	const statusLine = await translate('creatorAlerts.menu.disabledAll', { guildId, userId: interaction.user.id }, { count: formatCount(cleared) });
+	const payload = await buildCreatorNotificationsMenuPayload(guildId, interaction.user.id, {
+		memberId: context.member.id,
+		origin: menuOrigin(interaction.customId),
+		statusLine
+	});
+	await respondEphemeral(interaction, payload);
 
 	await logger.log(`🔕 Creator alerts: ${interaction.user.tag} disabled all ${cleared} creator notifications`);
 }
 
 export async function handleCreatorNotificationsFollowButton(interaction: ButtonInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 	const userId = interaction.user.id;
 	const origin = menuOrigin(interaction.customId);
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('creatorAlerts.follow.title', guildId, userId))
-		.setDescription(await translate('creatorAlerts.follow.description', guildId, userId))
+		.setTitle(await translate('creatorAlerts.follow.title', { guildId, userId }))
+		.setDescription(await translate('creatorAlerts.follow.description', { guildId, userId }))
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
@@ -568,7 +652,7 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 		PLATFORMS.map(async (platform) =>
 			new ButtonBuilder()
 				.setCustomId(`${CREATOR_FOLLOW_PLATFORM_BUTTON_PREFIX}${platform}${origin}`)
-				.setLabel(await translate(`creatorAlerts.platforms.${platform}`, guildId, userId))
+				.setLabel(await translate(`creatorAlerts.platforms.${platform}`, { guildId, userId }))
 				.setEmoji(PLATFORM_EMOJI[platform])
 				.setStyle(ButtonStyle.Secondary)
 		)
@@ -576,32 +660,36 @@ export async function handleCreatorNotificationsFollowButton(interaction: Button
 
 	const rows = [
 		new ActionRowBuilder<ButtonBuilder>().addComponents(...platformButtons),
-		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', guildId, userId), origin))
+		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', { guildId, userId }), origin))
 	];
 
-	await respondEphemeral(interaction, { embeds: [embed], components: rows }, true);
+	await respondEphemeral(interaction, { embeds: [embed], components: rows });
 }
 
 export async function handleCreatorFollowPlatformButton(interaction: ButtonInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 	const userId = interaction.user.id;
 
 	const platform = platformFromCustomId(interaction.customId, CREATOR_FOLLOW_PLATFORM_BUTTON_PREFIX);
-	if (!platform) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!platform) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
-	const platformName = await translate(`creatorAlerts.platforms.${platform}`, guildId, userId);
+	const platformName = await translate(`creatorAlerts.platforms.${platform}`, { guildId, userId });
 	const modal = new ModalBuilder()
 		.setCustomId(`${CREATOR_FOLLOW_MODAL_PREFIX}${platform}${menuOrigin(interaction.customId)}`)
-		.setTitle((await translate('creatorAlerts.follow.modalTitle', guildId, userId, { platform: platformName })).slice(0, 45));
+		.setTitle((await translate('creatorAlerts.follow.modalTitle', { guildId, userId }, { platform: platformName })).slice(0, DISCORD_LIMITS.MODAL_TITLE));
 
 	const input = new TextInputBuilder()
 		.setCustomId(CREATOR_FOLLOW_INPUT_ID)
-		.setLabel((await translate('creatorAlerts.follow.inputLabel', guildId, userId, { platform: platformName })).slice(0, 45))
+		.setLabel((await translate('creatorAlerts.follow.inputLabel', { guildId, userId }, { platform: platformName })).slice(0, DISCORD_LIMITS.LABEL))
 		.setStyle(TextInputStyle.Short)
 		.setPlaceholder(PLATFORM_EXAMPLE[platform])
 		.setRequired(true)
-		.setMaxLength(200);
+		.setMaxLength(FOLLOW_INPUT_MAX_LENGTH);
 
 	modal.addComponents(new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(input));
 	await interaction.showModal(modal);
@@ -609,44 +697,68 @@ export async function handleCreatorFollowPlatformButton(interaction: ButtonInter
 
 function handleFromInput(platform: CreatorPlatform, raw: string): { platform: CreatorPlatform; handle: string } | null {
 	const parsed = parseCreatorInput(raw);
-	if (parsed) return parsed;
+	if (parsed) {
+		return parsed;
+	}
 	const bare = raw.trim().replace(/^@/, '');
-	if (!/^[\w.\-]{2,100}$/.test(bare)) return null;
-	if (platform === 'youtube') return { platform, handle: /^UC[\w-]{22}$/.test(bare) ? bare : `@${bare}` };
-	if (platform === 'twitch') return /^[a-z0-9_]{3,25}$/i.test(bare) ? { platform, handle: bare.toLowerCase() } : null;
+	if (!/^[\w.\-]{2,100}$/.test(bare)) {
+		return null;
+	}
+	if (platform === 'youtube') {
+		return { platform, handle: /^UC[\w-]{22}$/.test(bare) ? bare : `@${bare}` };
+	}
+	if (platform === 'twitch') {
+		return /^[a-z0-9_]{3,25}$/i.test(bare) ? { platform, handle: bare.toLowerCase() } : null;
+	}
 	return { platform, handle: bare };
 }
 
 export async function handleCreatorFollowModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 	const userId = interaction.user.id;
 
 	const platform = platformFromCustomId(interaction.customId, CREATOR_FOLLOW_MODAL_PREFIX);
-	if (!platform) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!platform) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
-	if (interaction.isFromMessage()) await interaction.deferUpdate();
-	else await interaction.deferReply({ flags: 64 });
+	if (interaction.isFromMessage()) {
+		await interaction.deferUpdate();
+	} else {
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+	}
 
 	const target = handleFromInput(platform, interaction.fields.getTextInputValue(CREATOR_FOLLOW_INPUT_ID) || '');
-	if (!target) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!target) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
 	const context = await resolveMemberContext(guildId, userId);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
-
-	let profile: CreatorProfile | null;
-	try {
-		profile = await resolveCreator(target.platform, target.handle);
-	} catch (err: any) {
-		const message = String(err?.message || err);
-		await logger.log(`⚠️ Creator alerts: lookup ${target.platform} ${target.handle} failed: ${message}`);
-		return await replyError(interaction, /cooling/i.test(message) ? 'creatorAlerts.errors.tiktokCooling' : 'creatorAlerts.errors.lookupFailed', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
 	}
-	if (!profile) return await replyError(interaction, 'creatorAlerts.errors.notFound', guildId);
 
-	const creatorId = await db.upsertBotCreator(context.server.bot_id, profile);
+	const lookup = await resolveCreator(target.platform, target.handle).then(
+		(found) => ({ profile: found, failure: null }),
+		(err: unknown) => ({ profile: null, failure: String((err as Error)?.message || err) })
+	);
+	if (lookup.failure !== null) {
+		await logger.log(`⚠️ Creator alerts: lookup ${target.platform} ${target.handle} failed: ${lookup.failure}`);
+		return await replyError(interaction, /cooling/i.test(lookup.failure) ? 'creatorAlerts.errors.tiktokCooling' : 'creatorAlerts.errors.lookupFailed', guildId);
+	}
+	const { profile } = lookup;
+	if (!profile) {
+		return await replyError(interaction, 'creatorAlerts.errors.notFound', guildId);
+	}
+
+	const creatorId = await db.upsertBotCreator((context.server as ServerRow).bot_id!, profile);
 	const creator = await db.getBotCreatorById(creatorId);
-	if (!creator) return await replyError(interaction, 'creatorAlerts.errors.lookupFailed', guildId);
+	if (!creator) {
+		return await replyError(interaction, 'creatorAlerts.errors.lookupFailed', guildId);
+	}
 
 	let types = await db.getServerMemberCreatorNotificationTypes(context.member.id, creator.id).catch(() => [] as string[]);
 	if (types.length === 0) {
@@ -655,13 +767,17 @@ export async function handleCreatorFollowModalSubmit(interaction: ModalSubmitInt
 	}
 
 	const watchers = await db.countServerCreatorNotifications(context.server.id, creator.id).catch(() => 0);
-	const statusLine = await translate('creatorAlerts.saved', guildId, userId, {
-		creator: creatorDisplayName(creator, creator.account_id),
-		types: await formatActiveTypes(creator.platform, types, guildId, userId),
-		count: formatCount(watchers)
-	});
+	const statusLine = await translate(
+		'creatorAlerts.saved',
+		{ guildId, userId },
+		{
+			creator: creatorDisplayName(creator, creator.account_id),
+			types: await formatActiveTypes(creator.platform, types, { guildId, userId }),
+			count: formatCount(watchers)
+		}
+	);
 
-	const payload = await buildCreatorTypesPayload(guildId, userId, creator, types, menuOrigin(interaction.customId), statusLine);
+	const payload = await buildCreatorTypesPayload(guildId, userId, { creator, selectedTypes: types, origin: menuOrigin(interaction.customId), statusLine });
 	await interaction.editReply(payload).catch(() => null);
 
 	await logger.log(`🔔 Creator alerts: ${interaction.user.tag} followed ${creator.platform} ${creator.handle ?? creator.account_id} (${watchers} watching)`);
@@ -669,52 +785,77 @@ export async function handleCreatorFollowModalSubmit(interaction: ModalSubmitInt
 
 export async function handleCreatorFollowButton(interaction: ButtonInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 
 	const creatorId = creatorIdFromCustomId(interaction.customId, CREATOR_FOLLOW_BUTTON_PREFIX);
-	if (creatorId == null) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (creatorId == null) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
-	await interaction.deferReply({ flags: 64 });
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 	const context = await resolveMemberContext(guildId, interaction.user.id);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	}
 
 	const creator = await db.getBotCreatorById(creatorId).catch(() => null);
-	if (!creator) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!creator) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
 	const currentTypes = await db.getServerMemberCreatorNotificationTypes(context.member.id, creator.id).catch(() => [] as string[]);
-	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, creator, currentTypes, null);
+	const payload = await buildCreatorTypesPayload(guildId, interaction.user.id, { creator, selectedTypes: currentTypes, origin: null });
 	await interaction.editReply(payload).catch(() => null);
 }
 
 export async function handleCreatorNotificationTypesSelect(interaction: StringSelectMenuInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 	const userId = interaction.user.id;
 
 	const creatorId = creatorIdFromCustomId(interaction.customId, CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX);
-	const fromMenu = interaction.customId.slice(CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX.length).split(':')[1] === 'menu';
-	if (creatorId == null) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	const isFromMenu = interaction.customId.slice(CREATOR_NOTIFICATION_TYPES_SELECT_PREFIX.length).split(':')[1] === 'menu';
+	if (creatorId == null) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
 	const context = await resolveMemberContext(guildId, userId);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	}
 
 	const creator = await db.getBotCreatorById(creatorId).catch(() => null);
-	if (!creator) return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	if (!creator) {
+		return await replyError(interaction, 'creatorAlerts.errors.invalidCreator', guildId);
+	}
 
 	const types = sanitizeCreatorTypes(creator.platform, interaction.values || []);
 	const action = await db.setServerMemberCreatorNotificationTypes(context.member.id, creator.id, types);
 	const watchers = await db.countServerCreatorNotifications(context.server.id, creator.id).catch(() => 0);
 	const name = creatorDisplayName(creator, creator.account_id);
 
-	const statusLine = await translate(action === 'removed' ? 'creatorAlerts.removed' : 'creatorAlerts.saved', guildId, userId, {
-		creator: name,
-		types: await formatActiveTypes(creator.platform, types, guildId, userId),
-		count: formatCount(watchers)
-	});
+	const statusLine = await translate(
+		action === 'removed' ? 'creatorAlerts.removed' : 'creatorAlerts.saved',
+		{ guildId, userId },
+		{
+			creator: name,
+			types: await formatActiveTypes(creator.platform, types, { guildId, userId }),
+			count: formatCount(watchers)
+		}
+	);
 
-	const payload = await buildCreatorTypesPayload(guildId, userId, creator, types, fromMenu ? menuOrigin(interaction.customId) : null, statusLine);
-	await respondEphemeral(interaction, payload, true);
+	const payload = await buildCreatorTypesPayload(guildId, userId, {
+		creator,
+		selectedTypes: types,
+		origin: isFromMenu ? menuOrigin(interaction.customId) : null,
+		statusLine
+	});
+	await respondEphemeral(interaction, payload);
 
 	await logger.log(
 		`🔔 Creator alerts: ${interaction.user.tag} ${action} types [${types.join(', ')}] for ${creator.platform} ${creator.handle ?? creator.account_id} (${watchers} watching)`
@@ -723,37 +864,45 @@ export async function handleCreatorNotificationTypesSelect(interaction: StringSe
 
 export async function handleCreatorNotificationsRecentButton(interaction: ButtonInteraction): Promise<void> {
 	const guildId = interaction.guild?.id;
-	if (!guildId) return;
+	if (!guildId) {
+		return;
+	}
 	const userId = interaction.user.id;
 
 	const context = await resolveMemberContext(guildId, userId);
-	if (!context) return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	if (!context) {
+		return await replyError(interaction, 'creatorAlerts.errors.memberNotFound', guildId);
+	}
 
 	const contents = await db.listMemberCreatorContents(context.server.id, context.member.id, CREATOR_ALERTS_HISTORY_LIMIT).catch(() => []);
 	const typeLabels = new Map<string, string>();
 	for (const type of ['video', 'live', 'post'] as CreatorContentType[]) {
-		typeLabels.set(type, `${TYPE_EMOJI[type]} ${await translate(`creatorAlerts.types.${type}.label`, guildId, userId)}`);
+		typeLabels.set(type, `${TYPE_EMOJI[type]} ${await translate(`creatorAlerts.types.${type}.label`, { guildId, userId })}`);
 	}
 
 	const lines = contents.map((c, index) => {
 		const name = creatorDisplayName(c, `#${c.creator_id}`);
-		const title = (c.title?.split('\n')[0]?.trim() || typeLabels.get(c.type) || c.type).replace(/[[\]]/g, '').slice(0, 80);
+		const title = (c.title?.split('\n')[0]?.trim() || typeLabels.get(c.type) || c.type).replace(/[[\]]/g, '').slice(0, RECENT_TITLE_MAX_LENGTH);
 		const when = parseMySQLDateTimeUtc(c.published_at ?? c.created_at);
 		const parts = [`${PLATFORM_EMOJI[c.platform]} **${name}**`, c.url ? `[${title}](${c.url})` : title, typeLabels.get(c.type) ?? c.type];
-		if (when) parts.push(`<t:${Math.floor(when.getTime() / 1000)}:R>`);
+		if (when) {
+			parts.push(`<t:${Math.floor(when.getTime() / SECOND_MS)}:R>`);
+		}
 		return `**${index + 1}.** ${parts.join(' · ')}`;
 	});
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('creatorAlerts.recent.title', guildId, userId))
-		.setDescription(lines.length > 0 ? lines.join('\n').slice(0, 4000) : await translate('creatorAlerts.recent.empty', guildId, userId))
+		.setTitle(await translate('creatorAlerts.recent.title', { guildId, userId }))
+		.setDescription(
+			lines.length > 0 ? lines.join('\n').slice(0, RECENT_DESCRIPTION_MAX_LENGTH) : await translate('creatorAlerts.recent.empty', { guildId, userId })
+		)
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 
 	const rows = [
-		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', guildId, userId), menuOrigin(interaction.customId)))
+		new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton(await translate('menu.back', { guildId, userId }), menuOrigin(interaction.customId)))
 	];
-	await respondEphemeral(interaction, { embeds: [embed], components: rows }, true);
+	await respondEphemeral(interaction, { embeds: [embed], components: rows });
 }

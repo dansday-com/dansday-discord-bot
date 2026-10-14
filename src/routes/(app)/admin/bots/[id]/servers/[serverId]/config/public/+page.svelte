@@ -14,7 +14,7 @@
 
 	let { data }: PageProps = $props();
 
-	let saving = $state(false);
+	let isSaving = $state(false);
 	let itemsEnabled = $state(data.settings?.items_enabled !== false);
 	let minigamesEnabled = $state(data.settings?.minigames_enabled !== false);
 	let marketEnabled = $state(data.settings?.market_enabled !== false);
@@ -27,13 +27,15 @@
 	let inviteAccent = $state<string>(normalizeAccent(data.settings?.invite_theme_accent) ?? DEFAULT_ACCENT);
 	let inviteEffect = $state<string>(normalizeEffect(data.settings?.invite_theme_effect));
 	let inviteEffectSeed = $state<number>(normalizeSeed(data.settings?.invite_theme_effect_seed));
-	let uploadingBackground = $state(false);
+	let isUploadingBackground = $state(false);
 
 	const effectOptions = [{ value: 'none', label: 'No effect' }, ...EFFECTS.map((e) => ({ value: e.id, label: e.label }))];
 
 	let lastEffect = inviteEffect;
 	$effect(() => {
-		if (inviteEffect === lastEffect) return;
+		if (inviteEffect === lastEffect) {
+			return;
+		}
 		lastEffect = inviteEffect;
 		inviteEffectSeed = randomSeed();
 	});
@@ -42,7 +44,9 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const picked = input.files?.[0];
 		input.value = '';
-		if (!picked) return;
+		if (!picked) {
+			return;
+		}
 		if (!imageExtension(picked.type)) {
 			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
 			return;
@@ -51,7 +55,7 @@
 			showToast(`That image is ${imageSizeLabel(picked.size)}. Pick one under ${imageSizeLabel(MEMBER_THEME_MAX_BYTES)}.`, 'error');
 			return;
 		}
-		uploadingBackground = true;
+		isUploadingBackground = true;
 		try {
 			const prepared = await prepareThemeUpload(picked);
 			if (prepared.file.size > MEMBER_THEME_MAX_BYTES) {
@@ -69,11 +73,13 @@
 			}
 			inviteImageKey = out.key ?? inviteImageKey;
 			inviteImageUrl = out.image ?? null;
-			if (out.accent) inviteAccent = out.accent;
+			if (out.accent) {
+				inviteAccent = out.accent;
+			}
 			showToast('Background saved', 'success');
 			invalidateAll();
 		} finally {
-			uploadingBackground = false;
+			isUploadingBackground = false;
 		}
 	}
 
@@ -93,7 +99,7 @@
 	const publicStatsUrl = $derived(data.publicStatsPath ? `${page.url.origin}${data.publicStatsPath}` : '');
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const base = data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings) ? { ...data.settings } : {};
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
@@ -120,9 +126,11 @@
 			if (d.success) {
 				showToast('Saved', 'success');
 				invalidateAll();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 </script>
@@ -206,8 +214,8 @@
 						</div>
 						<div class="flex flex-wrap gap-2">
 							<label class="bg-ash-600 hover:bg-ash-500 text-ash-100 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-								<i class="fas {uploadingBackground ? 'fa-spinner fa-spin' : 'fa-upload'} mr-1"></i>{inviteImageUrl ? 'Change image' : 'Upload image'}
-								<input type="file" accept={IMAGE_ACCEPT} class="hidden" disabled={uploadingBackground} onchange={uploadBackground} />
+								<i class="fas {isUploadingBackground ? 'fa-spinner fa-spin' : 'fa-upload'} mr-1"></i>{inviteImageUrl ? 'Change image' : 'Upload image'}
+								<input type="file" accept={IMAGE_ACCEPT} class="hidden" disabled={isUploadingBackground} onchange={uploadBackground} />
 							</label>
 							{#if inviteImageUrl}
 								<button
@@ -302,10 +310,10 @@
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

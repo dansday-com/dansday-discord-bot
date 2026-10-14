@@ -9,21 +9,25 @@ const STILL_EFFORT = 5;
 const ANIMATED_EFFORT = 4;
 
 export async function themeImageToWebp(data: Buffer, extension: ImageFormat): Promise<ConvertedImage> {
-	const animated = extension === 'gif';
+	const isAnimated = extension === 'gif';
 
 	try {
 		const sharp = (await import('sharp')).default;
-		const pipeline = sharp(data, animated ? { animated: true } : {}).rotate();
+		const pipeline = sharp(data, isAnimated ? { animated: true } : {}).rotate();
 
-		const maxEdge = animated ? ANIMATED_MAX_EDGE : STILL_MAX_EDGE;
+		const maxEdge = isAnimated ? ANIMATED_MAX_EDGE : STILL_MAX_EDGE;
 		pipeline.resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true });
 
 		const encoded = await pipeline
-			.webp(animated ? { quality: QUALITY, effort: ANIMATED_EFFORT, loop: 0 } : { quality: QUALITY, effort: STILL_EFFORT })
+			.webp(isAnimated ? { quality: QUALITY, effort: ANIMATED_EFFORT, loop: 0 } : { quality: QUALITY, effort: STILL_EFFORT })
 			.toBuffer();
 
-		if (encoded.length >= data.length && extension === 'webp') return { data, extension };
-		if (encoded.length >= data.length && animated) return { data, extension };
+		if (encoded.length >= data.length && extension === 'webp') {
+			return { data, extension };
+		}
+		if (encoded.length >= data.length && isAnimated) {
+			return { data, extension };
+		}
 		return { data: encoded, extension: 'webp' };
 	} catch {
 		return { data, extension };

@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { quintOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { tapping } from './clock.svelte.js';
+	import { PRESS_MS, tapping } from './clock.svelte.js';
 	import Tap from './Tap.svelte';
 	import type { SceneButton, SceneRow, SceneSelect } from './types.js';
 
 	let { rows, t = 0, still = false }: { rows: SceneRow[]; t?: number; still?: boolean } = $props();
+
+	const MENU_CLOSE_DELAY_MS = 180;
+	const MENU_FLY_MS = 180;
+	const HOVER_LEAD_MS = 520;
 
 	const TONES: Record<NonNullable<SceneButton['tone']>, string> = {
 		grey: '#4e5058',
@@ -14,10 +18,10 @@
 		red: '#da373c'
 	};
 
-	const pressed = (b: SceneButton) => b.pressAt !== undefined && t >= b.pressAt && t < b.pressAt + 220;
-	const isOpen = (s: SceneSelect) => s.openAt !== undefined && t >= s.openAt && (s.pickAt === undefined || t < s.pickAt + 180);
+	const pressed = (b: SceneButton) => b.pressAt !== undefined && t >= b.pressAt && t < b.pressAt + PRESS_MS;
+	const isOpen = (s: SceneSelect) => s.openAt !== undefined && t >= s.openAt && (s.pickAt === undefined || t < s.pickAt + MENU_CLOSE_DELAY_MS);
 	const chosen = (s: SceneSelect) => (s.pickAt !== undefined && t >= s.pickAt ? s.pick : s.selected);
-	const hovered = (s: SceneSelect, i: number) => i === s.pick && s.pickAt !== undefined && t >= s.pickAt - 520;
+	const hovered = (s: SceneSelect, i: number) => i === s.pick && s.pickAt !== undefined && t >= s.pickAt - HOVER_LEAD_MS;
 </script>
 
 {#each rows as row, r (r)}
@@ -57,7 +61,7 @@
 			{#if open}
 				<ul
 					class="bg-ash-800 border-ash-950 absolute right-0 bottom-full left-0 z-10 mb-1 overflow-hidden rounded-[4px] border py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
-					transition:fly={{ y: 6, duration: still ? 0 : 180, easing: quintOut }}
+					transition:fly={{ y: 6, duration: still ? 0 : MENU_FLY_MS, easing: quintOut }}
 				>
 					{#each row.options as option, i (option.label)}
 						<li

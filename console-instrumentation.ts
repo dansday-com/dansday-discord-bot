@@ -17,20 +17,28 @@ function isPlainRecord(v: unknown): v is Record<string, unknown> {
 }
 
 function toAttributeValue(v: unknown): string | number | boolean {
-	if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
-	if (v == null) return '';
+	if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+		return v;
+	}
+	if (v == null) {
+		return '';
+	}
 	return JSON.stringify(v);
 }
 
 function attributesFromConsoleArgs(args: unknown[]): Record<string, string | number | boolean> {
 	if (args.length >= 2 && typeof args[0] === 'string' && isPlainRecord(args[1])) {
 		const attrs: Record<string, string | number | boolean> = { tag: args[0] };
-		for (const [k, v] of Object.entries(args[1])) attrs[k] = toAttributeValue(v);
+		for (const [k, v] of Object.entries(args[1])) {
+			attrs[k] = toAttributeValue(v);
+		}
 		return attrs;
 	}
 	if (args.length === 1 && isPlainRecord(args[0])) {
 		const attrs: Record<string, string | number | boolean> = {};
-		for (const [k, v] of Object.entries(args[0])) attrs[k] = toAttributeValue(v);
+		for (const [k, v] of Object.entries(args[0])) {
+			attrs[k] = toAttributeValue(v);
+		}
 		return attrs;
 	}
 	if (args.length >= 1 && typeof args[0] === 'string' && /^\[.+\]$/.test(args[0])) {

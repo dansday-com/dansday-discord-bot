@@ -9,7 +9,9 @@ export function questTaskName(tr: Translator, taskKey: string): string {
 
 export function questRewardText(tr: Translator, line: unknown): string {
 	const parts = parseQuestRewardLine(line);
-	if (parts.length === 0) return tr('questEnroll.reward.fallback');
+	if (parts.length === 0) {
+		return tr('questEnroll.reward.fallback');
+	}
 	return parts.map((p) => (p.kind === 'currency' ? tr('questEnroll.reward.currency', { count: p.quantity }) : p.name)).join(' · ');
 }
 

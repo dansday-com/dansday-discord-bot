@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatElapsed, SECOND_MS } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
@@ -30,7 +31,7 @@
 
 	const canControlSelfbot = $derived(data.user.authenticated && data.user.account_source === 'accounts');
 
-	let liveOverride: { status: string; process_id: number | null } | null = $state(null);
+	let liveOverride: { status: string | null; process_id: number | null } | null = $state(null);
 	const liveBot = $derived(liveOverride ?? { status: data.bot.status, process_id: data.bot.process_id ?? null });
 
 	let uptimeBase = $state(0);
@@ -41,11 +42,13 @@
 	const displayUptime = $derived(liveBot.status === 'running' ? uptimeBase + uptimeTick : 0);
 
 	function startTick() {
-		if (tickInterval) return;
+		if (tickInterval) {
+			return;
+		}
 		const base = Date.now();
 		tickInterval = setInterval(() => {
 			uptimeTick = Date.now() - base;
-		}, 1000);
+		}, SECOND_MS);
 	}
 
 	function stopTick() {
@@ -56,29 +59,27 @@
 		uptimeTick = 0;
 	}
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
-	function statusTextColor(status: string) {
-		if (status === 'running') return 'text-green-400';
-		if (status === 'starting' || status === 'stopping') return 'text-yellow-400';
+	function statusTextColor(status: string | null) {
+		if (status === 'running') {
+			return 'text-green-400';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'text-yellow-400';
+		}
 		return 'text-ash-400';
 	}
 
-	function formatUptime(ms: number): string {
-		if (!ms) return '—';
-		const s = Math.floor(ms / 1000);
-		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
-		return `${s}s`;
-	}
+	const formatUptime = (ms: number) => formatElapsed(ms, '—');
 
 	onMount(() => {
 		liveOverride = { status: data.bot.status, process_id: data.bot.process_id ?? null };
@@ -90,7 +91,9 @@
 		const myEs = new EventSource(`/api/selfbots/${data.bot.id}/stream`);
 		es = myEs;
 		myEs.onmessage = (e) => {
-			if (es !== myEs) return;
+			if (es !== myEs) {
+				return;
+			}
 			const d = JSON.parse(e.data);
 			liveOverride = {
 				status: d.status ?? 'stopped',
@@ -112,11 +115,11 @@
 		stopTick();
 	});
 
-	let showDeleteConfirm = $state(false);
-	let deleting = $state(false);
+	let isDeleteConfirmShown = $state(false);
+	let isDeleting = $state(false);
 
 	async function deleteSelfbot() {
-		deleting = true;
+		isDeleting = true;
 		try {
 			const res = await fetch(`/api/panel/selfbots`, {
 				method: 'DELETE',
@@ -132,8 +135,8 @@
 				showToast(d.error || 'Failed to delete', 'error');
 			}
 		} finally {
-			deleting = false;
-			showDeleteConfirm = false;
+			isDeleting = false;
+			isDeleteConfirmShown = false;
 		}
 	}
 
@@ -148,14 +151,14 @@
 	}
 
 	let presence = $state(presenceFromServer(data.selfbotPresence));
-	let savingPresence = $state(false);
+	let isSavingPresence = $state(false);
 
 	$effect(() => {
 		presence = presenceFromServer(data.selfbotPresence);
 	});
 
 	async function savePresence() {
-		savingPresence = true;
+		isSavingPresence = true;
 		try {
 			const urlStr = typeof presence.activity_url === 'string' ? presence.activity_url.trim() : '';
 			const stateStr = typeof presence.activity_state === 'string' ? presence.activity_state.trim() : '';
@@ -180,7 +183,7 @@
 			showToast('Discord presence saved', 'success');
 			await invalidateAll();
 		} finally {
-			savingPresence = false;
+			isSavingPresence = false;
 		}
 	}
 </script>
@@ -214,7 +217,7 @@
 			{#if canControlSelfbot}
 				<div class="flex shrink-0 flex-wrap items-center gap-2">
 					<button
-						onclick={() => (showDeleteConfirm = true)}
+						onclick={() => (isDeleteConfirmShown = true)}
 						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 					>
 						<i class="fas fa-trash text-sm text-red-300 sm:text-base"></i>
@@ -341,10 +344,10 @@
 				<button
 					type="button"
 					onclick={savePresence}
-					disabled={savingPresence}
+					disabled={isSavingPresence}
 					class="text-ash-100 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{#if savingPresence}
+					{#if isSavingPresence}
 						<i class="fas fa-spinner fa-spin mr-2"></i>Saving…
 					{:else}
 						<i class="fas fa-save mr-2"></i>Save presence
@@ -358,12 +361,12 @@
 </div>
 
 <ConfirmModal
-	open={showDeleteConfirm}
+	open={isDeleteConfirmShown}
 	title="Delete Selfbot"
 	message="Delete &quot;{data.bot.name || `Selfbot #${data.bot.id}`}&quot;? This cannot be undone."
 	confirmLabel="Delete"
 	dangerous
-	loading={deleting}
+	loading={isDeleting}
 	onconfirm={deleteSelfbot}
-	oncancel={() => (showDeleteConfirm = false)}
+	oncancel={() => (isDeleteConfirmShown = false)}
 />

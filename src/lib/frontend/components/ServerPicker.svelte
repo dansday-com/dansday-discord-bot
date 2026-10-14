@@ -18,14 +18,16 @@
 
 	let { servers, value, placeholder = 'Select server...', emptyText = 'No servers found', onchange }: Props = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
 
 	const selected = $derived(servers.find((s) => String(s.discord_server_id) === String(value)));
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return servers;
+		if (!q) {
+			return servers;
+		}
 		return servers.filter((s) => s.name?.toLowerCase().includes(q) || String(s.discord_server_id).includes(q));
 	});
 
@@ -34,12 +36,12 @@
 	}
 
 	function openModal() {
-		open = true;
+		isOpen = true;
 		search = '';
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -71,7 +73,7 @@
 	<i class="{SERVER_PICKER_ACCENT.chevron} ml-2 shrink-0"></i>
 </button>
 
-{#if open}
+{#if isOpen}
 	<div use:scrollLocked class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"

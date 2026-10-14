@@ -17,7 +17,9 @@
 	]);
 
 	function isActive(href: string) {
-		if (href === ADMIN_TAB_PATHS.globalMessages) return page.url.pathname.startsWith(href);
+		if (href === ADMIN_TAB_PATHS.globalMessages) {
+			return page.url.pathname.startsWith(href);
+		}
 		return page.url.pathname === href;
 	}
 </script>

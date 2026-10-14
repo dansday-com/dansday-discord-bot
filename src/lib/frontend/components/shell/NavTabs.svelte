@@ -2,6 +2,9 @@
 	import { sfx } from '../../sfx';
 	import type { NavTab } from './types';
 
+	const MIN_NUDGE_PX = 160;
+	const NUDGE_VIEW_SHARE = 0.7;
+
 	let {
 		tabs,
 		variant = 'pill',
@@ -22,15 +25,19 @@
 
 	function update() {
 		const el = strip;
-		if (!el) return;
+		if (!el) {
+			return;
+		}
 		canLeft = el.scrollLeft > 1;
 		canRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
 	}
 
 	function nudge(dir: -1 | 1) {
 		const el = strip;
-		if (!el) return;
-		el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: 'smooth' });
+		if (!el) {
+			return;
+		}
+		el.scrollBy({ left: dir * Math.max(MIN_NUDGE_PX, el.clientWidth * NUDGE_VIEW_SHARE), behavior: 'smooth' });
 	}
 
 	$effect(() => {
@@ -59,7 +66,7 @@
 	<div
 		bind:this={strip}
 		onscroll={update}
-		class="flex overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {variant === 'segment'
+		class="flex [scrollbar-width:none] overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden {variant === 'segment'
 			? 'border-base-300 bg-base-200 min-w-0 flex-auto gap-[3px] rounded-xl border p-[3px]'
 			: 'gap-2'}"
 	>
@@ -68,7 +75,7 @@
 				href={tab.href}
 				data-tab-id={tab.id}
 				data-sveltekit-preload-data="hover"
-				onpointerenter={(e) => sound && !tab.active && e.pointerType === 'mouse' && sfx.detent(i, variant !== 'segment')}
+				onpointerenter={(e) => sound && !tab.active && e.pointerType === 'mouse' && (variant !== 'segment' ? sfx.highDetent(i) : sfx.detent(i))}
 				onclick={() => sound && !tab.active && sfx.select()}
 				class="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap {variant === 'segment'
 					? 'flex-[1_0_auto] justify-center rounded-lg px-3 py-2 text-[13px] font-semibold'

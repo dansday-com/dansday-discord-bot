@@ -54,14 +54,16 @@
 
 	const mergedButtonText = $derived(`${selectTextClass[appearance]} ${selectClass}`.trim());
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
 
 	const displayLabel = $derived(options.find((o) => o.value === value)?.label ?? (value !== '' ? value : (options[0]?.label ?? 'Select…')));
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return options;
+		if (!q) {
+			return options;
+		}
 		return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
 	});
 
@@ -70,13 +72,15 @@
 	const titleId = $derived(id ? `${id}-labeled-picker-title` : undefined);
 
 	function openModal() {
-		if (disabled || options.length === 0) return;
+		if (disabled || options.length === 0) {
+			return;
+		}
 		search = '';
-		open = true;
+		isOpen = true;
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -86,16 +90,22 @@
 	}
 
 	$effect(() => {
-		if (!open) return;
+		if (!isOpen) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') close();
+			if (e.key === 'Escape') {
+				close();
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
 	$effect(() => {
-		if (disabled) open = false;
+		if (disabled) {
+			isOpen = false;
+		}
 	});
 </script>
 
@@ -115,7 +125,7 @@
 				onclick={openModal}
 				class="text-ash-100 min-w-0 flex-1 cursor-pointer truncate text-left focus:outline-none disabled:cursor-not-allowed {mergedButtonText}"
 				aria-haspopup="dialog"
-				aria-expanded={open}
+				aria-expanded={isOpen}
 				aria-label={ariaLabel ?? label}
 			>
 				{displayLabel}
@@ -132,7 +142,7 @@
 			onclick={openModal}
 			class="text-ash-100 min-w-0 flex-1 cursor-pointer truncate text-left focus:outline-none disabled:cursor-not-allowed {mergedButtonText}"
 			aria-haspopup="dialog"
-			aria-expanded={open}
+			aria-expanded={isOpen}
 			aria-label={ariaLabel ?? 'Select'}
 		>
 			{displayLabel}
@@ -141,7 +151,7 @@
 	</div>
 {/if}
 
-{#if open}
+{#if isOpen}
 	<div
 		use:scrollLocked
 		class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"

@@ -6,15 +6,32 @@ import { computePublicServerSlugForServerConfig } from '$lib/backend/public/serv
 import { publicServerPath, publicServerSubdomainUrl, publicSiteOrigin } from '$lib/url.js';
 import { inviteJoinPath } from '$lib/invites.js';
 import { serverThemeUrl } from '$lib/backend/storage/serverThemes.js';
+import { HTTP } from '$lib/http.js';
+
+type PublicSettings = {
+	items_enabled?: boolean;
+	minigames_enabled?: boolean;
+	market_enabled?: boolean;
+	tasks_enabled?: boolean;
+	invite_enabled?: boolean;
+	ITEMS_CHANNEL_ID?: string;
+	MINIGAMES_CHANNEL_ID?: string;
+	invite_theme_image?: string | null;
+	invite_theme_accent?: string | null;
+	invite_theme_effect?: string | null;
+	invite_theme_effect_seed?: number | null;
+};
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(HTTP.FOUND, '/login');
+	}
 
 	const parentData = await parent();
-	const overview: any = (parentData as any).overview;
+	const { overview } = parentData;
 
 	const settingsRow = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.public).catch(() => null);
-	const settings = (settingsRow as any)?.settings || {};
+	const settings = (settingsRow?.settings || {}) as PublicSettings;
 
 	const slug = await computePublicServerSlugForServerConfig(Number(params.serverId), overview?.name ?? null);
 

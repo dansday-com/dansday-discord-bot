@@ -1,4 +1,7 @@
 import { BRAND_PRIMARY } from './brand.js';
+import { fnv1a, mulberry32 } from './utils/random.js';
+
+const FAMILY_SALT_RANGE = 2000000000;
 
 export const EFFECT_FAMILIES = [
 	'none',
@@ -153,12 +156,12 @@ export const EFFECTS: EffectMeta[] = [
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
 
-export function normalizeEffect(id: any): EffectFamily {
+export function normalizeEffect(id: unknown): EffectFamily {
 	const value = String(id ?? '').toLowerCase();
 	return (EFFECT_FAMILIES as readonly string[]).includes(value) ? (value as EffectFamily) : 'none';
 }
 
-export function effectMeta(id: any): EffectMeta | undefined {
+export function effectMeta(id: number | string): EffectMeta | undefined {
 	return BY_ID.get(normalizeEffect(id));
 }
 
@@ -169,9 +172,11 @@ export const SPINNABLE_EFFECTS = EFFECT_FAMILIES.filter((id) => id !== 'none');
 
 export const SEED_RANGE = 100000;
 
-export function normalizeSeed(seed: any): number {
+export function normalizeSeed(seed: unknown): number {
 	const value = Math.trunc(Number(seed));
-	if (!Number.isFinite(value)) return 0;
+	if (!Number.isFinite(value)) {
+		return 0;
+	}
 	return ((value % SEED_RANGE) + SEED_RANGE) % SEED_RANGE;
 }
 
@@ -184,29 +189,14 @@ export function rollEffect(): { effect: EffectFamily; seed: number } {
 	return { effect, seed: randomSeed() };
 }
 
-function parseHex(value: any): string {
+function parseHex(value: unknown): string {
 	const raw = String(value ?? '').trim();
 	const withHash = raw.startsWith('#') ? raw : `#${raw}`;
 	return /^#[0-9a-f]{6}$/i.test(withHash) ? withHash.toLowerCase() : BRAND_PRIMARY;
 }
 
-export function mulberry32(seed: number) {
-	let a = seed >>> 0;
-	return () => {
-		a = (a + 0x6d2b79f5) >>> 0;
-		let t = Math.imul(a ^ (a >>> 15), 1 | a);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
-}
-
 export function familySalt(id: string): number {
-	let h = 0x811c9dc5;
-	for (let i = 0; i < id.length; i++) {
-		h ^= id.charCodeAt(i);
-		h = Math.imul(h, 0x01000193);
-	}
-	return (h >>> 0) % 2000000000;
+	return fnv1a(id) % FAMILY_SALT_RANGE;
 }
 
 function hexToHsl(hex: string): [number, number, number] {
@@ -216,17 +206,25 @@ function hexToHsl(hex: string): [number, number, number] {
 	const max = Math.max(r, g, b);
 	const min = Math.min(r, g, b);
 	const l = (max + min) / 2;
-	if (max === min) return [0, 0, l * 100];
+	if (max === min) {
+		return [0, 0, l * 100];
+	}
 	const d = max - min;
 	const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
 	let h = 0;
-	if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-	else if (max === g) h = ((b - r) / d + 2) / 6;
-	else h = ((r - g) / d + 4) / 6;
+	if (max === r) {
+		h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+	} else if (max === g) {
+		h = ((b - r) / d + 2) / 6;
+	} else {
+		h = ((r - g) / d + 4) / 6;
+	}
 	return [h * 360, s * 100, l * 100];
 }
 
-function hsla(h: number, s: number, l: number, a: number): string {
+type Hsl = { h: number; s: number; l: number };
+
+function hsla({ h, s, l }: Hsl, a: number): string {
 	const hue = Math.round(((h % 360) + 360) % 360);
 	const sat = Math.round(Math.max(0, Math.min(100, s)));
 	const lig = Math.round(Math.max(0, Math.min(100, l)));
@@ -387,20 +385,24 @@ const PALETTE: Record<string, [string, string]> = {
 	crown: ['#ff9ecb', '#ffe9c9']
 };
 
-export function effectPalette(family: any, accent: any): [string, string] {
+export function effectPalette(family: unknown, accent: unknown): [string, string] {
 	const id = normalizeEffect(family);
 	const pair = PALETTE[id];
-	if (pair) return pair;
+	if (pair) {
+		return pair;
+	}
 	const hex = parseHex(accent);
 	return [hex, hex];
 }
 
 export type EffectVariant = { family: EffectFamily; seed: number; style: string };
 
-export function effectVariant(family: any, seed: any, accent: any): EffectVariant {
+export function effectVariant(family: unknown, seed: unknown, accent: unknown): EffectVariant {
 	const id = normalizeEffect(family);
 	const s = normalizeSeed(seed);
-	if (id === 'none') return { family: 'none', seed: s, style: '' };
+	if (id === 'none') {
+		return { family: 'none', seed: s, style: '' };
+	}
 
 	const rand = mulberry32(s + familySalt(id));
 	const pick = (range: [number, number]) => range[0] + rand() * (range[1] - range[0]);
@@ -438,8 +440,8 @@ export function effectVariant(family: any, seed: any, accent: any): EffectVarian
 		'--fx-wind': `${windRatio.toFixed(2)}`,
 		'--fx-wind-rot': `${windRot}deg`,
 		'--fx-sway': `${Math.round(8 + rand() * 26)}px`,
-		'--fx-color': hsla(c1[0] + jitter, c1[1], c1[2], 1),
-		'--fx-color-2': hsla(c2[0] + jitter, c2[1], c2[2], 1)
+		'--fx-color': hsla({ h: c1[0] + jitter, s: c1[1], l: c1[2] }, 1),
+		'--fx-color-2': hsla({ h: c2[0] + jitter, s: c2[1], l: c2[2] }, 1)
 	};
 
 	return {

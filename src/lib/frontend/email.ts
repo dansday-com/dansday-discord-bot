@@ -8,9 +8,15 @@ function getTransporter() {
 
 	if (!host || !username || !password) {
 		const missing = [];
-		if (!host) missing.push('MAIL_HOST');
-		if (!username) missing.push('MAIL_USERNAME');
-		if (!password) missing.push('MAIL_PASSWORD');
+		if (!host) {
+			missing.push('MAIL_HOST');
+		}
+		if (!username) {
+			missing.push('MAIL_USERNAME');
+		}
+		if (!password) {
+			missing.push('MAIL_PASSWORD');
+		}
 		throw new Error(`Missing email configuration: ${missing.join(', ')}. Please set these in your .env file.`);
 	}
 
@@ -18,8 +24,9 @@ function getTransporter() {
 		host,
 		port,
 		secure: false,
+		requireTLS: true,
 		auth: { user: username, pass: password },
-		tls: { rejectUnauthorized: false, requireTLS: true, ciphers: 'SSLv3' }
+		tls: { rejectUnauthorized: false, ciphers: 'SSLv3' }
 	});
 }
 
@@ -65,7 +72,9 @@ const baseStyles = `
     .footer a { color: var(--link); text-decoration: none; }
 `;
 
-function emailLayout(title: string, accentColor: string, bodyContent: string, year: number) {
+type LayoutBody = { accentColor: string; bodyContent: string; year: number };
+
+function emailLayout(title: string, { accentColor, bodyContent, year }: LayoutBody) {
 	return `
         <!DOCTYPE html>
         <html lang="en">
@@ -122,14 +131,14 @@ export async function sendAccountFrozenEmail(email: string, username: string) {
 		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout(subject, '#f59e0b', body, year)
+		html: emailLayout(subject, { accentColor: '#f59e0b', bodyContent: body, year })
 	};
 
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
+	} catch (error) {
+		throw new Error(`Failed to send email: ${(error as Error).message}`);
 	}
 }
 
@@ -154,14 +163,14 @@ export async function sendAccountUnfrozenEmail(email: string, username: string) 
 		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout(subject, '#34d399', body, year)
+		html: emailLayout(subject, { accentColor: '#34d399', bodyContent: body, year })
 	};
 
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
+	} catch (error) {
+		throw new Error(`Failed to send email: ${(error as Error).message}`);
 	}
 }
 
@@ -186,14 +195,14 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
 		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout(subject, '#f87171', body, year)
+		html: emailLayout(subject, { accentColor: '#f87171', bodyContent: body, year })
 	};
 
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
+	} catch (error) {
+		throw new Error(`Failed to send email: ${(error as Error).message}`);
 	}
 }
 

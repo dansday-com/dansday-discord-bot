@@ -29,7 +29,9 @@ export function normalizeServerLanguage(value: unknown): ServerLanguage {
 
 export function serverLanguageLabel(code: unknown): string {
 	const language = SERVER_LANGUAGES.find((l) => l.code === code);
-	if (!language) return String(code ?? '');
+	if (!language) {
+		return String(code ?? '');
+	}
 	return language.name === language.englishName ? language.name : `${language.name} (${language.englishName})`;
 }
 
@@ -38,7 +40,9 @@ export function serverLanguageEnglishName(code: unknown): string {
 }
 
 export function serverLanguageFromDiscordLocale(locale: unknown): ServerLanguage | null {
-	if (typeof locale !== 'string') return null;
+	if (typeof locale !== 'string') {
+		return null;
+	}
 	return SERVER_LANGUAGES.find((l) => (l.discordLocales as readonly string[]).includes(locale))?.code ?? null;
 }
 

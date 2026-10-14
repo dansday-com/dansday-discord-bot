@@ -39,10 +39,14 @@ export function isBotSectionPath(pathname: string): boolean {
 
 export function parentPathname(pathname: string): string {
 	const p = pathname.replace(/\/+$/, '') || '/';
-	if (p === '/') return '/';
+	if (p === '/') {
+		return '/';
+	}
 	const i = p.lastIndexOf('/');
 	const out = i <= 0 ? '/' : p.slice(0, i);
-	if (out === BOTS_ROOT || out === ADMIN_BASE) return '/';
+	if (out === BOTS_ROOT || out === ADMIN_BASE) {
+		return '/';
+	}
 	return out;
 }
 
@@ -57,6 +61,8 @@ export function webRouteUp(pathname: string): string {
 
 export function webBotHome(pathname: string): string {
 	const m = pathname.match(BOT_ID_RE);
-	if (m) return adminBotPath(m[1]);
+	if (m) {
+		return adminBotPath(m[1]);
+	}
 	return webRouteUp(pathname);
 }

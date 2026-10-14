@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ISO_MINUTE_LENGTH } from '$lib/utils/datetime.js';
+	import { memberDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -7,41 +9,77 @@
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
-	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect, getItemEffect, effectDefaultCost } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect, getItemEffect, effectDefaultCost, type ItemConfig, type ItemSchedule } from '$lib/items.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
+
+	const GIFT_SEARCH_DEBOUNCE_MS = 300;
 
 	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
 
-	const ALL_DEFAULT_CFG: Record<string, any> = Object.assign({}, ...ITEM_EFFECTS.map((e) => e.defaultConfig));
+	type AdminItem = {
+		id: number;
+		name: string;
+		effect_type: string;
+		description: string | null;
+		cost: number;
+		enabled: boolean;
+		usable: boolean;
+		available_from: string | null;
+		available_to: string | null;
+		recurring_schedule: ItemSchedule | string | null;
+		config: ItemConfig | string | null;
+	};
 
-	function toLocalInput(value: any): string {
-		if (!value) return '';
+	type ItemFormConfig = ItemConfig & { scope?: string; recur_days: number[]; recur_from: string; recur_to: string };
+
+	type GiftMember = {
+		id: number;
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		server_id: number;
+		server_name: string | null;
+		inventory_total: number;
+	};
+
+	const ALL_DEFAULT_CFG: ItemConfig = Object.assign({}, ...ITEM_EFFECTS.map((e) => e.defaultConfig));
+
+	function toLocalInput(value: unknown): string {
+		if (!value) {
+			return '';
+		}
 		const m = String(value).match(/(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
 		return m ? `${m[1]}T${m[2]}` : '';
 	}
 
 	function fromLocalInput(value: string): string | null {
-		if (!value) return null;
-		return `${value.slice(0, 16).replace('T', ' ')}:00`;
+		if (!value) {
+			return null;
+		}
+		return `${value.slice(0, ISO_MINUTE_LENGTH).replace('T', ' ')}:00`;
 	}
 
-	let items = $state<any[]>([]);
-	let loading = $state(true);
-	let saving = $state(false);
+	let items = $state<AdminItem[]>([]);
+	let isLoading = $state(true);
+	let isSaving = $state(false);
 
 	const adminGroups = $derived.by(() => {
-		const byCost = (a: any, b: any) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
-		const out: { key: string; label: string; icon: string; items: any[] }[] = [];
+		const byCost = (a: Record<string, unknown>, b: Record<string, unknown>) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
+		const out: { key: string; label: string; icon: string; items: AdminItem[] }[] = [];
 		for (const eff of ITEM_EFFECTS) {
 			const groupItems = items.filter((i) => i.effect_type === eff.id).sort(byCost);
-			if (groupItems.length > 0) out.push({ key: eff.id, label: eff.label, icon: eff.icon, items: groupItems });
+			if (groupItems.length > 0) {
+				out.push({ key: eff.id, label: eff.label, icon: eff.icon, items: groupItems });
+			}
 		}
 		return out;
 	});
 
-	let editing = $state<any | null>(null);
-	let confirmDelete = $state<any | null>(null);
-	let deleting = $state(false);
+	let editing = $state<{ mode: 'create' | 'edit' } | null>(null);
+	let confirmDelete = $state<AdminItem | null>(null);
+	let isDeleting = $state(false);
 
 	function blankForm() {
 		return {
@@ -59,21 +97,24 @@
 				recur_days: [] as number[],
 				recur_from: '',
 				recur_to: ''
-			} as Record<string, any>
+			} as ItemFormConfig
 		};
 	}
 
 	let form = $state(blankForm());
 
 	async function loadItems() {
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch('/api/admin/items', { credentials: 'include' });
 			const d = await res.json();
-			if (d.success) items = d.items ?? [];
-			else showToast(d.error || 'Failed to load', 'error');
+			if (d.success) {
+				items = d.items ?? [];
+			} else {
+				showToast(d.error || 'Failed to load', 'error');
+			}
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
@@ -83,9 +124,9 @@
 	});
 
 	function buildConfig() {
-		const c = form.cfg as Record<string, any>;
+		const c = form.cfg as Record<string, unknown>;
 		const defaults = getItemEffect(form.effect_type)?.defaultConfig ?? {};
-		const config: Record<string, any> = {};
+		const config: Record<string, unknown> = {};
 		for (const [key, def] of Object.entries(defaults)) {
 			config[key] = typeof def === 'number' ? Number(c[key]) : c[key];
 		}
@@ -100,8 +141,8 @@
 		editing = { mode: 'create' };
 	}
 
-	function startEdit(item: any) {
-		const cfg = typeof item.config === 'string' ? JSON.parse(item.config || '{}') : item.config || {};
+	function startEdit(item: AdminItem) {
+		const cfg: ItemConfig = typeof item.config === 'string' ? JSON.parse(item.config || '{}') : item.config || {};
 		const f = blankForm();
 		f.id = item.id;
 		f.name = item.name ?? '';
@@ -113,7 +154,7 @@
 		f.available_from = toLocalInput(item.available_from);
 		f.available_to = toLocalInput(item.available_to);
 		f.cfg = { ...f.cfg, ...cfg };
-		const recur = typeof item.recurring_schedule === 'string' ? JSON.parse(item.recurring_schedule || 'null') : item.recurring_schedule;
+		const recur: ItemSchedule | null = typeof item.recurring_schedule === 'string' ? JSON.parse(item.recurring_schedule || 'null') : item.recurring_schedule;
 		if (recur) {
 			f.cfg.recur_days = (recur.days ?? []).map(Number);
 			f.cfg.recur_from = recur.from ?? '';
@@ -124,12 +165,12 @@
 	}
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const config = buildConfig();
 			const recurringSchedule = config.recurring_schedule ?? null;
 			delete config.recurring_schedule;
-			const payload: any = {
+			const payload: Record<string, unknown> = {
 				name: form.name,
 				effect_type: form.effect_type,
 				description: form.description,
@@ -141,37 +182,31 @@
 				recurring_schedule: recurringSchedule,
 				config
 			};
-			let res;
 			if (form.id) {
 				payload.id = form.id;
-				res = await fetch('/api/admin/items', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					credentials: 'include',
-					body: JSON.stringify(payload)
-				});
-			} else {
-				res = await fetch('/api/admin/items', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					credentials: 'include',
-					body: JSON.stringify(payload)
-				});
 			}
+			const res = await fetch('/api/admin/items', {
+				method: form.id ? 'PUT' : 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify(payload)
+			});
 			const d = await res.json();
 			if (d.success) {
 				showToast('Saved', 'success');
 				editing = null;
 				await loadItems();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 
 	let togglingId = $state<number | null>(null);
 
-	async function toggleEnabled(item: any) {
+	async function toggleEnabled(item: AdminItem) {
 		const next = item.enabled === false;
 		togglingId = item.id;
 		item.enabled = next;
@@ -195,7 +230,7 @@
 		}
 	}
 
-	async function toggleUsable(item: any) {
+	async function toggleUsable(item: AdminItem) {
 		const next = item.usable === false;
 		togglingId = item.id;
 		item.usable = next;
@@ -221,8 +256,10 @@
 
 	async function remove() {
 		const item = confirmDelete;
-		if (!item) return;
-		deleting = true;
+		if (!item) {
+			return;
+		}
+		isDeleting = true;
 		try {
 			const res = await fetch('/api/admin/items', {
 				method: 'DELETE',
@@ -235,38 +272,46 @@
 				showToast('Deleted', 'success');
 				confirmDelete = null;
 				await loadItems();
-			} else showToast(d.error || 'Failed to delete', 'error');
+			} else {
+				showToast(d.error || 'Failed to delete', 'error');
+			}
 		} finally {
-			deleting = false;
+			isDeleting = false;
 		}
 	}
 
-	let giftItem = $state<any | null>(null);
+	let giftItem = $state<AdminItem | null>(null);
 	let giftSearch = $state('');
-	let giftMembers = $state<any[]>([]);
+	let giftMembers = $state<GiftMember[]>([]);
 	let giftLimit = $state(0);
-	let giftLoading = $state(false);
+	let isGiftLoading = $state(false);
 	let giftingMemberId = $state<number | null>(null);
 	let giftSearchTimer: ReturnType<typeof setTimeout> | null = null;
 	let giftRequestId = 0;
 
 	async function loadGiftMembers() {
 		const requestId = ++giftRequestId;
-		giftLoading = true;
+		isGiftLoading = true;
 		try {
 			const res = await fetch(`/api/admin/items/gift?q=${encodeURIComponent(giftSearch.trim())}`, { credentials: 'include' });
 			const d = await res.json();
-			if (requestId !== giftRequestId) return;
+			if (requestId !== giftRequestId) {
+				return;
+			}
 			if (d.success) {
 				giftMembers = d.members ?? [];
 				giftLimit = Number(d.limit) || 0;
-			} else showToast(d.error || 'Failed to load members', 'error');
+			} else {
+				showToast(d.error || 'Failed to load members', 'error');
+			}
 		} finally {
-			if (requestId === giftRequestId) giftLoading = false;
+			if (requestId === giftRequestId) {
+				isGiftLoading = false;
+			}
 		}
 	}
 
-	function startGift(item: any) {
+	function startGift(item: AdminItem) {
 		giftItem = item;
 		giftSearch = '';
 		giftMembers = [];
@@ -274,30 +319,36 @@
 	}
 
 	function onGiftSearchInput() {
-		if (giftSearchTimer) clearTimeout(giftSearchTimer);
-		giftSearchTimer = setTimeout(loadGiftMembers, 300);
+		if (giftSearchTimer) {
+			clearTimeout(giftSearchTimer);
+		}
+		giftSearchTimer = setTimeout(loadGiftMembers, GIFT_SEARCH_DEBOUNCE_MS);
 	}
 
 	const giftGroups = $derived.by(() => {
-		const groups = new Map<string, { server: string; members: any[] }>();
+		const groups = new Map<string, { server: string; members: GiftMember[] }>();
 		for (const m of giftMembers) {
 			const key = `${m.server_id}`;
-			if (!groups.has(key)) groups.set(key, { server: m.server_name || 'Unknown server', members: [] });
+			if (!groups.has(key)) {
+				groups.set(key, { server: m.server_name || 'Unknown server', members: [] });
+			}
 			groups.get(key)!.members.push(m);
 		}
 		return [...groups.values()];
 	});
 
-	function giftAvatar(m: any): string {
-		return m.avatar || `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
+	function giftAvatar(m: GiftMember): string {
+		return m.avatar || memberDefaultAvatarUrl(m.discord_member_id);
 	}
 
-	function giftMemberName(m: any): string {
+	function giftMemberName(m: GiftMember): string {
 		return m.server_display_name || m.display_name || m.username || 'Unknown';
 	}
 
-	async function giveTo(member: any) {
-		if (!giftItem) return;
+	async function giveTo(member: GiftMember) {
+		if (!giftItem) {
+			return;
+		}
 		giftingMemberId = member.id;
 		try {
 			const res = await fetch('/api/admin/items/gift', {
@@ -310,7 +361,9 @@
 			if (d.success) {
 				showToast(`Gave "${giftItem.name}" to ${giftMemberName(member)} (${member.server_name})`, 'success');
 				member.inventory_total = Number(member.inventory_total || 0) + 1;
-			} else showToast(d.error || 'Failed to give item', 'error');
+			} else {
+				showToast(d.error || 'Failed to give item', 'error');
+			}
 		} catch {
 			showToast('Failed to give item', 'error');
 		} finally {
@@ -319,9 +372,13 @@
 	}
 
 	$effect(() => {
-		if (!giftItem) return;
+		if (!giftItem) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') giftItem = null;
+			if (e.key === 'Escape') {
+				giftItem = null;
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
@@ -339,17 +396,24 @@
 
 	function toggleDay(v: number) {
 		const set = new Set<number>((form.cfg.recur_days ?? []).map(Number));
-		if (set.has(v)) set.delete(v);
-		else set.add(v);
+		if (set.has(v)) {
+			set.delete(v);
+		} else {
+			set.add(v);
+		}
 		form.cfg.recur_days = [...set].sort((a, b) => a - b);
 	}
 
 	const isTargeted = $derived(isTargetedEffect(form.effect_type));
 
 	$effect(() => {
-		if (!editing) return;
+		if (!editing) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') editing = null;
+			if (e.key === 'Escape') {
+				editing = null;
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
@@ -377,14 +441,14 @@
 		</button>
 	</div>
 
-	{#if loading}
+	{#if isLoading}
 		<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</p>
 	{:else if items.length === 0}
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-8 text-center">
 			<p class="text-ash-400 text-sm">No items yet. Click "Add Item" to create your first one.</p>
 		</div>
 	{:else}
-		{#snippet adminCard(item: any)}
+		{#snippet adminCard(item: AdminItem)}
 			<div
 				class="bg-ash-800 border-ash-700 rounded-xl border border-l-4 p-4 transition-opacity"
 				class:opacity-60={item.enabled === false && item.usable === false}
@@ -837,10 +901,10 @@
 				>
 				<button
 					onclick={save}
-					disabled={saving}
+					disabled={isSaving}
 					class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
 				>
-					{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}{saving ? 'Saving...' : 'Save'}
+					{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}{isSaving ? 'Saving...' : 'Save'}
 				</button>
 			</div>
 		</div>
@@ -853,7 +917,7 @@
 	message={confirmDelete ? `Delete "${confirmDelete.name}"? This removes it from every server's items.` : ''}
 	confirmLabel="Delete"
 	dangerous
-	loading={deleting}
+	loading={isDeleting}
 	onconfirm={remove}
 	oncancel={() => (confirmDelete = null)}
 />
@@ -898,7 +962,7 @@
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
-				{#if giftLoading}
+				{#if isGiftLoading}
 					<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</p>
 				{:else if giftGroups.length === 0}
 					<p class="text-ash-400 py-6 text-center text-sm">No members found.</p>

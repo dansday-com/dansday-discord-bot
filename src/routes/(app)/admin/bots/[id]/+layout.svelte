@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatElapsed, SECOND_MS } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
@@ -18,7 +19,9 @@
 	]);
 
 	function isActive(href: string) {
-		if (href === base) return page.url.pathname.replace(/\/$/, '') === base;
+		if (href === base) {
+			return page.url.pathname.replace(/\/$/, '') === base;
+		}
 		return page.url.pathname.startsWith(href);
 	}
 
@@ -34,11 +37,13 @@
 	const displayUptime = $derived(liveBot.status === 'running' ? uptimeBase + uptimeTick : 0);
 
 	function startTick() {
-		if (tickInterval) return;
+		if (tickInterval) {
+			return;
+		}
 		const base = Date.now();
 		tickInterval = setInterval(() => {
 			uptimeTick = Date.now() - base;
-		}, 1000);
+		}, SECOND_MS);
 	}
 
 	function stopTick() {
@@ -50,7 +55,9 @@
 	}
 
 	onMount(() => {
-		if (!isBotSection) return;
+		if (!isBotSection) {
+			return;
+		}
 
 		_liveBotOverride = { ...data.bot };
 		if (data.bot.status === 'running') {
@@ -78,29 +85,27 @@
 		stopTick();
 	});
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
-	function statusTextColor(status: string) {
-		if (status === 'running') return 'text-green-400';
-		if (status === 'starting' || status === 'stopping') return 'text-yellow-400';
+	function statusTextColor(status: string | null) {
+		if (status === 'running') {
+			return 'text-green-400';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'text-yellow-400';
+		}
 		return 'text-ash-400';
 	}
 
-	function formatUptime(ms: number): string {
-		if (!ms) return '—';
-		const s = Math.floor(ms / 1000);
-		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
-		return `${s}s`;
-	}
+	const formatUptime = (ms: number) => formatElapsed(ms, '—');
 
 	async function botAction(action: 'start' | 'stop' | 'restart') {
 		const res = await fetch(`/api/bots/${data.bot.id}/${action}`, {
@@ -116,11 +121,11 @@
 		}
 	}
 
-	let showDeleteConfirm = $state(false);
-	let deleting = $state(false);
+	let isDeleteConfirmShown = $state(false);
+	let isDeleting = $state(false);
 
 	async function deleteBot() {
-		deleting = true;
+		isDeleting = true;
 		try {
 			const res = await fetch(`/api/bots/${data.bot.id}`, {
 				method: 'DELETE',
@@ -134,8 +139,8 @@
 				showToast(d.error || 'Failed to delete bot', 'error');
 			}
 		} finally {
-			deleting = false;
-			showDeleteConfirm = false;
+			isDeleting = false;
+			isDeleteConfirmShown = false;
 		}
 	}
 
@@ -205,7 +210,7 @@
 							</button>
 						{/if}
 						<button
-							onclick={() => (showDeleteConfirm = true)}
+							onclick={() => (isDeleteConfirmShown = true)}
 							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-trash text-sm text-red-300 sm:text-base"></i>
@@ -266,13 +271,13 @@
 	</div>
 
 	<ConfirmModal
-		open={showDeleteConfirm}
+		open={isDeleteConfirmShown}
 		title="Delete Bot"
 		message="Delete &quot;{data.bot.name || `Bot #${data.bot.id}`}&quot;? This cannot be undone."
 		confirmLabel="Delete"
 		dangerous
-		loading={deleting}
+		loading={isDeleting}
 		onconfirm={deleteBot}
-		oncancel={() => (showDeleteConfirm = false)}
+		oncancel={() => (isDeleteConfirmShown = false)}
 	/>
 {/if}

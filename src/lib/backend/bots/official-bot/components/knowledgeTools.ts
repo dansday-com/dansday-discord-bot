@@ -31,6 +31,9 @@ import {
 } from '../../../../url.js';
 import { loadItemsCatalog } from '../../../public/items/index.js';
 import { VOICE_NOTE, fail, publicServer } from './aiToolShared.js';
+import type { ToolContext } from './aiToolShared.js';
+import type { LegalDoc } from '../../../../legal.js';
+import { DAY_MS } from '../../../../utils/time.js';
 
 const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'market', 'tips'];
 
@@ -52,16 +55,25 @@ const DOCS_TOPICS = [
 	'selfhost'
 ];
 
-const line = (e) => `${e.title ?? e.label ?? e.name}: ${e.desc}`;
+type DocsSection = { title: string; points: () => string[]; summary?: () => string[]; detailOnly?: boolean };
+type TopicArgs = { topic?: string };
 
-function renderLegalDoc(doc) {
+const line = (e: Record<string, unknown>) => `${e.title ?? e.label ?? e.name}: ${e.desc}`;
+
+function renderLegalDoc(doc: LegalDoc) {
 	return doc.sections.flatMap((section) =>
 		section.blocks.flatMap((block) => {
-			if (block.kind === 'text') return [`${section.heading}: ${block.text}`];
-			if (block.kind === 'list') return block.items.map((item) => `${section.heading}: ${item}`);
-			if (block.kind === 'defs') return block.items.map((item) => `${section.heading} — ${item.term}: ${item.desc}`);
+			if (block.kind === 'text') {
+				return [`${section.heading}: ${block.text}`];
+			}
+			if (block.kind === 'list') {
+				return block.items.map((item: unknown) => `${section.heading}: ${item}`);
+			}
+			if (block.kind === 'defs') {
+				return block.items.map((item: Record<string, unknown>) => `${section.heading} — ${item.term}: ${item.desc}`);
+			}
 			if (block.kind === 'links') {
-				const links = block.links.map((link) => `${link.label} (${link.href})`).join(', ');
+				const links = block.links.map((link: Record<string, unknown>) => `${link.label} (${link.href})`).join(', ');
 				return [`${section.heading}: ${block.text} ${links}${block.tail ?? ''}`.replace(/\s+/g, ' ').trim()];
 			}
 			return [];
@@ -69,11 +81,11 @@ function renderLegalDoc(doc) {
 	);
 }
 
-function legalPoints(doc, url) {
+function legalPoints(doc: LegalDoc, url: string) {
 	return [`Read it in full: ${url}`, `Last updated ${doc.lastUpdated}.`, ...renderLegalDoc(doc)];
 }
 
-const DOCS_SECTIONS = {
+const DOCS_SECTIONS: Record<string, DocsSection> = {
 	start: { title: 'Getting started', points: () => startSteps.map(line) },
 	setup: { title: 'The /setup command', points: () => setupChannels.map(line) },
 	accounts: { title: 'Accounts & staff', points: () => accountFields.map(line) },
@@ -124,7 +136,7 @@ const DOCS_SECTIONS = {
 
 const LEGAL_NEXT_STEP = `This is the real text of the document. Answer only from it, quote it where it is exact, and link the member to ${TERMS_URL} or ${PRIVACY_URL} to read it themselves. Never go beyond what it says, never promise what will happen to someone's data, and never answer a legal question from memory.`;
 
-async function publicPagesSection(botId, guildId) {
+async function publicPagesSection(botId: number, guildId: string) {
 	const origin = publicSiteOrigin();
 
 	const directories = [
@@ -137,7 +149,7 @@ async function publicPagesSection(botId, guildId) {
 		`The manual: ${DOCS_URL}`
 	];
 
-	const ctx = await publicServer(botId, guildId).catch(() => ({ error: true }));
+	const ctx = await publicServer(botId, guildId).catch((): { error: true; server?: undefined } => ({ error: true }));
 	const slug = ctx?.server ? await computePublicServerSlugForServerId(Number(ctx.server.id)).catch(() => null) : null;
 
 	const here = slug
@@ -156,30 +168,36 @@ let cachedHandle = '';
 let handleFetchedAt = 0;
 
 async function ensureMaintainerHandle() {
-	if (!MAINTAINER_DISCORD_ID) return;
-	if (cachedHandle && Date.now() - handleFetchedAt < 86400000) return;
+	if (!MAINTAINER_DISCORD_ID) {
+		return;
+	}
+	if (cachedHandle && Date.now() - handleFetchedAt < DAY_MS) {
+		return;
+	}
 	try {
 		const { getBotToken } = await import('../../../config.js');
 		const token = getBotToken('official');
-		if (!token) return;
+		if (!token) {
+			return;
+		}
 		const res = await fetch(`https://discord.com/api/v10/users/${MAINTAINER_DISCORD_ID}`, { headers: { Authorization: `Bot ${token}` } });
-		if (!res.ok) return;
-		const body: any = await res.json();
+		if (!res.ok) {
+			return;
+		}
+		const body: Record<string, unknown> = await res.json();
 		if (body?.username) {
 			cachedHandle = String(body.username);
 			handleFetchedAt = Date.now();
 		}
-	} catch {
-		return;
-	}
+	} catch {}
 }
 
 function maintainerHandle() {
 	return cachedHandle || 'the maintainer';
 }
 
-export async function runDocsTool(botId, guildId, args) {
-	const topic = DOCS_TOPICS.includes(args?.topic) ? args.topic : 'all';
+export async function runDocsTool(botId: number, guildId: string, args: TopicArgs) {
+	const topic = DOCS_TOPICS.includes(args?.topic as string) ? args.topic! : 'all';
 	const wanted = topic === 'all' ? Object.keys(DOCS_SECTIONS).filter((key) => !DOCS_SECTIONS[key].detailOnly) : topic === 'public' ? [] : [topic];
 
 	await ensureMaintainerHandle();
@@ -192,8 +210,11 @@ export async function runDocsTool(botId, guildId, args) {
 
 	if (topic === 'all' || topic === 'public') {
 		const pages = await publicPagesSection(botId, guildId);
-		if (pages) sections.push(pages);
-		else if (topic === 'public') return fail('public_site_unavailable');
+		if (pages) {
+			sections.push(pages);
+		} else if (topic === 'public') {
+			return fail('public_site_unavailable');
+		}
 	}
 
 	return {
@@ -209,16 +230,18 @@ export async function runDocsTool(botId, guildId, args) {
 	};
 }
 
-export async function runGuideTool(botId, guildId, args) {
+export async function runGuideTool(botId: number, guildId: string, args: TopicArgs) {
 	const ctx = await publicServer(botId, guildId);
-	const topic = GUIDE_TOPICS.includes(args?.topic) ? args.topic : 'all';
+	const topic = GUIDE_TOPICS.includes(args?.topic as string) ? args.topic! : 'all';
 
 	const catalog = ctx.error ? [] : await loadItemsCatalog(ctx.server.id).catch(() => []);
 	const liveItems = catalog.filter((i) => i.live);
 
-	const feature = (id) => {
+	const feature = (id: string) => {
 		const f = FEATURES.find((x) => x.id === id);
-		if (!f) return null;
+		if (!f) {
+			return null;
+		}
 		return {
 			title: f.title,
 			summary: f.lead,
@@ -243,8 +266,10 @@ export async function runGuideTool(botId, guildId, args) {
 	};
 
 	if (topic !== 'all') {
-		const picked = sections[topic];
-		if (!picked) return fail('unknown_topic', { topics: GUIDE_TOPICS });
+		const picked = sections[topic as keyof typeof sections];
+		if (!picked) {
+			return fail('unknown_topic', { topics: GUIDE_TOPICS });
+		}
 		return {
 			ok: true,
 			guide: GUIDE_TITLE,
@@ -325,9 +350,13 @@ export function buildKnowledgeDeclarations() {
 
 export const KNOWLEDGE_TOOL_NAMES = new Set(['get_docs', 'get_guide']);
 
-export function runKnowledgeTool(name, args, { botId, guildId }) {
-	if (name === 'get_docs') return runDocsTool(botId, guildId, args);
-	if (name === 'get_guide') return runGuideTool(botId, guildId, args);
+export function runKnowledgeTool(name: string, args: Record<string, unknown>, { botId, guildId }: ToolContext) {
+	if (name === 'get_docs') {
+		return runDocsTool(botId, guildId, args as TopicArgs);
+	}
+	if (name === 'get_guide') {
+		return runGuideTool(botId, guildId, args as TopicArgs);
+	}
 	return Promise.resolve(fail('unknown_tool'));
 }
 

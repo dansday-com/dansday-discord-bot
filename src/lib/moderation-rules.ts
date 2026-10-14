@@ -1,3 +1,14 @@
+import { DAY_SECONDS, MINUTE_SECONDS } from './utils/time.js';
+
+const MAX_TIMEOUT_DAYS = 28;
+const MAX_ESCALATION_WARNS = 100;
+const MAX_TEMPBAN_YEARS = 10;
+const DAYS_PER_YEAR = 365;
+const MAX_TEMPBAN_SECONDS = MAX_TEMPBAN_YEARS * DAYS_PER_YEAR * DAY_SECONDS;
+const MIN_TIMED_SECONDS = MINUTE_SECONDS;
+
+export const MODERATION_REASON_MAX_LENGTH = 1000;
+
 export const ESCALATION_ACTIONS = ['timeout', 'kick', 'ban', 'tempban'] as const;
 export type EscalationAction = (typeof ESCALATION_ACTIONS)[number];
 
@@ -6,7 +17,7 @@ export const MAX_ESCALATION_STEPS = 10;
 export const MAX_REASON_PRESETS = 25;
 export const MAX_REASON_PRESET_LENGTH = 200;
 export const MAX_WARN_EXPIRY_DAYS = 3650;
-export const MAX_TIMEOUT_SECONDS = 28 * 24 * 60 * 60;
+export const MAX_TIMEOUT_SECONDS = MAX_TIMEOUT_DAYS * DAY_SECONDS;
 
 export type EscalationStep = { warns: number; action: EscalationAction; duration_seconds: number | null };
 
@@ -34,32 +45,46 @@ function wholeNumber(value: unknown, min: number, max: number): number {
 }
 
 export function normalizeEscalation(raw: unknown): EscalationStep[] {
-	if (!Array.isArray(raw)) return [];
+	if (!Array.isArray(raw)) {
+		return [];
+	}
 	const byWarns = new Map<number, EscalationStep>();
 	for (const item of raw) {
-		if (!item || typeof item !== 'object') continue;
+		if (!item || typeof item !== 'object') {
+			continue;
+		}
 		const step = item as Record<string, unknown>;
 		const action = String(step.action) as EscalationAction;
-		if (!ESCALATION_ACTIONS.includes(action)) continue;
-		const warns = wholeNumber(step.warns, 0, 100);
-		if (warns < 1) continue;
-		const timed = ESCALATION_TIMED_ACTIONS.includes(action);
-		const duration = timed ? wholeNumber(step.duration_seconds, 0, action === 'timeout' ? MAX_TIMEOUT_SECONDS : 10 * 365 * 86400) : null;
-		if (timed && (!duration || duration < 60)) continue;
+		if (!ESCALATION_ACTIONS.includes(action)) {
+			continue;
+		}
+		const warns = wholeNumber(step.warns, 0, MAX_ESCALATION_WARNS);
+		if (warns < 1) {
+			continue;
+		}
+		const isTimed = ESCALATION_TIMED_ACTIONS.includes(action);
+		const duration = isTimed ? wholeNumber(step.duration_seconds, 0, action === 'timeout' ? MAX_TIMEOUT_SECONDS : MAX_TEMPBAN_SECONDS) : null;
+		if (isTimed && (!duration || duration < MIN_TIMED_SECONDS)) {
+			continue;
+		}
 		byWarns.set(warns, { warns, action, duration_seconds: duration });
 	}
 	return [...byWarns.values()].sort((a, b) => a.warns - b.warns).slice(0, MAX_ESCALATION_STEPS);
 }
 
 export function normalizeReasonPresets(raw: unknown): string[] {
-	if (!Array.isArray(raw)) return [];
+	if (!Array.isArray(raw)) {
+		return [];
+	}
 	const seen = new Set<string>();
 	const out: string[] = [];
 	for (const item of raw) {
 		const text = String(item ?? '')
 			.trim()
 			.slice(0, MAX_REASON_PRESET_LENGTH);
-		if (!text || seen.has(text.toLowerCase())) continue;
+		if (!text || seen.has(text.toLowerCase())) {
+			continue;
+		}
 		seen.add(text.toLowerCase());
 		out.push(text);
 	}

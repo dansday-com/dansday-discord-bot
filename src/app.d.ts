@@ -12,6 +12,7 @@ declare global {
 						panel_id: number | null;
 						is_demo?: boolean;
 						session_expires_at?: number;
+						can_register?: undefined;
 				  }
 				| {
 						authenticated: true;
@@ -24,9 +25,15 @@ declare global {
 						server_id: number;
 						is_demo?: boolean;
 						session_expires_at?: number;
+						can_register?: undefined;
 				  }
 				| { authenticated: false; can_register: boolean };
 			sessionId: string | null;
+		}
+		interface PageData {
+			serverBasePath?: string;
+			hash?: string;
+			memberTheme?: import('$lib/themes.js').MemberTheme | null;
 		}
 	}
 }

@@ -1,6 +1,17 @@
 export const INVITE_STAFF_MULTIPLIER = 2;
 
-export const INVITE_SHARE_PERCENT_OPTIONS = [0, 5, 10, 15, 20, 25];
+export const INVITE_SHARE_PERCENT_MAX = 25;
+const INVITE_SHARE_PERCENT_STEP = 5;
+
+const ACCOUNT_AGE_DAY_PRESETS = { off: 0, day: 1, threeDays: 3, week: 7, twoWeeks: 14, month: 30, twoMonths: 60, threeMonths: 90 };
+const HOLD_HOUR_PRESETS = { instant: 0, hour: 1, sixHours: 6, halfDay: 12, day: 24, twoDays: 48, threeDays: 72, week: 168 };
+
+export const INVITE_ACCOUNT_AGE_DAY_OPTIONS = Object.values(ACCOUNT_AGE_DAY_PRESETS);
+export const INVITE_HOLD_HOUR_OPTIONS = Object.values(HOLD_HOUR_PRESETS);
+export const INVITE_SHARE_PERCENT_OPTIONS = Array.from(
+	{ length: INVITE_SHARE_PERCENT_MAX / INVITE_SHARE_PERCENT_STEP + 1 },
+	(_, i) => i * INVITE_SHARE_PERCENT_STEP
+);
 
 export type InviteStatus = 'active' | 'left' | 'fake';
 

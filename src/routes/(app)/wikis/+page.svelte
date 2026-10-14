@@ -1,18 +1,22 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay, statDelay } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
 	let query = $state('');
-	let activeOnly = $state(false);
+	let isActiveOnly = $state(false);
 
 	const filtered = $derived(
 		data.wikis.filter((w) => {
-			if (activeOnly && !w.active) return false;
+			if (isActiveOnly && !w.active) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${w.name} ${w.description ?? ''} ${w.site_host ?? ''}`.toLowerCase().includes(needle);
 		})
 	);
@@ -37,7 +41,7 @@
 
 			<div class="border-base-300 mt-6 grid grid-cols-3 gap-x-6 border-t pt-5">
 				{#each [{ label: 'Wikis', value: data.wikis.length }, { label: 'Active', value: activeCount }, { label: 'Disabled', value: data.wikis.length - activeCount }] as stat, i (stat.label)}
-					<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
+					<div use:reveal class={REVEAL_CLASS} style="transition-delay: {statDelay(i)}">
 						<p class="text-primary text-[clamp(20px,3.4cqw,34px)] leading-none font-black tabular-nums">{stat.value}</p>
 						<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
 					</div>
@@ -54,9 +58,9 @@
 					</label>
 					<button
 						type="button"
-						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {activeOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
-						onclick={() => (activeOnly = !activeOnly)}
-						aria-pressed={activeOnly}
+						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {isActiveOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
+						onclick={() => (isActiveOnly = !isActiveOnly)}
+						aria-pressed={isActiveOnly}
 					>
 						<span class="size-1.5 rounded-full bg-current motion-safe:animate-pulse"></span>
 						Active only
@@ -68,7 +72,7 @@
 						<li
 							use:reveal
 							class="{REVEAL_CLASS} border-base-300 flex flex-col gap-3 border-b py-5 sm:flex-row sm:gap-6"
-							style="transition-delay: {Math.min(i, 8) * 60}ms"
+							style="transition-delay: {cappedListDelay(i)}"
 						>
 							<span class="text-primary/30 shrink-0 text-[clamp(20px,3.6cqw,34px)] leading-none font-black tabular-nums">{index(i + 1)}</span>
 

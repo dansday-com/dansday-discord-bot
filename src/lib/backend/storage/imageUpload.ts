@@ -1,6 +1,8 @@
 import { type ImageFormat, imageExtension, tooLargeMessage, unsupportedFormatMessage } from '../../images.js';
+import { HTTP } from '../../http.js';
 
-export type ImageUpload = { ok: true; data: Buffer; extension: ImageFormat; form: FormData | null; body: any } | { ok: false; error: string; status: number };
+export type ImageUpload =
+	{ ok: true; data: Buffer; extension: ImageFormat; form: FormData | null; body: unknown } | { ok: false; error: string; status: number };
 
 const DATA_URL_PATTERN = /^data:image\/(\w+);base64,(.+)$/;
 
@@ -10,27 +12,43 @@ export async function readUploadedImage(request: Request, maxBytes: number): Pro
 	if (contentType.includes('multipart/form-data')) {
 		const form = await request.formData();
 		const file = form.get('image');
-		if (!(file instanceof File)) return { ok: false, error: 'No image file provided', status: 400 };
+		if (!(file instanceof File)) {
+			return { ok: false, error: 'No image file provided', status: HTTP.BAD_REQUEST };
+		}
 
 		const extension = imageExtension(file.type);
-		if (!extension) return { ok: false, error: unsupportedFormatMessage(), status: 400 };
-		if (file.size > maxBytes) return { ok: false, error: tooLargeMessage(maxBytes), status: 400 };
+		if (!extension) {
+			return { ok: false, error: unsupportedFormatMessage(), status: HTTP.BAD_REQUEST };
+		}
+		if (file.size > maxBytes) {
+			return { ok: false, error: tooLargeMessage(maxBytes), status: HTTP.BAD_REQUEST };
+		}
 
 		const data = Buffer.from(await file.arrayBuffer());
-		if (data.length > maxBytes) return { ok: false, error: tooLargeMessage(maxBytes), status: 400 };
+		if (data.length > maxBytes) {
+			return { ok: false, error: tooLargeMessage(maxBytes), status: HTTP.BAD_REQUEST };
+		}
 		return { ok: true, data, extension, form, body: null };
 	}
 
 	const body = await request.json().catch(() => null);
-	if (!body?.image) return { ok: false, error: 'No image file provided', status: 400 };
+	if (!body?.image) {
+		return { ok: false, error: 'No image file provided', status: HTTP.BAD_REQUEST };
+	}
 
 	const matches = String(body.image).match(DATA_URL_PATTERN);
-	if (!matches) return { ok: false, error: 'Invalid image data format', status: 400 };
+	if (!matches) {
+		return { ok: false, error: 'Invalid image data format', status: HTTP.BAD_REQUEST };
+	}
 
 	const extension = imageExtension(matches[1]);
-	if (!extension) return { ok: false, error: unsupportedFormatMessage(), status: 400 };
+	if (!extension) {
+		return { ok: false, error: unsupportedFormatMessage(), status: HTTP.BAD_REQUEST };
+	}
 
 	const data = Buffer.from(matches[2], 'base64');
-	if (data.length > maxBytes) return { ok: false, error: tooLargeMessage(maxBytes), status: 400 };
+	if (data.length > maxBytes) {
+		return { ok: false, error: tooLargeMessage(maxBytes), status: HTTP.BAD_REQUEST };
+	}
 	return { ok: true, data, extension, form: null, body };
 }

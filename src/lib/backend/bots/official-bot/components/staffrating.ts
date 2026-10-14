@@ -1,22 +1,33 @@
 import { EmbedBuilder } from 'discord.js';
-import { STAFF_RATING, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import { STAFF_RATING, getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { resolveStaffRatingAnchor } from './roleAnchor.js';
 import db from '../../../../database.js';
 import { serverTranslator, translate } from '../i18n.js';
+import type { Guild, RoleCreateOptions, GuildMember } from 'discord.js';
+import type { Translator } from '../i18n.js';
+import { sendWithNotifiedMentions } from './notifiedMentions.js';
+import { DISCORD_LIMITS, embedFieldText } from '../../../../discordLimits.js';
+import { roundTo } from '../../../../utils/numbers.js';
 
-function getRatingColor(rating) {
-	const clamped = Math.max(1.0, Math.min(5.0, rating));
-	const normalized = (clamped - 1.0) / 4.0;
+const MIN_RATING = 1;
+const MAX_RATING = 5;
+const TOP_RATING_GREEN = 215;
+const RED_CHANNEL_SHIFT_BITS = 16;
+const GREEN_CHANNEL_SHIFT_BITS = 8;
+
+function getRatingColor(rating: number) {
+	const clamped = Math.max(MIN_RATING, Math.min(MAX_RATING, rating));
+	const normalized = (clamped - MIN_RATING) / (MAX_RATING - MIN_RATING);
 
 	const red = 255;
-	const green = Math.round(0 + 215 * normalized);
+	const green = Math.round(0 + TOP_RATING_GREEN * normalized);
 	const blue = Math.round(0 + 0 * normalized);
 
-	return (red << 16) | (green << 8) | blue;
+	return (red << RED_CHANNEL_SHIFT_BITS) | (green << GREEN_CHANNEL_SHIFT_BITS) | blue;
 }
 
-async function updateAllRatingRolePositions(guild, serverId) {
+async function updateAllRatingRolePositions(guild: Guild, serverId: string | number) {
 	const allRatings = await db.getAllStaffRatings(serverId);
 	const withRoles = allRatings.filter((rating) => rating.rating_role_id && guild.roles.cache.has(rating.rating_role_id));
 	if (withRoles.length === 0) {
@@ -30,7 +41,9 @@ async function updateAllRatingRolePositions(guild, serverId) {
 
 	for (let i = 0; i < withRoles.length; i++) {
 		const role = guild.roles.cache.get(withRoles[i].rating_role_id);
-		if (!role) continue;
+		if (!role) {
+			continue;
+		}
 
 		const targetPosition = anchor.basePosition + (withRoles.length - i - 1);
 
@@ -40,22 +53,22 @@ async function updateAllRatingRolePositions(guild, serverId) {
 	}
 }
 
-function truncateFeedback(text) {
-	if (!text) {
-		return '—';
-	}
-	if (text.length > 1024) {
-		return `${text.slice(0, 1021)}...`;
-	}
-	return text;
-}
+type RatingChannelContext = { category?: string | null; feedback?: string | null };
 
-function buildRatingChannelEmbed(tr, staffDiscordId, ratingValue, totalReports, embedConfig, channelContext = {}) {
+type RatingEmbedInput = {
+	staffDiscordId: string;
+	ratingValue: number;
+	totalReports: number;
+	embedConfig: Awaited<ReturnType<typeof getEmbedConfig>> | null;
+	channelContext?: RatingChannelContext;
+};
+
+function buildRatingChannelEmbed(tr: Translator, { staffDiscordId, ratingValue, totalReports, embedConfig, channelContext = {} }: RatingEmbedInput) {
 	const categoryValue = channelContext.category ?? '—';
-	const feedbackValue = truncateFeedback(channelContext.feedback);
+	const feedbackValue = embedFieldText(channelContext.feedback);
 
 	const embed = new EmbedBuilder()
-		.setColor(embedConfig?.COLOR)
+		.setColor(embedConfig?.COLOR ?? null)
 		.setTitle(tr('staffRating.ratingUpdate.title'))
 		.setDescription(tr('staffRating.ratingUpdate.description', { staff: `<@${staffDiscordId}>` }))
 		.addFields(
@@ -81,15 +94,17 @@ function buildRatingChannelEmbed(tr, staffDiscordId, ratingValue, totalReports, 
 	return embed;
 }
 
-async function ensureRatingRole(guild, serverId, member, ratingValue, ratingRecord) {
-	const desiredName = `⭐ ${ratingValue.toFixed(1)} • Staff Rating`.slice(0, 100);
+type RatingRoleInput = { serverId: string | number; member: GuildMember; ratingValue: number; ratingRecord: { member_id: number } | null };
+
+async function ensureRatingRole(guild: Guild, { serverId, member, ratingValue, ratingRecord }: RatingRoleInput) {
+	const desiredName = `⭐ ${ratingValue.toFixed(1)} • Staff Rating`.slice(0, DISCORD_LIMITS.ROLE_NAME);
 	const color = getRatingColor(ratingValue);
 
 	const ratingRoleId = await db.getStaffRatingRole(serverId, ratingRecord?.member_id);
 	let role = ratingRoleId ? guild.roles.cache.get(ratingRoleId) : null;
 	if (!role) {
 		const anchor = await resolveStaffRatingAnchor(guild);
-		const creationData = {
+		const creationData: RoleCreateOptions = {
 			name: desiredName,
 			color,
 			reason: 'Staff rating role',
@@ -118,7 +133,15 @@ async function ensureRatingRole(guild, serverId, member, ratingValue, ratingReco
 	return role;
 }
 
-export async function updateStaffRatingRole(guild, serverId, staffMemberId, staffDiscordId, stats = null, options = {}) {
+type StaffRatingUpdate = {
+	serverId: number;
+	staffMemberId: string | number;
+	staffDiscordId: string;
+	stats?: { rating?: number | string; total_reports?: number } | null;
+	options?: { channelContext?: RatingChannelContext };
+};
+
+export async function updateStaffRatingRole(guild: Guild, { serverId, staffMemberId, staffDiscordId, stats = null, options = {} }: StaffRatingUpdate) {
 	try {
 		const member = await guild.members.fetch(staffDiscordId).catch(() => null);
 		if (!member) {
@@ -140,15 +163,15 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 					await member.roles.remove(role.id).catch(() => null);
 				}
 			}
-			await db.upsertStaffRating(serverId, staffMemberId, 0, 0);
+			await db.upsertStaffRating(serverId, staffMemberId, { ratingValue: 0, totalReports: 0 });
 			await db.clearMemberRatingRole(staffMemberId);
 			return { updated: false, reason: 'no_reports' };
 		}
-		const rounded = Math.round((averageRating || 0) * 10) / 10;
-		const clamped = Math.max(1, Math.min(5, rounded));
-		ratingRecord = await db.upsertStaffRating(serverId, staffMemberId, clamped, totalReports);
-		const role = await ensureRatingRole(guild, serverId, member, clamped, ratingRecord);
-		await db.upsertStaffRating(serverId, staffMemberId, clamped, totalReports);
+		const rounded = roundTo(Number(averageRating || 0), 1);
+		const clamped = Math.max(MIN_RATING, Math.min(MAX_RATING, rounded));
+		ratingRecord = await db.upsertStaffRating(serverId, staffMemberId, { ratingValue: clamped, totalReports });
+		const role = await ensureRatingRole(guild, { serverId, member, ratingValue: clamped, ratingRecord });
+		await db.upsertStaffRating(serverId, staffMemberId, { ratingValue: clamped, totalReports });
 		await db.markMemberRatingRole(serverId, staffMemberId, role.id);
 		if (!member.roles.cache.has(role.id)) {
 			await member.roles.add(role.id, 'Staff rating updated');
@@ -157,7 +180,7 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 		try {
 			embedConfig = await getEmbedConfig(guild.id);
 		} catch (error) {
-			await logger.log(`⚠️ Failed to load embed config for rating channel: ${error.message}`);
+			await logger.log(`⚠️ Failed to load embed config for rating channel: ${(error as Error).message}`);
 		}
 
 		const ratingChannelId = await STAFF_RATING.getRatingChannel(guild.id);
@@ -165,23 +188,25 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 			const channel = guild.channels.cache.get(ratingChannelId) || (await guild.channels.fetch(ratingChannelId).catch(() => null));
 			if (channel && channel.isTextBased()) {
 				const tr = await serverTranslator(guild.id);
-				const ratingEmbed = buildRatingChannelEmbed(tr, staffDiscordId, clamped, totalReports, embedConfig, options.channelContext);
-				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, ratingChannelId).catch(() => null);
-				const content = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
-				await channel.send({ content, embeds: [ratingEmbed] }).catch(() => null);
-
-				if (notificationMentions && notificationMentions.length > 1) {
-					for (let i = 1; i < notificationMentions.length; i++) {
-						await channel.send({ content: notificationMentions[i] }).catch(() => null);
-					}
-				}
+				const ratingEmbed = buildRatingChannelEmbed(tr, {
+					staffDiscordId,
+					ratingValue: clamped,
+					totalReports,
+					embedConfig,
+					channelContext: options.channelContext
+				});
+				await sendWithNotifiedMentions(channel, { embeds: [ratingEmbed] }).catch(() => null);
 			}
 		}
-		const ratingDm = await translate('staffRating.ratingUpdate.dm', guild.id, staffDiscordId, {
-			server: guild.name,
-			rating: clamped.toFixed(1),
-			totalReports
-		});
+		const ratingDm = await translate(
+			'staffRating.ratingUpdate.dm',
+			{ guildId: guild.id, userId: staffDiscordId },
+			{
+				server: guild.name,
+				rating: clamped.toFixed(1),
+				totalReports
+			}
+		);
 		await member.send({ content: ratingDm }).catch(() => null);
 		return {
 			updated: true,
@@ -190,8 +215,8 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 			role_name: role.name
 		};
 	} catch (error) {
-		await logger.log(`❌ Error updating staff rating role: ${error.message}`);
-		return { updated: false, reason: 'error', error: error.message };
+		await logger.log(`❌ Error updating staff rating role: ${(error as Error).message}`);
+		return { updated: false, reason: 'error', error: (error as Error).message };
 	}
 }
 

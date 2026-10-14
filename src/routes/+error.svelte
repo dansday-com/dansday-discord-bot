@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HTTP, isHttpServerError } from '$lib/http.js';
 	import '../app.css';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { page } from '$app/state';
@@ -7,8 +8,8 @@
 	import { PageShell } from '$lib/frontend/components/shell';
 
 	const status = $derived(page.status);
-	const isServerError = $derived(status >= 500 && status < 600);
-	const title = $derived(isServerError ? 'Something went wrong' : status === 404 ? 'Page not found' : `Error ${status}`);
+	const isServerError = $derived(isHttpServerError(status));
+	const title = $derived(isServerError ? 'Something went wrong' : status === HTTP.NOT_FOUND ? 'Page not found' : `Error ${status}`);
 	const subtitle = $derived(
 		isServerError ? 'Our side hit a problem. You can go back to the panel home or try again.' : 'This page does not exist or you do not have access.'
 	);

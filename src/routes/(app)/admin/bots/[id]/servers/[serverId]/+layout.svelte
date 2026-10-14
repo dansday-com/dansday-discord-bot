@@ -29,7 +29,9 @@
 	]);
 
 	function isActive(href: string) {
-		if (href === base) return page.url.pathname === base;
+		if (href === base) {
+			return page.url.pathname === base;
+		}
 		return page.url.pathname.startsWith(href);
 	}
 </script>
@@ -74,25 +76,25 @@
 					</span>
 				{/if}
 				<a
-					href={discordServerLink((data.overview as any).discord_server_id)}
+					href={discordServerLink(data.overview.discord_server_id)}
 					target="_blank"
 					rel="noreferrer"
 					class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"
 				>
 					<i class="fa-brands fa-discord text-[0.7rem] text-indigo-300"></i>Discord
 				</a>
-				{#if (data.overview as any).vanity_url_code}
+				{#if data.overview.vanity_url_code}
 					<a
-						href={inviteLink((data.overview as any).vanity_url_code)}
+						href={inviteLink(data.overview.vanity_url_code)}
 						target="_blank"
 						rel="noreferrer"
 						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"
 					>
 						<i class="fas fa-link text-[0.6rem] text-emerald-300"></i>Invite
 					</a>
-				{:else if (data.overview as any).invite_code}
+				{:else if data.overview.invite_code}
 					<a
-						href={inviteLink((data.overview as any).invite_code)}
+						href={inviteLink(data.overview.invite_code)}
 						target="_blank"
 						rel="noreferrer"
 						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"

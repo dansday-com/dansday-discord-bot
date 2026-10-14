@@ -3,6 +3,13 @@ import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, adminServerPath } from '$lib/frontend/redirect.js';
+import type { BotRow } from '$lib/schema.js';
+import { HTTP } from '$lib/http.js';
+
+type DashboardBot = Pick<
+	BotRow,
+	'id' | 'name' | 'bot_icon' | 'port' | 'application_id' | 'status' | 'process_id' | 'uptime_started_at' | 'created_at' | 'updated_at'
+> & { uptime_ms?: number };
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	if (locals.user.authenticated && locals.user.account_source === 'server_accounts') {
@@ -10,17 +17,17 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 		const targetBot = ob ?? fallback;
 		if (targetBot != null) {
-			redirect(302, adminServerPath(targetBot, locals.user.server_id));
+			redirect(HTTP.FOUND, adminServerPath(targetBot, locals.user.server_id));
 		}
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
-	let bots: any[] = [];
+	let bots: DashboardBot[] = [];
 	try {
 		if (locals.user.authenticated && locals.user.account_source === 'accounts') {
 			const rawBots = await db.getAllBots(locals.user.panel_id);
 			bots = await Promise.all(
-				rawBots.map(async (bot: any) => {
+				rawBots.map(async (bot) => {
 					if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 						try {
 							process.kill(bot.process_id, 0);
@@ -32,7 +39,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 						}
 					}
 
-					const botData: any = {
+					const botData: DashboardBot = {
 						id: bot.id,
 						name: bot.name,
 						bot_icon: bot.bot_icon,

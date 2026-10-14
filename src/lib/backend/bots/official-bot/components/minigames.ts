@@ -19,41 +19,52 @@ import {
 	type Hsb
 } from '../../../../color.js';
 import { serverTranslator } from '../i18n.js';
+import type { Client } from 'discord.js';
+import { HOUR_MS, MINUTE_MS } from '../../../../utils/time.js';
+import { PERCENT, roundTo } from '../../../../utils/numbers.js';
+import { EMBED_COLORS } from './embedColors.js';
+
+type PlayContext = { guildId: string; actorDiscordId: string; memberId: number };
+type GambleResult = { outcome: string; won: boolean; wager: number; payout: number; net: number; multiplier: number; chance: number; luckPercent: number };
+type TowerStep = { outcome: string; floor: number; payout: number; lost: number; door?: number; trapDoors?: number[] };
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
 const MIN_WAGER = 1;
 const ANNOUNCE_DELAY_MS = 7000;
 const TOWER_ANNOUNCE_DELAY_MS = 1500;
-const TOWER_RESET_MS = TOWER_RESET_HOURS * 3600000;
+const TOWER_RESET_MS = TOWER_RESET_HOURS * HOUR_MS;
 const COLOR_ANNOUNCE_DELAY_MS = 4000;
-const COLOR_IDLE_MS = 10 * 60000;
+const COLOR_IDLE_MINUTES = 10;
+const COLOR_IDLE_MS = COLOR_IDLE_MINUTES * MINUTE_MS;
 
-function clampMultiplier(raw: any): number {
+function clampMultiplier(raw: unknown): number {
 	const m = Number(raw);
-	if (!Number.isFinite(m)) return MIN_MULTIPLIER;
-	return Math.min(MAX_MULTIPLIER, Math.max(MIN_MULTIPLIER, Math.round(m * 100) / 100));
+	if (!Number.isFinite(m)) {
+		return MIN_MULTIPLIER;
+	}
+	return Math.min(MAX_MULTIPLIER, Math.max(MIN_MULTIPLIER, roundTo(m, 2)));
 }
 
 function winChanceFor(multiplier: number): number {
-	return 100 / multiplier;
+	return PERCENT / multiplier;
 }
 
-async function resolveServerMemberId(serverId: any, discordId: any) {
+async function resolveServerMemberId(serverId: number | string, discordId: number | string) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordId)).catch(() => null);
 	return member?.id ?? null;
 }
 
-export async function handleMinigamePlay(client: any, payload: any) {
+export async function handleMinigamePlay(client: Client, payload: { guild_id?: string; actor_discord_id?: string; multiplier?: unknown; xp?: unknown }) {
 	const { guild_id, actor_discord_id, multiplier, xp: amount } = payload || {};
-	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 	if (!(await isPublicSubFeatureEnabled(guild_id, 'minigames'))) {
@@ -61,27 +72,35 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+	if (!actorMemberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const mult = clampMultiplier(multiplier);
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
 	const baseChance = winChanceFor(mult);
-	const chance = luckPercent > 0 ? Math.min(100, baseChance + luckPercent) : baseChance;
+	const chance = luckPercent > 0 ? Math.min(PERCENT, baseChance + luckPercent) : baseChance;
 
 	const balance = await getSpendableXp(actorMemberId, guild_id);
 	const wager = Math.max(0, Math.floor(Number(amount) || 0));
-	if (wager < MIN_WAGER) return { ok: false, error: 'below_minimum', min: MIN_WAGER };
-	if (wager > balance.total) return { ok: false, error: 'insufficient_xp' };
+	if (wager < MIN_WAGER) {
+		return { ok: false, error: 'below_minimum', min: MIN_WAGER };
+	}
+	if (wager > balance.total) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const spend = await spendXp(actorMemberId, wager, guild_id);
-	if (!spend.ok) return { ok: false, error: 'insufficient_xp' };
+	if (!spend.ok) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
-	const roll = Math.random() * 100;
-	const won = roll < chance;
+	const roll = Math.random() * PERCENT;
+	const hasWon = roll < chance;
 
 	let netChange = -wager;
 	let payout = 0;
-	if (won) {
+	if (hasWon) {
 		payout = Math.floor(wager * mult);
 		await db.ensureMemberLevel(actorMemberId);
 		const after = await db.updateMemberLevelStats(actorMemberId, { xpIncrement: payout });
@@ -89,8 +108,12 @@ export async function handleMinigamePlay(client: any, payload: any) {
 		const xp = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
 		const expectedLevel = await determineLevel(xp, guild_id);
 		let storedLevel = after?.level;
-		if (typeof storedLevel === 'bigint') storedLevel = Number(storedLevel);
-		if (storedLevel !== expectedLevel) await db.updateMemberLevelStats(actorMemberId, { level: expectedLevel });
+		if (typeof storedLevel === 'bigint') {
+			storedLevel = Number(storedLevel);
+		}
+		if (storedLevel !== expectedLevel) {
+			await db.updateMemberLevelStats(actorMemberId, { level: expectedLevel });
+		}
 		netChange = payout - wager;
 	}
 
@@ -101,7 +124,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 			wager,
 			payout,
 			xp: netChange,
-			outcome: won ? 'win' : 'lose',
+			outcome: hasWon ? 'win' : 'lose',
 			chance,
 			luck_percent: luckPercent || null
 		})
@@ -109,7 +132,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 
 	await evaluateMemberLevelAndRank(guild_id, actorMemberId, { reason: 'minigame' }).catch(() => null);
 
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, multiplier: mult, chance, luckPercent };
+	const result = { outcome: hasWon ? 'win' : 'lose', won: hasWon, wager, payout, net: netChange, multiplier: mult, chance, luckPercent };
 	setTimeout(() => {
 		announceMinigame(client, { guildId: guild_id, actorDiscordId: actor_discord_id, result }).catch(() => null);
 	}, ANNOUNCE_DELAY_MS);
@@ -117,27 +140,35 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	return { ok: true, outcome: result.outcome, result };
 }
 
-function fmtXp(v: any): string {
+function fmtXp(v: unknown): string {
 	return `${Math.abs(Number(v) || 0).toLocaleString()} XP`;
 }
 
-async function announceMinigame(client: any, ctx: any) {
+async function announceMinigame(client: Client, ctx: { guildId: string; actorDiscordId: string; result: GambleResult }) {
 	const { guildId, actorDiscordId, result } = ctx;
-	if (!result) return;
+	if (!result) {
+		return;
+	}
 
 	try {
 		const { getMinigamesChannelId, getEmbedConfig } = await import('../../../config.js');
 		const channelId = await getMinigamesChannelId(guildId);
-		if (!channelId) return;
+		if (!channelId) {
+			return;
+		}
 
 		const guild = client?.guilds?.cache?.get(guildId);
-		if (!guild) return;
+		if (!guild) {
+			return;
+		}
 		const channel = await guild.channels.fetch(channelId).catch(() => null);
-		if (!channel || !channel.isTextBased()) return;
+		if (!channel || !channel.isTextBased()) {
+			return;
+		}
 
 		const { EmbedBuilder } = await import('discord.js');
 		const tr = await serverTranslator(guildId);
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: EMBED_COLORS.gold, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const actorMention = actor ? `${actor}` : tr('minigames.someone');
@@ -145,7 +176,7 @@ async function announceMinigame(client: any, ctx: any) {
 		const story = { member: actorMention, wager: fmtXp(result.wager), multiplier: result.multiplier };
 
 		const embed = new EmbedBuilder()
-			.setColor(0xc8911a)
+			.setColor(EMBED_COLORS.gold)
 			.setFooter({ text: embedConfig.FOOTER || tr('minigames.footer') })
 			.setTimestamp();
 
@@ -170,23 +201,25 @@ async function announceMinigame(client: any, ctx: any) {
 
 		const content = actor ? `${actor}` : undefined;
 		await channel.send({ content, embeds: [embed] }).catch(() => null);
-	} catch (err: any) {
-		await logger.log(`⚠️ Minigame announce failed: ${err?.message || String(err)}`);
+	} catch (err) {
+		await logger.log(`⚠️ Minigame announce failed: ${(err as Error)?.message || String(err)}`);
 	}
 }
 
-const towerQueues = new Map<number, Promise<any>>();
-const colorQueues = new Map<number, Promise<any>>();
+const towerQueues = new Map<number, Promise<unknown>>();
+const colorQueues = new Map<number, Promise<unknown>>();
 
-type ColorRun = { ctx: any; rounds: ColorRound[]; target: Hsb; timer: ReturnType<typeof setTimeout> | null };
+type ColorRun = { ctx: PlayContext; rounds: ColorRound[]; target: Hsb; timer: ReturnType<typeof setTimeout> | null };
 const colorRuns = new Map<number, ColorRun>();
 
-function queueMember<T>(queues: Map<number, Promise<any>>, memberId: number, task: () => Promise<T>): Promise<T> {
+function queueMember<T>(queues: Map<number, Promise<unknown>>, memberId: number, task: () => Promise<T>): Promise<T> {
 	const run = (queues.get(memberId) ?? Promise.resolve()).then(task, task);
 	const tail = run.catch(() => null);
 	queues.set(memberId, tail);
 	tail.then(() => {
-		if (queues.get(memberId) === tail) queues.delete(memberId);
+		if (queues.get(memberId) === tail) {
+			queues.delete(memberId);
+		}
 	});
 	return run;
 }
@@ -208,25 +241,25 @@ async function loadTower(memberId: number) {
 	return { run, used, state };
 }
 
-function placeTraps(picked: number, safe: boolean, count: number): number[] {
+function placeTraps(picked: number, isSafe: boolean, count: number): number[] {
 	const others = Array.from({ length: TOWER_DOORS }, (_, d) => d).filter((d) => d !== picked);
 	for (let i = others.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
 		[others[i], others[j]] = [others[j], others[i]];
 	}
-	return safe ? others.slice(0, count) : [picked, ...others.slice(0, count - 1)];
+	return isSafe ? others.slice(0, count) : [picked, ...others.slice(0, count - 1)];
 }
 
-export async function handleTowerAction(client: any, payload: any) {
+export async function handleTowerAction(client: Client, payload: { guild_id?: string; actor_discord_id?: string; action?: string; door?: unknown }) {
 	const { guild_id, actor_discord_id, action, door } = payload || {};
-	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 	if (!(await isPublicSubFeatureEnabled(guild_id, 'minigames'))) {
@@ -234,17 +267,23 @@ export async function handleTowerAction(client: any, payload: any) {
 	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+	if (!actorMemberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const ctx = { guildId: guild_id, actorDiscordId: actor_discord_id, memberId: Number(actorMemberId) };
 
 	return queueMember(towerQueues, ctx.memberId, async () => {
 		const { run, used, state } = await loadTower(ctx.memberId);
 
-		if (action === 'state') return { ok: true, state };
+		if (action === 'state') {
+			return { ok: true, state };
+		}
 
 		if (action === 'start') {
-			if (run) return { ok: true, state };
+			if (run) {
+				return { ok: true, state };
+			}
 			await db.createTowerRun(ctx.memberId, used + 1);
 			return {
 				ok: true,
@@ -252,43 +291,61 @@ export async function handleTowerAction(client: any, payload: any) {
 			};
 		}
 
-		if (!run) return { ok: false, error: 'no_active_run', state };
+		if (!run) {
+			return { ok: false, error: 'no_active_run', state };
+		}
 		const cleared = state.floor;
 
 		if (action === 'cashout') {
-			if (cleared < 1) return { ok: false, error: 'nothing_to_cash', state };
+			if (cleared < 1) {
+				return { ok: false, error: 'nothing_to_cash', state };
+			}
 			const payout = towerPrize(cleared);
-			if (!(await db.stepTowerRun(run.id, cleared, { floor: cleared, status: 'cashed', payout }))) return { ok: false, error: 'run_changed', state };
-			return finishTower(client, ctx, state, { outcome: 'cashed', floor: cleared, payout, lost: 0 });
+			if (!(await db.stepTowerRun(run.id, cleared, { floor: cleared, status: 'cashed', payout }))) {
+				return { ok: false, error: 'run_changed', state };
+			}
+			return finishTower(client, ctx, { state, step: { outcome: 'cashed', floor: cleared, payout, lost: 0 } });
 		}
 
-		if (action !== 'pick') return { ok: false, error: 'invalid_action', state };
+		if (action !== 'pick') {
+			return { ok: false, error: 'invalid_action', state };
+		}
 
 		const picked = Math.floor(Number(door));
-		if (!(picked >= 0 && picked < TOWER_DOORS)) return { ok: false, error: 'invalid_door', state };
+		if (!(picked >= 0 && picked < TOWER_DOORS)) {
+			return { ok: false, error: 'invalid_door', state };
+		}
 
 		const floor = cleared + 1;
 		const chance = towerSafeChance(floor, state.climb, state.luckPercent);
-		const safe = Math.random() * 100 < chance;
-		const reveal = { door: picked, trapDoors: placeTraps(picked, safe, towerTrapCount(chance)), floor };
+		const isSafe = Math.random() * PERCENT < chance;
+		const reveal = { door: picked, trapDoors: placeTraps(picked, isSafe, towerTrapCount(chance)), floor };
 
-		if (!safe) {
-			if (!(await db.stepTowerRun(run.id, cleared, { floor: cleared, status: 'bust' }))) return { ok: false, error: 'run_changed', state };
-			return finishTower(client, ctx, state, { ...reveal, outcome: 'bust', payout: 0, lost: towerPrize(cleared) });
+		if (!isSafe) {
+			if (!(await db.stepTowerRun(run.id, cleared, { floor: cleared, status: 'bust' }))) {
+				return { ok: false, error: 'run_changed', state };
+			}
+			return finishTower(client, ctx, { state, step: { ...reveal, outcome: 'bust', payout: 0, lost: towerPrize(cleared) } });
 		}
 
 		if (floor >= TOWER_FLOORS) {
 			const payout = towerPrize(floor);
-			if (!(await db.stepTowerRun(run.id, cleared, { floor, status: 'cleared', payout }))) return { ok: false, error: 'run_changed', state };
-			return finishTower(client, ctx, state, { ...reveal, outcome: 'cleared', payout, lost: 0 });
+			if (!(await db.stepTowerRun(run.id, cleared, { floor, status: 'cleared', payout }))) {
+				return { ok: false, error: 'run_changed', state };
+			}
+			return finishTower(client, ctx, { state, step: { ...reveal, outcome: 'cleared', payout, lost: 0 } });
 		}
 
-		if (!(await db.stepTowerRun(run.id, cleared, { floor, status: 'active' }))) return { ok: false, error: 'run_changed', state };
+		if (!(await db.stepTowerRun(run.id, cleared, { floor, status: 'active' }))) {
+			return { ok: false, error: 'run_changed', state };
+		}
 		return { ok: true, step: { ...reveal, outcome: 'safe', payout: 0, lost: 0 }, state: { ...state, floor, prize: towerPrize(floor) } };
 	});
 }
 
-async function finishTower(client: any, ctx: any, state: any, step: any) {
+type TowerFinish = { state: Awaited<ReturnType<typeof loadTower>>['state']; step: TowerStep };
+
+async function finishTower(client: Client, ctx: PlayContext, { state, step }: TowerFinish) {
 	const { guildId, actorDiscordId, memberId } = ctx;
 	const base = towerBaseChance(step.floor, state.climb);
 	const chance = towerSafeChance(step.floor, state.climb, state.luckPercent);
@@ -312,7 +369,9 @@ async function finishTower(client: any, ctx: any, state: any, step: any) {
 		})
 		.catch(() => null);
 
-	if (step.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
+	if (step.payout > 0) {
+		await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
+	}
 
 	const result = { ...step, base, luckPercent: state.luckPercent };
 	setTimeout(() => {
@@ -324,23 +383,31 @@ async function finishTower(client: any, ctx: any, state: any, step: any) {
 
 const TOWER_OUTCOME_KEY: Record<string, string> = { cashed: 'cashout', cleared: 'cleared', bust: 'bust' };
 
-async function announceTower(client: any, ctx: any) {
+async function announceTower(client: Client, ctx: { guildId: string; actorDiscordId: string; result: TowerStep & { base: number; luckPercent: number } }) {
 	const { guildId, actorDiscordId, result } = ctx;
-	if (!result) return;
+	if (!result) {
+		return;
+	}
 
 	try {
 		const { getMinigamesChannelId, getEmbedConfig } = await import('../../../config.js');
 		const channelId = await getMinigamesChannelId(guildId);
-		if (!channelId) return;
+		if (!channelId) {
+			return;
+		}
 
 		const guild = client?.guilds?.cache?.get(guildId);
-		if (!guild) return;
+		if (!guild) {
+			return;
+		}
 		const channel = await guild.channels.fetch(channelId).catch(() => null);
-		if (!channel || !channel.isTextBased()) return;
+		if (!channel || !channel.isTextBased()) {
+			return;
+		}
 
 		const { EmbedBuilder } = await import('discord.js');
 		const tr = await serverTranslator(guildId);
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: EMBED_COLORS.gold, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const story = {
@@ -354,7 +421,7 @@ async function announceTower(client: any, ctx: any) {
 		const prize = result.payout > 0 ? `+${fmtXp(result.payout)}` : result.lost > 0 ? `~~${fmtXp(result.lost)}~~` : fmtXp(0);
 
 		const embed = new EmbedBuilder()
-			.setColor(0xc8911a)
+			.setColor(EMBED_COLORS.gold)
 			.setTitle(tr(`minigames.tower.${key}.title`))
 			.setDescription(tr(`minigames.tower.${storyKey}.description`, story))
 			.addFields(
@@ -367,8 +434,8 @@ async function announceTower(client: any, ctx: any) {
 
 		const content = actor ? `${actor}` : undefined;
 		await channel.send({ content, embeds: [embed] }).catch(() => null);
-	} catch (err: any) {
-		await logger.log(`⚠️ Tower announce failed: ${err?.message || String(err)}`);
+	} catch (err) {
+		await logger.log(`⚠️ Tower announce failed: ${(err as Error)?.message || String(err)}`);
 	}
 }
 
@@ -376,35 +443,43 @@ function colorState(run?: ColorRun) {
 	return { active: !!run, round: run?.rounds.length ?? 0, rounds: run?.rounds ?? [] };
 }
 
-function armColorRun(client: any, memberId: number, run: ColorRun) {
-	if (run.timer) clearTimeout(run.timer);
+function armColorRun(client: Client, memberId: number, run: ColorRun) {
+	if (run.timer) {
+		clearTimeout(run.timer);
+	}
 	run.timer = setTimeout(() => {
-		void queueMember(colorQueues, memberId, async () => {
-			if (colorRuns.get(memberId) === run) await endColor(client, memberId, run);
+		queueMember(colorQueues, memberId, async () => {
+			if (colorRuns.get(memberId) === run) {
+				await endColor(client, memberId, run);
+			}
 		}).catch(() => null);
 	}, COLOR_IDLE_MS);
 }
 
-async function endColor(client: any, memberId: number, run: ColorRun) {
-	if (run.timer) clearTimeout(run.timer);
+async function endColor(client: Client, memberId: number, run: ColorRun) {
+	if (run.timer) {
+		clearTimeout(run.timer);
+	}
 	colorRuns.delete(memberId);
-	if (run.rounds.length === 0) return null;
+	if (run.rounds.length === 0) {
+		return null;
+	}
 	const total = colorTotal(run.rounds.map((r) => r.score));
 	const payout = colorXp(total);
-	await finishColor(client, run.ctx, { total, payout }, run.rounds);
+	await finishColor(client, run.ctx, { result: { total, payout }, rounds: run.rounds });
 	return { total, payout, rounds: run.rounds };
 }
 
-export async function handleColorAction(client: any, payload: any) {
+export async function handleColorAction(client: Client, payload: { guild_id?: string; actor_discord_id?: string; action?: string; [axis: string]: unknown }) {
 	const { guild_id, actor_discord_id, action } = payload || {};
-	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 	if (!(await isPublicSubFeatureEnabled(guild_id, 'minigames'))) {
@@ -412,28 +487,40 @@ export async function handleColorAction(client: any, payload: any) {
 	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+	if (!actorMemberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const ctx = { guildId: guild_id, actorDiscordId: actor_discord_id, memberId: Number(actorMemberId) };
 
 	return queueMember(colorQueues, ctx.memberId, async () => {
 		const run = colorRuns.get(ctx.memberId);
 
-		if (action === 'end') return { ok: true, state: colorState(), ended: run ? await endColor(client, ctx.memberId, run) : null };
+		if (action === 'end') {
+			return { ok: true, state: colorState(), ended: run ? await endColor(client, ctx.memberId, run) : null };
+		}
 
 		if (action === 'start') {
-			if (run) await endColor(client, ctx.memberId, run);
+			if (run) {
+				await endColor(client, ctx.memberId, run);
+			}
 			const fresh: ColorRun = { ctx, rounds: [], target: colorTarget(), timer: null };
 			colorRuns.set(ctx.memberId, fresh);
 			armColorRun(client, ctx.memberId, fresh);
 			return { ok: true, state: colorState(fresh), target: fresh.target };
 		}
 
-		if (!run) return { ok: false, error: 'no_active_run', state: colorState() };
-		if (action !== 'guess') return { ok: false, error: 'invalid_action', state: colorState(run) };
+		if (!run) {
+			return { ok: false, error: 'no_active_run', state: colorState() };
+		}
+		if (action !== 'guess') {
+			return { ok: false, error: 'invalid_action', state: colorState(run) };
+		}
 
 		const guess = colorGuess(payload);
-		if (!guess) return { ok: false, error: 'invalid_guess', state: colorState(run) };
+		if (!guess) {
+			return { ok: false, error: 'invalid_guess', state: colorState(run) };
+		}
 
 		const round = { target: run.target, guess, score: colorScore(run.target, guess) };
 		run.rounds.push(round);
@@ -450,7 +537,9 @@ export async function handleColorAction(client: any, payload: any) {
 	});
 }
 
-async function finishColor(client: any, ctx: any, result: { total: number; payout: number }, rounds: ColorRound[]) {
+type ColorFinish = { result: { total: number; payout: number }; rounds: ColorRound[] };
+
+async function finishColor(client: Client, ctx: PlayContext, { result, rounds }: ColorFinish) {
 	const { guildId, actorDiscordId, memberId } = ctx;
 
 	if (result.payout > 0) {
@@ -472,7 +561,9 @@ async function finishColor(client: any, ctx: any, result: { total: number; payou
 		})
 		.catch(() => null);
 
-	if (result.payout > 0) await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
+	if (result.payout > 0) {
+		await evaluateMemberLevelAndRank(guildId, memberId, { reason: 'minigame' }).catch(() => null);
+	}
 
 	const best = rounds.reduce((top, r) => (r.score > top.score ? r : top), rounds[0]);
 	setTimeout(() => {
@@ -480,23 +571,34 @@ async function finishColor(client: any, ctx: any, result: { total: number; payou
 	}, COLOR_ANNOUNCE_DELAY_MS);
 }
 
-async function announceColor(client: any, ctx: any) {
+async function announceColor(
+	client: Client,
+	ctx: { guildId: string; actorDiscordId: string; result: { total: number; payout: number; best: ColorRound; rounds: number } }
+) {
 	const { guildId, actorDiscordId, result } = ctx;
-	if (!result) return;
+	if (!result) {
+		return;
+	}
 
 	try {
 		const { getMinigamesChannelId, getEmbedConfig } = await import('../../../config.js');
 		const channelId = await getMinigamesChannelId(guildId);
-		if (!channelId) return;
+		if (!channelId) {
+			return;
+		}
 
 		const guild = client?.guilds?.cache?.get(guildId);
-		if (!guild) return;
+		if (!guild) {
+			return;
+		}
 		const channel = await guild.channels.fetch(channelId).catch(() => null);
-		if (!channel || !channel.isTextBased()) return;
+		if (!channel || !channel.isTextBased()) {
+			return;
+		}
 
 		const { EmbedBuilder } = await import('discord.js');
 		const tr = await serverTranslator(guildId);
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: EMBED_COLORS.gold, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const story = { member: actor ? `${actor}` : tr('minigames.someone'), rounds: result.rounds, payout: fmtXp(result.payout) };
@@ -515,7 +617,7 @@ async function announceColor(client: any, ctx: any) {
 
 		const content = actor ? `${actor}` : undefined;
 		await channel.send({ content, embeds: [embed] }).catch(() => null);
-	} catch (err: any) {
-		await logger.log(`⚠️ Color announce failed: ${err?.message || String(err)}`);
+	} catch (err) {
+		await logger.log(`⚠️ Color announce failed: ${(err as Error)?.message || String(err)}`);
 	}
 }

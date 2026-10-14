@@ -25,12 +25,12 @@
 		children?: Snippet;
 	} = $props();
 
-	const tinted = $derived(!!accent);
+	const isTinted = $derived(!!accent);
 </script>
 
 <div
-	class="flex items-center gap-2.5 rounded-xl border px-2.5 py-2 sm:gap-3 sm:px-3 sm:py-2.5 {tinted ? '' : 'border-base-300 bg-base-200/50'}"
-	style={tinted ? `background: color-mix(in srgb, ${accent} 10%, transparent); border-color: color-mix(in srgb, ${accent} 28%, transparent);` : undefined}
+	class="flex items-center gap-2.5 rounded-xl border px-2.5 py-2 sm:gap-3 sm:px-3 sm:py-2.5 {isTinted ? '' : 'border-base-300 bg-base-200/50'}"
+	style={isTinted ? `background: color-mix(in srgb, ${accent} 10%, transparent); border-color: color-mix(in srgb, ${accent} 28%, transparent);` : undefined}
 >
 	{#if rank !== undefined}
 		<span class="text-base-content/40 w-3.5 shrink-0 text-center text-xs font-bold tabular-nums">{rank}</span>

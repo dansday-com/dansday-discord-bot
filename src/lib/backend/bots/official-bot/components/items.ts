@@ -1,5 +1,5 @@
 import db from '../../../../database.js';
-import { logger } from '../../../../utils/index.js';
+import { attempt, logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp, reevaluateLevel } from './xp-economy.js';
@@ -15,31 +15,70 @@ import {
 	discountedItemCost,
 	floatingWallClockMs
 } from '../../../../items.js';
+import type { APIEmbedField, Client, EmbedBuilder, Guild, GuildMember } from 'discord.js';
+import type { ServerRow } from '../../../../schema.js';
+import { DAY_MINUTES, MINUTES_PER_HOUR, MINUTE_MS, SECONDS_PER_MINUTE, SECOND_MS } from '../../../../utils/time.js';
+import { PERCENT } from '../../../../utils/numbers.js';
+
+const DEFAULT_EFFECT_DURATION_MINUTES = 60;
+const DEFAULT_SKIM_PERCENT = 10;
+const DEFAULT_REFUND_PERCENT = 100;
+const DEFAULT_LUCK_PERCENT = 20;
+const DEFAULT_SPY_CHANCE_PERCENT = 100;
+const MAX_PURCHASE_QUANTITY = 99;
+
+type ActiveEffect = Awaited<ReturnType<typeof db.getActiveEffectsForMember>>[number];
+type ItemConfig = Record<string, unknown>;
+type LeechCredit = { beneficiaryMemberId: number; amount: number; percent: number };
+type EmbedBuilderClass = typeof EmbedBuilder;
+type ItemUseResult = {
+	outcome: string;
+	error?: string;
+	xp?: number;
+	percent?: number;
+	refunded?: number;
+	bountyCollected?: number;
+	immuneUntil?: Date | null;
+	actorDisguised?: boolean;
+	expiresAt?: Date;
+	skimPercent?: number;
+	luckPercent?: number;
+	taxPercent?: number;
+	refundPercent?: number;
+	cleared?: number;
+	spyReport?: unknown;
+};
+type AttackContext = { actorMemberId: number; actorMemberItemId: number | string; targetMemberId: number; config: unknown; guildId: string };
+type SelfContext = { memberItemId: number | string; ownerMemberId: number; config?: unknown };
 
 const EFFECT_CACHE_TTL_MS = 5000;
-const memoryEffectCache = new Map();
+const memoryEffectCache = new Map<string, { value: ActiveEffect[]; expiresAt: number }>();
 
-function effectCacheKey(memberId: any) {
+function effectCacheKey(memberId: number | string | null) {
 	return `items:effects:${memberId}`;
 }
 
-async function readActiveEffects(memberId: any) {
+async function readActiveEffects(memberId: number | string | null) {
 	const rows = await db.getActiveEffectsForMember(memberId).catch(() => null);
 	return Array.isArray(rows) ? rows : [];
 }
 
-async function getCachedActiveEffects(memberId: any) {
+async function getCachedActiveEffects(memberId: number | string | null): Promise<ActiveEffect[]> {
 	const key = effectCacheKey(memberId);
 	const redis = await getRedisClient().catch(() => null);
 
 	if (redis) {
 		try {
 			const cached = await redis.get(key);
-			if (cached != null) return JSON.parse(cached);
+			if (cached != null) {
+				return JSON.parse(cached);
+			}
 		} catch (_) {}
 	} else {
 		const entry = memoryEffectCache.get(key);
-		if (entry && entry.expiresAt > Date.now()) return entry.value;
+		if (entry && entry.expiresAt > Date.now()) {
+			return entry.value;
+		}
 	}
 
 	const effects = await readActiveEffects(memberId);
@@ -55,7 +94,7 @@ async function getCachedActiveEffects(memberId: any) {
 	return effects;
 }
 
-async function invalidateEffectCache(memberId: any) {
+async function invalidateEffectCache(memberId: number | string) {
 	const key = effectCacheKey(memberId);
 	memoryEffectCache.delete(key);
 	const redis = await getRedisClient().catch(() => null);
@@ -66,42 +105,50 @@ async function invalidateEffectCache(memberId: any) {
 	}
 }
 
-function parseConfig(raw: any) {
-	if (!raw) return {} as any;
-	if (typeof raw === 'object') return raw;
+function parseConfig(raw: unknown): ItemConfig {
+	if (!raw) {
+		return {};
+	}
+	if (typeof raw === 'object') {
+		return raw as ItemConfig;
+	}
 	try {
-		return JSON.parse(raw);
+		return JSON.parse(raw as string);
 	} catch (_) {
-		return {} as any;
+		return {};
 	}
 }
 
-function effectScopeMatches(effect: any, source: any) {
+function effectScopeMatches(effect: { config: unknown }, source: unknown) {
 	const config = parseConfig(effect.config);
 	const scope = config.scope || 'all';
-	if (scope === 'all') return true;
+	if (scope === 'all') {
+		return true;
+	}
 	return scope === source;
 }
 
-export async function computeAwardModifiers(memberId: any, source: any = 'all', guildId: any = null) {
+export async function computeAwardModifiers(memberId: number | string, source: unknown = 'all', guildId: string | null = null) {
 	const effects = await getCachedActiveEffects(memberId);
 	let multiplier = 1;
 	let skimPercent = 0;
-	const leeches: any[] = [];
+	const leeches: { beneficiaryMemberId: number; percent: number }[] = [];
 
-	const shielded = effects.some((e: any) => e.effect_type === 'shield');
-	const protectedFromLeech = shielded || (guildId != null && !!(await targetImmuneUntil(memberId, guildId)));
-	const victimLuck = effects.find((e: any) => e.effect_type === 'luck' && Number(e.owner_member_id) === Number(memberId));
+	const isShielded = effects.some((e) => e.effect_type === 'shield');
+	const isProtectedFromLeech = isShielded || (guildId != null && !!(await targetImmuneUntil(memberId, guildId)));
+	const victimLuck = effects.find((e) => e.effect_type === 'luck' && Number(e.owner_member_id) === Number(memberId));
 	const victimLuckPercent = victimLuck ? Math.max(0, Number(victimLuck.effect_value) || 0) : 0;
 
 	for (const effect of effects) {
 		if (effect.effect_type === 'boost' && effectScopeMatches(effect, source)) {
 			const m = Number(effect.effect_value) || 0;
-			if (m > 0) multiplier *= m;
-		} else if (effect.effect_type === 'leech' && !protectedFromLeech) {
+			if (m > 0) {
+				multiplier *= m;
+			}
+		} else if (effect.effect_type === 'leech' && !isProtectedFromLeech) {
 			const rawPct = Number(effect.effect_value) || 0;
-			const targetsThisMember = Number(effect.target_member_id) === Number(memberId);
-			if (rawPct > 0 && targetsThisMember && effect.beneficiary_member_id != null) {
+			const doesTargetThisMember = Number(effect.target_member_id) === Number(memberId);
+			if (rawPct > 0 && doesTargetThisMember && effect.beneficiary_member_id != null) {
 				const pct = applyLuckReduction(rawPct, victimLuckPercent);
 				if (pct > 0) {
 					skimPercent += pct;
@@ -111,26 +158,32 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all', 
 		}
 	}
 
-	if (skimPercent > 100) skimPercent = 100;
+	if (skimPercent > PERCENT) {
+		skimPercent = PERCENT;
+	}
 
 	return { multiplier, skimPercent, leeches, victimLuckPercent };
 }
 
-export async function applyAwardEffects(memberId: any, baseXp: any, source: any = 'all', guildId: any = null) {
+type AwardScope = { source?: unknown; guildId?: string | null };
+
+export async function applyAwardEffects(memberId: number | string, baseXp: unknown, { source = 'all', guildId = null }: AwardScope = {}) {
 	const safeBase = Math.max(0, Math.floor(Number(baseXp) || 0));
-	if (safeBase <= 0) return { memberXp: 0, leechCredits: [] as any[], multiplier: 1, boosted: false, skimPercent: 0, leeched: false, victimLuckPercent: 0 };
+	if (safeBase <= 0) {
+		return { memberXp: 0, leechCredits: [] as LeechCredit[], multiplier: 1, boosted: false, skimPercent: 0, leeched: false, victimLuckPercent: 0 };
+	}
 
 	const { multiplier, skimPercent, leeches, victimLuckPercent } = await computeAwardModifiers(memberId, source, guildId);
 	const boosted = Math.floor(safeBase * multiplier);
-	const totalSkim = Math.floor((boosted * skimPercent) / 100);
+	const totalSkim = Math.floor((boosted * skimPercent) / PERCENT);
 	const memberXp = Math.max(0, boosted - totalSkim);
 
-	const leechCredits: any[] = [];
+	const leechCredits: LeechCredit[] = [];
 	let remaining = totalSkim;
 	for (let i = 0; i < leeches.length && remaining > 0; i++) {
 		const leech = leeches[i];
 		const isLast = i === leeches.length - 1;
-		const share = isLast ? remaining : Math.floor((boosted * leech.percent) / 100);
+		const share = isLast ? remaining : Math.floor((boosted * leech.percent) / PERCENT);
 		const amount = Math.min(remaining, share);
 		if (amount > 0) {
 			leechCredits.push({ beneficiaryMemberId: leech.beneficiaryMemberId, amount, percent: leech.percent });
@@ -141,9 +194,11 @@ export async function applyAwardEffects(memberId: any, baseXp: any, source: any 
 	return { memberXp, leechCredits, multiplier, boosted: multiplier > 1, skimPercent, leeched: totalSkim > 0, victimLuckPercent };
 }
 
-export async function creditLeechers(leechCredits: any, guildId: any) {
-	const applied: any[] = [];
-	if (!Array.isArray(leechCredits) || leechCredits.length === 0) return applied;
+export async function creditLeechers(leechCredits: LeechCredit[], guildId: string) {
+	const applied: (LeechCredit & { beneficiary: Awaited<ReturnType<typeof db.getServerMemberById>> })[] = [];
+	if (!Array.isArray(leechCredits) || leechCredits.length === 0) {
+		return applied;
+	}
 	for (const credit of leechCredits) {
 		try {
 			await db.ensureMemberLevel(credit.beneficiaryMemberId);
@@ -168,16 +223,16 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 			}).catch(() => null);
 			const beneficiary = await db.getServerMemberById(credit.beneficiaryMemberId).catch(() => null);
 			applied.push({ ...credit, beneficiary });
-		} catch (error: any) {
-			await logger.log(`⚠️ Leech credit failed for member ${credit.beneficiaryMemberId}: ${error.message}`);
+		} catch (error) {
+			await logger.log(`⚠️ Leech credit failed for member ${credit.beneficiaryMemberId}: ${(error as Error).message}`);
 		}
 	}
 	return applied;
 }
 
-export async function snapshotMembers(memberIds: any[]) {
+export async function snapshotMembers(memberIds: (number | string | null)[]) {
 	const ids = [...new Set(memberIds.filter((id) => id != null).map((id) => Number(id)))];
-	const snapshots = new Map<number, { level: any; rank: any; xp: any }>();
+	const snapshots = new Map<number, { level: number | null; rank: number | null; xp: number | null }>();
 	for (const id of ids) {
 		const stats = await db.getMemberLevel(id).catch(() => null);
 		snapshots.set(id, {
@@ -189,7 +244,7 @@ export async function snapshotMembers(memberIds: any[]) {
 	return snapshots;
 }
 
-export async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: any; rank: any; xp: any }>, reason: string) {
+export async function finalizeXpChanges(guildId: string, snapshots: Map<number, { level: unknown; rank: unknown; xp: unknown }>, reason: string) {
 	for (const [memberId, before] of snapshots) {
 		await evaluateMemberLevelAndRank(guildId, memberId, {
 			previousLevel: before.level != null ? Number(before.level) : null,
@@ -200,65 +255,83 @@ export async function finalizeXpChanges(guildId: any, snapshots: Map<number, { l
 	}
 }
 
-function rollPercent(minPercent: any, maxPercent: any, luckPercent: any = 0) {
-	const min = Math.max(0, Math.min(100, Number(minPercent) || 0));
-	const max = applyLuckBoost(Math.max(min, Math.min(100, Number(maxPercent) || min)), Math.max(0, Number(luckPercent) || 0));
+function rollPercent(minPercent: unknown, maxPercent: unknown, luckPercent: unknown = 0) {
+	const min = Math.max(0, Math.min(PERCENT, Number(minPercent) || 0));
+	const max = applyLuckBoost(Math.max(min, Math.min(PERCENT, Number(maxPercent) || min)), Math.max(0, Number(luckPercent) || 0));
 	return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-async function hasActiveShield(memberId: any) {
+async function hasActiveShield(memberId: number | string) {
 	const effects = await getCachedActiveEffects(memberId);
-	return effects.some((e: any) => e.effect_type === 'shield');
+	return effects.some((e: Record<string, unknown>) => e.effect_type === 'shield');
 }
 
-export async function getActiveLuckPercent(memberId: any): Promise<number> {
+export async function getActiveLuckPercent(memberId: number | string): Promise<number> {
 	const effects = await getCachedActiveEffects(memberId);
-	const luck = effects.find((e: any) => e.effect_type === 'luck' && Number(e.owner_member_id) === Number(memberId));
+	const luck = effects.find((e: Record<string, unknown>) => e.effect_type === 'luck' && Number(e.owner_member_id) === Number(memberId));
 	return luck ? Math.max(0, Number(luck.effect_value) || 0) : 0;
 }
 
 function applyLuckBoost(value: number, luckPercent: number, max = Infinity): number {
-	if (luckPercent <= 0) return value;
+	if (luckPercent <= 0) {
+		return value;
+	}
 	return Math.min(max, value + luckPercent);
 }
 
 function applyLuckReduction(value: number, luckPercent: number): number {
-	if (luckPercent <= 0) return value;
+	if (luckPercent <= 0) {
+		return value;
+	}
 	return Math.max(0, value - luckPercent);
 }
 
-async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any, action: 'steal' | 'bomb'): Promise<Date | null> {
+async function attackCooldownUntil(actorMemberId: number | string, cooldownMinutes: unknown, action: 'steal' | 'bomb'): Promise<Date | null> {
 	const minutes = Math.max(0, Number(cooldownMinutes) || 0);
-	if (minutes <= 0) return null;
+	if (minutes <= 0) {
+		return null;
+	}
 	const last = await db.getLastAttackActionByActor(actorMemberId, [action]);
-	if (!last) return null;
-	const until = new Date(last.getTime() + minutes * 60000);
+	if (!last) {
+		return null;
+	}
+	const until = new Date(last.getTime() + minutes * MINUTE_MS);
 	return until.getTime() > Date.now() ? until : null;
 }
 
-async function activationCooldownUntil(actorMemberId: any, cooldownMinutes: any, action: string): Promise<Date | null> {
+async function activationCooldownUntil(actorMemberId: number | string, cooldownMinutes: unknown, action: string): Promise<Date | null> {
 	const minutes = Math.max(0, Number(cooldownMinutes) || 0);
-	if (minutes <= 0) return null;
+	if (minutes <= 0) {
+		return null;
+	}
 	const last = await db.getLastActionByActor(actorMemberId, action).catch(() => null);
-	if (!last) return null;
-	const until = new Date(last.getTime() + minutes * 60000);
+	if (!last) {
+		return null;
+	}
+	const until = new Date(last.getTime() + minutes * MINUTE_MS);
 	return until.getTime() > Date.now() ? until : null;
 }
 
-async function targetImmuneUntil(targetMemberId: any, guildId: any): Promise<Date | null> {
+async function targetImmuneUntil(targetMemberId: number | string, guildId: string): Promise<Date | null> {
 	let latest = 0;
 	for (const action of ['steal', 'bomb'] as const) {
 		const ms = await maxAttackConfigMs(guildId, 'immunity_minutes', action).catch(() => 0);
-		if (ms <= 0) continue;
+		if (ms <= 0) {
+			continue;
+		}
 		const last = await db.getLastActionAgainstTarget(targetMemberId, [action]).catch(() => null);
-		if (!last) continue;
+		if (!last) {
+			continue;
+		}
 		const ends = last.getTime() + ms;
-		if (ends > Date.now() && ends > latest) latest = ends;
+		if (ends > Date.now() && ends > latest) {
+			latest = ends;
+		}
 	}
 	return latest > 0 ? new Date(latest) : null;
 }
 
-function logAction(actorMemberId: any, fields: Record<string, any>) {
+function logAction(actorMemberId: number | string, fields: Record<string, unknown>) {
 	return db.logMemberItemAction(actorMemberId, { xp: 0, outcome: 'success', ...fields });
 }
 
@@ -269,33 +342,35 @@ async function runSelfBuff({
 	effectValue = 1,
 	durationMinutes,
 	active = {},
-	trackDisguise = true,
-	invalidateSelf = true,
+	trackDisguise: isTrackDisguise = true,
+	invalidateSelf: isInvalidateSelf = true,
 	extra = {},
 	logFields = {}
 }: {
-	memberItemId: any;
-	ownerMemberId: any;
+	memberItemId: number | string;
+	ownerMemberId: number | string;
 	action: string;
 	effectValue?: number;
-	durationMinutes: any;
-	active?: Record<string, any>;
+	durationMinutes: unknown;
+	active?: { beneficiary_member_id?: number | string | null; target_member_id?: number | string | null };
 	trackDisguise?: boolean;
 	invalidateSelf?: boolean;
-	extra?: Record<string, any>;
-	logFields?: Record<string, any>;
+	extra?: { refundPercent?: number; luckPercent?: number };
+	logFields?: Record<string, unknown>;
 }) {
-	const actorDisguised = trackDisguise ? await isDisguised(ownerMemberId) : false;
+	const isActorDisguised = isTrackDisguise ? await isDisguised(ownerMemberId) : false;
 	const expiresAt = computeExpiry(durationMinutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: effectValue, expires_at: expiresAt, ...active });
 	await logAction(ownerMemberId, {
 		member_item_id: memberItemId,
 		action,
-		...(trackDisguise ? { actor_disguised: actorDisguised } : {}),
+		...(isTrackDisguise ? { actor_disguised: isActorDisguised } : {}),
 		...logFields
 	});
-	if (invalidateSelf) await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt, actorDisguised, ...extra };
+	if (isInvalidateSelf) {
+		await invalidateEffectCache(ownerMemberId);
+	}
+	return { outcome: 'success', expiresAt, actorDisguised: isActorDisguised, ...extra };
 }
 
 async function guardAttack({
@@ -303,9 +378,16 @@ async function guardAttack({
 	actorMemberItemId,
 	targetMemberId,
 	action,
-	actorDisguised,
+	actorDisguised: isActorDisguised,
 	guildId
-}: any): Promise<{ outcome: string; xp: number; actorDisguised: boolean } | null> {
+}: {
+	actorMemberId: number | string;
+	actorMemberItemId: number | string;
+	targetMemberId: number | string;
+	action: string;
+	actorDisguised: boolean;
+	guildId: string;
+}): Promise<{ outcome: string; xp: number; actorDisguised: boolean } | null> {
 	for (const [check, outcome] of [
 		[hasActiveShield(targetMemberId), 'blocked'],
 		[targetImmuneUntil(targetMemberId, guildId), 'immune']
@@ -317,19 +399,51 @@ async function guardAttack({
 				action,
 				outcome
 			});
-			return { outcome, xp: 0, actorDisguised };
+			return { outcome, xp: 0, actorDisguised: isActorDisguised };
 		}
 	}
 	return null;
 }
 
+async function reflectAttack(attack: AttackContext, { action, amount }: { action: 'steal' | 'bomb'; amount: number }) {
+	const { actorMemberId, guildId } = attack;
+	const attacker = await getSpendableXp(actorMemberId, guildId);
+	const reflected = Math.min(amount, attacker.total);
+	if (reflected > 0) {
+		await spendXp(actorMemberId, reflected, guildId);
+		await invalidateEffectCache(actorMemberId);
+	}
+	await logAction(actorMemberId, {
+		member_item_id: attack.actorMemberItemId,
+		target_member_id: attack.targetMemberId,
+		action,
+		xp: reflected,
+		outcome: 'reflected'
+	});
+	return reflected;
+}
+
+async function refundInsurance({ actorMemberId, targetMemberId, guildId }: AttackContext, amount: number) {
+	const insurance = await consumeReactiveDefense(targetMemberId, 'insurance');
+	if (!insurance) {
+		return 0;
+	}
+	const refunded = insuranceRefundAmount(amount, insurance.effect_value);
+	if (refunded > 0) {
+		const refundStats = await db.updateMemberLevelStats(targetMemberId, { xpIncrement: refunded });
+		await reevaluateLevel(targetMemberId, refundStats, guildId);
+	}
+	await db.logMemberItemAction(targetMemberId, { target_member_id: actorMemberId, action: 'insurance', xp: refunded, outcome: 'refunded' });
+	return refunded;
+}
+
 async function resolveAttack(
 	action: 'steal' | 'bomb',
-	{ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any,
-	{ credit, defaultMaxPercent }: { credit: boolean; defaultMaxPercent: number }
+	{ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: AttackContext,
+	{ credit: isCredit, defaultMaxPercent }: { credit: boolean; defaultMaxPercent: number }
 ) {
 	const cfg = parseConfig(config);
-	const actorDisguised = await isDisguised(actorMemberId);
+	const isActorDisguised = await isDisguised(actorMemberId);
 	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, action)) {
 		await logAction(actorMemberId, {
 			member_item_id: actorMemberItemId,
@@ -340,61 +454,38 @@ async function resolveAttack(
 		return { outcome: 'cooldown', xp: 0 };
 	}
 
-	const guarded = await guardAttack({ actorMemberId, actorMemberItemId, targetMemberId, action, actorDisguised, guildId });
-	if (guarded) return guarded;
+	const guarded = await guardAttack({ actorMemberId, actorMemberItemId, targetMemberId, action, actorDisguised: isActorDisguised, guildId });
+	if (guarded) {
+		return guarded;
+	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
 	const pct = rollPercent(cfg.min_percent ?? 1, cfg.max_percent ?? defaultMaxPercent, luckPercent);
-	const amount = Math.min(target.total, Math.floor((target.total * pct) / 100));
+	const amount = Math.min(target.total, Math.floor((target.total * pct) / PERCENT));
 
 	if (await consumeReactiveDefense(targetMemberId, 'reflect')) {
-		const attacker = await getSpendableXp(actorMemberId, guildId);
-		const reflected = Math.min(amount, attacker.total);
-		if (reflected > 0) {
-			await spendXp(actorMemberId, reflected, guildId);
-			await invalidateEffectCache(actorMemberId);
-		}
-		await logAction(actorMemberId, {
-			member_item_id: actorMemberItemId,
-			target_member_id: targetMemberId,
-			action,
-			xp: reflected,
-			outcome: 'reflected'
-		});
-		return { outcome: 'reflected', xp: reflected, actorDisguised };
+		const reflected = await reflectAttack({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }, { action, amount });
+		return { outcome: 'reflected', xp: reflected, actorDisguised: isActorDisguised };
 	}
 
 	if (amount <= 0) {
 		await logAction(actorMemberId, { member_item_id: actorMemberItemId, target_member_id: targetMemberId, action });
-		return { outcome: 'success', xp: 0, actorDisguised };
+		return { outcome: 'success', xp: 0, actorDisguised: isActorDisguised };
 	}
 
 	const spent = await spendXp(targetMemberId, amount, guildId);
-	if (!spent.ok) return { outcome: 'immune', xp: 0, actorDisguised };
+	if (!spent.ok) {
+		return { outcome: 'immune', xp: 0, actorDisguised: isActorDisguised };
+	}
 
-	if (credit) {
+	if (isCredit) {
 		await db.ensureMemberLevel(actorMemberId);
 		const actorStats = await db.updateMemberLevelStats(actorMemberId, { xpIncrement: amount });
 		await reevaluateLevel(actorMemberId, actorStats, guildId);
 	}
 
-	let refunded = 0;
-	const insurance = await consumeReactiveDefense(targetMemberId, 'insurance');
-	if (insurance) {
-		refunded = insuranceRefundAmount(amount, insurance.effect_value);
-		if (refunded > 0) {
-			const refundStats = await db.updateMemberLevelStats(targetMemberId, { xpIncrement: refunded });
-			await reevaluateLevel(targetMemberId, refundStats, guildId);
-		}
-		await db.logMemberItemAction(targetMemberId, {
-			target_member_id: actorMemberId,
-			action: 'insurance',
-			xp: refunded,
-			outcome: 'refunded'
-		});
-	}
-
+	const refunded = await refundInsurance({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }, amount);
 	const bountyCollected = await payoutBountyOnHit(targetMemberId, actorMemberId, guildId);
 
 	await logAction(actorMemberId, {
@@ -407,29 +498,31 @@ async function resolveAttack(
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil, actorDisguised };
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil, actorDisguised: isActorDisguised };
 }
 
-export function resolveSteal(ctx: any) {
+export function resolveSteal(ctx: AttackContext) {
 	return resolveAttack('steal', ctx, { credit: true, defaultMaxPercent: 25 });
 }
 
-export function resolveBomb(ctx: any) {
+export function resolveBomb(ctx: AttackContext) {
 	return resolveAttack('bomb', ctx, { credit: false, defaultMaxPercent: 50 });
 }
 
-function computeExpiry(durationMinutes: any) {
-	const minutes = Math.max(1, Number(durationMinutes) || 60);
-	return new Date(Date.now() + minutes * 60000);
+function computeExpiry(durationMinutes: unknown) {
+	const minutes = Math.max(1, Number(durationMinutes) || DEFAULT_EFFECT_DURATION_MINUTES);
+	return new Date(Date.now() + minutes * MINUTE_MS);
 }
 
-function newImmunityUntil(immunityMinutes: any): Date | null {
+function newImmunityUntil(immunityMinutes: unknown): Date | null {
 	const minutes = Math.max(0, Number(immunityMinutes) || 0);
-	if (minutes <= 0) return null;
-	return new Date(Date.now() + minutes * 60000);
+	if (minutes <= 0) {
+		return null;
+	}
+	return new Date(Date.now() + minutes * MINUTE_MS);
 }
 
-export function resolveBoost({ memberItemId, ownerMemberId, config }: any) {
+export function resolveBoost({ memberItemId, ownerMemberId, config }: SelfContext) {
 	const cfg = parseConfig(config);
 	return runSelfBuff({
 		memberItemId,
@@ -441,21 +534,36 @@ export function resolveBoost({ memberItemId, ownerMemberId, config }: any) {
 	});
 }
 
-export function resolveShield({ memberItemId, ownerMemberId, config }: any) {
+export function resolveShield({ memberItemId, ownerMemberId, config }: SelfContext) {
 	const cfg = parseConfig(config);
 	return runSelfBuff({ memberItemId, ownerMemberId, action: 'shield', durationMinutes: cfg.effect_duration_minutes });
 }
 
-async function activeLeechOnTarget(targetMemberId: any) {
+async function activeLeechOnTarget(targetMemberId: number | string) {
 	const effects = await getCachedActiveEffects(targetMemberId);
-	return effects.find((e: any) => e.effect_type === 'leech' && Number(e.target_member_id) === Number(targetMemberId)) ?? null;
+	return effects.find((e: Record<string, unknown>) => e.effect_type === 'leech' && Number(e.target_member_id) === Number(targetMemberId)) ?? null;
 }
 
-export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config, guildId }: any) {
+export async function resolveLeech({
+	memberItemId,
+	actorMemberId,
+	targetMemberId,
+	config,
+	guildId
+}: Omit<AttackContext, 'actorMemberItemId'> & { memberItemId: number | string }) {
 	const cfg = parseConfig(config);
-	const actorDisguised = await isDisguised(actorMemberId);
-	const guarded = await guardAttack({ actorMemberId, actorMemberItemId: memberItemId, targetMemberId, action: 'leech', actorDisguised, guildId });
-	if (guarded) return { outcome: guarded.outcome, actorDisguised };
+	const isActorDisguised = await isDisguised(actorMemberId);
+	const guarded = await guardAttack({
+		actorMemberId,
+		actorMemberItemId: memberItemId,
+		targetMemberId,
+		action: 'leech',
+		actorDisguised: isActorDisguised,
+		guildId
+	});
+	if (guarded) {
+		return { outcome: guarded.outcome, actorDisguised: isActorDisguised };
+	}
 	const existing = await activeLeechOnTarget(targetMemberId);
 	if (existing) {
 		const beneficiary = await db.getServerMemberById(existing.beneficiary_member_id).catch(() => null);
@@ -465,12 +573,12 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 			target_member_id: targetMemberId,
 			action: 'leech',
 			outcome: 'occupied',
-			actor_disguised: actorDisguised
+			actor_disguised: isActorDisguised
 		});
 		return { outcome: 'leeched', error: `This member is already being leeched by ${who}.` };
 	}
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
-	const skimPercent = Math.round(applyLuckBoost(Math.max(0, Number(cfg.skim_percent ?? 10)), luckPercent));
+	const skimPercent = Math.round(applyLuckBoost(Math.max(0, Number(cfg.skim_percent ?? DEFAULT_SKIM_PERCENT)), luckPercent));
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, {
 		effect_value: skimPercent,
@@ -484,20 +592,20 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		action: 'leech',
 		rate_percent: skimPercent,
 		luck_percent: luckPercent || null,
-		actor_disguised: actorDisguised
+		actor_disguised: isActorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
-	return { outcome: 'success', expiresAt, skimPercent, luckPercent, actorDisguised };
+	return { outcome: 'success', expiresAt, skimPercent, luckPercent, actorDisguised: isActorDisguised };
 }
 
-export function resolveReflect({ memberItemId, ownerMemberId, config }: any) {
+export function resolveReflect({ memberItemId, ownerMemberId, config }: SelfContext) {
 	const cfg = parseConfig(config);
 	return runSelfBuff({ memberItemId, ownerMemberId, action: 'reflect', durationMinutes: cfg.effect_duration_minutes });
 }
 
-export async function resolveDisguise({ memberItemId, ownerMemberId, config }: any) {
+export async function resolveDisguise({ memberItemId, ownerMemberId, config }: SelfContext) {
 	const cfg = parseConfig(config);
-	const { actorDisguised, ...rest } = await runSelfBuff({
+	const { actorDisguised: isActorDisguised, ...rest } = await runSelfBuff({
 		memberItemId,
 		ownerMemberId,
 		action: 'disguise',
@@ -507,19 +615,23 @@ export async function resolveDisguise({ memberItemId, ownerMemberId, config }: a
 	return rest;
 }
 
-async function isDisguised(memberId: any) {
+async function isDisguised(memberId: number | string | null) {
 	const effects = await getCachedActiveEffects(memberId);
-	return effects.some((e: any) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
+	return effects.some((e: Record<string, unknown>) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
 }
 
-export async function resolvePurifier({ memberItemId, ownerMemberId }: any) {
-	const effects = (await db.getActiveEffectsForMember(ownerMemberId).catch(() => [])) as any[];
+export async function resolvePurifier({ memberItemId, ownerMemberId }: SelfContext) {
+	const effects = await db.getActiveEffectsForMember(ownerMemberId).catch(() => []);
 	const affected = new Set<number>([Number(ownerMemberId)]);
 
 	for (const effect of effects) {
 		await db.endMemberItemActiveNow(effect.id).catch(() => null);
-		if (effect.beneficiary_member_id != null) affected.add(Number(effect.beneficiary_member_id));
-		if (effect.target_member_id != null) affected.add(Number(effect.target_member_id));
+		if (effect.beneficiary_member_id != null) {
+			affected.add(Number(effect.beneficiary_member_id));
+		}
+		if (effect.target_member_id != null) {
+			affected.add(Number(effect.target_member_id));
+		}
 	}
 
 	const immunityCleared = await db.clearImmunityForMember(ownerMemberId).catch(() => 0);
@@ -534,18 +646,20 @@ export async function resolvePurifier({ memberItemId, ownerMemberId }: any) {
 	return { outcome: 'success', cleared };
 }
 
-function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
+function insuranceRefundAmount(lostAmount: unknown, refundPercent: unknown) {
 	const lost = Math.max(0, Math.floor(Number(lostAmount) || 0));
 	const pct = Math.max(0, Number(refundPercent) || 0);
-	return Math.floor((lost * pct) / 100);
+	return Math.floor((lost * pct) / PERCENT);
 }
 
-export async function resolveInsurance({ memberItemId, ownerMemberId, config }: any) {
+export async function resolveInsurance({ memberItemId, ownerMemberId, config }: SelfContext) {
 	const cfg = parseConfig(config);
 	const cooldownUntil = await activationCooldownUntil(ownerMemberId, cfg.cooldown_minutes, 'insurance');
-	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown. Try again in ${humanizeUntil(cooldownUntil)}.` };
+	if (cooldownUntil) {
+		return { outcome: 'cooldown', error: `Insurance is on cooldown. Try again in ${humanizeUntil(cooldownUntil)}.` };
+	}
 	const luckPercent = await getActiveLuckPercent(ownerMemberId);
-	const refundPercent = Math.round(applyLuckBoost(Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100))), luckPercent));
+	const refundPercent = Math.round(applyLuckBoost(Math.max(0, Math.min(PERCENT, Number(cfg.refund_percent ?? DEFAULT_REFUND_PERCENT))), luckPercent));
 	return runSelfBuff({
 		memberItemId,
 		ownerMemberId,
@@ -557,9 +671,9 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 	});
 }
 
-export async function resolveLuck({ memberItemId, ownerMemberId, config }: any) {
+export async function resolveLuck({ memberItemId, ownerMemberId, config }: SelfContext) {
 	const cfg = parseConfig(config);
-	const luckPercent = Math.max(0, Number(cfg.luck_percent ?? 20));
+	const luckPercent = Math.max(0, Number(cfg.luck_percent ?? DEFAULT_LUCK_PERCENT));
 	return runSelfBuff({
 		memberItemId,
 		ownerMemberId,
@@ -571,17 +685,17 @@ export async function resolveLuck({ memberItemId, ownerMemberId, config }: any) 
 	});
 }
 
-export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
+export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: AttackContext) {
 	const cfg = parseConfig(config);
-	const actorDisguised = await isDisguised(actorMemberId);
+	const isActorDisguised = await isDisguised(actorMemberId);
 	const amount = Math.max(0, Math.floor(Number(cfg.gift_amount) || 0));
 	if (amount <= 0) {
-		await logAction(actorMemberId, { member_item_id: actorMemberItemId, target_member_id: targetMemberId, action: 'gift', actor_disguised: actorDisguised });
-		return { outcome: 'success', xp: 0, actorDisguised };
+		await logAction(actorMemberId, { member_item_id: actorMemberItemId, target_member_id: targetMemberId, action: 'gift', actor_disguised: isActorDisguised });
+		return { outcome: 'success', xp: 0, actorDisguised: isActorDisguised };
 	}
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
-	const taxPercent = applyLuckReduction(Math.max(0, Math.min(100, Number(cfg.tax_percent) || 0)), luckPercent);
-	const received = Math.max(0, amount - Math.floor((amount * taxPercent) / 100));
+	const taxPercent = applyLuckReduction(Math.max(0, Math.min(PERCENT, Number(cfg.tax_percent) || 0)), luckPercent);
+	const received = Math.max(0, amount - Math.floor((amount * taxPercent) / PERCENT));
 
 	await db.ensureMemberLevel(targetMemberId);
 	const targetStats = await db.updateMemberLevelStats(targetMemberId, { xpIncrement: received });
@@ -594,16 +708,18 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		xp: received,
 		rate_percent: taxPercent || null,
 		luck_percent: luckPercent || null,
-		actor_disguised: actorDisguised
+		actor_disguised: isActorDisguised
 	});
-	return { outcome: 'success', xp: received, taxPercent, luckPercent, actorDisguised };
+	return { outcome: 'success', xp: received, taxPercent, luckPercent, actorDisguised: isActorDisguised };
 }
 
-export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
+export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: AttackContext) {
 	const cfg = parseConfig(config);
-	const actorDisguised = await isDisguised(actorMemberId);
+	const isActorDisguised = await isDisguised(actorMemberId);
 	const amount = Math.max(0, Math.floor(Number(cfg.bounty_amount) || 0));
-	if (amount <= 0) return { outcome: 'success', xp: 0, actorDisguised };
+	if (amount <= 0) {
+		return { outcome: 'success', xp: 0, actorDisguised: isActorDisguised };
+	}
 
 	await db.placeBounty(targetMemberId, actorMemberId, amount);
 	await logAction(actorMemberId, {
@@ -611,19 +727,19 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 		target_member_id: targetMemberId,
 		action: 'bounty',
 		xp: amount,
-		actor_disguised: actorDisguised
+		actor_disguised: isActorDisguised
 	});
-	return { outcome: 'success', xp: amount, actorDisguised };
+	return { outcome: 'success', xp: amount, actorDisguised: isActorDisguised };
 }
 
-export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
+export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: AttackContext) {
 	const targetName = await spyTargetName(targetMemberId);
 	const cfg = parseConfig(config);
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
-	const chance = Math.round(applyLuckBoost(Math.max(0, Math.min(100, Number(cfg.spy_chance ?? 100))), luckPercent));
-	const caught = chance < 100 && Math.floor(Math.random() * 100) + 1 > chance;
+	const chance = Math.round(applyLuckBoost(Math.max(0, Math.min(PERCENT, Number(cfg.spy_chance ?? DEFAULT_SPY_CHANCE_PERCENT))), luckPercent));
+	const wasCaught = chance < PERCENT && Math.floor(Math.random() * PERCENT) + 1 > chance;
 
-	if (caught) {
+	if (wasCaught) {
 		await db.logMemberItemAction(actorMemberId, {
 			member_item_id: actorMemberItemId,
 			target_member_id: targetMemberId,
@@ -666,10 +782,12 @@ export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMembe
 	};
 }
 
-async function spyTargetAssets(targetMemberId: any) {
+async function spyTargetAssets(targetMemberId: number | string) {
 	const { getMemberPortfolio } = await import('./market.js');
 	const portfolio = await getMemberPortfolio(targetMemberId).catch(() => null);
-	if (!portfolio) return { assets: [], invested: 0, value: 0 };
+	if (!portfolio) {
+		return { assets: [], invested: 0, value: 0 };
+	}
 	const assets = portfolio.positions.map((p) => ({
 		symbol: p.symbol,
 		asset_name: p.asset_name,
@@ -682,22 +800,22 @@ async function spyTargetAssets(targetMemberId: any) {
 	return { assets, invested: portfolio.totalInvested, value: portfolio.totalValue };
 }
 
-async function spyTargetName(targetMemberId: any): Promise<string> {
+async function spyTargetName(targetMemberId: number | string): Promise<string> {
 	const member = await db.getServerMemberById(targetMemberId).catch(() => null);
 	return member?.server_display_name || member?.display_name || member?.username || 'a member';
 }
 
-async function spyTargetBag(targetMemberId: any) {
+async function spyTargetBag(targetMemberId: number | string) {
 	const rows = await db.getMemberInventory(targetMemberId).catch(() => []);
-	return ((rows as any[]) || []).map((r) => ({ name: r.name, effect_type: r.effect_type, quantity: Number(r.quantity) || 0 })).filter((r) => r.quantity > 0);
+	return (rows || []).map((r) => ({ name: r.name, effect_type: r.effect_type, quantity: Number(r.quantity) || 0 })).filter((r) => r.quantity > 0);
 }
 
-async function spyTargetEffects(targetMemberId: any) {
+async function spyTargetEffects(targetMemberId: number | string) {
 	const rows = await getCachedActiveEffects(targetMemberId);
-	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';
-	const out: any[] = [];
-	for (const e of (rows as any[]) || []) {
-		const base: any = {
+	const nameOf = (sdn: unknown, dn: unknown, un: unknown) => sdn || dn || un || 'a member';
+	const out: Record<string, unknown>[] = [];
+	for (const e of rows || []) {
+		const base: Record<string, unknown> = {
 			effect_type: e.effect_type,
 			effect_value: Number(e.effect_value) || 0,
 			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
@@ -720,16 +838,22 @@ async function spyTargetEffects(targetMemberId: any) {
 	return out;
 }
 
-async function spyTargetCooldowns(targetMemberId: any, guildId: any) {
+async function spyTargetCooldowns(targetMemberId: number | string, guildId: string) {
 	const cooldowns: { kind: string; until: number }[] = [];
 
 	for (const action of ['steal', 'bomb'] as const) {
 		const ms = await cooldownMsForAction(guildId, action).catch(() => 0);
-		if (ms <= 0) continue;
+		if (ms <= 0) {
+			continue;
+		}
 		const last = await db.getLastAttackActionByActor(targetMemberId, [action]).catch(() => null);
-		if (!last) continue;
+		if (!last) {
+			continue;
+		}
 		const ends = last.getTime() + ms;
-		if (ends > Date.now()) cooldowns.push({ kind: action, until: ends });
+		if (ends > Date.now()) {
+			cooldowns.push({ kind: action, until: ends });
+		}
 	}
 
 	const insuranceMs = await maxAttackConfigMs(guildId, 'cooldown_minutes', 'insurance').catch(() => 0);
@@ -737,20 +861,26 @@ async function spyTargetCooldowns(targetMemberId: any, guildId: any) {
 		const last = await db.getLastActionByActor(targetMemberId, 'insurance').catch(() => null);
 		if (last) {
 			const ends = last.getTime() + insuranceMs;
-			if (ends > Date.now()) cooldowns.push({ kind: 'insurance', until: ends });
+			if (ends > Date.now()) {
+				cooldowns.push({ kind: 'insurance', until: ends });
+			}
 		}
 	}
 
 	const immune = await targetImmuneUntil(targetMemberId, guildId).catch(() => null);
-	if (immune) cooldowns.push({ kind: 'immunity', until: immune.getTime() });
+	if (immune) {
+		cooldowns.push({ kind: 'immunity', until: immune.getTime() });
+	}
 
 	return cooldowns;
 }
 
-async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, guildId: any) {
+async function payoutBountyOnHit(targetMemberId: number | string, attackerMemberId: number | string, guildId: string) {
 	const total = await db.collectBounties(targetMemberId).catch(() => 0);
-	if (!total || total <= 0) return 0;
-	const attackerDisguised = await isDisguised(attackerMemberId);
+	if (!total || total <= 0) {
+		return 0;
+	}
+	const isAttackerDisguised = await isDisguised(attackerMemberId);
 	await db.ensureMemberLevel(attackerMemberId);
 	const stats = await db.updateMemberLevelStats(attackerMemberId, { xpIncrement: total });
 	await reevaluateLevel(attackerMemberId, stats, guildId);
@@ -760,38 +890,40 @@ async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, gui
 			action: 'bounty_collected',
 			xp: total,
 			outcome: 'success',
-			actor_disguised: attackerDisguised
+			actor_disguised: isAttackerDisguised
 		})
 		.catch(() => null);
 	return total;
 }
 
-async function consumeReactiveDefense(memberId: any, kind: string) {
+async function consumeReactiveDefense(memberId: number | string, kind: string) {
 	const effects = await getCachedActiveEffects(memberId);
-	const match = effects.find((e: any) => e.effect_type === kind);
-	if (!match) return null;
+	const match = effects.find((e: Record<string, unknown>) => e.effect_type === kind);
+	if (!match) {
+		return null;
+	}
 	await db.expireMemberItemActive(match.id).catch(() => null);
 	await invalidateEffectCache(memberId);
 	return match;
 }
 
-export async function resolveServerMemberId(serverId: any, discordMemberId: any) {
+export async function resolveServerMemberId(serverId: number | string, discordMemberId: number | string) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordMemberId)).catch(() => null);
 	return member?.id ?? null;
 }
 
 type UseContext = {
-	actorMemberId: any;
-	memberItemId: any;
-	targetMemberId: any;
-	config: any;
-	guildId: any;
+	actorMemberId: number;
+	memberItemId: number | string;
+	targetMemberId: number | null;
+	config: ItemConfig;
+	guildId: string;
 };
 
 type ItemHandler = {
 	selfBuff?: boolean;
-	resolve: (ctx: UseContext) => Promise<any>;
-	postUse?: (ctx: UseContext) => Promise<any> | any;
+	resolve: (ctx: UseContext) => Promise<ItemUseResult>;
+	postUse?: (ctx: UseContext) => Promise<void>;
 };
 
 const ITEM_HANDLERS: Record<string, ItemHandler> = {
@@ -800,36 +932,48 @@ const ITEM_HANDLERS: Record<string, ItemHandler> = {
 			resolveSteal({
 				actorMemberId: c.actorMemberId,
 				actorMemberItemId: c.memberItemId,
-				targetMemberId: c.targetMemberId,
+				targetMemberId: c.targetMemberId!,
 				config: c.config,
 				guildId: c.guildId
 			})
 	},
 	bomb: {
 		resolve: (c) =>
-			resolveBomb({ actorMemberId: c.actorMemberId, actorMemberItemId: c.memberItemId, targetMemberId: c.targetMemberId, config: c.config, guildId: c.guildId })
+			resolveBomb({
+				actorMemberId: c.actorMemberId,
+				actorMemberItemId: c.memberItemId,
+				targetMemberId: c.targetMemberId!,
+				config: c.config,
+				guildId: c.guildId
+			})
 	},
 	leech: {
 		resolve: (c) =>
-			resolveLeech({ memberItemId: c.memberItemId, actorMemberId: c.actorMemberId, targetMemberId: c.targetMemberId, config: c.config, guildId: c.guildId })
+			resolveLeech({ memberItemId: c.memberItemId, actorMemberId: c.actorMemberId, targetMemberId: c.targetMemberId!, config: c.config, guildId: c.guildId })
 	},
 	gift: {
 		resolve: (c) =>
-			resolveGift({ actorMemberId: c.actorMemberId, actorMemberItemId: c.memberItemId, targetMemberId: c.targetMemberId, config: c.config, guildId: c.guildId })
+			resolveGift({
+				actorMemberId: c.actorMemberId,
+				actorMemberItemId: c.memberItemId,
+				targetMemberId: c.targetMemberId!,
+				config: c.config,
+				guildId: c.guildId
+			})
 	},
 	bounty: {
 		resolve: (c) =>
 			resolveBounty({
 				actorMemberId: c.actorMemberId,
 				actorMemberItemId: c.memberItemId,
-				targetMemberId: c.targetMemberId,
+				targetMemberId: c.targetMemberId!,
 				config: c.config,
 				guildId: c.guildId
 			})
 	},
 	spy: {
 		resolve: (c) =>
-			resolveSpy({ actorMemberId: c.actorMemberId, actorMemberItemId: c.memberItemId, targetMemberId: c.targetMemberId, config: c.config, guildId: c.guildId })
+			resolveSpy({ actorMemberId: c.actorMemberId, actorMemberItemId: c.memberItemId, targetMemberId: c.targetMemberId!, config: c.config, guildId: c.guildId })
 	},
 	boost: {
 		selfBuff: true,
@@ -844,111 +988,170 @@ const ITEM_HANDLERS: Record<string, ItemHandler> = {
 	luck: { selfBuff: true, resolve: (c) => resolveLuck({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId, config: c.config }) }
 };
 
-export async function handleItemUse(client: any, payload: any) {
+type UseFailure = { ok: false; error: string; outcome?: string };
+type MemberItemRow = NonNullable<Awaited<ReturnType<typeof db.getMemberItem>>>;
+type CatalogItemRow = NonNullable<Awaited<ReturnType<typeof db.getItem>>>;
+type OwnedItem = { memberItem: MemberItemRow; item: CatalogItemRow; actorMemberId: number };
+type ItemUseAnnouncement = {
+	guildId: string;
+	actorDiscordId: string;
+	targetDiscordId?: string;
+	effectType: string;
+	item: CatalogItemRow;
+	result: ItemUseResult;
+};
+
+const useFailure = (error: string, outcome?: string): UseFailure => (outcome ? { ok: false, error, outcome } : { ok: false, error });
+
+async function ownedUsableItem(
+	serverId: number,
+	{ memberItemId, actorDiscordId }: { memberItemId: number | string; actorDiscordId: string }
+): Promise<OwnedItem | UseFailure> {
+	const memberItem = await db.getMemberItem(memberItemId).catch(() => null);
+	if (!memberItem) {
+		return useFailure('item_not_found');
+	}
+	const actorMemberId = await resolveServerMemberId(serverId, actorDiscordId);
+	if (!actorMemberId || Number(memberItem.member_id) !== Number(actorMemberId)) {
+		return useFailure('not_owner');
+	}
+	if (Number(memberItem.quantity) <= 0) {
+		return useFailure('out_of_stock');
+	}
+	const item = await db.getItem(memberItem.item_id).catch(() => null);
+	if (!item) {
+		return useFailure('catalog_item_missing');
+	}
+	if (item.usable === false) {
+		return useFailure('This item has been disabled and can no longer be used.', 'disabled');
+	}
+	return { memberItem, item, actorMemberId };
+}
+
+async function itemUseTarget(
+	serverId: number,
+	{ effectType, targetDiscordId, actorMemberId }: { effectType: string; targetDiscordId?: string; actorMemberId: number }
+) {
+	if (!TARGETED_EFFECTS.has(effectType)) {
+		return { targetMemberId: null };
+	}
+	if (!targetDiscordId) {
+		return useFailure('target_required');
+	}
+	const targetMemberId = await resolveServerMemberId(serverId, targetDiscordId);
+	if (!targetMemberId) {
+		return useFailure('target_not_found');
+	}
+	return Number(targetMemberId) === Number(actorMemberId) ? useFailure('cannot_target_self') : { targetMemberId };
+}
+
+async function runItemHandler(
+	handler: ItemHandler,
+	useCtx: UseContext,
+	{ memberItem, effectType }: { memberItem: MemberItemRow; effectType: string }
+): Promise<{ result: ItemUseResult } | { failure: UseFailure }> {
+	const resolved = await attempt(async () => {
+		const outcome = await handler.resolve(useCtx);
+		if (handler.postUse) {
+			await handler.postUse(useCtx);
+		}
+		return outcome;
+	});
+	if (!resolved.ok) {
+		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
+		await logger.log(`❌ Item use failed (${effectType}): ${(resolved.error as Error).message}`);
+		return { failure: useFailure('resolution_failed') };
+	}
+	const result: ItemUseResult = resolved.value;
+	if (result?.outcome === 'cooldown' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
+		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
+		return { failure: useFailure(result.error || result.outcome, result.outcome) };
+	}
+	return { result };
+}
+
+async function afterItemUse(client: Client, use: ItemUseAnnouncement) {
+	await announceItemUse(client, use).catch(() => null);
+	if (use.effectType === 'spy' && use.result?.outcome === 'caught') {
+		await announceSpyCaught(client, { guildId: use.guildId, actorDiscordId: use.actorDiscordId, targetDiscordId: use.targetDiscordId }).catch(() => null);
+	}
+	if (use.effectType === 'purifier' && (use.result?.cleared ?? 0) > 0) {
+		await runExpirySweep(client).catch(() => null);
+	}
+}
+
+export async function handleItemUse(
+	client: Client,
+	payload: { guild_id?: string; actor_discord_id?: string; target_discord_id?: string; member_item_id?: number | string }
+) {
 	const { guild_id, actor_discord_id, target_discord_id, member_item_id } = payload || {};
+	if (!guild_id || !actor_discord_id || !member_item_id) {
+		return useFailure('missing_fields');
+	}
+
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
+		return useFailure('server_not_found');
+	}
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
+		return useFailure('shop_disabled');
+	}
+
+	const owned = await ownedUsableItem(server.id, { memberItemId: member_item_id, actorDiscordId: actor_discord_id });
+	if ('ok' in owned) {
+		return owned;
+	}
+	const { memberItem, item, actorMemberId } = owned;
+	const effectType = item.effect_type;
+	const handler = ITEM_HANDLERS[effectType];
+	if (!handler) {
+		return useFailure('unsupported', 'unsupported');
+	}
+
+	const target = await itemUseTarget(server.id, { effectType, targetDiscordId: target_discord_id, actorMemberId });
+	if ('ok' in target) {
+		return target;
+	}
+	if (handler.selfBuff && (await getCachedActiveEffects(actorMemberId)).some((e: Record<string, unknown>) => e.effect_type === effectType)) {
+		return useFailure('already_active', 'already_active');
+	}
+	if (!(await db.consumeMemberItem(member_item_id, 1))) {
+		return useFailure('out_of_stock');
+	}
+
+	const useSnapshots = await snapshotMembers([actorMemberId, target.targetMemberId]);
+	const useCtx: UseContext = {
+		actorMemberId,
+		memberItemId: member_item_id,
+		targetMemberId: target.targetMemberId,
+		config: parseConfig(item.config),
+		guildId: guild_id
+	};
+	const ran = await runItemHandler(handler, useCtx, { memberItem, effectType });
+	if ('failure' in ran) {
+		return ran.failure;
+	}
+	const { result } = ran;
+
+	await finalizeXpChanges(guild_id, useSnapshots, `item-${effectType}`);
+	await afterItemUse(client, { guildId: guild_id, actorDiscordId: actor_discord_id, targetDiscordId: target_discord_id, effectType, item, result });
+	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
+}
+
+export async function handleItemDiscard(
+	client: Client,
+	payload: { guild_id?: string; actor_discord_id?: string; member_item_id?: number | string; quantity?: number | string }
+) {
+	const { guild_id, actor_discord_id, member_item_id, quantity } = payload || {};
 	if (!guild_id || !actor_discord_id || !member_item_id) {
 		return { ok: false, error: 'missing_fields' };
 	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
-		return { ok: false, error: 'server_not_found' };
-	}
-
-	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
-		return { ok: false, error: 'shop_disabled' };
-	}
-
-	const memberItem = await db.getMemberItem(member_item_id).catch(() => null);
-	if (!memberItem) return { ok: false, error: 'item_not_found' };
-
-	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId || Number(memberItem.member_id) !== Number(actorMemberId)) {
-		return { ok: false, error: 'not_owner' };
-	}
-	if (Number(memberItem.quantity) <= 0) return { ok: false, error: 'out_of_stock' };
-
-	const item = await db.getItem(memberItem.item_id).catch(() => null);
-	if (!item) return { ok: false, error: 'catalog_item_missing' };
-	if (item.usable === false) return { ok: false, error: 'This item has been disabled and can no longer be used.', outcome: 'disabled' };
-
-	const config = parseConfig(item.config);
-	const effectType = item.effect_type;
-	const handler = ITEM_HANDLERS[effectType];
-	if (!handler) return { ok: false, error: 'unsupported', outcome: 'unsupported' };
-
-	let targetMemberId: any = null;
-	if (TARGETED_EFFECTS.has(effectType)) {
-		if (!target_discord_id) return { ok: false, error: 'target_required' };
-		targetMemberId = await resolveServerMemberId(server.id, target_discord_id);
-		if (!targetMemberId) return { ok: false, error: 'target_not_found' };
-		if (Number(targetMemberId) === Number(actorMemberId)) return { ok: false, error: 'cannot_target_self' };
-	}
-
-	if (handler.selfBuff) {
-		const active = await getCachedActiveEffects(actorMemberId);
-		if (active.some((e: any) => e.effect_type === effectType)) {
-			return { ok: false, error: 'already_active', outcome: 'already_active' };
-		}
-	}
-
-	const consumed = await db.consumeMemberItem(member_item_id, 1);
-	if (!consumed) return { ok: false, error: 'out_of_stock' };
-
-	const useSnapshots = await snapshotMembers([actorMemberId, targetMemberId]);
-
-	const useCtx: UseContext = { actorMemberId, memberItemId: member_item_id, targetMemberId, config, guildId: guild_id };
-	let result: any;
-	try {
-		result = await handler.resolve(useCtx);
-		if (handler.postUse) await handler.postUse(useCtx);
-	} catch (err: any) {
-		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
-		await logger.log(`❌ Item use failed (${effectType}): ${err.message}`);
-		return { ok: false, error: 'resolution_failed' };
-	}
-
-	if (result?.outcome === 'cooldown' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
-		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
-		return { ok: false, error: result.error || result.outcome, outcome: result.outcome };
-	}
-
-	await finalizeXpChanges(guild_id, useSnapshots, `item-${effectType}`);
-
-	await announceItemUse(client, {
-		guildId: guild_id,
-		actorDiscordId: actor_discord_id,
-		targetDiscordId: target_discord_id,
-		effectType,
-		item,
-		result
-	}).catch(() => null);
-
-	if (effectType === 'spy' && result?.outcome === 'caught') {
-		await announceSpyCaught(client, { guildId: guild_id, actorDiscordId: actor_discord_id, targetDiscordId: target_discord_id }).catch(() => null);
-	}
-
-	if (effectType === 'purifier' && (result?.cleared ?? 0) > 0) {
-		await runExpirySweep(client).catch(() => null);
-	}
-
-	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
-}
-
-export async function handleItemDiscard(client: any, payload: any) {
-	const { guild_id, actor_discord_id, member_item_id, quantity } = payload || {};
-	if (!guild_id || !actor_discord_id || !member_item_id) return { ok: false, error: 'missing_fields' };
-
-	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
-
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
@@ -956,7 +1159,9 @@ export async function handleItemDiscard(client: any, payload: any) {
 	}
 
 	const memberItem = await db.getMemberItem(member_item_id).catch(() => null);
-	if (!memberItem) return { ok: false, error: 'item_not_found' };
+	if (!memberItem) {
+		return { ok: false, error: 'item_not_found' };
+	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!actorMemberId || Number(memberItem.member_id) !== Number(actorMemberId)) {
@@ -964,13 +1169,17 @@ export async function handleItemDiscard(client: any, payload: any) {
 	}
 
 	const owned = Math.max(0, Number(memberItem.quantity) || 0);
-	if (owned <= 0) return { ok: false, error: 'out_of_stock' };
+	if (owned <= 0) {
+		return { ok: false, error: 'out_of_stock' };
+	}
 
 	const requested = Number(quantity);
 	const qty = Number.isFinite(requested) && requested > 0 ? Math.min(owned, Math.floor(requested)) : owned;
 
-	const removed = await db.consumeMemberItem(member_item_id, qty);
-	if (!removed) return { ok: false, error: 'out_of_stock' };
+	const wasRemoved = await db.consumeMemberItem(member_item_id, qty);
+	if (!wasRemoved) {
+		return { ok: false, error: 'out_of_stock' };
+	}
 
 	await db.logMemberItemAction(actorMemberId, {
 		member_item_id,
@@ -983,47 +1192,60 @@ export async function handleItemDiscard(client: any, payload: any) {
 	return { ok: true, outcome: 'success', removed: qty };
 }
 
-function isItemAvailableNow(item: any, tzOffsetMin = 0) {
+function isItemAvailableNow(item: { available_from: string | null; available_to: string | null; recurring_schedule: unknown }, tzOffsetMin: unknown = 0) {
 	const nowMs = Date.now();
-	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
+	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * MINUTE_MS;
 	if (item.available_from) {
 		const from = floatingWallClockMs(item.available_from, offsetMs);
-		if (from != null && nowMs < from) return false;
+		if (from != null && nowMs < from) {
+			return false;
+		}
 	}
 	if (item.available_to) {
 		const to = floatingWallClockMs(item.available_to, offsetMs);
-		if (to != null && nowMs > to) return false;
+		if (to != null && nowMs > to) {
+			return false;
+		}
 	}
 	const schedule = parseConfig(item.recurring_schedule);
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
 		const local = new Date(nowMs + offsetMs);
 		const day = local.getUTCDay();
-		if (!schedule.days.map(Number).includes(day)) return false;
-		const toMin = (hhmm: any, fallback: number) => {
-			if (hhmm == null || hhmm === '') return fallback;
+		if (!schedule.days.map(Number).includes(day)) {
+			return false;
+		}
+		const toMin = (hhmm: unknown, fallback: number) => {
+			if (hhmm == null || hhmm === '') {
+				return fallback;
+			}
 			const [h, m] = String(hhmm)
 				.split(':')
 				.map((n) => Number(n) || 0);
-			return h * 60 + m;
+			return h * MINUTES_PER_HOUR + m;
 		};
-		const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
+		const minutes = local.getUTCHours() * MINUTES_PER_HOUR + local.getUTCMinutes();
 		const start = toMin(schedule.from, 0);
-		const end = toMin(schedule.to, 1439);
-		if (minutes < start || minutes > end) return false;
+		const end = toMin(schedule.to, DAY_MINUTES - 1);
+		if (minutes < start || minutes > end) {
+			return false;
+		}
 	}
 	return true;
 }
 
-export async function handleItemBuy(client: any, payload: any) {
+export async function handleItemBuy(
+	client: Client,
+	payload: { guild_id?: string; actor_discord_id?: string; item_id?: number | string; quantity?: number | string; tz_offset?: number | string }
+) {
 	const { guild_id, actor_discord_id, item_id, quantity, tz_offset } = payload || {};
-	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id || !item_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
@@ -1031,26 +1253,34 @@ export async function handleItemBuy(client: any, payload: any) {
 	}
 
 	const item = await db.getItem(item_id).catch(() => null);
-	if (!item || item.enabled !== true) return { ok: false, error: 'item_unavailable' };
-	if (!isItemAvailableNow(item, tz_offset)) return { ok: false, error: 'item_not_in_window' };
+	if (!item || item.enabled !== true) {
+		return { ok: false, error: 'item_unavailable' };
+	}
+	if (!isItemAvailableNow(item, tz_offset)) {
+		return { ok: false, error: 'item_not_in_window' };
+	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+	if (!actorMemberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
-	const qty = Math.max(1, Math.min(99, Number(quantity) || 1));
+	const qty = Math.max(1, Math.min(MAX_PURCHASE_QUANTITY, Number(quantity) || 1));
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
 	const unitCost = discountedItemCost(item.cost, luckPercent, item.effect_type);
 	const totalCost = unitCost * qty;
 
 	const inventory = await db.getMemberInventory(actorMemberId).catch(() => []);
-	const bagStock = effectiveBagStock(inventory as any[]);
+	const bagStock = effectiveBagStock(inventory);
 	if (bagStock + qty > BAG_CAPACITY) {
 		return { ok: false, error: 'bag_full', capacity: BAG_CAPACITY, bagStock };
 	}
 
 	const snapshots = await snapshotMembers([actorMemberId]);
 	const spend = await spendXp(actorMemberId, totalCost, guild_id);
-	if (!spend.ok) return { ok: false, error: spend.reason || 'insufficient_xp' };
+	if (!spend.ok) {
+		return { ok: false, error: spend.reason || 'insufficient_xp' };
+	}
 
 	await db.ensureMemberLevel(actorMemberId);
 	const owned = await db.grantMemberItem(actorMemberId, item_id, qty);
@@ -1065,51 +1295,59 @@ export async function handleItemBuy(client: any, payload: any) {
 	return { ok: true, member_item_id: owned?.id, quantity: owned?.quantity, cost: totalCost };
 }
 
-function discordRelative(date: any): string | null {
-	if (!date) return null;
+function discordRelative(date: Date | string | number | null | undefined): string | null {
+	if (!date) {
+		return null;
+	}
 	const ms = date instanceof Date ? date.getTime() : new Date(date).getTime();
-	if (!Number.isFinite(ms)) return null;
-	return `<t:${Math.floor(ms / 1000)}:R>`;
+	if (!Number.isFinite(ms)) {
+		return null;
+	}
+	return `<t:${Math.floor(ms / SECOND_MS)}:R>`;
 }
 
-function humanizeUntil(date: any): string {
+function humanizeUntil(date: Date | string | number): string {
 	const ms = date instanceof Date ? date.getTime() : new Date(date).getTime();
-	const secs = Math.max(0, Math.round((ms - Date.now()) / 1000));
-	if (secs < 60) return `${secs}s`;
-	return formatDuration(Math.floor(secs / 60));
+	const secs = Math.max(0, Math.round((ms - Date.now()) / SECOND_MS));
+	if (secs < SECONDS_PER_MINUTE) {
+		return `${secs}s`;
+	}
+	return formatDuration(Math.floor(secs / SECONDS_PER_MINUTE));
 }
 
-function fmtXp(n: any): string {
+function fmtXp(n: unknown): string {
 	return `${(Number(n) || 0).toLocaleString()} XP`;
 }
 
 type EmbedCtx = {
 	tr: Translator;
-	embed: any;
+	embed: EmbedBuilder;
 	effectType: string;
-	result: any;
-	outcome: any;
-	item: any;
+	result: ItemUseResult;
+	outcome: string;
+	item: { name: string } | null;
 	actorMention: string;
 	targetMention: string;
 	immuneRel: string | null;
 };
 
-function trOr(tr: Translator, key: string, fallback: string, params: Record<string, any> = {}): string {
+type TrFallback = { fallback: string; params?: Record<string, unknown> };
+
+function trOr(tr: Translator, key: string, { fallback, params = {} }: TrFallback): string {
 	const value = tr(key, params);
 	return value === key ? fallback : value;
 }
 
-function untilNote(tr: Translator, date: any, key = 'items.common.until'): string {
+function untilNote(tr: Translator, date: Date | null | undefined, key = 'items.common.until'): string {
 	const rel = discordRelative(date);
 	return rel ? tr(key, { time: rel }) : '';
 }
 
-function luckNote(tr: Translator, luckPercent: any, key = 'items.common.luckBonus'): string {
+function luckNote(tr: Translator, luckPercent = 0, key = 'items.common.luckBonus'): string {
 	return luckPercent > 0 ? tr(key, { percent: luckPercent }) : '';
 }
 
-function itemsFooter(tr: Translator, embedConfig: any): string {
+function itemsFooter(tr: Translator, embedConfig: { FOOTER?: string } | null): string {
 	return embedConfig?.FOOTER || tr('items.common.footer');
 }
 
@@ -1133,19 +1371,23 @@ function attackDefendedEmbed({ tr, embed, actorMention, targetMention, item, out
 	return null;
 }
 
-function buffEmbed({ tr, embed, actorMention, result }: EmbedCtx, emoji: string, key: string, params: Record<string, any> = {}) {
+type BuffLine = { emoji: string; key: string; params?: Record<string, unknown> };
+
+function buffEmbed({ tr, embed, actorMention, result }: EmbedCtx, { emoji, key, params = {} }: BuffLine) {
 	embed
 		.setTitle(`${emoji} ${tr(`items.${key}.title`)}`)
 		.setDescription(tr(`items.${key}.description`, { actor: actorMention, until: untilNote(tr, result?.expiresAt), ...params }));
 	return embed;
 }
 
-const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
+const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => EmbedBuilder> = {
 	steal: (ctx) => attackEmbed(ctx),
 	bomb: (ctx) => attackEmbed(ctx),
 	leech: (ctx) => {
 		const defended = attackDefendedEmbed(ctx, 'leech');
-		if (defended) return defended;
+		if (defended) {
+			return defended;
+		}
 		const { tr } = ctx;
 		return ctx.embed
 			.setTitle(`🩸 ${tr('items.leech.title')}`)
@@ -1160,7 +1402,7 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 			.setDescription(tr('items.gift.description', { actor: ctx.actorMention, target: ctx.targetMention }))
 			.addFields(
 				{ name: tr('items.fields.received'), value: fmtXp(ctx.result?.xp), inline: true },
-				...(ctx.result?.taxPercent > 0 || taxLuck
+				...((ctx.result?.taxPercent ?? 0) > 0 || taxLuck
 					? [{ name: tr('items.fields.tax'), value: `${(ctx.result?.taxPercent ?? 0).toFixed(1)}%${taxLuck}`, inline: true }]
 					: [])
 			);
@@ -1175,16 +1417,21 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 			.setColor(effectAccentInt('disguise'))
 			.setTitle(`🎭 ${ctx.tr('items.disguise.title')}`)
 			.setDescription(ctx.tr('items.disguise.description', { until: untilNote(ctx.tr, ctx.result?.expiresAt) })),
-	shield: (ctx) => buffEmbed(ctx, '🛡️', 'shield'),
-	reflect: (ctx) => buffEmbed(ctx, '🪞', 'reflect'),
-	insurance: (ctx) => buffEmbed(ctx, '💵', 'insurance', { percent: ctx.result?.refundPercent ?? 100, luck: luckNote(ctx.tr, ctx.result?.luckPercent) }),
+	shield: (ctx) => buffEmbed(ctx, { emoji: '🛡️', key: 'shield' }),
+	reflect: (ctx) => buffEmbed(ctx, { emoji: '🪞', key: 'reflect' }),
+	insurance: (ctx) =>
+		buffEmbed(ctx, {
+			emoji: '💵',
+			key: 'insurance',
+			params: { percent: ctx.result?.refundPercent ?? DEFAULT_REFUND_PERCENT, luck: luckNote(ctx.tr, ctx.result?.luckPercent) }
+		}),
 	boost: (ctx) =>
 		ctx.embed
 			.setTitle(`⚡ ${ctx.tr('items.boost.title')}`)
 			.setDescription(
 				ctx.tr('items.boost.description', { actor: ctx.actorMention, until: untilNote(ctx.tr, ctx.result?.expiresAt, 'items.common.activeUntil') })
 			),
-	luck: (ctx) => buffEmbed(ctx, '🍀', 'luck', { percent: ctx.result?.luckPercent ?? 0 })
+	luck: (ctx) => buffEmbed(ctx, { emoji: '🍀', key: 'luck', params: { percent: ctx.result?.luckPercent ?? 0 } })
 };
 
 function attackEmbed(ctx: EmbedCtx) {
@@ -1193,7 +1440,9 @@ function attackEmbed(ctx: EmbedCtx) {
 	const noun = isSteal ? 'steal' : 'bomb';
 
 	const defended = attackDefendedEmbed(ctx, noun);
-	if (defended) return defended;
+	if (defended) {
+		return defended;
+	}
 
 	if (outcome === 'reflected') {
 		return embed
@@ -1204,7 +1453,7 @@ function attackEmbed(ctx: EmbedCtx) {
 	}
 
 	const emoji = isSteal ? '💰' : '💥';
-	const fields: any[] = [
+	const fields: APIEmbedField[] = [
 		{ name: tr('items.fields.attacker'), value: actorMention, inline: true },
 		{ name: tr('items.fields.victim'), value: targetMention, inline: true },
 		{
@@ -1213,24 +1462,27 @@ function attackEmbed(ctx: EmbedCtx) {
 			inline: true
 		}
 	];
-	if (result?.refunded)
+	if (result?.refunded) {
 		fields.push({
 			name: `💵 ${tr('items.fields.insuranceRefund')}`,
 			value: tr('items.attack.refundedValue', { target: targetMention, xp: fmtXp(result.refunded) }),
 			inline: false
 		});
-	if (result?.bountyCollected)
+	}
+	if (result?.bountyCollected) {
 		fields.push({
 			name: `🎯 ${tr('items.fields.bountyCollected')}`,
 			value: tr('items.attack.bountyValue', { actor: actorMention, xp: fmtXp(result.bountyCollected) }),
 			inline: false
 		});
-	if (immuneRel)
+	}
+	if (immuneRel) {
 		fields.push({
 			name: `🛡️ ${tr('items.fields.immunity')}`,
 			value: tr('items.attack.immuneValue', { target: targetMention, time: immuneRel }),
 			inline: false
 		});
+	}
 
 	return embed
 		.setTitle(`${emoji} ${tr(`items.attack.${noun}.title`)}`)
@@ -1244,10 +1496,16 @@ function attackEmbed(ctx: EmbedCtx) {
 		.addFields(fields);
 }
 
-function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
+function buildItemUseEmbed(
+	EmbedBuilder: EmbedBuilderClass,
+	embedConfig: { FOOTER?: string } | null,
+	ctx: { tr: Translator; effectType: string; result: ItemUseResult; actor: GuildMember | null; target: GuildMember | null; item: { name: string } | null }
+) {
 	const { tr, effectType, result, actor, target, item } = ctx;
 	const builder = ITEM_EMBEDS[effectType];
-	if (!builder) return null;
+	if (!builder) {
+		return null;
+	}
 
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(effectType))
@@ -1267,19 +1525,32 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	});
 }
 
-async function announceItemUse(client: any, ctx: any) {
+async function announceItemUse(
+	client: Client,
+	ctx: { guildId: string; actorDiscordId: string; targetDiscordId?: string; effectType: string; item: { name: string } | null; result: ItemUseResult }
+) {
 	const { guildId, actorDiscordId, targetDiscordId, effectType, item, result } = ctx;
-	if (!ANNOUNCED_EFFECTS.has(effectType)) return;
-	if (!result || result.outcome === 'unsupported') return;
+	if (!ANNOUNCED_EFFECTS.has(effectType)) {
+		return;
+	}
+	if (!result || result.outcome === 'unsupported') {
+		return;
+	}
 
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guildId);
-	if (!channelId) return;
+	if (!channelId) {
+		return;
+	}
 
 	const guild = client?.guilds?.cache?.get(guildId);
-	if (!guild) return;
+	if (!guild) {
+		return;
+	}
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
-	if (!channel || !channel.isTextBased()) return;
+	if (!channel || !channel.isTextBased()) {
+		return;
+	}
 
 	const { EmbedBuilder } = await import('discord.js');
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
@@ -1289,24 +1560,32 @@ async function announceItemUse(client: any, ctx: any) {
 	const target = targetDiscordId ? await guild.members.fetch(String(targetDiscordId)).catch(() => null) : null;
 
 	const embed = buildItemUseEmbed(EmbedBuilder, embedConfig, { tr, effectType, result, actor, target, item });
-	if (!embed) return;
+	if (!embed) {
+		return;
+	}
 
-	const hideActor = result?.actorDisguised || effectType === 'disguise';
-	const mentions = [hideActor ? null : actor, target].filter(Boolean).map((m: any) => `${m}`);
+	const shouldHideActor = result?.actorDisguised || effectType === 'disguise';
+	const mentions = [shouldHideActor ? null : actor, target].filter(Boolean).map((m) => `${m}`);
 	const content = mentions.length > 0 ? mentions.join(' ') : undefined;
 
 	await channel.send({ content, embeds: [embed] }).catch(() => null);
 }
 
-async function announceSpyCaught(client: any, ctx: any) {
+async function announceSpyCaught(client: Client, ctx: { guildId: string; actorDiscordId: string; targetDiscordId?: string }) {
 	const { guildId, actorDiscordId, targetDiscordId } = ctx;
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guildId);
-	if (!channelId) return;
+	if (!channelId) {
+		return;
+	}
 	const guild = client?.guilds?.cache?.get(guildId);
-	if (!guild) return;
+	if (!guild) {
+		return;
+	}
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
-	if (!channel || !channel.isTextBased()) return;
+	if (!channel || !channel.isTextBased()) {
+		return;
+	}
 
 	const { EmbedBuilder } = await import('discord.js');
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
@@ -1323,25 +1602,38 @@ async function announceSpyCaught(client: any, ctx: any) {
 		.setFooter({ text: itemsFooter(tr, embedConfig) })
 		.setTimestamp();
 
-	const mentions = [spy, target].filter(Boolean).map((m: any) => `${m}`);
+	const mentions = [spy, target].filter(Boolean).map((m) => `${m}`);
 	await channel.send({ content: mentions.length ? mentions.join(' ') : undefined, embeds: [embed] }).catch(() => null);
 }
 
-export async function handleAdminGiftAnnounce(client: any, payload: any) {
+export async function handleAdminGiftAnnounce(
+	client: Client,
+	payload: { guild_id?: string; member_discord_id?: string; item_name?: string; effect_type: string; quantity?: number | string }
+) {
 	const { guild_id, member_discord_id, item_name, effect_type, quantity } = payload || {};
-	if (!guild_id || !member_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !member_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guild_id);
-	if (!channelId) return { ok: true, announced: false };
+	if (!channelId) {
+		return { ok: true, announced: false };
+	}
 
 	const guild = client?.guilds?.cache?.get(guild_id);
-	if (!guild) return { ok: true, announced: false };
+	if (!guild) {
+		return { ok: true, announced: false };
+	}
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
-	if (!channel || !channel.isTextBased()) return { ok: true, announced: false };
+	if (!channel || !channel.isTextBased()) {
+		return { ok: true, announced: false };
+	}
 
 	const member = await guild.members.fetch(String(member_discord_id)).catch(() => null);
-	if (!member) return { ok: true, announced: false };
+	if (!member) {
+		return { ok: true, announced: false };
+	}
 
 	const { EmbedBuilder } = await import('discord.js');
 	const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
@@ -1360,31 +1652,37 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 }
 
 const EXPIRY_SWEEP_MS = 60_000;
-let expirySweepTimer: any = null;
+let expirySweepTimer: ReturnType<typeof setInterval> | null = null;
 
-async function embedConfigFor(guildId: any) {
+async function embedConfigFor(guildId: string) {
 	const { getEmbedConfig } = await import('../../../config.js');
 	return getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: '' }));
 }
 
-async function getProgressChannel(guild: any) {
+async function getProgressChannel(guild: Guild) {
 	const { getItemsChannelId } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guild.id);
-	if (!channelId) return null;
+	if (!channelId) {
+		return null;
+	}
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
 	return channel && channel.isTextBased() ? channel : null;
 }
 
-async function deliverToMemberAndChannel(guild: any, embed: any, channelContent?: string) {
+async function deliverToMemberAndChannel(guild: Guild, embed: EmbedBuilder, channelContent?: string) {
 	const channel = await getProgressChannel(guild);
-	if (channel) await channel.send({ content: channelContent, embeds: [embed] }).catch(() => null);
+	if (channel) {
+		await channel.send({ content: channelContent, embeds: [embed] }).catch(() => null);
+	}
 }
 
-async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
+async function sweepExpiredBuffs(client: Client, botId: number | string, EmbedBuilder: EmbedBuilderClass) {
 	const rows = await db.getNewlyExpiredEffects(botId).catch(() => []);
-	if (!rows || rows.length === 0) return;
+	if (!rows || rows.length === 0) {
+		return;
+	}
 
-	const disguiseEndingMembers = new Set(rows.filter((r: any) => r.effect_type === 'disguise').map((r: any) => String(r.discord_member_id)));
+	const disguiseEndingMembers = new Set(rows.filter((r) => r.effect_type === 'disguise').map((r) => String(r.discord_member_id)));
 
 	const handledIds: number[] = [];
 	for (const row of rows) {
@@ -1396,7 +1694,10 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 				const embedConfig = await embedConfigFor(guild.id);
 				const tr = await serverTranslator(guild.id);
 				const mag = Number(row.effect_value) || 0;
-				let text = trOr(tr, `items.expired.${row.effect_type}.text`, meta.buffExpiredText(mag), { value: row.effect_type === 'boost' ? mag || 2 : mag });
+				let text = trOr(tr, `items.expired.${row.effect_type}.text`, {
+					fallback: meta.buffExpiredText(mag),
+					params: { value: row.effect_type === 'boost' ? mag || 2 : mag }
+				});
 				if (row.effect_type === 'leech' && row.target_discord_member_id) {
 					const targetMember = await guild.members.fetch(String(row.target_discord_member_id)).catch(() => null);
 					const targetName = targetMember
@@ -1404,10 +1705,11 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 						: row.target_server_display_name || row.target_display_name || row.target_username || tr('items.common.them');
 					text = tr('items.expired.leech.textWithTarget', { value: mag || 0, target: targetName });
 				}
-				const disguisedNow = row.member_id ? await isDisguised(row.member_id).catch(() => false) : false;
-				const disguisedAtActivation = Number(row.disguised_at_activation) === 1;
-				const hidden = row.effect_type === 'disguise' || disguisedNow || disguisedAtActivation || disguiseEndingMembers.has(String(row.discord_member_id));
-				if (row.effect_type !== 'disguise' && hidden) {
+				const isDisguisedNow = row.member_id ? await isDisguised(row.member_id).catch(() => false) : false;
+				const wasDisguisedAtActivation = Number(row.disguised_at_activation) === 1;
+				const isHidden =
+					row.effect_type === 'disguise' || isDisguisedNow || wasDisguisedAtActivation || disguiseEndingMembers.has(String(row.discord_member_id));
+				if (row.effect_type !== 'disguise' && isHidden) {
 					handledIds.push(Number(row.id));
 					continue;
 				}
@@ -1419,7 +1721,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 							: text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
-					.setTitle(`${meta.emoji} ${trOr(tr, `items.expired.${row.effect_type}.title`, `${meta.label} Ended`)}`)
+					.setTitle(`${meta.emoji} ${trOr(tr, `items.expired.${row.effect_type}.title`, { fallback: `${meta.label} Ended` })}`)
 					.setDescription(description)
 					.setFooter({ text: itemsFooter(tr, embedConfig) })
 					.setTimestamp();
@@ -1428,156 +1730,214 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 		}
 		handledIds.push(Number(row.id));
 	}
-	if (handledIds.length > 0) await db.markEffectExpiryNotified(handledIds).catch(() => null);
+	if (handledIds.length > 0) {
+		await db.markEffectExpiryNotified(handledIds).catch(() => null);
+	}
 }
 
-async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
-	const now = Date.now();
+type SweepContext = { client: Client; EmbedBuilder: EmbedBuilderClass; now: number };
+type DerivedNotice = {
+	memberId: number;
+	discordMemberId: string | number;
+	discordServerId: string | number;
+	kind: string;
+	endsAt: number;
+	effect: string;
+	shouldSkipDisguised: boolean;
+	describe: (tr: Translator, member: GuildMember | null) => { title: string; description: string };
+};
+type VictimHit = Awaited<ReturnType<typeof db.getRecentVictimHits>>[number];
 
-	const hits = await db.getRecentVictimHits(botId).catch(() => []);
-	const immunityByMember = new Map<string, { endsAt: number; discord_member_id: any; discord_server_id: any; member_id: any }>();
-	for (const hit of hits || []) {
-		const lastHit = hit.last_hit instanceof Date ? hit.last_hit.getTime() : new Date(hit.last_hit).getTime();
-		if (!Number.isFinite(lastHit)) continue;
-		const immunityMs = await maxAttackConfigMs(hit.discord_server_id, 'immunity_minutes', hit.action).catch(() => 0);
-		if (immunityMs <= 0) continue;
+function eventMs(value: Date | string) {
+	return value instanceof Date ? value.getTime() : new Date(value).getTime();
+}
+
+function hasJustEnded(endsAt: number, now: number) {
+	return endsAt <= now && now - endsAt <= EXPIRY_SWEEP_MS;
+}
+
+const cooldownReady =
+	(effect: string) =>
+	(tr: Translator, member: GuildMember | null): { title: string; description: string } => {
+		const text = tr(`items.cooldownReady.${effect}.text`);
+		return {
+			title: `${getItemEffect(effect)?.emoji ?? '✅'} ${tr(`items.cooldownReady.${effect}.title`)}`,
+			description: member ? tr('items.common.addressed', { member: `${member}`, text }) : text
+		};
+	};
+
+const immunityEnded = (tr: Translator, member: GuildMember | null) => ({
+	title: `🛡️ ${tr('items.immunityEnded.title')}`,
+	description: member ? tr('items.immunityEnded.description', { member: `${member}` }) : tr('items.immunityEnded.anonymous')
+});
+
+async function announceDerivedEvent({ client, EmbedBuilder }: SweepContext, notice: DerivedNotice) {
+	if (!(await db.recordItemNotification(notice.memberId, notice.kind, new Date(notice.endsAt)).catch(() => false))) {
+		return;
+	}
+	const guild = client?.guilds?.cache?.get(String(notice.discordServerId));
+	if (!guild) {
+		return;
+	}
+	if (notice.shouldSkipDisguised && notice.memberId && (await isDisguised(notice.memberId).catch(() => false))) {
+		return;
+	}
+	const member = await guild.members.fetch(String(notice.discordMemberId)).catch(() => null);
+	const embedConfig = await embedConfigFor(guild.id);
+	const tr = await serverTranslator(guild.id);
+	const { title, description } = notice.describe(tr, member);
+	const embed = new EmbedBuilder()
+		.setColor(effectAccentInt(notice.effect))
+		.setTitle(title)
+		.setDescription(description)
+		.setFooter({ text: itemsFooter(tr, embedConfig) })
+		.setTimestamp();
+	await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+}
+
+async function latestImmunityEnds(hits: VictimHit[]) {
+	const immunityByMember = new Map<string, VictimHit & { endsAt: number }>();
+	for (const hit of hits) {
+		const lastHit = eventMs(hit.last_hit);
+		const immunityMs = Number.isFinite(lastHit) ? await maxAttackConfigMs(hit.discord_server_id, 'immunity_minutes', hit.action).catch(() => 0) : 0;
+		if (immunityMs <= 0) {
+			continue;
+		}
 		const endsAt = lastHit + immunityMs;
 		const prev = immunityByMember.get(String(hit.member_id));
 		if (!prev || endsAt > prev.endsAt) {
-			immunityByMember.set(String(hit.member_id), {
-				endsAt,
-				discord_member_id: hit.discord_member_id,
-				discord_server_id: hit.discord_server_id,
-				member_id: hit.member_id
+			immunityByMember.set(String(hit.member_id), { ...hit, endsAt });
+		}
+	}
+	return [...immunityByMember.values()];
+}
+
+async function sweepImmunityEndings(ctx: SweepContext, botId: number | string) {
+	const hits = await db.getRecentVictimHits(botId).catch(() => []);
+	for (const hit of await latestImmunityEnds(hits || [])) {
+		if (hasJustEnded(hit.endsAt, ctx.now)) {
+			await announceDerivedEvent(ctx, {
+				memberId: hit.member_id,
+				discordMemberId: hit.discord_member_id,
+				discordServerId: hit.discord_server_id,
+				kind: 'immunity_ended',
+				endsAt: hit.endsAt,
+				effect: 'shield',
+				shouldSkipDisguised: false,
+				describe: immunityEnded
 			});
 		}
 	}
-	for (const hit of immunityByMember.values()) {
-		const endsAt = hit.endsAt;
-		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
-		const fresh = await db.recordItemNotification(hit.member_id, 'immunity_ended', new Date(endsAt)).catch(() => false);
-		if (!fresh) continue;
+}
 
-		const guild = client?.guilds?.cache?.get(String(hit.discord_server_id));
-		if (!guild) continue;
-		const member = await guild.members.fetch(String(hit.discord_member_id)).catch(() => null);
-		const embedConfig = await embedConfigFor(guild.id);
-		const tr = await serverTranslator(guild.id);
-		const embed = new EmbedBuilder()
-			.setColor(effectAccentInt('shield'))
-			.setTitle(`🛡️ ${tr('items.immunityEnded.title')}`)
-			.setDescription(member ? tr('items.immunityEnded.description', { member: `${member}` }) : tr('items.immunityEnded.anonymous'))
-			.setFooter({ text: itemsFooter(tr, embedConfig) })
-			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
-	}
-
+async function sweepAttackCooldowns(ctx: SweepContext, botId: number | string) {
 	const attacks = await db.getRecentAttackerActions(botId).catch(() => []);
 	for (const atk of attacks || []) {
 		const action = atk.action === 'bomb' ? 'bomb' : 'steal';
-		const lastAtk = atk.last_attack instanceof Date ? atk.last_attack.getTime() : new Date(atk.last_attack).getTime();
-		if (!Number.isFinite(lastAtk)) continue;
-		const cooldownMs = await cooldownMsForAction(atk.discord_server_id, action).catch(() => 0);
-		if (cooldownMs <= 0) continue;
-		const endsAt = lastAtk + cooldownMs;
-		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
-		const fresh = await db.recordItemNotification(atk.member_id, `cooldown_ready_${action}`, new Date(endsAt)).catch(() => false);
-		if (!fresh) continue;
-
-		const guild = client?.guilds?.cache?.get(String(atk.discord_server_id));
-		if (!guild) continue;
-		if (atk.member_id && (await isDisguised(atk.member_id).catch(() => false))) continue;
-		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
-		const embedConfig = await embedConfigFor(guild.id);
-		const tr = await serverTranslator(guild.id);
-		const text = tr(`items.cooldownReady.${action}.text`);
-		const embed = new EmbedBuilder()
-			.setColor(effectAccentInt(action))
-			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${tr(`items.cooldownReady.${action}.title`)}`)
-			.setDescription(member ? tr('items.common.addressed', { member: `${member}`, text }) : text)
-			.setFooter({ text: itemsFooter(tr, embedConfig) })
-			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
-	}
-
-	const insuranceActs = await db.getRecentInsuranceActivations(botId).catch(() => []);
-	for (const act of insuranceActs || []) {
-		const lastAct = act.last_activation instanceof Date ? act.last_activation.getTime() : new Date(act.last_activation).getTime();
-		if (!Number.isFinite(lastAct)) continue;
-		const cooldownMs = await maxAttackConfigMs(act.discord_server_id, 'cooldown_minutes', 'insurance').catch(() => 0);
-		if (cooldownMs <= 0) continue;
-		const endsAt = lastAct + cooldownMs;
-		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
-		const fresh = await db.recordItemNotification(act.member_id, 'cooldown_ready_insurance', new Date(endsAt)).catch(() => false);
-		if (!fresh) continue;
-
-		const guild = client?.guilds?.cache?.get(String(act.discord_server_id));
-		if (!guild) continue;
-		if (act.member_id && (await isDisguised(act.member_id).catch(() => false))) continue;
-		const member = await guild.members.fetch(String(act.discord_member_id)).catch(() => null);
-		const embedConfig = await embedConfigFor(guild.id);
-		const tr = await serverTranslator(guild.id);
-		const text = tr('items.cooldownReady.insurance.text');
-		const embed = new EmbedBuilder()
-			.setColor(effectAccentInt('insurance'))
-			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} ${tr('items.cooldownReady.insurance.title')}`)
-			.setDescription(member ? tr('items.common.addressed', { member: `${member}`, text }) : text)
-			.setFooter({ text: itemsFooter(tr, embedConfig) })
-			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+		const lastAtk = eventMs(atk.last_attack);
+		const cooldownMs = Number.isFinite(lastAtk) ? await cooldownMsForAction(atk.discord_server_id, action).catch(() => 0) : 0;
+		if (cooldownMs > 0 && hasJustEnded(lastAtk + cooldownMs, ctx.now)) {
+			await announceDerivedEvent(ctx, {
+				memberId: atk.member_id,
+				discordMemberId: atk.discord_member_id,
+				discordServerId: atk.discord_server_id,
+				kind: `cooldown_ready_${action}`,
+				endsAt: lastAtk + cooldownMs,
+				effect: action,
+				shouldSkipDisguised: true,
+				describe: cooldownReady(action)
+			});
+		}
 	}
 }
 
-async function cooldownMsForAction(discordServerId: any, action: 'steal' | 'bomb'): Promise<number> {
+async function sweepInsuranceCooldowns(ctx: SweepContext, botId: number | string) {
+	const insuranceActs = await db.getRecentInsuranceActivations(botId).catch(() => []);
+	for (const act of insuranceActs || []) {
+		const lastAct = eventMs(act.last_activation);
+		const cooldownMs = Number.isFinite(lastAct) ? await maxAttackConfigMs(act.discord_server_id, 'cooldown_minutes', 'insurance').catch(() => 0) : 0;
+		if (cooldownMs > 0 && hasJustEnded(lastAct + cooldownMs, ctx.now)) {
+			await announceDerivedEvent(ctx, {
+				memberId: act.member_id,
+				discordMemberId: act.discord_member_id,
+				discordServerId: act.discord_server_id,
+				kind: 'cooldown_ready_insurance',
+				endsAt: lastAct + cooldownMs,
+				effect: 'insurance',
+				shouldSkipDisguised: true,
+				describe: cooldownReady('insurance')
+			});
+		}
+	}
+}
+
+async function sweepDerivedEvents(client: Client, botId: number | string, EmbedBuilder: EmbedBuilderClass) {
+	const ctx: SweepContext = { client, EmbedBuilder, now: Date.now() };
+	await sweepImmunityEndings(ctx, botId);
+	await sweepAttackCooldowns(ctx, botId);
+	await sweepInsuranceCooldowns(ctx, botId);
+}
+
+async function cooldownMsForAction(discordServerId: number | string, action: 'steal' | 'bomb'): Promise<number> {
 	return maxAttackConfigMs(discordServerId, 'cooldown_minutes', action);
 }
 
 const attackCfgCache = new Map<string, { value: number; at: number }>();
-async function maxAttackConfigMs(discordServerId: any, key: string, effectType: string): Promise<number> {
+async function maxAttackConfigMs(discordServerId: number | string, key: string, effectType: string): Promise<number> {
 	const cacheKey = `${discordServerId}:${effectType}:${key}`;
 	const cached = attackCfgCache.get(cacheKey);
-	if (cached && Date.now() - cached.at < 60_000) return cached.value;
+	if (cached && Date.now() - cached.at < MINUTE_MS) {
+		return cached.value;
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(String(discordServerId));
-	} catch (_) {
+	const server = await getServerForCurrentBot(String(discordServerId)).catch(() => null);
+	if (!server) {
 		return 0;
 	}
-	const panelId = await db.getBotPanelId(server.bot_id).catch(() => null);
-	if (panelId == null) return 0;
+	const panelId = await db.getBotPanelId((server as ServerRow).bot_id!).catch(() => null);
+	if (panelId == null) {
+		return 0;
+	}
 	const items = await db.listItems(panelId, {}).catch(() => []);
 	let maxMin = 0;
-	for (const it of (items as any[]) || []) {
-		if (it.effect_type !== effectType) continue;
+	for (const it of items || []) {
+		if (it.effect_type !== effectType) {
+			continue;
+		}
 		const cfg = parseConfig(it.config);
 		const v = Math.max(0, Number(cfg[key]) || 0);
-		if (v > maxMin) maxMin = v;
+		if (v > maxMin) {
+			maxMin = v;
+		}
 	}
-	const ms = maxMin * 60000;
+	const ms = maxMin * MINUTE_MS;
 	attackCfgCache.set(cacheKey, { value: ms, at: Date.now() });
 	return ms;
 }
 
-async function runExpirySweep(client: any) {
+async function runExpirySweep(client: Client) {
 	try {
 		const { getBotConfig } = await import('../../../config.js');
 		const botConfig = getBotConfig();
-		if (!botConfig?.id) return;
+		if (!botConfig?.id) {
+			return;
+		}
 		const { EmbedBuilder } = await import('discord.js');
 		await sweepExpiredBuffs(client, botConfig.id, EmbedBuilder);
 		await sweepDerivedEvents(client, botConfig.id, EmbedBuilder);
 		await db.purgeDepletedMemberItems().catch(() => 0);
 		const { sweepBrokenStreaks } = await import('./tasks.js');
 		await sweepBrokenStreaks(client).catch(() => null);
-	} catch (err: any) {
-		await logger.log(`⚠️ Item expiry sweep failed: ${err.message}`);
+	} catch (err) {
+		await logger.log(`⚠️ Item expiry sweep failed: ${(err as Error).message}`);
 	}
 }
 
-export function initExpirySweeper(client: any) {
-	if (expirySweepTimer) clearInterval(expirySweepTimer);
+export function initExpirySweeper(client: Client) {
+	if (expirySweepTimer) {
+		clearInterval(expirySweepTimer);
+	}
 	db.backfillItemLogItemIds()
 		.then((n: number) => (n > 0 ? logger.log(`🧾 Backfilled item_id on ${n} item-history rows`) : null))
 		.catch(() => null);
@@ -1587,7 +1947,9 @@ export function initExpirySweeper(client: any) {
 }
 
 export function stopExpirySweeper() {
-	if (expirySweepTimer) clearInterval(expirySweepTimer);
+	if (expirySweepTimer) {
+		clearInterval(expirySweepTimer);
+	}
 	expirySweepTimer = null;
 }
 

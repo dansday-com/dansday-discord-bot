@@ -21,7 +21,9 @@ const READY: Record<string, (guildId: string) => Promise<boolean>> = {
 
 export async function featureAvailable(guildId: string, feature: string): Promise<boolean> {
 	try {
-		if (!(await isComponentFeatureEnabled(guildId, feature))) return false;
+		if (!(await isComponentFeatureEnabled(guildId, feature))) {
+			return false;
+		}
 		const ready = READY[feature];
 		return ready ? await ready(guildId) : true;
 	} catch {

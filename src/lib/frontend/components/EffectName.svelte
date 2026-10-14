@@ -18,13 +18,15 @@
 	const style = $derived(family === 'none' ? '' : effectVariant(family, seed, accent).style);
 
 	let node = $state<HTMLSpanElement | undefined>();
-	let live = $state(false);
+	let isLive = $state(false);
 
 	$effect(() => {
 		const el = node;
-		if (!el || family === 'none') return;
+		if (!el || family === 'none') {
+			return;
+		}
 		return observeVisibility(el, (visible) => {
-			live = visible;
+			isLive = visible;
 		});
 	});
 </script>
@@ -32,5 +34,5 @@
 {#if family === 'none'}
 	<span class={cls} {title}>{name}</span>
 {:else}
-	<span bind:this={node} class="fx-text {live ? 'fx-live' : ''} {cls}" data-fx={family} data-fx-text={name} {style} {title}>{name}</span>
+	<span bind:this={node} class="fx-text {isLive ? 'fx-live' : ''} {cls}" data-fx={family} data-fx-text={name} {style} {title}>{name}</span>
 {/if}

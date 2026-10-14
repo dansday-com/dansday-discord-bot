@@ -1,9 +1,5 @@
-<script lang="ts" module>
-	export const REEL_SECONDS = 6.8;
-	export const REEL_CURVE: [number, number, number, number] = [0.06, 0.72, 0.06, 1];
-</script>
-
 <script lang="ts" generics="T">
+	import { REEL_CURVE, REEL_SECONDS } from './reel';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -60,7 +56,7 @@
 	<div
 		class="flex gap-2 pl-(--pl) will-change-transform min-[600px]:pl-(--pl-lg)"
 		style="--pl: {padLeft}; --pl-lg: {padLeftLg ?? padLeft}; transform: translateX({offset}px); transition: {animating
-			? `transform ${REEL_SECONDS}s cubic-bezier(${REEL_CURVE.join(', ')})`
+			? `transform ${REEL_SECONDS}s cubic-bezier(${REEL_CURVE.x1}, ${REEL_CURVE.y1}, ${REEL_CURVE.x2}, ${REEL_CURVE.y2})`
 			: 'none'};"
 	>
 		{#each items as item, i (i)}

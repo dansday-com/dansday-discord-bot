@@ -3,168 +3,171 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { randomBytes } from 'crypto';
 import { logger } from '$lib/utils/index.js';
-import { request as httpRequest } from 'http';
+import { postBotWebhook } from '$lib/backend/public/items/index.js';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
+import { HTTP } from '$lib/http.js';
+import { INVITE_TOKEN_BYTES } from '$lib/accounts.js';
+
+const MEMBER_ID_MIN_LENGTH = 5;
+const MAX_INVITES_PER_REQUEST = 50;
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
-	if (!locals.user.authenticated) return false;
+	if (!locals.user.authenticated) {
+		return false;
+	}
 	if (locals.user.account_source === 'accounts') {
 		const { accountOwnsServer } = await import('$lib/backend/panelServer.js');
 		return accountOwnsServer(locals, serverId);
 	}
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
+		return locals.user.server_id === serverId;
+	}
 	return false;
+}
+
+type InviteFailure = { discord_member_id: string; error: string };
+type InviteContext = {
+	locals: App.Locals;
+	server: NonNullable<Awaited<ReturnType<typeof db.getServer>>>;
+	bot: Pick<NonNullable<Awaited<ReturnType<typeof db.getBot>>>, 'port' | 'secret_key'>;
+	accountType: 'owner' | 'staff';
+	origin: string;
+};
+type InviteSent = { ok: true; inviteUrl: string; token: string } | { ok: false; error: string };
+
+function requestedMemberIds(body: Record<string, unknown>): string[] {
+	const rawMulti = body.discord_member_ids;
+	const singleId = body.discord_member_id;
+	if (Array.isArray(rawMulti)) {
+		return [...new Set(rawMulti.map((x: unknown) => String(x ?? '').trim()).filter((id) => id.length >= MEMBER_ID_MIN_LENGTH))];
+	}
+	return singleId != null && String(singleId).trim().length >= MEMBER_ID_MIN_LENGTH ? [String(singleId).trim()] : [];
+}
+
+async function inviteBot(serverId: number): Promise<Pick<InviteContext, 'server' | 'bot'> | Response> {
+	const server = await db.getServer(serverId);
+	if (!server) {
+		return json({ success: false, error: 'Server not found' }, { status: HTTP.NOT_FOUND });
+	}
+	const officialBotId = await db.resolveOfficialBotIdForServer(server);
+	const bot = officialBotId ? await db.getBot(officialBotId) : null;
+	if (!bot) {
+		return json({ success: false, error: 'Bot not found' }, { status: HTTP.NOT_FOUND });
+	}
+	if (bot.status !== 'running') {
+		return json({ success: false, error: 'Bot is not running' }, { status: HTTP.BAD_REQUEST });
+	}
+	if (!bot.port || !bot.secret_key) {
+		return json({ success: false, error: 'Bot webhook not configured' }, { status: HTTP.BAD_REQUEST });
+	}
+	return { server, bot };
+}
+
+async function sendInviteDm(ctx: InviteContext, discordMemberId: string): Promise<InviteSent> {
+	const { server, accountType } = ctx;
+	const member = await db.getMemberByDiscordId(server.id, discordMemberId);
+	if (!member) {
+		return { ok: false, error: 'Member not found (sync may be required)' };
+	}
+
+	const token = randomBytes(INVITE_TOKEN_BYTES).toString('hex');
+	await db.createServerAccountInvite({ token, server_id: server.id, account_type: accountType });
+
+	const inviteUrl = `${ctx.origin}/register?token=${token}`;
+	const displayName = member.server_display_name || member.display_name || member.username || 'there';
+	const result = await postBotWebhook(ctx.bot, {
+		type: 'send_dm',
+		guild_id: server.discord_server_id,
+		user_id: discordMemberId,
+		embed_title: "You're invited",
+		embed_description: `Hi ${displayName}! You've been invited to join **${server.name || 'this server'}** as **${accountType}**.\n\n[**Click here to register**](${inviteUrl})`,
+		link_url: inviteUrl,
+		link_label: 'Register'
+	});
+	if (result.status === HTTP.BAD_GATEWAY) {
+		logger.log(`❌ Error calling bot webhook (send_dm) for server ${server.id}`);
+	}
+	if (result.status !== HTTP.OK || !result.body?.success) {
+		return { ok: false, error: messageFromBotWebhookPayload(result.body) };
+	}
+	logger.log(
+		`${ctx.locals.user.authenticated ? ctx.locals.user.username : 'unknown'} sent server invite DM to ${discordMemberId} (${accountType}) for server ${server.id}`
+	);
+	return { ok: true, inviteUrl, token };
+}
+
+async function logInvites(locals: App.Locals, serverId: number, { accountType, sentIds }: { accountType: string; sentIds: string[] }) {
+	await db
+		.createServerPanelLog(serverId, panelActorIds(locals), {
+			action: 'account_invite',
+			changes: [
+				{ key: 'invite link', before: null, after: `${accountType}, sent by DM` },
+				{ key: 'sent to', before: null, after: sentIds.join(', ') }
+			]
+		})
+		.catch(() => null);
 }
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const serverId = Number(params.id);
-
 	if (!locals.user.authenticated) {
-		return json({ success: false, error: 'Authentication required' }, { status: 401 });
+		return json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
-
 	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const body = await request.json().catch(() => ({}));
-	const account_type = (body.account_type === 'owner' || body.account_type === 'staff' ? body.account_type : null) as 'owner' | 'staff' | null;
+	const accountType = body.account_type === 'owner' || body.account_type === 'staff' ? (body.account_type as 'owner' | 'staff') : null;
+	const memberIds = requestedMemberIds(body);
 
-	const rawMulti = body.discord_member_ids;
-	const singleId = body.discord_member_id;
-	let discord_member_ids: string[] = [];
-	if (Array.isArray(rawMulti)) {
-		discord_member_ids = rawMulti.map((x: unknown) => String(x ?? '').trim()).filter((id) => id.length >= 5);
-	} else if (singleId != null && String(singleId).trim().length >= 5) {
-		discord_member_ids = [String(singleId).trim()];
+	const denied = guardAccountAction(locals, accountType ?? 'staff');
+	if (denied) {
+		return denied;
 	}
-
-	discord_member_ids = [...new Set(discord_member_ids)];
-
-	const denied = guardAccountAction(locals, account_type ?? 'staff');
-	if (denied) return denied;
 	const validTypes: string[] = invitableAccountTypes(panelActorOf(locals.user));
-	if (!account_type || !validTypes.includes(account_type)) {
-		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
+	if (!accountType || !validTypes.includes(accountType)) {
+		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: HTTP.BAD_REQUEST });
+	}
+	if (memberIds.length === 0) {
+		return json({ success: false, error: 'Provide discord_member_id or discord_member_ids[]' }, { status: HTTP.BAD_REQUEST });
+	}
+	if (memberIds.length > MAX_INVITES_PER_REQUEST) {
+		return json({ success: false, error: 'At most 50 members per request' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	if (discord_member_ids.length === 0) {
-		return json({ success: false, error: 'Provide discord_member_id or discord_member_ids[]' }, { status: 400 });
+	const target = await inviteBot(serverId);
+	if (target instanceof Response) {
+		return target;
 	}
 
-	if (discord_member_ids.length > 50) {
-		return json({ success: false, error: 'At most 50 members per request' }, { status: 400 });
-	}
-
-	const server = await db.getServer(serverId);
-	if (!server) return json({ success: false, error: 'Server not found' }, { status: 404 });
-
-	const officialBotId = await db.resolveOfficialBotIdForServer(server);
-	const bot = officialBotId ? await db.getBot(officialBotId) : null;
-	if (!bot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
-	if (bot.status !== 'running') return json({ success: false, error: 'Bot is not running' }, { status: 400 });
-	if (!bot.port || !bot.secret_key) return json({ success: false, error: 'Bot webhook not configured' }, { status: 400 });
-
-	type Fail = { discord_member_id: string; error: string };
-	const failed: Fail[] = [];
-	let lastInviteUrl: string | null = null;
-	let lastToken: string | null = null;
-
-	for (const discord_member_id of discord_member_ids) {
-		const member = await db.getMemberByDiscordId(serverId, discord_member_id);
-		if (!member) {
-			failed.push({ discord_member_id, error: 'Member not found (sync may be required)' });
-			continue;
-		}
-
-		const token = randomBytes(32).toString('hex');
-
-		await db.createServerAccountInvite({
-			token,
-			server_id: serverId,
-			account_type
-		});
-
-		const inviteUrl = `${url.origin}/register?token=${token}`;
-		const displayName = member.server_display_name || member.display_name || member.username || 'there';
-		const serverName = server.name || 'this server';
-		const embed_title = "You're invited";
-		const embed_description = `Hi ${displayName}! You've been invited to join **${serverName}** as **${account_type}**.\n\n[**Click here to register**](${inviteUrl})`;
-
-		const payload = JSON.stringify({
-			type: 'send_dm',
-			guild_id: server.discord_server_id,
-			user_id: discord_member_id,
-			embed_title,
-			embed_description,
-			link_url: inviteUrl,
-			link_label: 'Register'
-		});
-
-		const result = await new Promise<{ status: number; body: any }>((resolve) => {
-			const options = {
-				hostname: 'localhost',
-				port: bot.port as number,
-				path: '/',
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Content-Length': Buffer.byteLength(payload),
-					'X-Secret-Key': bot.secret_key as string
-				}
-			};
-
-			const req = httpRequest(options, (res) => {
-				let data = '';
-				res.on('data', (chunk) => (data += chunk));
-				res.on('end', () => {
-					try {
-						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
-					} catch {
-						resolve({ status: 500, body: { error: 'Failed to parse bot response' } });
-					}
-				});
-			});
-			req.on('error', (err) => {
-				logger.log(`❌ Error calling bot webhook (send_dm): ${err.message}`);
-				resolve({ status: 500, body: { error: 'Failed to communicate with bot' } });
-			});
-			req.write(payload);
-			req.end();
-		});
-
-		if (result.status === 200 && result.body.success) {
-			logger.log(`${locals.user.username} sent server invite DM to ${discord_member_id} (${account_type}) for server ${serverId}`);
-			lastInviteUrl = inviteUrl;
-			lastToken = token;
+	const ctx: InviteContext = { locals, ...target, accountType, origin: url.origin };
+	const failed: InviteFailure[] = [];
+	const sentIds: string[] = [];
+	let last: InviteSent | null = null;
+	for (const discordMemberId of memberIds) {
+		const sent = await sendInviteDm(ctx, discordMemberId);
+		if (sent.ok) {
+			sentIds.push(discordMemberId);
+			last = sent;
 		} else {
-			const errMsg = messageFromBotWebhookPayload(result.body);
-			failed.push({ discord_member_id, error: errMsg });
+			failed.push({ discord_member_id: discordMemberId, error: sent.error });
 		}
 	}
 
-	const sentCount = discord_member_ids.length - failed.length;
-
-	if (sentCount === 0) {
-		const first = failed[0];
-		return json({ success: false, error: first?.error ?? 'All invites failed', failed }, { status: 400 });
+	if (sentIds.length === 0) {
+		return json({ success: false, error: failed[0]?.error ?? 'All invites failed', failed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const failedIds = new Set(failed.map((f) => f.discord_member_id));
-	await db
-		.createServerPanelLog(serverId, panelActorIds(locals), 'account_invite', [
-			{ key: 'invite link', before: null, after: `${account_type}, sent by DM` },
-			{ key: 'sent to', before: null, after: discord_member_ids.filter((id) => !failedIds.has(id)).join(', ') }
-		])
-		.catch(() => null);
-
+	await logInvites(locals, serverId, { accountType, sentIds });
+	const isSingle = memberIds.length === 1 && last?.ok === true;
 	return json({
 		success: true,
-		sent_count: sentCount,
+		sent_count: sentIds.length,
 		failed,
-		invite_link: discord_member_ids.length === 1 && sentCount === 1 ? lastInviteUrl : null,
-		token: discord_member_ids.length === 1 && sentCount === 1 ? lastToken : null
+		invite_link: isSingle && last?.ok ? last.inviteUrl : null,
+		token: isSingle && last?.ok ? last.token : null
 	});
 };

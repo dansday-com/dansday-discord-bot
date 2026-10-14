@@ -3,22 +3,36 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canEditServerSettings } from '$lib/backend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
+import { HTTP } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
-	if (!locals.user.authenticated) return json({ ok: false, error: 'Authentication required' }, { status: 401 });
+	if (!locals.user.authenticated) {
+		return json({ ok: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
+	}
 	const serverId = parseInt(params.id ?? '');
-	if (isNaN(serverId)) return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
-	if (!(await canEditServerSettings(locals, serverId))) return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	if (isNaN(serverId)) {
+		return json({ ok: false, error: 'Invalid server ID' }, { status: HTTP.BAD_REQUEST });
+	}
+	if (!(await canEditServerSettings(locals, serverId))) {
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
+	}
 
 	const body = await request.json().catch(() => null);
 	const earningId = String(body?.id ?? '');
-	if (!/^\d+$/.test(earningId)) return json({ ok: false, error: 'Invalid reward' }, { status: 400 });
+	if (!/^\d+$/.test(earningId)) {
+		return json({ ok: false, error: 'Invalid reward' }, { status: HTTP.BAD_REQUEST });
+	}
 
 	const done = await db.markRewardDelivered(serverId, earningId);
-	if (!done) return json({ ok: false, error: 'That reward was already delivered.' }, { status: 404 });
+	if (!done) {
+		return json({ ok: false, error: 'That reward was already delivered.' }, { status: HTTP.NOT_FOUND });
+	}
 
 	await db
-		.createServerPanelLog(serverId, panelActorIds(locals), 'rewards', [{ key: 'reward delivered', before: null, after: `${done.reward} → ${done.member}` }])
+		.createServerPanelLog(serverId, panelActorIds(locals), {
+			action: 'rewards',
+			changes: [{ key: 'reward delivered', before: null, after: `${done.reward} → ${done.member}` }]
+		})
 		.catch(() => null);
 	return json({ ok: true });
 };

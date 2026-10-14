@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { initial, rankStyle } from './ranks';
 
+	const RING_EXTRA_PX = 6;
+	const INITIAL_FONT_SCALE = 0.39;
+
 	let {
 		src = null,
 		name,
@@ -24,14 +27,14 @@
 </script>
 
 <div class="relative shrink-0">
-	<div class="rounded-full p-0.75" style="{ringStyle} width: {size + 6}px; height: {size + 6}px;">
+	<div class="rounded-full p-0.75" style="{ringStyle} width: {size + RING_EXTRA_PX}px; height: {size + RING_EXTRA_PX}px;">
 		<div class="bg-base-300 border-base-100 size-full overflow-hidden rounded-full border-2">
 			{#if src}
 				<img {src} alt={name} class="size-full object-cover" loading="lazy" />
 			{:else}
 				<div
 					class="from-base-300 to-base-100 text-primary/90 grid size-full place-items-center bg-linear-to-br font-extrabold"
-					style="font-size: {Math.round(size * 0.39)}px"
+					style="font-size: {Math.round(size * INITIAL_FONT_SCALE)}px"
 				>
 					{initial(name)}
 				</div>

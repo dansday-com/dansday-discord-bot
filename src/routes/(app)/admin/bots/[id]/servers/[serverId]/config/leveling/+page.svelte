@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { DEFAULT_LEVELING_SETTINGS } from '$lib/levelingDefaults.js';
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -6,47 +7,56 @@
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import { formatMultiplier, formatSeconds } from '$lib/frontend/numericSelectFormatters.js';
-	import { INVITE_SHARE_PERCENT_OPTIONS, INVITE_STAFF_MULTIPLIER } from '$lib/invites.js';
+	import { INVITE_ACCOUNT_AGE_DAY_OPTIONS, INVITE_HOLD_HOUR_OPTIONS, INVITE_SHARE_PERCENT_OPTIONS, INVITE_STAFF_MULTIPLIER } from '$lib/invites.js';
+	import { HOURS_PER_DAY } from '$lib/utils/time.js';
 	import type { PageProps } from './$types';
+
+	const STEPPED_OPTION_COUNT = 20;
+	const XP_STEP = 5;
+	const COOLDOWN_OPTION_COUNT = 13;
+	const COOLDOWN_STEP_SECONDS = 15;
+	const BASE_XP_STEP = 50;
+	const INVITE_XP_STEP = 50;
+	const MULTIPLIER_OPTION_COUNT = 11;
+	const MULTIPLIER_STEP = 0.1;
 
 	let { data }: PageProps = $props();
 
-	let saving = $state(false);
+	let isSaving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
 
-	let baseXP = $state<number>(data.settings?.REQUIREMENTS?.BASE_XP ?? 100);
-	let multiplier = $state<number>(data.settings?.REQUIREMENTS?.MULTIPLIER ?? 1.5);
+	let baseXP = $state<number>(data.settings?.REQUIREMENTS?.BASE_XP ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP);
+	let multiplier = $state<number>(data.settings?.REQUIREMENTS?.MULTIPLIER ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.MULTIPLIER);
 
-	let messageXP = $state<number>(data.settings?.MESSAGE?.XP ?? 15);
-	let messageCooldown = $state<number>(data.settings?.MESSAGE?.COOLDOWN_SECONDS ?? 60);
+	let messageXP = $state<number>(data.settings?.MESSAGE?.XP ?? DEFAULT_LEVELING_SETTINGS.MESSAGE.XP);
+	let messageCooldown = $state<number>(data.settings?.MESSAGE?.COOLDOWN_SECONDS ?? DEFAULT_LEVELING_SETTINGS.MESSAGE.COOLDOWN_SECONDS);
 
-	let voiceXPPerMinute = $state<number>(data.settings?.VOICE?.XP_PER_MINUTE ?? 10);
-	let voiceAfkXPPerMinute = $state<number>(data.settings?.VOICE?.AFK_XP_PER_MINUTE ?? 5);
-	let voiceCooldown = $state<number>(data.settings?.VOICE?.COOLDOWN_SECONDS ?? 60);
+	let voiceXPPerMinute = $state<number>(data.settings?.VOICE?.XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.VOICE.XP_PER_MINUTE);
+	let voiceAfkXPPerMinute = $state<number>(data.settings?.VOICE?.AFK_XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.VOICE.AFK_XP_PER_MINUTE);
+	let voiceCooldown = $state<number>(data.settings?.VOICE?.COOLDOWN_SECONDS ?? DEFAULT_LEVELING_SETTINGS.VOICE.COOLDOWN_SECONDS);
 
 	let videoXPPerMinute = $state<number>(data.settings?.VIDEO?.XP_PER_MINUTE ?? 0);
 	let streamingXPPerMinute = $state<number>(data.settings?.STREAMING?.XP_PER_MINUTE ?? 0);
 
-	let inviteXP = $state<number>(data.settings?.INVITE?.XP ?? 1000);
-	let inviteMinAccountAge = $state<number>(data.settings?.INVITE?.MIN_ACCOUNT_AGE_DAYS ?? 7);
-	let inviteHoldHours = $state<number>(data.settings?.INVITE?.HOLD_HOURS ?? 24);
-	let inviteSharePercent = $state<number>(data.settings?.INVITE?.SHARE_PERCENT ?? 25);
+	let inviteXP = $state<number>(data.settings?.INVITE?.XP ?? DEFAULT_LEVELING_SETTINGS.INVITE.XP);
+	let inviteMinAccountAge = $state<number>(data.settings?.INVITE?.MIN_ACCOUNT_AGE_DAYS ?? DEFAULT_LEVELING_SETTINGS.INVITE.MIN_ACCOUNT_AGE_DAYS);
+	let inviteHoldHours = $state<number>(data.settings?.INVITE?.HOLD_HOURS ?? DEFAULT_LEVELING_SETTINGS.INVITE.HOLD_HOURS);
+	let inviteSharePercent = $state<number>(data.settings?.INVITE?.SHARE_PERCENT ?? DEFAULT_LEVELING_SETTINGS.INVITE.SHARE_PERCENT);
 
 	let progressChannel = $state<string>(data.settings?.PROGRESS_CHANNEL_ID ?? '');
 
-	const xpValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
-	const cooldownValues = Array.from({ length: 13 }, (_, i) => i * 15);
-	const baseXPValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
-	const multiplierValues = Array.from({ length: 11 }, (_, i) => parseFloat((1.0 + i * 0.1).toFixed(1)));
-	const inviteXPValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
-	const accountAgeValues = [0, 1, 3, 7, 14, 30, 60, 90];
-	const holdHourValues = [0, 1, 6, 12, 24, 48, 72, 168];
+	const xpValues = Array.from({ length: STEPPED_OPTION_COUNT }, (_, i) => (i + 1) * XP_STEP);
+	const cooldownValues = Array.from({ length: COOLDOWN_OPTION_COUNT }, (_, i) => i * COOLDOWN_STEP_SECONDS);
+	const baseXPValues = Array.from({ length: STEPPED_OPTION_COUNT }, (_, i) => (i + 1) * BASE_XP_STEP);
+	const multiplierValues = Array.from({ length: MULTIPLIER_OPTION_COUNT }, (_, i) => parseFloat((1.0 + i * MULTIPLIER_STEP).toFixed(1)));
+	const inviteXPValues = Array.from({ length: STEPPED_OPTION_COUNT }, (_, i) => (i + 1) * INVITE_XP_STEP);
 
 	const formatDays = (v: number) => (v === 0 ? 'Off' : `${v} day${v === 1 ? '' : 's'}`);
-	const formatHours = (v: number) => (v === 0 ? 'Instant' : v % 24 === 0 ? `${v / 24} day${v === 24 ? '' : 's'}` : `${v} hour${v === 1 ? '' : 's'}`);
+	const formatHours = (v: number) =>
+		v === 0 ? 'Instant' : v % HOURS_PER_DAY === 0 ? `${v / HOURS_PER_DAY} day${v === HOURS_PER_DAY ? '' : 's'}` : `${v} hour${v === 1 ? '' : 's'}`;
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
 				method: 'POST',
@@ -68,9 +78,11 @@
 			if (d.success) {
 				showToast('Saved', 'success');
 				invalidateAll();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 </script>
@@ -203,7 +215,7 @@
 			label="Invite hold time"
 			description="How long the new member must stay before the inviter is paid. Leaving earlier pays nothing."
 			labelIconClass="fas fa-hourglass-half mr-1 text-lime-400"
-			values={holdHourValues}
+			values={INVITE_HOLD_HOUR_OPTIONS}
 			bind:value={inviteHoldHours}
 			formatOption={formatHours}
 		/>
@@ -212,7 +224,7 @@
 			label="Minimum account age"
 			description="Accounts younger than this count as fake invites and pay no XP."
 			labelIconClass="fas fa-user-clock mr-1 text-lime-400"
-			values={accountAgeValues}
+			values={INVITE_ACCOUNT_AGE_DAY_OPTIONS}
 			bind:value={inviteMinAccountAge}
 			formatOption={formatDays}
 		/>
@@ -233,10 +245,10 @@
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

@@ -1,36 +1,7 @@
 import { getRedisClient } from '../../../redis.js';
+import type { LeaderboardMetric, LeaderboardPeriod } from './metrics.js';
 
-export type LeaderboardMetric =
-	| 'xp'
-	| 'chat'
-	| 'voice_total'
-	| 'voice_active'
-	| 'voice_afk'
-	| 'video'
-	| 'streaming'
-	| 'minigames_gamble_net'
-	| 'minigames_gamble_ratio'
-	| 'minigames_gamble_big'
-	| 'minigames_tower_net'
-	| 'minigames_tower_ratio'
-	| 'minigames_tower_big'
-	| 'minigames_color_net'
-	| 'minigames_color_avg'
-	| 'minigames_color_best'
-	| 'items_bounty_total'
-	| 'items_bounty_claimer'
-	| 'items_bounty_give'
-	| 'items_steal_total'
-	| 'items_steal_rate'
-	| 'items_steal_big'
-	| 'items_bomb_total'
-	| 'items_bomb_rate'
-	| 'items_bomb_big'
-	| 'items_gift_give'
-	| 'items_gift_receive'
-	| 'invites';
-
-export type LeaderboardPeriod = 'all' | 'month' | 'week';
+export type { LeaderboardMetric, LeaderboardPeriod } from './metrics.js';
 
 export type LeaderboardRow = {
 	discord_member_id: string;
@@ -83,39 +54,37 @@ export type LeaderboardSnapshot = {
 	rows: LeaderboardRow[];
 };
 
-function key(serverId: number, metric: LeaderboardMetric, period: LeaderboardPeriod, limit: number) {
+function key(serverId: number, { metric, period, limit }: BoardView) {
 	return `dansday:leaderboard:${serverId}:${metric}:${period}:${limit}`;
 }
 
-export async function getCachedLeaderboard(
-	serverId: number,
-	metric: LeaderboardMetric,
-	period: LeaderboardPeriod,
-	limit: number
-): Promise<LeaderboardSnapshot | null> {
+export async function getCachedLeaderboard(serverId: number, { metric, period, limit }: BoardView): Promise<LeaderboardSnapshot | null> {
 	const redis = await getRedisClient();
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
-		const raw = await redis.get(key(serverId, metric, period, limit));
-		if (!raw) return null;
+		const raw = await redis.get(key(serverId, { metric, period, limit }));
+		if (!raw) {
+			return null;
+		}
 		return JSON.parse(raw) as LeaderboardSnapshot;
 	} catch (_) {
 		return null;
 	}
 }
 
-export async function setCachedLeaderboard(
-	serverId: number,
-	metric: LeaderboardMetric,
-	period: LeaderboardPeriod,
-	limit: number,
-	snapshot: LeaderboardSnapshot,
-	ttlSeconds = 20
-) {
+type BoardEntry = { snapshot: LeaderboardSnapshot; ttlSeconds?: number };
+
+type BoardView = { metric: LeaderboardMetric; period: LeaderboardPeriod; limit: number };
+
+export async function setCachedLeaderboard(serverId: number, { metric, period, limit }: BoardView, { snapshot, ttlSeconds = 20 }: BoardEntry) {
 	const redis = await getRedisClient();
-	if (!redis) return false;
+	if (!redis) {
+		return false;
+	}
 	try {
-		await redis.set(key(serverId, metric, period, limit), JSON.stringify(snapshot), { EX: ttlSeconds });
+		await redis.set(key(serverId, { metric, period, limit }), JSON.stringify(snapshot), { EX: ttlSeconds });
 		return true;
 	} catch (_) {
 		return false;

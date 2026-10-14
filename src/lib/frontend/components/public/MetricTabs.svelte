@@ -24,7 +24,9 @@
 	const DEPTH_BG = ['bg-base-100/55', 'bg-base-100/35', 'bg-base-100/25'] as const;
 
 	function select(tab: Tab) {
-		if (!tab.active) sfx.select();
+		if (!tab.active) {
+			sfx.select();
+		}
 		onselect(tab.id);
 	}
 </script>
@@ -32,7 +34,7 @@
 <div
 	role="tablist"
 	aria-label={label}
-	class="tabs tabs-box border-base-300 flex-nowrap overflow-x-auto border p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {DEPTH_BG[depth]} {size ===
+	class="tabs tabs-box border-base-300 [scrollbar-width:none] flex-nowrap overflow-x-auto border p-1.5 [&::-webkit-scrollbar]:hidden {DEPTH_BG[depth]} {size ===
 	'sm'
 		? 'tabs-sm'
 		: ''} {margin ? 'mb-3' : ''} {fit ? 'w-fit' : ''}"
@@ -44,7 +46,7 @@
 				? 'tab-active from-secondary to-primary text-primary-content bg-linear-to-br shadow-sm'
 				: 'text-base-content/45'}"
 			aria-selected={tab.active}
-			onpointerenter={(e) => !tab.active && e.pointerType === 'mouse' && sfx.detent(i, depth > 0)}
+			onpointerenter={(e) => !tab.active && e.pointerType === 'mouse' && (depth > 0 ? sfx.highDetent(i) : sfx.detent(i))}
 			onclick={() => select(tab)}
 		>
 			{#if tab.icon}<i class="fas {tab.icon}"></i>{/if}

@@ -1,11 +1,17 @@
+import { DAY_SECONDS, DAYS_PER_WEEK, HOUR_SECONDS, MINUTE_SECONDS } from '../../../utils/time.js';
+
+const ARABIC_INDIC_DIGIT_ZERO = 0x0660;
+const EXTENDED_ARABIC_INDIC_DIGIT_ZERO = 0x06f0;
+const BARE_NUMBER_UNIT_SECONDS = MINUTE_SECONDS;
+
 function normalizeWord(input: unknown): string {
 	return String(input ?? '')
 		.normalize('NFKC')
 		.toLowerCase()
 		.normalize('NFD')
 		.replace(/[\u0300-\u036f\u064b-\u065f\u0670]/g, '')
-		.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-		.replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+		.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - ARABIC_INDIC_DIGIT_ZERO))
+		.replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - EXTENDED_ARABIC_INDIC_DIGIT_ZERO))
 		.replace(/[.!?。！？،,]+$/u, '')
 		.trim();
 }
@@ -42,7 +48,7 @@ const DURATION_UNITS: [number, string[]][] = [
 		]
 	],
 	[
-		60,
+		MINUTE_SECONDS,
 		[
 			'm',
 			'min',
@@ -68,7 +74,7 @@ const DURATION_UNITS: [number, string[]][] = [
 		]
 	],
 	[
-		3600,
+		HOUR_SECONDS,
 		[
 			'h',
 			'hr',
@@ -100,7 +106,7 @@ const DURATION_UNITS: [number, string[]][] = [
 		]
 	],
 	[
-		86400,
+		DAY_SECONDS,
 		[
 			'd',
 			'day',
@@ -129,7 +135,7 @@ const DURATION_UNITS: [number, string[]][] = [
 		]
 	],
 	[
-		604800,
+		DAYS_PER_WEEK * DAY_SECONDS,
 		[
 			'w',
 			'wk',
@@ -166,17 +172,20 @@ const DURATION_UNIT_SECONDS = new Map<string, number>(
 
 export function parseLocalizedDuration(input: unknown): number | null {
 	const text = normalizeWord(input);
-	if (!text) return null;
+	if (!text) {
+		return null;
+	}
 	const re = /(\d+)\s*(\p{L}*)/gu;
 	let total = 0;
-	let found = false;
-	let match: RegExpExecArray | null;
-	while ((match = re.exec(text)) !== null) {
+	let wasFound = false;
+	for (const match of text.matchAll(re)) {
 		const unit = match[2];
-		const seconds = unit ? DURATION_UNIT_SECONDS.get(unit) : 60;
-		if (seconds == null) return null;
-		found = true;
+		const seconds = unit ? DURATION_UNIT_SECONDS.get(unit) : BARE_NUMBER_UNIT_SECONDS;
+		if (seconds == null) {
+			return null;
+		}
+		wasFound = true;
 		total += Number(match[1]) * seconds;
 	}
-	return found && total > 0 ? total : null;
+	return wasFound && total > 0 ? total : null;
 }

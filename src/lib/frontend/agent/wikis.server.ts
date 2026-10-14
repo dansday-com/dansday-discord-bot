@@ -2,6 +2,8 @@ import db from '$lib/database.js';
 import { parseWikiInput, testWiki } from '$lib/frontend/wikis.server.js';
 import { logger } from '$lib/utils/index.js';
 import type { AgentPack, AgentReach, AgentSession } from './runtime.server.js';
+import type { Wiki } from '$lib/database.js';
+import { WIKI_NAME_MAX_LENGTH } from '$lib/wikiLimits.js';
 
 const WIKI_FIELDS = {
 	name: { type: 'string', description: 'Short name of the wiki, 64 characters at most. Leave out to take it from the wiki itself.' },
@@ -13,7 +15,7 @@ const WIKI_FIELDS = {
 	enabled: { type: 'boolean', description: 'Off keeps the wiki saved but the AI ignores it.' }
 };
 
-function shown(wiki: any) {
+function shown(wiki: Wiki) {
 	return {
 		id: wiki.id,
 		name: wiki.name,
@@ -29,23 +31,69 @@ function given(args: Record<string, unknown>, key: string): string {
 	return typeof args[key] === 'string' ? (args[key] as string).trim() : '';
 }
 
-export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
-	const panelId = reach.panelId;
+type WikiScope = { panelId: number; session: AgentSession };
 
-	async function nameTaken(name: string, exceptId: number | null): Promise<boolean> {
-		const wikis = await db.getWikis(panelId);
-		return wikis.some((wiki) => wiki.id !== exceptId && wiki.name.toLowerCase() === name.toLowerCase());
+const WIKIS_INSTRUCTIONS =
+	"# Wikis\nWikis are the game wikis the bot's AI looks things up in, in chat and voice, shared by every bot on this panel. Any MediaWiki site works, Fandom included. create_wiki checks the address first and takes the name, site address and description from the wiki itself, so the api.php address is all you need. When the admin gives a site address or only a wiki name, try test_wiki on the likely api.php addresses of that site, such as /w/api.php and /api.php, and use the one that answers. A wiki that refuses this server needs a relay, which only the admin can set up. You cannot delete a wiki. To stop the AI using one, set enabled to false.";
+
+async function nameTaken(panelId: number, name: string, exceptId: number | null): Promise<boolean> {
+	const wikis = await db.getWikis(panelId);
+	return wikis.some((wiki) => wiki.id !== exceptId && wiki.name.toLowerCase() === name.toLowerCase());
+}
+
+async function createWikiTool({ panelId, session }: WikiScope, args: Record<string, unknown>) {
+	const test = await testWiki(args);
+	if (!test.ok) {
+		return { ok: false, reason: test.error };
+	}
+	const parsed = parseWikiInput({
+		...args,
+		name: given(args, 'name') || test.sitename.slice(0, WIKI_NAME_MAX_LENGTH),
+		site_url: given(args, 'site_url') || test.site_url || '',
+		description: given(args, 'description') || test.description || ''
+	});
+	if ('error' in parsed) {
+		return { ok: false, reason: parsed.error };
+	}
+	if (await nameTaken(panelId, parsed.value.name, null)) {
+		return { ok: false, reason: 'A wiki with that name already exists' };
 	}
 
+	const wiki = await db.createWiki(panelId, parsed.value);
+	session.changed.add('wikis');
+	logger.log(`${session.actor} added wiki "${parsed.value.name}" through the assistant`);
+	return { ok: true, wiki: wiki ? shown(wiki) : null };
+}
+
+async function updateWikiTool({ panelId, session }: WikiScope, { id, ...changes }: Record<string, unknown>) {
+	const current = await db.getWiki(panelId, Number(id));
+	if (!current) {
+		return { ok: false, reason: 'not_found' };
+	}
+	const parsed = parseWikiInput({ ...current, relay_url: current.relay_url ?? '', relay_key: current.relay_key ?? '', ...changes });
+	if ('error' in parsed) {
+		return { ok: false, reason: parsed.error };
+	}
+	if (await nameTaken(panelId, parsed.value.name, current.id)) {
+		return { ok: false, reason: 'A wiki with that name already exists' };
+	}
+
+	const wiki = await db.updateWiki(panelId, current.id, parsed.value);
+	session.changed.add('wikis');
+	logger.log(`${session.actor} changed wiki "${parsed.value.name}" through the assistant`);
+	return { ok: true, wiki: wiki ? shown(wiki) : null };
+}
+
+export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
+	const scope: WikiScope = { panelId: reach.panelId, session };
 	return {
-		instructions:
-			"# Wikis\nWikis are the game wikis the bot's AI looks things up in, in chat and voice, shared by every bot on this panel. Any MediaWiki site works, Fandom included. create_wiki checks the address first and takes the name, site address and description from the wiki itself, so the api.php address is all you need. When the admin gives a site address or only a wiki name, try test_wiki on the likely api.php addresses of that site, such as /w/api.php and /api.php, and use the one that answers. A wiki that refuses this server needs a relay, which only the admin can set up. You cannot delete a wiki. To stop the AI using one, set enabled to false.",
+		instructions: WIKIS_INSTRUCTIONS,
 		tools: [
 			{
 				name: 'list_wikis',
 				description: 'Every wiki saved on this panel, with its id.',
 				parameters: { type: 'object', properties: {} },
-				run: async () => ({ ok: true, wikis: (await db.getWikis(panelId)).map(shown) })
+				run: async () => ({ ok: true, wikis: (await db.getWikis(scope.panelId)).map(shown) })
 			},
 			{
 				name: 'test_wiki',
@@ -61,23 +109,7 @@ export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
 				name: 'create_wiki',
 				description: 'Add a wiki. The address is checked first, and a wiki that does not answer is not added.',
 				parameters: { type: 'object', properties: WIKI_FIELDS, required: ['api_url'] },
-				run: async (args) => {
-					const test = await testWiki(args);
-					if (!test.ok) return { ok: false, reason: test.error };
-					const parsed = parseWikiInput({
-						...args,
-						name: given(args, 'name') || test.sitename.slice(0, 64),
-						site_url: given(args, 'site_url') || test.site_url || '',
-						description: given(args, 'description') || test.description || ''
-					});
-					if ('error' in parsed) return { ok: false, reason: parsed.error };
-					if (await nameTaken(parsed.value.name, null)) return { ok: false, reason: 'A wiki with that name already exists' };
-
-					const wiki = await db.createWiki(panelId, parsed.value);
-					session.changed.add('wikis');
-					logger.log(`${session.actor} added wiki "${parsed.value.name}" through the assistant`);
-					return { ok: true, wiki: wiki ? shown(wiki) : null };
-				}
+				run: (args) => createWikiTool(scope, args)
 			},
 			{
 				name: 'update_wiki',
@@ -87,18 +119,7 @@ export function wikisPack(reach: AgentReach, session: AgentSession): AgentPack {
 					properties: { id: { type: 'integer', description: 'The id of the wiki, from list_wikis.' }, ...WIKI_FIELDS },
 					required: ['id']
 				},
-				run: async ({ id, ...changes }) => {
-					const current = await db.getWiki(panelId, Number(id));
-					if (!current) return { ok: false, reason: 'not_found' };
-					const parsed = parseWikiInput({ ...current, relay_url: current.relay_url ?? '', relay_key: current.relay_key ?? '', ...changes });
-					if ('error' in parsed) return { ok: false, reason: parsed.error };
-					if (await nameTaken(parsed.value.name, current.id)) return { ok: false, reason: 'A wiki with that name already exists' };
-
-					const wiki = await db.updateWiki(panelId, current.id, parsed.value);
-					session.changed.add('wikis');
-					logger.log(`${session.actor} changed wiki "${parsed.value.name}" through the assistant`);
-					return { ok: true, wiki: wiki ? shown(wiki) : null };
-				}
+				run: (args) => updateWikiTool(scope, args)
 			}
 		]
 	};

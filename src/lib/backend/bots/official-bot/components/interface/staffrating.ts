@@ -7,7 +7,8 @@ import {
 	StringSelectMenuBuilder,
 	ButtonBuilder,
 	ButtonStyle,
-	LabelBuilder
+	LabelBuilder,
+	MessageFlags
 } from 'discord.js';
 import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
@@ -16,30 +17,53 @@ import { textField, checkboxField, checkboxValue, radioField, radioValue, select
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
+import type {
+	Guild,
+	GuildMember,
+	Role,
+	ButtonInteraction,
+	MessageComponentInteraction,
+	ModalSubmitInteraction,
+	RepliableInteraction,
+	MessageActionRowComponentBuilder
+} from 'discord.js';
+import { DAY_MS, SECOND_MS } from '../../../../../utils/time.js';
+import { DISCORD_LIMITS, embedFieldText } from '../../../../../discordLimits.js';
+import { EMBED_COLORS } from '../embedColors.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
+const DESCRIPTION_MAX_LENGTH = 1000;
+const REVIEW_REASON_MAX_LENGTH = 1000;
+const MAX_RATING = 5;
+const REVIEW_ID_PARTS = 5;
 
-async function getCategoryLabel(guildId, userId, category) {
+async function getCategoryLabel(guildId: string, userId: string, category: unknown) {
 	const key = `staffRating.categories.${category}`;
-	return await translate(key, guildId, userId);
+	return await translate(key, { guildId, userId });
 }
 
-function getCategoryLabelFor(tr: Translator, category) {
+function getCategoryLabelFor(tr: Translator, category: string) {
 	const key = `staffRating.categories.${category}`;
 	return tr(key) || category;
 }
 
-async function onRatingCooldown(serverId, reporterDbId, staffDiscordId: string, cooldownDays: number) {
-	if (!Number.isFinite(cooldownDays) || cooldownDays <= 0) return false;
+type CooldownCheck = { reporterDbId: number; staffDiscordId: string; cooldownDays: number | null };
+
+async function onRatingCooldown(serverId: number, { reporterDbId, staffDiscordId, cooldownDays }: CooldownCheck) {
+	if (!Number.isFinite(cooldownDays) || cooldownDays! <= 0) {
+		return false;
+	}
 	const staffDbMember = await db.getMemberByDiscordId(serverId, staffDiscordId).catch(() => null);
-	if (!staffDbMember) return false;
+	if (!staffDbMember) {
+		return false;
+	}
 	const lastReport = await db.getLastStaffRatingReport(serverId, reporterDbId, staffDbMember.id).catch(() => null);
 	const lastRated = lastReport ? parseMySQLDateTimeUtc(lastReport.reported_at) : null;
-	return !!lastRated && (Date.now() - lastRated.getTime()) / (1000 * 60 * 60 * 24) < cooldownDays;
+	return !!lastRated && (Date.now() - lastRated.getTime()) / DAY_MS < cooldownDays!;
 }
 
-async function buildStaffOptions(interaction) {
-	const guild = interaction.guild;
+async function buildStaffOptions(interaction: RepliableInteraction<'cached'>) {
+	const { guild } = interaction;
 
 	try {
 		const perms = await PERMISSIONS.getPermissions(guild.id);
@@ -53,8 +77,10 @@ async function buildStaffOptions(interaction) {
 
 		for (const roleId of staffRoleIds) {
 			const role = guild.roles.cache.get(roleId);
-			if (!role) continue;
-			role.members.forEach((member) => {
+			if (!role) {
+				continue;
+			}
+			role.members.forEach((member: GuildMember) => {
 				if (!member.user.bot) {
 					staffMembers.set(member.id, member);
 				}
@@ -63,9 +89,11 @@ async function buildStaffOptions(interaction) {
 
 		if (staffMembers.size === 0) {
 			await guild.members.fetch({ withPresences: false }).catch(() => null);
-			guild.members.cache.forEach((member) => {
-				if (member.user.bot) return;
-				if (member.roles.cache.some((role) => staffRoleIds.includes(role.id))) {
+			guild.members.cache.forEach((member: GuildMember) => {
+				if (member.user.bot) {
+					return;
+				}
+				if (member.roles.cache.some((role: Role) => staffRoleIds.includes(role.id))) {
 					staffMembers.set(member.id, member);
 				}
 			});
@@ -81,10 +109,10 @@ async function buildStaffOptions(interaction) {
 				const bPos = b.roles?.highest?.position ?? 0;
 				return bPos - aPos;
 			})
-			.slice(0, 25)
+			.slice(0, DISCORD_LIMITS.SELECT_OPTIONS)
 			.map((member) => {
 				const baseLabel = member.displayName || member.user.globalName || member.user.username || member.user.tag || member.id;
-				const label = baseLabel.slice(0, 100);
+				const label = baseLabel.slice(0, DISCORD_LIMITS.SELECT_OPTION_TEXT);
 				return {
 					label,
 					value: member.id
@@ -93,38 +121,12 @@ async function buildStaffOptions(interaction) {
 
 		return { options, reason: null };
 	} catch (error) {
-		await logger.log(`❌ Failed to build staff options: ${error.message}`);
+		await logger.log(`❌ Failed to build staff options: ${(error as Error).message}`);
 		return { options: [], reason: 'error' };
 	}
 }
 
-function truncateDescription(text) {
-	if (!text) {
-		return '—';
-	}
-	if (text.length > 1024) {
-		return `${text.slice(0, 1021)}...`;
-	}
-	return text;
-}
-
-function buildReportLogEmbed({
-	tr,
-	embedConfig,
-	title,
-	staffUserId,
-	rating,
-	categoryLabel,
-	description,
-	reporterDisplay,
-	statusText,
-	reportId,
-	color,
-	staffReviewReason = undefined,
-	staffReviewFieldLabel = undefined,
-	reviewedByUserId = undefined,
-	reviewedByFieldLabel = undefined
-}: {
+type ReportLog = {
 	tr: Translator;
 	embedConfig: { COLOR: number; FOOTER: string };
 	title: string;
@@ -136,371 +138,289 @@ function buildReportLogEmbed({
 	statusText: string;
 	reportId: number;
 	color?: number;
-	staffReviewReason?: string;
-	staffReviewFieldLabel?: string;
-	reviewedByUserId?: string;
-	reviewedByFieldLabel?: string;
-}) {
+	review?: { reason: string; reviewerId: string };
+};
+type Rejection = { key: string; params?: Record<string, unknown> };
+type StaffOption = { label: string; value: string };
+
+function buildReportLogEmbed(log: ReportLog) {
+	const { tr, review } = log;
 	const fields = [
-		{
-			name: tr('staffRating.channelEmbed.fieldStaffMember'),
-			value: `<@${staffUserId}>`,
-			inline: true
-		},
-		{
-			name: tr('staffRating.channelEmbed.fieldRating'),
-			value: `${rating}/5`,
-			inline: true
-		},
-		{
-			name: tr('staffRating.channelEmbed.fieldCategory'),
-			value: categoryLabel,
-			inline: true
-		},
-		{
-			name: tr('staffRating.channelEmbed.fieldReporter'),
-			value: reporterDisplay,
-			inline: true
-		},
-		{
-			name: tr('staffRating.channelEmbed.fieldStatus'),
-			value: statusText,
-			inline: true
-		}
+		{ name: tr('staffRating.channelEmbed.fieldStaffMember'), value: `<@${log.staffUserId}>`, inline: true },
+		{ name: tr('staffRating.channelEmbed.fieldRating'), value: `${log.rating}/5`, inline: true },
+		{ name: tr('staffRating.channelEmbed.fieldCategory'), value: log.categoryLabel, inline: true },
+		{ name: tr('staffRating.channelEmbed.fieldReporter'), value: log.reporterDisplay, inline: true },
+		{ name: tr('staffRating.channelEmbed.fieldStatus'), value: log.statusText, inline: true },
+		...(review ? [{ name: tr('staffRating.embed.reviewedBy'), value: `<@${review.reviewerId}>`, inline: true }] : []),
+		{ name: tr('staffRating.channelEmbed.fieldDescription'), value: embedFieldText(log.description), inline: false },
+		...(review ? [{ name: tr('staffRating.embed.staffDecision'), value: embedFieldText(review.reason), inline: false }] : [])
 	];
-	if (reviewedByUserId) {
-		fields.push({
-			name: reviewedByFieldLabel || tr('staffRating.embed.reviewedBy'),
-			value: `<@${reviewedByUserId}>`,
-			inline: true
-		});
-	}
-	fields.push({
-		name: tr('staffRating.channelEmbed.fieldDescription'),
-		value: truncateDescription(description),
-		inline: false
-	});
-	if (staffReviewReason) {
-		fields.push({
-			name: staffReviewFieldLabel || tr('staffRating.embed.staffDecision'),
-			value: truncateDescription(staffReviewReason),
-			inline: false
-		});
-	}
-	const embed = new EmbedBuilder()
-		.setColor(color ?? embedConfig.COLOR)
-		.setTitle(title)
+	return new EmbedBuilder()
+		.setColor(log.color ?? log.embedConfig.COLOR)
+		.setTitle(log.title)
 		.addFields(fields)
-		.setFooter({
-			text: `${embedConfig.FOOTER} ${tr('staffRating.channelEmbed.footerReportSuffix', { reportId })}`
-		})
+		.setFooter({ text: `${log.embedConfig.FOOTER} ${tr('staffRating.channelEmbed.footerReportSuffix', { reportId: log.reportId })}` })
 		.setTimestamp();
-	return embed;
 }
 
-export async function handleStaffRatingButton(interaction) {
+async function rateableStaff(interaction: ButtonInteraction<'cached'>, staffOptions: StaffOption[]) {
+	const server = await db.getServerByDiscordId(getBotConfig()!.id, interaction.guild.id);
+	const reporterDbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
+	const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
+	const blocked = await Promise.all(
+		staffOptions.map(
+			(option) =>
+				option.value === interaction.user.id ||
+				(!!reporterDbMember && onRatingCooldown(server.id, { reporterDbId: reporterDbMember.id, staffDiscordId: option.value, cooldownDays }))
+		)
+	);
+	return staffOptions.filter((_, i) => !blocked[i]);
+}
+
+function staffRatingModal(tr: Translator, rateable: StaffOption[]) {
+	return new ModalBuilder()
+		.setCustomId('staff_rating_submit')
+		.setTitle(tr('staffRating.modal.title').slice(0, DISCORD_LIMITS.MODAL_TITLE))
+		.addLabelComponents(
+			new LabelBuilder()
+				.setLabel(tr('staffRating.selectStaff').slice(0, DISCORD_LIMITS.LABEL))
+				.setStringSelectMenuComponent(
+					new StringSelectMenuBuilder().setCustomId('staff').setPlaceholder(tr('staffRating.selectStaffPlaceholder')).addOptions(rateable)
+				),
+			radioField(
+				tr('staffRating.modal.ratingLabel'),
+				'rating',
+				['5', '4', '3', '2', '1'].map((value) => ({ label: '⭐'.repeat(Number(value)), value }))
+			),
+			radioField(
+				tr('staffRating.modal.categoryLabel'),
+				'category',
+				VALID_CATEGORIES.map((category) => ({ label: getCategoryLabelFor(tr, category), value: category }))
+			),
+			textField(
+				tr('staffRating.modal.descriptionLabel'),
+				new TextInputBuilder()
+					.setCustomId('description')
+					.setStyle(TextInputStyle.Paragraph)
+					.setPlaceholder(tr('staffRating.modal.descriptionPlaceholder'))
+					.setRequired(true)
+					.setMaxLength(DESCRIPTION_MAX_LENGTH)
+			),
+			checkboxField(tr('staffRating.modal.anonymousLabel'), 'anonymous', false)
+		);
+}
+
+export async function handleStaffRatingButton(interaction: ButtonInteraction<'cached'>) {
 	try {
-		const member = interaction.member;
+		const { member } = interaction;
 
 		if (!(await hasPermission(member, 'staff_rating'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'staff_rating', interaction.user.id);
-			await interaction
-				.reply({
-					content: errorMessage,
-					flags: 64
-				})
-				.catch(() => null);
+			await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => null);
 			return;
 		}
 
-		const config = await STAFF_RATING.getConfig(interaction.guild.id);
-		if (!config) {
-			const errorMsg = await translate('staffRating.errors.notConfigured', interaction.guild.id, interaction.user.id);
-			await interaction.reply({
-				content: errorMsg,
-				flags: 64
-			});
+		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
+		const refuse = (key: string) => interaction.reply({ content: tr(key), flags: MessageFlags.Ephemeral }).catch(() => null);
+
+		if (!(await STAFF_RATING.getConfig(interaction.guild.id))) {
+			await refuse('staffRating.errors.notConfigured');
 			return;
 		}
 
 		const { options: staffOptions, reason: staffReason } = await buildStaffOptions(interaction);
 		if (!staffOptions || staffOptions.length === 0) {
-			const errorKey = staffReason === 'no_config' ? 'staffRating.errors.noStaffConfigured' : 'staffRating.errors.noStaffAvailable';
-			const errorMsg = await translate(errorKey, interaction.guild.id, interaction.user.id);
-			await interaction
-				.reply({
-					content: errorMsg,
-					flags: 64
-				})
-				.catch(() => null);
+			await refuse(staffReason === 'no_config' ? 'staffRating.errors.noStaffConfigured' : 'staffRating.errors.noStaffAvailable');
 			return;
 		}
 
-		const server = await db.getServerByDiscordId(getBotConfig().id, interaction.guild.id);
-		const reporterDbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
-		const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
-		const blocked = await Promise.all(
-			staffOptions.map(
-				(option) => option.value === interaction.user.id || (!!reporterDbMember && onRatingCooldown(server.id, reporterDbMember.id, option.value, cooldownDays))
-			)
-		);
-		const rateable = staffOptions.filter((_, i) => !blocked[i]);
+		const rateable = await rateableStaff(interaction, staffOptions);
 		if (rateable.length === 0) {
-			const errorMsg = await translate('staffRating.errors.allOnCooldown', interaction.guild.id, interaction.user.id);
-			await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
+			await refuse('staffRating.errors.allOnCooldown');
 			return;
 		}
 
-		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
-		const modal = new ModalBuilder()
-			.setCustomId('staff_rating_submit')
-			.setTitle(tr('staffRating.modal.title').slice(0, 45))
-			.addLabelComponents(
-				new LabelBuilder()
-					.setLabel(tr('staffRating.selectStaff').slice(0, 45))
-					.setStringSelectMenuComponent(
-						new StringSelectMenuBuilder().setCustomId('staff').setPlaceholder(tr('staffRating.selectStaffPlaceholder')).addOptions(rateable)
-					),
-				radioField(
-					tr('staffRating.modal.ratingLabel'),
-					'rating',
-					['5', '4', '3', '2', '1'].map((value) => ({ label: '⭐'.repeat(Number(value)), value }))
-				),
-				radioField(
-					tr('staffRating.modal.categoryLabel'),
-					'category',
-					VALID_CATEGORIES.map((category) => ({ label: getCategoryLabelFor(tr, category), value: category }))
-				),
-				textField(
-					tr('staffRating.modal.descriptionLabel'),
-					new TextInputBuilder()
-						.setCustomId('description')
-						.setStyle(TextInputStyle.Paragraph)
-						.setPlaceholder(tr('staffRating.modal.descriptionPlaceholder'))
-						.setRequired(true)
-						.setMaxLength(1000)
-				),
-				checkboxField(tr('staffRating.modal.anonymousLabel'), 'anonymous', false)
-			);
-
-		await interaction.showModal(modal);
-
+		await interaction.showModal(staffRatingModal(tr, rateable));
 		await logger.log(`📋 Staff rating form shown to ${member.user.tag} (${member.user.id})`);
 	} catch (error) {
-		await logger.log(`❌ Error showing staff report selection: ${error.message}`);
-		const errorMsg = await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
-		await interaction
-			.reply({
-				content: errorMsg,
-				flags: 64
-			})
-			.catch(() => null);
+		await logger.log(`❌ Error showing staff report selection: ${(error as Error).message}`);
+		const errorMsg = await translate(
+			'staffRating.errors.submitFailed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{ error: await errorReason(error, interaction.guild.id, interaction.user.id) }
+		);
+		await interaction.reply({ content: errorMsg, flags: MessageFlags.Ephemeral }).catch(() => null);
 	}
 }
 
-export async function handleStaffRatingModal(interaction) {
-	try {
-		await interaction.deferReply({ flags: 64 });
+type RatingForm = { staffUserId: string; rating: number; category: string; description: string; isAnonymous: boolean };
+type RatingParties = { serverId: number; reporterId: number; staffId: number };
 
-		const member = interaction.member;
-		const guild = interaction.guild;
-		const user = interaction.user;
+function readRatingForm(interaction: ModalSubmitInteraction<'cached'>): { value: RatingForm } | { rejection: Rejection } {
+	const { fields } = interaction;
+	const staffUserId = selectValue(fields, 'staff');
+	const rating = parseInt(radioValue(fields, 'rating') ?? '', 10);
+	const category = radioValue(fields, 'category');
+	if (!staffUserId || staffUserId === interaction.user.id) {
+		return { rejection: { key: staffUserId ? 'staffRating.errors.cannotReportSelf' : 'common.errors.memberNotFound' } };
+	}
+	if (isNaN(rating) || rating < 1 || rating > MAX_RATING) {
+		return { rejection: { key: 'staffRating.errors.invalidRating' } };
+	}
+	if (!category || !VALID_CATEGORIES.includes(category)) {
+		return { rejection: { key: 'staffRating.errors.invalidCategory' } };
+	}
+	const description = fields.getTextInputValue('description').trim();
+	if (!description) {
+		return { rejection: { key: 'staffRating.errors.emptyDescription' } };
+	}
+	return { value: { staffUserId, rating, category, description, isAnonymous: checkboxValue(fields, 'anonymous', false) } };
+}
+
+async function ratingCooldownRejection(tr: Translator, guildId: string, parties: RatingParties): Promise<Rejection | null> {
+	const lastReport = await db.getLastStaffRatingReport(parties.serverId, parties.reporterId, parties.staffId);
+	if (!lastReport) {
+		return null;
+	}
+	const lastRatedDate = parseMySQLDateTimeUtc(lastReport.reported_at);
+	if (!lastRatedDate) {
+		await logger.log(`⚠️ Could not parse reported_at for report ${lastReport.id}: ${lastReport.reported_at}`);
+		return { key: 'staffRating.errors.submitFailed', params: { error: 'Invalid timestamp data' } };
+	}
+	const cooldownDays = await STAFF_RATING.getCooldownDays(guildId);
+	const daysPassed = (Date.now() - lastRatedDate.getTime()) / DAY_MS;
+	if (!Number.isFinite(cooldownDays) || cooldownDays! <= 0 || daysPassed >= cooldownDays!) {
+		return null;
+	}
+	const daysRemaining = Math.ceil(cooldownDays! - daysPassed);
+	return {
+		key: 'staffRating.errors.onCooldown',
+		params: {
+			time: daysRemaining,
+			unitKey: daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days',
+			lastRated: `<t:${Math.floor(lastRatedDate.getTime() / SECOND_MS)}:R>`
+		}
+	};
+}
+
+async function postReportForReview(interaction: ModalSubmitInteraction<'cached'>, { form, reportId }: { form: RatingForm; reportId: number }) {
+	const { guild } = interaction;
+	const reportChannelId = await STAFF_RATING.getReviewChannel(guild.id);
+	const reportChannel = reportChannelId ? guild.channels.cache.get(reportChannelId) || (await guild.channels.fetch(reportChannelId).catch(() => null)) : null;
+	if (!reportChannel || !reportChannel.isTextBased()) {
+		return;
+	}
+	const tr = await serverTranslator(guild.id);
+	const logEmbed = buildReportLogEmbed({
+		tr,
+		embedConfig: await getEmbedConfig(guild.id),
+		title: tr('staffRating.channelEmbed.pendingTitle'),
+		staffUserId: form.staffUserId,
+		rating: form.rating,
+		categoryLabel: getCategoryLabelFor(tr, form.category),
+		description: form.description,
+		reporterDisplay: form.isAnonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${interaction.user.id}>`,
+		statusText: tr('staffRating.channelEmbed.pendingStatus'),
+		reportId,
+		color: 0xff8200
+	});
+	const buttons = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+		new ButtonBuilder().setCustomId(`staff_rating_approve|${reportId}`).setLabel(tr('staffRating.channelEmbed.approveButton')).setStyle(ButtonStyle.Success),
+		new ButtonBuilder().setCustomId(`staff_rating_reject|${reportId}`).setLabel(tr('staffRating.channelEmbed.rejectButton')).setStyle(ButtonStyle.Danger)
+	);
+	const pendingRoleId = await STAFF_RATING.getPendingRole(guild.id);
+	await reportChannel.send({ content: pendingRoleId ? `<@&${pendingRoleId}>` : undefined, embeds: [logEmbed], components: [buttons] }).catch(() => null);
+}
+
+async function staffToRate(guild: Guild, staffUserId: string): Promise<{ value: GuildMember } | { rejection: Rejection }> {
+	const staffMember = await guild.members.fetch(staffUserId).catch(() => null);
+	if (!staffMember) {
+		return { rejection: { key: 'common.errors.memberNotFound' } };
+	}
+	if (!(await hasPermission(staffMember, 'staff_only'))) {
+		return { rejection: { key: 'staffRating.errors.notStaff' } };
+	}
+	return { value: staffMember };
+}
+
+export async function handleStaffRatingModal(interaction: ModalSubmitInteraction<'cached'>) {
+	try {
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const { member, guild, user } = interaction;
 
 		if (!(await hasPermission(member, 'staff_rating'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'staff_rating', interaction.user.id);
-			await interaction
-				.editReply({
-					content: errorMessage
-				})
-				.catch(() => null);
+			await interaction.editReply({ content: errorMessage }).catch(() => null);
 			return;
 		}
 
-		const staffUserId = selectValue(interaction.fields, 'staff');
-		const rating = parseInt(radioValue(interaction.fields, 'rating') ?? '', 10);
-		const category = radioValue(interaction.fields, 'category');
+		const mtr = await memberTranslator(guild.id, user.id);
+		const reject = ({ key, params }: Rejection) => interaction.editReply({ content: mtr(key, params) });
 
-		if (!staffUserId || staffUserId === user.id) {
-			const errorMsg = await translate(
-				staffUserId ? 'staffRating.errors.cannotReportSelf' : 'common.errors.memberNotFound',
-				interaction.guild.id,
-				interaction.user.id
-			);
-			await interaction.editReply({
-				content: errorMsg
-			});
+		const form = readRatingForm(interaction);
+		if ('rejection' in form) {
+			await reject(form.rejection);
 			return;
 		}
 
-		if (isNaN(rating) || rating < 1 || rating > 5) {
-			const errorMsg = await translate('staffRating.errors.invalidRating', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
-			return;
-		}
-
-		if (!VALID_CATEGORIES.includes(category)) {
-			const errorMsg = await translate('staffRating.errors.invalidCategory', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
-			return;
-		}
-
-		const description = interaction.fields.getTextInputValue('description').trim();
-		if (!description || description.length === 0) {
-			const errorMsg = await translate('staffRating.errors.emptyDescription', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
-			return;
-		}
-
-		const isAnonymous = checkboxValue(interaction.fields, 'anonymous', false);
-
-		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-
+		const server = await db.getServerByDiscordId(getBotConfig()!.id, guild.id);
 		const reporterDbMember = await db.upsertMember(server.id, member);
-		const staffMember = await guild.members.fetch(staffUserId).catch(() => null);
-		if (!staffMember) {
-			const errorMsg = await translate('common.errors.memberNotFound', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
+		const staff = await staffToRate(guild, form.value.staffUserId);
+		if ('rejection' in staff) {
+			await reject(staff.rejection);
 			return;
 		}
 
-		const isStaff = await hasPermission(staffMember, 'staff_only');
-		if (!isStaff) {
-			const errorMsg = await translate('staffRating.errors.notStaff', interaction.guild.id, interaction.user.id);
-			await interaction.editReply({
-				content: errorMsg
-			});
+		const staffDbMember = await db.upsertMember(server.id, staff.value);
+		const cooldown = await ratingCooldownRejection(mtr, guild.id, { serverId: server.id, reporterId: reporterDbMember.id, staffId: staffDbMember.id });
+		if (cooldown) {
+			await reject(cooldown);
 			return;
 		}
 
-		const staffDbMember = await db.upsertMember(server.id, staffMember);
+		const { rating, category, description, isAnonymous } = form.value;
+		const reportId = await db.createStaffRatingReport(server.id, {
+			reporterMemberId: reporterDbMember.id,
+			reportedStaffId: staffDbMember.id,
+			rating,
+			category,
+			description,
+			isAnonymous
+		});
 
-		const lastReport = await db.getLastStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id);
-		if (lastReport) {
-			const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
-			const lastRatedDate = parseMySQLDateTimeUtc(lastReport.reported_at);
-			if (!lastRatedDate) {
-				await logger.log(`⚠️ Could not parse reported_at for report ${lastReport.id}: ${lastReport.reported_at}`);
-				const errorMsg = await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: 'Invalid timestamp data' });
-				await interaction.editReply({
-					content: errorMsg
-				});
-				return;
-			}
-			const lastRatedTime = lastRatedDate.getTime();
-			const now = Date.now();
-			const daysPassed = (now - lastRatedTime) / (1000 * 60 * 60 * 24);
-
-			if (Number.isFinite(cooldownDays) && cooldownDays > 0 && daysPassed < cooldownDays) {
-				const daysRemaining = Math.ceil(cooldownDays - daysPassed);
-				const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
-
-				const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
-
-				const timeUnit = await translate(timeUnitKey, interaction.guild.id, interaction.user.id);
-				const errorMsg = await translate('staffRating.errors.onCooldown', interaction.guild.id, interaction.user.id, {
-					time: daysRemaining,
-					unit: timeUnit,
-					lastRated: lastRatedStr
-				});
-				await interaction.editReply({
-					content: errorMsg
-				});
-				return;
-			}
-		}
-
-		const reportId = await db.createStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id, rating, category, description, isAnonymous);
-
-		const embedConfig = await getEmbedConfig(interaction.guild.id);
-		const successTitle = await translate('staffRating.submitted.title', interaction.guild.id, interaction.user.id);
-		let successDescription = await translate('staffRating.submitted.description', interaction.guild.id, interaction.user.id);
-
-		if (isAnonymous) {
-			const anonymousText = await translate('staffRating.submitted.anonymous', interaction.guild.id, interaction.user.id);
-			successDescription += anonymousText;
-		}
-
+		const embedConfig = await getEmbedConfig(guild.id);
+		const successDescription = mtr('staffRating.submitted.description') + (isAnonymous ? mtr('staffRating.submitted.anonymous') : '');
 		const successEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
-			.setTitle(successTitle)
+			.setTitle(mtr('staffRating.submitted.title'))
 			.setDescription(successDescription)
 			.setTimestamp()
 			.setFooter({ text: embedConfig.FOOTER });
+		await interaction.editReply({ embeds: [successEmbed] });
 
-		await interaction.editReply({
-			embeds: [successEmbed]
-		});
-
-		const reportChannelId = await STAFF_RATING.getReviewChannel(guild.id);
-		if (reportChannelId) {
-			const reportChannel = guild.channels.cache.get(reportChannelId) || (await guild.channels.fetch(reportChannelId).catch(() => null));
-			if (reportChannel && reportChannel.isTextBased()) {
-				const tr = await serverTranslator(guild.id);
-				const categoryLabel = getCategoryLabelFor(tr, category);
-				const reporterDisplay = isAnonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${interaction.user.id}>`;
-				const pendingTitle = tr('staffRating.channelEmbed.pendingTitle');
-				const pendingStatus = tr('staffRating.channelEmbed.pendingStatus');
-				const approveLabel = tr('staffRating.channelEmbed.approveButton');
-				const rejectLabel = tr('staffRating.channelEmbed.rejectButton');
-
-				const logEmbed = buildReportLogEmbed({
-					tr,
-					embedConfig,
-					title: pendingTitle,
-					staffUserId,
-					rating,
-					categoryLabel,
-					description,
-					reporterDisplay,
-					statusText: pendingStatus,
-					reportId,
-					color: 0xff8200
-				});
-
-				const approveButton = new ButtonBuilder().setCustomId(`staff_rating_approve|${reportId}`).setLabel(approveLabel).setStyle(ButtonStyle.Success);
-
-				const rejectButton = new ButtonBuilder().setCustomId(`staff_rating_reject|${reportId}`).setLabel(rejectLabel).setStyle(ButtonStyle.Danger);
-
-				const pendingRoleId = await STAFF_RATING.getPendingRole(guild.id);
-				const content = pendingRoleId ? `<@&${pendingRoleId}>` : null;
-
-				await reportChannel
-					.send({
-						content,
-						embeds: [logEmbed],
-						components: [new ActionRowBuilder().addComponents(approveButton, rejectButton)]
-					})
-					.catch(() => null);
-			}
-		}
-
+		await postReportForReview(interaction, { form: form.value, reportId });
 		await logger.log(
-			`✅ Staff report #${reportId} submitted by ${user.tag} (${user.id}) for staff ${staffMember.user.tag} (${staffUserId}) - Rating: ${rating}, Category: ${category}`
+			`✅ Staff report #${reportId} submitted by ${user.tag} (${user.id}) for staff ${staff.value.user.tag} (${form.value.staffUserId}) - Rating: ${rating}, Category: ${category}`
 		);
 	} catch (error) {
-		await logger.log(`❌ Error processing staff report: ${error.message}`);
-		await logger.log(`❌ Stack: ${error.stack}`);
-		const errorMsg = await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
-		await interaction.editReply({
-			content: errorMsg
-		});
+		await logger.log(`❌ Error processing staff report: ${(error as Error).message}`);
+		await logger.log(`❌ Stack: ${(error as Error).stack}`);
+		const errorMsg = await translate(
+			'staffRating.errors.submitFailed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{ error: await errorReason(error, interaction.guild.id, interaction.user.id) }
+		);
+		await interaction.editReply({ content: errorMsg });
 	}
 }
 
-async function notifyReporterOfDecision(guild, report, translationKey, categoryLabel, reviewReason) {
+type DecisionNotice = { translationKey: string; categoryLabel: string; reviewReason: string };
+
+async function notifyReporterOfDecision(
+	guild: Guild,
+	report: NonNullable<Awaited<ReturnType<typeof db.getStaffReportById>>>,
+	{ translationKey, categoryLabel, reviewReason }: DecisionNotice
+) {
 	if (!report?.reporter_discord_id) {
 		await logger.log(`⚠️ Cannot send DM notification: reporter_discord_id is missing`);
 		return;
@@ -512,224 +432,204 @@ async function notifyReporterOfDecision(guild, report, translationKey, categoryL
 	if (!reporterUser) {
 		return;
 	}
-	const content = await translate(translationKey, guild.id, reporterUser.id, {
-		staff: `<@${report.staff_discord_id}>`,
-		rating: report.rating,
-		category: categoryLabel,
-		description: truncateDescription(report.description),
-		server: guild.name,
-		reason: truncateDescription(reviewReason || '')
-	});
+	const content = await translate(
+		translationKey,
+		{ guildId: guild.id, userId: reporterUser.id },
+		{
+			staff: `<@${report.staff_discord_id}>`,
+			rating: report.rating,
+			category: categoryLabel,
+			description: embedFieldText(report.description),
+			server: guild.name,
+			reason: embedFieldText(reviewReason || '')
+		}
+	);
 	const titleKey = translationKey.includes('rejected') ? 'staffRating.dm.embedTitleRejected' : 'staffRating.dm.embedTitleApproved';
-	const title = await translate(titleKey, guild.id, reporterUser.id, {});
+	const title = await translate(titleKey, { guildId: guild.id, userId: reporterUser.id }, {});
 	try {
 		const embedConfig = await getEmbedConfig(guild.id);
 		const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(title).setDescription(content).setTimestamp().setFooter({ text: embedConfig.FOOTER });
 		await reporterUser.send({ embeds: [embed] });
 		await logger.log(`✅ Sent DM notification (${translationKey}) to reporter ${report.reporter_discord_id} for report #${report.id}`);
 	} catch (error) {
-		await logger.log(`⚠️ Failed to send DM notification (${translationKey}) to reporter ${report.reporter_discord_id}: ${error.message}`);
+		await logger.log(`⚠️ Failed to send DM notification (${translationKey}) to reporter ${report.reporter_discord_id}: ${(error as Error).message}`);
 	}
 }
 
 const REVIEW_DECISION_REASON_INPUT = 'review_decision_reason';
 
-export async function handleStaffRatingDecisionModal(interaction) {
+type DecisionForm = { isApproved: boolean; reportId: number; channelId: string; messageId: string; reviewReason: string };
+type StaffReport = NonNullable<Awaited<ReturnType<typeof db.getStaffReportById>>>;
+type ReviewContext = { guild: Guild; serverId: number; report: StaffReport; reviewerDbId: number; reviewReason: string; categoryLabel: string };
+
+function readDecisionForm(interaction: ModalSubmitInteraction<'cached'>): { value: DecisionForm } | { rejection: Rejection } {
+	const parts = interaction.customId.split('|');
+	const invalid = (error: string) => ({ rejection: { key: 'staffRating.errors.submitFailed', params: { error } } });
+	if (parts.length !== REVIEW_ID_PARTS || parts[0] !== 'sr_rev') {
+		return invalid('Invalid form');
+	}
+	const [, decisionRaw, reportIdStr, channelId, messageId] = parts;
+	if (decisionRaw !== 'approve' && decisionRaw !== 'reject') {
+		return invalid('Invalid decision');
+	}
+	const reportId = parseInt(reportIdStr, 10);
+	if (!Number.isFinite(reportId)) {
+		return invalid('Invalid report ID');
+	}
+	const reviewReason = interaction.fields.getTextInputValue(REVIEW_DECISION_REASON_INPUT)?.trim();
+	if (!reviewReason) {
+		return { rejection: { key: 'staffRating.errors.reviewReasonRequired' } };
+	}
+	return { value: { isApproved: decisionRaw === 'approve', reportId, channelId, messageId, reviewReason } };
+}
+
+async function findReportMessage(guild: Guild, { channelId, messageId }: { channelId: string; messageId: string }) {
 	try {
-		await interaction.deferReply({ flags: 64 });
+		const ch = await guild.channels.fetch(channelId);
+		return ch && ch.isTextBased() ? await ch.messages.fetch(messageId).catch(() => null) : null;
+	} catch (fetchErr) {
+		await logger.log(`⚠️ Could not fetch staff report log message: ${(fetchErr as Error).message}`);
+		return null;
+	}
+}
 
-		const guild = interaction.guild;
-		const parts = interaction.customId.split('|');
-		if (parts.length !== 5 || parts[0] !== 'sr_rev') {
-			await interaction
-				.editReply({
-					content: await translate('staffRating.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid form' })
-				})
-				.catch(() => null);
-			return;
-		}
+async function approveReport({ guild, serverId, report, reviewerDbId, reviewReason, categoryLabel }: ReviewContext) {
+	await db.updateStaffReportStatus(report.id, 'approved', { reviewedByMemberId: reviewerDbId, reviewReason });
+	const aggregate = await db.getStaffRatingAggregate(serverId, report.reported_staff_id);
+	const rating = aggregate.average_rating || report.rating;
+	await db.upsertStaffRating(serverId, report.reported_staff_id, { ratingValue: rating, totalReports: aggregate.total_reports });
+	await updateStaffRatingRole(guild, {
+		serverId,
+		staffMemberId: report.reported_staff_id,
+		staffDiscordId: report.staff_discord_id,
+		stats: { rating, total_reports: aggregate.total_reports },
+		options: { channelContext: { category: categoryLabel, feedback: report.description } }
+	});
+}
 
-		const [, decisionRaw, reportIdStr, channelId, messageId] = parts;
-		if (decisionRaw !== 'approve' && decisionRaw !== 'reject') {
-			await interaction
-				.editReply({
-					content: await translate('staffRating.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid decision' })
-				})
-				.catch(() => null);
-			return;
-		}
+async function recordDecision(review: ReviewContext, isApproved: boolean) {
+	const { guild, report, reviewReason } = review;
+	if (isApproved) {
+		await approveReport(review);
+	} else {
+		await db.updateStaffReportStatus(report.id, 'rejected', { reviewedByMemberId: review.reviewerDbId, reviewReason });
+	}
+	const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
+	await notifyReporterOfDecision(guild, report, {
+		translationKey: isApproved ? 'staffRating.dm.approved' : 'staffRating.dm.rejected',
+		categoryLabel: categoryLabelForDM,
+		reviewReason
+	});
+}
 
-		const reportId = parseInt(reportIdStr, 10);
-		if (!Number.isFinite(reportId)) {
-			await interaction
-				.editReply({
-					content: await translate('staffRating.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid report ID' })
-				})
-				.catch(() => null);
-			return;
-		}
+async function decidedReportEmbed(review: ReviewContext, { isApproved, reviewerId }: { isApproved: boolean; reviewerId: string }) {
+	const { guild, report } = review;
+	const embedConfig = await getEmbedConfig(guild.id);
+	const tr = await serverTranslator(guild.id);
+	return buildReportLogEmbed({
+		tr,
+		embedConfig,
+		title: tr(isApproved ? 'staffRating.channelEmbed.titleApproved' : 'staffRating.channelEmbed.titleRejected'),
+		staffUserId: report.staff_discord_id,
+		rating: report.rating,
+		categoryLabel: review.categoryLabel,
+		description: report.description,
+		reporterDisplay: report.is_anonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${report.reporter_discord_id}>`,
+		statusText: tr(isApproved ? 'staffRating.embed.statusApproved' : 'staffRating.embed.statusRejected'),
+		reportId: report.id,
+		color: isApproved ? EMBED_COLORS.approved : embedConfig.COLOR,
+		review: { reason: review.reviewReason, reviewerId }
+	});
+}
 
-		const reviewReason = interaction.fields.getTextInputValue(REVIEW_DECISION_REASON_INPUT)?.trim();
-		if (!reviewReason) {
-			await interaction
-				.editReply({
-					content: await translate('staffRating.errors.reviewReasonRequired', guild.id, interaction.user.id)
-				})
-				.catch(() => null);
+async function reviewableReport(guild: Guild, reportId: number): Promise<{ serverId: number; report: StaffReport } | { rejection: Rejection }> {
+	const server = await db.getServerByDiscordId(getBotConfig()!.id, guild.id);
+	if (!server) {
+		return { rejection: { key: 'staffRating.errors.submitFailed', params: { error: 'Server not found' } } };
+	}
+	const report = await db.getStaffReportById(server.id, reportId);
+	if (!report) {
+		return { rejection: { key: 'staffRating.errors.submitFailed', params: { error: 'Report not found' } } };
+	}
+	return { serverId: server.id, report };
+}
+
+export async function handleStaffRatingDecisionModal(interaction: ModalSubmitInteraction<'cached'>) {
+	try {
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const { guild } = interaction;
+		const mtr = await memberTranslator(guild.id, interaction.user.id);
+		const reply = ({ key, params }: Rejection) => interaction.editReply({ content: mtr(key, params) }).catch(() => null);
+
+		const form = readDecisionForm(interaction);
+		if ('rejection' in form) {
+			await reply(form.rejection);
 			return;
 		}
 
 		const moderator = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
-
 		if (!moderator || !(await hasPermission(moderator, 'setup'))) {
-			const errorMsg = await translate('staffRating.errors.permissionDenied', guild.id, interaction.user.id);
-			await interaction.editReply({ content: errorMsg }).catch(() => null);
+			await reply({ key: 'staffRating.errors.permissionDenied' });
 			return;
 		}
 
-		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-		if (!server) {
-			await interaction
-				.editReply({
-					content: await translate('staffRating.errors.submitFailed', guild.id, interaction.user.id, { error: 'Server not found' })
-				})
-				.catch(() => null);
+		const found = await reviewableReport(guild, form.value.reportId);
+		if ('rejection' in found) {
+			await reply(found.rejection);
 			return;
 		}
-
-		const report = await db.getStaffReportById(server.id, reportId);
-		if (!report) {
-			await interaction
-				.editReply({
-					content: await translate('staffRating.errors.submitFailed', guild.id, interaction.user.id, { error: 'Report not found' })
-				})
-				.catch(() => null);
-			return;
-		}
-
-		const moderatorDbMember = await db.upsertMember(server.id, moderator);
-
-		let sourceMessage = null;
-		try {
-			const ch = await guild.channels.fetch(channelId);
-			if (ch && ch.isTextBased()) {
-				sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
-			}
-		} catch (fetchErr) {
-			await logger.log(`⚠️ Could not fetch staff report log message: ${fetchErr.message}`);
-		}
+		const { serverId, report } = found;
+		const moderatorDbMember = await db.upsertMember(serverId, moderator);
+		const sourceMessage = await findReportMessage(guild, form.value);
 
 		if (report.status !== 'pending') {
-			await interaction.editReply({ content: await translate('staffRating.review.alreadyProcessed', guild.id, interaction.user.id) }).catch(() => null);
-			if (sourceMessage) {
-				await sourceMessage.edit({ components: [] }).catch(() => null);
-			}
+			await reply({ key: 'staffRating.review.alreadyProcessed' });
+			await sourceMessage?.edit({ components: [] }).catch(() => null);
 			return;
 		}
 
-		const embedConfig = await getEmbedConfig(guild.id);
-		const tr = await serverTranslator(guild.id);
-		const categoryLabelServer = getCategoryLabelFor(tr, report.category);
-		const reporterDisplay = report.is_anonymous ? tr('staffRating.channelEmbed.anonymousReporter') : `<@${report.reporter_discord_id}>`;
-		const staffDecisionLabel = tr('staffRating.embed.staffDecision');
-		const reviewedByLabel = tr('staffRating.embed.reviewedBy');
+		const { isApproved, reviewReason } = form.value;
+		const review: ReviewContext = {
+			guild,
+			serverId,
+			report,
+			reviewerDbId: moderatorDbMember.id,
+			reviewReason,
+			categoryLabel: getCategoryLabelFor(await serverTranslator(guild.id), report.category)
+		};
+		await recordDecision(review, isApproved);
 
-		let statusText;
-		let title;
-		let replyMessage;
-		let color;
-
-		if (decisionRaw === 'approve') {
-			await db.updateStaffReportStatus(report.id, 'approved', moderatorDbMember.id, reviewReason);
-			const aggregate = await db.getStaffRatingAggregate(server.id, report.reported_staff_id);
-			await db.upsertStaffRating(server.id, report.reported_staff_id, aggregate.average_rating || report.rating, aggregate.total_reports);
-			await updateStaffRatingRole(
-				guild,
-				server.id,
-				report.reported_staff_id,
-				report.staff_discord_id,
-				{
-					rating: aggregate.average_rating || report.rating,
-					total_reports: aggregate.total_reports
-				},
-				{
-					channelContext: {
-						category: categoryLabelServer,
-						feedback: report.description
-					}
-				}
-			);
-			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
-			await notifyReporterOfDecision(guild, report, 'staffRating.dm.approved', categoryLabelForDM, reviewReason);
-			statusText = tr('staffRating.embed.statusApproved');
-			title = tr('staffRating.channelEmbed.titleApproved');
-			replyMessage = await translate('staffRating.review.approvedReply', guild.id, interaction.user.id, { reportId: report.id });
-			color = 0x22c55e;
-		} else {
-			await db.updateStaffReportStatus(report.id, 'rejected', moderatorDbMember.id, reviewReason);
-			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
-			await notifyReporterOfDecision(guild, report, 'staffRating.dm.rejected', categoryLabelForDM, reviewReason);
-			statusText = tr('staffRating.embed.statusRejected');
-			title = tr('staffRating.channelEmbed.titleRejected');
-			replyMessage = await translate('staffRating.review.rejectedReply', guild.id, interaction.user.id, { reportId: report.id });
-			color = embedConfig.COLOR;
-		}
-
-		const updatedEmbed = buildReportLogEmbed({
-			tr,
-			embedConfig,
-			title,
-			staffUserId: report.staff_discord_id,
-			rating: report.rating,
-			categoryLabel: categoryLabelServer,
-			description: report.description,
-			reporterDisplay,
-			statusText,
-			reportId: report.id,
-			color,
-			staffReviewReason: reviewReason,
-			staffReviewFieldLabel: staffDecisionLabel,
-			reviewedByUserId: interaction.user.id,
-			reviewedByFieldLabel: reviewedByLabel
-		});
-
-		if (sourceMessage) {
-			await sourceMessage
-				.edit({
-					embeds: [updatedEmbed],
-					components: []
-				})
-				.catch(() => null);
-		}
-
-		await interaction.editReply({ content: replyMessage }).catch(() => null);
+		const updatedEmbed = await decidedReportEmbed(review, { isApproved, reviewerId: interaction.user.id });
+		await sourceMessage?.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);
+		await reply({ key: isApproved ? 'staffRating.review.approvedReply' : 'staffRating.review.rejectedReply', params: { reportId: report.id } });
 
 		await logger.log(
-			`${decisionRaw === 'approve' ? '✅' : '⛔'} Staff report #${report.id} ${decisionRaw} by ${interaction.user.tag} (${interaction.user.id})`
+			`${isApproved ? '✅' : '⛔'} Staff report #${report.id} ${isApproved ? 'approve' : 'reject'} by ${interaction.user.tag} (${interaction.user.id})`
 		);
 	} catch (error) {
-		await logger.log(`❌ Error handling staff report decision modal: ${error.message}`);
+		await logger.log(`❌ Error handling staff report decision modal: ${(error as Error).message}`);
 		await interaction
 			.editReply({
-				content: await translate('staffRating.errors.submitFailed', interaction.guild.id, interaction.user.id, {
-					error: await errorReason(error, interaction.guild.id, interaction.user.id)
-				})
+				content: await translate(
+					'staffRating.errors.submitFailed',
+					{ guildId: interaction.guild.id, userId: interaction.user.id },
+					{ error: await errorReason(error, interaction.guild.id, interaction.user.id) }
+				)
 			})
 			.catch(() => null);
 	}
 }
 
-async function showStaffRatingReviewModal(interaction, decision) {
-	const guild = interaction.guild;
+async function showStaffRatingReviewModal(interaction: MessageComponentInteraction<'cached'>, decision: string) {
+	const { guild } = interaction;
 	const [, reportIdStr] = interaction.customId.split('|');
 	const messageId = interaction.message?.id;
-	const channelId = interaction.channelId;
+	const { channelId } = interaction;
 	if (!reportIdStr || !messageId || !channelId) {
 		await interaction
 			.reply({
-				content: await translate('staffRating.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid interaction' }),
-				flags: 64
+				content: await translate('staffRating.errors.submitFailed', { guildId: guild.id, userId: interaction.user.id }, { error: 'Invalid interaction' }),
+				flags: MessageFlags.Ephemeral
 			})
 			.catch(() => null);
 		return;
@@ -737,31 +637,31 @@ async function showStaffRatingReviewModal(interaction, decision) {
 	const titleKey = decision === 'approve' ? 'staffRating.reviewModal.titleApprove' : 'staffRating.reviewModal.titleReject';
 	const modal = new ModalBuilder()
 		.setCustomId(`sr_rev|${decision}|${reportIdStr}|${channelId}|${messageId}`)
-		.setTitle(await translate(titleKey, guild.id, interaction.user.id));
+		.setTitle(await translate(titleKey, { guildId: guild.id, userId: interaction.user.id }));
 	const input = new TextInputBuilder()
 		.setCustomId(REVIEW_DECISION_REASON_INPUT)
-		.setLabel(await translate('staffRating.reviewModal.reasonLabel', guild.id, interaction.user.id))
+		.setLabel(await translate('staffRating.reviewModal.reasonLabel', { guildId: guild.id, userId: interaction.user.id }))
 		.setStyle(TextInputStyle.Paragraph)
-		.setPlaceholder(await translate('staffRating.reviewModal.reasonPlaceholder', guild.id, interaction.user.id))
+		.setPlaceholder(await translate('staffRating.reviewModal.reasonPlaceholder', { guildId: guild.id, userId: interaction.user.id }))
 		.setRequired(true)
 		.setMinLength(2)
-		.setMaxLength(1000);
+		.setMaxLength(REVIEW_REASON_MAX_LENGTH);
 	modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
 	await interaction.showModal(modal);
 }
 
-export async function handleStaffRatingApprove(interaction) {
+export async function handleStaffRatingApprove(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		await showStaffRatingReviewModal(interaction, 'approve');
 	} catch (error) {
-		await logger.log(`❌ Error opening staff report approve modal: ${error.message}`);
+		await logger.log(`❌ Error opening staff report approve modal: ${(error as Error).message}`);
 	}
 }
 
-export async function handleStaffRatingReject(interaction) {
+export async function handleStaffRatingReject(interaction: MessageComponentInteraction<'cached'>) {
 	try {
 		await showStaffRatingReviewModal(interaction, 'reject');
 	} catch (error) {
-		await logger.log(`❌ Error opening staff report reject modal: ${error.message}`);
+		await logger.log(`❌ Error opening staff report reject modal: ${(error as Error).message}`);
 	}
 }

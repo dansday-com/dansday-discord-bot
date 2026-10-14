@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Inscription du propriétaire",
 			"setupNotOwnerTitle": "Permission refusée",
 			"setupNotOwnerBody": "Seul le **propriétaire du serveur** peut utiliser `/setup`.",
-			"setupNotTextChannelTitle": "Salon invalide",
-			"setupNotTextChannelBody": "Sélectionne un **salon textuel**.",
 			"joinTitle": "Merci d'avoir ajouté {botName} !",
 			"joinBody": "Lance `/setup` pour créer les salons et terminer la configuration.",
 			"joinAskAi": "Tu ne sais pas par où commencer ? Mentionne {botMention} et pose ta question — il lit la documentation et peut te guider pas à pas dans la configuration.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Les pages publiques sont désactivées pour ce serveur. Demande à un administrateur du serveur de les activer dans le panel de configuration du bot."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Ce serveur n'est pas encore entièrement connecté au bot. Réessaie dans quelques minutes et demande à un administrateur du serveur de vérifier le panel de configuration du bot si ça continue.",
-			"createRecordFailed": "❌ Impossible de créer la fiche du membre. Réessaie."
+			"notRegistered": "⚠️ Ce serveur n'est pas encore entièrement connecté au bot. Réessaie dans quelques minutes et demande à un administrateur du serveur de vérifier le panel de configuration du bot si ça continue."
 		},
 		"fields": {
 			"level": "⭐ Niveau",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Signaler un membre du staff",
 			"ratingLabel": "Note (1 à 5 étoiles)",
-			"ratingPlaceholder": "1 = Très mauvais, 5 = Excellent",
 			"categoryLabel": "Catégorie",
 			"descriptionLabel": "Description",
 			"descriptionPlaceholder": "Décris ton expérience avec ce membre du staff...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Signalement envoyé",
 			"description": "Ton signalement a bien été envoyé et attend maintenant l'approbation d'un admin. On te préviendra dès qu'il aura été examiné.",
-			"anonymous": "\\n\\n🔒 Ton signalement a été envoyé anonymement.",
-			"roleUpdated": "\\n\\n⭐ **Évaluation du staff mise à jour**\\n{roleName}\\nNote : {rating}/5.00 ({totalReports} signalements)"
+			"anonymous": "\\n\\n🔒 Ton signalement a été envoyé anonymement."
 		},
 		"dm": {
 			"approved": "Ton signalement concernant {staff} sur **{server}** a été approuvé.\\n\\n**Note :** {rating}/5\\n**Catégorie :** {category}\\n**Avis :** {description}\\n\\n**Commentaire du staff :** {reason}\\n\\nMerci de nous aider à garder une équipe responsable.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Comportement impoli"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Choisis un membre du staff à signaler.",
 			"invalidRating": "❌ **Note invalide**\\n\\nLa note doit être un nombre entre 1 et 5.",
 			"invalidCategory": "❌ **Catégorie invalide**\\n\\nChoisis une catégorie dans la liste.",
 			"emptyDescription": "❌ **Description obligatoire**\\n\\nDécris ton expérience, s'il te plaît.",
@@ -717,7 +711,7 @@
 		},
 		"tokenTooShort": "Token trop court.",
 		"invalidTokenTitle": "Token invalide",
-		"invalidTokenDescription": "Le token que tu as fourni semble invalide ou expiré.\n`{error}`",
+		"invalidTokenDescription": "Le token que tu as fourni semble invalide ou expiré. Copie un nouveau token et envoie-le à nouveau.",
 		"invalidQuestId": "ID de quête invalide.",
 		"missingQuestOrToken": "ID de quête manquant ou token trop court.",
 		"taskTypes": {

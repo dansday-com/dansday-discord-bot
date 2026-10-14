@@ -34,13 +34,21 @@
 
 	const editor = messageEditor();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let query = $state('');
 	let active = $state(0);
-	let found = $state<any[]>([]);
+	type FoundMember = {
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+	};
+
+	let found = $state<FoundMember[]>([]);
 	let start = 0;
 	let request = 0;
-	let timer: ReturnType<typeof setTimeout> | undefined;
+	let timer: ReturnType<typeof setTimeout> | undefined = undefined;
 
 	const options = $derived<Option[]>([
 		...['everyone', 'here']
@@ -75,47 +83,63 @@
 	]);
 
 	function close() {
-		open = false;
+		isOpen = false;
 		request++;
 		clearTimeout(timer);
 	}
 
 	function search() {
 		clearTimeout(timer);
-		if (!editor.membersUrl) return;
+		if (!editor.membersUrl) {
+			return;
+		}
 		const id = ++request;
 		timer = setTimeout(async () => {
 			try {
 				const out = await (await fetch(`${editor.membersUrl}?q=${encodeURIComponent(query)}&limit=${MAX_OPTIONS}`)).json();
-				if (id === request) found = Array.isArray(out.members) ? out.members : [];
+				if (id === request) {
+					found = Array.isArray(out.members) ? out.members : [];
+				}
 			} catch (_) {
-				if (id === request) found = [];
+				if (id === request) {
+					found = [];
+				}
 			}
 		}, SEARCH_DELAY_MS);
 	}
 
 	function detect() {
-		if (!target || target.selectionStart !== target.selectionEnd) return close();
+		if (!target || target.selectionStart !== target.selectionEnd) {
+			return close();
+		}
 		const caret = target.selectionStart ?? 0;
 		const match = target.value.slice(0, caret).match(/(?:^|\s)@([^\s@<>]{0,32})$/);
-		if (!match) return close();
+		if (!match) {
+			return close();
+		}
 		const next = match[1].toLowerCase();
-		if (!open || next !== query) active = 0;
+		if (!isOpen || next !== query) {
+			active = 0;
+		}
 		start = caret - match[1].length - 1;
 		query = next;
-		open = true;
+		isOpen = true;
 		search();
 	}
 
 	async function pick(option: Option) {
-		if (!target) return;
+		if (!target) {
+			return;
+		}
 		const caret = target.selectionStart ?? start;
 		const next = `${target.value.slice(0, start)}${option.insert} ${target.value.slice(caret)}`;
 		if (next.length > max) {
 			showToast('There is no room left in this text for a tag.', 'error');
 			return close();
 		}
-		if (option.memberId) editor.rememberMember(option.memberId, option.label.slice(1));
+		if (option.memberId) {
+			editor.rememberMember(option.memberId, option.label.slice(1));
+		}
 		onchange(next);
 		close();
 		await tick();
@@ -125,7 +149,9 @@
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (!open || options.length === 0) return;
+		if (!isOpen || options.length === 0) {
+			return;
+		}
 		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
 			event.preventDefault();
 			active = (active + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length;
@@ -140,12 +166,16 @@
 	}
 
 	function onkeyup(event: KeyboardEvent) {
-		if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) detect();
+		if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+			detect();
+		}
 	}
 
 	$effect(() => {
 		const node = target;
-		if (!node) return;
+		if (!node) {
+			return;
+		}
 		node.addEventListener('input', detect);
 		node.addEventListener('click', detect);
 		node.addEventListener('keyup', onkeyup);
@@ -162,7 +192,7 @@
 	});
 </script>
 
-{#if open && options.length > 0}
+{#if isOpen && options.length > 0}
 	<div
 		role="listbox"
 		tabindex="-1"

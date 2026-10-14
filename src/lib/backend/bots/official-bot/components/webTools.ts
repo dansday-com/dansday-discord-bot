@@ -2,6 +2,7 @@ import { Type } from '@google/genai';
 import { aiSearchEndpoint, aiFetchEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { postJson, resolveToolUrl } from './aiToolHttp.js';
+import type { AiInput } from '../../../../database.js';
 
 const SEARCH_PATH = '/search';
 const FETCH_PATH = '/web/fetch';
@@ -35,41 +36,52 @@ const SEARCH_FAILED_HINT =
 const FETCH_FAILED_HINT =
 	'This page could not be read. Go back to your search_web results and open a different one, or search again — do not answer from memory.';
 
-export function searchConfigured(config) {
+export function searchConfigured(config: AiInput) {
 	const endpoint = aiSearchEndpoint(config);
 	return Boolean(endpoint.api_url && endpoint.api_key && endpoint.model);
 }
 
-export function fetchConfigured(config) {
+export function fetchConfigured(config: AiInput) {
 	const endpoint = aiFetchEndpoint(config);
 	return Boolean(endpoint.api_url && endpoint.api_key && endpoint.model);
 }
 
-function clampResults(raw) {
+function clampResults(raw: unknown) {
 	const count = Number(raw);
-	if (!Number.isFinite(count) || count <= 0) return MAX_RESULTS;
+	if (!Number.isFinite(count) || count <= 0) {
+		return MAX_RESULTS;
+	}
 	return Math.min(Math.trunc(count), MAX_RESULTS_CAP);
 }
 
-export async function runSearchTool(config, args) {
+export async function runSearchTool(config: AiInput, args: Record<string, unknown>) {
 	const endpoint = aiSearchEndpoint(config);
-	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'web_search_not_configured' };
+	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) {
+		return { ok: false, reason: 'web_search_not_configured' };
+	}
 
 	const query = String(args?.query ?? '').trim();
-	if (!query) return { ok: false, reason: 'missing_query' };
+	if (!query) {
+		return { ok: false, reason: 'missing_query' };
+	}
 
 	const searchType = args?.search_type === 'news' ? 'news' : 'web';
 
 	try {
-		const payload = await postJson(resolveToolUrl(endpoint.api_url, SEARCH_PATH), endpoint.api_key, {
-			model: endpoint.model,
-			query,
-			search_type: searchType,
-			max_results: clampResults(args?.max_results)
-		});
+		const payload = await postJson(
+			{ url: resolveToolUrl(endpoint.api_url, SEARCH_PATH), apiKey: endpoint.api_key },
+			{
+				model: endpoint.model,
+				query,
+				search_type: searchType,
+				max_results: clampResults(args?.max_results)
+			}
+		);
 
-		const results = Array.isArray(payload?.results) ? payload.results : [];
-		if (!results.length) return { ok: false, reason: 'no_results', query, next_step: SEARCH_EMPTY_HINT };
+		const results: Record<string, unknown>[] = Array.isArray(payload?.results) ? payload.results : [];
+		if (!results.length) {
+			return { ok: false, reason: 'no_results', query, next_step: SEARCH_EMPTY_HINT };
+		}
 
 		const mapped = results.slice(0, MAX_RESULTS_CAP).map((entry) => ({
 			title: entry?.title ?? null,
@@ -79,38 +91,47 @@ export async function runSearchTool(config, args) {
 		}));
 
 		const answer = payload?.answer ?? null;
-		const thin = !answer && mapped.every((entry) => (entry.snippet ?? '').trim().length < THIN_SNIPPET_LENGTH);
+		const isThin = !answer && mapped.every((entry) => (entry.snippet ?? '').trim().length < THIN_SNIPPET_LENGTH);
 
 		return {
 			ok: true,
 			query,
 			answer,
 			results: mapped,
-			...(thin ? { next_step: SEARCH_THIN_HINT } : {})
+			...(isThin ? { next_step: SEARCH_THIN_HINT } : {})
 		};
 	} catch (error) {
-		await logger.log(`❌ Web search failed: ${error.message}`);
-		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'search_failed', next_step: SEARCH_FAILED_HINT };
+		await logger.log(`❌ Web search failed: ${(error as Error).message}`);
+		return { ok: false, reason: (error as Error).name === 'AbortError' ? 'timeout' : 'search_failed', next_step: SEARCH_FAILED_HINT };
 	}
 }
 
-export async function runFetchTool(config, args) {
+export async function runFetchTool(config: AiInput, args: Record<string, unknown>) {
 	const endpoint = aiFetchEndpoint(config);
-	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'web_fetch_not_configured' };
+	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) {
+		return { ok: false, reason: 'web_fetch_not_configured' };
+	}
 
 	const url = String(args?.url ?? '').trim();
-	if (!/^https?:\/\//i.test(url)) return { ok: false, reason: 'invalid_url', next_step: FETCH_FAILED_HINT };
+	if (!/^https?:\/\//i.test(url)) {
+		return { ok: false, reason: 'invalid_url', next_step: FETCH_FAILED_HINT };
+	}
 
 	try {
-		const payload = await postJson(resolveToolUrl(endpoint.api_url, FETCH_PATH), endpoint.api_key, {
-			model: endpoint.model,
-			url,
-			format: 'markdown',
-			max_characters: MAX_FETCH_CHARACTERS
-		});
+		const payload = await postJson(
+			{ url: resolveToolUrl(endpoint.api_url, FETCH_PATH), apiKey: endpoint.api_key },
+			{
+				model: endpoint.model,
+				url,
+				format: 'markdown',
+				max_characters: MAX_FETCH_CHARACTERS
+			}
+		);
 
 		const text = payload?.content?.text ?? '';
-		if (!text) return { ok: false, reason: 'empty_page', url, next_step: FETCH_FAILED_HINT };
+		if (!text) {
+			return { ok: false, reason: 'empty_page', url, next_step: FETCH_FAILED_HINT };
+		}
 
 		return {
 			ok: true,
@@ -120,13 +141,15 @@ export async function runFetchTool(config, args) {
 			truncated: String(text).length > MAX_FETCH_CHARACTERS
 		};
 	} catch (error) {
-		await logger.log(`❌ Web fetch failed: ${error.message}`);
-		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'fetch_failed', next_step: FETCH_FAILED_HINT };
+		await logger.log(`❌ Web fetch failed: ${(error as Error).message}`);
+		return { ok: false, reason: (error as Error).name === 'AbortError' ? 'timeout' : 'fetch_failed', next_step: FETCH_FAILED_HINT };
 	}
 }
 
-export function buildSearchTool(config) {
-	if (!searchConfigured(config)) return null;
+export function buildSearchTool(config: AiInput) {
+	if (!searchConfigured(config)) {
+		return null;
+	}
 
 	return {
 		type: 'function',
@@ -156,8 +179,10 @@ export function buildSearchTool(config) {
 	};
 }
 
-export function buildFetchTool(config) {
-	if (!fetchConfigured(config)) return null;
+export function buildFetchTool(config: AiInput) {
+	if (!fetchConfigured(config)) {
+		return null;
+	}
 
 	return {
 		type: 'function',
@@ -180,8 +205,10 @@ export function buildFetchTool(config) {
 
 const VOICE_SEARCH_NOTE = `Say a short filler line like "let me check" only if you need to fill the silence while this runs. If the result does not answer it, chain another call — say "still checking" at most once and keep going rather than answering half a fact. Read the answer out loud in one or two short spoken sentences. Never read URLs aloud.`;
 
-export function buildSearchDeclaration(config) {
-	if (!searchConfigured(config)) return null;
+export function buildSearchDeclaration(config: AiInput) {
+	if (!searchConfigured(config)) {
+		return null;
+	}
 
 	return {
 		name: 'search_web',
@@ -197,8 +224,10 @@ export function buildSearchDeclaration(config) {
 	};
 }
 
-export function buildFetchDeclaration(config) {
-	if (!fetchConfigured(config)) return null;
+export function buildFetchDeclaration(config: AiInput) {
+	if (!fetchConfigured(config)) {
+		return null;
+	}
 
 	return {
 		name: 'fetch_web_page',

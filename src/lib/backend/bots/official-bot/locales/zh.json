@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "所有者注册",
 			"setupNotOwnerTitle": "权限不足",
 			"setupNotOwnerBody": "只有 **服务器所有者** 才能使用 `/setup`。",
-			"setupNotTextChannelTitle": "频道无效",
-			"setupNotTextChannelBody": "请选择一个 **文字频道**。",
 			"joinTitle": "感谢你添加 {botName}！",
 			"joinBody": "运行 `/setup` 来创建频道并完成设置。",
 			"joinAskAi": "不知道从哪开始？提及 {botMention} 直接提问就行，它会阅读文档并带你完成设置。",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ 本服务器已关闭公开页面。请让服务器管理员在机器人配置面板中开启。"
 		},
 		"errors": {
-			"notRegistered": "⚠️ 本服务器尚未与机器人完全连接。请几分钟后重试，如果一直出现，请让服务器管理员检查机器人配置面板。",
-			"createRecordFailed": "❌ 创建成员记录失败，请重试。"
+			"notRegistered": "⚠️ 本服务器尚未与机器人完全连接。请几分钟后重试，如果一直出现，请让服务器管理员检查机器人配置面板。"
 		},
 		"fields": {
 			"level": "⭐ 等级",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "举报管理人员",
 			"ratingLabel": "评分（1-5 星）",
-			"ratingPlaceholder": "1 = 很差，5 = 非常好",
 			"categoryLabel": "分类",
 			"descriptionLabel": "详细说明",
 			"descriptionPlaceholder": "请描述你与这位管理人员的经历……",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ 举报已提交",
 			"description": "你的举报已成功提交，正在等待管理员审核。审核完成后我们会通知你。",
-			"anonymous": "\\n\\n🔒 你的举报已匿名提交。",
-			"roleUpdated": "\\n\\n⭐ **管理评分已更新**\\n{roleName}\\n评分：{rating}/5.00（共 {totalReports} 条举报）"
+			"anonymous": "\\n\\n🔒 你的举报已匿名提交。"
 		},
 		"dm": {
 			"approved": "你在 **{server}** 对 {staff} 的举报已通过。\\n\\n**评分：** {rating}/5\\n**分类：** {category}\\n**反馈内容：** {description}\\n\\n**管理备注：** {reason}\\n\\n感谢你帮助我们监督团队。",
@@ -458,7 +453,6 @@
 			"rude": "😠 态度粗鲁"
 		},
 		"errors": {
-			"noStaffSelected": "❌ 请选择要举报的管理人员。",
 			"invalidRating": "❌ **评分无效**\\n\\n评分必须是 1 到 5 之间的数字。",
 			"invalidCategory": "❌ **分类无效**\\n\\n请从列表中选择一个分类。",
 			"emptyDescription": "❌ **需要填写说明**\\n\\n请描述一下你的经历。",
@@ -717,7 +711,7 @@
 		},
 		"tokenTooShort": "令牌太短。",
 		"invalidTokenTitle": "令牌无效",
-		"invalidTokenDescription": "你提供的令牌似乎无效或已过期。\n`{error}`",
+		"invalidTokenDescription": "你提供的令牌似乎无效或已过期。请复制新的令牌并重新提交。",
 		"invalidQuestId": "任务 ID 无效。",
 		"missingQuestOrToken": "缺少任务 ID 或令牌太短。",
 		"taskTypes": {

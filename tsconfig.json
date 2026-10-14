@@ -9,6 +9,10 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"noFallthroughCasesInSwitch": true,
+		"allowImportingTsExtensions": true,
 		"moduleResolution": "bundler"
 	}
 }

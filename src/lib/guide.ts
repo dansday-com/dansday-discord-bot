@@ -229,10 +229,14 @@ export const TIPS: { icon: string; accent: string; text: string }[] = [
 	{ icon: 'fa-chart-line', accent: '#e43d12', text: 'Park XP in an asset to hide it from attacks, but watch the price.' }
 ];
 
-export function buildGuideItems(items: { effect_type: string; cost?: number | null; config?: any }[]) {
-	const byEffect = new Map<string, any>();
+type GuideItemSource = { effect_type: string; cost?: number | null; config?: unknown };
+
+export function buildGuideItems(items: GuideItemSource[]) {
+	const byEffect = new Map<string, GuideItemSource>();
 	for (const it of items ?? []) {
-		if (!byEffect.has(it.effect_type)) byEffect.set(it.effect_type, it);
+		if (!byEffect.has(it.effect_type)) {
+			byEffect.set(it.effect_type, it);
+		}
 	}
 
 	return ITEM_EFFECTS.map((e) => {

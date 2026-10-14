@@ -56,13 +56,13 @@
 	}
 
 	let ai = $state(aiFromServer(data.ai));
-	const voiceThinkingSupported = $derived(ai.voice_model.toLowerCase().includes('live-extended-thinking'));
+	const isVoiceThinkingSupported = $derived(ai.voice_model.toLowerCase().includes('live-extended-thinking'));
 	let aiKeyInput = $state('');
 	let voiceKeyInput = $state('');
 	let searchKeyInput = $state('');
 	let fetchKeyInput = $state('');
 	let imageKeyInput = $state('');
-	let savingAi = $state(false);
+	let isSavingAi = $state(false);
 
 	$effect(() => {
 		ai = aiFromServer(data.ai);
@@ -76,7 +76,7 @@
 	const blankToNull = (value: string) => (value.trim() === '' ? null : value.trim());
 
 	async function saveAi() {
-		savingAi = true;
+		isSavingAi = true;
 		try {
 			const res = await fetch('/api/admin/ai', {
 				method: 'PATCH',
@@ -114,7 +114,7 @@
 			showToast('AI settings saved', 'success');
 			await invalidateAll();
 		} finally {
-			savingAi = false;
+			isSavingAi = false;
 		}
 	}
 </script>
@@ -258,11 +258,11 @@
 						appearance="field"
 						options={AI_VOICE_THINKING_OPTIONS}
 						bind:value={ai.voice_thinking}
-						disabled={!voiceThinkingSupported}
+						disabled={!isVoiceThinkingSupported}
 						ariaLabel="Thinking"
 					/>
 					<p class="text-ash-500 mt-1.5 text-xs">
-						{voiceThinkingSupported
+						{isVoiceThinkingSupported
 							? 'Higher means slower replies.'
 							: 'Only extended thinking models take this. Others still think, they just set their own level.'}
 					</p>
@@ -434,10 +434,10 @@
 		<button
 			type="button"
 			onclick={saveAi}
-			disabled={savingAi}
+			disabled={isSavingAi}
 			class="text-ash-100 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			{#if savingAi}
+			{#if isSavingAi}
 				<i class="fas fa-spinner fa-spin mr-2"></i>Saving…
 			{:else}
 				<i class="fas fa-save mr-2"></i>Save AI settings

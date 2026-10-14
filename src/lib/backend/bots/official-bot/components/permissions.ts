@@ -2,6 +2,7 @@ import { PermissionFlagsBits } from 'discord.js';
 import { PERMISSIONS, getServerForCurrentBot } from '../../../config.js';
 import { translate } from '../i18n.js';
 import db from '../../../../database.js';
+import type { Guild, GuildMember, Role } from 'discord.js';
 
 const OPEN_ACTIONS = ['menu', 'feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_rating', 'notifications', 'quest_enroll', 'content_creator'];
 
@@ -13,52 +14,71 @@ async function getGuildPermissions(guildId: string) {
 	}
 }
 
-async function isAdmin(member: any) {
+async function isAdmin(member: GuildMember) {
 	return member?.permissions?.has?.(PermissionFlagsBits.Administrator) === true;
 }
 
-async function isStaff(member: any) {
+async function isStaff(member: GuildMember) {
 	const perms = await getGuildPermissions(member.guild.id);
 	return await PERMISSIONS.hasAnyRole(member, perms.STAFF_ROLES);
 }
 
-async function isSupporter(member: any) {
+async function isSupporter(member: GuildMember) {
 	return (member?.premiumSince ?? null) !== null;
 }
 
-async function isContentCreator(member: any) {
+async function isContentCreator(member: GuildMember) {
 	const perms = await getGuildPermissions(member.guild.id);
 	return await PERMISSIONS.hasAnyRole(member, perms.CONTENT_CREATOR_ROLES);
 }
 
-export async function hasPermission(member: any, action: string) {
-	if (member?.user?.bot ?? member?.bot ?? false) return false;
-	if (OPEN_ACTIONS.includes(action)) return true;
+export async function hasPermission(member: GuildMember | null, action: string) {
+	if (member?.user.bot) {
+		return false;
+	}
+	if (OPEN_ACTIONS.includes(action)) {
+		return true;
+	}
+	if (!member) {
+		return false;
+	}
 
-	if (await isAdmin(member)) return true;
-	if (await isStaff(member)) return action !== 'setup';
-	if (action === 'custom_supporter_role') return (await isSupporter(member)) || (await isContentCreator(member));
+	if (await isAdmin(member)) {
+		return true;
+	}
+	if (await isStaff(member)) {
+		return action !== 'setup';
+	}
+	if (action === 'custom_supporter_role') {
+		return (await isSupporter(member)) || (await isContentCreator(member));
+	}
 	return false;
 }
 
-export async function getRequiredRolesForAction(guild: any, action: string) {
+export async function getRequiredRolesForAction(guild: Guild, action: string) {
 	try {
 		const perms = await getGuildPermissions(guild.id);
 		const roleNames: string[] = [];
 
-		const isBotOnlyRole = (role: any) => role.members.size > 0 && role.members.every((m: any) => m.user.bot);
+		const isBotOnlyRole = (role: Role) => role.members.size > 0 && role.members.every((m) => m.user.bot);
 
 		const addRoles = (ids: string[]) => {
 			ids?.forEach((roleId: string) => {
 				const role = guild.roles.cache.get(roleId);
-				if (role && !isBotOnlyRole(role)) roleNames.push(role.name);
+				if (role && !isBotOnlyRole(role)) {
+					roleNames.push(role.name);
+				}
 			});
 		};
 
 		const addAdminRoles = () => {
 			for (const role of guild.roles.cache.values()) {
-				if (role.id === guild.id || role.managed || isBotOnlyRole(role)) continue;
-				if (role.permissions?.has?.(PermissionFlagsBits.Administrator)) roleNames.push(role.name);
+				if (role.id === guild.id || role.managed || isBotOnlyRole(role)) {
+					continue;
+				}
+				if (role.permissions?.has?.(PermissionFlagsBits.Administrator)) {
+					roleNames.push(role.name);
+				}
 			}
 		};
 
@@ -89,7 +109,7 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 	}
 }
 
-export async function getPermissionDeniedMessage(guild: any, action: string, userId: string | null = null) {
+export async function getPermissionDeniedMessage(guild: Guild, action: string, userId: string | null = null) {
 	const actionNames: Record<string, string> = {
 		staff_only: 'Staff Only',
 		custom_supporter_role: 'Custom Supporter Role',
@@ -111,19 +131,19 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 	try {
 		const server = await getServerForCurrentBot(guild.id);
 		const accounts = await db.getServerAccountsByServer(server.id);
-		const hasOwner = accounts.some((a: any) => a.account_type === 'owner');
+		const hasOwner = accounts.some((a) => a.account_type === 'owner');
 
 		if (!hasOwner) {
-			const title = await translate('permissions.ownerRequired.title', guild.id, userId ?? '');
-			const desc = await translate('permissions.ownerRequired.description', guild.id, userId ?? '', { action: actionName });
+			const title = await translate('permissions.ownerRequired.title', { guildId: guild.id, userId: userId ?? '' });
+			const desc = await translate('permissions.ownerRequired.description', { guildId: guild.id, userId: userId ?? '' }, { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
 
 		const perms = await getGuildPermissions(guild.id);
 		const allRoles = [...perms.STAFF_ROLES, ...perms.CONTENT_CREATOR_ROLES];
 		if (allRoles.length === 0) {
-			const title = await translate('permissions.notConfigured.title', guild.id, userId ?? '');
-			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName });
+			const title = await translate('permissions.notConfigured.title', { guildId: guild.id, userId: userId ?? '' });
+			const desc = await translate('permissions.notConfigured.description', { guildId: guild.id, userId: userId ?? '' }, { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
 	} catch (e) {}
@@ -132,12 +152,12 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 	const roleList =
 		requiredRoles.length > 0
 			? requiredRoles.map((role) => `**${role}**`).join(', ')
-			: await translate('permissions.requiredRoleFallback', guild.id, userId ?? '');
+			: await translate('permissions.requiredRoleFallback', { guildId: guild.id, userId: userId ?? '' });
 
 	const scope = action === 'custom_supporter_role' ? 'permissions.supporterRoleDenied' : 'permissions.denied';
-	const title = await translate(`${scope}.title`, guild.id, userId ?? '');
-	const description = await translate(`${scope}.description`, guild.id, userId ?? '', { action: actionName, roles: roleList });
-	const footer = await translate(`${scope}.footer`, guild.id, userId ?? '');
+	const title = await translate(`${scope}.title`, { guildId: guild.id, userId: userId ?? '' });
+	const description = await translate(`${scope}.description`, { guildId: guild.id, userId: userId ?? '' }, { action: actionName, roles: roleList });
+	const footer = await translate(`${scope}.footer`, { guildId: guild.id, userId: userId ?? '' });
 
 	return `${title}\n\n${description}\n\n${footer}`;
 }

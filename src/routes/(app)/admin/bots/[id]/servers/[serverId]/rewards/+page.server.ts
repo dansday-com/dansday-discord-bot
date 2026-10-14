@@ -3,12 +3,15 @@ import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { SERVER_SETTINGS, accountOwnsServer, canEditServerSettings } from '$lib/backend/panelServer.js';
-import { DEFAULT_LEVELING_SETTINGS } from '$lib/backend/config.js';
+import { DEFAULT_LEVELING_SETTINGS, type StoredLevelingSettings } from '$lib/backend/config.js';
 import { rewardGoalUnits, rewardProgress, rewardRuleFlags } from '$lib/rewards.js';
 import { rewardImageUrl } from '$lib/backend/storage/rewards.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(HTTP.FOUND, '/login');
+	}
 
 	const serverId = Number(params.serverId);
 
@@ -18,12 +21,12 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 			const targetBot = ob ?? fallback;
 			if (targetBot != null) {
-				redirect(302, adminServerSectionPath(targetBot, locals.user.server_id, 'rewards'));
+				redirect(HTTP.FOUND, adminServerSectionPath(targetBot, locals.user.server_id, 'rewards'));
 			}
-			redirect(302, DASHBOARD_PATH);
+			redirect(HTTP.FOUND, DASHBOARD_PATH);
 		}
 	} else if (!(await accountOwnsServer(locals, serverId))) {
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
 	const { overview } = await parent();
@@ -37,7 +40,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		db.getPendingRewardDeliveries(serverId).catch(() => []),
 		canEditServerSettings(locals, serverId)
 	]);
-	const leveling = (levelingSettings as any)?.settings ?? {};
+	const leveling: StoredLevelingSettings = levelingSettings?.settings ?? {};
 	const req = leveling.REQUIREMENTS ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS;
 	const memberProgress = progress.map((m) => rewardProgress(m.stats));
 
@@ -49,7 +52,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			baseXp: Number(req.BASE_XP) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
 			multiplier: Number(req.MULTIPLIER) || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.MULTIPLIER
 		},
-		rules: rewardRuleFlags((mainSettings as any)?.settings),
+		rules: rewardRuleFlags(mainSettings?.settings),
 		rewards: rewards.map((r) => ({
 			id: r.id,
 			goal_type: r.goal_type,
@@ -65,8 +68,8 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 			reached: memberProgress.reduce((n, m) => (m[r.goal_type] >= r.goal ? n + 1 : n), 0)
 		})),
 		pending: pending.map((p) => ({ ...p, image_url: rewardImageUrl(p.image), earned_at: p.earned_at ? String(p.earned_at) : null })),
-		roles: (roles as any[])
-			.filter((r) => String(r.discord_role_id) !== String((overview as any).discord_server_id))
+		roles: roles
+			.filter((r) => String(r.discord_role_id) !== String(overview.discord_server_id))
 			.map((r) => ({ id: String(r.discord_role_id), name: String(r.name ?? 'Unnamed role'), color: r.color ?? null }))
 	};
 };

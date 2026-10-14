@@ -3,11 +3,17 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 import { DEFAULT_LEVELING_SETTINGS } from '$lib/backend/config.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
-	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.leveling).catch(() => ({}));
-	const settings = row?.settings && typeof row.settings === 'object' ? row.settings : {};
+	if (!locals.user.authenticated) {
+		redirect(HTTP.FOUND, '/login');
+	}
+	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.leveling).catch((): { settings?: undefined } => ({}));
+	const settings = (row?.settings && typeof row.settings === 'object' ? row.settings : {}) as Partial<typeof DEFAULT_LEVELING_SETTINGS> & {
+		enabled?: boolean;
+		PROGRESS_CHANNEL_ID?: string;
+	};
 
 	const req = settings.REQUIREMENTS || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS;
 	const msg = settings.MESSAGE || DEFAULT_LEVELING_SETTINGS.MESSAGE;

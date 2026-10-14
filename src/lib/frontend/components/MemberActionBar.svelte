@@ -4,6 +4,8 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { DURATION_UNITS, MODERATION_ACTION_META, MODERATION_REASON_OPTIONAL, MODERATION_TIMED_ACTIONS, moderateEach } from '$lib/frontend/moderation.js';
 
+	const DEFAULT_DURATION_AMOUNT = 10;
+
 	type Target = { id: string; role_ids: string[]; warnings: number; timeout_until: unknown };
 
 	interface Props {
@@ -26,16 +28,16 @@
 	let action = $state('warn');
 	let reason = $state('');
 	let preset = $state('');
-	let amount = $state(10);
+	let amount = $state(DEFAULT_DURATION_AMOUNT);
 	let unit = $state('60');
 	let actionRoleId = $state('');
-	let busy = $state(false);
+	let isBusy = $state(false);
 	let progress = $state<{ done: number; total: number } | null>(null);
 	let confirm = $state<{ title: string; message: string; run: () => Promise<void> } | null>(null);
 
 	const isRole = $derived(ROLE_ACTIONS.includes(action));
 	const isTimed = $derived(MODERATION_TIMED_ACTIONS.includes(action));
-	const reasonOptional = $derived(MODERATION_REASON_OPTIONAL.includes(action));
+	const isReasonOptional = $derived(MODERATION_REASON_OPTIONAL.includes(action));
 	const meta = $derived(MODERATION_ACTION_META[action]);
 
 	const actionOptions = $derived(
@@ -64,11 +66,15 @@
 	});
 
 	$effect(() => {
-		if (actionOptions.length > 0 && !actionOptions.some((o) => o.value === action)) action = actionOptions[0].value;
+		if (actionOptions.length > 0 && !actionOptions.some((o) => o.value === action)) {
+			action = actionOptions[0].value;
+		}
 	});
 
 	$effect(() => {
-		if (actionRoleId && !roleOptions.some((o) => o.value === actionRoleId)) actionRoleId = '';
+		if (actionRoleId && !roleOptions.some((o) => o.value === actionRoleId)) {
+			actionRoleId = '';
+		}
 	});
 
 	$effect(() => {
@@ -81,19 +87,35 @@
 	function applicableIds(a: string): string[] {
 		let list = targets;
 		if (!banned) {
-			if (a === 'untimeout') list = targets.filter((t) => t.timeout_until);
-			else if (a === 'clearwarns') list = targets.filter((t) => t.warnings > 0);
-			else if (ROLE_ACTIONS.includes(a) && actionRoleId) list = targets.filter((t) => t.role_ids.includes(actionRoleId) !== (a === 'role_add'));
+			if (a === 'untimeout') {
+				list = targets.filter((t) => t.timeout_until);
+			} else if (a === 'clearwarns') {
+				list = targets.filter((t) => t.warnings > 0);
+			} else if (ROLE_ACTIONS.includes(a) && actionRoleId) {
+				list = targets.filter((t) => t.role_ids.includes(actionRoleId) !== (a === 'role_add'));
+			}
 		}
 		return list.map((t) => t.id);
 	}
 
 	function apply() {
-		if (isRole && !actionRoleId) return showToast('Pick a role', 'error');
-		if (!reasonOptional && !reason.trim()) return showToast('Enter a reason', 'error');
-		if (isTimed && (!amount || amount < 1)) return showToast('Enter a duration', 'error');
+		if (isRole && !actionRoleId) {
+			showToast('Pick a role', 'error');
+			return;
+		}
+		if (!isReasonOptional && !reason.trim()) {
+			showToast('Enter a reason', 'error');
+			return;
+		}
+		if (isTimed && (!amount || amount < 1)) {
+			showToast('Enter a duration', 'error');
+			return;
+		}
 		const ids = applicableIds(action);
-		if (ids.length === 0) return showToast('Nobody selected needs this', 'error');
+		if (ids.length === 0) {
+			showToast('Nobody selected needs this', 'error');
+			return;
+		}
 		const who = `${ids.length.toLocaleString()} ${ids.length === 1 ? 'member' : 'members'}${ids.length < targets.length ? ` of the ${targets.length.toLocaleString()} selected` : ''}`;
 		const roleName = roles.find((r) => r.id === actionRoleId)?.name ?? 'that role';
 		confirm = {
@@ -104,29 +126,33 @@
 	}
 
 	async function runEach(ids: string[]) {
-		busy = true;
+		isBusy = true;
 		progress = { done: 0, total: ids.length };
 		try {
-			const out = await moderateEach(
-				serverId,
-				ids,
-				{ action, reason: reason.trim() || null, duration_seconds: isTimed ? Math.round(amount * Number(unit)) : null },
-				(done) => (progress = { done, total: ids.length })
-			);
+			const out = await moderateEach(serverId, ids, {
+				body: { action, reason: reason.trim() || null, duration_seconds: isTimed ? Math.round(amount * Number(unit)) : null },
+				onprogress: (done) => (progress = { done, total: ids.length })
+			});
 			const parts = [`Done for ${out.done.toLocaleString()}`];
-			if (out.escalated > 0) parts.push(`${out.escalated} auto-escalated`);
-			if (out.failed > 0) parts.push(`${out.failed} failed and are still selected: ${out.error}`);
+			if (out.escalated > 0) {
+				parts.push(`${out.escalated} auto-escalated`);
+			}
+			if (out.failed > 0) {
+				parts.push(`${out.failed} failed and are still selected: ${out.error}`);
+			}
 			showToast(parts.join(' · '), out.failed > 0 ? 'error' : 'success');
-			if (out.failed === 0) reason = '';
+			if (out.failed === 0) {
+				reason = '';
+			}
 			await ondone?.(out.failedIds);
 		} finally {
-			busy = false;
+			isBusy = false;
 			progress = null;
 		}
 	}
 
 	async function runRoles(ids: string[]) {
-		busy = true;
+		isBusy = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation/bulk`, {
 				method: 'POST',
@@ -134,20 +160,25 @@
 				body: JSON.stringify({ action, role_id: actionRoleId, target_ids: ids })
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Bulk action failed', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Bulk action failed', 'error');
+				return;
+			}
 			showToast(`Started for ${Number(out.queued ?? 0).toLocaleString()}. The result goes to the moderation log channel.`, 'success');
 			await ondone?.([]);
 		} catch {
 			showToast('Bulk action failed', 'error');
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
 	async function runConfirm() {
 		const pending = confirm;
 		confirm = null;
-		if (pending) await pending.run();
+		if (pending) {
+			await pending.run();
+		}
 	}
 </script>
 
@@ -183,7 +214,7 @@
 			type="text"
 			maxlength="1000"
 			bind:value={reason}
-			placeholder={reasonOptional ? 'Reason (optional)' : 'Reason'}
+			placeholder={isReasonOptional ? 'Reason (optional)' : 'Reason'}
 			aria-label="Reason"
 			class="bg-ash-800 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
 		/>
@@ -191,7 +222,7 @@
 	<button
 		type="button"
 		onclick={apply}
-		disabled={busy}
+		disabled={isBusy}
 		class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:self-start"
 	>
 		{#if progress}

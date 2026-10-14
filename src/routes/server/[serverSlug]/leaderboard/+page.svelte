@@ -10,6 +10,14 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PageProps } from './$types';
 	import { md, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
+	import { PERCENT, roundTo } from '$lib/utils/numbers.js';
+
+	const PODIUM_SIZE = 3;
+	const PODIUM_VALUE_LONG_CHARS = 12;
+	const PODIUM_VALUE_MEDIUM_CHARS = 9;
+	const EASE_OUT_POWER = 4;
+	const CHAMPION_AVATAR_PX = 84;
+	const PODIUM_AVATAR_PX = 66;
 
 	let { data }: PageProps = $props();
 
@@ -38,14 +46,16 @@
 		{ id: 'week', label: 'This week' }
 	];
 
-	const tabPrefetch = new Map<string, any[]>();
+	type Row = (typeof data.rows)[number];
+
+	const tabPrefetch = new Map<string, Row[]>();
 	const prefetchKey = (m: Metric, p: Period) => `${m}:${p}`;
 
 	let metric = $state<Metric>(data.metric);
 	let period = $state<Period>(data.period);
 	let rows = $state(data.rows);
 	let es: EventSource | null = null;
-	let streamConnected = $state(false);
+	let isStreamConnected = $state(false);
 
 	const isVoiceGroup = $derived(VOICE_METRICS.includes(metric));
 	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
@@ -58,56 +68,96 @@
 	const isGiftGroup = $derived(GIFT_METRICS.includes(metric));
 	const isInvites = $derived(metric === 'invites');
 
-	const top3 = $derived(rows.slice(0, 3));
-	const rest = $derived(rows.slice(3));
-	const maxValue = $derived(Math.max(1, ...rows.map((r: any) => metricValueNumber(r, metric))));
+	const top3 = $derived(rows.slice(0, PODIUM_SIZE));
+	const rest = $derived(rows.slice(PODIUM_SIZE));
+	const maxValue = $derived(Math.max(1, ...rows.map((r) => metricValueNumber(r, metric))));
 
 	let anim = $state<Record<string, number>>({});
 	let animKey = $state('');
 	let raf: number | null = null;
 	const tabKey = $derived(`${metric}|${period}`);
-	let mounted = $state(false);
+	let isMounted = $state(false);
 
 	function cleanName(s: string): string {
 		return s.replace(/^\s*(\[AFK\]\s*)+/gi, '').trim();
 	}
 
-	function displayName(r: any) {
+	function displayName(r: Record<string, unknown>) {
 		const raw = String(r.server_display_name || r.display_name || r.username || r.discord_member_id || '');
 		const cleaned = cleanName(raw);
 		return cleaned || raw || 'Unknown';
 	}
 
-	function rowAccent(r: any): string | null {
+	function rowAccent(r: Record<string, unknown>): string | null {
 		return normalizeAccent(r.theme_accent);
 	}
 
-	function metricValueNumber(r: any, m: string) {
+	function metricValueNumber(r: Row, m: string) {
 		const n = rawMetricValue(r, m);
 		return Number.isFinite(n) ? n : 0;
 	}
 
-	function rawMetricValue(r: any, m: string) {
-		if (m === 'chat') return Number(r.chat_total || 0);
-		if (m === 'voice_total') return Number(r.voice_minutes_total || 0);
-		if (m === 'voice_active') return Number(r.voice_minutes_active || 0);
-		if (m === 'voice_afk') return Number(r.voice_minutes_afk || 0);
-		if (m === 'video') return Number(r.voice_minutes_video || 0);
-		if (m === 'streaming') return Number(r.voice_minutes_streaming || 0);
-		if (m === 'minigames_gamble_net' || m === 'minigames_tower_net' || m === 'minigames_color_net') return Number(r.minigame_net || 0);
-		if (m === 'minigames_gamble_ratio' || m === 'minigames_tower_ratio') return Number(r.minigame_ratio || 0);
-		if (m === 'minigames_gamble_big' || m === 'minigames_tower_big') return Number(r.minigame_big_win || 0);
-		if (m === 'minigames_color_avg') return Number(r.minigame_avg_score || 0);
-		if (m === 'minigames_color_best') return Number(r.minigame_best_score || 0);
-		if (m === 'items_bounty_total') return Number(r.bounty_on_them || 0);
-		if (m === 'items_bounty_claimer') return Number(r.bounty_collected || 0);
-		if (m === 'items_bounty_give') return Number(r.bounty_given || 0);
-		if (m === 'items_steal_rate' || m === 'items_bomb_rate') return Number(r.attack_rate || 0);
-		if (m === 'items_steal_big' || m === 'items_bomb_big') return Number(r.attack_big || 0);
-		if (m === 'items_steal_total' || m === 'items_bomb_total') return Number(r.attack_total || 0);
-		if (m === 'items_gift_give') return Number(r.gift_given || 0);
-		if (m === 'items_gift_receive') return Number(r.gift_received || 0);
-		if (m === 'invites') return Number(r.invites_total || 0);
+	function rawMetricValue(r: Row, m: string) {
+		if (m === 'chat') {
+			return Number(r.chat_total || 0);
+		}
+		if (m === 'voice_total') {
+			return Number(r.voice_minutes_total || 0);
+		}
+		if (m === 'voice_active') {
+			return Number(r.voice_minutes_active || 0);
+		}
+		if (m === 'voice_afk') {
+			return Number(r.voice_minutes_afk || 0);
+		}
+		if (m === 'video') {
+			return Number(r.voice_minutes_video || 0);
+		}
+		if (m === 'streaming') {
+			return Number(r.voice_minutes_streaming || 0);
+		}
+		if (m === 'minigames_gamble_net' || m === 'minigames_tower_net' || m === 'minigames_color_net') {
+			return Number(r.minigame_net || 0);
+		}
+		if (m === 'minigames_gamble_ratio' || m === 'minigames_tower_ratio') {
+			return Number(r.minigame_ratio || 0);
+		}
+		if (m === 'minigames_gamble_big' || m === 'minigames_tower_big') {
+			return Number(r.minigame_big_win || 0);
+		}
+		if (m === 'minigames_color_avg') {
+			return Number(r.minigame_avg_score || 0);
+		}
+		if (m === 'minigames_color_best') {
+			return Number(r.minigame_best_score || 0);
+		}
+		if (m === 'items_bounty_total') {
+			return Number(r.bounty_on_them || 0);
+		}
+		if (m === 'items_bounty_claimer') {
+			return Number(r.bounty_collected || 0);
+		}
+		if (m === 'items_bounty_give') {
+			return Number(r.bounty_given || 0);
+		}
+		if (m === 'items_steal_rate' || m === 'items_bomb_rate') {
+			return Number(r.attack_rate || 0);
+		}
+		if (m === 'items_steal_big' || m === 'items_bomb_big') {
+			return Number(r.attack_big || 0);
+		}
+		if (m === 'items_steal_total' || m === 'items_bomb_total') {
+			return Number(r.attack_total || 0);
+		}
+		if (m === 'items_gift_give') {
+			return Number(r.gift_given || 0);
+		}
+		if (m === 'items_gift_receive') {
+			return Number(r.gift_received || 0);
+		}
+		if (m === 'invites') {
+			return Number(r.invites_total || 0);
+		}
 		return Number(r.xp || 0);
 	}
 
@@ -121,33 +171,51 @@
 
 	function formatMetric(n: number, m: string) {
 		const safe = Number.isFinite(n) ? n : 0;
-		if (isScoreMetric(m)) return safe.toFixed(2);
-		if (isRateMetric(m)) return (Math.round(safe * 10) / 10).toLocaleString();
+		if (isScoreMetric(m)) {
+			return safe.toFixed(2);
+		}
+		if (isRateMetric(m)) {
+			return roundTo(safe, 1).toLocaleString();
+		}
 		return Math.round(safe).toLocaleString();
 	}
 
-	function metricValueAnimated(r: any, m: string) {
+	function metricValueAnimated(r: Row, m: string) {
 		const live = animKey === tabKey ? anim[r.discord_member_id] : undefined;
 		return formatMetric(live ?? metricValueNumber(r, m), m);
 	}
 
-	function podiumValueSize(r: any, m: string) {
+	function podiumValueSize(r: Row, m: string) {
 		const len = formatMetric(metricValueNumber(r, m), m).length;
-		if (len > 12) return 'text-[12px]';
-		if (len > 9) return 'text-[15px]';
+		if (len > PODIUM_VALUE_LONG_CHARS) {
+			return 'text-[12px]';
+		}
+		if (len > PODIUM_VALUE_MEDIUM_CHARS) {
+			return 'text-[15px]';
+		}
 		return 'text-lg';
 	}
 
 	function metricUnit(m: string) {
-		if (isRateMetric(m)) return '%';
-		if (isScoreMetric(m)) return `/ ${COLOR_MAX_TOTAL}`;
-		if (m === 'invites') return 'invites';
-		if (m === 'chat') return 'msgs';
-		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') return 'min';
+		if (isRateMetric(m)) {
+			return '%';
+		}
+		if (isScoreMetric(m)) {
+			return `/ ${COLOR_MAX_TOTAL}`;
+		}
+		if (m === 'invites') {
+			return 'invites';
+		}
+		if (m === 'chat') {
+			return 'msgs';
+		}
+		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') {
+			return 'min';
+		}
 		return 'xp';
 	}
 
-	function itemsSub(r: any, m: string) {
+	function itemsSub(r: Row, m: string) {
 		if (m.startsWith('minigames_color_')) {
 			const total = Number(r.minigame_total || 0);
 			const games = `${total} game${total === 1 ? '' : 's'}`;
@@ -157,56 +225,80 @@
 			const wins = `${Number(r.minigame_wins || 0)}/${Number(r.minigame_total || 0)} wins`;
 			return r.minigame_best_floor == null ? wins : `${wins} · floor ${Number(r.minigame_best_floor) || 0}`;
 		}
-		if (m === 'items_bounty_claimer') return 'claimed';
-		if (m === 'items_bounty_give') return 'placed';
-		if (m === 'items_bounty_total') return 'on their head';
+		if (m === 'items_bounty_claimer') {
+			return 'claimed';
+		}
+		if (m === 'items_bounty_give') {
+			return 'placed';
+		}
+		if (m === 'items_bounty_total') {
+			return 'on their head';
+		}
 		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) {
 			return `${Number(r.attack_success || 0)}/${Number(r.attack_attempts || 0)} hits`;
 		}
-		if (m === 'items_gift_give') return 'gifted';
-		if (m === 'items_gift_receive') return 'received';
+		if (m === 'items_gift_give') {
+			return 'gifted';
+		}
+		if (m === 'items_gift_receive') {
+			return 'received';
+		}
 		if (m === 'invites') {
 			const parts = [`${Number(r.invites_active || 0)} still here`];
-			if (Number(r.invites_left || 0) > 0) parts.push(`${Number(r.invites_left)} left`);
-			if (Number(r.invites_bonus || 0) !== 0) parts.push(`${Number(r.invites_bonus) > 0 ? '+' : ''}${Number(r.invites_bonus)} bonus`);
+			if (Number(r.invites_left || 0) > 0) {
+				parts.push(`${Number(r.invites_left)} left`);
+			}
+			if (Number(r.invites_bonus || 0) !== 0) {
+				parts.push(`${Number(r.invites_bonus) > 0 ? '+' : ''}${Number(r.invites_bonus)} bonus`);
+			}
 			return parts.join(' · ');
 		}
 		return '';
 	}
 
-	function rowSub(r: any) {
+	function rowSub(r: Row) {
 		return isItemsGroup || isMinigamesGroup || isInvites ? itemsSub(r, metric) : `Level ${r.level ?? 0}`;
 	}
 
-	function barWidthPct(r: any, m: string) {
+	function barWidthPct(r: Row, m: string) {
 		const v = metricValueNumber(r, m);
-		if (v <= 0) return 0;
-		return Math.max(1, Math.round((v / maxValue) * 100));
+		if (v <= 0) {
+			return 0;
+		}
+		return Math.max(1, Math.round((v / maxValue) * PERCENT));
 	}
 
 	function animateToCurrentValues() {
-		if (raf) cancelAnimationFrame(raf);
+		if (raf) {
+			cancelAnimationFrame(raf);
+		}
 		const duration = 1100;
 		const key = tabKey;
 		const sameTab = animKey === key;
 		const start = performance.now();
 		const targets: Record<string, number> = {};
-		for (const r of rows as any[]) targets[r.discord_member_id] = metricValueNumber(r, metric);
+		for (const r of rows) {
+			targets[r.discord_member_id] = metricValueNumber(r, metric);
+		}
 		const initial: Record<string, number> = {};
-		for (const id of Object.keys(targets)) initial[id] = sameTab ? (anim[id] ?? 0) : 0;
+		for (const id of Object.keys(targets)) {
+			initial[id] = sameTab ? (anim[id] ?? 0) : 0;
+		}
 		anim = { ...initial };
 		animKey = key;
 
 		const tick = (now: number) => {
 			const t = Math.min(1, (now - start) / duration);
-			const e = 1 - Math.pow(1 - t, 4);
+			const e = 1 - (1 - t) ** EASE_OUT_POWER;
 			const next: Record<string, number> = {};
 			for (const [id, target] of Object.entries(targets)) {
 				const a = initial[id] ?? 0;
 				next[id] = a + (target - a) * e;
 			}
 			anim = next;
-			if (t < 1) raf = requestAnimationFrame(tick);
+			if (t < 1) {
+				raf = requestAnimationFrame(tick);
+			}
 		};
 		raf = requestAnimationFrame(tick);
 	}
@@ -220,10 +312,14 @@
 		const myEs = new EventSource(`/api/public-statistics/${data.server.slug}/stream?metric=${metric}&period=${period}&limit=${data.limit}`);
 		es = myEs;
 		myEs.onopen = () => {
-			if (es === myEs) streamConnected = true;
+			if (es === myEs) {
+				isStreamConnected = true;
+			}
 		};
 		myEs.onmessage = (e) => {
-			if (es !== myEs) return;
+			if (es !== myEs) {
+				return;
+			}
 			try {
 				const snap = JSON.parse(e.data);
 				if (snap?.rows) {
@@ -234,24 +330,30 @@
 			} catch (_) {}
 		};
 		myEs.onerror = () => {
-			if (es !== myEs) return;
-			streamConnected = false;
+			if (es !== myEs) {
+				return;
+			}
+			isStreamConnected = false;
 		};
 	}
 
 	onMount(() => {
 		tabPrefetch.set(prefetchKey(data.metric, data.period), data.rows);
-		anim = Object.fromEntries((rows as any[]).map((r) => [r.discord_member_id, metricValueNumber(r, metric)]));
+		anim = Object.fromEntries(rows.map((r) => [r.discord_member_id, metricValueNumber(r, metric)]));
 		animKey = tabKey;
-		mounted = true;
+		isMounted = true;
 		return onFirstInteraction(() => {
 			const prefetchPeriod = period;
 			for (const m of METRICS) {
-				if (m === data.metric) continue;
+				if (m === data.metric) {
+					continue;
+				}
 				fetch(snapshotUrl(m, prefetchPeriod))
 					.then((r) => (r.ok ? r.json() : null))
 					.then((snap) => {
-						if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(prefetchKey(m, prefetchPeriod), snap.rows);
+						if (snap?.rows && Array.isArray(snap.rows)) {
+							tabPrefetch.set(prefetchKey(m, prefetchPeriod), snap.rows);
+						}
 					})
 					.catch(() => {});
 			}
@@ -261,7 +363,9 @@
 
 	onDestroy(() => {
 		es?.close();
-		if (raf) cancelAnimationFrame(raf);
+		if (raf) {
+			cancelAnimationFrame(raf);
+		}
 	});
 
 	async function loadCurrent() {
@@ -282,7 +386,9 @@
 				const snap = await res.json();
 				if (Array.isArray(snap?.rows)) {
 					tabPrefetch.set(requested, snap.rows);
-					if (prefetchKey(metric, period) !== requested) return;
+					if (prefetchKey(metric, period) !== requested) {
+						return;
+					}
 					rows = snap.rows;
 					animateToCurrentValues();
 				}
@@ -291,13 +397,17 @@
 	}
 
 	async function setMetric(m: string) {
-		if (m === metric) return;
+		if (m === metric) {
+			return;
+		}
 		metric = m as Metric;
 		await loadCurrent();
 	}
 
 	async function setPeriod(p: string) {
-		if (p === period) return;
+		if (p === period) {
+			return;
+		}
 		period = p as Period;
 		await loadCurrent();
 	}
@@ -323,24 +433,27 @@
 	]);
 
 	const itemsLeafTabs = $derived.by(() => {
-		if (isStealGroup)
+		if (isStealGroup) {
 			return [
 				{ id: 'items_steal_total', label: 'XP stolen', icon: 'fa-coins', active: metric === 'items_steal_total' },
 				{ id: 'items_steal_rate', label: 'Success rate', icon: 'fa-percent', active: metric === 'items_steal_rate' },
 				{ id: 'items_steal_big', label: 'Big steal', icon: 'fa-trophy', active: metric === 'items_steal_big' }
 			];
-		if (isBombGroup)
+		}
+		if (isBombGroup) {
 			return [
 				{ id: 'items_bomb_total', label: 'XP destroyed', icon: 'fa-coins', active: metric === 'items_bomb_total' },
 				{ id: 'items_bomb_rate', label: 'Success rate', icon: 'fa-percent', active: metric === 'items_bomb_rate' },
 				{ id: 'items_bomb_big', label: 'Big bomb', icon: 'fa-trophy', active: metric === 'items_bomb_big' }
 			];
-		if (isBountyGroup)
+		}
+		if (isBountyGroup) {
 			return [
 				{ id: 'items_bounty_total', label: 'Total bounties', icon: 'fa-skull', active: metric === 'items_bounty_total' },
 				{ id: 'items_bounty_claimer', label: 'Claimer', icon: 'fa-coins', active: metric === 'items_bounty_claimer' },
 				{ id: 'items_bounty_give', label: 'Giver', icon: 'fa-crosshairs', active: metric === 'items_bounty_give' }
 			];
+		}
 		return [
 			{ id: 'items_gift_give', label: 'Given', icon: 'fa-gift', active: metric === 'items_gift_give' },
 			{ id: 'items_gift_receive', label: 'Received', icon: 'fa-coins', active: metric === 'items_gift_receive' }
@@ -354,18 +467,20 @@
 	]);
 
 	const minigamesLeafTabs = $derived.by(() => {
-		if (isColorGroup)
+		if (isColorGroup) {
 			return [
 				{ id: 'minigames_color_net', label: 'XP won', icon: 'fa-coins', active: metric === 'minigames_color_net' },
 				{ id: 'minigames_color_avg', label: 'Avg score', icon: 'fa-bullseye', active: metric === 'minigames_color_avg' },
 				{ id: 'minigames_color_best', label: 'Best score', icon: 'fa-trophy', active: metric === 'minigames_color_best' }
 			];
-		if (isTowerGroup)
+		}
+		if (isTowerGroup) {
 			return [
 				{ id: 'minigames_tower_net', label: 'XP won', icon: 'fa-coins', active: metric === 'minigames_tower_net' },
 				{ id: 'minigames_tower_ratio', label: 'Win rate', icon: 'fa-percent', active: metric === 'minigames_tower_ratio' },
 				{ id: 'minigames_tower_big', label: 'Big win', icon: 'fa-trophy', active: metric === 'minigames_tower_big' }
 			];
+		}
 		return [
 			{ id: 'minigames_gamble_net', label: 'Net XP', icon: 'fa-coins', active: metric === 'minigames_gamble_net' },
 			{ id: 'minigames_gamble_ratio', label: 'Win rate', icon: 'fa-percent', active: metric === 'minigames_gamble_ratio' },
@@ -391,24 +506,24 @@
 	);
 
 	const podiumOrder = $derived(
-		top3.length >= 3
+		top3.length >= PODIUM_SIZE
 			? [
 					{ r: top3[1], rank: 2 },
 					{ r: top3[0], rank: 1 },
 					{ r: top3[2], rank: 3 }
 				]
-			: top3.map((r: any, i: number) => ({ r, rank: i + 1 }))
+			: top3.map((r, i) => ({ r, rank: i + 1 }))
 	);
 
 	const linkEmbed = $derived.by(() => {
 		const medals = ['🥇', '🥈', '🥉'];
-		const lines = top3.map((r: any, i: number) => {
+		const lines = top3.map((r, i) => {
 			const sub = rowSub(r);
 			return `${medals[i]} **${md(displayName(r))}** · ${formatMetric(metricValueNumber(r, metric), metric)} ${metricUnit(metric)}${sub ? ` · ${md(sub)}` : ''}`;
 		});
 		const query = metric !== 'xp' || period !== 'all' ? `?metric=${metric}&period=${period}` : '';
 		const periodLabel = PERIODS.find((p) => p.id === period)?.label ?? '';
-		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl + query, `Leaderboard · ${periodLabel}`, lines);
+		return serverLinkEmbed({ ...data.server, name: serverName }, { url: data.canonicalUrl + query, subtitle: `Leaderboard · ${periodLabel}`, lines });
 	});
 </script>
 
@@ -431,7 +546,7 @@
 		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">
 			{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}
 		</span>
-		{#if streamConnected}
+		{#if isStreamConnected}
 			<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent gap-1.5 font-semibold">
 				<span class="bg-primary size-1.5 animate-pulse rounded-full" aria-hidden="true"></span>
 				Live
@@ -462,7 +577,7 @@
 		<div class="flex items-end justify-center">
 			{#each podiumOrder as { r, rank }}
 				<div
-					class="relative isolate flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {mounted
+					class="relative isolate flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {isMounted
 						? 'translate-y-0 opacity-100'
 						: 'translate-y-6 opacity-0'}"
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
@@ -480,7 +595,7 @@
 					{/if}
 
 					<div class="mb-2.5">
-						<RankAvatar src={r.avatar} name={displayName(r)} size={rank === 1 ? 84 : 66} {rank} badge />
+						<RankAvatar src={r.avatar} name={displayName(r)} size={rank === 1 ? CHAMPION_AVATAR_PX : PODIUM_AVATAR_PX} {rank} badge />
 					</div>
 
 					<div class="mb-2 w-full min-w-0 overflow-hidden px-1 text-center">
@@ -544,7 +659,7 @@
 					class="list-row border-base-300 relative isolate items-center gap-3 rounded-none border-b px-3 py-2.5 sm:px-4"
 					style={rowAccent(r) ? `--row-accent: ${rowAccent(r)}` : undefined}
 				>
-					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>
+					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + PODIUM_SIZE + 1}</span>
 
 					<div class="border-base-300 bg-base-300 size-10 shrink-0 overflow-hidden rounded-full border">
 						{#if r.avatar}

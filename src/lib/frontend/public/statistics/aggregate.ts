@@ -17,10 +17,16 @@ export type AggregatedPanelStats = PublicPageStats & { servers_counted: number }
 export function aggregatePanelStatistics(snapshots: (PublicPageStats | null | undefined)[]): AggregatedPanelStats {
 	const rows = snapshots.filter(Boolean) as PublicPageStats[];
 	const keys = new Set<string>();
-	for (const row of rows) for (const k of Object.keys(row)) keys.add(k);
+	for (const row of rows) {
+		for (const k of Object.keys(row)) {
+			keys.add(k);
+		}
+	}
 
 	const out: Record<string, number> = {};
-	for (const key of keys) out[key] = 0;
+	for (const key of keys) {
+		out[key] = 0;
+	}
 
 	const maxSet = new Set<string>(MAX_FIELDS);
 	const avgSet = new Set<string>(AVG_FIELDS);
@@ -33,7 +39,8 @@ export function aggregatePanelStatistics(snapshots: (PublicPageStats | null | un
 				out[key] = Math.max(out[key], val);
 			} else if (avgSet.has(key)) {
 				const weight = key === 'staff_avg_rating' ? Number(row.staff_reviews) || 0 : Number(row.members_with_levels) || 0;
-				const acc = (avgWeights[key] ??= { sum: 0, weight: 0 });
+				avgWeights[key] ??= { sum: 0, weight: 0 };
+				const acc = avgWeights[key];
 				acc.sum += val * weight;
 				acc.weight += weight;
 			} else {

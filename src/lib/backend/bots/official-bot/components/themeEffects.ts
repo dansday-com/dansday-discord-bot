@@ -5,34 +5,42 @@ import { MAINTAINER_DISCORD_ID } from '../../../../url.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { serverTranslator } from '../i18n.js';
+import type { Client } from 'discord.js';
+import { EMBED_COLORS } from './embedColors.js';
 
 const ANNOUNCE_DELAY_MS = 7000;
 
-async function resolveServerMemberId(serverId: any, discordId: any) {
+async function resolveServerMemberId(serverId: number | string, discordId: number | string) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordId)).catch(() => null);
 	return member?.id ?? null;
 }
 
-export async function handleThemeEffectSet(payload: any) {
+export async function handleThemeEffectSet(payload: { guild_id?: string; actor_discord_id?: string; effect?: unknown; seed?: unknown }) {
 	const { guild_id, actor_discord_id, effect, seed } = payload || {};
-	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const family = String(effect || '');
-	if (!(EFFECT_FAMILIES as readonly string[]).includes(family)) return { ok: false, error: 'unknown_effect' };
+	if (!(EFFECT_FAMILIES as readonly string[]).includes(family)) {
+		return { ok: false, error: 'unknown_effect' };
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
-	if (!MAINTAINER_DISCORD_ID || String(actor_discord_id) !== MAINTAINER_DISCORD_ID) return { ok: false, error: 'forbidden' };
+	if (!MAINTAINER_DISCORD_ID || String(actor_discord_id) !== MAINTAINER_DISCORD_ID) {
+		return { ok: false, error: 'forbidden' };
+	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+	if (!actorMemberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const picked = seed === null || seed === undefined || seed === '' ? randomSeed() : normalizeSeed(seed);
 	await db.setMemberTheme(actorMemberId, { effect: family, effectSeed: picked, effectEnabled: true });
@@ -40,27 +48,33 @@ export async function handleThemeEffectSet(payload: any) {
 	return { ok: true, result: { effect: family, seed: picked, label: effectMeta(family)?.label ?? family } };
 }
 
-export async function handleThemeEffectSpin(client: any, payload: any) {
+export async function handleThemeEffectSpin(client: Client, payload: { guild_id?: string; actor_discord_id?: string }) {
 	const { guild_id, actor_discord_id } = payload || {};
-	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+	if (!actorMemberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const balance = await getSpendableXp(actorMemberId, guild_id);
-	if (balance.total < EFFECT_SPIN_COST) return { ok: false, error: 'insufficient_xp' };
+	if (balance.total < EFFECT_SPIN_COST) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const spend = await spendXp(actorMemberId, EFFECT_SPIN_COST, guild_id);
-	if (!spend.ok) return { ok: false, error: 'insufficient_xp' };
+	if (!spend.ok) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const { effect, seed } = rollEffect();
 	await db.setMemberTheme(actorMemberId, { effect, effectSeed: seed, effectEnabled: true });
@@ -88,33 +102,47 @@ export async function handleThemeEffectSpin(client: any, payload: any) {
 	return { ok: true, result };
 }
 
-function fmtXp(v: any): string {
+function fmtXp(v: unknown): string {
 	return `${Math.abs(Number(v) || 0).toLocaleString()} XP`;
 }
 
-async function announceEffectSpin(client: any, ctx: any) {
+type EffectSpinAnnouncement = {
+	guildId: string;
+	actorDiscordId: string;
+	result: { effect: string; seed: number; cost: number; label: string };
+};
+
+async function announceEffectSpin(client: Client, ctx: EffectSpinAnnouncement) {
 	const { guildId, actorDiscordId, result } = ctx;
-	if (!result) return;
+	if (!result) {
+		return;
+	}
 
 	try {
 		const { getMinigamesChannelId, getEmbedConfig } = await import('../../../config.js');
 		const channelId = await getMinigamesChannelId(guildId);
-		if (!channelId) return;
+		if (!channelId) {
+			return;
+		}
 
 		const guild = client?.guilds?.cache?.get(guildId);
-		if (!guild) return;
+		if (!guild) {
+			return;
+		}
 		const channel = await guild.channels.fetch(channelId).catch(() => null);
-		if (!channel || !channel.isTextBased()) return;
+		if (!channel || !channel.isTextBased()) {
+			return;
+		}
 
 		const { EmbedBuilder } = await import('discord.js');
 		const tr = await serverTranslator(guildId);
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: '' }));
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: EMBED_COLORS.gold, FOOTER: '' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const actorMention = actor ? `${actor}` : tr('minigames.someone');
 
 		const embed = new EmbedBuilder()
-			.setColor(0xc8911a)
+			.setColor(EMBED_COLORS.gold)
 			.setTitle(tr('themeEffects.spin.title'))
 			.setDescription(tr('themeEffects.spin.description', { member: actorMention, cost: fmtXp(result.cost), effect: result.label }))
 			.addFields(
@@ -127,7 +155,7 @@ async function announceEffectSpin(client: any, ctx: any) {
 
 		const content = actor ? `${actor}` : undefined;
 		await channel.send({ content, embeds: [embed] }).catch(() => null);
-	} catch (err: any) {
-		await logger.log(`⚠️ Theme effect spin announce failed: ${err?.message || String(err)}`);
+	} catch (err) {
+		await logger.log(`⚠️ Theme effect spin announce failed: ${(err as Error)?.message || String(err)}`);
 	}
 }

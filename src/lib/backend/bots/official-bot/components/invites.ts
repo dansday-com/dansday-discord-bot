@@ -1,4 +1,4 @@
-import { ChannelType, PermissionFlagsBits } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, RESTJSONErrorCodes } from 'discord.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import {
@@ -13,6 +13,8 @@ import {
 } from '../../../config.js';
 import { awardInviteXp } from './leveling.js';
 import { INVITE_STAFF_MULTIPLIER } from '../../../../invites.js';
+import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, NewsChannel, PartialGuildMember, TextChannel } from 'discord.js';
+import { DAY_MS, HOUR_MS, MINUTE_MS } from '../../../../utils/time.js';
 
 type CachedInvite = { uses: number; inviterId: string | null; maxUses: number; expiresAt: number | null };
 type GuildInviteState = { invites: Map<string, CachedInvite>; vanityCode: string | null; vanityUses: number | null };
@@ -28,17 +30,20 @@ export type JoinInviteResult = {
 	inviterTotal: number | null;
 };
 
-const REWARD_SWEEP_MS = 5 * 60_000;
+const REWARD_SWEEP_MINUTES = 5;
+const REWARD_SWEEP_MS = REWARD_SWEEP_MINUTES * MINUTE_MS;
 const DELETED_INVITE_GRACE_MS = 15_000;
 const JOIN_RESULT_TTL_MS = 60_000;
 const WARMUP_GAP_MS = 750;
-const UNKNOWN_MEMBER_CODES = new Set([10007, 10013]);
-const SERVER_INVITE_CHECK_MS = 30 * 60_000;
+const UNKNOWN_MEMBER_CODES = new Set<number>([RESTJSONErrorCodes.UnknownMember, RESTJSONErrorCodes.UnknownUser]);
+const SERVER_INVITE_CHECK_MINUTES = 30;
+const SERVER_INVITE_CHECK_MS = SERVER_INVITE_CHECK_MINUTES * MINUTE_MS;
+const REWARD_BATCH_SIZE = 50;
 
 const guildStates = new Map<string, GuildInviteState>();
 const guildQueues = new Map<string, Promise<unknown>>();
 const joinResults = new Map<string, Promise<JoinInviteResult | null>>();
-let clientRef: any = null;
+let clientRef: Client | null = null;
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 let serverInviteTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -52,11 +57,11 @@ function enqueue<T>(guildId: string, task: () => Promise<T>): Promise<T> {
 	return next;
 }
 
-export function canReadInvites(guild: any): boolean {
+export function canReadInvites(guild: Guild): boolean {
 	return guild?.members?.me?.permissions?.has?.(PermissionFlagsBits.ManageGuild) === true;
 }
 
-function toCached(invite: any): CachedInvite {
+function toCached(invite: Invite): CachedInvite {
 	return {
 		uses: Number(invite.uses) || 0,
 		inviterId: invite.inviterId ?? invite.inviter?.id ?? null,
@@ -65,12 +70,18 @@ function toCached(invite: any): CachedInvite {
 	};
 }
 
-async function snapshotGuild(guild: any): Promise<GuildInviteState | null> {
-	if (!canReadInvites(guild)) return null;
+async function snapshotGuild(guild: Guild): Promise<GuildInviteState | null> {
+	if (!canReadInvites(guild)) {
+		return null;
+	}
 	const fetched = await guild.invites.fetch({ cache: false }).catch(() => null);
-	if (!fetched) return null;
+	if (!fetched) {
+		return null;
+	}
 	const invites = new Map<string, CachedInvite>();
-	for (const invite of fetched.values()) invites.set(invite.code, toCached(invite));
+	for (const invite of fetched.values()) {
+		invites.set(invite.code, toCached(invite));
+	}
 	let vanityCode: string | null = guild.vanityURLCode ?? null;
 	let vanityUses: number | null = null;
 	if (vanityCode) {
@@ -91,13 +102,21 @@ function diffSnapshots(before: GuildInviteState, after: GuildInviteState): { att
 
 	for (const [code, invite] of after.invites) {
 		const delta = invite.uses - (before.invites.get(code)?.uses ?? 0);
-		if (delta > 0) candidates.push({ code, inviterDiscordId: invite.inviterId, source: 'invite', delta });
+		if (delta > 0) {
+			candidates.push({ code, inviterDiscordId: invite.inviterId, source: 'invite', delta });
+		}
 	}
 
 	for (const [code, invite] of before.invites) {
-		if (after.invites.has(code)) continue;
-		if (invite.maxUses <= 0 || invite.uses + 1 < invite.maxUses) continue;
-		if (invite.expiresAt && invite.expiresAt <= now) continue;
+		if (after.invites.has(code)) {
+			continue;
+		}
+		if (invite.maxUses <= 0 || invite.uses + 1 < invite.maxUses) {
+			continue;
+		}
+		if (invite.expiresAt && invite.expiresAt <= now) {
+			continue;
+		}
 		candidates.push({ code, inviterDiscordId: invite.inviterId, source: 'invite', delta: 1 });
 	}
 
@@ -105,19 +124,25 @@ function diffSnapshots(before: GuildInviteState, after: GuildInviteState): { att
 		candidates.push({ code: after.vanityCode, inviterDiscordId: null, source: 'vanity', delta: after.vanityUses - before.vanityUses });
 	}
 
-	if (candidates.length !== 1) return { attribution: UNKNOWN_ATTRIBUTION, extra: 0 };
+	if (candidates.length !== 1) {
+		return { attribution: UNKNOWN_ATTRIBUTION, extra: 0 };
+	}
 	const [{ delta, ...attribution }] = candidates;
 	return { attribution, extra: delta - 1 };
 }
 
 function holdBackUses(state: GuildInviteState, attribution: Attribution, extra: number) {
-	if (extra <= 0) return;
+	if (extra <= 0) {
+		return;
+	}
 	if (attribution.source === 'vanity' && state.vanityUses != null) {
 		state.vanityUses -= extra;
 		return;
 	}
 	const cached = attribution.code ? state.invites.get(attribution.code) : null;
-	if (cached) cached.uses -= extra;
+	if (cached) {
+		cached.uses -= extra;
+	}
 }
 
 async function loadInviteSettings(guildId: string) {
@@ -128,55 +153,71 @@ async function loadInviteSettings(guildId: string) {
 	}
 }
 
-async function resolveInviterMember(guild: any, serverId: number, discordId: string) {
+async function resolveInviterMember(guild: Guild, serverId: number, discordId: string) {
 	const existing = await db.getMemberByDiscordId(serverId, discordId, { includeDeleted: true }).catch(() => null);
-	if (existing) return existing;
+	if (existing) {
+		return existing;
+	}
 	const guildMember = await guild.members.fetch(discordId).catch(() => null);
-	if (!guildMember) return null;
+	if (!guildMember) {
+		return null;
+	}
 	return db.upsertMember(serverId, guildMember).catch(() => null);
 }
 
-async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | null> {
-	const guild = member.guild;
+async function resolveAndRecordJoin(member: GuildMember): Promise<JoinInviteResult | null> {
+	const { guild } = member;
 	const before = guildStates.get(guild.id) ?? null;
 	const after = await snapshotGuild(guild);
-	if (after) guildStates.set(guild.id, after);
+	if (after) {
+		guildStates.set(guild.id, after);
+	}
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild.id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild.id).catch(() => null);
+	if (!server) {
 		return null;
 	}
 
 	const { attribution, extra } = before && after ? diffSnapshots(before, after) : { attribution: UNKNOWN_ATTRIBUTION, extra: 0 };
-	if (after) holdBackUses(after, attribution, extra);
+	if (after) {
+		holdBackUses(after, attribution, extra);
+	}
 
-	let inviterDiscordId = attribution.inviterDiscordId;
+	let { inviterDiscordId } = attribution;
 	let source: string = attribution.source;
 	if (attribution.code && attribution.source === 'invite') {
 		const owners = await db.getInviteLinkOwners(server.id).catch(() => []);
-		const owner = owners.find((o: any) => o.code === attribution.code);
+		const owner = owners.find((o) => o.code === attribution.code);
 		if (owner) {
 			inviterDiscordId = String(owner.discord_member_id);
 			source = 'personal';
-		} else if ((await db.getServer(server.id).catch(() => null))?.invite_code === attribution.code) source = 'server';
+		} else if ((await db.getServer(server.id).catch(() => null))?.invite_code === attribution.code) {
+			source = 'server';
+		}
 	}
-	if (inviterDiscordId && inviterDiscordId === guild.client?.user?.id) inviterDiscordId = null;
+	if (inviterDiscordId && inviterDiscordId === guild.client?.user?.id) {
+		inviterDiscordId = null;
+	}
 
 	const invitee = await db.upsertMember(server.id, member).catch(() => null);
-	if (!invitee?.id) return null;
+	if (!invitee?.id) {
+		return null;
+	}
 
 	const settings = await loadInviteSettings(guild.id);
 	const inviter = inviterDiscordId ? await resolveInviterMember(guild, server.id, inviterDiscordId) : null;
-	const accountAgeDays = member.user?.createdTimestamp ? (Date.now() - member.user.createdTimestamp) / 86_400_000 : Infinity;
+	const accountAgeDays = member.user?.createdTimestamp ? (Date.now() - member.user.createdTimestamp) / DAY_MS : Infinity;
 
 	let fakeReason: string | null = null;
-	if (inviterDiscordId && inviterDiscordId === member.id) fakeReason = 'self';
-	else if (inviter?.is_bot) fakeReason = 'bot';
-	else if (settings.MIN_ACCOUNT_AGE_DAYS > 0 && accountAgeDays < settings.MIN_ACCOUNT_AGE_DAYS) fakeReason = 'account_age';
+	if (inviterDiscordId && inviterDiscordId === member.id) {
+		fakeReason = 'self';
+	} else if (inviter?.is_bot) {
+		fakeReason = 'bot';
+	} else if (settings.MIN_ACCOUNT_AGE_DAYS > 0 && accountAgeDays < settings.MIN_ACCOUNT_AGE_DAYS) {
+		fakeReason = 'account_age';
+	}
 
-	const { rejoin } = await db.recordMemberJoinInvite({
+	const { rejoin: isRejoin } = await db.recordMemberJoinInvite({
 		member_id: Number(invitee.id),
 		inviter_member_id: inviter?.id ? Number(inviter.id) : null,
 		code: attribution.code,
@@ -193,7 +234,7 @@ async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | nul
 	const storedSource = stored?.source ?? attribution.source;
 	const sourceLabel = storedSource === 'invite' || storedSource === 'personal' ? `${storedSource} code ${stored?.code ?? attribution.code}` : storedSource;
 	await logger.log(
-		`📨 Join attributed: ${member.user?.tag || member.id} → ${storedInviterId ? `inviter ${storedInviterId}` : 'no inviter'} (${sourceLabel}${storedFake ? `, fake: ${storedFake}` : ''}${rejoin ? ', rejoin' : ''})`
+		`📨 Join attributed: ${member.user?.tag || member.id} → ${storedInviterId ? `inviter ${storedInviterId}` : 'no inviter'} (${sourceLabel}${storedFake ? `, fake: ${storedFake}` : ''}${isRejoin ? ', rejoin' : ''})`
 	);
 
 	if (settings.HOLD_HOURS === 0 && storedInviter?.id && !storedFake) {
@@ -206,20 +247,24 @@ async function resolveAndRecordJoin(member: any): Promise<JoinInviteResult | nul
 		code: stored?.code ?? attribution.code,
 		source: storedSource,
 		fakeReason: storedFake,
-		rejoin,
+		rejoin: isRejoin,
 		inviterTotal
 	};
 }
 
-function joinKey(member: any) {
+function joinKey(member: GuildMember | PartialGuildMember) {
 	return `${member.guild.id}:${member.id}:${member.joinedTimestamp ?? 0}`;
 }
 
-export function attributeJoin(member: any): Promise<JoinInviteResult | null> {
-	if (!member?.guild || member.user?.bot) return Promise.resolve(null);
+export function attributeJoin(member: GuildMember): Promise<JoinInviteResult | null> {
+	if (!member?.guild || member.user?.bot) {
+		return Promise.resolve(null);
+	}
 	const key = joinKey(member);
 	const pending = joinResults.get(key);
-	if (pending) return pending;
+	if (pending) {
+		return pending;
+	}
 	const result = enqueue(member.guild.id, () => resolveAndRecordJoin(member)).catch(async (error) => {
 		await logger.log(`❌ Invite attribution failed for ${member.id}: ${error.message}`);
 		return null;
@@ -229,20 +274,20 @@ export function attributeJoin(member: any): Promise<JoinInviteResult | null> {
 	return result;
 }
 
-async function recordLeave(member: any) {
-	const guild = member.guild;
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild.id);
-	} catch (_) {
+async function recordLeave(member: GuildMember | PartialGuildMember) {
+	const { guild } = member;
+	const server = await getServerForCurrentBot(guild.id).catch(() => null);
+	if (!server) {
 		return;
 	}
 	const dbMember = await db.getMemberByDiscordId(server.id, member.id, { includeDeleted: true }).catch(() => null);
-	if (!dbMember?.id) return;
+	if (!dbMember?.id) {
+		return;
+	}
 	await db.markMemberInviteLeft(Number(dbMember.id));
 }
 
-async function isStaffMember(guildMember: any): Promise<boolean> {
+async function isStaffMember(guildMember: GuildMember): Promise<boolean> {
 	try {
 		const perms = await PERMISSIONS.getPermissions(guildMember.guild.id);
 		return await PERMISSIONS.hasAnyRole(guildMember, perms.STAFF_ROLES);
@@ -251,158 +296,197 @@ async function isStaffMember(guildMember: any): Promise<boolean> {
 	}
 }
 
-export async function inviteRewardFor(guildMember: any): Promise<{ xp: number; multiplier: number }> {
+export async function inviteRewardFor(guildMember: GuildMember): Promise<{ xp: number; multiplier: number }> {
 	const settings = await loadInviteSettings(guildMember.guild.id);
 	const multiplier = (await isStaffMember(guildMember)) ? INVITE_STAFF_MULTIPLIER : 1;
 	return { xp: settings.XP * multiplier, multiplier };
 }
 
-async function fetchGuildMember(guild: any, discordId: string): Promise<{ member: any; gone: boolean }> {
+async function fetchGuildMember(guild: Guild, discordId: string): Promise<{ member: GuildMember | null; gone: boolean }> {
 	const cached = guild.members.cache.get(discordId);
-	if (cached) return { member: cached, gone: false };
+	if (cached) {
+		return { member: cached, gone: false };
+	}
 	try {
 		return { member: await guild.members.fetch(discordId), gone: false };
 	} catch (error) {
-		return { member: null, gone: UNKNOWN_MEMBER_CODES.has(Number(error?.code)) };
+		return { member: null, gone: UNKNOWN_MEMBER_CODES.has(Number((error as { code?: unknown } | null)?.code)) };
 	}
 }
 
-async function processGuildRewards(guild: any, serverId: number) {
+async function processGuildRewards(guild: Guild, serverId: number) {
 	const settings = await loadInviteSettings(guild.id);
-	const levelingOn = await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling).catch(() => false);
-	const cutoff = new Date(Date.now() - settings.HOLD_HOURS * 3_600_000);
-	const due = await db.getDueInviteRewards(serverId, cutoff, 50);
+	const isLevelingOn = await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling).catch(() => false);
+	const cutoff = new Date(Date.now() - settings.HOLD_HOURS * HOUR_MS);
+	const due = await db.getDueInviteRewards(serverId, cutoff, REWARD_BATCH_SIZE);
 
 	for (const row of due) {
-		if (!levelingOn || settings.XP <= 0) {
+		if (!isLevelingOn || settings.XP <= 0) {
 			await db.claimInviteReward(Number(row.id), 0);
 			continue;
 		}
 		const invitee = await fetchGuildMember(guild, row.invitee_discord_id);
 		if (!invitee.member) {
-			if (invitee.gone) await db.markMemberInviteLeft(Number(row.member_id));
+			if (invitee.gone) {
+				await db.markMemberInviteLeft(Number(row.member_id));
+			}
 			continue;
 		}
 		const inviterLookup = await fetchGuildMember(guild, row.inviter_discord_id);
 		const inviter = inviterLookup.member;
 		if (!inviter) {
-			if (inviterLookup.gone) await db.claimInviteReward(Number(row.id), 0);
+			if (inviterLookup.gone) {
+				await db.claimInviteReward(Number(row.id), 0);
+			}
 			continue;
 		}
 
 		const { xp, multiplier } = await inviteRewardFor(inviter);
-		if (!(await db.claimInviteReward(Number(row.id), xp))) continue;
-		const awarded = await awardInviteXp(guild, inviter, xp, { multiplier, inviteeName: row.invitee_name ?? null });
-		if (!awarded) await db.releaseInviteReward(Number(row.id));
+		if (!(await db.claimInviteReward(Number(row.id), xp))) {
+			continue;
+		}
+		const awarded = await awardInviteXp(guild, inviter, { xp, meta: { multiplier, inviteeName: row.invitee_name ?? null } });
+		if (!awarded) {
+			await db.releaseInviteReward(Number(row.id));
+		}
 	}
 }
 
 async function sweepRewards() {
-	if (!clientRef) return;
+	if (!clientRef) {
+		return;
+	}
 	const botId = getBotConfig()?.id;
-	if (!botId) return;
+	if (!botId) {
+		return;
+	}
 	const servers = await db.getPendingInviteServers(Number(botId)).catch(() => []);
 	for (const s of servers) {
 		const guild = clientRef.guilds.cache.get(String(s.discord_server_id));
-		if (!guild) continue;
+		if (!guild) {
+			continue;
+		}
 		await enqueue(guild.id, () => processGuildRewards(guild, Number(s.server_id))).catch(async (error) => {
 			await logger.log(`⚠️ Invite reward sweep failed for ${guild.id}: ${error.message}`);
 		});
 	}
 }
 
-export function pickInviteChannel(guild: any) {
-	const me = guild.members.me;
-	const everyone = guild.roles.everyone;
-	const usable = (channel: any) =>
+export function pickInviteChannel(guild: Guild) {
+	const me = guild.members.me!;
+	const { everyone } = guild.roles;
+	const usable = (channel: GuildBasedChannel | null) =>
 		channel &&
 		(channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) &&
 		channel.permissionsFor(me)?.has(PermissionFlagsBits.CreateInstantInvite) &&
 		channel.permissionsFor(everyone)?.has(PermissionFlagsBits.ViewChannel);
 	const preferred = [guild.rulesChannel, guild.systemChannel].find(usable);
-	if (preferred) return preferred;
-	return [...guild.channels.cache.values()].filter(usable).sort((a: any, b: any) => a.rawPosition - b.rawPosition)[0] ?? null;
+	if (preferred) {
+		return preferred;
+	}
+	return ([...guild.channels.cache.values()].filter(usable) as (TextChannel | NewsChannel)[]).sort((a, b) => a.rawPosition - b.rawPosition)[0] ?? null;
 }
 
-async function ensureServerInvite(guild: any) {
-	if (guild.vanityURLCode) return;
-	if (!(await isPublicSubFeatureEnabled(guild.id, 'invite').catch(() => false))) return;
+async function ensureServerInvite(guild: Guild) {
+	if (guild.vanityURLCode) {
+		return;
+	}
+	if (!(await isPublicSubFeatureEnabled(guild.id, 'invite').catch(() => false))) {
+		return;
+	}
 	const state = guildStates.get(guild.id);
-	if (!state) return;
+	if (!state) {
+		return;
+	}
 
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild.id);
-	} catch (_) {
+	const server = await getServerForCurrentBot(guild.id).catch(() => null);
+	if (!server) {
 		return;
 	}
 	const current = (await db.getServer(server.id).catch(() => null))?.invite_code ?? null;
 	const botUserId = guild.client?.user?.id;
 	const cached = current ? state.invites.get(current) : null;
-	if (cached && cached.inviterId === botUserId && !cached.expiresAt && !(await db.getPersonalInviteCodes([current])).has(current)) return;
+	if (cached && cached.inviterId === botUserId && !cached.expiresAt && !(await db.getPersonalInviteCodes([current!])).has(current!)) {
+		return;
+	}
 
 	const channel = pickInviteChannel(guild);
-	if (!channel) return;
+	if (!channel) {
+		return;
+	}
 	const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: 'Server invite link' }).catch(() => null);
-	if (!invite?.code) return;
+	if (!invite?.code) {
+		return;
+	}
 	rememberCreatedInvite(guild.id, invite);
 	await db.setServerInviteCode(Number(server.id), invite.code);
 }
 
-async function warmGuild(guild: any) {
+async function warmGuild(guild: Guild) {
 	const state = await snapshotGuild(guild);
-	if (state) guildStates.set(guild.id, state);
-	else guildStates.delete(guild.id);
+	if (state) {
+		guildStates.set(guild.id, state);
+	} else {
+		guildStates.delete(guild.id);
+	}
 	await ensureServerInvite(guild).catch(() => null);
 }
 
-async function warmAll(client: any) {
+async function warmAll(client: Client) {
 	for (const guild of client.guilds.cache.values()) {
 		await enqueue(guild.id, () => warmGuild(guild)).catch(() => null);
 		await new Promise((resolve) => setTimeout(resolve, WARMUP_GAP_MS));
 	}
 }
 
-async function checkServerInvites(client: any) {
+async function checkServerInvites(client: Client) {
 	for (const guild of client.guilds.cache.values()) {
 		await enqueue(guild.id, () => ensureServerInvite(guild)).catch(() => null);
 		await new Promise((resolve) => setTimeout(resolve, WARMUP_GAP_MS));
 	}
 }
 
-export function rememberCreatedInvite(guildId: string, invite: any) {
+export function rememberCreatedInvite(guildId: string, invite: Invite) {
 	const state = guildStates.get(guildId);
-	if (state && invite?.code) state.invites.set(invite.code, toCached(invite));
+	if (state && invite?.code) {
+		state.invites.set(invite.code, toCached(invite));
+	}
 }
 
-function init(client: any) {
+function init(client: Client) {
 	clientRef = client;
 
-	client.on('inviteCreate', (invite: any) => {
-		if (invite.guild?.id) rememberCreatedInvite(invite.guild.id, invite);
+	client.on('inviteCreate', (invite) => {
+		if (invite.guild?.id) {
+			rememberCreatedInvite(invite.guild.id, invite);
+		}
 	});
 
-	client.on('inviteDelete', (invite: any) => {
+	client.on('inviteDelete', (invite) => {
 		const guildId = invite.guild?.id;
-		if (!guildId) return;
+		if (!guildId) {
+			return;
+		}
 		setTimeout(() => guildStates.get(guildId)?.invites.delete(invite.code), DELETED_INVITE_GRACE_MS);
 	});
 
-	client.on('guildCreate', (guild: any) => {
+	client.on('guildCreate', (guild: Guild) => {
 		enqueue(guild.id, () => warmGuild(guild)).catch(() => null);
 	});
 
-	client.on('guildDelete', (guild: any) => {
+	client.on('guildDelete', (guild: Guild) => {
 		guildStates.delete(guild.id);
 		guildQueues.delete(guild.id);
 	});
 
-	client.on('guildMemberAdd', (member: any) => {
+	client.on('guildMemberAdd', (member: GuildMember) => {
 		attributeJoin(member).catch(() => null);
 	});
 
-	client.on('guildMemberRemove', (member: any) => {
-		if (!member.guild || member.user?.bot || member.guild.available === false) return;
+	client.on('guildMemberRemove', (member: GuildMember | PartialGuildMember) => {
+		if (!member.guild || member.user?.bot || member.guild.available === false) {
+			return;
+		}
 		joinResults.delete(joinKey(member));
 		enqueue(member.guild.id, () => recordLeave(member)).catch(async (error) => {
 			await logger.log(`⚠️ Invite leave tracking failed for ${member.id}: ${error.message}`);
@@ -410,21 +494,29 @@ function init(client: any) {
 	});
 
 	warmAll(client).catch(() => null);
-	if (sweepTimer) clearInterval(sweepTimer);
+	if (sweepTimer) {
+		clearInterval(sweepTimer);
+	}
 	sweepTimer = setInterval(() => {
 		sweepRewards().catch(() => null);
 	}, REWARD_SWEEP_MS);
 	sweepRewards().catch(() => null);
-	if (serverInviteTimer) clearInterval(serverInviteTimer);
+	if (serverInviteTimer) {
+		clearInterval(serverInviteTimer);
+	}
 	serverInviteTimer = setInterval(() => {
 		checkServerInvites(client).catch(() => null);
 	}, SERVER_INVITE_CHECK_MS);
 }
 
 export function stopInviteRewards() {
-	if (sweepTimer) clearInterval(sweepTimer);
+	if (sweepTimer) {
+		clearInterval(sweepTimer);
+	}
 	sweepTimer = null;
-	if (serverInviteTimer) clearInterval(serverInviteTimer);
+	if (serverInviteTimer) {
+		clearInterval(serverInviteTimer);
+	}
 	serverInviteTimer = null;
 }
 

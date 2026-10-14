@@ -3,6 +3,8 @@
 	import { sfx } from '../../sfx';
 	import type { Snippet } from 'svelte';
 
+	const WIN_PAYOUT_QUALITY = 0.6;
+
 	let {
 		tone = 'neutral',
 		icon,
@@ -33,9 +35,13 @@
 
 	$effect(() => {
 		title;
-		if (tone === 'win') sfx.payout(0.6);
-		else if (tone === 'lose') sfx.bust();
-		else sfx.buy();
+		if (tone === 'win') {
+			sfx.payout(WIN_PAYOUT_QUALITY);
+		} else if (tone === 'lose') {
+			sfx.bust();
+		} else {
+			sfx.buy();
+		}
 	});
 
 	function close() {

@@ -1,10 +1,13 @@
 import { getRedisClient } from '../../../../redis.js';
+import { SECOND_MS } from '../../../../utils/time.js';
 
 const local = new Map<string, { value: unknown; expires: number }>();
 
 function readLocal(key: string) {
 	const entry = local.get(key);
-	if (!entry) return undefined;
+	if (!entry) {
+		return undefined;
+	}
 	if (Date.now() >= entry.expires) {
 		local.delete(key);
 		return undefined;
@@ -13,12 +16,14 @@ function readLocal(key: string) {
 }
 
 function writeLocal(key: string, value: unknown, ttlSeconds: number) {
-	local.set(key, { value, expires: Date.now() + ttlSeconds * 1000 });
+	local.set(key, { value, expires: Date.now() + ttlSeconds * SECOND_MS });
 }
 
 async function readRedis(key: string) {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		return await redis.get(key);
 	} catch (_) {
@@ -28,7 +33,9 @@ async function readRedis(key: string) {
 
 async function writeRedis(key: string, value: unknown, ttlSeconds: number) {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return false;
+	if (!redis) {
+		return false;
+	}
 	try {
 		await redis.set(key, JSON.stringify(value), { EX: ttlSeconds });
 		return true;
@@ -39,7 +46,9 @@ async function writeRedis(key: string, value: unknown, ttlSeconds: number) {
 
 export async function cachedLookup<T>(key: string, ttlSeconds: number, loader: () => Promise<T>): Promise<T> {
 	const hit = readLocal(key);
-	if (hit !== undefined) return hit as T;
+	if (hit !== undefined) {
+		return hit as T;
+	}
 
 	const raw = await readRedis(key);
 	if (raw) {
@@ -61,10 +70,10 @@ export async function cachedLookup<T>(key: string, ttlSeconds: number, loader: (
 export async function invalidateCached(key: string) {
 	local.delete(key);
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return;
-	try {
-		await redis.del(key);
-	} catch (_) {
+	if (!redis) {
 		return;
 	}
+	try {
+		await redis.del(key);
+	} catch (_) {}
 }

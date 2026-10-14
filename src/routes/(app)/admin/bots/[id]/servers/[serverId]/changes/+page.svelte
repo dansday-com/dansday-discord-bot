@@ -31,10 +31,16 @@
 
 	const filtered = $derived(
 		data.logs.filter((l) => {
-			if (filterComponent !== 'all' && l.component !== filterComponent) return false;
-			if (filterRole !== 'all' && l.role !== filterRole) return false;
+			if (filterComponent !== 'all' && l.component !== filterComponent) {
+				return false;
+			}
+			if (filterRole !== 'all' && l.role !== filterRole) {
+				return false;
+			}
 			const q = search.trim().toLowerCase();
-			if (!q) return true;
+			if (!q) {
+				return true;
+			}
 			return (
 				(l.who ?? '').toLowerCase().includes(q) ||
 				l.component_label.toLowerCase().includes(q) ||
@@ -48,9 +54,9 @@
 	const pageLogs = $derived(filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE));
 
 	$effect(() => {
-		void search;
-		void filterComponent;
-		void filterRole;
+		search;
+		filterComponent;
+		filterRole;
 		page = 1;
 	});
 
@@ -93,7 +99,7 @@
 						{#if log.role}
 							<span class="rounded px-1.5 py-0.5 text-xs {ROLE_CLASS[log.role]}">{log.role}</span>
 						{/if}
-						<span class="text-ash-500 text-xs sm:ml-auto"><LocalTime value={log.created_at} includeSeconds class="inline" /></span>
+						<span class="text-ash-500 text-xs sm:ml-auto"><LocalTime value={log.created_at} precision="second" class="inline" /></span>
 					</div>
 					<ul class="mt-2 space-y-1.5">
 						{#each log.changes as change, i (i)}

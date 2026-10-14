@@ -57,8 +57,6 @@
 			"setupOwnerInviteEmbedTitle": "Inhaber-Registrierung",
 			"setupNotOwnerTitle": "Zugriff verweigert",
 			"setupNotOwnerBody": "Nur der **Serverinhaber** kann `/setup` verwenden.",
-			"setupNotTextChannelTitle": "Ungültiger Kanal",
-			"setupNotTextChannelBody": "Bitte wähle einen **Textkanal** aus.",
 			"joinTitle": "Danke, dass du {botName} hinzugefügt hast!",
 			"joinBody": "Führe `/setup` aus, um die Kanäle zu erstellen und die Einrichtung abzuschließen.",
 			"joinAskAi": "Du weißt nicht, wo du anfangen sollst? Erwähne {botMention} und frag einfach — der Bot liest die Dokumentation und führt dich durch die Einrichtung.",
@@ -141,8 +139,7 @@
 			"unavailable": "⚠️ Öffentliche Seiten sind für diesen Server deaktiviert. Bitte einen Server-Admin, sie im Bot-Konfigurationspanel zu aktivieren."
 		},
 		"errors": {
-			"notRegistered": "⚠️ Dieser Server ist noch nicht vollständig mit dem Bot verbunden. Versuche es in ein paar Minuten erneut und bitte einen Server-Admin, das Bot-Konfigurationspanel zu prüfen, wenn es weiterhin passiert.",
-			"createRecordFailed": "❌ Mitgliedseintrag konnte nicht erstellt werden. Bitte versuche es erneut."
+			"notRegistered": "⚠️ Dieser Server ist noch nicht vollständig mit dem Bot verbunden. Versuche es in ein paar Minuten erneut und bitte einen Server-Admin, das Bot-Konfigurationspanel zu prüfen, wenn es weiterhin passiert."
 		},
 		"fields": {
 			"level": "⭐ Level",
@@ -431,7 +428,6 @@
 		"modal": {
 			"title": "Teammitglied melden",
 			"ratingLabel": "Bewertung (1-5 Sterne)",
-			"ratingPlaceholder": "1 = Sehr schlecht, 5 = Ausgezeichnet",
 			"categoryLabel": "Kategorie",
 			"descriptionLabel": "Beschreibung",
 			"descriptionPlaceholder": "Beschreibe bitte deine Erfahrung mit diesem Teammitglied...",
@@ -440,8 +436,7 @@
 		"submitted": {
 			"title": "✅ Meldung gesendet",
 			"description": "Deine Meldung wurde erfolgreich gesendet und wartet nun auf die Admin-Freigabe. Wir benachrichtigen dich, sobald sie geprüft wurde.",
-			"anonymous": "\\n\\n🔒 Deine Meldung wurde anonym gesendet.",
-			"roleUpdated": "\\n\\n⭐ **Team-Bewertung aktualisiert**\\n{roleName}\\nBewertung: {rating}/5.00 ({totalReports} Meldungen)"
+			"anonymous": "\\n\\n🔒 Deine Meldung wurde anonym gesendet."
 		},
 		"dm": {
 			"approved": "Deine Meldung über {staff} in **{server}** wurde genehmigt.\\n\\n**Bewertung:** {rating}/5\\n**Kategorie:** {category}\\n**Feedback:** {description}\\n\\n**Anmerkung des Teams:** {reason}\\n\\nDanke, dass du dazu beiträgst, das Team verantwortlich zu halten.",
@@ -458,7 +453,6 @@
 			"rude": "😠 Unhöfliches Verhalten"
 		},
 		"errors": {
-			"noStaffSelected": "❌ Bitte wähle ein Teammitglied zum Melden aus.",
 			"invalidRating": "❌ **Ungültige Bewertung**\\n\\nDie Bewertung muss eine Zahl zwischen 1 und 5 sein.",
 			"invalidCategory": "❌ **Ungültige Kategorie**\\n\\nBitte wähle eine Kategorie aus der Liste.",
 			"emptyDescription": "❌ **Beschreibung erforderlich**\\n\\nBitte beschreibe deine Erfahrung.",
@@ -717,7 +711,7 @@
 		},
 		"tokenTooShort": "Token zu kurz.",
 		"invalidTokenTitle": "Ungültiger Token",
-		"invalidTokenDescription": "Der angegebene Token scheint ungültig oder abgelaufen zu sein.\n`{error}`",
+		"invalidTokenDescription": "Der angegebene Token scheint ungültig oder abgelaufen zu sein. Kopiere einen neuen Token und sende ihn erneut.",
 		"invalidQuestId": "Ungültige Quest-ID.",
 		"missingQuestOrToken": "Quest-ID fehlt oder Token zu kurz.",
 		"taskTypes": {

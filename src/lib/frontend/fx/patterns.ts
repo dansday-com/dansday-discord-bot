@@ -1,4 +1,4 @@
-import { mulberry32 } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 import { blit, clear, edge, hsl, paint, plot, stamp, type FxProgram, type FxScene } from './engine.js';
 
 export function makeQuake(rows: number): FxProgram {
@@ -10,8 +10,10 @@ export function makeQuake(rows: number): FxProgram {
 			const r = mulberry32(s.v.seed + 1201);
 			const cracks: number[][] = [];
 			const n = 2 + ((r() * 3) | 0);
-			for (let i = 0; i < n; i++) cracks.push([0.1 + r() * 0.8, r() * 200, 0.5 + r() * 0.8, r() < 0.5 ? -1 : 1]);
-			(s as any).cracks = cracks;
+			for (let i = 0; i < n; i++) {
+				cracks.push([0.1 + r() * 0.8, r() * 200, 0.5 + r() * 0.8, r() < 0.5 ? -1 : 1]);
+			}
+			s.cracks = cracks;
 			for (let i = 0; i < s.n; i++) {
 				const p = s.parts;
 				p[i * 6] = s.rnd() * s.w;
@@ -24,14 +26,20 @@ export function makeQuake(rows: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const cracks = (s as any).cracks as number[][];
+			const cracks = s.cracks as number[][];
 			const gy = s.h * 0.7;
 			const [rr, rg, rb] = hsl(s.v.hue, s.v.sat, 22);
 			const [er, eg, eb] = hsl(s.v.hue, s.v.sat, 46);
-			for (let x = 0; x < s.w; x++) for (let y = gy; y < s.h; y++) plot(s, x, y, rr, rg, rb, 0.95);
+			for (let x = 0; x < s.w; x++) {
+				for (let y = gy; y < s.h; y++) {
+					plot(s, x, y, rr, rg, rb, 0.95);
+				}
+			}
 			for (const [fx, off, scale, dir] of cracks) {
 				const open = Math.max(0, Math.sin((s.t - off) * 0.012 * s.v.speed)) * scale;
-				if (open < 0.02) continue;
+				if (open < 0.02) {
+					continue;
+				}
 				const cx = fx * s.w;
 				let x = cx;
 				for (let y = gy; y < s.h; y++) {
@@ -39,8 +47,10 @@ export function makeQuake(rows: number): FxProgram {
 					const w = open * s.w * 0.035 * (1 - (y - gy) / (s.h - gy));
 					for (let k = -w; k <= w; k++) {
 						const i = ((y | 0) * s.w + ((x + k) | 0)) * 4;
-						if (i < 0 || i >= s.px.length) continue;
-						s.px[i] = s.px[i + 1] = s.px[i + 2] = 0;
+						if (i < 0 || i >= s.px.length) {
+							continue;
+						}
+						s.px.fill(0, i, i + 3);
 						s.px[i + 3] = 255;
 					}
 					plot(s, x - w, y, er, eg, eb, 0.8);
@@ -56,8 +66,12 @@ export function makeQuake(rows: number): FxProgram {
 				const y = p[o + 1] - arc * s.h * 0.16;
 				const spin = Math.abs(Math.cos(p[o + 4] * 1.3));
 				const wide = 1 + Math.round(spin * 2);
-				for (let dx = 0; dx < wide; dx++) plot(s, x + dx, y, er, eg, eb, 0.85);
-				if (spin < 0.4) plot(s, x, y + 1, er, eg, eb, 0.6);
+				for (let dx = 0; dx < wide; dx++) {
+					plot(s, x + dx, y, er, eg, eb, 0.85);
+				}
+				if (spin < 0.4) {
+					plot(s, x, y + 1, er, eg, eb, 0.6);
+				}
 			}
 			for (const [fx2, off2, sc2] of cracks) {
 				const vent = Math.max(0, Math.sin((s.t - off2) * 0.012 * s.v.speed));
@@ -82,31 +96,38 @@ export function makeQuake(rows: number): FxProgram {
 	};
 }
 
+type TearScene = FxScene & { bands: number[][]; next: number; ghost: number[][] };
+
 export function makeTear(rows: number): FxProgram {
 	return {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).bands = [] as number[][];
-			(s as any).next = 0;
-			(s as any).ghost = [] as number[][];
+			s.bands = [] as number[][];
+			s.next = 0;
+			s.ghost = [] as number[][];
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
+			const st = s as TearScene;
 			if (s.t >= st.next) {
 				const bands: number[][] = [];
 				const n = 2 + ((s.rnd() * 4) | 0);
-				for (let i = 0; i < n; i++)
+				for (let i = 0; i < n; i++) {
 					bands.push([s.rnd() * s.h, 1 + s.rnd() * (3 + s.v.drift * 4), (s.rnd() - 0.5) * s.w * (0.12 + s.v.drift * 0.22) * s.v.dir, s.rnd()]);
+				}
 				st.bands = bands;
 				st.next = s.t + 1 + ((s.rnd() * 9 * (1.4 - s.v.speed * 0.4)) | 0);
-				for (const bd of bands) st.ghost.push([bd[0], bd[1], bd[2], 1]);
-				if (st.ghost.length > 18) st.ghost.splice(0, st.ghost.length - 18);
+				for (const bd of bands) {
+					st.ghost.push([bd[0], bd[1], bd[2], 1]);
+				}
+				if (st.ghost.length > 18) {
+					st.ghost.splice(0, st.ghost.length - 18);
+				}
 			}
 			const [br, bg, bb] = hsl(s.v.hue, s.v.sat, 56);
 			const [cr, cg, cb] = hsl(s.v.hue2, s.v.sat, 56);
-			for (const [y0, h, shift, which] of st.bands as number[][]) {
+			for (const [y0, h, shift, which] of st.bands) {
 				for (let y = y0; y < y0 + h; y++) {
 					for (let x = 0; x < s.w; x++) {
 						if (which < 0.5) {
@@ -120,16 +141,24 @@ export function makeTear(rows: number): FxProgram {
 			}
 			for (let k = 0; k < 3; k++) {
 				const y = s.rnd() * s.h;
-				for (let x = 0; x < s.w; x++) if (s.rnd() > 0.6) plot(s, x, y, 255, 255, 255, 0.3);
+				for (let x = 0; x < s.w; x++) {
+					if (s.rnd() > 0.6) {
+						plot(s, x, y, 255, 255, 255, 0.3);
+					}
+				}
 			}
-			for (let i = (st.ghost as number[][]).length - 1; i >= 0; i--) {
+			for (let i = st.ghost.length - 1; i >= 0; i--) {
 				const gh = st.ghost[i];
 				gh[3] -= 0.08;
 				if (gh[3] <= 0) {
 					st.ghost.splice(i, 1);
 					continue;
 				}
-				for (let y = gh[0]; y < gh[0] + gh[1]; y++) for (let x = 0; x < s.w; x += 2) plot(s, x + gh[2] * gh[3], y, br, bg, bb, gh[3] * 0.18);
+				for (let y = gh[0]; y < gh[0] + gh[1]; y++) {
+					for (let x = 0; x < s.w; x += 2) {
+						plot(s, x + gh[2] * gh[3], y, br, bg, bb, gh[3] * 0.18);
+					}
+				}
 			}
 			blit(s);
 		}
@@ -181,14 +210,19 @@ export function makeMaw(rows: number): FxProgram {
 				const wob = 1 + 0.06 * Math.sin(th * 5 + s.t * 0.05 * s.v.dir);
 				plot(s, cx + Math.cos(th) * rad * wob, cy + Math.sin(th) * rad * wob, mr, mg, mb, 0.9);
 			}
-			for (let y = -rad; y <= rad; y++)
+			for (let y = -rad; y <= rad; y++) {
 				for (let x = -rad; x <= rad; x++) {
-					if (x * x + y * y > rad * rad) continue;
+					if (x * x + y * y > rad * rad) {
+						continue;
+					}
 					const i = (((cy + y) | 0) * s.w + ((cx + x) | 0)) * 4;
-					if (i < 0 || i >= s.px.length) continue;
-					s.px[i] = s.px[i + 1] = s.px[i + 2] = 0;
+					if (i < 0 || i >= s.px.length) {
+						continue;
+					}
+					s.px.fill(0, i, i + 3);
 					s.px[i + 3] = 250;
 				}
+			}
 			blit(s);
 		}
 	};
@@ -208,20 +242,24 @@ export function makeWeave(rows: number): FxProgram {
 			const [hr, hg, hb] = hsl(s.v.hue2, s.v.sat * 0.7, 86);
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
-					const over = (((x / pitch) | 0) + ((y / pitch) | 0)) % 2 === 0;
-					const along = over ? x / s.w : y / s.h;
-					const fold = 0.5 + 0.5 * Math.sin((over ? y : x) * 0.4 + t);
+					const isOver = (((x / pitch) | 0) + ((y / pitch) | 0)) % 2 === 0;
+					const along = isOver ? x / s.w : y / s.h;
+					const fold = 0.5 + 0.5 * Math.sin((isOver ? y : x) * 0.4 + t);
 					const sheen = Math.max(0, Math.sin(along * 3.2 - t * 1.6 + s.v.tilt));
 					const a = 0.16 + fold * 0.14;
 					plot(s, x, y, wr, wg, wb, a);
-					if (sheen > 0.82) plot(s, x, y, hr, hg, hb, (sheen - 0.82) * 3.4 * fold);
+					if (sheen > 0.82) {
+						plot(s, x, y, hr, hg, hb, (sheen - 0.82) * 3.4 * fold);
+					}
 				}
 			}
 			for (let sa = 0; sa < 3; sa++) {
 				const base = s.h * (0.24 + sa * 0.26);
 				for (let x = 0; x < s.w; x++) {
 					const y = base + Math.sin(x * 0.06 + t * 1.4 + sa) * s.h * 0.07 + s.v.tilt * 3;
-					for (let k = 0; k < 3; k++) plot(s, x, y + k, hr, hg, hb, (0.3 - k * 0.08) * (0.6 + 0.4 * Math.sin(x * 0.1 - t)));
+					for (let k = 0; k < 3; k++) {
+						plot(s, x, y + k, hr, hg, hb, (0.3 - k * 0.08) * (0.6 + 0.4 * Math.sin(x * 0.1 - t)));
+					}
 				}
 			}
 			for (let gi = 0; gi < 7; gi++) {
@@ -244,8 +282,14 @@ function line(s: FxScene, x1: number, y1: number, x2: number, y2: number, w: num
 		const x = x1 + (x2 - x1) * f;
 		const y = y1 + (y2 - y1) * f;
 		const half = Math.max(0, w / 2);
-		for (let o = -half; o <= half; o += 0.6) plot(s, x + o, y, c[0], c[1], c[2], a);
-		if (w > 1.4) for (let o = -half; o <= half; o += 0.6) plot(s, x, y + o, c[0], c[1], c[2], a * 0.7);
+		for (let o = -half; o <= half; o += 0.6) {
+			plot(s, x + o, y, c[0], c[1], c[2], a);
+		}
+		if (w > 1.4) {
+			for (let o = -half; o <= half; o += 0.6) {
+				plot(s, x, y + o, c[0], c[1], c[2], a * 0.7);
+			}
+		}
 	}
 }
 
@@ -289,8 +333,9 @@ export function withBough(inner: FxProgram): FxProgram {
 					[1, 0],
 					[0, -1],
 					[0, 1]
-				])
+				]) {
 					plot(s, tx + dx, ty + dy, petal[0], petal[1], petal[2], bloom * 0.75);
+				}
 			}
 			blit(s);
 		}
@@ -311,7 +356,9 @@ export function withCanopy(inner: FxProgram): FxProgram {
 			const litter = hsl(s.v.hue, s.v.sat, 40);
 			for (let x = 0; x < s.w; x++) {
 				const lip = gy + Math.sin(x * 0.09 + s.v.tilt) * 1.4;
-				for (let y = lip; y < s.h; y++) plot(s, x, y, soil[0], soil[1], soil[2], 0.95);
+				for (let y = lip; y < s.h; y++) {
+					plot(s, x, y, soil[0], soil[1], soil[2], 0.95);
+				}
 				plot(s, x, lip, litter[0], litter[1], litter[2], 0.5);
 			}
 			for (let l = 0; l < 14; l++) {
@@ -324,7 +371,9 @@ export function withCanopy(inner: FxProgram): FxProgram {
 
 			const count = 3 + ((r() * 3) | 0);
 			const order: number[][] = [];
-			for (let i = 0; i < count; i++) order.push([0.08 + (i / count) * 0.84 + (r() - 0.5) * 0.1, 0.5 + r() * 0.6, r()]);
+			for (let i = 0; i < count; i++) {
+				order.push([0.08 + (i / count) * 0.84 + (r() - 0.5) * 0.1, 0.5 + r() * 0.6, r()]);
+			}
 			order.sort((a, b) => a[1] - b[1]);
 			for (const [fx, scale, tone] of order) {
 				const depth = scale < 0.75 ? 3 : 4;
@@ -344,8 +393,12 @@ export function withCanopy(inner: FxProgram): FxProgram {
 				for (let y = -ry; y <= ry; y++) {
 					for (let x = -rx; x <= rx; x++) {
 						const d = Math.hypot(x / rx, y / ry);
-						if (d > 1) continue;
-						if ((((x + cx) | 0) * 7 + ((y + cy) | 0) * 13) % 5 === 0 && d > 0.55) continue;
+						if (d > 1) {
+							continue;
+						}
+						if ((((x + cx) | 0) * 7 + ((y + cy) | 0) * 13) % 5 === 0 && d > 0.55) {
+							continue;
+						}
 						const rustle = Math.sin(s.t * 0.03 * s.v.speed + (x + y) * 0.2 + tone * 6) * scale;
 						const leaf = hsl(s.v.hue + ((x + y) % 5) * 11 - 22, s.v.sat, (34 + scale * 20) * (1 - d * 0.3));
 						plot(s, cx + x + rustle, cy + y, leaf[0], leaf[1], leaf[2], 0.9 - d * 0.25);
@@ -375,7 +428,9 @@ export function withGlow(inner: FxProgram, at: number, reach: number, light: num
 			for (let y = 0; y < s.h; y++) {
 				for (let x = 0; x < s.w; x++) {
 					const d = Math.hypot((x - cx) / rx, (y - cy) / ry);
-					if (d > 1) continue;
+					if (d > 1) {
+						continue;
+					}
 					plot(s, x, y, gr, gg, gb, (1 - d) * (1 - d) * 0.3 * breathe);
 				}
 			}
@@ -396,7 +451,9 @@ export function withWater(inner: FxProgram, level: number): FxProgram {
 			const t = s.t * 0.04 * s.v.speed;
 			for (let x = 0; x < s.w; x++) {
 				const y0 = s.h * level + Math.sin(x * 0.22 + t) * 1.6 + Math.sin(x * 0.07 - t * 0.6) * 1.1;
-				for (let y = y0; y < s.h; y++) plot(s, x, y, wr, wg, wb, 0.45);
+				for (let y = y0; y < s.h; y++) {
+					plot(s, x, y, wr, wg, wb, 0.45);
+				}
 				plot(s, x, y0, lr, lg, lb, 0.75);
 			}
 			blit(s);
@@ -423,7 +480,9 @@ export function withGalaxyBand(inner: FxProgram): FxProgram {
 				for (let y = centre - thick; y <= centre + thick; y++) {
 					const f = Math.abs(y - centre) / thick;
 					plot(s, x, y, br, bg, bb, (1 - f) * (1 - f) * 0.3);
-					if (f < 0.16) plot(s, x, y, dr, dg, db, (0.16 - f) * 2.4);
+					if (f < 0.16) {
+						plot(s, x, y, dr, dg, db, (0.16 - f) * 2.4);
+					}
 				}
 			}
 			blit(s);
@@ -445,7 +504,9 @@ export function withBursts(inner: FxProgram, count: number, period: number, salt
 				const bx = (0.1 + r() * 0.8) * s.w;
 				const by = (0.12 + r() * 0.66) * s.h;
 				const phase = ((s.t + r() * period) % period) / period;
-				if (phase > 0.4) continue;
+				if (phase > 0.4) {
+					continue;
+				}
 				const f = phase / 0.4;
 				const rad = f * s.w * 0.09;
 				const [pr, pg, pb] = hsl(s.v.hue + i * 40, s.v.sat, 74);
@@ -464,10 +525,10 @@ export function withBursts(inner: FxProgram, count: number, period: number, salt
 }
 
 export function makeEmbers(rows: number): FxProgram {
-	const place = (sc: FxScene, i: number, fresh: boolean) => {
+	const place = (sc: FxScene, i: number, isFresh: boolean) => {
 		const p = sc.parts;
 		p[i * 6] = sc.rnd() * sc.w;
-		p[i * 6 + 1] = fresh ? sc.h + 2 : sc.rnd() * sc.h;
+		p[i * 6 + 1] = isFresh ? sc.h + 2 : sc.rnd() * sc.h;
 		p[i * 6 + 2] = 0.3 + sc.rnd() * 0.8;
 		p[i * 6 + 3] = sc.rnd() * Math.PI * 2;
 		p[i * 6 + 4] = (0.5 + sc.rnd() * 0.9) * sc.v.drift;
@@ -478,8 +539,10 @@ export function makeEmbers(rows: number): FxProgram {
 		stride: 0.6,
 		init(s) {
 			const r = mulberry32(s.v.seed + 6607);
-			(s as any).wisps = Array.from({ length: 4 }, () => [r(), r() * 6.28, 0.6 + r() * 0.7]);
-			for (let i = 0; i < s.n; i++) place(s, i, false);
+			s.wisps = Array.from({ length: 4 }, () => [r(), r() * 6.28, 0.6 + r() * 0.7]);
+			for (let i = 0; i < s.n; i++) {
+				place(s, i, false);
+			}
 		},
 		frame(s) {
 			clear(s);
@@ -488,17 +551,21 @@ export function makeEmbers(rows: number): FxProgram {
 			const [hr, hg, hb] = hsl(s.v.hue, s.v.sat, 46);
 			for (let y = s.h * 0.45; y < s.h; y++) {
 				const f = (y - s.h * 0.45) / (s.h * 0.55);
-				for (let x = 0; x < s.w; x++) plot(s, x, y, hr, hg, hb, f * f * 0.2 * haze);
+				for (let x = 0; x < s.w; x++) {
+					plot(s, x, y, hr, hg, hb, f * f * 0.2 * haze);
+				}
 			}
 
 			const [sr, sg, sb] = hsl(s.v.hue + 190, 12, 34);
-			for (const [wx, wph, wsc] of (s as any).wisps as number[][]) {
+			for (const [wx, wph, wsc] of s.wisps as number[][]) {
 				for (let k = 0; k < 26; k++) {
 					const f = k / 26;
 					const y = s.h - f * s.h * 0.85 * wsc;
 					const x = wx * s.w + Math.sin(f * 4 + s.t * 0.02 * s.v.speed + wph) * s.w * 0.05 * (1 + f);
 					const w = 1 + f * 3.5 * wsc;
-					for (let d = -w; d <= w; d++) plot(s, x + d, y, sr, sg, sb, (1 - f) * 0.1 * (1 - Math.abs(d) / (w + 1)));
+					for (let d = -w; d <= w; d++) {
+						plot(s, x + d, y, sr, sg, sb, (1 - f) * 0.1 * (1 - Math.abs(d) / (w + 1)));
+					}
 				}
 			}
 
@@ -507,19 +574,24 @@ export function makeEmbers(rows: number): FxProgram {
 				const p = s.parts;
 				p[o + 3] += 0.045 * p[o + 2];
 				p[o + 1] -= p[o + 2] * s.v.speed * 0.85;
-				if (p[o + 1] < -3) place(s, i, true);
+				if (p[o + 1] < -3) {
+					place(s, i, true);
+				}
 				const climb = 1 - p[o + 1] / s.h;
 				const x = p[o] + Math.sin(p[o + 3]) * p[o + 4] * s.w * 0.09 * s.v.dir;
 				const cool = 1 - climb * 0.28;
 				const fade = Math.min(1, p[o + 1] / s.h + 0.15) * Math.min(1, (s.h - p[o + 1]) / (s.h * 0.12));
 				const rad = p[o + 5] * cool;
 				const [r, g, b] = hsl(s.v.hue + climb * 16, s.v.sat, 58 + (1 - climb) * 34);
-				for (let dy = -rad; dy <= rad; dy++)
+				for (let dy = -rad; dy <= rad; dy++) {
 					for (let dx = -rad; dx <= rad; dx++) {
 						const d = Math.hypot(dx, dy) / rad;
-						if (d > 1) continue;
+						if (d > 1) {
+							continue;
+						}
 						plot(s, x + dx, p[o + 1] + dy, r, g, b, (1 - d) * (1 - d) * fade);
 					}
+				}
 				plot(s, x, p[o + 1], 255, 246, 208, fade * 0.9);
 			}
 			blit(s);
@@ -532,7 +604,9 @@ export function canopySource(sc: FxScene): [number, number] {
 	const gy = sc.h * 0.84;
 	const count = 3 + ((r() * 3) | 0);
 	const trees: number[][] = [];
-	for (let i = 0; i < count; i++) trees.push([0.08 + (i / count) * 0.84 + (r() - 0.5) * 0.1, 0.5 + r() * 0.6]);
+	for (let i = 0; i < count; i++) {
+		trees.push([0.08 + (i / count) * 0.84 + (r() - 0.5) * 0.1, 0.5 + r() * 0.6]);
+	}
 	const t = trees[(sc.rnd() * trees.length) | 0];
 	const scale = t[1];
 	return [t[0] * sc.w + (sc.rnd() - 0.5) * sc.w * 0.18 * scale, gy - sc.h * 0.3 * scale - sc.rnd() * sc.h * 0.12 * scale];
@@ -545,64 +619,86 @@ export function boughSource(sc: FxScene): [number, number] {
 	return [(side ? sc.w + 2 : -2) + (side ? -1 : 1) * f * reach * 2.4, -2 + f * reach * 0.9 + sc.rnd() * 4];
 }
 
+type CrtScene = FxScene & { phos: Float32Array; hold: number };
+
 export function makeCrt(rows: number): FxProgram {
 	return {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).phos = new Float32Array(s.h);
-			(s as any).hold = 0;
+			s.phos = new Float32Array(s.h);
+			s.hold = 0;
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
-			const phos = st.phos as Float32Array;
+			const st = s as CrtScene;
+			const { phos } = st;
 			const beam = ((((s.t * (1.1 + s.v.speed * 0.8) * s.v.dir) | 0) % s.h) + s.h) % s.h;
 			phos[beam] = 1;
-			if (s.rnd() < 0.004) st.hold = 26;
-			if (st.hold > 0) st.hold -= 1;
+			if (s.rnd() < 0.004) {
+				st.hold = 26;
+			}
+			if (st.hold > 0) {
+				st.hold -= 1;
+			}
 			const slip = st.hold > 0 ? Math.sin(st.hold * 0.5) * s.h * 0.1 : 0;
 			const [r, g, b] = hsl(s.v.hue, s.v.sat, 62);
 			const [hr, hg, hb] = hsl(s.v.hue, s.v.sat * 0.4, 96);
 			for (let y = 0; y < s.h; y++) {
 				phos[y] *= 0.82;
 				const lit = phos[y];
-				if (lit < 0.01) continue;
+				if (lit < 0.01) {
+					continue;
+				}
 				const row = (y + slip + s.h) % s.h;
 				for (let x = 0; x < s.w; x++) {
 					const mask = x % 3 === 0 ? 1 : 0.55;
 					plot(s, x, row, r, g, b, lit * 0.5 * mask);
 				}
-				if (lit > 0.9) for (let x = 0; x < s.w; x++) plot(s, x, row, hr, hg, hb, (lit - 0.9) * 6 * (0.4 + s.v.drift * 0.3));
+				if (lit > 0.9) {
+					for (let x = 0; x < s.w; x++) {
+						plot(s, x, row, hr, hg, hb, (lit - 0.9) * 6 * (0.4 + s.v.drift * 0.3));
+					}
+				}
 			}
-			for (let y = s.t % 2; y < s.h; y += 2) for (let x = 0; x < s.w; x++) plot(s, x, y, 0, 0, 0, 0);
+			for (let y = s.t % 2; y < s.h; y += 2) {
+				for (let x = 0; x < s.w; x++) {
+					plot(s, x, y, 0, 0, 0, 0);
+				}
+			}
 			blit(s);
 		}
 	};
 }
+
+type FilmScene = FxScene & { dust: number[][]; scratch: number };
 
 export function makeFilm(rows: number): FxProgram {
 	return {
 		rows,
 		stride: 0,
 		init(s) {
-			(s as any).dust = [] as number[][];
-			(s as any).scratch = -1;
+			s.dust = [] as number[][];
+			s.scratch = -1;
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
+			const st = s as FilmScene;
 			const weave = Math.round(Math.sin(s.t * 0.31 * s.v.speed) * (1 + s.v.drift));
 			const lift = Math.round(Math.sin(s.t * 0.17) * s.v.tilt * 2);
 			const [r, g, b] = hsl(s.v.hue, s.v.sat * 0.3, 74);
 			const density = 0.28 + s.v.drift * 0.2;
 			for (let y = 0; y < s.h; y += 1) {
 				for (let x = 0; x < s.w; x += 1) {
-					if (s.rnd() > density * 0.3) continue;
+					if (s.rnd() > density * 0.3) {
+						continue;
+					}
 					plot(s, x + weave, y + lift, r, g, b, s.rnd() * 0.42);
 				}
 			}
-			if (s.rnd() < 0.06) st.dust.push([s.rnd() * s.w, s.rnd() * s.h, 3 + ((s.rnd() * 9) | 0), 1 + s.rnd() * 2]);
+			if (s.rnd() < 0.06) {
+				st.dust.push([s.rnd() * s.w, s.rnd() * s.h, 3 + ((s.rnd() * 9) | 0), 1 + s.rnd() * 2]);
+			}
 			for (let i = st.dust.length - 1; i >= 0; i--) {
 				const d = st.dust[i];
 				d[2] -= 1;
@@ -610,13 +706,21 @@ export function makeFilm(rows: number): FxProgram {
 					st.dust.splice(i, 1);
 					continue;
 				}
-				for (let k = 0; k < d[3]; k++) plot(s, d[0] + weave, d[1] + k + lift, 20, 18, 16, 0.85);
+				for (let k = 0; k < d[3]; k++) {
+					plot(s, d[0] + weave, d[1] + k + lift, 20, 18, 16, 0.85);
+				}
 			}
-			if (st.scratch < 0 && s.rnd() < 0.01) st.scratch = s.rnd() * s.w;
+			if (st.scratch < 0 && s.rnd() < 0.01) {
+				st.scratch = s.rnd() * s.w;
+			}
 			if (st.scratch >= 0) {
 				st.scratch += (s.rnd() - 0.5) * 0.8;
-				for (let y = 0; y < s.h; y++) plot(s, st.scratch + weave + Math.sin(y * 0.3) * 0.6, y, 240, 236, 228, 0.4);
-				if (s.rnd() < 0.02) st.scratch = -1;
+				for (let y = 0; y < s.h; y++) {
+					plot(s, st.scratch + weave + Math.sin(y * 0.3) * 0.6, y, 240, 236, 228, 0.4);
+				}
+				if (s.rnd() < 0.02) {
+					st.scratch = -1;
+				}
 			}
 			blit(s);
 		}
@@ -636,26 +740,54 @@ export function makeFoilLit(rows: number): FxProgram {
 				for (let x = 0; x < s.w; x++) {
 					const d = (x - bar - (y - s.h / 2) * slant) / (s.w * 0.5);
 					const lit = Math.max(0, 1 - Math.abs(d));
-					if (lit < 0.02) continue;
+					if (lit < 0.02) {
+						continue;
+					}
 					const [r, g, b] = hsl(s.v.hue + d * 300 * (0.6 + s.v.drift * 0.5), 90, 58);
 					plot(s, x, y, r, g, b, lit * lit * 0.55);
 				}
 			}
 			const [gr, gg, gb] = hsl(0, 0, 100);
-			for (let x = 0; x < s.w; x += 6)
+			for (let x = 0; x < s.w; x += 6) {
 				for (let y = 0; y < s.h; y++) {
 					const near = Math.max(0, 1 - Math.abs(x - bar - (y - s.h / 2) * slant) / (s.w * 0.2));
 					plot(s, x, y, gr, gg, gb, 0.05 + near * 0.3);
 				}
-			for (let y = 0; y < s.h; y += 6)
+			}
+			for (let y = 0; y < s.h; y += 6) {
 				for (let x = 0; x < s.w; x++) {
 					const near = Math.max(0, 1 - Math.abs(x - bar - (y - s.h / 2) * slant) / (s.w * 0.2));
 					plot(s, x, y, gr, gg, gb, 0.05 + near * 0.3);
 				}
+			}
 			blit(s);
 		}
 	};
 }
+
+type Glyph = { w: number; h: number; bits: Uint8Array };
+
+type GlyphRainScene = FxScene & {
+	slots: number;
+	slotSpd: Float32Array;
+	slotLen: Float32Array;
+	slotLead: Uint8Array;
+	glyphs: Glyph[];
+	cols: number;
+	lines: number;
+	cw: number;
+	ch: number;
+	head: Float32Array;
+	spd: Float32Array;
+	len: Float32Array;
+	lead: Uint8Array;
+	mark: Int16Array;
+	gi: Uint8Array;
+	gb: Float32Array;
+	period: number;
+	cycle: number;
+	surge: number;
+};
 
 export function makeGlyphRain(rows: number): FxProgram {
 	return {
@@ -669,7 +801,7 @@ export function makeGlyphRain(rows: number): FxProgram {
 			const ch = gh + 1;
 			const cols = Math.max(4, Math.floor(s.w / cw));
 			const lines = Math.max(3, Math.floor(s.h / ch));
-			const glyphs: { w: number; h: number; bits: Uint8Array }[] = [];
+			const glyphs: Glyph[] = [];
 			for (let i = 0; i < 16; i++) {
 				const bits = new Uint8Array(gw * gh);
 				let on = 0;
@@ -710,7 +842,7 @@ export function makeGlyphRain(rows: number): FxProgram {
 				lead[c] = slotLead[k];
 				head[c] = -slotPhase[k] * (lines + len[c]);
 			}
-			const st = s as any;
+			const st = s as GlyphRainScene;
 			st.slots = SLOTS;
 			st.slotSpd = slotSpd;
 			st.slotLen = slotLen;
@@ -731,26 +863,24 @@ export function makeGlyphRain(rows: number): FxProgram {
 			st.cycle = 0;
 			st.surge = -1;
 			const fill = mulberry32(s.v.seed + 9901);
-			for (let k = 0; k < cols * lines; k++) st.gi[k] = (fill() * glyphs.length) | 0;
+			for (let k = 0; k < cols * lines; k++) {
+				st.gi[k] = (fill() * glyphs.length) | 0;
+			}
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
-			const { cols, lines, cw, ch, period } = st;
-			const glyphs = st.glyphs as { w: number; h: number; bits: Uint8Array }[];
-			const head = st.head as Float32Array;
-			const spd = st.spd as Float32Array;
-			const len = st.len as Float32Array;
-			const lead = st.lead as Uint8Array;
-			const mark = st.mark as Int16Array;
-			const gi = st.gi as Uint8Array;
-			const gb = st.gb as Float32Array;
-			const down = s.v.dir > 0;
+			const st = s as GlyphRainScene;
+			const { cols, lines, cw, ch, period, glyphs, head, spd, len, lead, mark, gi, gb } = st;
+			const isDownward = s.v.dir > 0;
 
-			if (st.surge < 0 && s.t % period === 0) st.surge = 0;
+			if (st.surge < 0 && s.t % period === 0) {
+				st.surge = 0;
+			}
 			if (st.surge >= 0) {
 				st.surge += 0.6 + s.v.speed * 0.5;
-				if (st.surge > cols + 10) st.surge = -1;
+				if (st.surge > cols + 10) {
+					st.surge = -1;
+				}
 			}
 			const wave = st.surge >= 0 ? st.surge : -99;
 			const swell = st.surge >= 0 ? Math.max(0, 1 - Math.abs(st.surge - cols * 0.5) / (cols * 0.5)) : 0;
@@ -772,9 +902,9 @@ export function makeGlyphRain(rows: number): FxProgram {
 					const k = (c + st.cycle) % st.slots;
 					head[c] = -s.rnd() * lines * 0.8 - len[c];
 					mark[c] = -999;
-					spd[c] = (st.slotSpd as Float32Array)[k];
-					len[c] = 2 + (st.slotLen as Float32Array)[k] * lines * 0.9;
-					lead[c] = (st.slotLead as Uint8Array)[k];
+					spd[c] = st.slotSpd[k];
+					len[c] = 2 + st.slotLen[k] * lines * 0.9;
+					lead[c] = st.slotLead[k];
 					st.cycle += 1;
 				}
 			}
@@ -793,12 +923,16 @@ export function makeGlyphRain(rows: number): FxProgram {
 					const fade = 0.995 - 0.11 / Math.max(1, len[c] * 0.35);
 					b *= fade;
 					gb[k] = b;
-					if (b > 0.3 && s.rnd() < mutate * b) gi[k] = (s.rnd() * glyphs.length) | 0;
-					const shown = down ? row : lines - 1 - row;
+					if (b > 0.3 && s.rnd() < mutate * b) {
+						gi[k] = (s.rnd() * glyphs.length) | 0;
+					}
+					const shown = isDownward ? row : lines - 1 - row;
 					const px = c * cw + glyphs[0].w / 2;
 					const py = shown * ch + glyphs[0].h / 2;
 					const hem = edge(py, -1, s.h + 1, s.h * 0.16);
-					if (hem <= 0) continue;
+					if (hem <= 0) {
+						continue;
+					}
 					const hot = Math.min(1, Math.max(0, (b - 0.82) * 4));
 					const rr = tr + (hr - tr) * hot;
 					const gg = tg + (hg - tg) * hot;
@@ -806,12 +940,15 @@ export function makeGlyphRain(rows: number): FxProgram {
 					stamp(s, glyphs[gi[k]], px, py, rr, gg, bb2, Math.min(1, b) * hem * (0.75 + swell * 0.25));
 					if (hot > 0.2) {
 						const halo = hot * hem * 0.16;
-						for (let dy = -2; dy <= 2; dy++)
+						for (let dy = -2; dy <= 2; dy++) {
 							for (let dx = -2; dx <= 2; dx++) {
 								const d = Math.abs(dx) + Math.abs(dy);
-								if (d === 0 || d > 3) continue;
+								if (d === 0 || d > 3) {
+									continue;
+								}
 								plot(s, px + dx, py + dy, hr, hg, hb, halo / d);
 							}
+						}
 					}
 				}
 			}
@@ -820,6 +957,22 @@ export function makeGlyphRain(rows: number): FxProgram {
 	};
 }
 
+type SunsetScene = FxScene & {
+	clouds: number[][];
+	sunX: number;
+	phase: number;
+	sunR: number;
+	altLo: number;
+	altSpan: number;
+	zenith: number;
+	haze: number;
+	rowR: Float32Array;
+	rowG: Float32Array;
+	rowB: Float32Array;
+	colX: Float32Array;
+	sun: number[];
+};
+
 export function makeSunset(rows: number): FxProgram {
 	return {
 		opaque: true,
@@ -827,10 +980,12 @@ export function makeSunset(rows: number): FxProgram {
 		stride: 0,
 		init(s) {
 			const r = mulberry32(s.v.seed + 7717);
-			const st = s as any;
+			const st = s;
 			const clouds: number[][] = [];
 			const n = 1 + ((r() * 7) | 0);
-			for (let i = 0; i < n; i++) clouds.push([r(), 0.1 + r() * 0.46, 0.12 + r() * 0.3, 0.045 + r() * 0.1, r() * 6.28]);
+			for (let i = 0; i < n; i++) {
+				clouds.push([r(), 0.1 + r() * 0.46, 0.12 + r() * 0.3, 0.045 + r() * 0.1, r() * 6.28]);
+			}
 			st.clouds = clouds;
 			st.sunX = 0.18 + r() * 0.64;
 			st.phase = r() * 6.28;
@@ -846,7 +1001,7 @@ export function makeSunset(rows: number): FxProgram {
 		},
 		frame(s) {
 			clear(s);
-			const st = s as any;
+			const st = s as SunsetScene;
 			const hz = Math.round(s.h * (0.42 + s.v.tilt * 0.06));
 			const alt = st.altLo + st.altSpan * (0.5 + 0.5 * Math.sin(s.t * 0.0017 * s.v.speed + st.phase));
 			const red = 1 - Math.min(1, alt / 0.2);
@@ -861,9 +1016,9 @@ export function makeSunset(rows: number): FxProgram {
 			const [gr, gg, gb] = hsl(s.v.hue2 + 8, sat * 0.8, 74);
 			const low = red;
 
-			const rowR = st.rowR as Float32Array;
-			const rowG = st.rowG as Float32Array;
-			const rowB = st.rowB as Float32Array;
+			const { rowR } = st;
+			const { rowG } = st;
+			const { rowB } = st;
 			const spread = s.h * 0.24;
 			for (let y = 0; y < hz; y++) {
 				const t = y / Math.max(1, hz - 1);
@@ -877,9 +1032,11 @@ export function makeSunset(rows: number): FxProgram {
 				rowG[y] = g1 + (gg - g1) * k;
 				rowB[y] = b1 + (gb - b1) * k;
 			}
-			const colX = st.colX as Float32Array;
+			const { colX } = st;
 			const reach = s.w * 0.44;
-			for (let x = 0; x < s.w; x++) colX[x] = 0.62 + 0.38 * Math.exp(-Math.abs(x - sunX) / reach);
+			for (let x = 0; x < s.w; x++) {
+				colX[x] = 0.62 + 0.38 * Math.exp(-Math.abs(x - sunX) / reach);
+			}
 
 			for (let y = 0; y < hz; y++) {
 				const t = y / Math.max(1, hz);
@@ -892,7 +1049,7 @@ export function makeSunset(rows: number): FxProgram {
 
 			const [dr, dg, db] = hsl(s.v.hue + st.zenith + 20, sat * 0.4, 20);
 			const slide = s.t * 0.045 * s.v.drift * s.v.dir;
-			for (const [cx, cy, chw, chh, warp] of st.clouds as number[][]) {
+			for (const [cx, cy, chw, chh, warp] of st.clouds) {
 				const ox = ((((cx * s.w + slide) % (s.w + 40)) + s.w + 40) % (s.w + 40)) - 20;
 				const oy = cy * hz;
 				const hw = chw * s.w;
@@ -902,10 +1059,14 @@ export function makeSunset(rows: number): FxProgram {
 					const body = Math.sqrt(Math.max(0, 1 - u * u));
 					const puff = body * (0.62 + 0.38 * Math.sin(u * 5.5 + warp) * Math.sin(u * 2.1 - warp * 0.6));
 					const th = hh * puff;
-					if (th < 0.5) continue;
+					if (th < 0.5) {
+						continue;
+					}
 					const px = ox + dx;
 					const fade = edge(px, -18, s.w + 18, 22);
-					if (fade <= 0) continue;
+					if (fade <= 0) {
+						continue;
+					}
 					const lit = Math.exp(-Math.abs(px - sunX) / (s.w * 0.5));
 					for (let dy = -th; dy <= th; dy++) {
 						const under = (dy + th) / (2 * th);
@@ -921,21 +1082,27 @@ export function makeSunset(rows: number): FxProgram {
 			const squash = 1 - low * 0.34;
 			for (let g = 7; g >= 1; g--) {
 				const gr2 = rad * (1 + g * 0.55);
-				for (let dy = -gr2 * squash; dy <= gr2 * squash; dy++)
+				for (let dy = -gr2 * squash; dy <= gr2 * squash; dy++) {
 					for (let dx = -gr2; dx <= gr2; dx++) {
 						const d = Math.sqrt(dx * dx + (dy / squash) * (dy / squash));
-						if (d > gr2 || d < rad) continue;
+						if (d > gr2 || d < rad) {
+							continue;
+						}
 						plot(s, sunX + dx, sunY + dy, sr, sg, sb, 0.05 / g);
 					}
+				}
 			}
 			const [cr, cg, cb] = hsl(sunHue + 8, sat * 0.55, 96 - red * 10);
-			for (let dy = -rad * squash; dy <= rad * squash; dy++)
+			for (let dy = -rad * squash; dy <= rad * squash; dy++) {
 				for (let dx = -rad; dx <= rad; dx++) {
 					const d = Math.sqrt(dx * dx + (dy / squash) * (dy / squash)) / rad;
-					if (d > 1) continue;
+					if (d > 1) {
+						continue;
+					}
 					const core = 1 - d * d;
 					paint(s, sunX + dx, sunY + dy, cr + (sr - cr) * d, cg + (sg - cg) * d, cb + (sb - cb) * d, Math.min(1, 0.55 + core));
 				}
+			}
 
 			st.sun = [sunX, sunY, alt, sr, sg, sb, hz, low];
 			s.out = low;

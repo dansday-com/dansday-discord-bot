@@ -30,8 +30,8 @@
 
 	const PUNISHMENTS = ['warn', 'timeout', 'ban', 'tempban'];
 
-	let loading = $state(false);
-	let busy = $state(false);
+	let isLoading = $state(false);
+	let isBusy = $state(false);
 	let cases = $state<Case[]>([]);
 	let editing = $state<number | null>(null);
 	let draft = $state('');
@@ -43,23 +43,26 @@
 	});
 
 	$effect(() => {
-		void load(memberId);
+		load(memberId);
 	});
 
 	async function load(id: string) {
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation?member=${encodeURIComponent(id)}`, { credentials: 'include' });
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not load the record', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not load the record', 'error');
+				return;
+			}
 			cases = out.cases ?? [];
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
 	async function post(body: Record<string, unknown>) {
-		busy = true;
+		isBusy = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/moderation`, {
 				method: 'POST',
@@ -73,7 +76,7 @@
 			}
 			return true;
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
@@ -83,23 +86,33 @@
 	}
 
 	async function saveReason(caseNumber: number) {
-		if (!(await post({ action: 'edit_reason', case_number: caseNumber, reason: draft.trim() }))) return;
+		if (!(await post({ action: 'edit_reason', case_number: caseNumber, reason: draft.trim() }))) {
+			return;
+		}
 		showToast(`Case #${caseNumber} updated`, 'success');
 		editing = null;
 		await load(memberId);
 	}
 
 	async function removeWarning(caseNumber: number) {
-		if (!(await post({ action: 'unwarn', case_number: caseNumber }))) return;
+		if (!(await post({ action: 'unwarn', case_number: caseNumber }))) {
+			return;
+		}
 		showToast(`Warning #${caseNumber} removed`, 'success');
 		await load(memberId);
 		await onchange?.();
 	}
 
 	function status(c: Case) {
-		if (c.revoked_at) return { label: 'Revoked', tone: 'bg-ash-600 text-ash-300' };
-		if (!PUNISHMENTS.includes(c.action)) return null;
-		if (c.active) return { label: 'Active', tone: 'bg-emerald-500/15 text-emerald-300' };
+		if (c.revoked_at) {
+			return { label: 'Revoked', tone: 'bg-ash-600 text-ash-300' };
+		}
+		if (!PUNISHMENTS.includes(c.action)) {
+			return null;
+		}
+		if (c.active) {
+			return { label: 'Active', tone: 'bg-emerald-500/15 text-emerald-300' };
+		}
 		return { label: 'Expired', tone: 'bg-ash-600 text-ash-400' };
 	}
 </script>
@@ -126,7 +139,7 @@
 		<p class="mt-3 flex items-center gap-1.5 text-xs text-amber-300"><i class="fas fa-lock"></i>{deniedReason}</p>
 	{/if}
 
-	{#if loading && cases.length === 0}
+	{#if isLoading && cases.length === 0}
 		<p class="text-ash-400 py-6 text-center text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Loading…</p>
 	{:else if cases.length === 0}
 		<p class="text-ash-500 py-6 text-center text-xs">Clean record. No cases.</p>
@@ -156,13 +169,13 @@
 							<div class="flex gap-2">
 								<button
 									type="button"
-									disabled={busy}
+									disabled={isBusy}
 									onclick={() => saveReason(c.case_number)}
 									class="flex-1 rounded-lg bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500 disabled:opacity-50">Save</button
 								>
 								<button
 									type="button"
-									disabled={busy}
+									disabled={isBusy}
 									onclick={() => (editing = null)}
 									class="bg-ash-600 text-ash-100 hover:bg-ash-500 flex-1 rounded-lg px-3 py-1.5">Cancel</button
 								>
@@ -174,11 +187,16 @@
 					<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
 						<span class="text-ash-500">{c.staff_name || (c.source === 'auto' ? 'Automatic' : c.source === 'panel' ? 'Panel' : 'Unknown')} · {c.source}</span>
 						{#if canEdit && editing !== c.case_number}
-							<button type="button" disabled={busy} onclick={() => startEdit(c)} class="text-ash-300 hover:text-ash-100 ml-auto disabled:opacity-50">
+							<button type="button" disabled={isBusy} onclick={() => startEdit(c)} class="text-ash-300 hover:text-ash-100 ml-auto disabled:opacity-50">
 								<i class="fas fa-pen mr-1 text-sky-400"></i>Edit reason
 							</button>
 							{#if c.action === 'warn' && c.active}
-								<button type="button" disabled={busy} onclick={() => removeWarning(c.case_number)} class="text-ash-300 hover:text-ash-100 disabled:opacity-50">
+								<button
+									type="button"
+									disabled={isBusy}
+									onclick={() => removeWarning(c.case_number)}
+									class="text-ash-300 hover:text-ash-100 disabled:opacity-50"
+								>
 									<i class="fas fa-eraser mr-1 text-violet-400"></i>Remove
 								</button>
 							{/if}

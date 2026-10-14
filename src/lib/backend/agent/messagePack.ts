@@ -15,6 +15,7 @@ import { translateMessage, type TranslationAsk } from './messageTranslate.js';
 const MAX_REPLY_LENGTH = 600;
 const MAX_LISTED_ROLES = 150;
 const MAX_LISTED_EMOJIS = 80;
+const MAX_TRANSLATION_NOTE_LENGTH = 300;
 
 export type MessageAgentContext = {
 	scope: MessageScope;
@@ -113,7 +114,7 @@ function mainLanguageOnly(doc: MessageDoc, ctx: MessageAgentContext) {
 }
 
 function context(ctx: MessageAgentContext): string {
-	const global = ctx.scope === 'global';
+	const isGlobal = ctx.scope === 'global';
 	const status =
 		ctx.messageId === null
 			? 'new and not saved yet'
@@ -123,12 +124,12 @@ function context(ctx: MessageAgentContext): string {
 	const others = ctx.messages.filter((message) => message.id !== ctx.messageId);
 	const lines = [
 		'# This message',
-		global
+		isGlobal
 			? "Kind: a global message. It is sent to every server the bots are in, so write it for all of them and use {server} where the server name belongs. Role actions do not exist here. An embed color left empty takes each server's own color."
 			: `Kind: a message for the Discord server "${ctx.serverName}".`,
 		`Name: ${ctx.name.trim() ? JSON.stringify(ctx.name.trim()) : 'not named yet, so give it one'}`,
 		`Status: ${status}`,
-		`Color for new embeds and boxes: ${ctx.defaults.color || (global ? 'leave empty' : 'none set')}`,
+		`Color for new embeds and boxes: ${ctx.defaults.color || (isGlobal ? 'leave empty' : 'none set')}`,
 		...(ctx.defaults.footer ? [`Footer for new embeds, in the main language: ${JSON.stringify(ctx.defaults.footer)}`] : []),
 		'Current message, main language only:',
 		JSON.stringify(mainLanguageOnly(ctx.doc, ctx)),
@@ -140,7 +141,7 @@ function context(ctx: MessageAgentContext): string {
 		...(ctx.messageId !== null ? [`This message itself is id ${ctx.messageId}.`] : [])
 	];
 
-	if (!global) {
+	if (!isGlobal) {
 		lines.push(
 			'',
 			'# Roles a "role" action can use',
@@ -163,7 +164,9 @@ function context(ctx: MessageAgentContext): string {
 function parseAnswer(answer: string): Record<string, unknown> | null {
 	const start = answer.indexOf('{');
 	const end = answer.lastIndexOf('}');
-	if (start < 0 || end <= start) return null;
+	if (start < 0 || end <= start) {
+		return null;
+	}
 	try {
 		const parsed = JSON.parse(answer.slice(start, end + 1));
 		return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
@@ -198,7 +201,9 @@ export function messagePack(ctx: MessageAgentContext): MessagePack {
 		async finish(answer) {
 			const parsed = parseAnswer(answer);
 			if (!parsed) {
-				if (answer && !answer.includes('{')) return { ok: true, result: { reply: answer.slice(0, MAX_REPLY_LENGTH), name: null, content: null } };
+				if (answer && !answer.includes('{')) {
+					return { ok: true, result: { reply: answer.slice(0, MAX_REPLY_LENGTH), name: null, content: null } };
+				}
 				return {
 					ok: false,
 					feedback:
@@ -210,7 +215,7 @@ export function messagePack(ctx: MessageAgentContext): MessagePack {
 			const rawName = typeof parsed.name === 'string' ? parsed.name.trim().slice(0, L.name) : '';
 			const name = rawName && rawName !== ctx.name.trim() ? rawName : null;
 			const retranslate = (Array.isArray(parsed.retranslate) ? parsed.retranslate : []).filter((code): code is ServerLanguage => isServerLanguage(code));
-			const note = typeof parsed.translation_note === 'string' ? parsed.translation_note.trim().slice(0, 300) : '';
+			const note = typeof parsed.translation_note === 'string' ? parsed.translation_note.trim().slice(0, MAX_TRANSLATION_NOTE_LENGTH) : '';
 			const rewritten = parsed.message && typeof parsed.message === 'object';
 			if (!rewritten && retranslate.length === 0) {
 				return { ok: true, result: { reply: reply || 'Nothing was changed.', name, content: null } };

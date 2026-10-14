@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PERCENT } from '$lib/utils/numbers.js';
+
 	let {
 		head,
 		meta,
@@ -11,7 +13,7 @@
 		color?: string;
 	} = $props();
 
-	const width = $derived(Math.min(100, Math.max(0, pct)));
+	const width = $derived(Math.min(PERCENT, Math.max(0, pct)));
 </script>
 
 <div>

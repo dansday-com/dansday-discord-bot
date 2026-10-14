@@ -1,32 +1,26 @@
-<script lang="ts">
+<script lang="ts" generics="V extends string | string[]">
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { ROLE_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
-
-	interface Role {
-		discord_role_id: string;
-		name: string;
-		color: string;
-		position: number | null;
-	}
+	import type { PickerRole as Role } from './pickerTypes.js';
 
 	interface Props {
 		roles: Role[];
-		value: string | string[];
+		value: V;
 		placeholder?: string;
 		single?: boolean;
-		onchange: (value: string | string[]) => void;
+		onchange: (value: V) => void;
 	}
 
 	let { roles, value, placeholder = 'Select roles...', single = false, onchange }: Props = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
 	let pending = $state<string[]>([]);
 
 	const sortedRoles = $derived([...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)));
 	const filtered = $derived(search.trim() ? sortedRoles.filter((r) => r.name?.toLowerCase().includes(search.toLowerCase())) : sortedRoles);
 
-	function roleColor(hex: string) {
+	function roleColor(hex: string | null) {
 		return !hex || hex === '#000000' ? '#6b7280' : hex;
 	}
 
@@ -34,7 +28,7 @@
 
 	function openModal() {
 		pending = [...currentIds];
-		open = true;
+		isOpen = true;
 		search = '';
 	}
 
@@ -45,32 +39,33 @@
 			} else {
 				pending = [id];
 			}
+		} else if (pending.includes(id)) {
+			pending = pending.filter((r) => r !== id);
 		} else {
-			if (pending.includes(id)) pending = pending.filter((r) => r !== id);
-			else pending = [...pending, id];
+			pending = [...pending, id];
 		}
 	}
 
 	function confirm() {
 		if (single) {
-			onchange(pending[0] ?? '');
+			onchange((pending[0] ?? '') as V);
 		} else {
-			onchange([...pending]);
+			onchange([...pending] as V);
 		}
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
 	function remove(id: string) {
 		if (single) {
-			onchange('');
+			onchange('' as V);
 		} else {
-			onchange((value as string[]).filter((r) => r !== id));
+			onchange((value as string[]).filter((r) => r !== id) as V);
 		}
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -121,7 +116,7 @@
 	</div>
 {/if}
 
-{#if open}
+{#if isOpen}
 	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"

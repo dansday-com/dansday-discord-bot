@@ -11,21 +11,33 @@ export const TIER_DENIED: Record<PanelActor, string> = {
 };
 
 export function panelActorOf(user: { authenticated: boolean; account_type?: string } | null | undefined): PanelActor | null {
-	if (!user?.authenticated) return null;
-	if (user.account_type === 'superadmin' || user.account_type === 'owner' || user.account_type === 'staff') return user.account_type;
+	if (!user?.authenticated) {
+		return null;
+	}
+	if (user.account_type === 'superadmin' || user.account_type === 'owner' || user.account_type === 'staff') {
+		return user.account_type;
+	}
 	return null;
 }
 
 export function memberTier(member: { is_owner?: boolean | number | null; roleIds: string[] }, staffRoleIds: string[], adminRoleIds: string[]): MemberTier {
-	if (member.is_owner === true || Number(member.is_owner) === 1) return 'owner';
+	if (member.is_owner === true || Number(member.is_owner) === 1) {
+		return 'owner';
+	}
 	const roles = new Set(member.roleIds.map(String));
-	if (adminRoleIds.some((id) => roles.has(String(id)))) return 'owner';
-	if (staffRoleIds.some((id) => roles.has(String(id)))) return 'staff';
+	if (adminRoleIds.some((id) => roles.has(String(id)))) {
+		return 'owner';
+	}
+	if (staffRoleIds.some((id) => roles.has(String(id)))) {
+		return 'staff';
+	}
 	return 'member';
 }
 
 export function canActOn(actor: PanelActor | null, tier: MemberTier): boolean {
-	if (!actor) return false;
+	if (!actor) {
+		return false;
+	}
 	return ACTOR_RANK[actor] > TIER_RANK[tier];
 }
 

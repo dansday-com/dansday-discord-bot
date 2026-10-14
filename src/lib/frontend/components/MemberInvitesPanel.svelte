@@ -27,12 +27,41 @@
 		share_xp: number;
 	};
 
-	let loading = $state(false);
-	let busy = $state(false);
+	let isLoading = $state(false);
+	let isBusy = $state(false);
 	let stats = $state<Stats | null>(null);
-	let inviter = $state<any>(null);
-	let invitees = $state<any[]>([]);
-	let logs = $state<any[]>([]);
+	type Inviter = {
+		inviter_name: string | null;
+		inviter_discord_id: string | null;
+		rewarded_at: string | null;
+		source: string;
+		code: string | null;
+		created_at: string;
+	};
+	type Invitee = {
+		id: number;
+		discord_member_id: string;
+		name: string | null;
+		status: string;
+		source: string;
+		code: string | null;
+		fake_reason: string | null;
+		xp: number;
+		share_xp: number;
+		created_at: string;
+	};
+	type InviteLog = {
+		id: number;
+		amount: number;
+		reason: string | null;
+		server_account_username: string | null;
+		account_username: string | null;
+		created_at: string;
+	};
+
+	let inviter = $state<Inviter | null>(null);
+	let invitees = $state<Invitee[]>([]);
+	let logs = $state<InviteLog[]>([]);
 	let amount = $state(1);
 	let reason = $state('');
 	let assignTo = $state('');
@@ -59,7 +88,7 @@
 			amount = 1;
 			reason = '';
 			assignTo = '';
-			void load(member.id);
+			load(member.id);
 		} else {
 			stats = null;
 			inviter = null;
@@ -69,7 +98,7 @@
 	});
 
 	async function load(discordId: string) {
-		loading = true;
+		isLoading = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/invites?member=${encodeURIComponent(discordId)}`, { credentials: 'include' });
 			const out = await res.json().catch(() => ({}));
@@ -82,13 +111,15 @@
 			invitees = out.invitees ?? [];
 			logs = out.logs ?? [];
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
 	async function post(payload: Record<string, unknown>) {
-		if (!member) return null;
-		busy = true;
+		if (!member) {
+			return null;
+		}
+		isBusy = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/invites`, {
 				method: 'POST',
@@ -103,17 +134,27 @@
 			}
 			return out;
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
 	async function adjust(sign: 1 | -1) {
-		if (!member) return;
+		if (!member) {
+			return;
+		}
 		const value = Math.trunc(Number(amount)) * sign;
-		if (!value) return showToast('Enter an amount', 'error');
-		if (!reason.trim()) return showToast('Enter a reason', 'error');
+		if (!value) {
+			showToast('Enter an amount', 'error');
+			return;
+		}
+		if (!reason.trim()) {
+			showToast('Enter a reason', 'error');
+			return;
+		}
 		const out = await post({ action: 'adjust', amount: value, reason: reason.trim() });
-		if (!out) return;
+		if (!out) {
+			return;
+		}
 		showToast(`${sign > 0 ? 'Added' : 'Removed'} ${Math.abs(value)} invite${Math.abs(value) === 1 ? '' : 's'}`, 'success');
 		reason = '';
 		await load(member.id);
@@ -121,9 +162,13 @@
 	}
 
 	async function assign() {
-		if (!member || !assignTo) return;
+		if (!member || !assignTo) {
+			return;
+		}
 		const out = await post({ action: 'assign', inviter: assignTo });
-		if (!out) return;
+		if (!out) {
+			return;
+		}
 		showToast('Inviter saved', 'success');
 		await load(member.id);
 		await onchange?.();
@@ -137,7 +182,7 @@
 {#if member}
 	<div class="bg-ash-800 border-ash-700 rounded-lg border p-3 sm:p-4">
 		<div>
-			{#if loading && !stats}
+			{#if isLoading && !stats}
 				<div class="text-ash-400 py-8 text-center text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Loading…</div>
 			{:else if stats}
 				<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -174,7 +219,7 @@
 								<button
 									type="button"
 									onclick={assign}
-									disabled={busy || !assignTo || !canEdit}
+									disabled={isBusy || !assignTo || !canEdit}
 									class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
 								>
 									Set inviter
@@ -240,7 +285,7 @@
 							<button
 								type="button"
 								onclick={() => adjust(1)}
-								disabled={busy || !canEdit}
+								disabled={isBusy || !canEdit}
 								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
 							>
 								<i class="fas fa-plus"></i>Add
@@ -248,7 +293,7 @@
 							<button
 								type="button"
 								onclick={() => adjust(-1)}
-								disabled={busy || !canEdit}
+								disabled={isBusy || !canEdit}
 								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
 							>
 								<i class="fas fa-minus"></i>Remove

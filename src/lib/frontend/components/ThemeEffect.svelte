@@ -5,6 +5,17 @@
 	import { observeVisibility } from '$lib/frontend/fx/visible.js';
 	import '$lib/frontend/fx/fx.css';
 
+	const DEFAULT_ASPECT = 3.2;
+	const FALLBACK_WIDTH_PX = 360;
+	const FALLBACK_HEIGHT_PX = 112;
+	const MIN_ASPECT = 0.6;
+	const MAX_ASPECT = 7;
+	const ASPECT_STEPS = 8;
+	const ROW_STEP_PX = 4;
+	const FIRE_FPS = 18;
+	const SCENE_FPS = 24;
+	const COVER_DECIMALS = 3;
+
 	type Props = {
 		effect?: string | null;
 		seed?: number | null;
@@ -19,22 +30,28 @@
 
 	let host = $state<HTMLDivElement | undefined>();
 	let canvas = $state<HTMLCanvasElement | undefined>();
-	let live = $state(false);
-	let aspect = $state(3.2);
+	let isLive = $state(false);
+	let aspect = $state(DEFAULT_ASPECT);
 	let boxH = $state(0);
 	let scene = $state.raw<FxScene | undefined>(undefined);
 
 	$effect(() => {
 		const node = host;
-		if (!node || typeof ResizeObserver === 'undefined') return;
+		if (!node || typeof ResizeObserver === 'undefined') {
+			return;
+		}
 		const measure = () => {
-			const w = node.clientWidth || 360;
-			const h = node.clientHeight || 112;
-			const next = Math.max(0.6, Math.min(7, w / Math.max(1, h)));
-			const quantised = Math.round(next * 8) / 8;
-			if (quantised !== aspect) aspect = quantised;
-			const rows = Math.round(h / 4) * 4;
-			if (rows !== boxH) boxH = rows;
+			const w = node.clientWidth || FALLBACK_WIDTH_PX;
+			const h = node.clientHeight || FALLBACK_HEIGHT_PX;
+			const next = Math.max(MIN_ASPECT, Math.min(MAX_ASPECT, w / Math.max(1, h)));
+			const quantised = Math.round(next * ASPECT_STEPS) / ASPECT_STEPS;
+			if (quantised !== aspect) {
+				aspect = quantised;
+			}
+			const rows = Math.round(h / ROW_STEP_PX) * ROW_STEP_PX;
+			if (rows !== boxH) {
+				boxH = rows;
+			}
 		};
 		measure();
 		const ro = new ResizeObserver(measure);
@@ -44,9 +61,13 @@
 
 	$effect(() => {
 		const node = host;
-		if (!node || family === 'none' || frozen) return;
+		if (!node || family === 'none' || frozen) {
+			return;
+		}
 		const parent = node.parentElement;
-		if (!parent) return;
+		if (!parent) {
+			return;
+		}
 		parent.setAttribute('data-fx-host', family);
 		return () => {
 			parent.removeAttribute('data-fx-host');
@@ -56,21 +77,27 @@
 
 	$effect(() => {
 		const parent = host?.parentElement;
-		if (!parent) return;
-		parent.toggleAttribute('data-fx-run', live && !frozen && family !== 'none');
+		if (!parent) {
+			return;
+		}
+		parent.toggleAttribute('data-fx-run', isLive && !frozen && family !== 'none');
 	});
 
 	$effect(() => {
-		if (family === 'none' || frozen) return;
+		if (family === 'none' || frozen) {
+			return;
+		}
 		const node = host;
-		if (!node) return;
+		if (!node) {
+			return;
+		}
 		return observeVisibility(node, (visible) => {
-			live = visible;
+			isLive = visible;
 		});
 	});
 
 	let builtKey = '';
-	let builtEl: HTMLCanvasElement | undefined;
+	let builtEl: HTMLCanvasElement | null = null;
 
 	$effect(() => {
 		const el = canvas;
@@ -80,10 +107,14 @@
 		const ac = accent;
 		const ratio = aspect;
 		const height = boxH;
-		const seen = live;
-		if (!el || !prog || fam === 'none' || !seen) return;
+		const seen = isLive;
+		if (!el || !prog || fam === 'none' || !seen) {
+			return;
+		}
 		const key = `${fam}|${sd}|${ac}|${ratio}|${height}`;
-		if (key === builtKey && scene && builtEl === el) return;
+		if (key === builtKey && scene && builtEl === el) {
+			return;
+		}
 		builtKey = key;
 		builtEl = el;
 		const built = createScene(el, prog, fxVariant(fam, sd, ac), ratio, height);
@@ -92,12 +123,16 @@
 	});
 
 	$effect(() => {
-		if (live || frozen) return;
+		if (isLive || frozen) {
+			return;
+		}
 		const el = canvas;
-		if (!el || builtKey === '') return;
+		if (!el || builtKey === '') {
+			return;
+		}
 		scene = undefined;
 		builtKey = '';
-		builtEl = undefined;
+		builtEl = null;
 		el.width = 0;
 		el.height = 0;
 	});
@@ -106,14 +141,20 @@
 		const el = canvas;
 		const prog = program;
 		const sc = scene;
-		const running = live;
+		const running = isLive;
 		const halted = frozen;
 		const fam = family;
-		if (!el || !prog || !sc || !running || halted) return;
-		if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (!el || !prog || !sc || !running || halted) {
+			return;
+		}
+		if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
 		const card = host?.parentElement;
-		return runScene(el, prog, sc, fam === 'fire' ? 18 : 24, (scene) => {
-			if (scene.out !== undefined) card?.style.setProperty('--fx-cover', scene.out.toFixed(3));
+		return runScene(el, prog, sc, fam === 'fire' ? FIRE_FPS : SCENE_FPS, (scene) => {
+			if (scene.out !== undefined) {
+				card?.style.setProperty('--fx-cover', scene.out.toFixed(COVER_DECIMALS));
+			}
 		});
 	});
 </script>

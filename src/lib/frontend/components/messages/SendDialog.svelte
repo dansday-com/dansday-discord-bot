@@ -6,6 +6,7 @@
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { serverLanguageLabel, type ServerLanguage } from '$lib/languages.js';
+	import type { PickerCategory, PickerChannel, PickerRole } from '../pickerTypes.js';
 	import type { PostedCopy } from './selection.js';
 	import { GHOST_BUTTON, ICON_BUTTON, LABEL } from './styles.js';
 
@@ -26,9 +27,9 @@
 	}: {
 		open: boolean;
 		global: boolean;
-		channels: any[];
-		categories: any[];
-		mentionRoles: any[];
+		channels: PickerChannel[];
+		categories: PickerCategory[];
+		mentionRoles: PickerRole[];
 		languages: ServerLanguage[];
 		posts: PostedCopy[];
 		sending: boolean;
@@ -46,11 +47,16 @@
 	const languageOptions = $derived(languages.map((code) => ({ value: code, label: serverLanguageLabel(code) })));
 	const postLanguage = $derived(languages.includes(language as ServerLanguage) ? language : languages[0]);
 	const outdated = $derived(posts.filter((post) => post.outdated).length);
-	const busy = $derived(removing !== null || updating !== null);
+	const isBusy = $derived(removing !== null || updating !== null);
 
 	async function send() {
-		if (!global && channelIds.length === 0) return showToast('Pick at least one channel to send it to.', 'error');
-		if (!(await onsend({ channelIds, mentionIds, language: postLanguage }))) return;
+		if (!global && channelIds.length === 0) {
+			showToast('Pick at least one channel to send it to.', 'error');
+			return;
+		}
+		if (!(await onsend({ channelIds, mentionIds, language: postLanguage }))) {
+			return;
+		}
 		channelIds = [];
 		mentionIds = [];
 	}
@@ -65,7 +71,9 @@
 		aria-label="Send message"
 		tabindex="-1"
 		onkeydown={(event) => {
-			if (event.key === 'Escape') open = false;
+			if (event.key === 'Escape') {
+				open = false;
+			}
 		}}
 	>
 		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 sm:p-6">
@@ -131,12 +139,12 @@
 					<div class="flex items-center gap-2">
 						<h4 class="text-ash-100 mr-auto flex items-center gap-2 text-sm font-semibold"><i class="fas fa-thumbtack text-amber-300"></i>Already posted</h4>
 						{#if outdated > 1}
-							<button type="button" class={GHOST_BUTTON} disabled={busy} onclick={() => onupdate('all')}>
+							<button type="button" class={GHOST_BUTTON} disabled={isBusy} onclick={() => onupdate('all')}>
 								<i class="fas {updating === 'all' ? 'fa-spinner fa-spin' : 'fa-rotate'} text-sky-300"></i>Update all
 							</button>
 						{/if}
 						{#if global}
-							<button type="button" class={GHOST_BUTTON} disabled={busy} onclick={() => onremove('all')}>
+							<button type="button" class={GHOST_BUTTON} disabled={isBusy} onclick={() => onremove('all')}>
 								<i class="fas {removing === 'all' ? 'fa-spinner fa-spin' : 'fa-trash'} text-red-300"></i>Delete from every server
 							</button>
 						{/if}
@@ -163,7 +171,7 @@
 										class={ICON_BUTTON}
 										aria-label="Update the copy in #{post.channel_name}"
 										title="Update to the saved version"
-										disabled={busy}
+										disabled={isBusy}
 										onclick={() => onupdate(post)}
 									>
 										<i class="fas {updating === post.id ? 'fa-spinner fa-spin' : 'fa-rotate'}"></i>
@@ -184,7 +192,7 @@
 									class={ICON_BUTTON}
 									aria-label="Remove from #{post.channel_name}"
 									title="Delete from Discord"
-									disabled={busy}
+									disabled={isBusy}
 									onclick={() => onremove(post)}
 								>
 									<i class="fas {removing === post.id ? 'fa-spinner fa-spin' : 'fa-trash'}"></i>

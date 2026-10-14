@@ -7,6 +7,7 @@
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import ServerPicker from '$lib/frontend/components/ServerPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import type { PickerCategory, PickerChannel } from '$lib/frontend/components/pickerTypes.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -24,22 +25,24 @@
 		source_unreachable?: boolean;
 	};
 
-	let saving = $state(false);
+	let isSaving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
 	let forwarders = $state<Forwarder[]>((data.settings?.forwarders ?? []) as Forwarder[]);
 
-	let modalOpen = $state(false);
+	let isModalOpen = $state(false);
 	let editIndex = $state<number | null>(null);
 	let draft = $state<Forwarder>(emptyForwarder());
 	let keywordInput = $state('');
 
-	let sourceServers = $state<any[]>(data.sourceServers ?? []);
-	let sourceChannels = $state<any[]>([]);
-	let sourceCategories = $state<any[]>([]);
-	let loadingChannels = $state(false);
-	let hydratedListNames = $state(false);
+	type SourceChannels = { channels: PickerChannel[]; categories: PickerCategory[] };
 
-	const channelsCacheByGuild = new Map<string, { channels: any[]; categories: any[] }>();
+	const sourceServers = $state(data.sourceServers ?? []);
+	let sourceChannels = $state<PickerChannel[]>([]);
+	let sourceCategories = $state<PickerCategory[]>([]);
+	let isLoadingChannels = $state(false);
+	let areListNamesHydrated = $state(false);
+
+	const channelsCacheByGuild = new Map<string, SourceChannels>();
 
 	function emptyForwarder(): Forwarder {
 		return {
@@ -54,15 +57,21 @@
 	}
 
 	$effect(() => {
-		if (!hydratedListNames) hydrateForwarderSourceChannelNames();
+		if (!areListNamesHydrated) {
+			hydrateForwarderSourceChannelNames();
+		}
 	});
 
-	async function fetchSourceChannels(guildId: string): Promise<{ channels: any[]; categories: any[] }> {
+	async function fetchSourceChannels(guildId: string): Promise<SourceChannels> {
 		const key = String(guildId);
-		if (channelsCacheByGuild.has(key)) return channelsCacheByGuild.get(key) || { channels: [], categories: [] };
+		if (channelsCacheByGuild.has(key)) {
+			return channelsCacheByGuild.get(key) || { channels: [], categories: [] };
+		}
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/source-servers/${guildId}/channels`, { credentials: 'include' });
-			if (!res.ok) return { channels: [], categories: [] };
+			if (!res.ok) {
+				return { channels: [], categories: [] };
+			}
 			const d = await res.json();
 			const value = { channels: d?.channels ?? [], categories: d?.categories ?? [] };
 			channelsCacheByGuild.set(key, value);
@@ -73,15 +82,17 @@
 	}
 
 	async function hydrateForwarderSourceChannelNames() {
-		if (hydratedListNames) return;
+		if (areListNamesHydrated) {
+			return;
+		}
 		const needs = (forwarders || []).filter((fw) => fw?.source_guild_id && Array.isArray(fw?.source_channels) && fw.source_channels.length > 0);
 		if (needs.length === 0) {
-			hydratedListNames = true;
+			areListNamesHydrated = true;
 			return;
 		}
 
 		if (needs.every((fw) => Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length)) {
-			hydratedListNames = true;
+			areListNamesHydrated = true;
 			return;
 		}
 
@@ -89,24 +100,32 @@
 			const updated = [...forwarders];
 			for (let i = 0; i < updated.length; i++) {
 				const fw = updated[i];
-				if (!fw?.source_guild_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
-				if (Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length) continue;
+				if (!fw?.source_guild_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) {
+					continue;
+				}
+				if (Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length) {
+					continue;
+				}
 
 				const { channels } = await fetchSourceChannels(String(fw.source_guild_id));
-				if (!Array.isArray(channels) || channels.length === 0) continue;
+				if (!Array.isArray(channels) || channels.length === 0) {
+					continue;
+				}
 
 				const names = fw.source_channels.map((id) => channelName(id, channels));
 				updated[i] = { ...fw, source_channel_names: names };
 			}
 			forwarders = updated;
 		} finally {
-			hydratedListNames = true;
+			areListNamesHydrated = true;
 		}
 	}
 
 	function addKeyword() {
 		const value = keywordInput.trim();
-		if (!value) return;
+		if (!value) {
+			return;
+		}
 		if (draft.keywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
 			keywordInput = '';
 			return;
@@ -134,7 +153,7 @@
 		keywordInput = '';
 		sourceChannels = [];
 		sourceCategories = [];
-		modalOpen = true;
+		isModalOpen = true;
 	}
 
 	async function openEdit(i: number) {
@@ -149,8 +168,10 @@
 		keywordInput = '';
 		sourceChannels = [];
 		sourceCategories = [];
-		if (draft.source_guild_id) await loadChannels(draft.source_guild_id);
-		modalOpen = true;
+		if (draft.source_guild_id) {
+			await loadChannels(draft.source_guild_id);
+		}
+		isModalOpen = true;
 	}
 
 	async function loadChannels(guildId: string) {
@@ -159,34 +180,42 @@
 			sourceCategories = [];
 			return;
 		}
-		loadingChannels = true;
+		isLoadingChannels = true;
 		const { channels, categories } = await fetchSourceChannels(guildId);
 		sourceChannels = channels;
 		sourceCategories = categories;
-		loadingChannels = false;
+		isLoadingChannels = false;
 	}
 
 	async function onSourceServerChange(val: string) {
 		draft = { ...draft, source_guild_id: val, source_channels: [] };
 		sourceChannels = [];
 		sourceCategories = [];
-		if (val) await loadChannels(val);
+		if (val) {
+			await loadChannels(val);
+		}
 	}
 
-	function channelName(id: string, list: any[]) {
-		return list.find((c: any) => c.discord_channel_id === id)?.name ?? id;
+	function channelName(id: string, list: PickerChannel[]) {
+		return list.find((c) => c.discord_channel_id === id)?.name ?? id;
 	}
 
 	function sourceServerName(guildId: string) {
-		if (!guildId) return '';
-		const s = sourceServers.find((sv: any) => String(sv?.discord_server_id) === String(guildId));
+		if (!guildId) {
+			return '';
+		}
+		const s = sourceServers.find((sv) => String(sv?.discord_server_id) === String(guildId));
 		return (s?.name || '') as string;
 	}
 
 	function formatChannelList(names: string[], max = 3) {
 		const clean = (names || []).map((n) => String(n || '').trim()).filter(Boolean);
-		if (clean.length === 0) return '';
-		if (clean.length <= max) return clean.map((n) => `#${n}`).join(', ');
+		if (clean.length === 0) {
+			return '';
+		}
+		if (clean.length <= max) {
+			return clean.map((n) => `#${n}`).join(', ');
+		}
 		return `${clean
 			.slice(0, max)
 			.map((n) => `#${n}`)
@@ -207,7 +236,7 @@
 		} else {
 			forwarders = [...forwarders, entry];
 		}
-		modalOpen = false;
+		isModalOpen = false;
 	}
 
 	function removeForwarder(i: number) {
@@ -215,7 +244,7 @@
 	}
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
 				method: 'POST',
@@ -231,9 +260,11 @@
 			if (d.success) {
 				showToast('Saved', 'success');
 				invalidateAll();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 </script>
@@ -360,15 +391,15 @@
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>
 
-{#if modalOpen}
+{#if isModalOpen}
 	<div use:scrollLocked class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
 		<div class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border p-5">
 			<div class="mb-5 flex items-center justify-between">
@@ -376,7 +407,7 @@
 					<i class="fas fa-exchange-alt text-violet-400"></i>
 					{editIndex !== null ? 'Edit' : 'Add'} Forwarder
 				</h3>
-				<button onclick={() => (modalOpen = false)} class="text-ash-400 hover:text-ash-100 transition-colors" aria-label="Close">
+				<button onclick={() => (isModalOpen = false)} class="text-ash-400 hover:text-ash-100 transition-colors" aria-label="Close">
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>
@@ -402,8 +433,8 @@
 						categories={sourceCategories}
 						multi
 						value={draft.source_channels}
-						placeholder={loadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'Select source channels...' : 'Select a server first...'}
-						emptyText={loadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'No channels found' : 'Select a source server first'}
+						placeholder={isLoadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'Select source channels...' : 'Select a server first...'}
+						emptyText={isLoadingChannels ? 'Loading channels…' : draft.source_guild_id ? 'No channels found' : 'Select a source server first'}
 						onchange={(v) => (draft = { ...draft, source_channels: v as string[] })}
 					/>
 				</div>
@@ -491,7 +522,7 @@
 			<div class="border-ash-700 mt-4 flex gap-2 border-t pt-4">
 				<button
 					type="button"
-					onclick={() => (modalOpen = false)}
+					onclick={() => (isModalOpen = false)}
 					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
 				>
 					Cancel

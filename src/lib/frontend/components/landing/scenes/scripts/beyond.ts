@@ -1,4 +1,4 @@
-import { BOT, FOOTER, at, avatar, defineScene } from './common.js';
+import { BOT, CAST, FOOTER, at, defineScene } from './common.js';
 
 export const steal = defineScene({
 	id: 'steal',
@@ -8,10 +8,7 @@ export const steal = defineScene({
 	channel: 'items',
 	duration: 15500,
 	rest: 14000,
-	people: {
-		bot: BOT,
-		kai: { name: 'Kai', avatar: avatar(0) }
-	},
+	people: { bot: BOT, kai: CAST.kai },
 	context: [
 		{
 			id: 'reflect-on',
@@ -112,12 +109,7 @@ export const xpCall = defineScene({
 	channel: 'xp-log',
 	duration: 16000,
 	rest: 14800,
-	people: {
-		bot: BOT,
-		mira: { name: 'Mira', avatar: avatar(2) },
-		kai: { name: 'Kai', avatar: avatar(0) },
-		rin: { name: 'Rin', avatar: avatar(3) }
-	},
+	people: { bot: BOT, mira: CAST.mira, kai: CAST.kai, rin: CAST.rin },
 	call: {
 		channel: 'Lounge',
 		me: 'mira',
@@ -127,27 +119,27 @@ export const xpCall = defineScene({
 			{
 				who: 'mira',
 				talk: [
-					[300, 1300],
-					[4400, 5200],
-					[9200, 10000],
-					[13200, 14000]
+					{ from: 300, to: 1300 },
+					{ from: 4400, to: 5200 },
+					{ from: 9200, to: 10000 },
+					{ from: 13200, to: 14000 }
 				]
 			},
 			{
 				who: 'kai',
 				joinAt: 2900,
 				talk: [
-					[3200, 3800],
-					[5900, 6800],
-					[11000, 11900]
+					{ from: 3200, to: 3800 },
+					{ from: 5900, to: 6800 },
+					{ from: 11000, to: 11900 }
 				]
 			},
 			{
 				who: 'rin',
 				joinAt: 3900,
 				talk: [
-					[7700, 8500],
-					[12600, 13100]
+					{ from: 7700, to: 8500 },
+					{ from: 12600, to: 13100 }
 				]
 			}
 		],

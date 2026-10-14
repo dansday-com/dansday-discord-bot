@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SECOND_MS, SECONDS_PER_MINUTE } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
@@ -11,14 +12,14 @@
 	let { data, children }: LayoutProps = $props();
 
 	const isDemo = $derived(data?.user?.authenticated === true && data?.user?.is_demo === true);
-	const demoExpiresAt = $derived(isDemo ? (data.user as any).session_expires_at : undefined);
+	const demoExpiresAt = $derived(isDemo && data.user.authenticated ? data.user.session_expires_at : undefined);
 	let demoRemainingMs = $state<number | null>(null);
 	let demoTimer: number | null = null;
 
 	function fmtCountdown(ms: number): string {
-		const t = Math.max(0, Math.floor(ms / 1000));
-		const m = Math.floor(t / 60);
-		const s = t % 60;
+		const t = Math.max(0, Math.floor(ms / SECOND_MS));
+		const m = Math.floor(t / SECONDS_PER_MINUTE);
+		const s = t % SECONDS_PER_MINUTE;
 		return `${m}:${String(s).padStart(2, '0')}`;
 	}
 
@@ -28,12 +29,16 @@
 	}
 
 	onMount(() => {
-		if (!isDemo || typeof demoExpiresAt !== 'number') return;
+		if (!isDemo || typeof demoExpiresAt !== 'number') {
+			return;
+		}
 		const tick = async () => {
 			const left = demoExpiresAt - Date.now();
 			demoRemainingMs = left;
 			if (left <= 0) {
-				if (demoTimer) window.clearInterval(demoTimer);
+				if (demoTimer) {
+					window.clearInterval(demoTimer);
+				}
 				demoTimer = null;
 				try {
 					await fetch('/api/panel/logout', { method: 'POST', credentials: 'include' });
@@ -43,11 +48,13 @@
 			}
 		};
 		tick();
-		demoTimer = window.setInterval(tick, 1000);
+		demoTimer = window.setInterval(tick, SECOND_MS);
 	});
 
 	onDestroy(() => {
-		if (demoTimer) window.clearInterval(demoTimer);
+		if (demoTimer) {
+			window.clearInterval(demoTimer);
+		}
 		demoTimer = null;
 	});
 </script>

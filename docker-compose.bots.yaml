@@ -14,7 +14,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
     healthcheck:
-      test: ['CMD-SHELL', 'find /tmp/bot-runner.alive -mmin -1 | grep -q .']
+      test: ['CMD-SHELL', 'find /app/.runtime/bot-runner.alive -mmin -1 | grep -q .']
       interval: 30s
       timeout: 5s
       start_period: 30s

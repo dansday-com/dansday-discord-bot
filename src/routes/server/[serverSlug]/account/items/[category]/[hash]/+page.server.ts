@@ -2,26 +2,41 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/backend/public/items/index.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server, serverBasePath, itemsEnabled } = await parent();
+	const { server, serverBasePath, itemsEnabled: areItemsEnabled } = await parent();
 
-	if (!itemsEnabled) return { featureDisabled: true, server, category: 'all' };
+	if (!areItemsEnabled) {
+		return { featureDisabled: true, category: 'all' };
+	}
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');
-	if ('notFound' in shared) redirect(303, `${serverBasePath}/account/profile/stats/${params.hash}`);
-	if ('guest' in shared) redirect(303, serverBasePath || '/');
+	if ('notFound' in shared) {
+		redirect(HTTP.SEE_OTHER, `${serverBasePath}/account/profile/stats/${params.hash}`);
+	}
+	if ('guest' in shared) {
+		redirect(HTTP.SEE_OTHER, serverBasePath || '/');
+	}
 
 	const category = String(params.category || 'all');
-	const visibleItems = category === 'all' ? shared.items : shared.items.filter((i: any) => i.effect_type === category);
+	const visibleItems = category === 'all' ? shared.items : shared.items.filter((i) => i.effect_type === category);
 
-	let ownedByItemId: Record<number, { member_item_id: number; quantity: number; usable: boolean }> = {};
-	let targets: any[] = [];
+	const ownedByItemId: Record<number, { member_item_id: number; quantity: number; usable: boolean }> = {};
+	let targets: {
+		name: string | null;
+		avatar: string | null;
+		discord_member_id: string;
+		level: number;
+		xp: number;
+		rank: number | null;
+		roles: { name: string; color: string | null }[];
+	}[] = [];
 
 	if (shared.member) {
 		const rows = await db.getMemberInventory(shared.member.id).catch(() => []);
-		for (const r of rows as any[]) {
+		for (const r of rows) {
 			ownedByItemId[Number(r.item_id)] = {
 				member_item_id: r.id,
 				quantity: Number(r.quantity) || 0,
@@ -30,7 +45,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		}
 
 		const list = await db.getServerMembersList(server.id).catch(() => []);
-		targets = (list as any[])
+		targets = list
 			.filter((m) => m.discord_member_id && Number(m.id) !== Number(shared.member.id))
 			.map((m) => ({
 				name: m.server_display_name || m.display_name || m.username,
@@ -39,11 +54,11 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 				level: Number(m.level ?? 0) || 0,
 				xp: Number(m.xp ?? 0) || 0,
 				rank: m.rank != null ? Number(m.rank) : null,
-				roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
+				roles: (m.roles ?? []).map((r) => ({ name: r.name, color: r.color }))
 			}));
 	}
 
-	const items = (visibleItems as any[]).map((it) => {
+	const items = visibleItems.map((it) => {
 		const owned = ownedByItemId[Number(it.id)];
 		return {
 			...it,

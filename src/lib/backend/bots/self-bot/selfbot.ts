@@ -11,7 +11,7 @@ const PRESENCE_POLL_MS = 30_000;
 let presencePollTimer: ReturnType<typeof setInterval> | null = null;
 let singletonLock: BotSingletonLock | null = null;
 
-let BOT_TOKEN: string | undefined;
+let BOT_TOKEN: string | null = null;
 (async () => {
 	await initializeConfig();
 	BOT_TOKEN = getBotToken('selfbot');
@@ -20,13 +20,13 @@ let BOT_TOKEN: string | undefined;
 	process.exit(1);
 });
 
-const BOT_ID = process.env.BOT_ID;
+const { BOT_ID } = process.env;
 const client = new Client({
 	makeCache: Options.cacheWithLimits({
 		...Options.defaultMakeCacheSettings,
 		MessageManager: 25,
-		GuildMemberManager: { maxSize: 1, keepOverLimit: (member: any) => member.id === member.client.user?.id },
-		UserManager: { maxSize: 1, keepOverLimit: (user: any) => user.id === user.client.user?.id },
+		GuildMemberManager: { maxSize: 1, keepOverLimit: (member) => member.id === member.client.user?.id },
+		UserManager: { maxSize: 1, keepOverLimit: (user) => user.id === user.client.user?.id },
 		PresenceManager: 0,
 		ReactionManager: 0,
 		GuildStickerManager: 0,
@@ -37,20 +37,24 @@ const client = new Client({
 	})
 });
 
-let initialized = false;
+let isInitialized = false;
 
 client.on('ready', async () => {
-	logger.info('Self-bot logged in', { userTag: (client.user as any)?.tag });
+	logger.info('Self-bot logged in', { userTag: client.user?.tag });
 
-	if (initialized) return;
-	initialized = true;
+	if (isInitialized) {
+		return;
+	}
+	isInitialized = true;
 
 	if (!BOT_TOKEN) {
 		await initializeConfig();
 		BOT_TOKEN = getBotToken('selfbot');
 	}
 
-	if (!BOT_TOKEN) throw new Error('Bot token not available. Cannot proceed.');
+	if (!BOT_TOKEN) {
+		throw new Error('Bot token not available. Cannot proceed.');
+	}
 
 	await sync.init(client, BOT_ID);
 	logger.init(client);
@@ -59,7 +63,9 @@ client.on('ready', async () => {
 	const presenceId = BOT_ID ? Number(BOT_ID) : NaN;
 	if (Number.isFinite(presenceId)) {
 		await applySelfbotDiscordPresenceFromDb(client, presenceId);
-		if (presencePollTimer) clearInterval(presencePollTimer);
+		if (presencePollTimer) {
+			clearInterval(presencePollTimer);
+		}
 		presencePollTimer = setInterval(() => {
 			applySelfbotDiscordPresenceFromDb(client, presenceId).catch(() => {});
 		}, PRESENCE_POLL_MS);
@@ -89,7 +95,9 @@ process.on('SIGTERM', shutdown);
 		BOT_TOKEN = getBotToken('selfbot');
 	}
 
-	if (!BOT_TOKEN) throw new Error('Bot token not available. Cannot login.');
+	if (!BOT_TOKEN) {
+		throw new Error('Bot token not available. Cannot login.');
+	}
 
 	singletonLock = await acquireBotSingletonLock('selfbot', BOT_ID ?? 'unknown');
 	if (!singletonLock) {

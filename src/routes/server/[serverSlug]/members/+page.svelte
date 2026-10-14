@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { memberDefaultAvatarUrl } from '$lib/discordAvatars.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { onFirstInteraction } from '$lib/frontend/firstInteraction.js';
@@ -11,6 +12,21 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import { compact, md, serverLinkEmbed } from '$lib/frontend/public/linkEmbed.js';
+	import { HEX_RADIX, RGB_MAX } from '$lib/utils/numbers.js';
+	import { relativeLuminance } from '$lib/utils/rgb.js';
+
+	const SHORT_HEX_LENGTH = 3;
+	const HEX_COLOR_LENGTH = 6;
+	const BLUE_HEX_OFFSET = 4;
+	const COLOR_INT_MAX = 0xffffff;
+	const RED_SHIFT_BITS = 16;
+	const GREEN_SHIFT_BITS = 8;
+	const NEAR_WHITE_LUMINANCE = 0.78;
+	const NEAR_WHITE_CHANNEL = 248;
+	const SOFT_TEXT_LUMINANCE = 0.52;
+	const NEWEST_MEMBERS_SHOWN = 3;
+	const ROW_STAGGER_MS = 32;
+	const RANK_AVATAR_PX = 56;
 
 	let { data }: PageProps = $props();
 
@@ -22,21 +38,26 @@
 	type RoleRgb = { r: number; g: number; b: number };
 
 	function parseRoleColorRaw(raw: string | null | undefined): RoleRgb | null {
-		if (raw == null) return null;
+		if (raw == null) {
+			return null;
+		}
 		const s = String(raw).trim();
-		if (s === '' || s.toLowerCase() === 'null' || s === 'undefined' || s === '0') return null;
+		if (s === '' || s.toLowerCase() === 'null' || s === 'undefined' || s === '0') {
+			return null;
+		}
 		if (s.startsWith('#')) {
 			let h = s.slice(1);
-			if (h.length === 3)
+			if (h.length === SHORT_HEX_LENGTH) {
 				h = h
 					.split('')
 					.map((c) => c + c)
 					.join('');
-			if (h.length === 6 && /^[0-9a-fA-F]+$/.test(h)) {
+			}
+			if (h.length === HEX_COLOR_LENGTH && /^[0-9a-fA-F]+$/.test(h)) {
 				return {
 					r: parseInt(h.slice(0, 2), 16),
-					g: parseInt(h.slice(2, 4), 16),
-					b: parseInt(h.slice(4, 6), 16)
+					g: parseInt(h.slice(2, BLUE_HEX_OFFSET), 16),
+					b: parseInt(h.slice(BLUE_HEX_OFFSET, HEX_COLOR_LENGTH), 16)
 				};
 			}
 			return null;
@@ -44,38 +65,38 @@
 		if (/^[0-9A-Fa-f]{6}$/.test(s)) {
 			return {
 				r: parseInt(s.slice(0, 2), 16),
-				g: parseInt(s.slice(2, 4), 16),
-				b: parseInt(s.slice(4, 6), 16)
+				g: parseInt(s.slice(2, BLUE_HEX_OFFSET), 16),
+				b: parseInt(s.slice(BLUE_HEX_OFFSET, HEX_COLOR_LENGTH), 16)
 			};
 		}
 		const n = Number.parseInt(s, 10);
-		if (Number.isFinite(n) && n >= 0 && n <= 0xffffff) {
-			return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+		if (Number.isFinite(n) && n >= 0 && n <= COLOR_INT_MAX) {
+			return { r: (n >> RED_SHIFT_BITS) & RGB_MAX, g: (n >> GREEN_SHIFT_BITS) & RGB_MAX, b: n & RGB_MAX };
 		}
 		return null;
 	}
 
 	function rgbToHex({ r, g, b }: RoleRgb): string {
-		return `#${[r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`;
+		return `#${[r, g, b].map((x) => Math.max(0, Math.min(RGB_MAX, x)).toString(HEX_RADIX).padStart(2, '0')).join('')}`;
 	}
 
 	function roleColorLuminance({ r, g, b }: RoleRgb): number {
-		const lin = (c: number) => {
-			c /= 255;
-			return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-		};
-		return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+		return relativeLuminance([r, g, b]);
 	}
 
 	function rolePillStyle(color: string | null | undefined): string {
 		const rgb = parseRoleColorRaw(color);
 		const fallback = `--role-fg: #2e211b; --role-bg: color-mix(in srgb, var(--color-primary) 10%, transparent); --role-bd: color-mix(in srgb, var(--color-primary) 38%, transparent); --role-dot: var(--color-primary);`;
-		if (!rgb) return fallback;
+		if (!rgb) {
+			return fallback;
+		}
 		const L = roleColorLuminance(rgb);
-		const nearWhite = L >= 0.78 || (rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
-		if (nearWhite) return fallback;
+		const nearWhite = L >= NEAR_WHITE_LUMINANCE || (rgb.r >= NEAR_WHITE_CHANNEL && rgb.g >= NEAR_WHITE_CHANNEL && rgb.b >= NEAR_WHITE_CHANNEL);
+		if (nearWhite) {
+			return fallback;
+		}
 		const hex = rgbToHex(rgb);
-		const softText = L > 0.52;
+		const softText = L > SOFT_TEXT_LUMINANCE;
 		return [
 			`--role-fg: ${softText ? '#2e211b' : hex}`,
 			`--role-bg: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.13)`,
@@ -86,7 +107,7 @@
 
 	let liveMembers = $state([...(data.members ?? [])]);
 	let es: EventSource | null = null;
-	let mounted = $state(false);
+	let isMounted = $state(false);
 
 	$effect(() => {
 		liveMembers = [...(data.members ?? [])];
@@ -95,13 +116,15 @@
 	const members = $derived(liveMembers);
 
 	function fmtNum(n: number): string {
-		if (n == null) return '0';
+		if (n == null) {
+			return '0';
+		}
 		return Number(n).toLocaleString();
 	}
 
 	onMount(() => {
 		requestAnimationFrame(() => {
-			mounted = true;
+			isMounted = true;
 		});
 		return onFirstInteraction(() => {
 			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
@@ -110,7 +133,9 @@
 			source.onmessage = (e) => {
 				try {
 					const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
-					if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members;
+					if (payload?.members && Array.isArray(payload.members)) {
+						liveMembers = payload.members;
+					}
 				} catch (_) {}
 			};
 			source.onerror = () => {};
@@ -145,7 +170,9 @@
 
 	$effect(() => {
 		const tp = Math.max(1, Math.ceil(sorted.length / PER_PAGE));
-		if (listPage > tp) listPage = tp;
+		if (listPage > tp) {
+			listPage = tp;
+		}
 	});
 
 	const paged = $derived(sorted.slice((listPage - 1) * PER_PAGE, listPage * PER_PAGE));
@@ -155,8 +182,12 @@
 	}
 
 	function displayName(m: (typeof members)[number]): string {
-		if (m.server_display_name?.trim()) return m.server_display_name;
-		if (m.display_name?.trim()) return m.display_name;
+		if (m.server_display_name?.trim()) {
+			return m.server_display_name;
+		}
+		if (m.display_name?.trim()) {
+			return m.display_name;
+		}
 		return m.username ?? 'Unknown';
 	}
 
@@ -169,11 +200,11 @@
 	}
 
 	function avatarSrc(m: (typeof members)[number]): string {
-		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
+		return m.avatar ?? memberDefaultAvatarUrl(m.discord_member_id);
 	}
 
 	function highestRole(m: (typeof members)[number]) {
-		return (m.roles ?? []).reduce((top: any, r: any) => (top == null || (r.position ?? 0) > (top.position ?? 0) ? r : top), null as any);
+		return (m.roles ?? []).reduce<(typeof m.roles)[number] | null>((top, r) => (top == null || (r.position ?? 0) > (top.position ?? 0) ? r : top), null);
 	}
 
 	const linkEmbed = $derived.by(() => {
@@ -181,14 +212,14 @@
 		const boosters = all.filter((m) => m.is_booster).length;
 		const newest = [...all]
 			.filter((m) => m.member_since)
-			.sort((a, b) => new Date(b.member_since).getTime() - new Date(a.member_since).getTime())
-			.slice(0, 3)
+			.sort((a, b) => new Date(b.member_since!).getTime() - new Date(a.member_since!).getTime())
+			.slice(0, NEWEST_MEMBERS_SHOWN)
 			.map((m) => `**${md(listDisplayName(m))}**`);
 		const lines = [
 			`**${compact(all.length)}** members${boosters > 0 ? ` · **${compact(boosters)}** boosters` : ''}`,
 			...(newest.length ? [`Newest: ${newest.join(', ')}`] : [])
 		];
-		return serverLinkEmbed({ ...data.server, name: serverName }, data.canonicalUrl, 'Member directory', lines);
+		return serverLinkEmbed({ ...data.server, name: serverName }, { url: data.canonicalUrl, subtitle: 'Member directory', lines });
 	});
 </script>
 
@@ -236,10 +267,10 @@
 			{@const memberAccent = normalizeAccent(member.theme_accent)}
 			{@const memberImage = member.theme_image ?? null}
 			<li
-				class="card border-base-300 bg-base-100 relative isolate overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
+				class="card border-base-300 bg-base-100 relative isolate overflow-hidden border shadow-sm transition-all duration-500 ease-out {isMounted
 					? 'translate-y-0 opacity-100'
 					: 'translate-y-3 opacity-0'} {rs ? 'border-l-4' : ''}"
-				style="transition-delay: {i * 32}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}{memberAccent ? ` --row-accent: ${memberAccent};` : ''}"
+				style="transition-delay: {i * ROW_STAGGER_MS}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}{memberAccent ? ` --row-accent: ${memberAccent};` : ''}"
 			>
 				{#if memberAccent}
 					{#if memberImage}
@@ -267,7 +298,7 @@
 							>
 								{member.rank != null ? `#${member.rank}` : '—'}
 							</span>
-							<RankAvatar src={avatarSrc(member)} name={listDisplayName(member)} size={56} />
+							<RankAvatar src={avatarSrc(member)} name={listDisplayName(member)} size={RANK_AVATAR_PX} />
 						</div>
 
 						<div class="min-w-0 flex-1">

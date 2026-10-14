@@ -20,6 +20,8 @@
 
 	let { data }: PageProps = $props();
 
+	const FIRST_REWARD_UNITS = 5;
+
 	const BLOCK_REASONS: Record<string, string> = {
 		deleted: 'was deleted in Discord.',
 		managed: 'belongs to an integration, so no bot can give it.',
@@ -52,17 +54,17 @@
 	const IMAGE_LIMIT = imageSizeLabel(REWARD_IMAGE_MAX_BYTES);
 
 	let rows = $state<Draft[]>([]);
-	let keep = $state(true);
-	let stack = $state(true);
-	let busy = $state(false);
+	let shouldKeep = $state(true);
+	let shouldStack = $state(true);
+	let isBusy = $state(false);
 	let preparing = $state<number | null>(null);
 	let delivering = $state<string | null>(null);
 	let blocked = $state<{ role_id: string; reason: string }[]>([]);
 
 	$effect(() => {
 		rows = data.rewards.map((r) => ({ ...r, file: null, preview: null, original: null }));
-		keep = data.rules.keep;
-		stack = data.rules.stack;
+		shouldKeep = data.rules.keep;
+		shouldStack = data.rules.stack;
 	});
 
 	const roleById = $derived(new Map(data.roles.map((r) => [r.id, r])));
@@ -82,9 +84,15 @@
 
 	function hint(row: Draft): string {
 		const parts: string[] = [];
-		if (row.goal_type === 'level') parts.push(`${fmt(xpForLevel(Number(row.units) || 0, data.levelReq.baseXp, data.levelReq.multiplier))} XP`);
-		if (row.reached !== null) parts.push(`${fmt(row.reached)} reached`);
-		if (row.id !== null && row.winner_limit) parts.push(`${fmt(row.winners)}/${fmt(Number(row.winner_limit))} taken`);
+		if (row.goal_type === 'level') {
+			parts.push(`${fmt(xpForLevel(Number(row.units) || 0, data.levelReq.baseXp, data.levelReq.multiplier))} XP`);
+		}
+		if (row.reached !== null) {
+			parts.push(`${fmt(row.reached)} reached`);
+		}
+		if (row.id !== null && row.winner_limit) {
+			parts.push(`${fmt(row.winners)}/${fmt(Number(row.winner_limit))} taken`);
+		}
 		return parts.join(' · ');
 	}
 
@@ -95,7 +103,7 @@
 			{
 				id: null,
 				goal_type: last?.goal_type ?? 'level',
-				units: (Number(last?.units) || 0) + (last ? rewardGoalMeta(last.goal_type).min : 5),
+				units: (Number(last?.units) || 0) + (last ? rewardGoalMeta(last.goal_type).min : FIRST_REWARD_UNITS),
 				kind: 'role',
 				role_id: '',
 				xp: 1000,
@@ -113,14 +121,20 @@
 	}
 
 	function imageLabel(row: Draft): string {
-		if (!row.file) return '';
+		if (!row.file) {
+			return '';
+		}
 		const now = imageSizeLabel(row.file.size);
-		if (row.original != null && row.original > row.file.size) return `${row.file.name} · ${imageSizeLabel(row.original)} → ${now}`;
+		if (row.original != null && row.original > row.file.size) {
+			return `${row.file.name} · ${imageSizeLabel(row.original)} → ${now}`;
+		}
 		return `${row.file.name} · ${now}`;
 	}
 
 	function discardImage(row: Draft) {
-		if (row.preview) URL.revokeObjectURL(row.preview);
+		if (row.preview) {
+			URL.revokeObjectURL(row.preview);
+		}
 		row.file = null;
 		row.preview = null;
 		row.original = null;
@@ -135,18 +149,24 @@
 	async function pickImage(row: Draft, index: number, input: HTMLInputElement) {
 		const picked = input.files?.[0];
 		input.value = '';
-		if (!picked) return;
-		if (!imageExtension(picked.type)) return showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
+		if (!picked) {
+			return;
+		}
+		if (!imageExtension(picked.type)) {
+			showToast(`Use a ${IMAGE_FORMATS_LABEL} image.`, 'error');
+			return;
+		}
 		preparing = index;
 		try {
 			const prepared = await prepareThemeUpload(picked);
 			if (prepared.file.size > REWARD_IMAGE_MAX_BYTES) {
-				return showToast(
+				showToast(
 					prepared.file === picked
 						? `That image is ${imageSizeLabel(picked.size)}. Pick one under ${IMAGE_LIMIT}.`
 						: `Still ${imageSizeLabel(prepared.file.size)} after optimising. The limit is ${IMAGE_LIMIT}.`,
 					'error'
 				);
+				return;
 			}
 			discardImage(row);
 			row.file = prepared.file;
@@ -158,7 +178,9 @@
 	}
 
 	async function uploadImage(row: Draft): Promise<boolean> {
-		if (!row.file) return true;
+		if (!row.file) {
+			return true;
+		}
 		const form = new FormData();
 		form.append('image', row.file);
 		const res = await fetch(`/api/servers/${data.serverId}/rewards/image`, { method: 'POST', body: form });
@@ -174,11 +196,21 @@
 	}
 
 	async function save() {
-		if (rows.some((r) => r.kind === 'role' && !r.role_id)) return showToast('Pick a role for every role reward', 'error');
-		if (rows.some((r) => r.kind === 'custom' && !r.name.trim())) return showToast('Name every custom reward', 'error');
-		busy = true;
+		if (rows.some((r) => r.kind === 'role' && !r.role_id)) {
+			showToast('Pick a role for every role reward', 'error');
+			return;
+		}
+		if (rows.some((r) => r.kind === 'custom' && !r.name.trim())) {
+			showToast('Name every custom reward', 'error');
+			return;
+		}
+		isBusy = true;
 		try {
-			for (const row of rows) if (row.kind === 'custom' && !(await uploadImage(row))) return;
+			for (const row of rows) {
+				if (row.kind === 'custom' && !(await uploadImage(row))) {
+					return;
+				}
+			}
 			const rewards = rows.map((r) => ({
 				id: r.id,
 				goal_type: r.goal_type,
@@ -193,10 +225,13 @@
 			const res = await fetch(`/api/servers/${data.serverId}/rewards`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ rewards, keep, stack })
+				body: JSON.stringify({ rewards, keep: shouldKeep, stack: shouldStack })
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not save the rewards', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not save the rewards', 'error');
+				return;
+			}
 			blocked = out.blocked ?? [];
 			showToast(
 				out.synced ? 'Rewards saved. Members who already qualify get theirs now.' : 'Rewards saved. The bot is offline, so they go out when it starts.',
@@ -204,7 +239,7 @@
 			);
 			await invalidateAll();
 		} finally {
-			busy = false;
+			isBusy = false;
 		}
 	}
 
@@ -217,7 +252,10 @@
 				body: JSON.stringify({ id })
 			});
 			const out = await res.json().catch(() => ({}));
-			if (!res.ok || !out.ok) return showToast(out.error || 'Could not mark it delivered', 'error');
+			if (!res.ok || !out.ok) {
+				showToast(out.error || 'Could not mark it delivered', 'error');
+				return;
+			}
 			showToast('Marked as delivered', 'success');
 			await invalidateAll();
 		} finally {
@@ -407,7 +445,7 @@
 										type="file"
 										accept={IMAGE_ACCEPT}
 										class="hidden"
-										disabled={preparing !== null || busy}
+										disabled={preparing !== null || isBusy}
 										onchange={(e) => pickImage(row, i, e.currentTarget)}
 									/>
 								{/if}
@@ -451,14 +489,14 @@
 			label="Keep rewards when a level drops"
 			description="On: a member who loses XP to a steal or bomb keeps what they earned. Off: it is taken back until they climb back to that level. XP already paid and delivered rewards always stay."
 			labelIconClass="fas fa-shield-halved text-sky-400"
-			bind:enabled={keep}
+			bind:enabled={shouldKeep}
 			disabled={!data.canEdit}
 		/>
 		<ConfigToggleRow
 			label="Keep lower rewards"
 			description="On: members keep every reward they pass. Off: on the same goal, a higher reward replaces the lower one. XP already paid and delivered rewards always stay."
 			labelIconClass="fas fa-layer-group text-violet-400"
-			bind:enabled={stack}
+			bind:enabled={shouldStack}
 			disabled={!data.canEdit}
 		/>
 	</section>
@@ -467,10 +505,10 @@
 		<button
 			type="button"
 			onclick={save}
-			disabled={busy}
+			disabled={isBusy}
 			class="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50 sm:w-auto"
 		>
-			<i class="fas {busy ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>Save rewards
+			<i class="fas {isBusy ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}"></i>Save rewards
 		</button>
 	{/if}
 </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay, statDelay } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -12,7 +12,7 @@
 
 	let query = $state('');
 	let sortBy = $state<'members' | 'name'>('members');
-	let broken = $state<Record<string, boolean>>({});
+	const broken = $state<Record<string, boolean>>({});
 
 	const filtered = $derived(
 		[...data.sources.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))].sort((a, b) =>
@@ -43,7 +43,7 @@
 			{#if data.sources.length > 0}
 				<div class="border-base-300 mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
 					{#each [{ label: 'Sources', value: fmt(data.sources.length) }, { label: 'Members reachable', value: fmt(totalMembers) }, { label: 'Channels', value: fmt(totalChannels) }, { label: 'Largest', value: fmt(data.sources[0]?.members ?? 0) }] as stat, i (stat.label)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {statDelay(i)}">
 							<p class="text-primary text-[clamp(20px,3.4cqw,34px)] leading-none font-black tabular-nums">{stat.value}</p>
 							<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
 						</div>
@@ -75,7 +75,7 @@
 
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{#each filtered as source, i (source.discord_server_id)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {Math.min(i, 8) * 60}ms">
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {cappedListDelay(i)}">
 							<article class="border-base-300 bg-base-100 hover:border-primary/40 flex h-full gap-3.5 rounded-sm border p-4 transition-colors">
 								<span class="bg-base-200 text-primary grid size-11 shrink-0 place-items-center overflow-hidden rounded-sm text-[15px] leading-none">
 									{#if source.server_icon && !broken[source.discord_server_id]}

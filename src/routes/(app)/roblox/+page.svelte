@@ -3,19 +3,21 @@
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
 	import type { RobloxEntry } from '$lib/frontend/public/catalog/index.js';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay } from '$lib/frontend/components/shell';
 	import { isUsableRobloxThumbnail } from '$lib/roblox-thumbnails.js';
 
 	let { data }: PageProps = $props();
 
 	let loaded = $state<RobloxEntry[]>([...data.items]);
-	let loading = $state(false);
+	let isLoading = $state(false);
 	let exhausted = $state(data.items.length >= data.tracked);
 	let sentinel: HTMLDivElement | null = $state(null);
 
 	async function loadMore() {
-		if (loading || exhausted) return;
-		loading = true;
+		if (isLoading || exhausted) {
+			return;
+		}
+		isLoading = true;
 		try {
 			const res = await fetch(`/api/public-catalog/roblox?offset=${loaded.length}`);
 			const payload = (await res.json()) as { items?: RobloxEntry[]; limit?: number };
@@ -23,19 +25,25 @@
 			const seen = new Set(loaded.map((item) => item.asset_id));
 			const fresh = batch.filter((item) => !seen.has(item.asset_id));
 			loaded = [...loaded, ...fresh];
-			if (fresh.length === 0 || batch.length < (payload.limit ?? batch.length)) exhausted = true;
+			if (fresh.length === 0 || batch.length < (payload.limit ?? batch.length)) {
+				exhausted = true;
+			}
 		} catch (_) {
 			exhausted = true;
 		} finally {
-			loading = false;
+			isLoading = false;
 		}
 	}
 
 	$effect(() => {
 		const node = sentinel;
-		if (!node || exhausted) return;
+		if (!node || exhausted) {
+			return;
+		}
 		const io = new IntersectionObserver((entries) => {
-			if (entries.some((entry) => entry.isIntersecting)) loadMore();
+			if (entries.some((entry) => entry.isIntersecting)) {
+				loadMore();
+			}
 		});
 		io.observe(node);
 		return () => io.disconnect();
@@ -49,8 +57,8 @@
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
 	let query = $state('');
-	let limitedOnly = $state(false);
-	let broken = $state<Record<string, boolean>>({});
+	let isLimitedOnly = $state(false);
+	const broken = $state<Record<string, boolean>>({});
 
 	const initials = (n: string) =>
 		n
@@ -67,10 +75,16 @@
 
 	const filtered = $derived(
 		loaded.filter((item) => {
-			if (limitedOnly && !item.limited) return false;
-			if (category && item.category !== category) return false;
+			if (isLimitedOnly && !item.limited) {
+				return false;
+			}
+			if (category && item.category !== category) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${item.name} ${item.creator_name ?? ''}`.toLowerCase().includes(needle);
 		})
 	);
@@ -109,9 +123,9 @@
 					{/if}
 					<button
 						type="button"
-						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {limitedOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
-						onclick={() => (limitedOnly = !limitedOnly)}
-						aria-pressed={limitedOnly}
+						class="btn btn-sm rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase {isLimitedOnly ? 'btn-primary' : 'btn-outline btn-primary'}"
+						onclick={() => (isLimitedOnly = !isLimitedOnly)}
+						aria-pressed={isLimitedOnly}
 					>
 						Limited only
 					</button>
@@ -119,7 +133,7 @@
 
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 					{#each filtered as item, i (item.asset_id)}
-						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {Math.min(i, 8) * 60}ms">
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {cappedListDelay(i)}">
 							<a
 								href={`https://www.roblox.com/catalog/${item.asset_id}`}
 								target="_blank"
@@ -193,7 +207,7 @@
 				{/if}
 
 				<div bind:this={sentinel} class="pt-8">
-					{#if loading}
+					{#if isLoading}
 						<p class="text-base-content/45 text-[12px] font-bold tracking-[0.12em] uppercase">
 							<i class="fas fa-spinner fa-spin text-[11px]"></i>
 							Loading more

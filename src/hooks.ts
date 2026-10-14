@@ -3,9 +3,13 @@ import { isPublicServerSubpath, publicServerPath, publicServerSlugFromHost } fro
 
 export const reroute: Reroute = ({ url }) => {
 	const slug = publicServerSlugFromHost(url.hostname);
-	if (!slug) return;
+	if (!slug) {
+		return;
+	}
 
-	if (!isPublicServerSubpath(url.pathname)) return;
+	if (!isPublicServerSubpath(url.pathname)) {
+		return;
+	}
 
 	const pathname = url.pathname.replace(/\/+$/, '');
 	return publicServerPath(slug) + pathname;

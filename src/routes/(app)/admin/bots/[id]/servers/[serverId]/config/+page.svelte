@@ -20,7 +20,7 @@
 
 	let { data }: PageProps = $props();
 
-	let saving = $state(false);
+	let isSaving = $state(false);
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let defaultFooter = $state(data.settings?.footer ?? '');
 	let botUpdatesChannel = $state(data.settings?.bot_updates_channel_id ?? '');
@@ -32,14 +32,16 @@
 
 	$effect(() => {
 		const next = data.defaultFooters[language as keyof typeof data.defaultFooters];
-		if (next && untrack(() => Object.values(data.defaultFooters).includes(defaultFooter.trim()))) defaultFooter = next;
+		if (next && untrack(() => Object.values(data.defaultFooters).includes(defaultFooter.trim()))) {
+			defaultFooter = next;
+		}
 	});
 
 	const languageOptions = SERVER_LANGUAGES.map((l) => ({ value: l.code, label: serverLanguageLabel(l.code) }));
 
 	let pending = $state<Record<BotProfileImageKind, string | null | undefined>>({ avatar: undefined, banner: undefined });
 	let preparing = $state<BotProfileImageKind | null>(null);
-	let inputs: Record<BotProfileImageKind, HTMLInputElement | undefined> = $state({ avatar: undefined, banner: undefined });
+	const inputs: Record<BotProfileImageKind, HTMLInputElement | undefined> = $state({ avatar: undefined, banner: undefined });
 
 	const savedUrl = (kind: BotProfileImageKind) => (kind === 'avatar' ? data.settings?.bot_avatar_url : data.settings?.bot_banner_url) || '';
 	const shown = (kind: BotProfileImageKind) => (pending[kind] === undefined ? savedUrl(kind) : (pending[kind] ?? ''));
@@ -51,12 +53,14 @@
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = '';
-		if (!file) return;
+		if (!file) {
+			return;
+		}
 		preparing = kind;
 		try {
 			pending[kind] = await prepareBotProfileImage(file, kind);
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : 'Could not read the image', 'error');
+			showToast(err instanceof Error ? (err as Error).message : 'Could not read the image', 'error');
 		} finally {
 			preparing = null;
 		}
@@ -67,7 +71,7 @@
 	}
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
 				method: 'POST',
@@ -100,7 +104,7 @@
 				}
 			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 </script>
@@ -278,10 +282,10 @@
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

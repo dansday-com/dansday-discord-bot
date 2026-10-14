@@ -2,10 +2,12 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import type { ResultSetHeader } from 'mysql2';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES } from './backend/panelServer.js';
-import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, PUBLIC_STATISTICS_SUBFEATURES, APP_DOMAIN } from './backend/panelServer.js';
+import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, attemptSync } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS } from './backend/config.js';
 import { DEFAULT_SERVER_LANGUAGE } from './languages.js';
@@ -13,12 +15,80 @@ import { defaultGreetingMessages, defaultMainEmbedFooter } from './localizedDefa
 import { memberTier, type MemberTier } from './panelHierarchy.js';
 import { DEFAULT_MODERATION_RULE_SETTINGS } from './moderation-rules.js';
 import { DEFAULT_REWARD_SETTINGS, sortRewards, type Reward, type RewardDraft, type RewardEarning, type RewardGoal, type RewardKind } from './rewards.js';
-import { DAY_MINUTES, minuteKeyFor } from './tasks.js';
+import { minuteKeyFor } from './tasks.js';
 import { TOWER_GAME, TOWER_HIGH_FLOOR } from './tower.js';
 import { COLOR_GAME } from './color.js';
 import { normalizeMessageDoc, type MessageDoc, type MessageScope } from './messages.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 import type { CreatorContent, CreatorContentType, CreatorPlatform, CreatorProfile } from './backend/api/creator-alerts-api.js';
+import { DAY_MS, MINUTE_MS, SECOND_MS, DAY_MINUTES, DAYS_PER_WEEK, SECONDS_PER_MINUTE } from './utils/time.js';
+import { roundTo } from './utils/numbers.js';
+
+const DEFAULT_BOT_PORT = 7777;
+const SLUG_SUFFIX_LIMIT = 10_000;
+const PUBLIC_LIST_DEFAULT_LIMIT = 300;
+const PUBLIC_LIST_MAX_LIMIT = 500;
+const XP_EVENTS_DEFAULT_LIMIT = 40;
+const XP_EVENTS_MAX_LIMIT = 100;
+const MEMBER_SEARCH_DEFAULT_LIMIT = 15;
+const MEMBER_SEARCH_MAX_LIMIT = 50;
+const GIFT_SEARCH_DEFAULT_LIMIT = 50;
+const GIFT_SEARCH_MAX_LIMIT = 100;
+const STALE_STREAKS_DEFAULT_LIMIT = 500;
+const LEVEL_FRIENDS_DEFAULT_LIMIT = 5;
+const LEVEL_GAIN_SOURCE_MAX_LENGTH = 24;
+const POPULAR_ROBLOX_ITEMS_DEFAULT_LIMIT = 6;
+const INSIGHT_PEERS_DEFAULT_LIMIT = 3;
+const SERVER_LEADERBOARD_MAX_LIMIT = 50;
+const MONTH_RANGE_DAYS = 30;
+const URL_COLUMN_MAX_LENGTH = 512;
+const GIVEAWAY_SHUFFLE_ROUNDS = 10;
+const STREAM_LOG_PAYLOAD_MAX_LENGTH = 60000;
+const STREAM_LOG_PREVIEW_LENGTH = 8000;
+const STREAM_LOG_EVENT_TYPE_MAX_LENGTH = 64;
+const FEEDBACK_DEFAULT_LIMIT = 100;
+const FEEDBACK_MAX_LIMIT = 500;
+const PANEL_LOG_ACTION_MAX_LENGTH = 24;
+const PRIOR_MEMBER_MARGIN_MINUTES = 5;
+
+type SelectResult<T> = [T[], unknown];
+type ScalarRow<K extends string> = Partial<Record<K, string | number | null>>;
+type ScalarRows<K extends string> = [ScalarRow<K> & Record<number, ScalarRow<K>>, unknown];
+type WriteResult = [ResultSetHeader, unknown] & Partial<ResultSetHeader>;
+
+type UserLike = {
+	id: string;
+	username?: string | null;
+	globalName?: string | null;
+	displayName?: string | null;
+	bot?: boolean;
+	createdAt?: Date | null;
+	displayAvatarURL?(options?: object): string;
+};
+export type MemberLike = UserLike & {
+	user?: UserLike | null;
+	nickname?: string | null;
+	joinedAt?: Date | null;
+	premiumSince?: Date | null;
+	guild?: { id?: string; ownerId?: string | null } | null;
+	roles?: { cache: { keys(): IterableIterator<string> } } | null;
+};
+type GuildLike = {
+	id: string;
+	name: string;
+	iconURL?(options?: object): string | null;
+	createdAt?: Date | null;
+	vanityURLCode?: string | null;
+	invites?: { fetch?(): Promise<unknown> } | null;
+	client?: { user?: { id: string } | null } | null;
+	premiumTier?: number | string | null;
+	memberCount?: number | null;
+	channels?: { cache?: { size: number } } | null;
+	premiumSubscriptionCount?: number | null;
+};
+type RoleLike = { id: string; name: string; position: number; hexColor: string; permissions?: { bitfield?: bigint | number | string } | null };
+type CategoryLike = { id: string; name: string | null; position?: number | null };
+type ChannelLike = { id: string; name: string | null; type: string | null; parent_id?: string | null; position?: number | null };
 
 const WAGER_FREE_GAMES = sql`(${TOWER_GAME}, ${COLOR_GAME})`;
 
@@ -34,11 +104,21 @@ function getConnectionConfig() {
 			database: url.pathname.slice(1)
 		};
 	}
-	if (!process.env.DB_HOST) throw new Error('Missing DB_HOST environment variable');
-	if (!process.env.DB_PORT) throw new Error('Missing DB_PORT environment variable');
-	if (!process.env.DB_USER) throw new Error('Missing DB_USER environment variable');
-	if (!process.env.DB_PASSWORD) throw new Error('Missing DB_PASSWORD environment variable');
-	if (!process.env.DB_NAME) throw new Error('Missing DB_NAME environment variable');
+	if (!process.env.DB_HOST) {
+		throw new Error('Missing DB_HOST environment variable');
+	}
+	if (!process.env.DB_PORT) {
+		throw new Error('Missing DB_PORT environment variable');
+	}
+	if (!process.env.DB_USER) {
+		throw new Error('Missing DB_USER environment variable');
+	}
+	if (!process.env.DB_PASSWORD) {
+		throw new Error('Missing DB_PASSWORD environment variable');
+	}
+	if (!process.env.DB_NAME) {
+		throw new Error('Missing DB_NAME environment variable');
+	}
 	return {
 		host: process.env.DB_HOST,
 		port: parseInt(process.env.DB_PORT),
@@ -56,7 +136,7 @@ async function tableExists(name: string) {
 			cfg.database,
 			name
 		]);
-		return (rows as any[])[0]?.count > 0;
+		return (rows as [{ count: number }])[0]?.count > 0;
 	} finally {
 		await conn.end();
 	}
@@ -79,12 +159,14 @@ async function runMigration() {
 			.filter((s: string) => s.length > 0 && !s.startsWith('--'));
 
 		for (const statement of statements) {
-			if (statement.length > 0) await connection.query(statement);
+			if (statement.length > 0) {
+				await connection.query(statement);
+			}
 		}
 
 		logger.log('✅ Database schema created successfully!');
-	} catch (error: any) {
-		logger.log(`❌ Migration failed: ${error.message}`);
+	} catch (error) {
+		logger.log(`❌ Migration failed: ${(error as Error).message}`);
 		throw error;
 	} finally {
 		await connection.end();
@@ -101,8 +183,8 @@ async function runMigrations() {
 				.filter((f) => f.endsWith('.sql'))
 				.sort();
 		}
-	} catch (err: any) {
-		logger.log(`ℹ️  Error reading migrations directory: ${err.message}`);
+	} catch (err) {
+		logger.log(`ℹ️  Error reading migrations directory: ${(err as Error).message}`);
 	}
 
 	if (files.length === 0) {
@@ -126,7 +208,9 @@ async function runMigrations() {
 
 		for (const file of files) {
 			const [rows] = await connection.execute('SELECT id FROM migrations WHERE name = ? LIMIT 1', [file]);
-			if ((rows as any[]).length > 0) continue;
+			if ((rows as unknown[]).length > 0) {
+				continue;
+			}
 
 			logger.log(`🔧 Running migration: ${file}`);
 			const migSql = readFileSync(join(migrationsDir, file), 'utf-8');
@@ -134,8 +218,8 @@ async function runMigrations() {
 			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, UTC_TIMESTAMP())', [file]);
 			logger.log(`✅ Migration complete: ${file}`);
 		}
-	} catch (err: any) {
-		logger.log(`❌ Migration runner failed: ${err.message}`);
+	} catch (err) {
+		logger.log(`❌ Migration runner failed: ${(err as Error).message}`);
 		throw err;
 	} finally {
 		try {
@@ -146,16 +230,16 @@ async function runMigrations() {
 
 async function markAllMigrationsAsDone() {
 	const migrationsDir = join(process.cwd(), 'src/lib/migrations');
-	let files: string[];
-	try {
-		files = readdirSync(migrationsDir)
+	const listed = attemptSync(() =>
+		readdirSync(migrationsDir)
 			.filter((f) => f.endsWith('.sql'))
-			.sort();
-	} catch (_) {
+			.sort()
+	);
+	if (!listed.ok) {
 		return;
 	}
 
-	for (const file of files) {
+	for (const file of listed.value) {
 		await db.execute(sql`INSERT IGNORE INTO migrations (name, ran_at) VALUES (${file}, UTC_TIMESTAMP())`);
 	}
 }
@@ -178,23 +262,27 @@ async function setupDatabase() {
 	return true;
 }
 
-let dbInitialized = false;
+let isDbInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
 export function skipDatabaseSetup() {
-	dbInitialized = true;
+	isDbInitialized = true;
 }
 
 export async function initializeDatabase() {
-	if (dbInitialized || process.env.BOT_KIND) return;
-	if (initializationPromise) return initializationPromise;
+	if (isDbInitialized || process.env.BOT_KIND) {
+		return;
+	}
+	if (initializationPromise) {
+		return initializationPromise;
+	}
 
 	initializationPromise = (async () => {
 		try {
 			await setupDatabase();
-			dbInitialized = true;
-		} catch (error: any) {
-			logger.log(`⚠️  Database initialization: ${error.message}`);
+			isDbInitialized = true;
+		} catch (error) {
+			logger.log(`⚠️  Database initialization: ${(error as Error).message}`);
 		} finally {
 			initializationPromise = null;
 		}
@@ -203,14 +291,19 @@ export async function initializeDatabase() {
 	return initializationPromise;
 }
 
+type DriverError = { code?: string; cause?: { code?: string } };
+
 async function retryOnConnectionError<T>(fn: () => Promise<T>, maxRetries = 3, delayMs = 2000): Promise<T> {
 	for (let attempt = 1; attempt <= maxRetries; attempt++) {
 		try {
 			return await fn();
-		} catch (error: any) {
-			const isConnectionError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'PROTOCOL_CONNECTION_LOST';
+		} catch (error) {
+			const isConnectionError =
+				(error as DriverError).code === 'ECONNREFUSED' ||
+				(error as DriverError).code === 'ETIMEDOUT' ||
+				(error as DriverError).code === 'PROTOCOL_CONNECTION_LOST';
 			if (isConnectionError && attempt < maxRetries) {
-				console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / 1000}s...`);
+				console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / SECOND_MS}s...`);
 				await new Promise((resolve) => setTimeout(resolve, delayMs));
 				continue;
 			}
@@ -242,16 +335,39 @@ export async function getBot(botId: number | string) {
 			.from(schema.bots)
 			.where(eq(schema.bots.id, Number(botId)))
 			.limit(1);
-		if (!rows[0]) return null;
+		if (!rows[0]) {
+			return null;
+		}
 		const bot = { ...rows[0] };
 		if (bot.uptime_started_at) {
-			bot.uptime_started_at = parseMySQLDateTimeUtc(bot.uptime_started_at as any) as any;
+			bot.uptime_started_at = parseMySQLDateTimeUtc(bot.uptime_started_at);
 		}
 		return bot;
 	});
 }
 
-export async function createBot(botData: any) {
+type BotInput = {
+	name?: string | null;
+	token: string;
+	application_id?: string | null;
+	bot_icon?: string | null;
+	port?: number;
+	secret_key?: string | null;
+	panel_id: number;
+};
+
+export type BotRunStatus = 'running' | 'stopped' | 'starting' | 'stopping';
+
+type BotUpdate = Partial<{
+	name: string;
+	bot_icon: string | null;
+	status: BotRunStatus;
+	process_id: number | null;
+	uptime_started_at: string | Date | null;
+	auto_start: boolean;
+}>;
+
+export async function createBot(botData: BotInput) {
 	await initializeDatabase();
 	const bots = await getAllBots(botData.panel_id);
 	const botNumber = bots.length + 1;
@@ -262,23 +378,19 @@ export async function createBot(botData: any) {
 		token: botData.token,
 		application_id: botData.application_id || null,
 		bot_icon: botData.bot_icon || null,
-		port: botData.port !== undefined ? botData.port : 7777,
+		port: botData.port !== undefined ? botData.port : DEFAULT_BOT_PORT,
 		secret_key: botData.secret_key || null,
 		panel_id: botData.panel_id,
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
 
-	const rows = await db
-		.select()
-		.from(schema.bots)
-		.where(eq(schema.bots.id, (result[0] as any).insertId))
-		.limit(1);
+	const rows = await db.select().from(schema.bots).where(eq(schema.bots.id, result[0].insertId)).limit(1);
 	return rows[0];
 }
 
-export async function updateBot(botId: number, botData: any) {
-	const updateData: any = { ...botData, updated_at: toMySQLDateTime() };
+export async function updateBot(botId: number, botData: BotUpdate) {
+	const updateData: Record<string, unknown> = { ...botData, updated_at: toMySQLDateTime() };
 
 	if (botData.status === 'running' && !botData.uptime_started_at) {
 		updateData.uptime_started_at = toMySQLDateTime();
@@ -295,8 +407,8 @@ export async function updateBot(botId: number, botData: any) {
 	return getBot(botId);
 }
 
-export async function deleteBot(botId: number) {
-	await db.delete(schema.bots).where(eq(schema.bots.id, botId));
+export async function deleteBot(botId: number | string) {
+	await db.delete(schema.bots).where(eq(schema.bots.id, Number(botId)));
 	return true;
 }
 
@@ -307,8 +419,6 @@ export type BotStatusInput = {
 	activity_url: string | null;
 	activity_state: string | null;
 };
-
-import { APP_DOMAIN } from './backend/panelServer.js';
 
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',
@@ -328,7 +438,9 @@ type PresenceDbRow = {
 
 export function presenceFromDbRow(row: PresenceDbRow | null | undefined): BotStatusInput {
 	const d = DEFAULT_BOT_PRESENCE;
-	if (!row) return { ...d };
+	if (!row) {
+		return { ...d };
+	}
 	const name = (row.activity_name ?? '').trim();
 	const state = (row.activity_state ?? '').trim();
 	return {
@@ -363,8 +475,8 @@ export async function upsertBotStatus(botId: number, data: BotStatusInput) {
 			activity_name: data.activity_name,
 			activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
 			activity_state: stateTrimmed,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		})
 		.onDuplicateKeyUpdate({
 			set: {
@@ -373,7 +485,7 @@ export async function upsertBotStatus(botId: number, data: BotStatusInput) {
 				activity_name: data.activity_name,
 				activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
 				activity_state: stateTrimmed,
-				updated_at: now as any
+				updated_at: now
 			}
 		});
 	return getBotStatusByBotId(botId);
@@ -460,19 +572,23 @@ export function aiImageEndpoint(config: AiInput): AiEndpoint {
 	return { api_url: config.image_api_url, api_key: config.image_api_key, model: config.image_model, system_prompt: null };
 }
 
-export function aiFromDbRow(row: any): AiInput {
-	if (!row) return { ...DEFAULT_AI };
+type AiDbRow = Partial<Record<Exclude<keyof AiInput, 'enabled' | 'voice_enabled'>, string | null>> & { enabled?: unknown; voice_enabled?: unknown };
+
+export function aiFromDbRow(row: AiDbRow | null | undefined): AiInput {
+	if (!row) {
+		return { ...DEFAULT_AI };
+	}
 	return {
 		enabled: row.enabled === true || row.enabled === 1,
 		api_url: row.api_url?.trim() ? row.api_url.trim() : null,
 		api_key: row.api_key?.trim() ? row.api_key.trim() : null,
 		model: row.model?.trim() ? row.model.trim() : null,
 		system_prompt: row.system_prompt?.trim() ? row.system_prompt.trim() : null,
-		reasoning: AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
+		reasoning: (AI_REASONING_LEVELS as readonly unknown[]).includes(row.reasoning) ? (row.reasoning as AiReasoning) : 'none',
 		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
 		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
 		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null,
-		voice_thinking: AI_VOICE_THINKING_LEVELS.includes(row.voice_thinking) ? row.voice_thinking : 'low',
+		voice_thinking: (AI_VOICE_THINKING_LEVELS as readonly unknown[]).includes(row.voice_thinking) ? (row.voice_thinking as AiVoiceThinking) : 'low',
 		voice_api_key: row.voice_api_key?.trim() ? row.voice_api_key.trim() : null,
 		voice_system_prompt: row.voice_system_prompt?.trim() ? row.voice_system_prompt.trim() : null,
 		search_api_url: row.search_api_url?.trim() ? row.search_api_url.trim() : null,
@@ -530,8 +646,8 @@ export async function upsertAi(panelId: number, data: AiInput) {
 	};
 	await db
 		.insert(schema.ai)
-		.values({ panel_id: Number(panelId), ...values, created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { ...values, updated_at: now as any } });
+		.values({ panel_id: Number(panelId), ...values, created_at: now, updated_at: now })
+		.onDuplicateKeyUpdate({ set: { ...values, updated_at: now } });
 	return getAi(panelId);
 }
 
@@ -545,7 +661,13 @@ export interface WikiInput {
 	description: string | null;
 }
 
-export function wikiFromDbRow(row: any) {
+export interface Wiki extends WikiInput {
+	id: number;
+}
+
+type WikiDbRow = Omit<typeof schema.wikis.$inferSelect, 'enabled'> & { enabled: boolean | number };
+
+export function wikiFromDbRow(row: WikiDbRow): Wiki {
 	return {
 		id: Number(row.id),
 		enabled: row.enabled === true || row.enabled === 1,
@@ -595,10 +717,10 @@ export async function createWiki(panelId: number, data: WikiInput) {
 		relay_url: data.relay_url,
 		relay_key: data.relay_key,
 		description: data.description,
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
-	return getWiki(panelId, Number((result as any).insertId));
+	return getWiki(panelId, Number(result.insertId));
 }
 
 export async function updateWiki(panelId: number, wikiId: number, data: WikiInput) {
@@ -613,7 +735,7 @@ export async function updateWiki(panelId: number, wikiId: number, data: WikiInpu
 			relay_url: data.relay_url,
 			relay_key: data.relay_key,
 			description: data.description,
-			updated_at: toMySQLDateTime() as any
+			updated_at: toMySQLDateTime()
 		})
 		.where(and(eq(schema.wikis.panel_id, Number(panelId)), eq(schema.wikis.id, Number(wikiId))));
 	return getWiki(panelId, wikiId);
@@ -650,8 +772,8 @@ export async function upsertSelfbotStatus(selfbotId: number, data: SelfbotStatus
 			activity_name: data.activity_name,
 			activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
 			activity_state: stateTrimmed,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		})
 		.onDuplicateKeyUpdate({
 			set: {
@@ -660,7 +782,7 @@ export async function upsertSelfbotStatus(selfbotId: number, data: SelfbotStatus
 				activity_name: data.activity_name,
 				activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
 				activity_state: stateTrimmed,
-				updated_at: now as any
+				updated_at: now
 			}
 		});
 	return getSelfbotStatus(selfbotId);
@@ -683,15 +805,15 @@ export async function getServerPanelId(serverId: number): Promise<number | null>
 	return rows[0]?.panel_id ?? null;
 }
 
-export async function countServerMembers(serverId: any): Promise<number> {
+export async function countServerMembers(serverId: number | string): Promise<number> {
 	await initializeDatabase();
 	const rows = (await db.execute(
 		sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`
-	)) as any;
-	return Number((rows[0] as any[])?.[0]?.total) || 0;
+	)) as unknown as SelectResult<{ total: string }>;
+	return Number(rows[0]?.[0]?.total) || 0;
 }
 
-export async function getServer(serverId: any) {
+export async function getServer(serverId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
@@ -723,15 +845,17 @@ export async function deleteServer(serverId: number) {
 
 export async function markServerDeleted(serverId: number) {
 	await initializeDatabase();
-	if (!Number.isFinite(Number(serverId)) || Number(serverId) <= 0) return false;
+	if (!Number.isFinite(Number(serverId)) || Number(serverId) <= 0) {
+		return false;
+	}
 	const stamp = toMySQLDateTime();
 	await db
 		.update(schema.servers)
-		.set({ deleted_at: stamp as any })
+		.set({ deleted_at: stamp })
 		.where(and(eq(schema.servers.id, Number(serverId)), isNull(schema.servers.deleted_at)));
 	await db
 		.update(schema.serverMembers)
-		.set({ deleted_at: stamp as any })
+		.set({ deleted_at: stamp })
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)));
 	return true;
 }
@@ -752,7 +876,7 @@ export async function restoreServer(serverId: number) {
 		await db
 			.update(schema.serverMembers)
 			.set({ deleted_at: null })
-			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.deleted_at, stamp as any)));
+			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.deleted_at, stamp)));
 	}
 	return true;
 }
@@ -760,7 +884,9 @@ export async function restoreServer(serverId: number) {
 export async function markOfficialServerDeletedByDiscordId(officialBotId: number, discordServerId: string) {
 	await initializeDatabase();
 	const server = await getOfficialServerByDiscordId(Number(officialBotId), String(discordServerId));
-	if (!server || server.deleted_at) return null;
+	if (!server || server.deleted_at) {
+		return null;
+	}
 	await markServerDeleted(Number(server.id));
 	return server;
 }
@@ -800,8 +926,8 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		.from(schema.servers)
 		.where(sql`${schema.servers.deleted_at} IS NOT NULL AND ${schema.servers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`);
 
-	const serversSkipped = staleServers.length > PURGE_MAX_SERVERS_PER_RUN;
-	if (serversSkipped) {
+	const areServersSkipped = staleServers.length > PURGE_MAX_SERVERS_PER_RUN;
+	if (areServersSkipped) {
 		logger.log(
 			`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping the server purge for manual review. Member purge still runs. Raise the cap or clear deleted_at to proceed.`
 		);
@@ -827,12 +953,14 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		await db.delete(schema.serverMembers).where(eq(schema.serverMembers.id, Number(row.id)));
 	}
 
-	return { servers: serversSkipped ? 0 : staleServers.length, members: membersBatch.length, skipped: serversSkipped };
+	return { servers: areServersSkipped ? 0 : staleServers.length, members: membersBatch.length, skipped: areServersSkipped };
 }
 
 export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
 	await initializeDatabase();
-	if (!panelId) return [];
+	if (!panelId) {
+		return [];
+	}
 	const rows = await db
 		.select({ id: schema.servers.id })
 		.from(schema.servers)
@@ -874,7 +1002,9 @@ export async function getPanelSourceServers(panelId: number) {
 	for (const row of rows) {
 		const key = String(row.discord_server_id);
 		const existing = byDiscordId.get(key);
-		if (!existing || Number(row.total_members ?? 0) > Number(existing.total_members ?? 0)) byDiscordId.set(key, row);
+		if (!existing || Number(row.total_members ?? 0) > Number(existing.total_members ?? 0)) {
+			byDiscordId.set(key, row);
+		}
 	}
 	return [...byDiscordId.values()];
 }
@@ -892,7 +1022,9 @@ export async function getPanelSourceServerRows(panelId: number, discordServerId:
 export async function getPrimarySelfbotIdForSourceGuild(officialBotId: number, discordServerId: string) {
 	await initializeDatabase();
 	const panelId = await getBotPanelId(officialBotId);
-	if (panelId == null) return null;
+	if (panelId == null) {
+		return null;
+	}
 	const rows = await getPanelSourceServerRows(panelId, discordServerId);
 	return rows[0] ? Number(rows[0].selfbot_id) : null;
 }
@@ -909,18 +1041,24 @@ export async function getSelfbotServerDiscordId(selfbotServerId: number) {
 
 export async function getPanelSourceServerTopology(panelId: number, discordServerId: string) {
 	const sources = await getPanelSourceServerRows(panelId, discordServerId);
-	if (sources.length === 0) return { channels: [], categories: [] };
+	if (sources.length === 0) {
+		return { channels: [], categories: [] };
+	}
 
-	const categories = new Map<string, any>();
-	const channels = new Map<string, any>();
+	const categories = new Map<string, typeof schema.selfbotServerCategories.$inferSelect>();
+	const channels = new Map<string, typeof schema.selfbotServerChannels.$inferSelect>();
 
 	for (const source of sources) {
 		const [rawChannels, rawCategories] = await Promise.all([getSelfbotChannelsForServer(source.id), getSelfbotCategoriesForServer(source.id)]);
 		for (const cat of rawCategories) {
-			if (!categories.has(cat.discord_category_id)) categories.set(cat.discord_category_id, cat);
+			if (!categories.has(cat.discord_category_id)) {
+				categories.set(cat.discord_category_id, cat);
+			}
 		}
 		for (const ch of rawChannels) {
-			if (!channels.has(ch.discord_channel_id)) channels.set(ch.discord_channel_id, ch);
+			if (!channels.has(ch.discord_channel_id)) {
+				channels.set(ch.discord_channel_id, ch);
+			}
 		}
 	}
 
@@ -940,7 +1078,9 @@ export async function getOfficialServerByDiscordId(officialBotId: number, discor
 export async function removeSelfbotServer(selfbotId: number, discordServerId: string) {
 	await initializeDatabase();
 	const server = await getSelfbotServerByDiscordId(Number(selfbotId), String(discordServerId));
-	if (!server) return null;
+	if (!server) {
+		return null;
+	}
 	await db.delete(schema.selfbotServers).where(eq(schema.selfbotServers.id, Number(server.id)));
 	return server;
 }
@@ -952,7 +1092,9 @@ export async function removeDepartedSelfbotServers(selfbotId: number, keepDiscor
 		.from(schema.selfbotServers)
 		.where(eq(schema.selfbotServers.selfbot_id, Number(selfbotId)));
 
-	if (rows.length === 0) return [];
+	if (rows.length === 0) {
+		return [];
+	}
 
 	if (!Array.isArray(keepDiscordServerIds) || keepDiscordServerIds.length === 0) {
 		logger.log('⚠️  removeDepartedSelfbotServers called with an empty keep list; refusing to remove every source server');
@@ -984,20 +1126,26 @@ export async function getSelfbotServerByDiscordId(selfbotId: number, discordServ
 }
 
 export async function getServerByDiscordId(botId: number, discordServerId: string, opts?: { forSelfbot?: boolean }) {
-	if (opts?.forSelfbot) return getSelfbotServerByDiscordId(botId, discordServerId);
+	if (opts?.forSelfbot) {
+		return getSelfbotServerByDiscordId(botId, discordServerId);
+	}
 	return getOfficialServerByDiscordId(botId, discordServerId);
 }
 
-export async function getOfficialBotServerIdForServer(serverId: any) {
+export async function getOfficialBotServerIdForServer(serverId: number | string) {
 	const server = await getServer(serverId);
-	if (!server) return null;
+	if (!server) {
+		return null;
+	}
 	return server.id;
 }
 
 export async function claimGuildGreeting(botId: number, discordServerId: string) {
 	await initializeDatabase();
 	const guildId = String(discordServerId || '').trim();
-	if (!botId || !guildId) return false;
+	if (!botId || !guildId) {
+		return false;
+	}
 	const [res] = await db.execute(sql`
 		UPDATE servers sv
 		LEFT JOIN servers greeted
@@ -1013,14 +1161,18 @@ export async function claimGuildGreeting(botId: number, discordServerId: string)
 export async function resetGuildGreeting(discordServerId: string) {
 	await initializeDatabase();
 	const guildId = String(discordServerId || '').trim();
-	if (!guildId) return false;
+	if (!guildId) {
+		return false;
+	}
 	await db.execute(sql`UPDATE servers SET greeted_at = NULL WHERE discord_server_id = ${guildId}`);
 	return true;
 }
 
-export async function getNotificationChannels(serverId: any, channelIds: string[]) {
+export async function getNotificationChannels(serverId: number | string, channelIds: string[]) {
 	await initializeDatabase();
-	if (!channelIds || channelIds.length === 0) return [];
+	if (!channelIds || channelIds.length === 0) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT c.discord_channel_id, COALESCE(cat.name, c.name) AS category_name,
 		       COALESCE(cat.position, 9999) AS category_position,
@@ -1031,10 +1183,18 @@ export async function getNotificationChannels(serverId: any, channelIds: string[
 		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id IN (${sql.join(channelIds, sql`, `)})
 		ORDER BY category_position ASC, channel_position ASC, channel_name ASC
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			discord_channel_id: string;
+			category_name: string | null;
+			category_position: number;
+			channel_position: number;
+			channel_name: string | null;
+		}[]) || []
+	);
 }
 
-export async function getMemberNotificationChannelIds(serverId: any, discordMemberId: string) {
+export async function getMemberNotificationChannelIds(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT c.discord_channel_id
@@ -1043,10 +1203,10 @@ export async function getMemberNotificationChannelIds(serverId: any, discordMemb
 		INNER JOIN server_channels c ON c.id = n.channel_id
 		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${discordMemberId}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_channel_id);
+	return ((rows[0] as unknown as { discord_channel_id: string }[]) || []).map((r) => r.discord_channel_id);
 }
 
-export async function getNotifiedMemberDiscordIds(serverId: any, discordChannelId: string) {
+export async function getNotifiedMemberDiscordIds(serverId: number | string, discordChannelId: string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT m.discord_member_id
@@ -1055,17 +1215,19 @@ export async function getNotifiedMemberDiscordIds(serverId: any, discordChannelI
 		INNER JOIN server_channels c ON c.id = n.channel_id
 		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id = ${discordChannelId}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_member_id);
+	return ((rows[0] as unknown as { discord_member_id: string }[]) || []).map((r) => r.discord_member_id);
 }
 
-export async function updateMemberNotificationChannels(serverId: any, discordMemberId: string, discordChannelIds: string[]) {
+export async function updateMemberNotificationChannels(serverId: number | string, discordMemberId: string, discordChannelIds: string[]) {
 	await initializeDatabase();
 	const mRows = await db
 		.select({ id: schema.serverMembers.id })
 		.from(schema.serverMembers)
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	if (!mRows.length) return false;
+	if (!mRows.length) {
+		return false;
+	}
 	const mid = mRows[0].id;
 
 	await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
@@ -1083,7 +1245,7 @@ export async function updateMemberNotificationChannels(serverId: any, discordMem
 				channelIds.map((cid) => ({
 					member_id: mid,
 					channel_id: cid,
-					created_at: now as any
+					created_at: now
 				}))
 			);
 		}
@@ -1091,15 +1253,18 @@ export async function updateMemberNotificationChannels(serverId: any, discordMem
 	return true;
 }
 
-export async function getContentCreatorRoleDbIds(serverId: any) {
+export async function getContentCreatorRoleDbIds(serverId: number | string) {
 	await initializeDatabase();
 	const contentCreatorSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.content_creator).catch(() => null);
 	const roleIds = new Set<string>(
-		[...((contentCreatorSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(
-			Boolean
-		)
+		[
+			...((contentCreatorSettings?.settings?.content_creator_roles as string[] | undefined) || []),
+			contentCreatorSettings?.settings?.content_creator_role as string | undefined
+		].filter(Boolean) as string[]
 	);
-	if (roleIds.size === 0) return new Set<number>();
+	if (roleIds.size === 0) {
+		return new Set<number>();
+	}
 	const rows = await db
 		.select({ id: schema.serverRoles.id })
 		.from(schema.serverRoles)
@@ -1107,18 +1272,20 @@ export async function getContentCreatorRoleDbIds(serverId: any) {
 	return new Set(rows.map((r) => r.id).filter(Boolean));
 }
 
-async function collectGuildSnapshotForUpsert(guild: any) {
+async function collectGuildSnapshotForUpsert(guild: GuildLike) {
 	const iconUrl = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
 	const discordCreatedAt = guild.createdAt ? toMySQLDateTime(guild.createdAt) : null;
 	const vanityCode = guild.vanityURLCode ? String(guild.vanityURLCode) : null;
 	let inviteCode: string | null = null;
 	try {
-		const invites = await guild?.invites?.fetch?.();
+		const invites = (await guild?.invites?.fetch?.()) as { values(): Iterable<{ inviterId: string | null; maxAge: number | null; code: string }> } | undefined;
 		const botUserId = guild?.client?.user?.id ?? null;
-		const owned = invites && typeof invites.values === 'function' ? [...invites.values()].filter((i: any) => i.inviterId === botUserId && !i.maxAge) : [];
-		const personal = await getPersonalInviteCodes(owned.map((i: any) => String(i.code)));
-		const serverInvite = owned.find((i: any) => !personal.has(String(i.code)));
-		if (serverInvite?.code) inviteCode = String(serverInvite.code);
+		const owned = invites && typeof invites.values === 'function' ? [...invites.values()].filter((i) => i.inviterId === botUserId && !i.maxAge) : [];
+		const personal = await getPersonalInviteCodes(owned.map((i) => String(i.code)));
+		const serverInvite = owned.find((i) => !personal.has(String(i.code)));
+		if (serverInvite?.code) {
+			inviteCode = String(serverInvite.code);
+		}
 	} catch (_) {}
 
 	let boostLevel = 0;
@@ -1144,7 +1311,7 @@ async function collectGuildSnapshotForUpsert(guild: any) {
 	};
 }
 
-export async function upsertOfficialServer(officialBotId: number, guild: any) {
+export async function upsertOfficialServer(officialBotId: number, guild: GuildLike) {
 	const existing = await getOfficialServerByDiscordId(officialBotId, guild.id);
 	const isNewServer = existing == null;
 	const v = await collectGuildSnapshotForUpsert(guild);
@@ -1174,7 +1341,7 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 	return server;
 }
 
-export async function upsertSelfbotServer(selfbotId: number, guild: any) {
+export async function upsertSelfbotServer(selfbotId: number, guild: GuildLike) {
 	await initializeDatabase();
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
@@ -1205,16 +1372,20 @@ const SYNC_UPSERT_CHUNK = 500;
 
 function chunkRows<T>(rows: T[], size = SYNC_UPSERT_CHUNK): T[][] {
 	const out: T[][] = [];
-	for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+	for (let i = 0; i < rows.length; i += size) {
+		out.push(rows.slice(i, i + size));
+	}
 	return out;
 }
 
-async function batchUpsert<T>(label: string, rows: T[], runBatch: (batch: T[]) => Promise<unknown>, runSingle: (row: T) => Promise<unknown>) {
+type UpsertRunners<T> = { runBatch: (batch: T[]) => Promise<unknown>; runSingle: (row: T) => Promise<unknown> };
+
+async function batchUpsert<T>(label: string, rows: T[], { runBatch, runSingle }: UpsertRunners<T>) {
 	for (const batch of chunkRows(rows)) {
 		try {
 			await runBatch(batch);
-		} catch (error: any) {
-			logger.log(`⚠️  Batch ${label} of ${batch.length} row(s) failed (${error?.message || error}), falling back to one row at a time`);
+		} catch (error) {
+			logger.log(`⚠️  Batch ${label} of ${batch.length} row(s) failed (${(error as Error)?.message || error}), falling back to one row at a time`);
 			for (const row of batch) {
 				await runSingle(row).catch(() => null);
 			}
@@ -1222,7 +1393,7 @@ async function batchUpsert<T>(label: string, rows: T[], runBatch: (batch: T[]) =
 	}
 }
 
-export async function syncSelfbotCategories(selfbotServerId: number, categories: any[]) {
+export async function syncSelfbotCategories(selfbotServerId: number, categories: CategoryLike[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const sid = Number(selfbotServerId);
@@ -1233,14 +1404,12 @@ export async function syncSelfbotCategories(selfbotServerId: number, categories:
 			discord_category_id: String(cat.id),
 			name: cat.name ?? null,
 			position: cat.position ?? null,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		}));
 
-		await batchUpsert(
-			'selfbot category upsert',
-			rows,
-			(batch) =>
+		await batchUpsert('selfbot category upsert', rows, {
+			runBatch: (batch) =>
 				db
 					.insert(schema.selfbotServerCategories)
 					.values(batch)
@@ -1248,15 +1417,15 @@ export async function syncSelfbotCategories(selfbotServerId: number, categories:
 						set: {
 							name: sql`values(${schema.selfbotServerCategories.name})`,
 							position: sql`values(${schema.selfbotServerCategories.position})`,
-							updated_at: now as any
+							updated_at: now
 						}
 					}),
-			(row) =>
+			runSingle: (row) =>
 				db
 					.insert(schema.selfbotServerCategories)
 					.values(row)
-					.onDuplicateKeyUpdate({ set: { name: row.name, position: row.position, updated_at: now as any } })
-		);
+					.onDuplicateKeyUpdate({ set: { name: row.name, position: row.position, updated_at: now } })
+		});
 	}
 
 	const discordIds = new Set((categories ?? []).map((c) => String(c.id)));
@@ -1274,11 +1443,11 @@ export async function syncSelfbotCategories(selfbotServerId: number, categories:
 	return true;
 }
 
-export async function syncSelfbotChannels(selfbotServerId: number, channels: any[]) {
+export async function syncSelfbotChannels(selfbotServerId: number, channels: ChannelLike[]) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const sid = Number(selfbotServerId);
-	const valid = (channels ?? []).filter((ch) => ch.type !== 4);
+	const valid = channels ?? [];
 
 	if (valid.length > 0) {
 		const rows = valid.map((ch) => ({
@@ -1288,14 +1457,12 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 			type: ch.type ?? null,
 			discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
 			position: ch.position ?? null,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		}));
 
-		await batchUpsert(
-			'selfbot channel upsert',
-			rows,
-			(batch) =>
+		await batchUpsert('selfbot channel upsert', rows, {
+			runBatch: (batch) =>
 				db
 					.insert(schema.selfbotServerChannels)
 					.values(batch)
@@ -1305,10 +1472,10 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 							type: sql`values(${schema.selfbotServerChannels.type})`,
 							discord_parent_category_id: sql`values(${schema.selfbotServerChannels.discord_parent_category_id})`,
 							position: sql`values(${schema.selfbotServerChannels.position})`,
-							updated_at: now as any
+							updated_at: now
 						}
 					}),
-			(row) =>
+			runSingle: (row) =>
 				db
 					.insert(schema.selfbotServerChannels)
 					.values(row)
@@ -1318,10 +1485,10 @@ export async function syncSelfbotChannels(selfbotServerId: number, channels: any
 							type: row.type,
 							discord_parent_category_id: row.discord_parent_category_id,
 							position: row.position,
-							updated_at: now as any
+							updated_at: now
 						}
 					})
-		);
+		});
 	}
 
 	const discordIds = new Set(valid.map((ch) => String(ch.id)));
@@ -1357,7 +1524,7 @@ export async function getSelfbotChannelsForServer(selfbotServerId: number) {
 		.orderBy(asc(schema.selfbotServerChannels.position), asc(schema.selfbotServerChannels.name));
 }
 
-export async function upsertServer(botId: number, guild: any) {
+export async function upsertServer(botId: number, guild: GuildLike) {
 	return upsertOfficialServer(botId, guild);
 }
 
@@ -1382,22 +1549,28 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
 		  AND (
 				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
-				OR JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) LIKE ${base + '-%'}
+				OR JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) LIKE ${`${base}-%`}
 		  )
 	`);
-	const existing = new Set<string>(((rows[0] as unknown as any[]) || []).map((r: any) => String(r.slug || '')).filter(Boolean));
-	if (!existing.has(base)) return base;
-	for (let i = 2; i < 10_000; i++) {
+	const existing = new Set<string>(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => String(r.slug || '')).filter(Boolean));
+	if (!existing.has(base)) {
+		return base;
+	}
+	for (let i = 2; i < SLUG_SUFFIX_LIMIT; i++) {
 		const candidate = `${base}-${i}`;
-		if (!existing.has(candidate)) return candidate;
+		if (!existing.has(candidate)) {
+			return candidate;
+		}
 	}
 	return `${base}-${Date.now()}`;
 }
 
 async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
 	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.public);
-	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
-	if (settings?.slug) return true;
+	const settings = row?.settings && typeof row.settings === 'object' ? row.settings : {};
+	if (settings?.slug) {
+		return true;
+	}
 	const slug = await generateUniqueLeaderboardSlug(serverName);
 	const next: Record<string, unknown> = { ...settings, slug };
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.public, next);
@@ -1406,7 +1579,7 @@ async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: s
 
 async function seedNewServerSettings(serverId: number) {
 	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
-		const baseSettings: Record<string, any> = { enabled: AUTO_ENABLED_COMPONENTS.has(component) };
+		const baseSettings: Record<string, unknown> = { enabled: AUTO_ENABLED_COMPONENTS.has(component) };
 
 		if (component === SERVER_SETTINGS.component.leveling) {
 			Object.assign(baseSettings, DEFAULT_LEVELING_SETTINGS);
@@ -1450,10 +1623,18 @@ export async function listPublicServers() {
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public}
 	`);
-	const list = (rows[0] as unknown as any[]) || [];
+	const list =
+		(rows[0] as unknown as {
+			id: number | string;
+			bot_id: number | string | null;
+			name: string | null;
+			updated_at: string;
+			server_icon: string | null;
+			deleted_at: string | null;
+		}[]) || [];
 	return list
-		.filter((r: any) => !!r)
-		.map((r: any) => ({
+		.filter((r: unknown) => !!r)
+		.map((r) => ({
 			id: Number(r.id),
 			bot_id: r.bot_id == null ? null : Number(r.bot_id),
 			name: r.name ?? null,
@@ -1477,22 +1658,26 @@ export async function listPublicPanelIds(): Promise<number[]> {
 	return rows.map((r) => Number(r.panel_id)).filter((n) => Number.isFinite(n));
 }
 
-export async function listPublicItems(limit = 300) {
+export async function listPublicItems(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const panelIds = await listPublicPanelIds();
-	if (!panelIds.length) return [];
+	if (!panelIds.length) {
+		return [];
+	}
 	return db
 		.select()
 		.from(schema.items)
 		.where(inArray(schema.items.panel_id, panelIds))
 		.orderBy(asc(schema.items.sort_order), asc(schema.items.id))
-		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+		.limit(Math.max(1, Math.min(PUBLIC_LIST_MAX_LIMIT, Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT)));
 }
 
-export async function listPublicWikis(limit = 300) {
+export async function listPublicWikis(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const panelIds = await listPublicPanelIds();
-	if (!panelIds.length) return [];
+	if (!panelIds.length) {
+		return [];
+	}
 	return db
 		.select({
 			id: schema.wikis.id,
@@ -1505,13 +1690,15 @@ export async function listPublicWikis(limit = 300) {
 		.from(schema.wikis)
 		.where(inArray(schema.wikis.panel_id, panelIds))
 		.orderBy(desc(schema.wikis.enabled), asc(schema.wikis.name))
-		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+		.limit(Math.max(1, Math.min(PUBLIC_LIST_MAX_LIMIT, Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT)));
 }
 
-export async function listPublicForwarderSources(limit = 300) {
+export async function listPublicForwarderSources(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const panelIds = await listPublicPanelIds();
-	if (!panelIds.length) return [];
+	if (!panelIds.length) {
+		return [];
+	}
 	const rows = await db
 		.select({
 			discord_server_id: schema.selfbotServers.discord_server_id,
@@ -1532,26 +1719,30 @@ export async function listPublicForwarderSources(limit = 300) {
 	for (const row of rows) {
 		const key = String(row.discord_server_id);
 		const existing = byDiscordId.get(key);
-		if (!existing || Number(row.total_members ?? 0) > Number(existing.total_members ?? 0)) byDiscordId.set(key, row);
+		if (!existing || Number(row.total_members ?? 0) > Number(existing.total_members ?? 0)) {
+			byDiscordId.set(key, row);
+		}
 	}
 
 	return [...byDiscordId.values()]
 		.sort((a, b) => Number(b.total_members ?? 0) - Number(a.total_members ?? 0))
-		.slice(0, Math.max(1, Math.min(500, Number(limit) || 300)));
+		.slice(0, Math.max(1, Math.min(PUBLIC_LIST_MAX_LIMIT, Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT)));
 }
 
 export async function getMaxPublicXpEventId(): Promise<number> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT MAX(id) as max_id FROM server_member_level_logs`);
-	const row = ((rows[0] as unknown as any[]) || [])[0];
+	const row = ((rows[0] as unknown as Record<string, unknown>[]) || [])[0];
 	return Number(row?.max_id) || 0;
 }
 
-export async function listPublicXpEventsAfter(afterId: any, limit = 40) {
+export async function listPublicXpEventsAfter(afterId: unknown, limit = XP_EVENTS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const safeAfter = Number(afterId) || 0;
-	if (safeAfter <= 0) return [] as { id: number; xp: number }[];
-	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+	if (safeAfter <= 0) {
+		return [] as { id: number; xp: number }[];
+	}
+	const safeLimit = Math.max(1, Math.min(XP_EVENTS_MAX_LIMIT, Number(limit) || XP_EVENTS_DEFAULT_LIMIT));
 
 	const rows = await db.execute(sql`
 		SELECT sll.id, sll.xp
@@ -1577,10 +1768,12 @@ export async function listPublicXpEventsAfter(afterId: any, limit = 40) {
 		LIMIT ${safeLimit}
 	`);
 
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ id: Number(r.id), xp: Number(r.xp) || 0 })).filter((r) => Number.isFinite(r.id) && r.xp > 0);
+	return ((rows[0] as unknown as { id: number | string; xp: number | string }[]) || [])
+		.map((r) => ({ id: Number(r.id), xp: Number(r.xp) || 0 }))
+		.filter((r) => Number.isFinite(r.id) && r.xp > 0);
 }
 
-export async function upsertCategory(serverId: any, categoryData: any) {
+export async function upsertCategory(serverId: number | string, categoryData: CategoryLike) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
 		INSERT INTO server_categories (server_id, discord_category_id, name, position, created_at, updated_at)
@@ -1595,8 +1788,10 @@ export async function upsertCategory(serverId: any, categoryData: any) {
 	return rows[0];
 }
 
-export async function syncCategories(serverId: any, categories: any[]) {
-	if (!categories || categories.length === 0) return new Map();
+export async function syncCategories(serverId: number | string, categories: CategoryLike[]) {
+	if (!categories || categories.length === 0) {
+		return new Map();
+	}
 
 	const results = await Promise.all(
 		categories.map((cat) => upsertCategory(serverId, { id: cat.id, name: cat.name, position: cat.position }).catch(() => null))
@@ -1604,7 +1799,9 @@ export async function syncCategories(serverId: any, categories: any[]) {
 
 	const categoryMap = new Map();
 	results.forEach((cat) => {
-		if (cat) categoryMap.set(cat.discord_category_id, cat.id);
+		if (cat) {
+			categoryMap.set(cat.discord_category_id, cat.id);
+		}
 	});
 
 	const discordIds = new Set(categories.map((c) => c.id));
@@ -1621,7 +1818,7 @@ export async function syncCategories(serverId: any, categories: any[]) {
 	return categoryMap;
 }
 
-export async function upsertChannel(serverId: any, channelData: any, categoryMap: Map<any, any> | null = null) {
+export async function upsertChannel(serverId: number | string, channelData: ChannelLike, categoryMap: Map<unknown, unknown> | null = null) {
 	const categoryId = channelData.parent_id && categoryMap ? categoryMap.get(channelData.parent_id) || null : null;
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -1637,9 +1834,7 @@ export async function upsertChannel(serverId: any, channelData: any, categoryMap
 	return rows[0];
 }
 
-export async function syncChannels(serverId: any, channels: any[], categoryMap: Map<any, any> | null = null) {
-	const validChannels = channels.filter((ch) => ch.type !== 4);
-
+export async function syncChannels(serverId: number | string, channels: ChannelLike[], categoryMap: Map<unknown, unknown> | null = null) {
 	const catRows = await db
 		.select({ id: schema.serverChannels.id })
 		.from(schema.serverChannels)
@@ -1654,14 +1849,14 @@ export async function syncChannels(serverId: any, channels: any[], categoryMap: 
 	}
 
 	await Promise.all(
-		validChannels.map((ch) =>
+		channels.map((ch) =>
 			upsertChannel(serverId, { id: ch.id, name: ch.name, type: ch.type, parent_id: ch.parent_id || null, position: ch.position }, categoryMap).catch(
 				() => null
 			)
 		)
 	);
 
-	const discordIds = new Set(validChannels.map((ch) => ch.id));
+	const discordIds = new Set(channels.map((ch) => ch.id));
 	const dbChannels = await db
 		.select({ id: schema.serverChannels.id, discord_channel_id: schema.serverChannels.discord_channel_id })
 		.from(schema.serverChannels)
@@ -1675,7 +1870,7 @@ export async function syncChannels(serverId: any, channels: any[], categoryMap: 
 	return true;
 }
 
-export async function getRoles(serverId: any) {
+export async function getRoles(serverId: unknown) {
 	return db
 		.select()
 		.from(schema.serverRoles)
@@ -1683,26 +1878,28 @@ export async function getRoles(serverId: any) {
 		.orderBy(desc(schema.serverRoles.position));
 }
 
-export async function getAdministratorRoleIds(serverId: any): Promise<string[]> {
+export async function getAdministratorRoleIds(serverId: number | string): Promise<string[]> {
 	await initializeDatabase();
-	if (serverId === undefined || serverId === null || serverId === '') return [];
+	if (serverId === undefined || serverId === null || serverId === '') {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT discord_role_id
 		FROM server_roles
 		WHERE server_id = ${Number(serverId)} AND (CAST(permissions AS UNSIGNED) & 8) = 8
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
+	return ((rows[0] as unknown as { discord_role_id: string }[]) || []).map((r) => String(r.discord_role_id));
 }
 
-async function getTierRoleIds(serverId: any): Promise<{ staffRoleIds: string[]; adminRoleIds: string[] }> {
+async function getTierRoleIds(serverId: number | string): Promise<{ staffRoleIds: string[]; adminRoleIds: string[] }> {
 	const [main, adminRoleIds] = await Promise.all([
 		getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null),
 		getAdministratorRoleIds(serverId).catch(() => [] as string[])
 	]);
-	return { staffRoleIds: ((main as any)?.settings?.staff_roles ?? []).map(String), adminRoleIds };
+	return { staffRoleIds: ((main?.settings?.staff_roles as unknown[] | undefined) ?? []).map(String), adminRoleIds };
 }
 
-export async function getMemberTier(serverId: any, discordMemberId: string): Promise<MemberTier> {
+export async function getMemberTier(serverId: number | string, discordMemberId: string): Promise<MemberTier> {
 	await initializeDatabase();
 	const [rows] = (await db.execute(sql`
 		SELECT sm.is_owner, sr.discord_role_id
@@ -1710,9 +1907,11 @@ export async function getMemberTier(serverId: any, discordMemberId: string): Pro
 		LEFT JOIN server_member_roles smr ON smr.member_id = sm.id
 		LEFT JOIN server_roles sr ON sr.id = smr.role_id
 		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${String(discordMemberId)}
-	`)) as any;
-	const list = (rows as any[]) ?? [];
-	if (list.length === 0) return 'member';
+	`)) as unknown as SelectResult<{ is_owner: number; discord_role_id: string | null }>;
+	const list = rows ?? [];
+	if (list.length === 0) {
+		return 'member';
+	}
 	const { staffRoleIds, adminRoleIds } = await getTierRoleIds(serverId);
 	const roleIds = list
 		.map((r) => r.discord_role_id)
@@ -1721,7 +1920,9 @@ export async function getMemberTier(serverId: any, discordMemberId: string): Pro
 	return memberTier({ is_owner: list[0].is_owner, roleIds }, staffRoleIds, adminRoleIds);
 }
 
-export async function getMemberTierMap(serverId: any): Promise<{ staffRoleIds: string[]; adminRoleIds: string[]; tiers: Record<string, MemberTier> }> {
+export async function getMemberTierMap(
+	serverId: number | string
+): Promise<{ staffRoleIds: string[]; adminRoleIds: string[]; tiers: Record<string, MemberTier> }> {
 	await initializeDatabase();
 	const { staffRoleIds, adminRoleIds } = await getTierRoleIds(serverId);
 	const elevated = [...new Set([...staffRoleIds, ...adminRoleIds])];
@@ -1738,23 +1939,27 @@ export async function getMemberTierMap(serverId: any): Promise<{ staffRoleIds: s
 		LEFT JOIN server_member_roles smr ON smr.member_id = sm.id
 		LEFT JOIN server_roles sr ON sr.id = smr.role_id AND ${roleMatch}
 		WHERE sm.server_id = ${Number(serverId)} AND (sm.is_owner = 1 OR sr.id IS NOT NULL)
-	`)) as any;
+	`)) as unknown as SelectResult<{ discord_member_id: string; is_owner: number; discord_role_id: string | null }>;
 	const grouped = new Map<string, { is_owner: number; roleIds: string[] }>();
-	for (const r of (rows as any[]) ?? []) {
+	for (const r of rows ?? []) {
 		const id = String(r.discord_member_id);
 		const entry = grouped.get(id) ?? { is_owner: Number(r.is_owner) || 0, roleIds: [] };
-		if (r.discord_role_id != null) entry.roleIds.push(String(r.discord_role_id));
+		if (r.discord_role_id != null) {
+			entry.roleIds.push(String(r.discord_role_id));
+		}
 		grouped.set(id, entry);
 	}
 	const tiers: Record<string, MemberTier> = {};
 	for (const [id, entry] of grouped) {
 		const tier = memberTier(entry, staffRoleIds, adminRoleIds);
-		if (tier !== 'member') tiers[id] = tier;
+		if (tier !== 'member') {
+			tiers[id] = tier;
+		}
 	}
 	return { staffRoleIds, adminRoleIds, tiers };
 }
 
-export async function upsertRole(serverId: any, roleData: any) {
+export async function upsertRole(serverId: number | string, roleData: RoleLike) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
 		INSERT INTO server_roles (server_id, discord_role_id, name, position, color, permissions, created_at, updated_at)
@@ -1769,8 +1974,10 @@ export async function upsertRole(serverId: any, roleData: any) {
 	return rows[0];
 }
 
-export async function syncRoles(serverId: any, roles: any[]) {
-	if (!roles || roles.length === 0) return true;
+export async function syncRoles(serverId: number | string, roles: RoleLike[]) {
+	if (!roles || roles.length === 0) {
+		return true;
+	}
 
 	const roleResults = await Promise.all(
 		roles.map((role) =>
@@ -1781,7 +1988,9 @@ export async function syncRoles(serverId: any, roles: any[]) {
 		)
 	);
 	const roleFailures = roleResults.filter((r) => r === null).length;
-	if (roleFailures > 0) logger.log(`⚠️  syncRoles: ${roleFailures} of ${roles.length} role(s) failed to upsert on server ${serverId}`);
+	if (roleFailures > 0) {
+		logger.log(`⚠️  syncRoles: ${roleFailures} of ${roles.length} role(s) failed to upsert on server ${serverId}`);
+	}
 
 	const discordIds = new Set(roles.map((r) => r.id));
 	const dbRoles = await db
@@ -1797,7 +2006,7 @@ export async function syncRoles(serverId: any, roles: any[]) {
 	return true;
 }
 
-export async function upsertMember(serverId: any, memberData: any) {
+export async function upsertMember(serverId: number | string, memberData: MemberLike) {
 	const user = memberData.user || memberData;
 	const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
 	const now = toMySQLDateTime();
@@ -1840,39 +2049,62 @@ export async function upsertMember(serverId: any, memberData: any) {
 	return rows[0];
 }
 
-export async function getMemberByDiscordId(serverId: any, discordMemberId: string, opts?: { includeDeleted?: boolean }) {
+export async function getMemberByDiscordId(serverId: number | string, discordMemberId: string, opts?: { includeDeleted?: boolean }) {
 	await initializeDatabase();
 	const conditions = [eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)];
-	if (!opts?.includeDeleted) conditions.push(isNull(schema.serverMembers.deleted_at));
+	if (!opts?.includeDeleted) {
+		conditions.push(isNull(schema.serverMembers.deleted_at));
+	}
 	const rows = await db
 		.select()
 		.from(schema.serverMembers)
 		.where(and(...conditions))
 		.limit(1);
-	if (!rows[0]) return null;
+	if (!rows[0]) {
+		return null;
+	}
 	const member = { ...rows[0] };
-	if (member.profile_created_at) member.profile_created_at = parseMySQLDateTimeUtc(member.profile_created_at as any) as any;
-	if (member.member_since) member.member_since = parseMySQLDateTimeUtc(member.member_since as any) as any;
-	if (member.booster_since) member.booster_since = parseMySQLDateTimeUtc(member.booster_since as any) as any;
+	if (member.profile_created_at) {
+		member.profile_created_at = parseMySQLDateTimeUtc(member.profile_created_at);
+	}
+	if (member.member_since) {
+		member.member_since = parseMySQLDateTimeUtc(member.member_since);
+	}
+	if (member.booster_since) {
+		member.booster_since = parseMySQLDateTimeUtc(member.booster_since);
+	}
 	return member;
 }
 
-export async function getServerMemberById(memberId: any) {
+export async function getServerMemberById(memberId: number | string | null) {
 	await initializeDatabase();
-	if (!memberId) return null;
+	if (!memberId) {
+		return null;
+	}
 	const rows = await db.execute(sql`
 		SELECT id, server_id, discord_member_id, username, display_name, server_display_name
 		FROM server_members
 		WHERE id = ${Number(memberId)}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (
+		(
+			rows[0] as unknown as {
+				id: number;
+				server_id: number;
+				discord_member_id: string;
+				username: string | null;
+				display_name: string | null;
+				server_display_name: string | null;
+			}[]
+		)[0] || null
+	);
 }
 
-export async function searchServerMembers(serverId: any, queryText: string | null, limit = 15) {
+export async function searchServerMembers(serverId: number | string, queryText: string | null, limit = MEMBER_SEARCH_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const q = (queryText || '').trim();
-	const safeLimit = Math.max(1, Math.min(50, Number(limit) || 15));
+	const safeLimit = Math.max(1, Math.min(MEMBER_SEARCH_MAX_LIMIT, Number(limit) || MEMBER_SEARCH_DEFAULT_LIMIT));
 	const likeValue = `%${q.replace(/[%_]/g, '\\$&')}%`;
 
 	if (!q) {
@@ -1918,19 +2150,21 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 		.limit(safeLimit);
 }
 
-export async function searchPanelMembersForGift(panelId: any, queryText: string | null, limit = 50) {
+export async function searchPanelMembersForGift(panelId: number | string, queryText: string | null, limit = GIFT_SEARCH_DEFAULT_LIMIT) {
 	await initializeDatabase();
-	if (panelId == null) return [];
+	if (panelId == null) {
+		return [];
+	}
 	const q = (queryText || '').trim();
-	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+	const safeLimit = Math.max(1, Math.min(GIFT_SEARCH_MAX_LIMIT, Number(limit) || GIFT_SEARCH_DEFAULT_LIMIT));
 	const escaped = q.replace(/[%_\\]/g, '\\$&');
 	const contains = `%${escaped}%`;
 	const prefix = `${escaped}%`;
-	const numericId = /^\d{5,}$/.test(q);
+	const isNumericId = /^\d{5,}$/.test(q);
 
 	const searchClause = !q
 		? sql``
-		: numericId
+		: isNumericId
 			? sql`AND m.discord_member_id LIKE ${prefix}`
 			: sql`AND (
 					m.server_display_name LIKE ${contains}
@@ -1970,26 +2204,43 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		${orderClause}
 		LIMIT ${safeLimit}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			id: number;
+			discord_member_id: string;
+			username: string | null;
+			display_name: string | null;
+			server_display_name: string | null;
+			avatar: string | null;
+			server_id: number;
+			server_name: string | null;
+		}[]) || []
+	);
 }
 
-export async function getMemberInventoryTotals(memberIds: any[]) {
+export async function getMemberInventoryTotals(memberIds: unknown[]) {
 	await initializeDatabase();
 	const ids = [...new Set((memberIds || []).map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0))];
-	if (ids.length === 0) return {} as Record<number, number>;
+	if (ids.length === 0) {
+		return {} as Record<number, number>;
+	}
 	const rows = await db
 		.select({ member_id: schema.serverMemberItems.member_id, total: sql<number>`SUM(${schema.serverMemberItems.quantity})` })
 		.from(schema.serverMemberItems)
 		.where(inArray(schema.serverMemberItems.member_id, ids))
 		.groupBy(schema.serverMemberItems.member_id);
 	const totals: Record<number, number> = {};
-	for (const row of rows) totals[Number(row.member_id)] = Number(row.total || 0);
+	for (const row of rows) {
+		totals[Number(row.member_id)] = Number(row.total || 0);
+	}
 	return totals;
 }
 
-export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
+export async function memberServerHasItemsEnabled(memberId: unknown, panelId: unknown) {
 	await initializeDatabase();
-	if (memberId == null || panelId == null) return false;
+	if (memberId == null || panelId == null) {
+		return false;
+	}
 	const rows = await db.execute(sql`
 		SELECT 1
 		FROM server_members m
@@ -2002,21 +2253,21 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 			AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.items_enabled')), 'true') <> 'false'
 		LIMIT 1
 	`);
-	return ((rows[0] as unknown as any[]) || []).length > 0;
+	return ((rows[0] as unknown as unknown[]) || []).length > 0;
 }
 
 async function refreshMemberIsContentCreator(memberId: number, serverId: number, discordRoleIds: string[]) {
 	await initializeDatabase();
 	const ccRoleDbIds = await getContentCreatorRoleDbIds(serverId);
-	let has = false;
+	let hasRole = false;
 	if (ccRoleDbIds.size > 0 && discordRoleIds.length > 0) {
 		const rows = await db
 			.select({ id: schema.serverRoles.id })
 			.from(schema.serverRoles)
 			.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
-		has = rows.some((r) => ccRoleDbIds.has(r.id));
+		hasRole = rows.some((r) => ccRoleDbIds.has(r.id));
 	}
-	if (has) {
+	if (hasRole) {
 		const now = toMySQLDateTime();
 		await db.execute(sql`
 			INSERT INTO server_member_content_creators (member_id, created_at) VALUES (${memberId}, ${now})
@@ -2036,7 +2287,9 @@ async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: 
 		.innerJoin(schema.serverRoles, eq(schema.serverMemberCustomSupporterRoles.role_id, schema.serverRoles.id))
 		.where(and(eq(schema.serverMemberCustomSupporterRoles.member_id, memberId), eq(schema.serverRoles.server_id, Number(serverId))));
 
-	if (ownedRows.length === 0) return;
+	if (ownedRows.length === 0) {
+		return;
+	}
 
 	const stillHeld = new Set(discordRoleIds);
 	const staleIds = ownedRows.filter((r) => !stillHeld.has(r.discord_role_id)).map((r) => r.id);
@@ -2046,19 +2299,25 @@ async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: 
 	}
 }
 
-export async function setMemberCustomSupporterRole(serverId: any, discordMemberId: string, roleData: any) {
+export async function setMemberCustomSupporterRole(serverId: number | string, discordMemberId: string, roleData: RoleLike) {
 	await initializeDatabase();
-	if (!serverId || !discordMemberId || !roleData?.id) return false;
+	if (!serverId || !discordMemberId || !roleData?.id) {
+		return false;
+	}
 
 	const memberRows = await db
 		.select({ id: schema.serverMembers.id })
 		.from(schema.serverMembers)
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	if (!memberRows[0]) return false;
+	if (!memberRows[0]) {
+		return false;
+	}
 
 	const roleRow = await upsertRole(serverId, roleData);
-	if (!roleRow?.id) return false;
+	if (!roleRow?.id) {
+		return false;
+	}
 
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -2069,24 +2328,30 @@ export async function setMemberCustomSupporterRole(serverId: any, discordMemberI
 	return true;
 }
 
-export async function clearMemberCustomSupporterRole(serverId: any, discordRoleId: string) {
+export async function clearMemberCustomSupporterRole(serverId: number | string, discordRoleId: string) {
 	await initializeDatabase();
-	if (!serverId || !discordRoleId) return false;
+	if (!serverId || !discordRoleId) {
+		return false;
+	}
 
 	const roleRows = await db
 		.select({ id: schema.serverRoles.id })
 		.from(schema.serverRoles)
 		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
 		.limit(1);
-	if (!roleRows[0]) return false;
+	if (!roleRows[0]) {
+		return false;
+	}
 
 	await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.role_id, roleRows[0].id));
 	return true;
 }
 
-export async function listCustomSupporterRoles(serverId: any) {
+export async function listCustomSupporterRoles(serverId: number | string) {
 	await initializeDatabase();
-	if (!serverId) return [];
+	if (!serverId) {
+		return [];
+	}
 
 	return db
 		.select({
@@ -2099,7 +2364,7 @@ export async function listCustomSupporterRoles(serverId: any) {
 		.where(eq(schema.serverRoles.server_id, Number(serverId)));
 }
 
-export async function syncMemberRoles(memberId: any, discordRoleIds: string[], serverId: any) {
+export async function syncMemberRoles(memberId: unknown, discordRoleIds: string[], serverId: number | string) {
 	const sid = Number(serverId);
 	const mid = Number(memberId);
 	const roleList = Array.isArray(discordRoleIds) ? discordRoleIds.filter(Boolean) : [];
@@ -2125,7 +2390,7 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 			roleIdsOnMember.map((role_id) => ({
 				member_id: mid,
 				role_id,
-				created_at: smrNow as any
+				created_at: smrNow
 			}))
 		);
 	}
@@ -2135,7 +2400,7 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 	return true;
 }
 
-export async function syncMembers(serverId: any, members: any[]) {
+export async function syncMembers(serverId: number | string, members: MemberLike[]) {
 	if (!members || members.length === 0) {
 		return true;
 	}
@@ -2150,7 +2415,7 @@ export async function syncMembers(serverId: any, members: any[]) {
 				return null;
 			});
 			if (dbMember && !(member.user || member)?.bot) {
-				const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((id: any) => id !== member.guild?.id) : [];
+				const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((id) => id !== member.guild?.id) : [];
 				await syncMemberRoles(dbMember.id, memberRoles as string[], serverId).catch((error) => {
 					memberFailures += 1;
 					logger.log(`❌ syncMembers: failed to sync roles for member ${tag} on server ${serverId}: ${error.message}`);
@@ -2158,7 +2423,9 @@ export async function syncMembers(serverId: any, members: any[]) {
 			}
 		})
 	);
-	if (memberFailures > 0) logger.log(`⚠️  syncMembers: ${memberFailures} failure(s) across ${members.length} member(s) on server ${serverId}`);
+	if (memberFailures > 0) {
+		logger.log(`⚠️  syncMembers: ${memberFailures} failure(s) across ${members.length} member(s) on server ${serverId}`);
+	}
 
 	const discordIds = new Set(members.map((m) => (m.user || m)?.id || m.id));
 	const dbMembers = await db
@@ -2169,21 +2436,21 @@ export async function syncMembers(serverId: any, members: any[]) {
 	const active = dbMembers.filter((m) => !m.deleted_at);
 	const toMark = active.filter((m) => !discordIds.has(m.discord_member_id)).map((m) => m.id);
 
-	const marksEveryone = active.length > 0 && toMark.length === active.length;
-	const marksTooMany = active.length >= SYNC_MARK_GUARD_MIN_ACTIVE && toMark.length > active.length * SYNC_MARK_MAX_RATIO;
+	const doesMarkEveryone = active.length > 0 && toMark.length === active.length;
+	const hasTooManyMarks = active.length >= SYNC_MARK_GUARD_MIN_ACTIVE && toMark.length > active.length * SYNC_MARK_MAX_RATIO;
 
-	if (marksEveryone || marksTooMany) {
+	if (doesMarkEveryone || hasTooManyMarks) {
 		logger.log(
 			`⚠️  syncMembers for server ${serverId} would mark ${toMark.length} of ${active.length} member(s) deleted; refusing as a safety guard (Discord list had ${discordIds.size})`
 		);
 	} else if (toMark.length > 0) {
 		await db
 			.update(schema.serverMembers)
-			.set({ deleted_at: toMySQLDateTime() as any })
+			.set({ deleted_at: toMySQLDateTime() })
 			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toMark)));
 		await db
 			.update(schema.serverMemberInvites)
-			.set({ left_at: toMySQLDateTime() as any })
+			.set({ left_at: toMySQLDateTime() })
 			.where(and(inArray(schema.serverMemberInvites.member_id, toMark), isNull(schema.serverMemberInvites.left_at)));
 	}
 
@@ -2195,14 +2462,14 @@ export async function syncMembers(serverId: any, members: any[]) {
 			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toRestore)));
 		await db
 			.update(schema.serverMemberInvites)
-			.set({ left_at: null, joined_at: toMySQLDateTime() as any })
+			.set({ left_at: null, joined_at: toMySQLDateTime() })
 			.where(and(inArray(schema.serverMemberInvites.member_id, toRestore), isNotNull(schema.serverMemberInvites.left_at)));
 	}
 
 	return true;
 }
 
-export async function markMemberDeletedByDiscordId(serverId: any, discordMemberId: string) {
+export async function markMemberDeletedByDiscordId(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ id: schema.serverMembers.id, deleted_at: schema.serverMembers.deleted_at })
@@ -2211,16 +2478,18 @@ export async function markMemberDeletedByDiscordId(serverId: any, discordMemberI
 		.limit(1);
 
 	const member = rows[0];
-	if (!member || member.deleted_at) return null;
+	if (!member || member.deleted_at) {
+		return null;
+	}
 
 	await db
 		.update(schema.serverMembers)
-		.set({ deleted_at: toMySQLDateTime() as any })
+		.set({ deleted_at: toMySQLDateTime() })
 		.where(eq(schema.serverMembers.id, Number(member.id)));
 	return member;
 }
 
-export async function restoreMemberByDiscordId(serverId: any, discordMemberId: string) {
+export async function restoreMemberByDiscordId(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ id: schema.serverMembers.id, deleted_at: schema.serverMembers.deleted_at })
@@ -2229,7 +2498,9 @@ export async function restoreMemberByDiscordId(serverId: any, discordMemberId: s
 		.limit(1);
 
 	const member = rows[0];
-	if (!member || !member.deleted_at) return null;
+	if (!member || !member.deleted_at) {
+		return null;
+	}
 
 	await db
 		.update(schema.serverMembers)
@@ -2238,33 +2509,43 @@ export async function restoreMemberByDiscordId(serverId: any, discordMemberId: s
 	return member;
 }
 
-export async function getMemberLevel(memberId: any) {
+export async function getMemberLevel(memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
 		.from(schema.serverMemberLevels)
 		.where(eq(schema.serverMemberLevels.member_id, Number(memberId)))
 		.limit(1);
-	if (!rows[0]) return null;
+	if (!rows[0]) {
+		return null;
+	}
 	const data = { ...rows[0] };
-	if (data.voice_rewarded_at) data.voice_rewarded_at = parseMySQLDateTimeUtc(data.voice_rewarded_at as any) as any;
-	if (data.video_rewarded_at) data.video_rewarded_at = parseMySQLDateTimeUtc(data.video_rewarded_at as any) as any;
-	if (data.stream_rewarded_at) data.stream_rewarded_at = parseMySQLDateTimeUtc(data.stream_rewarded_at as any) as any;
-	if (data.chat_rewarded_at) data.chat_rewarded_at = parseMySQLDateTimeUtc(data.chat_rewarded_at as any) as any;
+	if (data.voice_rewarded_at) {
+		data.voice_rewarded_at = parseMySQLDateTimeUtc(data.voice_rewarded_at);
+	}
+	if (data.video_rewarded_at) {
+		data.video_rewarded_at = parseMySQLDateTimeUtc(data.video_rewarded_at);
+	}
+	if (data.stream_rewarded_at) {
+		data.stream_rewarded_at = parseMySQLDateTimeUtc(data.stream_rewarded_at);
+	}
+	if (data.chat_rewarded_at) {
+		data.chat_rewarded_at = parseMySQLDateTimeUtc(data.chat_rewarded_at);
+	}
 	return data;
 }
 
-export async function ensureMemberLevel(memberId: any) {
+export async function ensureMemberLevel(memberId: number | string) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberLevels)
-		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
+		.values({ member_id: Number(memberId), created_at: now, updated_at: now })
 		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
 	return getMemberLevel(memberId);
 }
 
-export async function getMemberStreak(memberId: any) {
+export async function getMemberStreak(memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
@@ -2274,21 +2555,23 @@ export async function getMemberStreak(memberId: any) {
 	return rows[0] || null;
 }
 
-export async function ensureMemberStreak(memberId: any, tzOffsetMin?: number) {
+export async function ensureMemberStreak(memberId: number | string, tzOffsetMin?: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const tz = Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : null;
 	await db
 		.insert(schema.serverMemberStreaks)
-		.values({ member_id: Number(memberId), tz_offset_min: tz, created_at: now as any, updated_at: now as any })
+		.values({ member_id: Number(memberId), tz_offset_min: tz, created_at: now, updated_at: now })
 		.onDuplicateKeyUpdate({ set: tz == null ? { member_id: Number(memberId) } : { tz_offset_min: tz } });
 	return getMemberStreak(memberId);
 }
 
 let streakWatchDepth = 0;
 
-export function triggerStreakWatch(memberId: any) {
-	if (!memberId || streakWatchDepth > 0) return;
+export function triggerStreakWatch(memberId: number | string) {
+	if (!memberId || streakWatchDepth > 0) {
+		return;
+	}
 	setImmediate(async () => {
 		streakWatchDepth++;
 		try {
@@ -2301,11 +2584,15 @@ export function triggerStreakWatch(memberId: any) {
 	});
 }
 
-export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: number, earnEvery: number) {
+type StreakDay = { dayKey: number; freezeMax: number; earnEvery: number };
+
+export async function applyStreakDay(memberId: number | string, { dayKey, freezeMax, earnEvery }: StreakDay) {
 	await initializeDatabase();
 	const existing = await ensureMemberStreak(memberId);
 	const last = existing?.last_claim_day_key == null ? null : Number(existing.last_claim_day_key);
-	if (last != null && dayKey <= last) return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
+	if (last != null && dayKey <= last) {
+		return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
+	}
 
 	const gap = last == null ? null : Math.floor((dayKey - last) / DAY_MINUTES);
 	const previousStreak = Number(existing?.current_streak) || 0;
@@ -2313,7 +2600,7 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 	let freezes = Number(existing?.freezes_available) || 0;
 	let freezeUsed = 0;
 	let daysMissed = 0;
-	let reset = false;
+	let wasReset = false;
 
 	if (gap == null || gap <= 1 || previousStreak === 0) {
 		streak += 1;
@@ -2326,14 +2613,16 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 			freezes -= missed;
 			streak += 1;
 		} else {
-			reset = true;
+			wasReset = true;
 			streak = 1;
 		}
 	}
 
 	const freezesAfterSpend = freezes;
 	const totalClaims = (Number(existing?.total_claims) || 0) + 1;
-	if (earnEvery > 0 && totalClaims % earnEvery === 0) freezes = Math.min(freezeMax, freezes + 1);
+	if (earnEvery > 0 && totalClaims % earnEvery === 0) {
+		freezes = Math.min(freezeMax, freezes + 1);
+	}
 	const freezeEarned = freezes - freezesAfterSpend;
 
 	const longest = Math.max(Number(existing?.longest_streak) || 0, streak);
@@ -2346,7 +2635,7 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 			last_claim_day_key: dayKey,
 			freezes_available: freezes,
 			total_claims: totalClaims,
-			updated_at: now as any
+			updated_at: now
 		})
 		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
 
@@ -2358,21 +2647,21 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 		freezesLeft: freezesAfterSpend,
 		freezeEarned,
 		daysMissed,
-		reset,
+		reset: wasReset,
 		row: await getMemberStreak(memberId)
 	};
 }
 
-export async function getLatestTaskKey(memberId: any, period = 'daily') {
+export async function getLatestTaskKey(memberId: number | string, period = 'daily') {
 	await initializeDatabase();
-	const rows: any = await db.execute(
+	const rows = (await db.execute(
 		sql`SELECT MAX(day_key) AS k FROM server_member_tasks WHERE member_id = ${Number(memberId)} AND period = ${String(period)}`
-	);
+	)) as unknown as ScalarRows<'k'>;
 	const key = rows?.[0]?.[0]?.k ?? rows?.[0]?.k ?? null;
 	return key == null ? null : Number(key);
 }
 
-export async function getMemberTasks(memberId: any, dayKey: number, period = 'daily') {
+export async function getMemberTasks(memberId: number | string, dayKey: number, period = 'daily') {
 	await initializeDatabase();
 	return db
 		.select()
@@ -2387,9 +2676,13 @@ export async function getMemberTasks(memberId: any, dayKey: number, period = 'da
 		.orderBy(schema.serverMemberTasks.slot);
 }
 
-export async function persistMemberTasks(memberId: any, dayKey: number, rows: any[], period = 'daily') {
+type TaskBatch = { dayKey: number; rows: Record<string, unknown>[]; period?: string };
+
+export async function persistMemberTasks(memberId: number | string, { dayKey, rows, period = 'daily' }: TaskBatch) {
 	await initializeDatabase();
-	if (!rows || rows.length === 0) return getMemberTasks(memberId, dayKey, period);
+	if (!rows || rows.length === 0) {
+		return getMemberTasks(memberId, dayKey, period);
+	}
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberTasks)
@@ -2407,24 +2700,26 @@ export async function persistMemberTasks(memberId: any, dayKey: number, rows: an
 				reward_kind: String(r.rewardKind),
 				xp_reward: Number(r.rewardXp) || 0,
 				reward_item_id: r.rewardItemId == null ? null : Number(r.rewardItemId),
-				created_at: now as any
-			})) as any
+				created_at: now
+			}))
 		)
 		.onDuplicateKeyUpdate({ set: { day_key: sql`day_key` } });
 	return getMemberTasks(memberId, dayKey, period);
 }
 
-export async function claimMemberTask(memberId: any, dayKey: number, slot: number, period = 'daily') {
+type TaskSlot = { dayKey: number; slot: number; period?: string };
+
+export async function claimMemberTask(memberId: number | string, { dayKey, slot, period = 'daily' }: TaskSlot) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND period = ${String(period)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
-	);
+	)) as unknown as WriteResult;
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	return affected > 0;
 }
 
-export async function getMemberClaim(memberId: any) {
+export async function getMemberClaim(memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
@@ -2434,22 +2729,22 @@ export async function getMemberClaim(memberId: any) {
 	return rows[0] || null;
 }
 
-export async function ensureMemberClaim(memberId: any) {
+export async function ensureMemberClaim(memberId: number | string) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberClaims)
-		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
+		.values({ member_id: Number(memberId), created_at: now, updated_at: now })
 		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
 	return getMemberClaim(memberId);
 }
 
-export async function applyMemberClaim(memberId: any, dayKey: number, cycleDays: number) {
+export async function applyMemberClaim(memberId: number | string, dayKey: number, cycleDays: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const readyBefore = Number(dayKey) - DAY_MINUTES;
 	const brokenBefore = Number(dayKey) - 2 * DAY_MINUTES;
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_claims
 			SET cycle_day = CASE
 					WHEN last_claim_day_key IS NULL OR last_claim_day_key <= ${brokenBefore} THEN 1
@@ -2460,361 +2755,452 @@ export async function applyMemberClaim(memberId: any, dayKey: number, cycleDays:
 				last_claim_day_key = ${Number(dayKey)},
 				updated_at = ${now}
 			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key <= ${readyBefore})`
-	);
+	)) as unknown as WriteResult;
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
-	if (affected === 0) return { changed: false, row: await getMemberClaim(memberId) };
+	if (affected === 0) {
+		return { changed: false, row: await getMemberClaim(memberId) };
+	}
 	return { changed: true, row: await getMemberClaim(memberId) };
 }
 
-export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number, targetItemId: any = null) {
-	await initializeDatabase();
-	const since = toMySQLDateTime(new Date(sinceMs));
-	const id = Number(memberId);
+type EventWindow = { metric: string; sinceMs: number; targetItemId?: unknown };
+type EventQuery = { id: number; since: Date; metric: string; targetId: number };
+type EventCounter = (query: EventQuery) => Promise<number> | null;
+type LevelEventMetric = {
+	agg: 'sum' | 'count' | 'peakFriends';
+	sources?: string[];
+	friends?: 'with' | 'without';
+	boost?: 'without';
+	leech?: 'without';
+	earnedOnly?: boolean;
+};
+type ComboEventMetric = { actions?: string[]; anyUse?: boolean; disguised?: boolean; lucky?: boolean; success?: boolean };
 
-	const notTower = sql` AND game NOT IN ${WAGER_FREE_GAMES}`;
+const NOT_WAGER_FREE = sql` AND game NOT IN ${WAGER_FREE_GAMES}`;
+const ITEM_USE_ACTIONS = sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
+const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
 
-	const GAMBLE_FILTERS: Record<string, any> = {
-		gamble_played: sql``,
-		gamble_won: sql` AND outcome = 'win'`,
-		gamble_highroll: sql` AND multiplier >= 5`,
-		gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
-		gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
-		gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
-		gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`,
-		gamble_lost: sql` AND outcome = 'lose'`,
-		gamble_lost_big: sql` AND outcome = 'lose' AND multiplier >= 5`
-	};
+const GAMBLE_EVENT_FILTERS: Record<string, SQL> = {
+	gamble_played: sql``,
+	gamble_won: sql` AND outcome = 'win'`,
+	gamble_highroll: sql` AND multiplier >= 5`,
+	gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
+	gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
+	gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
+	gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`,
+	gamble_lost: sql` AND outcome = 'lose'`,
+	gamble_lost_big: sql` AND outcome = 'lose' AND multiplier >= 5`
+};
 
-	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
-		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${GAMBLE_FILTERS[String(metric)]}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
+const TOWER_EVENT_FILTERS: Record<string, SQL> = {
+	tower_climbed: sql``,
+	tower_cashed: sql` AND outcome = 'win'`,
+	tower_high: sql` AND outcome = 'win' AND multiplier >= ${TOWER_HIGH_FLOOR}`,
+	tower_trapped: sql` AND outcome = 'lose'`,
+	tower_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`
+};
 
-	const TOWER_FILTERS: Record<string, any> = {
-		tower_climbed: sql``,
-		tower_cashed: sql` AND outcome = 'win'`,
-		tower_high: sql` AND outcome = 'win' AND multiplier >= ${TOWER_HIGH_FLOOR}`,
-		tower_trapped: sql` AND outcome = 'lose'`,
-		tower_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`
-	};
+const SIMPLE_EVENT_QUERIES: Record<string, (query: EventQuery) => SQL> = {
+	invites_joined: ({ id, since }) =>
+		sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`,
+	gamble_wagered: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${NOT_WAGER_FREE}`,
+	gamble_wagered_lost: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${NOT_WAGER_FREE} AND outcome = 'lose'`,
+	xp_stolen: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`,
+	xp_gained: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`,
+	xp_spent: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`,
+	asset_bought: ({ id, since }) =>
+		sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`,
+	asset_sold: ({ id, since }) => sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`,
+	asset_profit: ({ id, since }) =>
+		sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
+};
 
-	if (TOWER_FILTERS[String(metric)] !== undefined) {
-		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since} AND game = ${TOWER_GAME}${TOWER_FILTERS[String(metric)]}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
+const XP_SOURCE_FILTERS: Record<string, SQL> = {
+	xp_from_voice: sql` AND source IN ('voice', 'voice_afk')`,
+	xp_from_voice_active: sql` AND source = 'voice'`,
+	xp_from_voice_afk: sql` AND source = 'voice_afk'`,
+	xp_from_chat: sql` AND source = 'chat'`,
+	xp_from_media: sql` AND source IN ('video', 'stream')`
+};
 
-	if (metric === 'invites_joined') {
-		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_invites WHERE inviter_member_id = ${id} AND fake_reason IS NULL AND left_at IS NULL AND created_at >= ${since}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
+const LEVEL_EVENT_METRICS: Record<string, LevelEventMetric> = {
+	xp_with_friends: { agg: 'sum', friends: 'with' },
+	friend_ticks: { agg: 'count', friends: 'with' },
+	friends_peak: { agg: 'peakFriends' },
+	friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
+	xp_solo: { agg: 'sum', boost: 'without', friends: 'without', earnedOnly: true },
+	xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
+	xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
+	xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
+	xp_unleeched: { agg: 'sum', leech: 'without', earnedOnly: true }
+};
 
-	if (metric === 'gamble_wagered' || metric === 'gamble_wagered_lost') {
-		const lostOnly = metric === 'gamble_wagered_lost' ? sql` AND outcome = 'lose'` : sql``;
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${notTower}${lostOnly}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
+const SPECIFIC_ITEM_SCOPES: Record<string, SQL> = {
+	item_specific_used: ITEM_USE_ACTIONS,
+	item_specific_bought: sql`action = 'buy'`,
+	discard_specific: sql`action = 'discard'`,
+	item_specific_success: sql`${ITEM_USE_ACTIONS} AND outcome = 'success'`
+};
 
-	const XP_SOURCE_FILTERS: Record<string, any> = {
-		xp_from_voice: sql` AND source IN ('voice', 'voice_afk')`,
-		xp_from_voice_active: sql` AND source = 'voice'`,
-		xp_from_voice_afk: sql` AND source = 'voice_afk'`,
-		xp_from_chat: sql` AND source = 'chat'`,
-		xp_from_media: sql` AND source IN ('video', 'stream')`
-	};
+const COMBO_EVENT_METRICS: Record<string, ComboEventMetric> = {
+	bomb_masked: { actions: ['bomb'], disguised: true },
+	steal_masked: { actions: ['steal'], disguised: true, success: true },
+	attack_masked: { actions: ['steal', 'bomb', 'leech'], disguised: true },
+	buy_lucky: { actions: ['buy'], lucky: true },
+	use_lucky: { anyUse: true, lucky: true },
+	attack_lucky: { actions: ['steal', 'bomb', 'leech'], lucky: true, success: true },
+	bounty_claimed: { actions: ['bounty_collected'] }
+};
 
-	const LEVEL_METRICS: Record<
-		string,
-		{ agg: 'sum' | 'count' | 'peakFriends'; sources?: string[]; friends?: 'with' | 'without'; boost?: 'without'; leech?: 'without'; earnedOnly?: boolean }
-	> = {
-		xp_with_friends: { agg: 'sum', friends: 'with' },
-		friend_ticks: { agg: 'count', friends: 'with' },
-		friends_peak: { agg: 'peakFriends' },
-		friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
-		xp_solo: { agg: 'sum', boost: 'without', friends: 'without', earnedOnly: true },
-		xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
-		xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
-		xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
-		xp_unleeched: { agg: 'sum', leech: 'without', earnedOnly: true }
-	};
+const VICTIM_EVENT_METRICS: Record<string, { agg: 'count' | 'sum'; where: SQL }> = {
+	attacked_by_any: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome = 'success'` },
+	stolen_from: { agg: 'count', where: sql`action = 'steal' AND outcome = 'success'` },
+	bombed_by: { agg: 'count', where: sql`action = 'bomb' AND outcome = 'success'` },
+	leeched_by: { agg: 'count', where: sql`action = 'leech' AND outcome = 'success'` },
+	attacks_survived: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome IN ('blocked', 'immune', 'reflected')` },
+	xp_lost_to_attacks: { agg: 'sum', where: sql`action IN ('steal', 'bomb') AND outcome = 'success'` },
+	xp_refunded: { agg: 'sum', where: sql`action = 'insurance' AND outcome = 'refunded'` }
+};
 
-	const lm = LEVEL_METRICS[String(metric)];
-	if (lm) {
-		const parts: any[] = [];
-		if (lm.sources)
-			parts.push(
-				sql`source IN (${sql.join(
-					lm.sources.map((s) => sql`${s}`),
-					sql`, `
-				)})`
-			);
-		if (lm.friends === 'with') parts.push(sql`friend_percent IS NOT NULL AND friend_percent > 0`);
-		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
-		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
-		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
-		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share', 'reward')`);
-		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
-		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
-		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
+const ITEM_ACTION_FILTERS: Record<string, SQL> = {
+	attack_any: sql`action IN ${ATTACK_ACTIONS}`,
+	attack_success: sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`,
+	attack_failed: sql`action IN ${ATTACK_ACTIONS} AND outcome IS NOT NULL AND outcome <> 'success'`,
+	attack_reflected: sql`action IN ${ATTACK_ACTIONS} AND outcome = 'reflected'`,
+	attack_blocked: sql`action IN ${ATTACK_ACTIONS} AND outcome IN ('blocked', 'immune')`,
+	spy_caught: sql`action = 'spy' AND outcome = 'caught'`,
+	steal_failed: sql`action = 'steal' AND outcome IS NOT NULL AND outcome <> 'success'`,
+	bomb_failed: sql`action = 'bomb' AND outcome IS NOT NULL AND outcome <> 'success'`,
+	leech_landed: sql`action = 'leech' AND outcome = 'success'`,
+	leech_occupied: sql`action = 'leech' AND outcome = 'occupied'`,
+	leech_failed: sql`action = 'leech' AND outcome IS NOT NULL AND outcome <> 'success'`,
+	bounty_paid_out: sql`action = 'bounty_collected'`,
+	attack_on_cooldown: sql`action IN ${ATTACK_ACTIONS} AND outcome = 'cooldown'`
+};
 
-	if (XP_SOURCE_FILTERS[String(metric)] !== undefined) {
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
+const TRAILING_ITEM_ACTION_FILTERS: Record<string, SQL> = {
+	item_used: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected')`,
+	item_bought: sql`action = 'buy'`,
+	discard_any: sql`action = 'discard'`
+};
 
-	if (metric === 'xp_stolen') {
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'xp_gained') {
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'xp_spent') {
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'asset_bought' || metric === 'asset_sold') {
-		const act = metric === 'asset_bought' ? 'buy' : 'sell';
-		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = ${act}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	if (metric === 'asset_profit') {
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const effectMatch = /^use_([a-z]+)$/.exec(String(metric));
-	const targetId = Number(targetItemId) || 0;
-	if (metric === 'item_specific_used' || metric === 'item_specific_bought' || metric === 'discard_specific' || metric === 'item_specific_success') {
-		if (targetId <= 0) return 0;
-		const scope =
-			metric === 'item_specific_bought'
-				? sql`action = 'buy'`
-				: metric === 'discard_specific'
-					? sql`action = 'discard'`
-					: metric === 'item_specific_success'
-						? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL AND outcome = 'success'`
-						: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
-		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const COMBO_METRICS: Record<string, { actions?: string[]; anyUse?: boolean; disguised?: boolean; lucky?: boolean; success?: boolean }> = {
-		bomb_masked: { actions: ['bomb'], disguised: true },
-		steal_masked: { actions: ['steal'], disguised: true, success: true },
-		attack_masked: { actions: ['steal', 'bomb', 'leech'], disguised: true },
-		buy_lucky: { actions: ['buy'], lucky: true },
-		use_lucky: { anyUse: true, lucky: true },
-		attack_lucky: { actions: ['steal', 'bomb', 'leech'], lucky: true, success: true },
-		bounty_claimed: { actions: ['bounty_collected'] }
-	};
-
-	const combo = COMBO_METRICS[String(metric)];
-	if (combo) {
-		const parts: any[] = [];
-		if (combo.actions)
-			parts.push(
-				sql`action IN (${sql.join(
-					combo.actions.map((a) => sql`${a}`),
-					sql`, `
-				)})`
-			);
-		if (combo.anyUse) parts.push(sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`);
-		if (combo.disguised) parts.push(sql`actor_disguised = 1`);
-		if (combo.lucky) parts.push(sql`luck_percent IS NOT NULL AND luck_percent > 0`);
-		if (combo.success) parts.push(sql`outcome = 'success'`);
-		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${sql.join(parts, sql` AND `)}`
-		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const durationMatch = /^duration_([a-z]+)$/.exec(String(metric));
-	if (durationMatch) {
-		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, GREATEST(a.created_at, ${since}), LEAST(a.expires_at, NOW()))), 0) AS c
-				FROM server_member_item_actives a
-				INNER JOIN server_member_items mi ON mi.id = a.member_item_id
-				INNER JOIN items i ON i.id = mi.item_id
-				WHERE mi.member_id = ${id}
-					AND i.effect_type = ${durationMatch[1]}
-					AND a.expires_at > ${since}
-					AND a.created_at <= NOW()`
-		);
-		const seconds = Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-		return Math.floor(Math.max(0, seconds) / 60);
-	}
-
-	const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
-
-	const VICTIM_METRICS: Record<string, { agg: 'count' | 'sum'; where: any }> = {
-		attacked_by_any: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome = 'success'` },
-		stolen_from: { agg: 'count', where: sql`action = 'steal' AND outcome = 'success'` },
-		bombed_by: { agg: 'count', where: sql`action = 'bomb' AND outcome = 'success'` },
-		leeched_by: { agg: 'count', where: sql`action = 'leech' AND outcome = 'success'` },
-		attacks_survived: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome IN ('blocked', 'immune', 'reflected')` },
-		xp_lost_to_attacks: { agg: 'sum', where: sql`action IN ('steal', 'bomb') AND outcome = 'success'` },
-		xp_refunded: { agg: 'sum', where: sql`action = 'insurance' AND outcome = 'refunded'` }
-	};
-
-	const victim = VICTIM_METRICS[String(metric)];
-	if (victim) {
-		const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : sql`COUNT(*)`;
-		const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
-		const rows: any = await db.execute(sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
-	}
-
-	const successMatch = metric === 'attack_success' ? null : /^([a-z]+)_success$/.exec(String(metric));
-
-	const actionFilter =
-		metric === 'attack_any'
-			? sql`action IN ${ATTACK_ACTIONS}`
-			: metric === 'attack_success'
-				? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`
-				: metric === 'attack_failed'
-					? sql`action IN ${ATTACK_ACTIONS} AND outcome IS NOT NULL AND outcome <> 'success'`
-					: metric === 'attack_reflected'
-						? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'reflected'`
-						: metric === 'attack_blocked'
-							? sql`action IN ${ATTACK_ACTIONS} AND outcome IN ('blocked', 'immune')`
-							: metric === 'spy_caught'
-								? sql`action = 'spy' AND outcome = 'caught'`
-								: metric === 'steal_failed'
-									? sql`action = 'steal' AND outcome IS NOT NULL AND outcome <> 'success'`
-									: metric === 'bomb_failed'
-										? sql`action = 'bomb' AND outcome IS NOT NULL AND outcome <> 'success'`
-										: metric === 'leech_landed'
-											? sql`action = 'leech' AND outcome = 'success'`
-											: metric === 'leech_occupied'
-												? sql`action = 'leech' AND outcome = 'occupied'`
-												: metric === 'leech_failed'
-													? sql`action = 'leech' AND outcome IS NOT NULL AND outcome <> 'success'`
-													: metric === 'bounty_paid_out'
-														? sql`action = 'bounty_collected'`
-														: metric === 'attack_on_cooldown'
-															? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'cooldown'`
-															: effectMatch
-																? sql`action = ${effectMatch[1]}`
-																: successMatch
-																	? sql`action = ${successMatch[1]} AND outcome = 'success'`
-																	: metric === 'item_used'
-																		? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected')`
-																		: metric === 'item_bought'
-																			? sql`action = 'buy'`
-																			: metric === 'discard_any'
-																				? sql`action = 'discard'`
-																				: null;
-
-	if (!actionFilter) return 0;
-
-	const rows: any = await db.execute(
-		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${actionFilter}`
-	);
+async function countScalar(query: SQL): Promise<number> {
+	const rows = (await db.execute(query)) as unknown as ScalarRows<'c'>;
 	return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 }
 
-export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
+function sqlList(values: string[]) {
+	return sql.join(
+		values.map((value) => sql`${value}`),
+		sql`, `
+	);
+}
+
+const countGambleEvents: EventCounter = ({ id, since, metric }) =>
+	GAMBLE_EVENT_FILTERS[metric] === undefined
+		? null
+		: countScalar(
+				sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${NOT_WAGER_FREE}${GAMBLE_EVENT_FILTERS[metric]}`
+			);
+
+const countTowerEvents: EventCounter = ({ id, since, metric }) =>
+	TOWER_EVENT_FILTERS[metric] === undefined
+		? null
+		: countScalar(
+				sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since} AND game = ${TOWER_GAME}${TOWER_EVENT_FILTERS[metric]}`
+			);
+
+const countSimpleEvents: EventCounter = (query) => {
+	const build = SIMPLE_EVENT_QUERIES[query.metric];
+	return build ? countScalar(build(query)) : null;
+};
+
+function levelMetricWhere(lm: LevelEventMetric): SQL {
+	const parts: SQL[] = [];
+	if (lm.sources) {
+		parts.push(sql`source IN (${sqlList(lm.sources)})`);
+	}
+	if (lm.friends === 'with') {
+		parts.push(sql`friend_percent IS NOT NULL AND friend_percent > 0`);
+	}
+	if (lm.friends === 'without') {
+		parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
+	}
+	if (lm.boost === 'without') {
+		parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
+	}
+	if (lm.leech === 'without') {
+		parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
+	}
+	if (lm.earnedOnly) {
+		parts.push(sql`source NOT IN ('task', 'daily', 'invite', 'invite_share', 'reward')`);
+	}
+	return parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
+}
+
+const countLevelEvents: EventCounter = ({ id, since, metric }) => {
+	const lm = LEVEL_EVENT_METRICS[metric];
+	if (!lm) {
+		return null;
+	}
+	const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
+	return countScalar(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${levelMetricWhere(lm)}`);
+};
+
+const countXpSourceEvents: EventCounter = ({ id, since, metric }) =>
+	XP_SOURCE_FILTERS[metric] === undefined
+		? null
+		: countScalar(
+				sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[metric]}`
+			);
+
+const countSpecificItemEvents: EventCounter = ({ id, since, metric, targetId }) => {
+	const scope = SPECIFIC_ITEM_SCOPES[metric];
+	if (!scope) {
+		return null;
+	}
+	if (targetId <= 0) {
+		return Promise.resolve(0);
+	}
+	return countScalar(
+		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
+	);
+};
+
+function comboWhere(combo: ComboEventMetric): SQL {
+	const parts: SQL[] = [];
+	if (combo.actions) {
+		parts.push(sql`action IN (${sqlList(combo.actions)})`);
+	}
+	if (combo.anyUse) {
+		parts.push(ITEM_USE_ACTIONS);
+	}
+	if (combo.disguised) {
+		parts.push(sql`actor_disguised = 1`);
+	}
+	if (combo.lucky) {
+		parts.push(sql`luck_percent IS NOT NULL AND luck_percent > 0`);
+	}
+	if (combo.success) {
+		parts.push(sql`outcome = 'success'`);
+	}
+	return sql.join(parts, sql` AND `);
+}
+
+const countComboEvents: EventCounter = ({ id, since, metric }) => {
+	const combo = COMBO_EVENT_METRICS[metric];
+	return combo
+		? countScalar(sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${comboWhere(combo)}`)
+		: null;
+};
+
+const countDurationEvents: EventCounter = ({ id, since, metric }) => {
+	const durationMatch = /^duration_([a-z]+)$/.exec(metric);
+	if (!durationMatch) {
+		return null;
+	}
+	return countScalar(
+		sql`SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, GREATEST(a.created_at, ${since}), LEAST(a.expires_at, NOW()))), 0) AS c
+			FROM server_member_item_actives a
+			INNER JOIN server_member_items mi ON mi.id = a.member_item_id
+			INNER JOIN items i ON i.id = mi.item_id
+			WHERE mi.member_id = ${id}
+				AND i.effect_type = ${durationMatch[1]}
+				AND a.expires_at > ${since}
+				AND a.created_at <= NOW()`
+	).then((seconds) => Math.floor(Math.max(0, seconds) / SECONDS_PER_MINUTE));
+};
+
+const countVictimEvents: EventCounter = ({ id, since, metric }) => {
+	const victim = VICTIM_EVENT_METRICS[metric];
+	if (!victim) {
+		return null;
+	}
+	const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : sql`COUNT(*)`;
+	const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
+	return countScalar(sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`);
+};
+
+function itemActionFilter(metric: string): SQL | null {
+	if (ITEM_ACTION_FILTERS[metric]) {
+		return ITEM_ACTION_FILTERS[metric];
+	}
+	const effectMatch = /^use_([a-z]+)$/.exec(metric);
+	if (effectMatch) {
+		return sql`action = ${effectMatch[1]}`;
+	}
+	const successMatch = /^([a-z]+)_success$/.exec(metric);
+	if (successMatch) {
+		return sql`action = ${successMatch[1]} AND outcome = 'success'`;
+	}
+	return TRAILING_ITEM_ACTION_FILTERS[metric] ?? null;
+}
+
+const EVENT_COUNTERS: EventCounter[] = [
+	countGambleEvents,
+	countTowerEvents,
+	countSimpleEvents,
+	countLevelEvents,
+	countXpSourceEvents,
+	countSpecificItemEvents,
+	countComboEvents,
+	countDurationEvents,
+	countVictimEvents
+];
+
+export async function countMemberEventsSince(memberId: number | string, { metric, sinceMs, targetItemId = null }: EventWindow) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	const query: EventQuery = { id: Number(memberId), since: toMySQLDateTime(new Date(sinceMs)), metric: String(metric), targetId: Number(targetItemId) || 0 };
 
-	const clauses: any[] = [];
+	for (const counter of EVENT_COUNTERS) {
+		const counted = counter(query);
+		if (counted) {
+			return counted;
+		}
+	}
 
-	if (typeof updates.chatIncrement === 'number' && updates.chatIncrement !== 0) clauses.push(sql`chat_total = chat_total + ${updates.chatIncrement}`);
-	if (typeof updates.reactionsIncrement === 'number' && updates.reactionsIncrement !== 0)
-		clauses.push(sql`reactions_given = GREATEST(0, reactions_given + ${updates.reactionsIncrement})`);
-	if (typeof updates.voiceMinutesActiveIncrement === 'number' && updates.voiceMinutesActiveIncrement !== 0)
-		clauses.push(sql`voice_minutes_active = voice_minutes_active + ${updates.voiceMinutesActiveIncrement}`);
-	if (typeof updates.voiceMinutesAfkIncrement === 'number' && updates.voiceMinutesAfkIncrement !== 0)
-		clauses.push(sql`voice_minutes_afk = voice_minutes_afk + ${updates.voiceMinutesAfkIncrement}`);
-	if (typeof updates.voiceMinutesVideoIncrement === 'number' && updates.voiceMinutesVideoIncrement !== 0)
-		clauses.push(sql`voice_minutes_video = voice_minutes_video + ${updates.voiceMinutesVideoIncrement}`);
-	if (typeof updates.voiceMinutesStreamingIncrement === 'number' && updates.voiceMinutesStreamingIncrement !== 0)
-		clauses.push(sql`voice_minutes_streaming = voice_minutes_streaming + ${updates.voiceMinutesStreamingIncrement}`);
-	if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined)
+	const actionFilter = itemActionFilter(query.metric);
+	if (!actionFilter) {
+		return 0;
+	}
+	return countScalar(sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${query.id} AND created_at >= ${query.since} AND ${actionFilter}`);
+}
+
+export type MemberLevelUpdates = {
+	chatIncrement?: number;
+	reactionsIncrement?: number;
+	voiceMinutesActiveIncrement?: number;
+	voiceMinutesAfkIncrement?: number;
+	voiceMinutesVideoIncrement?: number;
+	voiceMinutesStreamingIncrement?: number;
+	xpIncrement?: number;
+	level?: number | null;
+	rank?: number | null;
+	isInVoice?: boolean;
+	isInVideo?: boolean;
+	isInStream?: boolean;
+	chatRewardedAt?: string | Date | null;
+	voiceRewardedAt?: string | Date | null;
+	videoRewardedAt?: string | Date | null;
+	streamRewardedAt?: string | Date | null;
+};
+
+type LevelIncrementKey =
+	| 'chatIncrement'
+	| 'reactionsIncrement'
+	| 'voiceMinutesActiveIncrement'
+	| 'voiceMinutesAfkIncrement'
+	| 'voiceMinutesVideoIncrement'
+	| 'voiceMinutesStreamingIncrement';
+
+const LEVEL_INCREMENTS: { key: LevelIncrementKey; set: (amount: number) => SQL }[] = [
+	{ key: 'chatIncrement', set: (amount) => sql`chat_total = chat_total + ${amount}` },
+	{ key: 'reactionsIncrement', set: (amount) => sql`reactions_given = GREATEST(0, reactions_given + ${amount})` },
+	{ key: 'voiceMinutesActiveIncrement', set: (amount) => sql`voice_minutes_active = voice_minutes_active + ${amount}` },
+	{ key: 'voiceMinutesAfkIncrement', set: (amount) => sql`voice_minutes_afk = voice_minutes_afk + ${amount}` },
+	{ key: 'voiceMinutesVideoIncrement', set: (amount) => sql`voice_minutes_video = voice_minutes_video + ${amount}` },
+	{ key: 'voiceMinutesStreamingIncrement', set: (amount) => sql`voice_minutes_streaming = voice_minutes_streaming + ${amount}` }
+];
+
+const LEVEL_FLAGS = [
+	['isInVoice', 'is_in_voice'],
+	['isInVideo', 'is_in_video'],
+	['isInStream', 'is_in_stream']
+] as const;
+
+const LEVEL_REWARD_STAMPS = [
+	['voiceRewardedAt', 'voice_rewarded_at'],
+	['videoRewardedAt', 'video_rewarded_at'],
+	['streamRewardedAt', 'stream_rewarded_at']
+] as const;
+
+function levelIncrementClauses(updates: MemberLevelUpdates): SQL[] {
+	const clauses = LEVEL_INCREMENTS.filter(({ key }) => typeof updates[key] === 'number' && updates[key] !== 0).map(({ key, set }) =>
+		set(updates[key] as number)
+	);
+	if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined) {
 		clauses.push(sql`voice_minutes_total = voice_minutes_active + voice_minutes_afk`);
-	if (typeof updates.xpIncrement === 'number' && updates.xpIncrement !== 0) clauses.push(sql`xp = xp + ${updates.xpIncrement}`);
-	if (updates.level !== undefined && updates.level !== null) clauses.push(sql`level = ${updates.level}`);
-	if (updates.rank !== undefined) clauses.push(sql`rank = ${updates.rank}`);
-	if (typeof updates.isInVoice === 'boolean') clauses.push(sql`is_in_voice = ${updates.isInVoice ? 1 : 0}`);
-	if (typeof updates.isInVideo === 'boolean') clauses.push(sql`is_in_video = ${updates.isInVideo ? 1 : 0}`);
-	if (typeof updates.isInStream === 'boolean') clauses.push(sql`is_in_stream = ${updates.isInStream ? 1 : 0}`);
-	if (updates.chatRewardedAt) clauses.push(sql`chat_rewarded_at = ${toMySQLDateTime(updates.chatRewardedAt)}`);
-	if (updates.voiceRewardedAt !== undefined) {
-		if (updates.voiceRewardedAt === null) clauses.push(sql`voice_rewarded_at = NULL`);
-		else clauses.push(sql`voice_rewarded_at = ${toMySQLDateTime(updates.voiceRewardedAt)}`);
 	}
-	if (updates.videoRewardedAt !== undefined) {
-		if (updates.videoRewardedAt === null) clauses.push(sql`video_rewarded_at = NULL`);
-		else clauses.push(sql`video_rewarded_at = ${toMySQLDateTime(updates.videoRewardedAt)}`);
+	return clauses;
+}
+
+function levelStateClauses(updates: MemberLevelUpdates): SQL[] {
+	const clauses: SQL[] = [];
+	if (typeof updates.xpIncrement === 'number' && updates.xpIncrement !== 0) {
+		clauses.push(sql`xp = xp + ${updates.xpIncrement}`);
 	}
-	if (updates.streamRewardedAt !== undefined) {
-		if (updates.streamRewardedAt === null) clauses.push(sql`stream_rewarded_at = NULL`);
-		else clauses.push(sql`stream_rewarded_at = ${toMySQLDateTime(updates.streamRewardedAt)}`);
+	if (updates.level !== undefined && updates.level !== null) {
+		clauses.push(sql`level = ${updates.level}`);
+	}
+	if (updates.rank !== undefined) {
+		clauses.push(sql`rank = ${updates.rank}`);
+	}
+	for (const [key, column] of LEVEL_FLAGS) {
+		const isOn = updates[key];
+		if (typeof isOn === 'boolean') {
+			clauses.push(sql`${sql.raw(column)} = ${isOn ? 1 : 0}`);
+		}
+	}
+	return clauses;
+}
+
+function levelRewardClauses(updates: MemberLevelUpdates): SQL[] {
+	const clauses: SQL[] = [];
+	if (updates.chatRewardedAt) {
+		clauses.push(sql`chat_rewarded_at = ${toMySQLDateTime(updates.chatRewardedAt)}`);
+	}
+	for (const [key, column] of LEVEL_REWARD_STAMPS) {
+		const value = updates[key];
+		if (value !== undefined) {
+			clauses.push(value === null ? sql`${sql.raw(column)} = NULL` : sql`${sql.raw(column)} = ${toMySQLDateTime(value)}`);
+		}
+	}
+	return clauses;
+}
+
+export async function updateMemberLevelStats(memberId: number | string, updates: MemberLevelUpdates = {}) {
+	await initializeDatabase();
+	if (!memberId) {
+		throw new Error('memberId is required');
 	}
 
-	if (clauses.length === 0) return getMemberLevel(memberId);
+	const clauses = [...levelIncrementClauses(updates), ...levelStateClauses(updates), ...levelRewardClauses(updates)];
+	if (clauses.length === 0) {
+		return getMemberLevel(memberId);
+	}
 
 	clauses.push(sql`updated_at = ${toMySQLDateTime()}`);
-
 	await db.execute(sql`UPDATE server_member_levels SET ${sql.join(clauses, sql`, `)} WHERE member_id = ${Number(memberId)}`);
 
-	const movedTaskMetric =
-		typeof updates.chatIncrement === 'number' ||
-		typeof updates.reactionsIncrement === 'number' ||
-		typeof updates.voiceMinutesActiveIncrement === 'number' ||
-		typeof updates.voiceMinutesAfkIncrement === 'number' ||
-		typeof updates.voiceMinutesVideoIncrement === 'number' ||
-		typeof updates.voiceMinutesStreamingIncrement === 'number';
-	if (movedTaskMetric) triggerStreakWatch(memberId);
-
+	if (LEVEL_INCREMENTS.some(({ key }) => typeof updates[key] === 'number')) {
+		triggerStreakWatch(memberId);
+	}
 	return getMemberLevel(memberId);
 }
 
-export async function claimVoiceRewardWindow(memberId: any, cooldownMs: number) {
+export async function claimVoiceRewardWindow(memberId: number | string, cooldownMs: number) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	const now = toMySQLDateTime();
-	const cooldownSeconds = Math.max(0, Math.floor(Number(cooldownMs) / 1000));
+	const cooldownSeconds = Math.max(0, Math.floor(Number(cooldownMs) / SECOND_MS));
 	const result = await db.execute(sql`
 		UPDATE server_member_levels
 		SET voice_rewarded_at = ${now}, updated_at = ${now}
 		WHERE member_id = ${Number(memberId)}
 			AND (voice_rewarded_at IS NULL OR voice_rewarded_at <= DATE_SUB(${now}, INTERVAL ${cooldownSeconds} SECOND))
 	`);
-	const affected = (result as any)?.[0]?.affectedRows ?? (result as any)?.affectedRows ?? 0;
+	const affected = (result as unknown as WriteResult)?.[0]?.affectedRows ?? (result as unknown as WriteResult)?.affectedRows ?? 0;
 	return affected > 0;
 }
 
-export async function setMemberLanguage(serverId: any, discordMemberId: string, language: string | null) {
+export async function setMemberLanguage(serverId: number | string, discordMemberId: string, language: string | null) {
 	await initializeDatabase();
 	await db
 		.update(schema.serverMembers)
@@ -2823,9 +3209,11 @@ export async function setMemberLanguage(serverId: any, discordMemberId: string, 
 	return true;
 }
 
-export async function getMemberLanguage(serverId: any, discordMemberId: string) {
+export async function getMemberLanguage(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
-	if (!serverId || !discordMemberId) return null;
+	if (!serverId || !discordMemberId) {
+		return null;
+	}
 	const rows = await db
 		.select({ language: schema.serverMembers.language })
 		.from(schema.serverMembers)
@@ -2834,9 +3222,11 @@ export async function getMemberLanguage(serverId: any, discordMemberId: string) 
 	return rows[0]?.language || null;
 }
 
-export async function recalculateServerMemberRanks(serverId: any) {
+export async function recalculateServerMemberRanks(serverId: number | string) {
 	await initializeDatabase();
-	if (!serverId) throw new Error('serverId is required');
+	if (!serverId) {
+		throw new Error('serverId is required');
+	}
 	await db.execute(sql`SET @rank := 0`);
 	await db.execute(sql`
 		UPDATE server_member_levels sml
@@ -2855,7 +3245,7 @@ export async function recalculateServerMemberRanks(serverId: any) {
 	return true;
 }
 
-export async function getMemberDiscordRoleIds(memberId: any): Promise<string[]> {
+export async function getMemberDiscordRoleIds(memberId: unknown): Promise<string[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sr.discord_role_id
@@ -2863,10 +3253,35 @@ export async function getMemberDiscordRoleIds(memberId: any): Promise<string[]> 
 		INNER JOIN server_roles sr ON smr.role_id = sr.id
 		WHERE smr.member_id = ${Number(memberId)}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => String(r.discord_role_id));
 }
 
-export async function getMemberLevelByDiscordId(serverId: any, discordMemberId: string) {
+type MemberLevelSqlRow = {
+	id: number;
+	member_id: number;
+	chat_total: number | null;
+	reactions_given: number | null;
+	voice_minutes_total: number | null;
+	voice_minutes_active: number | null;
+	voice_minutes_afk: number | null;
+	voice_minutes_video: number | null;
+	voice_minutes_streaming: number | null;
+	xp: number | null;
+	level: number | null;
+	is_in_voice: number | null;
+	is_in_video: number | null;
+	is_in_stream: number | null;
+	rank: number | null;
+	chat_rewarded_at: string | null;
+	voice_rewarded_at: string | null;
+	video_rewarded_at: string | null;
+	stream_rewarded_at: string | null;
+	created_at: string;
+	updated_at: string;
+};
+type MemberNameColumns = { username: string | null; display_name: string | null; server_display_name: string | null };
+
+export async function getMemberLevelByDiscordId(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sml.*, sm.username, sm.display_name, sm.server_display_name, sm.discord_member_id
@@ -2875,12 +3290,14 @@ export async function getMemberLevelByDiscordId(serverId: any, discordMemberId: 
 		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${discordMemberId}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (rows[0] as unknown as (MemberLevelSqlRow & MemberNameColumns & { discord_member_id: string })[])[0] || null;
 }
 
-export async function getMembersWithInVoiceFlag(serverId: any) {
+export async function getMembersWithInVoiceFlag(serverId: number | string) {
 	await initializeDatabase();
-	if (!serverId) throw new Error('serverId is required');
+	if (!serverId) {
+		throw new Error('serverId is required');
+	}
 	return db
 		.select({ member_id: schema.serverMemberLevels.member_id, discord_member_id: schema.serverMembers.discord_member_id })
 		.from(schema.serverMemberLevels)
@@ -2888,11 +3305,15 @@ export async function getMembersWithInVoiceFlag(serverId: any) {
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), eq(schema.serverMemberLevels.is_in_voice, true)));
 }
 
-export async function listItems(panelId: any, options: any = {}) {
+export async function listItems(panelId: number | string, options: { enabledOnly?: boolean } = {}) {
 	await initializeDatabase();
-	if (!panelId) throw new Error('panelId is required');
-	const conditions: any[] = [eq(schema.items.panel_id, Number(panelId))];
-	if (options.enabledOnly) conditions.push(eq(schema.items.enabled, true));
+	if (!panelId) {
+		throw new Error('panelId is required');
+	}
+	const conditions: SQL[] = [eq(schema.items.panel_id, Number(panelId))];
+	if (options.enabledOnly) {
+		conditions.push(eq(schema.items.enabled, true));
+	}
 	return db
 		.select()
 		.from(schema.items)
@@ -2900,7 +3321,7 @@ export async function listItems(panelId: any, options: any = {}) {
 		.orderBy(asc(schema.items.sort_order), asc(schema.items.id));
 }
 
-export async function getItem(itemId: any) {
+export async function getItem(itemId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
@@ -2910,20 +3331,36 @@ export async function getItem(itemId: any) {
 	return rows[0] || null;
 }
 
-export async function setItemEnabled(itemId: any, enabled: boolean) {
+export async function setItemEnabled(itemId: number | string, isEnabled: boolean) {
 	await initializeDatabase();
 	await db
 		.update(schema.items)
-		.set({ enabled: !!enabled })
+		.set({ enabled: !!isEnabled })
 		.where(eq(schema.items.id, Number(itemId)));
 	return true;
 }
 
-export async function createItem(panelId: any, data: any = {}) {
+type ItemInput = {
+	name?: string | null;
+	effect_type?: string | null;
+	description?: string | null;
+	cost?: number | string | null;
+	config?: unknown;
+	enabled?: boolean;
+	usable?: boolean;
+	available_from?: string | null;
+	available_to?: string | null;
+	recurring_schedule?: unknown;
+	sort_order?: number | string | null;
+};
+
+export async function createItem(panelId: number | string, data: ItemInput = {}) {
 	await initializeDatabase();
-	if (!panelId) throw new Error('panelId is required');
+	if (!panelId) {
+		throw new Error('panelId is required');
+	}
 	const now = toMySQLDateTime();
-	const result: any = await db.insert(schema.items).values({
+	const result = (await db.insert(schema.items).values({
 		panel_id: Number(panelId),
 		name: String(data.name ?? ''),
 		effect_type: String(data.effect_type ?? ''),
@@ -2936,28 +3373,52 @@ export async function createItem(panelId: any, data: any = {}) {
 		available_to: data.available_to ?? null,
 		recurring_schedule: data.recurring_schedule ?? null,
 		sort_order: Number(data.sort_order ?? 0),
-		created_at: now as any,
-		updated_at: now as any
-	});
+		created_at: now,
+		updated_at: now
+	})) as unknown as WriteResult;
 	const insertId = result?.insertId ?? result?.[0]?.insertId;
 	return getItem(insertId);
 }
 
-export async function updateItem(itemId: any, data: any = {}) {
+export async function updateItem(itemId: number | string, data: Record<string, unknown> = {}) {
 	await initializeDatabase();
-	if (!itemId) throw new Error('itemId is required');
-	const set: any = { updated_at: toMySQLDateTime() as any };
-	if (data.name !== undefined) set.name = String(data.name);
-	if (data.effect_type !== undefined) set.effect_type = String(data.effect_type);
-	if (data.description !== undefined) set.description = data.description ?? null;
-	if (data.cost !== undefined) set.cost = Number(data.cost);
-	if (data.config !== undefined) set.config = data.config ?? {};
-	if (data.enabled !== undefined) set.enabled = !!data.enabled;
-	if (data.usable !== undefined) set.usable = !!data.usable;
-	if (data.available_from !== undefined) set.available_from = data.available_from ?? null;
-	if (data.available_to !== undefined) set.available_to = data.available_to ?? null;
-	if (data.recurring_schedule !== undefined) set.recurring_schedule = data.recurring_schedule ?? null;
-	if (data.sort_order !== undefined) set.sort_order = Number(data.sort_order);
+	if (!itemId) {
+		throw new Error('itemId is required');
+	}
+	const set: Record<string, unknown> = { updated_at: toMySQLDateTime() };
+	if (data.name !== undefined) {
+		set.name = String(data.name);
+	}
+	if (data.effect_type !== undefined) {
+		set.effect_type = String(data.effect_type);
+	}
+	if (data.description !== undefined) {
+		set.description = data.description ?? null;
+	}
+	if (data.cost !== undefined) {
+		set.cost = Number(data.cost);
+	}
+	if (data.config !== undefined) {
+		set.config = data.config ?? {};
+	}
+	if (data.enabled !== undefined) {
+		set.enabled = !!data.enabled;
+	}
+	if (data.usable !== undefined) {
+		set.usable = !!data.usable;
+	}
+	if (data.available_from !== undefined) {
+		set.available_from = data.available_from ?? null;
+	}
+	if (data.available_to !== undefined) {
+		set.available_to = data.available_to ?? null;
+	}
+	if (data.recurring_schedule !== undefined) {
+		set.recurring_schedule = data.recurring_schedule ?? null;
+	}
+	if (data.sort_order !== undefined) {
+		set.sort_order = Number(data.sort_order);
+	}
 	await db
 		.update(schema.items)
 		.set(set)
@@ -2965,16 +3426,37 @@ export async function updateItem(itemId: any, data: any = {}) {
 	return getItem(itemId);
 }
 
-export async function deleteItem(itemId: any) {
+export async function deleteItem(itemId: number | string) {
 	await initializeDatabase();
-	if (!itemId) throw new Error('itemId is required');
+	if (!itemId) {
+		throw new Error('itemId is required');
+	}
 	await db.delete(schema.items).where(eq(schema.items.id, Number(itemId)));
 	return true;
 }
 
-export async function getMemberInventory(memberId: any) {
+export type InventorySqlRow = {
+	id: number;
+	member_id: number;
+	item_id: number;
+	quantity: number;
+	acquired_at: string;
+	created_at: string;
+	updated_at: string;
+	name: string;
+	effect_type: string;
+	description: string | null;
+	cost: number;
+	config: unknown;
+	usable: number | boolean;
+	enabled: number | boolean;
+};
+
+export async function getMemberInventory(memberId: number | string) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	const rows = await db.execute(sql`
 		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.usable, bi.enabled
 		FROM server_member_items smi
@@ -2982,10 +3464,10 @@ export async function getMemberInventory(memberId: any) {
 		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0
 		ORDER BY smi.updated_at DESC
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as InventorySqlRow[];
 }
 
-export async function getMemberItem(memberItemId: any) {
+export async function getMemberItem(memberItemId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
@@ -2995,15 +3477,17 @@ export async function getMemberItem(memberItemId: any) {
 	return rows[0] || null;
 }
 
-export async function grantMemberItem(memberId: any, itemId: any, quantity = 1) {
+export async function grantMemberItem(memberId: number | string, itemId: number | string, quantity = 1) {
 	await initializeDatabase();
-	if (!memberId || !itemId) throw new Error('memberId and itemId are required');
+	if (!memberId || !itemId) {
+		throw new Error('memberId and itemId are required');
+	}
 	const now = toMySQLDateTime();
 	const qty = Math.max(1, Number(quantity) || 1);
 	await db
 		.insert(schema.serverMemberItems)
-		.values({ member_id: Number(memberId), item_id: Number(itemId), quantity: qty, acquired_at: now as any, created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { quantity: sql`quantity + ${qty}`, updated_at: now as any } });
+		.values({ member_id: Number(memberId), item_id: Number(itemId), quantity: qty, acquired_at: now, created_at: now, updated_at: now })
+		.onDuplicateKeyUpdate({ set: { quantity: sql`quantity + ${qty}`, updated_at: now } });
 	const rows = await db
 		.select()
 		.from(schema.serverMemberItems)
@@ -3012,33 +3496,35 @@ export async function grantMemberItem(memberId: any, itemId: any, quantity = 1) 
 	return rows[0] || null;
 }
 
-export async function consumeMemberItem(memberItemId: any, quantity = 1) {
+export async function consumeMemberItem(memberItemId: number | string, quantity = 1) {
 	await initializeDatabase();
-	if (!memberItemId) throw new Error('memberItemId is required');
+	if (!memberItemId) {
+		throw new Error('memberItemId is required');
+	}
 	const id = Number(memberItemId);
 	const qty = Math.max(1, Number(quantity) || 1);
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_items SET quantity = quantity - ${qty}, updated_at = ${toMySQLDateTime()} WHERE id = ${id} AND quantity >= ${qty}`
-	);
+	)) as unknown as WriteResult;
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	return affected > 0;
 }
 
 export async function backfillItemLogItemIds() {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE server_member_item_logs sml
 		JOIN server_member_items smi ON smi.id = sml.member_item_id
 		SET sml.item_id = smi.item_id
 		WHERE sml.item_id IS NULL AND sml.member_item_id IS NOT NULL
-	`);
+	`)) as unknown as WriteResult;
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 }
 
-export async function listStaleStreaks(limit = 500) {
+export async function listStaleStreaks(limit = STALE_STREAKS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const nowKey = minuteKeyFor(Date.now());
-	const rows: any = await db.execute(sql`
+	const rows = (await db.execute(sql`
 		SELECT s.member_id, s.current_streak, s.longest_streak, s.freezes_available, s.last_claim_day_key, s.tz_offset_min,
 		       m.server_id, m.discord_member_id, sv.discord_server_id
 		FROM server_member_streaks s
@@ -3056,20 +3542,32 @@ export async function listStaleStreaks(limit = 500) {
 			  AND t.day_key > ${nowKey - DAY_MINUTES}
 		  )
 		ORDER BY s.updated_at ASC
-		LIMIT ${Number(limit) || 500}
-	`);
-	return (rows?.[0] as any[]) ?? [];
+		LIMIT ${Number(limit) || STALE_STREAKS_DEFAULT_LIMIT}
+	`)) as unknown as SelectResult<{
+		member_id: number;
+		current_streak: number;
+		longest_streak: number;
+		freezes_available: number;
+		last_claim_day_key: number | null;
+		tz_offset_min: number | null;
+		server_id: number;
+		discord_member_id: string;
+		discord_server_id: string;
+	}>;
+	return rows?.[0] ?? [];
 }
 
-export async function expireStreak(memberId: any, dayKey: number, freezesLeft: number, broke: boolean) {
+type StreakExpiry = { dayKey: number; freezesLeft: number; broke: boolean };
+
+export async function expireStreak(memberId: unknown, { dayKey, freezesLeft, broke: isBroke }: StreakExpiry) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
 		.update(schema.serverMemberStreaks)
 		.set(
-			broke
-				? { current_streak: 0, freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now as any }
-				: { freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now as any }
+			isBroke
+				? { current_streak: 0, freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now }
+				: { freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now }
 		)
 		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
 	return true;
@@ -3077,7 +3575,7 @@ export async function expireStreak(memberId: any, dayKey: number, freezesLeft: n
 
 export async function purgeDepletedMemberItems() {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE smi FROM server_member_items smi
 		WHERE smi.quantity <= 0
 		  AND smi.updated_at <= UTC_TIMESTAMP() - INTERVAL 60 SECOND
@@ -3086,29 +3584,43 @@ export async function purgeDepletedMemberItems() {
 		    WHERE a.member_item_id = smi.id
 		      AND a.expires_at > UTC_TIMESTAMP() - INTERVAL 8 DAY
 		  )
-	`);
+	`)) as unknown as WriteResult;
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 }
 
-export async function addMemberItemActive(memberItemId: any, data: any = {}) {
+export async function addMemberItemActive(
+	memberItemId: number | string,
+	data: {
+		effect_value?: number | string | null;
+		beneficiary_member_id?: number | string | null;
+		target_member_id?: number | string | null;
+		expires_at?: string | Date;
+	} = {}
+) {
 	await initializeDatabase();
-	if (!memberItemId) throw new Error('memberItemId is required');
+	if (!memberItemId) {
+		throw new Error('memberItemId is required');
+	}
 	const now = toMySQLDateTime();
-	const result: any = await db.insert(schema.serverMemberItemActives).values({
+	const result = (await db.insert(schema.serverMemberItemActives).values({
 		member_item_id: Number(memberItemId),
-		effect_value: String(data.effect_value ?? 0) as any,
+		effect_value: String(data.effect_value ?? 0),
 		beneficiary_member_id: data.beneficiary_member_id != null ? Number(data.beneficiary_member_id) : null,
 		target_member_id: data.target_member_id != null ? Number(data.target_member_id) : null,
-		expires_at: toMySQLDateTime(data.expires_at) as any,
-		created_at: now as any
-	});
+		expires_at: toMySQLDateTime(data.expires_at) as Date,
+		created_at: now
+	})) as unknown as WriteResult;
 	const insertId = result?.insertId ?? result?.[0]?.insertId;
 	return insertId;
 }
 
-export async function getActiveEffectsForMember(memberId: any) {
+type TargetNameColumns = { target_server_display_name: string | null; target_display_name: string | null; target_username: string | null };
+
+export async function getActiveEffectsForMember(memberId: number | string | null) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.member_item_id, sma.effect_value, sma.beneficiary_member_id, sma.target_member_id, sma.expires_at,
 		       bi.id AS item_id, bi.name, bi.effect_type, bi.config,
@@ -3127,12 +3639,29 @@ export async function getActiveEffectsForMember(memberId: any) {
 		    OR sma.beneficiary_member_id = ${Number(memberId)}
 		  )
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as (TargetNameColumns & {
+		id: number;
+		member_item_id: number;
+		effect_value: string;
+		beneficiary_member_id: number | null;
+		target_member_id: number | null;
+		expires_at: string;
+		item_id: number;
+		name: string;
+		effect_type: string;
+		config: unknown;
+		owner_member_id: number;
+		beneficiary_server_display_name: string | null;
+		beneficiary_display_name: string | null;
+		beneficiary_username: string | null;
+	})[];
 }
 
-export async function getActiveLeechByBeneficiary(beneficiaryMemberId: any) {
+export async function getActiveLeechByBeneficiary(beneficiaryMemberId: number | string | null | undefined) {
 	await initializeDatabase();
-	if (!beneficiaryMemberId) return null;
+	if (!beneficiaryMemberId) {
+		return null;
+	}
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.target_member_id, sma.expires_at,
 		       tgt.server_display_name AS target_server_display_name, tgt.display_name AS target_display_name, tgt.username AS target_username
@@ -3146,7 +3675,7 @@ export async function getActiveLeechByBeneficiary(beneficiaryMemberId: any) {
 		ORDER BY sma.expires_at DESC
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])?.[0] ?? null;
+	return (rows[0] as unknown as (TargetNameColumns & { id: number; target_member_id: number | null; expires_at: string })[])?.[0] ?? null;
 }
 
 export async function clearExpiredMemberItemActives() {
@@ -3155,9 +3684,11 @@ export async function clearExpiredMemberItemActives() {
 	return true;
 }
 
-export async function getNewlyExpiredEffects(botId: any, limit = 100) {
+export async function getNewlyExpiredEffects(botId: number | string, limit = 100) {
 	await initializeDatabase();
-	if (!botId) return [] as any[];
+	if (!botId) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id, sma.target_member_id,
 		       bi.effect_type, bi.name AS item_name,
@@ -3185,13 +3716,28 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 		ORDER BY sma.expires_at ASC
 		LIMIT ${Number(limit)}
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as (TargetNameColumns & {
+		id: number;
+		effect_value: string;
+		expires_at: string;
+		beneficiary_member_id: number | null;
+		target_member_id: number | null;
+		effect_type: string;
+		item_name: string;
+		member_id: number;
+		discord_member_id: string;
+		discord_server_id: string;
+		target_discord_member_id: string | null;
+		disguised_at_activation: number | null;
+	})[];
 }
 
-export async function markEffectExpiryNotified(ids: any[]) {
+export async function markEffectExpiryNotified(ids: unknown[]) {
 	await initializeDatabase();
 	const list = (Array.isArray(ids) ? ids : []).map((n) => Number(n)).filter((n) => Number.isFinite(n));
-	if (list.length === 0) return 0;
+	if (list.length === 0) {
+		return 0;
+	}
 	await db.execute(
 		sql`UPDATE server_member_item_actives SET expiry_notified = TRUE WHERE id IN (${sql.join(
 			list.map((n) => sql`${n}`),
@@ -3201,16 +3747,18 @@ export async function markEffectExpiryNotified(ids: any[]) {
 	return list.length;
 }
 
-export async function recordItemNotification(memberId: any, notificationType: string, notifiedForAt: any) {
+export async function recordItemNotification(memberId: number | string, notificationType: string, notifiedForAt: string | Date) {
 	await initializeDatabase();
-	if (!memberId || !notificationType || !notifiedForAt) return false;
+	if (!memberId || !notificationType || !notifiedForAt) {
+		return false;
+	}
 	try {
-		const result: any = await db.insert(schema.serverMemberItemNotifications).values({
+		const result = (await db.insert(schema.serverMemberItemNotifications).values({
 			member_id: Number(memberId),
 			notification_type: String(notificationType),
-			notified_for_at: toMySQLDateTime(notifiedForAt) as any,
-			created_at: toMySQLDateTime() as any
-		});
+			notified_for_at: toMySQLDateTime(notifiedForAt) as Date,
+			created_at: toMySQLDateTime()
+		})) as unknown as WriteResult;
 		const affected = result?.affectedRows ?? result?.[0]?.affectedRows ?? 1;
 		return Number(affected) > 0;
 	} catch (_) {
@@ -3218,9 +3766,11 @@ export async function recordItemNotification(memberId: any, notificationType: st
 	}
 }
 
-export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
+export async function getRecentVictimHits(botId: number | string, sinceMinutes = 720) {
 	await initializeDatabase();
-	if (!botId) return [] as any[];
+	if (!botId) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT sml.target_member_id AS member_id, sml.action AS action, MAX(sml.created_at) AS last_hit,
 		       sm.discord_member_id, s.discord_server_id
@@ -3235,12 +3785,14 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 		  AND s.bot_id = ${Number(botId)}
 		GROUP BY sml.target_member_id, sml.action, sm.discord_member_id, s.discord_server_id
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as { member_id: number; action: string; last_hit: string | Date; discord_member_id: string; discord_server_id: string }[];
 }
 
-export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
+export async function getRecentAttackerActions(botId: number | string, sinceMinutes = 720) {
 	await initializeDatabase();
-	if (!botId) return [] as any[];
+	if (!botId) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT smi.member_id AS member_id, sml.action AS action, MAX(sml.created_at) AS last_attack,
 		       sm.discord_member_id, s.discord_server_id
@@ -3253,12 +3805,14 @@ export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
 		  AND s.bot_id = ${Number(botId)}
 		GROUP BY smi.member_id, sml.action, sm.discord_member_id, s.discord_server_id
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as { member_id: number; action: string; last_attack: string | Date; discord_member_id: string; discord_server_id: string }[];
 }
 
-export async function getRecentInsuranceActivations(botId: any, sinceMinutes = 2880) {
+export async function getRecentInsuranceActivations(botId: number | string, sinceMinutes = 2880) {
 	await initializeDatabase();
-	if (!botId) return [] as any[];
+	if (!botId) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT smi.member_id AS member_id, MAX(sml.created_at) AS last_activation,
 		       sm.discord_member_id, s.discord_server_id
@@ -3272,19 +3826,23 @@ export async function getRecentInsuranceActivations(botId: any, sinceMinutes = 2
 		  AND s.bot_id = ${Number(botId)}
 		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as { member_id: number; last_activation: string | Date; discord_member_id: string; discord_server_id: string }[];
 }
 
-export async function expireMemberItemActive(activeId: any) {
+export async function expireMemberItemActive(activeId: number | string) {
 	await initializeDatabase();
-	if (!activeId) return false;
+	if (!activeId) {
+		return false;
+	}
 	await db.delete(schema.serverMemberItemActives).where(eq(schema.serverMemberItemActives.id, Number(activeId)));
 	return true;
 }
 
-export async function endMemberItemActiveNow(activeId: any) {
+export async function endMemberItemActiveNow(activeId: number | string) {
 	await initializeDatabase();
-	if (!activeId) return false;
+	if (!activeId) {
+		return false;
+	}
 	await db.execute(
 		sql`UPDATE server_member_item_actives
 			SET elapsed_minutes = GREATEST(0, TIMESTAMPDIFF(MINUTE, created_at, LEAST(expires_at, NOW()))),
@@ -3294,14 +3852,18 @@ export async function endMemberItemActiveNow(activeId: any) {
 	return true;
 }
 
-export async function logMemberItemAction(memberId: any, data: any = {}) {
+export async function logMemberItemAction(memberId: number | string, data: Record<string, unknown> = {}) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	let itemId = data.item_id != null ? Number(data.item_id) : null;
 	if (itemId == null && data.member_item_id != null) {
 		const rows = await db.execute(sql`SELECT item_id FROM server_member_items WHERE id = ${Number(data.member_item_id)}`);
-		const row = (rows[0] as unknown as any[])[0];
-		if (row?.item_id != null) itemId = Number(row.item_id);
+		const row = (rows[0] as unknown as Record<string, unknown>[])[0];
+		if (row?.item_id != null) {
+			itemId = Number(row.item_id);
+		}
 	}
 	await db.insert(schema.serverMemberItemLogs).values({
 		member_id: Number(memberId),
@@ -3311,94 +3873,106 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		action: String(data.action ?? ''),
 		xp: Number(data.xp ?? 0),
 		outcome: String(data.outcome ?? ''),
-		rate_percent: data.rate_percent != null ? (String(data.rate_percent) as any) : null,
-		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
+		rate_percent: data.rate_percent != null ? String(data.rate_percent) : null,
+		luck_percent: data.luck_percent != null ? String(data.luck_percent) : null,
 		actor_disguised: data.actor_disguised ? 1 : 0,
-		created_at: toMySQLDateTime() as any
+		created_at: toMySQLDateTime()
 	});
 	triggerStreakWatch(memberId);
 	return true;
 }
 
-export async function logMinigameAction(memberId: any, data: any = {}) {
+export async function logMinigameAction(memberId: number | string, data: Record<string, unknown> = {}) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	await db.insert(schema.serverMemberMinigameLogs).values({
 		member_id: Number(memberId),
 		game: String(data.game ?? 'gamble'),
-		multiplier: String(data.multiplier ?? 2) as any,
+		multiplier: String(data.multiplier ?? 2),
 		wager: Number(data.wager ?? 0),
 		payout: Number(data.payout ?? 0),
 		xp: Number(data.xp ?? 0),
 		outcome: String(data.outcome ?? ''),
-		chance: data.chance != null ? (String(data.chance) as any) : null,
-		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
-		created_at: toMySQLDateTime() as any
+		chance: data.chance != null ? String(data.chance) : null,
+		luck_percent: data.luck_percent != null ? String(data.luck_percent) : null,
+		created_at: toMySQLDateTime()
 	});
 	triggerStreakWatch(memberId);
 	return true;
 }
 
-export async function getActiveTowerRun(memberId: any) {
+export async function getActiveTowerRun(memberId: unknown) {
 	await initializeDatabase();
 	const rows = await db.execute(
 		sql`SELECT id, slot, floor FROM server_member_tower_runs WHERE member_id = ${Number(memberId)} AND status = 'active' ORDER BY id DESC LIMIT 1`
 	);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+	return ((rows[0] as unknown as { id: string; slot: number; floor: number }[]) || [])[0] ?? null;
 }
 
-export async function getTowerWindow(memberId: any) {
+export async function getTowerWindow(memberId: unknown) {
 	await initializeDatabase();
 	const id = Number(memberId);
 	const [lastRows, startRows] = await Promise.all([
 		db.execute(sql`SELECT slot FROM server_member_tower_runs WHERE member_id = ${id} ORDER BY id DESC LIMIT 1`),
 		db.execute(sql`SELECT created_at FROM server_member_tower_runs WHERE member_id = ${id} AND slot = 1 ORDER BY id DESC LIMIT 1`)
 	]);
-	const last = ((lastRows[0] as unknown as any[]) || [])[0];
-	const start = ((startRows[0] as unknown as any[]) || [])[0];
+	const last = ((lastRows[0] as unknown as Record<string, unknown>[]) || [])[0];
+	const start = ((startRows[0] as unknown as Record<string, unknown>[]) || [])[0];
 	const startedAt = start ? parseMySQLDateTimeUtc(start.created_at) : null;
 	return last && startedAt ? { climbs: Number(last.slot) || 1, startedAt } : null;
 }
 
-export async function createTowerRun(memberId: any, slot: number) {
+export async function createTowerRun(memberId: number | string, slot: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db.insert(schema.serverMemberTowerRuns).values({
 		member_id: Number(memberId),
 		slot: Number(slot),
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
 	return true;
 }
 
-export async function stepTowerRun(runId: any, fromFloor: number, next: { floor: number; status: string; payout?: number }) {
+export async function stepTowerRun(runId: number | string, fromFloor: number, next: { floor: number; status: string; payout?: number }) {
 	await initializeDatabase();
-	const result: any = await db.execute(
+	const result = (await db.execute(
 		sql`UPDATE server_member_tower_runs
 			SET floor = ${Number(next.floor)}, status = ${String(next.status)}, payout = ${Number(next.payout ?? 0)}, updated_at = ${toMySQLDateTime()}
 			WHERE id = ${Number(runId)} AND status = 'active' AND floor = ${Number(fromFloor)}`
-	);
+	)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
+type FriendCredit = { perFriendXp?: number; minutes?: number };
+
+export async function recordLevelFriends(actorMemberId: number | string, friendDiscordIds: string[], { perFriendXp = 0, minutes = 1 }: FriendCredit = {}) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
-	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) return;
+	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) {
+		return;
+	}
 
 	const ids = friendDiscordIds.map((x) => String(x)).filter(Boolean);
-	if (ids.length === 0) return;
+	if (ids.length === 0) {
+		return;
+	}
 
 	const actorRow = await db.execute(sql`SELECT server_id FROM server_members WHERE id = ${actorId} LIMIT 1`);
-	const serverId = Number(((actorRow[0] as unknown as any[]) || [])[0]?.server_id);
-	if (!Number.isFinite(serverId)) return;
+	const serverId = Number(((actorRow[0] as unknown as { server_id: number }[]) || [])[0]?.server_id);
+	if (!Number.isFinite(serverId)) {
+		return;
+	}
 
 	const rows = await db.execute(sql`
 		SELECT id FROM server_members WHERE server_id = ${serverId} AND discord_member_id IN (${sql.join(ids, sql`, `)})
 	`);
-	const friendIds = ((rows[0] as unknown as any[]) || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n !== actorId);
-	if (friendIds.length === 0) return;
+	const friendIds = ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n !== actorId);
+	if (friendIds.length === 0) {
+		return;
+	}
 
 	const xp = Math.max(0, Math.floor(Number(perFriendXp) || 0));
 	const mins = Math.max(0, Math.floor(Number(minutes) || 0));
@@ -3418,10 +3992,12 @@ export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: s
 	}
 }
 
-export async function getMemberLevelFriends(memberId: any, limit = 5) {
+export async function getMemberLevelFriends(memberId: number | string, limit = LEVEL_FRIENDS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const mid = Number(memberId);
-	if (!mid) return [] as any[];
+	if (!mid) {
+		return [];
+	}
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
 	const rows = await db.execute(sql`
 		SELECT
@@ -3431,20 +4007,24 @@ export async function getMemberLevelFriends(memberId: any, limit = 5) {
 		INNER JOIN server_members m ON m.id = CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END
 		WHERE t.member_a_id = ${mid} OR t.member_b_id = ${mid}
 		ORDER BY t.ticks DESC
-		LIMIT ${Number(limit) || 5}
+		LIMIT ${Number(limit) || LEVEL_FRIENDS_DEFAULT_LIMIT}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => ({
-		name: r.name || 'a member',
-		avatar: r.avatar ?? null,
-		ticks: Number(r.ticks) || 0,
-		minutes: Number(r.minutes) || 0,
-		xp: Number(r.xp) || 0
-	}));
+	return ((rows[0] as unknown as { buddy_id: number; name: string | null; avatar: string | null; ticks: number; minutes: number; xp: string }[]) || []).map(
+		(r) => ({
+			name: r.name || 'a member',
+			avatar: r.avatar ?? null,
+			ticks: Number(r.ticks) || 0,
+			minutes: Number(r.minutes) || 0,
+			xp: Number(r.xp) || 0
+		})
+	);
 }
 
-export async function getMemberMinigameHistory(memberId: any, limit = 600) {
+export async function getMemberMinigameHistory(memberId: number | string, limit = 600) {
 	await initializeDatabase();
-	if (!memberId) return [] as any[];
+	if (!memberId) {
+		return [];
+	}
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
 		SELECT id, game, multiplier, wager, payout, xp, outcome, chance, luck_percent, created_at
@@ -3453,12 +4033,27 @@ export async function getMemberMinigameHistory(memberId: any, limit = 600) {
 		ORDER BY created_at DESC
 		${lim}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			id: string;
+			game: string;
+			multiplier: string;
+			wager: number;
+			payout: number;
+			xp: number;
+			outcome: string;
+			chance: string | null;
+			luck_percent: string | null;
+			created_at: string;
+		}[]) || []
+	);
 }
 
-export async function getMinigamesLeaderboard(serverId: any, since: Date | null, game = 'gamble') {
+export async function getMinigamesLeaderboard(serverId: number | string, since: Date | null, game = 'gamble') {
 	await initializeDatabase();
-	if (!serverId) return [] as any[];
+	if (!serverId) {
+		return [];
+	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
@@ -3506,34 +4101,40 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null,
 			schema.serverMemberLevels.level
 		);
 
-	return rows as any[];
+	return rows;
 }
 
-export async function logMemberLevelGain(memberId: any, data: any = {}) {
+export async function logMemberLevelGain(memberId: number | string, data: Record<string, unknown> = {}) {
 	await initializeDatabase();
-	if (!memberId) return false;
+	if (!memberId) {
+		return false;
+	}
 	const xp = Math.floor(Number(data.xp) || 0);
-	if (xp <= 0) return false;
+	if (xp <= 0) {
+		return false;
+	}
 	await db.insert(schema.serverMemberLevelLogs).values({
 		member_id: Number(memberId),
-		source: String(data.source ?? 'unknown').slice(0, 24),
+		source: String(data.source ?? 'unknown').slice(0, LEVEL_GAIN_SOURCE_MAX_LENGTH),
 		xp,
 		xp_total: data.xp_total != null ? Number(data.xp_total) : null,
 		level: data.level != null ? Number(data.level) : null,
 		rank: data.rank != null ? Number(data.rank) : null,
-		multiplier: data.multiplier != null ? (String(data.multiplier) as any) : null,
+		multiplier: data.multiplier != null ? String(data.multiplier) : null,
 		skim_percent: data.skim_percent != null ? Number(data.skim_percent) : null,
 		friend_percent: data.friend_percent != null ? Number(data.friend_percent) : null,
 		luck_percent: data.luck_percent != null ? Number(data.luck_percent) : null,
-		created_at: toMySQLDateTime() as any
+		created_at: toMySQLDateTime()
 	});
 	triggerStreakWatch(memberId);
 	return true;
 }
 
-export async function getMemberLevelHistory(memberId: any, limit = 200) {
+export async function getMemberLevelHistory(memberId: number | string, limit = 200) {
 	await initializeDatabase();
-	if (!memberId) return [] as any[];
+	if (!memberId) {
+		return [];
+	}
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
 		SELECT id, source, xp, xp_total, level, \`rank\`, multiplier, skim_percent, friend_percent, luck_percent, created_at
@@ -3542,12 +4143,26 @@ export async function getMemberLevelHistory(memberId: any, limit = 200) {
 		ORDER BY created_at DESC, id DESC
 		${lim}
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		id: string;
+		source: string;
+		xp: number;
+		xp_total: string | null;
+		level: number | null;
+		rank: number | null;
+		multiplier: string | null;
+		skim_percent: number | null;
+		friend_percent: number | null;
+		luck_percent: number | null;
+		created_at: string;
+	}[];
 }
 
-export async function getMemberItemHistory(memberId: any, limit = 200) {
+export async function getMemberItemHistory(memberId: number | string, limit = 200) {
 	await initializeDatabase();
-	if (!memberId) return [] as any[];
+	if (!memberId) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT
 			sml.id, sml.action, sml.xp, sml.outcome, sml.rate_percent, sml.luck_percent, sml.actor_disguised, sml.created_at,
@@ -3569,12 +4184,32 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 		ORDER BY sml.created_at DESC, sml.id DESC
 		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		id: string;
+		action: string;
+		xp: number;
+		outcome: string;
+		rate_percent: string | null;
+		luck_percent: string | null;
+		actor_disguised: number;
+		created_at: string;
+		item_name: string | null;
+		effect_type: string | null;
+		direction: 'outgoing' | 'incoming';
+		target_username: string | null;
+		target_display_name: string | null;
+		target_server_display_name: string | null;
+		actor_username: string | null;
+		actor_display_name: string | null;
+		actor_server_display_name: string | null;
+	}[];
 }
 
-export async function getLastActionByActor(memberId: any, action: string) {
+export async function getLastActionByActor(memberId: number | string, action: string) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
@@ -3582,15 +4217,19 @@ export async function getLastActionByActor(memberId: any, action: string) {
 		ORDER BY sml.created_at DESC
 		LIMIT 1
 	`);
-	const row = (rows[0] as unknown as any[])[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])[0];
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
 }
 
-export async function getLastAttackActionByActor(memberId: any, actions: string[]) {
+export async function getLastAttackActionByActor(memberId: number | string, actions: string[]) {
 	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
+	if (!memberId) {
+		throw new Error('memberId is required');
+	}
 	const list = (Array.isArray(actions) ? actions : [actions]).map((a) => String(a));
-	if (list.length === 0) return null;
+	if (list.length === 0) {
+		return null;
+	}
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
@@ -3601,15 +4240,19 @@ export async function getLastAttackActionByActor(memberId: any, actions: string[
 		ORDER BY sml.created_at DESC
 		LIMIT 1
 	`);
-	const row = (rows[0] as unknown as any[])[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])[0];
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
 }
 
-export async function getLastActionAgainstTarget(targetMemberId: any, actions: string[]) {
+export async function getLastActionAgainstTarget(targetMemberId: number | string, actions: string[]) {
 	await initializeDatabase();
-	if (!targetMemberId) throw new Error('targetMemberId is required');
+	if (!targetMemberId) {
+		throw new Error('targetMemberId is required');
+	}
 	const list = (Array.isArray(actions) ? actions : [actions]).map((a) => String(a));
-	if (list.length === 0) return null;
+	if (list.length === 0) {
+		return null;
+	}
 	const rows = await db.execute(sql`
 		SELECT created_at
 		FROM server_member_item_logs
@@ -3620,51 +4263,59 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 		ORDER BY created_at DESC
 		LIMIT 1
 	`);
-	const row = (rows[0] as unknown as any[])[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])[0];
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
 }
 
-export async function clearImmunityForMember(targetMemberId: any) {
+export async function clearImmunityForMember(targetMemberId: number | string) {
 	await initializeDatabase();
-	if (!targetMemberId) return 0;
-	const result: any = await db.execute(sql`
+	if (!targetMemberId) {
+		return 0;
+	}
+	const result = (await db.execute(sql`
 		UPDATE server_member_item_logs
 		SET immunity_cleared = 1
 		WHERE target_member_id = ${Number(targetMemberId)}
 		  AND outcome = 'success'
 		  AND immunity_cleared = 0
 		  AND action IN ('steal', 'bomb')
-	`);
+	`)) as unknown as WriteResult;
 	return Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) || 0;
 }
 
-export async function placeBounty(targetMemberId: any, placedByMemberId: any, xp: any) {
+export async function placeBounty(targetMemberId: unknown, placedByMemberId: unknown, xp: unknown) {
 	await initializeDatabase();
-	if (!targetMemberId) throw new Error('targetMemberId is required');
+	if (!targetMemberId) {
+		throw new Error('targetMemberId is required');
+	}
 	await db.insert(schema.serverMemberItemBounties).values({
 		target_member_id: Number(targetMemberId),
 		placed_by_member_id: placedByMemberId != null ? Number(placedByMemberId) : null,
 		xp: Number(xp) || 0,
 		collected: false,
-		created_at: toMySQLDateTime() as any
+		created_at: toMySQLDateTime()
 	});
 	return true;
 }
 
-export async function getActiveBountyTotal(targetMemberId: any) {
+export async function getActiveBountyTotal(targetMemberId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(
 		sql`SELECT COALESCE(SUM(xp), 0) AS total FROM server_member_item_bounties WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`
 	);
-	const row = (rows[0] as unknown as any[])[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])[0];
 	return Number(row?.total ?? 0) || 0;
 }
 
-export async function collectBounties(targetMemberId: any) {
+export async function collectBounties(targetMemberId: number | string) {
 	await initializeDatabase();
-	if (!targetMemberId) return 0;
+	if (!targetMemberId) {
+		return 0;
+	}
 	const total = await getActiveBountyTotal(targetMemberId);
-	if (total <= 0) return 0;
+	if (total <= 0) {
+		return 0;
+	}
 	await db.execute(sql`UPDATE server_member_item_bounties SET collected = TRUE WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`);
 	return total;
 }
@@ -3673,10 +4324,10 @@ export async function getDistinctHeldAssetIds(assetType?: string) {
 	await initializeDatabase();
 	if (assetType) {
 		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_assets WHERE asset_type = ${String(assetType)}`);
-		return (rows[0] as unknown as any[]) || [];
+		return (rows[0] as unknown as { asset_id: string }[]) || [];
 	}
 	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_assets`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as { asset_type: string; asset_id: string }[]) || [];
 }
 
 export async function logAssetEvent(data: {
@@ -3701,9 +4352,9 @@ export async function logAssetEvent(data: {
 		asset_name: String(data.asset_name),
 		asset_image: data.asset_image != null ? String(data.asset_image) : null,
 		xp: Number(data.xp) || 0,
-		price: String(data.price ?? 0) as any,
+		price: String(data.price ?? 0),
 		net: Number(data.net) || 0,
-		created_at: toMySQLDateTime() as any
+		created_at: toMySQLDateTime()
 	});
 	triggerStreakWatch(data.member_id);
 	return true;
@@ -3729,38 +4380,53 @@ export async function openAssetPosition(data: {
 		asset_name: String(data.asset_name),
 		asset_image: data.asset_image != null ? String(data.asset_image) : null,
 		xp_invested: Number(data.xp_invested) || 0,
-		buy_price: String(data.buy_price) as any,
-		opened_at: now as any,
-		created_at: now as any,
-		updated_at: now as any
+		buy_price: String(data.buy_price),
+		opened_at: now,
+		created_at: now,
+		updated_at: now
 	});
-	const id = (result as any)?.insertId ?? null;
+	const id = result?.insertId ?? null;
 	return id ? getAssetPosition(id) : null;
 }
 
-export async function getAssetPosition(positionId: any) {
+type AssetPositionRow = {
+	id: number;
+	member_id: number;
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_invested: number;
+	buy_price: string;
+	opened_at: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export async function getAssetPosition(positionId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE id = ${Number(positionId)} LIMIT 1`);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+	return ((rows[0] as unknown as AssetPositionRow[]) || [])[0] ?? null;
 }
 
-export async function getOpenAssetPositions(memberId: any) {
+export async function getOpenAssetPositions(memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} ORDER BY opened_at DESC`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as AssetPositionRow[]) || [];
 }
 
-export async function getOpenAssetPosition(memberId: any, assetType: string, assetId: string) {
+export async function getOpenAssetPosition(memberId: unknown, assetType: string, assetId: string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT * FROM server_member_assets
 		WHERE member_id = ${Number(memberId)} AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
 		LIMIT 1
 	`);
-	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+	return ((rows[0] as unknown as AssetPositionRow[]) || [])[0] ?? null;
 }
 
-export async function mergeAssetPosition(positionId: any, data: { xp_invested: number; buy_price: number }) {
+export async function mergeAssetPosition(positionId: number | string, data: { xp_invested: number; buy_price: number }) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -3771,7 +4437,7 @@ export async function mergeAssetPosition(positionId: any, data: { xp_invested: n
 	return true;
 }
 
-export async function getMemberAssetHistory(memberId: any, limit = 600) {
+export async function getMemberAssetHistory(memberId: number | string, limit = 600) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT id, action, asset_type, asset_id, symbol, asset_name, asset_image, xp, price, net, created_at
@@ -3780,14 +4446,41 @@ export async function getMemberAssetHistory(memberId: any, limit = 600) {
 		ORDER BY created_at DESC
 		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			id: string;
+			action: string;
+			asset_type: string;
+			asset_id: string;
+			symbol: string;
+			asset_name: string;
+			asset_image: string | null;
+			xp: number;
+			price: string;
+			net: number;
+			created_at: string;
+		}[]) || []
+	);
 }
 
-export async function getServerEconomyStats(serverId: any, priceMap: Record<string, { price: number }> = {}) {
-	await initializeDatabase();
-	const sid = Number(serverId);
+type PriceMap = Record<string, { price: number }>;
 
-	const [posRows, assetLogRows, minigameRows, itemRows] = await Promise.all([
+function valuePositions(positions: DashboardRow[], priceMap: PriceMap) {
+	let invested = 0;
+	let marketValue = 0;
+	for (const p of positions) {
+		const xpInv = Number(p.xp_invested) || 0;
+		const buy = Number(p.buy_price) || 0;
+		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
+		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
+		invested += xpInv;
+		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
+	}
+	return { invested, marketValue };
+}
+
+async function economyAssets(sid: number, priceMap: PriceMap) {
+	const [posRows, assetLogRows] = await Promise.all([
 		db.execute(sql`
 			SELECT a.asset_type, a.asset_id, a.xp_invested, a.buy_price, a.member_id
 			FROM server_member_assets a INNER JOIN server_members sm ON sm.id = a.member_id
@@ -3801,8 +4494,27 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 				COUNT(*) AS trade_count
 			FROM server_member_asset_logs al INNER JOIN server_members sm ON sm.id = al.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
+		`)
+	]);
+	const positions = (posRows[0] as unknown as DashboardRow[]) || [];
+	const { invested, marketValue } = valuePositions(positions, priceMap);
+	const al = dashboardRow(assetLogRows);
+	return {
+		assets_invested: invested,
+		assets_market_value: marketValue,
+		assets_unrealized_net: marketValue - invested,
+		assets_open_positions: positions.length,
+		assets_traders: new Set(positions.map((p) => Number(p.member_id))).size,
+		assets_buy_volume: num(al, 'buy_volume'),
+		assets_sell_volume: num(al, 'sell_volume'),
+		assets_realized_net: num(al, 'realized_net'),
+		assets_trade_count: num(al, 'trade_count')
+	};
+}
+
+async function economyMinigames(sid: number) {
+	const mg = dashboardRow(
+		await db.execute(sql`
 			SELECT
 				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.wager ELSE 0 END), 0) AS wagered,
 				COALESCE(SUM(CASE WHEN ml.game NOT IN ${WAGER_FREE_GAMES} THEN ml.payout ELSE 0 END), 0) AS paid_out,
@@ -3818,8 +4530,27 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 				COUNT(DISTINCT CASE WHEN ml.game = ${TOWER_GAME} THEN ml.member_id END) AS tower_climbers
 			FROM server_member_minigame_logs ml INNER JOIN server_members sm ON sm.id = ml.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
+		`)
+	);
+	return {
+		minigames_wagered: num(mg, 'wagered'),
+		minigames_paid_out: num(mg, 'paid_out'),
+		minigames_net: num(mg, 'net'),
+		minigames_wins: num(mg, 'wins'),
+		minigames_plays: num(mg, 'plays'),
+		minigames_biggest_win: num(mg, 'biggest_win'),
+		tower_climbs: num(mg, 'tower_climbs'),
+		tower_cashed: num(mg, 'tower_cashed'),
+		tower_paid_out: num(mg, 'tower_paid_out'),
+		tower_biggest_win: num(mg, 'tower_biggest_win'),
+		tower_best_floor: Math.round(num(mg, 'tower_best_floor')),
+		tower_climbers: num(mg, 'tower_climbers')
+	};
+}
+
+async function economyItems(sid: number) {
+	const it = dashboardRow(
+		await db.execute(sql`
 			SELECT
 				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS stolen,
 				COALESCE(SUM(CASE WHEN il.action = 'bomb' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS bombed,
@@ -3840,68 +4571,35 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 			FROM server_member_item_logs il INNER JOIN server_members sm ON sm.id = il.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`)
-	]);
-
-	const positions = (posRows[0] as unknown as any[]) || [];
-	let invested = 0;
-	let marketValue = 0;
-	const traders = new Set<number>();
-	for (const p of positions) {
-		const xpInv = Number(p.xp_invested) || 0;
-		const buy = Number(p.buy_price) || 0;
-		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
-		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
-		invested += xpInv;
-		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
-		traders.add(Number(p.member_id));
-	}
-
-	const al = (assetLogRows[0] as unknown as any[])[0] || {};
-	const mg = (minigameRows[0] as unknown as any[])[0] || {};
-	const it = (itemRows[0] as unknown as any[])[0] || {};
-
+	);
 	return {
-		assets_invested: invested,
-		assets_market_value: marketValue,
-		assets_unrealized_net: marketValue - invested,
-		assets_open_positions: positions.length,
-		assets_traders: traders.size,
-		assets_buy_volume: Number(al.buy_volume) || 0,
-		assets_sell_volume: Number(al.sell_volume) || 0,
-		assets_realized_net: Number(al.realized_net) || 0,
-		assets_trade_count: Number(al.trade_count) || 0,
-		minigames_wagered: Number(mg.wagered) || 0,
-		minigames_paid_out: Number(mg.paid_out) || 0,
-		minigames_net: Number(mg.net) || 0,
-		minigames_wins: Number(mg.wins) || 0,
-		minigames_plays: Number(mg.plays) || 0,
-		minigames_biggest_win: Number(mg.biggest_win) || 0,
-		tower_climbs: Number(mg.tower_climbs) || 0,
-		tower_cashed: Number(mg.tower_cashed) || 0,
-		tower_paid_out: Number(mg.tower_paid_out) || 0,
-		tower_biggest_win: Number(mg.tower_biggest_win) || 0,
-		tower_best_floor: Math.round(Number(mg.tower_best_floor) || 0),
-		tower_climbers: Number(mg.tower_climbers) || 0,
-		items_stolen: Number(it.stolen) || 0,
-		items_bombed: Number(it.bombed) || 0,
-		items_gifted: Number(it.gifted) || 0,
-		items_steal_attempts: Number(it.steal_attempts) || 0,
-		items_bomb_attempts: Number(it.bomb_attempts) || 0,
-		items_spies: Number(it.spies) || 0,
-		items_bounties_placed: Number(it.bounties_placed) || 0,
-		items_biggest_steal: Number(it.biggest_steal) || 0,
-		items_buys: Number(it.buys) || 0,
-		items_buy_spend: Number(it.buy_spend) || 0,
-		items_gifts: Number(it.gifts) || 0,
-		items_discards: Number(it.discards) || 0,
-		items_activations: Number(it.activations) || 0,
-		items_steals_caught: Number(it.steals_caught) || 0,
-		items_steals_landed: Number(it.steals_landed) || 0,
-		items_distinct_bought: Number(it.distinct_items_bought) || 0
+		items_stolen: num(it, 'stolen'),
+		items_bombed: num(it, 'bombed'),
+		items_gifted: num(it, 'gifted'),
+		items_steal_attempts: num(it, 'steal_attempts'),
+		items_bomb_attempts: num(it, 'bomb_attempts'),
+		items_spies: num(it, 'spies'),
+		items_bounties_placed: num(it, 'bounties_placed'),
+		items_biggest_steal: num(it, 'biggest_steal'),
+		items_buys: num(it, 'buys'),
+		items_buy_spend: num(it, 'buy_spend'),
+		items_gifts: num(it, 'gifts'),
+		items_discards: num(it, 'discards'),
+		items_activations: num(it, 'activations'),
+		items_steals_caught: num(it, 'steals_caught'),
+		items_steals_landed: num(it, 'steals_landed'),
+		items_distinct_bought: num(it, 'distinct_items_bought')
 	};
 }
 
-export async function listPublicDiscordQuests(limit = 300) {
+export async function getServerEconomyStats(serverId: unknown, priceMap: PriceMap = {}) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+	const [assets, minigames, items] = await Promise.all([economyAssets(sid, priceMap), economyMinigames(sid), economyItems(sid)]);
+	return { ...assets, ...minigames, ...items };
+}
+
+export async function listPublicDiscordQuests(limit = PUBLIC_LIST_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT
@@ -3912,15 +4610,29 @@ export async function listPublicDiscordQuests(limit = 300) {
 			SELECT quest_id, MAX(id) AS id FROM bot_discord_quests GROUP BY quest_id
 		) latest ON latest.id = q.id
 		ORDER BY (q.expires_at IS NOT NULL AND q.expires_at > UTC_TIMESTAMP()) DESC, q.expires_at DESC, q.id DESC
-		LIMIT ${Number(limit) || 300}
+		LIMIT ${Number(limit) || PUBLIC_LIST_DEFAULT_LIMIT}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			quest_id: string;
+			quest_name: string | null;
+			game_title: string | null;
+			quest_url: string | null;
+			quest_description: string | null;
+			quest_task_label: string;
+			reward: string | null;
+			thumbnail_url: string | null;
+			banner_url: string | null;
+			starts_at: string | null;
+			expires_at: string | null;
+		}[]) || []
+	);
 }
 
-export async function listPublicRobloxItems(limit: number | null = 300, offset = 0) {
+export async function listPublicRobloxItems(limit: number | null = PUBLIC_LIST_DEFAULT_LIMIT, offset = 0) {
 	await initializeDatabase();
 	const cap = Number(limit);
-	const capped = Number.isFinite(cap) && cap > 0;
+	const isCapped = Number.isFinite(cap) && cap > 0;
 	const skip = Math.max(0, Math.trunc(Number(offset) || 0));
 	const rows = await db.execute(sql`
 		SELECT
@@ -3937,12 +4649,27 @@ export async function listPublicRobloxItems(limit: number | null = 300, offset =
 			SELECT asset_id, MAX(id) AS id FROM bot_roblox_items GROUP BY asset_id
 		) latest ON latest.id = r.id
 		ORDER BY r.favorite_count DESC, r.id DESC
-		${capped ? sql`LIMIT ${cap} OFFSET ${skip}` : sql``}
+		${isCapped ? sql`LIMIT ${cap} OFFSET ${skip}` : sql``}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			asset_id: string;
+			name: string | null;
+			category: string | null;
+			creator_name: string | null;
+			thumbnail_url: string | null;
+			price: string | null;
+			favorite_count: number | null;
+			units_available: string | null;
+			total_quantity: string | null;
+			last_price: string | null;
+			lowest_resale_price: string | null;
+			notification_count: string;
+		}[]) || []
+	);
 }
 
-export async function listPublicRobloxItemsByNotifications(limit = 6) {
+export async function listPublicRobloxItemsByNotifications(limit = POPULAR_ROBLOX_ITEMS_DEFAULT_LIMIT) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT
@@ -3956,23 +4683,36 @@ export async function listPublicRobloxItemsByNotifications(limit = 6) {
 		WHERE m.deleted_at IS NULL
 		GROUP BY r.id
 		ORDER BY notification_count DESC, r.favorite_count DESC, r.id DESC
-		LIMIT ${Number(limit) || 6}
+		LIMIT ${Number(limit) || POPULAR_ROBLOX_ITEMS_DEFAULT_LIMIT}
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (
+		(rows[0] as unknown as {
+			asset_id: string;
+			name: string | null;
+			category: string | null;
+			creator_name: string | null;
+			description: string | null;
+			thumbnail_url: string | null;
+			price: string | null;
+			favorite_count: number | null;
+			units_available: string | null;
+			total_quantity: string | null;
+			last_price: string | null;
+			lowest_resale_price: string | null;
+			notification_count: string;
+		}[]) || []
+	);
 }
 
 export async function countPublicRobloxItems(): Promise<number> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT COUNT(DISTINCT asset_id) AS total FROM bot_roblox_items`);
-	const row = ((rows[0] as unknown as any[]) || [])[0];
+	const row = ((rows[0] as unknown as Record<string, unknown>[]) || [])[0];
 	return Number(row?.total) || 0;
 }
 
-export async function getServerFeatureStats(serverId: any) {
-	await initializeDatabase();
-	const sid = Number(serverId);
-
-	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows, catalogRows] = await Promise.all([
+async function featureGiveaways(sid: number) {
+	const [giveawayRows, entryRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS total,
@@ -3989,8 +4729,22 @@ export async function getServerFeatureStats(serverId: any) {
 			INNER JOIN server_member_giveaways g ON g.id = e.giveaway_id
 			INNER JOIN server_members sm ON sm.id = g.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
+		`)
+	]);
+	const gv = dashboardRow(giveawayRows);
+	const en = dashboardRow(entryRows);
+	return {
+		giveaways_total: num(gv, 'total'),
+		giveaways_active: num(gv, 'active'),
+		giveaways_winners: num(gv, 'winners'),
+		giveaways_entrants: num(en, 'unique_entrants'),
+		giveaways_entries: num(en, 'total_entries')
+	};
+}
+
+async function featureStreams(sid: number) {
+	const st = dashboardRow(
+		await db.execute(sql`
 			SELECT
 				COUNT(*) AS total_streams,
 				COUNT(DISTINCT s.member_id) AS creators,
@@ -4004,7 +4758,24 @@ export async function getServerFeatureStats(serverId: any) {
 				COALESCE(SUM(s.unique_chatters), 0) AS unique_chatters
 			FROM server_member_content_creator_streams s INNER JOIN server_members sm ON sm.id = s.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
+		`)
+	);
+	return {
+		streams_total: num(st, 'total_streams'),
+		streams_creators: num(st, 'creators'),
+		streams_live_now: num(st, 'live_now'),
+		streams_peak_viewers: num(st, 'peak_viewers'),
+		streams_likes: num(st, 'likes'),
+		streams_chat_messages: num(st, 'chat_messages'),
+		streams_gifts: num(st, 'gifts'),
+		streams_follows: num(st, 'follows'),
+		streams_shares: num(st, 'shares'),
+		streams_unique_chatters: num(st, 'unique_chatters')
+	};
+}
+
+async function featureQuestsAndCatalog(sid: number) {
+	const [questRows, catalogRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COALESCE(SUM(CASE WHEN q.reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed,
@@ -4012,6 +4783,42 @@ export async function getServerFeatureStats(serverId: any) {
 			FROM server_member_discord_quests q INNER JOIN server_members sm ON sm.id = q.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
+		db.execute(sql`
+			SELECT
+				(
+					SELECT COUNT(*) FROM bot_discord_quests bq
+					WHERE bq.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+						AND (bq.starts_at IS NULL OR bq.starts_at <= UTC_TIMESTAMP())
+						AND (bq.expires_at IS NULL OR bq.expires_at > UTC_TIMESTAMP())
+				) AS quests_active,
+				(SELECT COUNT(*) FROM server_discord_quests WHERE server_id = ${sid}) AS quests_posted,
+				(
+					SELECT COUNT(*) FROM bot_roblox_items br
+					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+				) AS roblox_items_watched,
+				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted,
+				(
+					SELECT COUNT(*) FROM server_member_roblox_item_notifications n
+					INNER JOIN server_members m ON m.id = n.member_id
+					WHERE m.server_id = ${sid} AND m.deleted_at IS NULL
+				) AS roblox_notifications
+		`)
+	]);
+	const qs = dashboardRow(questRows);
+	const ct = dashboardRow(catalogRows);
+	return {
+		quests_claimed: num(qs, 'claimed'),
+		quests_participants: num(qs, 'participants'),
+		quests_active: num(ct, 'quests_active'),
+		quests_posted: num(ct, 'quests_posted'),
+		roblox_items_watched: num(ct, 'roblox_items_watched'),
+		roblox_items_posted: num(ct, 'roblox_items_posted'),
+		roblox_notifications: num(ct, 'roblox_notifications')
+	};
+}
+
+async function featureCommunity(sid: number) {
+	const [bountyRows, staffReviewRows, feedbackRows, afkRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS placed,
@@ -4036,338 +4843,309 @@ export async function getServerFeatureStats(serverId: any) {
 			SELECT COUNT(*) AS active
 			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
-		`),
-		db.execute(sql`
-			SELECT
-				(
-					SELECT COUNT(*) FROM bot_discord_quests bq
-					WHERE bq.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
-						AND (bq.starts_at IS NULL OR bq.starts_at <= UTC_TIMESTAMP())
-						AND (bq.expires_at IS NULL OR bq.expires_at > UTC_TIMESTAMP())
-				) AS quests_active,
-				(SELECT COUNT(*) FROM server_discord_quests WHERE server_id = ${sid}) AS quests_posted,
-				(
-					SELECT COUNT(*) FROM bot_roblox_items br
-					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
-				) AS roblox_items_watched,
-				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted,
-				(
-					SELECT COUNT(*) FROM server_member_roblox_item_notifications n
-					INNER JOIN server_members m ON m.id = n.member_id
-					WHERE m.server_id = ${sid} AND m.deleted_at IS NULL
-				) AS roblox_notifications
 		`)
 	]);
-
-	const gv = (giveawayRows[0] as unknown as any[])[0] || {};
-	const en = (entryRows[0] as unknown as any[])[0] || {};
-	const st = (streamRows[0] as unknown as any[])[0] || {};
-	const qs = (questRows[0] as unknown as any[])[0] || {};
-	const bn = (bountyRows[0] as unknown as any[])[0] || {};
-	const sr = (staffReviewRows[0] as unknown as any[])[0] || {};
-	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
-	const af = (afkRows[0] as unknown as any[])[0] || {};
-	const ct = (catalogRows[0] as unknown as any[])[0] || {};
-
+	const bn = dashboardRow(bountyRows);
+	const sr = dashboardRow(staffReviewRows);
 	return {
-		giveaways_total: Number(gv.total) || 0,
-		giveaways_active: Number(gv.active) || 0,
-		giveaways_winners: Number(gv.winners) || 0,
-		giveaways_entrants: Number(en.unique_entrants) || 0,
-		giveaways_entries: Number(en.total_entries) || 0,
-		streams_total: Number(st.total_streams) || 0,
-		streams_creators: Number(st.creators) || 0,
-		streams_live_now: Number(st.live_now) || 0,
-		streams_peak_viewers: Number(st.peak_viewers) || 0,
-		streams_likes: Number(st.likes) || 0,
-		streams_chat_messages: Number(st.chat_messages) || 0,
-		streams_gifts: Number(st.gifts) || 0,
-		streams_follows: Number(st.follows) || 0,
-		streams_shares: Number(st.shares) || 0,
-		streams_unique_chatters: Number(st.unique_chatters) || 0,
-		quests_claimed: Number(qs.claimed) || 0,
-		quests_participants: Number(qs.participants) || 0,
-		quests_active: Number(ct.quests_active) || 0,
-		quests_posted: Number(ct.quests_posted) || 0,
-		roblox_items_watched: Number(ct.roblox_items_watched) || 0,
-		roblox_items_posted: Number(ct.roblox_items_posted) || 0,
-		roblox_notifications: Number(ct.roblox_notifications) || 0,
-		bounties_placed: Number(bn.placed) || 0,
-		bounties_collected: Number(bn.collected) || 0,
-		bounties_pooled: Number(bn.pooled) || 0,
-		staff_reviews: Number(sr.reviews) || 0,
-		staff_avg_rating: Math.round((Number(sr.avg_rating) || 0) * 10) / 10,
-		feedback_submissions: Number(fb.submissions) || 0,
-		afk_active: Number(af.active) || 0
+		bounties_placed: num(bn, 'placed'),
+		bounties_collected: num(bn, 'collected'),
+		bounties_pooled: num(bn, 'pooled'),
+		staff_reviews: num(sr, 'reviews'),
+		staff_avg_rating: roundTo(num(sr, 'avg_rating'), 1),
+		feedback_submissions: num(dashboardRow(feedbackRows), 'submissions'),
+		afk_active: num(dashboardRow(afkRows), 'active')
 	};
 }
 
-export async function getMemberDashboard(memberId: any, priceMap: Record<string, { price: number }> = {}) {
+export async function getServerFeatureStats(serverId: number | string) {
 	await initializeDatabase();
-	const mid = Number(memberId);
+	const sid = Number(serverId);
+	const [giveaways, streams, quests, community] = await Promise.all([
+		featureGiveaways(sid),
+		featureStreams(sid),
+		featureQuestsAndCatalog(sid),
+		featureCommunity(sid)
+	]);
+	return { ...giveaways, ...streams, ...quests, ...community };
+}
 
-	const [posRows, assetLogRows, minigameRows, outgoingRows, incomingRows, giveawayRows, questRows, streamRows, feedbackRows, bountyOnRows] = await Promise.all([
+type DashboardRow = Record<string, unknown>;
+
+function dashboardRow(result: unknown): DashboardRow {
+	return ((result as unknown[])[0] as DashboardRow[])[0] || {};
+}
+
+function num(row: DashboardRow, key: string) {
+	return Number(row[key]) || 0;
+}
+
+async function dashboardAssets(mid: number, priceMap: PriceMap) {
+	const [posRows, assetLogRows] = await Promise.all([
 		db.execute(sql`SELECT asset_type, asset_id, xp_invested, buy_price FROM server_member_assets WHERE member_id = ${mid}`),
 		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_volume,
-					COALESCE(SUM(CASE WHEN action = 'sell' THEN xp ELSE 0 END), 0) AS sell_volume,
-					COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
-					COUNT(*) AS trade_count
-				FROM server_member_asset_logs WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN wager ELSE 0 END), 0) AS wagered,
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN xp ELSE 0 END), 0) AS net,
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
-					COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN 1 ELSE 0 END), 0) AS plays,
-					COALESCE(MAX(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
-					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
-					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
-					COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN payout ELSE 0 END), 0) AS tower_won,
-					COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS tower_biggest_win,
-					COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN multiplier ELSE 0 END), 0) AS tower_best_floor
-				FROM server_member_minigame_logs WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_spend,
-					COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
-					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed,
-					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched,
-					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifted,
-					COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
-					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
-					COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp ELSE 0 END), 0) AS bounty_collected
-				FROM server_member_item_logs WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen_from,
-					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed_by,
-					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched_by,
-					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifts_received
-				FROM server_member_item_logs WHERE target_member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					(SELECT COUNT(*) FROM server_member_giveaways WHERE member_id = ${mid}) AS hosted,
-					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid}) AS entered,
-					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
-			`),
-		db.execute(sql`
-				SELECT COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed
-				FROM server_member_discord_quests WHERE member_id = ${mid}
-			`),
-		db.execute(sql`
-				SELECT
-					COUNT(*) AS streams,
-					COALESCE(MAX(peak_viewers), 0) AS peak_viewers,
-					COALESCE(SUM(total_likes), 0) AS likes,
-					COALESCE(SUM(total_gifts), 0) AS gifts
-				FROM server_member_content_creator_streams WHERE member_id = ${mid}
-			`),
-		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
-		db.execute(sql`SELECT COALESCE(SUM(xp), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`)
+			SELECT
+				COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_volume,
+				COALESCE(SUM(CASE WHEN action = 'sell' THEN xp ELSE 0 END), 0) AS sell_volume,
+				COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
+				COUNT(*) AS trade_count
+			FROM server_member_asset_logs WHERE member_id = ${mid}
+		`)
 	]);
 
-	const positions = (posRows[0] as unknown as any[]) || [];
-	let invested = 0;
-	let marketValue = 0;
-	for (const p of positions) {
-		const xpInv = Number(p.xp_invested) || 0;
-		const buy = Number(p.buy_price) || 0;
-		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
-		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
-		invested += xpInv;
-		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
-	}
-
-	const al = (assetLogRows[0] as unknown as any[])[0] || {};
-	const mg = (minigameRows[0] as unknown as any[])[0] || {};
-	const out = (outgoingRows[0] as unknown as any[])[0] || {};
-	const inc = (incomingRows[0] as unknown as any[])[0] || {};
-	const gv = (giveawayRows[0] as unknown as any[])[0] || {};
-	const qs = (questRows[0] as unknown as any[])[0] || {};
-	const st = (streamRows[0] as unknown as any[])[0] || {};
-	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
-	const bn = (bountyOnRows[0] as unknown as any[])[0] || {};
-
+	const positions = (posRows[0] as unknown as DashboardRow[]) || [];
+	const { invested, marketValue } = valuePositions(positions, priceMap);
+	const al = dashboardRow(assetLogRows);
 	return {
 		assets_invested: invested,
 		assets_market_value: marketValue,
 		assets_open_positions: positions.length,
 		assets_pnl: marketValue - invested,
-		assets_realized_net: Number(al.realized_net) || 0,
-		assets_trade_count: Number(al.trade_count) || 0,
-		minigames_wagered: Number(mg.wagered) || 0,
-		minigames_net: Number(mg.net) || 0,
-		minigames_wins: Number(mg.wins) || 0,
-		minigames_plays: Number(mg.plays) || 0,
-		minigames_biggest_win: Number(mg.biggest_win) || 0,
-		tower_climbs: Number(mg.tower_climbs) || 0,
-		tower_cashed: Number(mg.tower_cashed) || 0,
-		tower_won: Number(mg.tower_won) || 0,
-		tower_biggest_win: Number(mg.tower_biggest_win) || 0,
-		tower_best_floor: Math.round(Number(mg.tower_best_floor) || 0),
-		items_buys: Number(out.buys) || 0,
-		items_buy_spend: Number(out.buy_spend) || 0,
-		items_activations: Number(out.activations) || 0,
-		items_stolen: Number(out.stolen) || 0,
-		items_steals_landed: Number(out.steals_landed) || 0,
-		items_steals_caught: Number(out.steals_caught) || 0,
-		items_bombed: Number(out.bombed) || 0,
-		items_leeched: Number(out.leeched) || 0,
-		items_gifted: Number(out.gifted) || 0,
-		items_spies: Number(out.spies) || 0,
-		items_bounties_placed: Number(out.bounties_placed) || 0,
-		items_bounty_collected: Number(out.bounty_collected) || 0,
-		items_stolen_from: Number(inc.stolen_from) || 0,
-		items_bombed_by: Number(inc.bombed_by) || 0,
-		items_leeched_by: Number(inc.leeched_by) || 0,
-		items_gifts_received: Number(inc.gifts_received) || 0,
-		giveaways_hosted: Number(gv.hosted) || 0,
-		giveaways_entered: Number(gv.entered) || 0,
-		giveaways_won: Number(gv.won) || 0,
-		quests_claimed: Number(qs.claimed) || 0,
-		streams_total: Number(st.streams) || 0,
-		streams_peak_viewers: Number(st.peak_viewers) || 0,
-		streams_likes: Number(st.likes) || 0,
-		streams_gifts: Number(st.gifts) || 0,
-		feedback_submitted: Number(fb.submitted) || 0,
-		bounty_on_me: Number(bn.pooled) || 0,
-		bounty_on_me_count: Number(bn.count) || 0
+		assets_realized_net: num(al, 'realized_net'),
+		assets_trade_count: num(al, 'trade_count')
 	};
 }
 
-export async function getMemberInsights(memberId: any, serverId: any = null) {
+async function dashboardMinigames(mid: number) {
+	const mg = dashboardRow(
+		await db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN wager ELSE 0 END), 0) AS wagered,
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN xp ELSE 0 END), 0) AS net,
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+				COALESCE(SUM(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} THEN 1 ELSE 0 END), 0) AS plays,
+				COALESCE(MAX(CASE WHEN game NOT IN ${WAGER_FREE_GAMES} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win,
+				COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN 1 ELSE 0 END), 0) AS tower_climbs,
+				COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN 1 ELSE 0 END), 0) AS tower_cashed,
+				COALESCE(SUM(CASE WHEN game = ${TOWER_GAME} THEN payout ELSE 0 END), 0) AS tower_won,
+				COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN payout ELSE 0 END), 0) AS tower_biggest_win,
+				COALESCE(MAX(CASE WHEN game = ${TOWER_GAME} AND outcome = 'win' THEN multiplier ELSE 0 END), 0) AS tower_best_floor
+			FROM server_member_minigame_logs WHERE member_id = ${mid}
+		`)
+	);
+	return {
+		minigames_wagered: num(mg, 'wagered'),
+		minigames_net: num(mg, 'net'),
+		minigames_wins: num(mg, 'wins'),
+		minigames_plays: num(mg, 'plays'),
+		minigames_biggest_win: num(mg, 'biggest_win'),
+		tower_climbs: num(mg, 'tower_climbs'),
+		tower_cashed: num(mg, 'tower_cashed'),
+		tower_won: num(mg, 'tower_won'),
+		tower_biggest_win: num(mg, 'tower_biggest_win'),
+		tower_best_floor: Math.round(num(mg, 'tower_best_floor'))
+	};
+}
+
+async function dashboardOutgoingItems(mid: number) {
+	const out = dashboardRow(
+		await db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
+				COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_spend,
+				COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen,
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
+				COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed,
+				COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched,
+				COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifted,
+				COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
+				COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
+				COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp ELSE 0 END), 0) AS bounty_collected
+			FROM server_member_item_logs WHERE member_id = ${mid}
+		`)
+	);
+	return {
+		items_buys: num(out, 'buys'),
+		items_buy_spend: num(out, 'buy_spend'),
+		items_activations: num(out, 'activations'),
+		items_stolen: num(out, 'stolen'),
+		items_steals_landed: num(out, 'steals_landed'),
+		items_steals_caught: num(out, 'steals_caught'),
+		items_bombed: num(out, 'bombed'),
+		items_leeched: num(out, 'leeched'),
+		items_gifted: num(out, 'gifted'),
+		items_spies: num(out, 'spies'),
+		items_bounties_placed: num(out, 'bounties_placed'),
+		items_bounty_collected: num(out, 'bounty_collected')
+	};
+}
+
+async function dashboardIncomingItems(mid: number) {
+	const inc = dashboardRow(
+		await db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen_from,
+				COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed_by,
+				COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched_by,
+				COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifts_received
+			FROM server_member_item_logs WHERE target_member_id = ${mid}
+		`)
+	);
+	return {
+		items_stolen_from: num(inc, 'stolen_from'),
+		items_bombed_by: num(inc, 'bombed_by'),
+		items_leeched_by: num(inc, 'leeched_by'),
+		items_gifts_received: num(inc, 'gifts_received')
+	};
+}
+
+async function dashboardCommunity(mid: number) {
+	const [giveawayRows, questRows, streamRows, feedbackRows, bountyOnRows] = await Promise.all([
+		db.execute(sql`
+			SELECT
+				(SELECT COUNT(*) FROM server_member_giveaways WHERE member_id = ${mid}) AS hosted,
+				(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid}) AS entered,
+				(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
+		`),
+		db.execute(
+			sql`SELECT COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed FROM server_member_discord_quests WHERE member_id = ${mid}`
+		),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS streams,
+				COALESCE(MAX(peak_viewers), 0) AS peak_viewers,
+				COALESCE(SUM(total_likes), 0) AS likes,
+				COALESCE(SUM(total_gifts), 0) AS gifts
+			FROM server_member_content_creator_streams WHERE member_id = ${mid}
+		`),
+		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
+		db.execute(sql`SELECT COALESCE(SUM(xp), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`)
+	]);
+	const gv = dashboardRow(giveawayRows);
+	const st = dashboardRow(streamRows);
+	const bn = dashboardRow(bountyOnRows);
+	return {
+		giveaways_hosted: num(gv, 'hosted'),
+		giveaways_entered: num(gv, 'entered'),
+		giveaways_won: num(gv, 'won'),
+		quests_claimed: num(dashboardRow(questRows), 'claimed'),
+		streams_total: num(st, 'streams'),
+		streams_peak_viewers: num(st, 'peak_viewers'),
+		streams_likes: num(st, 'likes'),
+		streams_gifts: num(st, 'gifts'),
+		feedback_submitted: num(dashboardRow(feedbackRows), 'submitted'),
+		bounty_on_me: num(bn, 'pooled'),
+		bounty_on_me_count: num(bn, 'count')
+	};
+}
+
+export async function getMemberDashboard(memberId: unknown, priceMap: PriceMap = {}) {
 	await initializeDatabase();
 	const mid = Number(memberId);
-	const disguisedIds = serverId ? await getDisguisedMemberIds(serverId) : [];
-	const hideDisguised = disguisedIds.length > 0 ? sql`AND m.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+	const [assets, minigames, outgoing, incoming, community] = await Promise.all([
+		dashboardAssets(mid, priceMap),
+		dashboardMinigames(mid),
+		dashboardOutgoingItems(mid),
+		dashboardIncomingItems(mid),
+		dashboardCommunity(mid)
+	]);
+	return { ...assets, ...minigames, ...outgoing, ...incoming, ...community };
+}
 
-	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
-	const q = (query: any) => db.execute(query).catch(() => [[]] as any);
-	const mapName = (rows: any) =>
-		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+type NameHitRow = { name: string | null; hits: string; xp: string | number };
+type NamedHits = { name: string; hits: number; xp: number }[];
+type InsightScope = { mid: number; hideDisguised: SQL };
+type PeerSpec = { direction: 'out' | 'in'; filter: SQL; hasXp?: boolean; isXpRanked?: boolean; limit?: number };
+type InsightInteractions = Record<string, { out: NamedHits; in: NamedHits }>;
 
-	const outgoing = (action: string, successOnly: boolean) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-		`);
-	const incoming = (action: string, successOnly: boolean) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.member_id
-			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-		`);
-	const defendedFrom = (actions: string[], outcomes: string[]) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.member_id
-			WHERE il.target_member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
-				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
-		`);
+const INSIGHT_NAME = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+const INSIGHT_GROUP = sql`GROUP BY m.id, m.server_display_name, m.display_name, m.username`;
+const INSIGHT_ATTACKS = sql`il.action IN ('steal','bomb','leech') AND il.outcome = 'success'`;
+const INSIGHT_ITEM_USE = sql`il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')`;
 
-	const attackedInto = (actions: string[], outcomes: string[]) =>
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
-				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
-		`);
+const INSIGHT_INTERACTIONS = [
+	{ key: 'steal', hasIncoming: true, outcome: sql`AND il.outcome = 'success'` },
+	{ key: 'bomb', hasIncoming: true, outcome: sql`AND il.outcome = 'success'` },
+	{ key: 'leech', hasIncoming: true, outcome: sql`` },
+	{ key: 'gift', hasIncoming: true, outcome: sql`` },
+	{ key: 'spy', hasIncoming: false, outcome: sql`` }
+];
 
-	const INTERACTIONS = [
-		{ key: 'steal', out: true, in: true, success: true },
-		{ key: 'bomb', out: true, in: true, success: true },
-		{ key: 'leech', out: true, in: true, success: false },
-		{ key: 'gift', out: true, in: true, success: false },
-		{ key: 'spy', out: true, in: false, success: false }
-	];
+function actionOutcomes(actions: string[], outcomes: string[]) {
+	return sql`il.action IN (${sql.join(actions, sql`, `)}) AND il.outcome IN (${sql.join(outcomes, sql`, `)})`;
+}
 
-	const interactionQueries = INTERACTIONS.flatMap((it) => [
-		...(it.out ? [{ key: it.key, dir: 'out', p: outgoing(it.key, it.success) }] : []),
-		...(it.in ? [{ key: it.key, dir: 'in', p: incoming(it.key, it.success) }] : [])
+const DEFENDED: Omit<PeerSpec, 'direction' | 'filter'> = { hasXp: false, isXpRanked: false };
+
+const INSIGHT_ONE_WAY: [string, PeerSpec][] = [
+	['spy_caught', { direction: 'in', filter: actionOutcomes(['spy'], ['caught']), ...DEFENDED }],
+	['blocked', { direction: 'in', filter: actionOutcomes(['steal', 'bomb'], ['immune']), ...DEFENDED }],
+	['reflected', { direction: 'in', filter: actionOutcomes(['steal', 'bomb'], ['reflected']), ...DEFENDED }],
+	['my_spy_caught', { direction: 'out', filter: actionOutcomes(['spy'], ['caught']), ...DEFENDED }],
+	['my_blocked', { direction: 'out', filter: actionOutcomes(['steal', 'bomb'], ['immune']), ...DEFENDED }],
+	['my_reflected', { direction: 'out', filter: actionOutcomes(['steal', 'bomb'], ['reflected']), ...DEFENDED }],
+	['bounty_collected', { direction: 'out', filter: sql`il.action = 'bounty_collected'` }],
+	['bounty_paid_out', { direction: 'in', filter: sql`il.action = 'bounty_collected'` }],
+	['leech_blocked', { direction: 'in', filter: actionOutcomes(['leech'], ['occupied']), ...DEFENDED }]
+];
+
+function insightQuery(query: SQL): Promise<unknown> {
+	return db.execute(query).catch(() => [[]]);
+}
+
+function insightRows<T>(result: unknown): T[] {
+	return ((result as unknown[])[0] as T[]) || [];
+}
+
+function namedHits(result: unknown): NamedHits {
+	return insightRows<NameHitRow>(result).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+}
+
+function itemLogPeers({ mid, hideDisguised }: InsightScope, spec: PeerSpec) {
+	const own = spec.direction === 'out' ? sql`il.member_id` : sql`il.target_member_id`;
+	const peer = spec.direction === 'out' ? sql`il.target_member_id` : sql`il.member_id`;
+	const xp = spec.hasXp === false ? sql`0` : sql`COALESCE(SUM(il.xp), 0)`;
+	const order = spec.isXpRanked === false ? sql`hits DESC, xp DESC` : sql`xp DESC, hits DESC`;
+	return insightQuery(sql`
+		SELECT ${INSIGHT_NAME} AS name, COUNT(*) AS hits, ${xp} AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = ${peer}
+		WHERE ${own} = ${mid} AND ${spec.filter} ${hideDisguised}
+		${INSIGHT_GROUP} ORDER BY ${order} LIMIT ${sql.raw(String(spec.limit ?? INSIGHT_PEERS_DEFAULT_LIMIT))}
+	`);
+}
+
+function bountyPeers({ mid, hideDisguised }: InsightScope, direction: 'out' | 'in') {
+	const own = direction === 'out' ? sql`b.placed_by_member_id` : sql`b.target_member_id`;
+	const peer = direction === 'out' ? sql`b.target_member_id` : sql`b.placed_by_member_id`;
+	return insightQuery(sql`
+		SELECT ${INSIGHT_NAME} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
+		FROM server_member_item_bounties b
+		INNER JOIN server_members m ON m.id = ${peer}
+		WHERE ${own} = ${mid} ${hideDisguised}
+		${INSIGHT_GROUP} ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+}
+
+async function memberInteractions(scope: InsightScope): Promise<InsightInteractions> {
+	const twoWay = INSIGHT_INTERACTIONS.map(({ key, hasIncoming, outcome }) => {
+		const filter = sql`il.action = ${key} ${outcome}`;
+		return Promise.all([
+			itemLogPeers(scope, { direction: 'out', filter }),
+			hasIncoming ? itemLogPeers(scope, { direction: 'in', filter }) : Promise.resolve([[]])
+		]);
+	});
+	const [pairs, bounty, oneWay] = await Promise.all([
+		Promise.all(twoWay),
+		Promise.all([bountyPeers(scope, 'out'), bountyPeers(scope, 'in')]),
+		Promise.all(INSIGHT_ONE_WAY.map(([, spec]) => itemLogPeers(scope, spec)))
 	]);
 
-	const bountyOut = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
-		FROM server_member_item_bounties b
-		INNER JOIN server_members m ON m.id = b.target_member_id
-		WHERE b.placed_by_member_id = ${mid} ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
-	const bountyIn = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
-		FROM server_member_item_bounties b
-		INNER JOIN server_members m ON m.id = b.placed_by_member_id
-		WHERE b.target_member_id = ${mid} ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
+	const interactions: InsightInteractions = {};
+	INSIGHT_INTERACTIONS.forEach(({ key }, i) => {
+		interactions[key] = { out: namedHits(pairs[i][0]), in: namedHits(pairs[i][1]) };
+	});
+	interactions.bounty = { out: namedHits(bounty[0]), in: namedHits(bounty[1]) };
+	INSIGHT_ONE_WAY.forEach(([key], i) => {
+		interactions[key] = { out: namedHits(oneWay[i]), in: [] };
+	});
+	return interactions;
+}
 
-	const nemesis = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.member_id
-		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
-	`);
-	const favoriteTarget = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.target_member_id
-		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
-	`);
-	const bestAlly = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m
-			ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
-		WHERE il.action = 'gift' AND (
-			(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
-			OR (il.target_member_id = ${mid})
-		) ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 1
-	`);
-
-	const spyCaught = defendedFrom(['spy'], ['caught']);
-	const blocked = defendedFrom(['steal', 'bomb'], ['immune']);
-	const reflected = defendedFrom(['steal', 'bomb'], ['reflected']);
-	const mySpyCaught = attackedInto(['spy'], ['caught']);
-	const leechBlocked = defendedFrom(['leech'], ['occupied']);
-	const myBlocked = attackedInto(['steal', 'bomb'], ['immune']);
-	const myReflected = attackedInto(['steal', 'bomb'], ['reflected']);
-	const bountyCollected = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.target_member_id
-		WHERE il.member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
-	const bountyPaidOut = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
-		FROM server_member_item_logs il
-		INNER JOIN server_members m ON m.id = il.member_id
-		WHERE il.target_member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
-		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
-	`);
-	const defenseSummary = q(sql`
+async function memberDefense({ mid }: InsightScope) {
+	const result = await insightQuery(sql`
 		SELECT
 			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action = 'spy' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS spies_caught,
 			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'immune' THEN 1 ELSE 0 END), 0) AS blocked,
@@ -4378,101 +5156,9 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 		FROM server_member_item_logs il
 		WHERE target_member_id = ${mid} OR member_id = ${mid}
 	`);
-
-	const [
-		topItems,
-		effectUsage,
-		xpFlow,
-		holdings,
-		bountyOutRows,
-		bountyInRows,
-		spyCaughtRows,
-		blockedRows,
-		reflectedRows,
-		mySpyCaughtRows,
-		myBlockedRows,
-		myReflectedRows,
-		bountyCollectedRows,
-		bountyPaidOutRows,
-		leechBlockedRows,
-		defenseRows,
-		nemesisRows,
-		favoriteTargetRows,
-		bestAllyRows,
-		...interactionResults
-	] = await Promise.all([
-		q(sql`
-			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
-			FROM server_member_item_logs il
-			LEFT JOIN items bi ON bi.id = il.item_id
-			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
-			GROUP BY bi.id, bi.name, bi.effect_type
-			ORDER BY uses DESC LIMIT 1
-		`),
-		q(sql`
-			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
-			FROM server_member_item_logs il
-			LEFT JOIN items bi ON bi.id = il.item_id
-			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
-			GROUP BY COALESCE(bi.effect_type, il.action)
-			ORDER BY uses DESC
-		`),
-		q(sql`
-			SELECT d AS day, SUM(net) AS net FROM (
-				SELECT DATE(created_at) AS d, SUM(xp) AS net FROM server_member_minigame_logs
-					WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
-				UNION ALL
-				SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
-					WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
-				UNION ALL
-				SELECT DATE(created_at) AS d,
-					SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp
-						WHEN action = 'gift' THEN -xp WHEN action = 'buy' THEN -xp ELSE 0 END) AS net
-					FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
-			) t GROUP BY d ORDER BY d ASC
-		`),
-		q(sql`
-			SELECT asset_type, asset_id, symbol, asset_name, asset_image, SUM(xp_invested) AS invested
-			FROM server_member_assets WHERE member_id = ${mid}
-			GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
-			ORDER BY invested DESC
-		`),
-		bountyOut,
-		bountyIn,
-		spyCaught,
-		blocked,
-		reflected,
-		mySpyCaught,
-		myBlocked,
-		myReflected,
-		bountyCollected,
-		bountyPaidOut,
-		leechBlocked,
-		defenseSummary,
-		nemesis,
-		favoriteTarget,
-		bestAlly,
-		...interactionQueries.map((iq) => iq.p)
-	]);
-
-	const interactions: Record<string, { out: any[]; in: any[] }> = {};
-	interactionQueries.forEach((iq, i) => {
-		if (!interactions[iq.key]) interactions[iq.key] = { out: [], in: [] };
-		interactions[iq.key][iq.dir as 'out' | 'in'] = mapName(interactionResults[i]);
-	});
-	interactions.bounty = { out: mapName(bountyOutRows), in: mapName(bountyInRows) };
-	interactions.spy_caught = { out: mapName(spyCaughtRows), in: [] };
-	interactions.blocked = { out: mapName(blockedRows), in: [] };
-	interactions.reflected = { out: mapName(reflectedRows), in: [] };
-	interactions.my_spy_caught = { out: mapName(mySpyCaughtRows), in: [] };
-	interactions.my_blocked = { out: mapName(myBlockedRows), in: [] };
-	interactions.my_reflected = { out: mapName(myReflectedRows), in: [] };
-	interactions.bounty_collected = { out: mapName(bountyCollectedRows), in: [] };
-	interactions.bounty_paid_out = { out: mapName(bountyPaidOutRows), in: [] };
-	interactions.leech_blocked = { out: mapName(leechBlockedRows), in: [] };
-
-	const defRow = (defenseRows[0] as unknown as any[])[0] || {};
-	const defense = {
+	const defRow: Partial<Record<'spies_caught' | 'blocked' | 'reflected' | 'my_steals_caught' | 'insurance_covers' | 'insurance_xp', string>> =
+		insightRows<Record<string, string>>(result)[0] || {};
+	return {
 		spies_caught: Number(defRow.spies_caught) || 0,
 		blocked: Number(defRow.blocked) || 0,
 		reflected: Number(defRow.reflected) || 0,
@@ -4480,20 +5166,91 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 		insurance_covers: Number(defRow.insurance_covers) || 0,
 		insurance_xp: Number(defRow.insurance_xp) || 0
 	};
+}
 
-	const one = (rows: any) => mapName(rows)[0] ?? null;
-	const relationships = {
-		nemesis: one(nemesisRows),
-		favorite_target: one(favoriteTargetRows),
-		best_ally: one(bestAllyRows)
+async function memberRelationships(scope: InsightScope) {
+	const { mid, hideDisguised } = scope;
+	const [nemesisRows, favoriteTargetRows, bestAllyRows] = await Promise.all([
+		itemLogPeers(scope, { direction: 'in', filter: INSIGHT_ATTACKS, isXpRanked: false, limit: 1 }),
+		itemLogPeers(scope, { direction: 'out', filter: INSIGHT_ATTACKS, isXpRanked: false, limit: 1 }),
+		insightQuery(sql`
+			SELECT ${INSIGHT_NAME} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m
+				ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
+			WHERE il.action = 'gift' AND (
+				(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
+				OR (il.target_member_id = ${mid})
+			) ${hideDisguised}
+			${INSIGHT_GROUP} ORDER BY xp DESC, hits DESC LIMIT 1
+		`)
+	]);
+	const one = (rows: unknown) => namedHits(rows)[0] ?? null;
+	return { nemesis: one(nemesisRows), favorite_target: one(favoriteTargetRows), best_ally: one(bestAllyRows) };
+}
+
+async function memberItemUsage({ mid }: InsightScope) {
+	const [topItems, effectUsage] = await Promise.all([
+		insightQuery(sql`
+			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND ${INSIGHT_ITEM_USE}
+			GROUP BY bi.id, bi.name, bi.effect_type
+			ORDER BY uses DESC LIMIT 1
+		`),
+		insightQuery(sql`
+			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND ${INSIGHT_ITEM_USE}
+			GROUP BY COALESCE(bi.effect_type, il.action)
+			ORDER BY uses DESC
+		`)
+	]);
+	return {
+		favorite_items: insightRows<{ name: string | null; effect_type: string | null; uses: string }>(topItems).map((r) => ({
+			name: r.name || 'Item',
+			effect_type: r.effect_type || null,
+			uses: Number(r.uses) || 0
+		})),
+		effect_usage: insightRows<{ effect_type: string | null; uses: string }>(effectUsage)
+			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
+			.filter((r) => r.uses > 0)
 	};
+}
 
-	const flowRows = ((xpFlow[0] as unknown as any[]) || []).map((r) => ({
+async function memberXpFlow({ mid }: InsightScope) {
+	const result = await insightQuery(sql`
+		SELECT d AS day, SUM(net) AS net FROM (
+			SELECT DATE(created_at) AS d, SUM(xp) AS net FROM server_member_minigame_logs
+				WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+			UNION ALL
+			SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
+				WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+			UNION ALL
+			SELECT DATE(created_at) AS d,
+				SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp
+					WHEN action = 'gift' THEN -xp WHEN action = 'buy' THEN -xp ELSE 0 END) AS net
+				FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+		) t GROUP BY d ORDER BY d ASC
+	`);
+	return insightRows<{ day: string | Date; net: string }>(result).map((r) => ({
 		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
 		net: Number(r.net) || 0
 	}));
+}
 
-	const assetHoldings = ((holdings[0] as unknown as any[]) || [])
+type HoldingRow = { asset_type: string; asset_id: string; symbol: string; asset_name: string; asset_image: string | null; invested: string };
+
+async function memberAssetHoldings({ mid }: InsightScope) {
+	const result = await insightQuery(sql`
+		SELECT asset_type, asset_id, symbol, asset_name, asset_image, SUM(xp_invested) AS invested
+		FROM server_member_assets WHERE member_id = ${mid}
+		GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
+		ORDER BY invested DESC
+	`);
+	return insightRows<HoldingRow>(result)
 		.map((r) => ({
 			asset_type: r.asset_type,
 			asset_id: r.asset_id,
@@ -4503,34 +5260,48 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 			invested: Number(r.invested) || 0
 		}))
 		.filter((r) => r.invested > 0);
+}
+
+export async function getMemberInsights(memberId: number | string, serverId: number | string | null = null) {
+	await initializeDatabase();
+	const disguisedIds = serverId ? await getDisguisedMemberIds(serverId) : [];
+	const scope: InsightScope = {
+		mid: Number(memberId),
+		hideDisguised: disguisedIds.length > 0 ? sql`AND m.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``
+	};
+
+	const [usage, interactions, defense, relationships, xpFlow, assetHoldings] = await Promise.all([
+		memberItemUsage(scope),
+		memberInteractions(scope),
+		memberDefense(scope),
+		memberRelationships(scope),
+		memberXpFlow(scope),
+		memberAssetHoldings(scope)
+	]);
 
 	return {
-		favorite_items: ((topItems[0] as unknown as any[]) || []).map((r) => ({
-			name: r.name || 'Item',
-			effect_type: r.effect_type || null,
-			uses: Number(r.uses) || 0
-		})),
+		favorite_items: usage.favorite_items,
 		interactions,
 		defense,
 		relationships,
-		effect_usage: ((effectUsage[0] as unknown as any[]) || [])
-			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
-			.filter((r) => r.uses > 0),
-		xp_flow: flowRows,
+		effect_usage: usage.effect_usage,
+		xp_flow: xpFlow,
 		asset_holdings: assetHoldings
 	};
 }
 
-export async function closeAssetPosition(positionId: any) {
+export async function closeAssetPosition(positionId: number | string) {
 	await initializeDatabase();
 	await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
 	return true;
 }
 
-export async function reduceAssetPosition(positionId: any, data: { sold_invested: number }) {
+export async function reduceAssetPosition(positionId: number | string, data: { sold_invested: number }) {
 	await initializeDatabase();
 	const position = await getAssetPosition(positionId);
-	if (!position) return false;
+	if (!position) {
+		return false;
+	}
 	const now = toMySQLDateTime();
 	const sold = Math.max(0, Math.floor(Number(data.sold_invested) || 0));
 	const remaining = Math.max(0, (Number(position.xp_invested) || 0) - sold);
@@ -4546,9 +5317,11 @@ export async function reduceAssetPosition(positionId: any, data: { sold_invested
 	return true;
 }
 
-export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
+export async function getDisguisedMemberIds(serverId: number | string): Promise<number[]> {
 	await initializeDatabase();
-	if (!serverId) return [];
+	if (!serverId) {
+		return [];
+	}
 	const rows = await db.execute(sql`
 		SELECT DISTINCT smi.member_id
 		FROM server_member_item_actives sma
@@ -4559,19 +5332,23 @@ export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
 		  AND sma.expires_at > UTC_TIMESTAMP()
 		  AND sm.server_id = ${Number(serverId)}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => Number(r.member_id)).filter((n) => Number.isFinite(n));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => Number(r.member_id)).filter((n) => Number.isFinite(n));
 }
 
-export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp', range: any = 'all') {
+type LeaderboardQuery = { limit?: number; sortType?: string; range?: unknown };
+
+export async function getServerLeaderboard(serverId: number | string, { limit = 3, sortType = 'xp', range = 'all' }: LeaderboardQuery = {}) {
 	await initializeDatabase();
-	if (!serverId) throw new Error('serverId is required');
-	const safeLimit = Math.max(1, Math.min(50, limit));
+	if (!serverId) {
+		throw new Error('serverId is required');
+	}
+	const safeLimit = Math.max(1, Math.min(SERVER_LEADERBOARD_MAX_LIMIT, limit));
 
 	const r = String(range || 'all');
-	const rangeDays = r === '1d' ? 1 : r === '7d' ? 7 : r === '30d' ? 30 : 0;
-	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000) : null;
+	const rangeDays = r === '1d' ? 1 : r === '7d' ? DAYS_PER_WEEK : r === '30d' ? MONTH_RANGE_DAYS : 0;
+	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * DAY_MS) : null;
 
-	const orderMap: Record<string, any> = {
+	const orderMap: Record<string, SQL[]> = {
 		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_active: [desc(schema.serverMemberLevels.voice_minutes_active), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_afk: [desc(schema.serverMemberLevels.voice_minutes_afk), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
@@ -4596,7 +5373,7 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 	const whereClause = and(
 		eq(schema.serverMembers.server_id, Number(serverId)),
 		isNull(schema.serverMembers.deleted_at),
-		...(whereRange ? [whereRange as any] : []),
+		...(whereRange ? [whereRange] : []),
 		...(hideDisguised ? [hideDisguised] : [])
 	);
 
@@ -4624,9 +5401,11 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		.limit(safeLimit);
 }
 
-export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
+export async function getLeaderboardPeriodCounts(serverId: number | string, since: Date) {
 	await initializeDatabase();
-	if (!serverId) return [] as any[];
+	if (!serverId) {
+		return [];
+	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
@@ -4670,12 +5449,14 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 			schema.serverMemberLevels.level
 		);
 
-	return rows as any[];
+	return rows;
 }
 
-export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' | 'bomb', since: Date | null) {
+export async function getItemsAttackLeaderboard(serverId: number | string, action: 'steal' | 'bomb', since: Date | null) {
 	await initializeDatabase();
-	if (!serverId) return [] as any[];
+	if (!serverId) {
+		return [];
+	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
@@ -4721,12 +5502,14 @@ export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' |
 			schema.serverMemberLevels.level
 		);
 
-	return rows as any[];
+	return rows;
 }
 
-export async function getItemsBountyLeaderboard(serverId: any, since: Date | null) {
+export async function getItemsBountyLeaderboard(serverId: number | string, since: Date | null) {
 	await initializeDatabase();
-	if (!serverId) return [] as any[];
+	if (!serverId) {
+		return [];
+	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const sinceClause = since ? sql`AND b.created_at >= ${toMySQLDateTime(since)}` : sql``;
@@ -4765,12 +5548,24 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		level: number | null;
+		bounty_on_them: string;
+		bounty_collected: string;
+		bounty_given: string;
+	}[];
 }
 
-export async function getItemsGiftLeaderboard(serverId: any, since: Date | null) {
+export async function getItemsGiftLeaderboard(serverId: number | string, since: Date | null) {
 	await initializeDatabase();
-	if (!serverId) return [] as any[];
+	if (!serverId) {
+		return [];
+	}
 
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const sinceClause = since ? sql`AND l.created_at >= ${toMySQLDateTime(since)}` : sql``;
@@ -4801,12 +5596,52 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
-	return rows[0] as unknown as any[];
+	return rows[0] as unknown as {
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		level: number | null;
+		gift_given: string;
+		gift_received: string;
+	}[];
 }
 
-export async function getServerMembersList(serverId: any, opts?: { discordMemberId?: string }) {
+export type MemberListRole = { id: string; name: string; color: string | null; position: number };
+export type MemberListRow = {
+	id: number;
+	discord_member_id: string;
+	username: string | null;
+	display_name: string | null;
+	server_display_name: string | null;
+	avatar: string | null;
+	profile_created_at: string | null;
+	member_since: string | null;
+	is_booster: number | null;
+	booster_since: string | null;
+	is_owner: boolean;
+	level: number | null;
+	xp: number | null;
+	chat_total: number | null;
+	voice_minutes_total: number | null;
+	voice_minutes_active: number | null;
+	voice_minutes_afk: number | null;
+	voice_minutes_video: number | null;
+	voice_minutes_streaming: number | null;
+	rank: number | null;
+	afk_message: string | null;
+	afk_since: string | null;
+	invites_total: number;
+	roles: MemberListRole[];
+	is_afk: boolean;
+};
+
+export async function getServerMembersList(serverId: number | string | null | undefined, opts?: { discordMemberId?: string }): Promise<MemberListRow[]> {
 	await initializeDatabase();
-	if (serverId === undefined || serverId === null || serverId === '') return [];
+	if (serverId === undefined || serverId === null || serverId === '') {
+		return [];
+	}
 	const scope = opts?.discordMemberId ? sql`sm.discord_member_id = ${String(opts.discordMemberId)}` : sql`sm.deleted_at IS NULL`;
 
 	const rows = await db.execute(sql`
@@ -4837,7 +5672,9 @@ export async function getServerMembersList(serverId: any, opts?: { discordMember
 	`);
 	const inviteCounts = await getMemberInviteCountsByServer(serverId).catch(() => new Map<number, number>());
 
-	return (rows[0] as unknown as any[]).map((member: any) => ({
+	return (
+		rows[0] as unknown as (Omit<MemberListRow, 'invites_total' | 'roles' | 'is_afk' | 'is_owner'> & { roles: string | null; is_owner: number | null })[]
+	).map((member) => ({
 		...member,
 		invites_total: inviteCounts.get(Number(member.id)) ?? 0,
 		roles: member.roles
@@ -4848,7 +5685,7 @@ export async function getServerMembersList(serverId: any, opts?: { discordMember
 						const [roleId, position, roleColor, ...rest] = role.split('\x1f');
 						return { id: roleId, name: rest.join('\x1f'), color: roleColor || null, position: Number.parseInt(position, 10) || 0 };
 					})
-					.sort((a: any, b: any) => b.position - a.position)
+					.sort((a, b) => b.position - a.position)
 			: [],
 		is_afk: !!member.afk_message,
 		is_owner: !!Number(member.is_owner)
@@ -4857,7 +5694,9 @@ export async function getServerMembersList(serverId: any, opts?: { discordMember
 
 export async function getPanelOverview(panelId: number) {
 	await initializeDatabase();
-	if (!panelId) return { total_selfbots: 0, running_selfbots: 0, selfbot_uptime_ms: 0 };
+	if (!panelId) {
+		return { total_selfbots: 0, running_selfbots: 0, selfbot_uptime_ms: 0 };
+	}
 
 	let total_selfbots = 0;
 	let running_selfbots = 0;
@@ -4871,7 +5710,7 @@ export async function getPanelOverview(panelId: number) {
             FROM selfbots sb
             WHERE sb.panel_id = ${Number(panelId)}
         `);
-		const sbRows = selfbotsResult[0] as any[];
+		const sbRows = selfbotsResult[0] as unknown as Record<string, unknown>[];
 		if (sbRows && sbRows.length > 0) {
 			total_selfbots = Number(sbRows[0].count) || 0;
 			running_selfbots = Number(sbRows[0].running_count) || 0;
@@ -4883,7 +5722,7 @@ export async function getPanelOverview(panelId: number) {
             WHERE sb.panel_id = ${Number(panelId)}
                 AND sb.status = 'running' AND sb.uptime_started_at IS NOT NULL
         `);
-		const upRows = uptimeResult[0] as any[];
+		const upRows = uptimeResult[0] as unknown as Record<string, unknown>[];
 		if (upRows && upRows.length > 0) {
 			selfbot_uptime_ms = Number(upRows[0].uptime_ms) || 0;
 		}
@@ -4909,7 +5748,7 @@ export async function getPanelOverview(panelId: number) {
             JOIN bots b ON s.bot_id = b.id
             WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
         `);
-		community.total_panel_accounts = Number((accountsRes[0] as any[])?.[0]?.count) || 0;
+		community.total_panel_accounts = Number((accountsRes[0] as unknown as Record<string, unknown>[])?.[0]?.count) || 0;
 
 		const shopRes = await db.execute(sql`
             SELECT
@@ -4920,7 +5759,7 @@ export async function getPanelOverview(panelId: number) {
             FROM items i
             WHERE i.panel_id = ${Number(panelId)}
         `);
-		const shopRow = (shopRes[0] as any[])?.[0];
+		const shopRow = (shopRes[0] as unknown as Record<string, unknown>[])?.[0];
 		if (shopRow) {
 			community.shop_items_total = Number(shopRow.total) || 0;
 			community.shop_items_enabled = Number(shopRow.enabled_count) || 0;
@@ -4939,190 +5778,195 @@ export async function getPanelOverview(panelId: number) {
 	};
 }
 
-export async function getServerOverview(serverId: any, opts?: { forPublicPage?: boolean; priceMap?: Record<string, { price: number }> }) {
-	await initializeDatabase();
-	if (serverId === undefined || serverId === null || serverId === '') return null;
+type ServerRow = typeof schema.servers.$inferSelect;
+type OverviewRow = Record<string, string | number | Date | null>;
+type OverviewExtras = { economy: Awaited<ReturnType<typeof getServerEconomyStats>> | null; features: Awaited<ReturnType<typeof getServerFeatureStats>> | null };
 
-	const id = Number(serverId);
-	if (!Number.isFinite(id) || id <= 0) return null;
+function overviewRow(raw: unknown): OverviewRow {
+	return (raw as SelectResult<OverviewRow>)[0][0] ?? {};
+}
 
-	const serverRows = await db.select().from(schema.servers).where(eq(schema.servers.id, id)).limit(1);
-	const serverRow = serverRows[0];
-	if (!serverRow) return null;
+function overviewNumber(raw: unknown, key: string) {
+	return Number(overviewRow(raw)[key]) || 0;
+}
 
-	const forPublic = opts?.forPublicPage === true;
+function overviewLastUpdated(raw: unknown) {
+	return overviewRow(raw).last_updated || null;
+}
 
-	const statsPromises = [
+function overviewStatQueries(id: number) {
+	return Promise.all([
 		db.execute(
-			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${id} AND deleted_at IS NULL AND is_bot = 0`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${Number(serverId)}`
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${id}`
 		),
-		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
-		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
+		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${id}`),
+		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${id}`),
 		db.execute(
-			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 		),
 		db.execute(
-			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
+			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL`
 		)
-	];
-
-	let memberCounts: any;
-	let leveledCount: any;
-	let afkCount: any;
-	let channelCounts: any;
-	let categoriesCount: any;
-	let rolesCount: any;
-	let levelingStats: any;
-	let customRolesCount: any;
-	let memberSyncTimes: any;
-	let channelSyncTimes: any;
-	let categorySyncTimes: any;
-	let roleSyncTimes: any;
-	let levelSyncTimes: any;
-	let settingsRows: any;
-
-	if (forPublic) {
-		[memberCounts, leveledCount, afkCount, channelCounts, categoriesCount, rolesCount, levelingStats, customRolesCount] = await Promise.all(statsPromises);
-	} else {
-		[
-			memberCounts,
-			leveledCount,
-			afkCount,
-			channelCounts,
-			categoriesCount,
-			rolesCount,
-			levelingStats,
-			customRolesCount,
-			memberSyncTimes,
-			channelSyncTimes,
-			categorySyncTimes,
-			roleSyncTimes,
-			levelSyncTimes,
-			settingsRows
-		] = await Promise.all([
-			...statsPromises,
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`),
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
-			db.execute(
-				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
-			),
-			db
-				.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
-				.from(schema.serverSettings)
-				.where(eq(schema.serverSettings.server_id, Number(serverId)))
-				.orderBy(asc(schema.serverSettings.component_name))
-		]);
-	}
-
-	const [economy, features] = await Promise.all([
-		getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null),
-		getServerFeatureStats(serverId).catch(() => null)
 	]);
+}
 
-	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
+function overviewSyncQueries(id: number) {
+	return Promise.all([
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${id} AND deleted_at IS NULL AND is_bot = 0`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${id}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${id}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${id}`),
+		db.execute(
+			sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${id} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
+		),
+		db
+			.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
+			.from(schema.serverSettings)
+			.where(eq(schema.serverSettings.server_id, id))
+			.orderBy(asc(schema.serverSettings.component_name))
+	]);
+}
 
-	const walletXp = Math.round(r(levelingStats).total_xp || 0);
-
-	const stats = {
-		members_total: Number(serverRow.total_members) || r(memberCounts).total || 0,
+function overviewStats(serverRow: ServerRow, statResults: Awaited<ReturnType<typeof overviewStatQueries>>, { economy, features }: OverviewExtras) {
+	const [memberCounts, leveledCount, afkCount, channelCounts, categoriesCount, rolesCount, levelingStats, customRolesCount] = statResults;
+	const walletXp = Math.round(overviewNumber(levelingStats, 'total_xp'));
+	const assetsValue = economy?.assets_market_value || 0;
+	return {
+		members_total: Number(serverRow.total_members) || overviewNumber(memberCounts, 'total'),
 		members_boosters: serverRow.total_boosters || 0,
-		members_unique_boosters: r(memberCounts).unique_boosters || 0,
-		members_with_levels: r(leveledCount).leveled || 0,
-		member_afk: r(afkCount).afk || 0,
-		members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
-		channels_total: Number(serverRow.total_channels) || r(channelCounts).total || 0,
-		channels_text: r(channelCounts).text_count || 0,
-		channels_announcement: r(channelCounts).announcement_count || 0,
-		channels_voice: r(channelCounts).voice_count || 0,
-		channels_stage: r(channelCounts).stage_count || 0,
-		categories_total: r(categoriesCount).count || 0,
-		roles_total: r(rolesCount).count || 0,
+		members_unique_boosters: overviewNumber(memberCounts, 'unique_boosters'),
+		members_with_levels: overviewNumber(leveledCount, 'leveled'),
+		member_afk: overviewNumber(afkCount, 'afk'),
+		members_with_custom_roles: overviewNumber(customRolesCount, 'members_with_custom_roles'),
+		channels_total: Number(serverRow.total_channels) || overviewNumber(channelCounts, 'total'),
+		channels_text: overviewNumber(channelCounts, 'text_count'),
+		channels_announcement: overviewNumber(channelCounts, 'announcement_count'),
+		channels_voice: overviewNumber(channelCounts, 'voice_count'),
+		channels_stage: overviewNumber(channelCounts, 'stage_count'),
+		categories_total: overviewNumber(categoriesCount, 'count'),
+		roles_total: overviewNumber(rolesCount, 'count'),
 		leveling_wallet_xp: walletXp,
-		leveling_assets_value: economy?.assets_market_value || 0,
-		leveling_total_xp: walletXp + (economy?.assets_market_value || 0),
-		leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
-		leveling_max_level: r(levelingStats).max_level || 0,
-		leveling_total_chat: r(levelingStats).total_chat || 0,
-		leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
-		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
-		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
-		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
-		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0,
+		leveling_assets_value: assetsValue,
+		leveling_total_xp: walletXp + assetsValue,
+		leveling_avg_level: roundTo(overviewNumber(levelingStats, 'avg_level'), 2),
+		leveling_max_level: overviewNumber(levelingStats, 'max_level'),
+		leveling_total_chat: overviewNumber(levelingStats, 'total_chat'),
+		leveling_total_voice_minutes: overviewNumber(levelingStats, 'total_voice_minutes'),
+		leveling_total_voice_active: overviewNumber(levelingStats, 'total_voice_active'),
+		leveling_total_voice_afk: overviewNumber(levelingStats, 'total_voice_afk'),
+		leveling_total_voice_video: overviewNumber(levelingStats, 'total_voice_video'),
+		leveling_total_voice_streaming: overviewNumber(levelingStats, 'total_voice_streaming'),
 		...(economy ?? {}),
 		...(features ?? {})
 	};
+}
 
-	if (forPublic) {
-		return {
-			...serverRow,
-			stats
-		};
-	}
-
-	const settingsLastUpdated = settingsRows.reduce((latest: any, row: any) => {
-		if (!row.updated_at) return latest;
-		if (!latest) return row.updated_at;
+function latestSettingsUpdate(settingsRows: { updated_at: Date | null }[]) {
+	return settingsRows.reduce<Date | null>((latest, row) => {
+		if (!row.updated_at) {
+			return latest;
+		}
+		if (!latest) {
+			return row.updated_at;
+		}
 		const rowDate = parseMySQLDateTimeUtc(row.updated_at);
 		const latestDate = parseMySQLDateTimeUtc(latest);
 		return rowDate && latestDate && rowDate > latestDate ? row.updated_at : latest;
 	}, null);
+}
 
-	const panelBotId = await resolveOfficialBotIdForServer(serverRow);
+async function featureSettingsServerId(component: string, { serverRow, panelBotId }: { serverRow: ServerRow; panelBotId: number | null }) {
+	if (component === SERVER_SETTINGS.component.notifications) {
+		const alt = await getOfficialBotServerIdForServer(serverRow.id);
+		return alt != null ? Number(alt) : serverRow.id;
+	}
+	if (component === SERVER_SETTINGS.component.forwarder && serverRow.discord_server_id && panelBotId != null) {
+		const officialServer = await getServerByDiscordId(Number(panelBotId), serverRow.discord_server_id);
+		return officialServer?.id != null ? Number(officialServer.id) : serverRow.id;
+	}
+	return serverRow.id;
+}
 
+async function enabledServerFeatures(serverRow: ServerRow, panelBotId: number | null) {
 	const enabledFeatures: { component_name: string; label: string; updated_at: unknown }[] = [];
 	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
-		let sid = id;
-		if (component === SERVER_SETTINGS.component.notifications) {
-			const alt = await getOfficialBotServerIdForServer(id);
-			if (alt != null) sid = Number(alt);
-		} else if (component === SERVER_SETTINGS.component.forwarder && serverRow.discord_server_id && panelBotId != null) {
-			const officialServer = await getServerByDiscordId(Number(panelBotId), serverRow.discord_server_id);
-			if (officialServer?.id != null) sid = Number(officialServer.id);
-		}
+		const sid = await featureSettingsServerId(component, { serverRow, panelBotId });
 		const row = await getServerSettings(sid, component).catch(() => null);
 		const st = row?.settings;
-		const featureOn = !!st && typeof st === 'object' && (st as Record<string, unknown>).enabled === true;
-		if (featureOn) {
-			enabledFeatures.push({
-				component_name: component,
-				label: SERVER_SETTINGS.featureLabel(component),
-				updated_at: row?.updated_at ?? null
-			});
+		if (!!st && typeof st === 'object' && (st as Record<string, unknown>).enabled === true) {
+			enabledFeatures.push({ component_name: component, label: SERVER_SETTINGS.featureLabel(component), updated_at: row?.updated_at ?? null });
 		}
 	}
-	enabledFeatures.sort((a, b) => a.label.localeCompare(b.label));
+	return enabledFeatures.sort((a, b) => a.label.localeCompare(b.label));
+}
 
+function overviewSync(syncResults: Awaited<ReturnType<typeof overviewSyncQueries>>) {
+	const [memberSyncTimes, channelSyncTimes, categorySyncTimes, roleSyncTimes, levelSyncTimes, settingsRows] = syncResults;
+	return {
+		members_last_updated: overviewLastUpdated(memberSyncTimes),
+		channels_last_updated: overviewLastUpdated(channelSyncTimes),
+		categories_last_updated: overviewLastUpdated(categorySyncTimes),
+		roles_last_updated: overviewLastUpdated(roleSyncTimes),
+		levels_last_updated: overviewLastUpdated(levelSyncTimes),
+		settings_last_updated: latestSettingsUpdate(settingsRows)
+	};
+}
+
+export async function getServerOverview(serverId: number | string, opts?: { forPublicPage?: boolean; priceMap?: Record<string, { price: number }> }) {
+	await initializeDatabase();
+	if (serverId === undefined || serverId === null || serverId === '') {
+		return null;
+	}
+
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) {
+		return null;
+	}
+
+	const serverRow = (await db.select().from(schema.servers).where(eq(schema.servers.id, id)).limit(1))[0];
+	if (!serverRow) {
+		return null;
+	}
+
+	const isForPublic = opts?.forPublicPage === true;
+	const [statResults, syncResults] = await Promise.all([overviewStatQueries(id), isForPublic ? null : overviewSyncQueries(id)]);
+	const [economy, features] = await Promise.all([
+		getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null),
+		getServerFeatureStats(serverId).catch(() => null)
+	]);
+	const stats = overviewStats(serverRow, statResults, { economy, features });
+
+	if (isForPublic || !syncResults) {
+		return { ...serverRow, stats };
+	}
+
+	const panelBotId = await resolveOfficialBotIdForServer(serverRow);
 	return {
 		...serverRow,
 		bot_id: panelBotId,
 		stats,
-		sync: {
-			members_last_updated: r(memberSyncTimes).last_updated || null,
-			channels_last_updated: r(channelSyncTimes).last_updated || null,
-			categories_last_updated: r(categorySyncTimes).last_updated || null,
-			roles_last_updated: r(roleSyncTimes).last_updated || null,
-			levels_last_updated: r(levelSyncTimes).last_updated || null,
-			settings_last_updated: settingsLastUpdated
-		},
-		enabledFeatures
+		sync: overviewSync(syncResults),
+		enabledFeatures: await enabledServerFeatures(serverRow, panelBotId)
 	};
 }
 
-export async function pruneOrphanedCustomSupporterRoles(serverId: any, liveDiscordRoleIds: string[]) {
+export async function pruneOrphanedCustomSupporterRoles(serverId: number | string, liveDiscordRoleIds: string[]) {
 	await initializeDatabase();
-	if (!serverId) return true;
-	if (!Array.isArray(liveDiscordRoleIds) || liveDiscordRoleIds.length === 0) return true;
+	if (!serverId) {
+		return true;
+	}
+	if (!Array.isArray(liveDiscordRoleIds) || liveDiscordRoleIds.length === 0) {
+		return true;
+	}
 
 	const ownedRows = await db
 		.select({ id: schema.serverMemberCustomSupporterRoles.id, discord_role_id: schema.serverRoles.discord_role_id })
@@ -5130,7 +5974,9 @@ export async function pruneOrphanedCustomSupporterRoles(serverId: any, liveDisco
 		.innerJoin(schema.serverRoles, eq(schema.serverMemberCustomSupporterRoles.role_id, schema.serverRoles.id))
 		.where(eq(schema.serverRoles.server_id, Number(serverId)));
 
-	if (ownedRows.length === 0) return true;
+	if (ownedRows.length === 0) {
+		return true;
+	}
 
 	const live = new Set(liveDiscordRoleIds || []);
 	const staleIds = ownedRows.filter((r) => !live.has(r.discord_role_id)).map((r) => r.id);
@@ -5141,15 +5987,19 @@ export async function pruneOrphanedCustomSupporterRoles(serverId: any, liveDisco
 	return true;
 }
 
-export async function memberHasCustomSupporterRole(discordMemberId: string, serverId: any) {
-	if (!discordMemberId || !serverId) return { has: false, role: null };
+export async function memberHasCustomSupporterRole(discordMemberId: string, serverId: number | string) {
+	if (!discordMemberId || !serverId) {
+		return { has: false, role: null };
+	}
 
 	const memberRows = await db
 		.select({ id: schema.serverMembers.id })
 		.from(schema.serverMembers)
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	if (!memberRows[0]) return { has: false, role: null };
+	if (!memberRows[0]) {
+		return { has: false, role: null };
+	}
 
 	const roleRows = await db
 		.select({
@@ -5165,7 +6015,9 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 		.orderBy(desc(schema.serverRoles.position))
 		.limit(1);
 
-	if (roleRows[0]) return { has: true, role: roleRows[0] };
+	if (roleRows[0]) {
+		return { has: true, role: roleRows[0] };
+	}
 	return { has: false, role: null };
 }
 
@@ -5178,10 +6030,10 @@ async function createPanel(accountId: number) {
 	const now = toMySQLDateTime();
 	const result = await db
 		.insert(schema.panel)
-		.values({ account_id: accountId, created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { updated_at: now as any } });
+		.values({ account_id: accountId, created_at: now, updated_at: now })
+		.onDuplicateKeyUpdate({ set: { updated_at: now } });
 
-	const insertedId = (result?.[0] as any)?.insertId;
+	const insertedId = result?.[0]?.insertId;
 	if (insertedId) {
 		const rows = await db.select().from(schema.panel).where(eq(schema.panel.id, insertedId)).limit(1);
 		return rows[0] || null;
@@ -5194,7 +6046,7 @@ async function hasAnyPanel() {
 	return rows.length > 0;
 }
 
-async function getAccountById(accountId: any) {
+async function getAccountById(accountId: number | string) {
 	const rows = await db
 		.select()
 		.from(schema.accounts)
@@ -5210,7 +6062,9 @@ async function getAccountByEmail(email: string) {
 
 async function getAccountByNormalizedEmail(email: string) {
 	const atIndex = email.lastIndexOf('@');
-	if (atIndex === -1) return null;
+	if (atIndex === -1) {
+		return null;
+	}
 	const domain = email.substring(atIndex + 1);
 	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
 		return getAccountByEmail(email);
@@ -5232,7 +6086,7 @@ async function getAccountByUsername(username: string) {
 	return rows[0] || null;
 }
 
-async function createAccount(accountData: any) {
+async function createAccount(accountData: { username: string; email: string; password_hash: string; account_type?: 'superadmin'; ip_address?: string | null }) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.accounts).values({
 		username: accountData.username,
@@ -5240,14 +6094,14 @@ async function createAccount(accountData: any) {
 		password_hash: accountData.password_hash,
 		account_type: accountData.account_type || 'superadmin',
 		ip_address: accountData.ip_address || null,
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
-	return getAccountById((result[0] as any).insertId);
+	return getAccountById(result[0].insertId);
 }
 
-async function updateAccount(accountId: any, updateData: any) {
-	const data: any = { ...updateData, updated_at: toMySQLDateTime() };
+async function updateAccount(accountId: number | string, updateData: Record<string, unknown>) {
+	const data: Record<string, unknown> = { ...updateData, updated_at: toMySQLDateTime() };
 	await db
 		.update(schema.accounts)
 		.set(data)
@@ -5255,7 +6109,7 @@ async function updateAccount(accountId: any, updateData: any) {
 	return getAccountById(accountId);
 }
 
-async function deleteAccount(accountId: any) {
+async function deleteAccount(accountId: number | string) {
 	await db.delete(schema.accounts).where(eq(schema.accounts.id, Number(accountId)));
 }
 
@@ -5273,21 +6127,23 @@ async function getAllAccounts() {
 		.orderBy(asc(schema.accounts.created_at));
 }
 
-async function createInviteLink(linkData: any) {
+async function createInviteLink(linkData: {
+	token: string;
+	account_type: string;
+	server_id?: number | null;
+	created_by: number;
+	expires_at?: string | Date | null;
+}) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.accountInvites).values({
 		token: linkData.token,
 		account_type: linkData.account_type,
 		server_id: linkData.server_id || null,
 		created_by: linkData.created_by,
-		expires_at: linkData.expires_at ? (toMySQLDateTime(linkData.expires_at) as any) : null,
-		created_at: now as any
+		expires_at: linkData.expires_at ? toMySQLDateTime(linkData.expires_at) : null,
+		created_at: now
 	});
-	const rows = await db
-		.select()
-		.from(schema.accountInvites)
-		.where(eq(schema.accountInvites.id, (result[0] as any).insertId))
-		.limit(1);
+	const rows = await db.select().from(schema.accountInvites).where(eq(schema.accountInvites.id, result[0].insertId)).limit(1);
 	return rows[0];
 }
 
@@ -5296,9 +6152,11 @@ async function getInviteLinkByToken(token: string) {
 	return rows[0] || null;
 }
 
-async function updateInviteLink(linkId: any, updateData: any) {
-	const data: any = { ...updateData };
-	if (data.used_at) data.used_at = toMySQLDateTime(data.used_at);
+async function updateInviteLink(linkId: unknown, updateData: Record<string, unknown>) {
+	const data: Record<string, unknown> = { ...updateData };
+	if (data.used_at) {
+		data.used_at = toMySQLDateTime(data.used_at as string | Date);
+	}
 	await db
 		.update(schema.accountInvites)
 		.set(data)
@@ -5350,7 +6208,7 @@ async function createAccountServerAccess(data: { account_id: number; server_id: 
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.accountServerAccess)
-		.values({ account_id: data.account_id, server_id: data.server_id, role: data.role, created_at: now as any })
+		.values({ account_id: data.account_id, server_id: data.server_id, role: data.role, created_at: now })
 		.onDuplicateKeyUpdate({ set: { role: data.role } });
 }
 
@@ -5386,7 +6244,9 @@ async function getServerAccountByEmailServer(email: string, serverId: number) {
 
 async function getServerAccountByNormalizedEmailServer(email: string, serverId: number) {
 	const atIndex = email.lastIndexOf('@');
-	if (atIndex === -1) return null;
+	if (atIndex === -1) {
+		return null;
+	}
 	const domain = email.substring(atIndex + 1);
 	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
 		return getServerAccountByEmailServer(email, serverId);
@@ -5424,10 +6284,10 @@ async function createServerAccount(data: {
 		account_type: data.account_type,
 		ip_address: data.ip_address ?? null,
 		is_frozen: data.is_frozen ?? false,
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
-	return getServerAccountById((result[0] as any).insertId);
+	return getServerAccountById(result[0].insertId);
 }
 
 async function updateServerAccount(
@@ -5443,7 +6303,7 @@ async function updateServerAccount(
 ) {
 	await db
 		.update(schema.serverAccounts)
-		.set({ ...(data as any), updated_at: toMySQLDateTime() as any })
+		.set({ ...data, updated_at: toMySQLDateTime() })
 		.where(eq(schema.serverAccounts.id, id));
 }
 
@@ -5459,7 +6319,7 @@ async function getServerAccountsByServer(serverId: number) {
 		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
 }
 
-const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 24 * 60;
+const SERVER_ACCOUNT_INVITE_TTL_MINUTES = DAY_MINUTES;
 
 async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();
@@ -5469,8 +6329,8 @@ async function createServerAccountInvite(data: { token: string; server_id: numbe
 		token: data.token,
 		server_id: data.server_id,
 		account_type: data.account_type,
-		expires_at: expiresAt as any,
-		created_at: createdAt as any
+		expires_at: expiresAt,
+		created_at: createdAt
 	});
 }
 
@@ -5491,7 +6351,7 @@ async function getServerAccountInviteByIdForServer(inviteId: number, serverId: n
 async function updateServerAccountInvite(id: number, data: Partial<{ used_by: number; used_at: string | Date; expires_at: Date | string }>) {
 	await db
 		.update(schema.serverAccountInvites)
-		.set(data as any)
+		.set(data as Record<string, unknown>)
 		.where(eq(schema.serverAccountInvites.id, id));
 }
 
@@ -5523,10 +6383,10 @@ async function addSelfbot(data: { panel_id: number; name: string; token: string 
 		name: data.name,
 		token: data.token,
 		status: 'stopped',
-		created_at: now as any,
-		updated_at: now as any
+		created_at: now,
+		updated_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
 async function updateSelfbot(
@@ -5535,15 +6395,15 @@ async function updateSelfbot(
 		name: string;
 		token: string;
 		bot_icon: string | null;
-		status: string;
+		status: BotRunStatus;
 		process_id: number | null;
-		uptime_started_at: string | null;
+		uptime_started_at: Date | null;
 		auto_start: boolean;
 	}>
 ) {
 	await db
 		.update(schema.selfbots)
-		.set({ ...data, updated_at: toMySQLDateTime() as any } as any)
+		.set({ ...data, updated_at: toMySQLDateTime() })
 		.where(eq(schema.selfbots.id, id));
 }
 
@@ -5568,8 +6428,12 @@ async function getOfficialBotForSelfbot(selfbotId: number) {
 }
 
 export async function resolveOfficialBotIdForServer(server: typeof schema.servers.$inferSelect | null) {
-	if (!server) return null;
-	if ((server as any).bot_id != null) return (server as any).bot_id;
+	if (!server) {
+		return null;
+	}
+	if (server.bot_id != null) {
+		return server.bot_id;
+	}
 	return null;
 }
 
@@ -5581,7 +6445,9 @@ export async function getOfficialBotIdForServer(serverId: number): Promise<numbe
 async function getSelfbotsForOfficialBot(officialBotId: number) {
 	await initializeDatabase();
 	const panelId = await getBotPanelId(officialBotId);
-	if (panelId == null) return [];
+	if (panelId == null) {
+		return [];
+	}
 	return getPanelSelfbots(panelId);
 }
 
@@ -5594,7 +6460,7 @@ type ServerSettingsRow = {
 	id: number;
 	server_id: number;
 	component_name: string;
-	settings: unknown;
+	settings: Record<string, unknown>;
 	created_at: Date;
 	updated_at: Date;
 };
@@ -5603,9 +6469,10 @@ function isServerSettingsRowArray(x: unknown): x is ServerSettingsRow[] {
 	return Array.isArray(x);
 }
 
-async function getServerSettings(serverId: any, componentName: string): Promise<ServerSettingsRow | null>;
-async function getServerSettings(serverId: any, componentName?: null): Promise<ServerSettingsRow[]>;
-async function getServerSettings(serverId: any, componentName: string | null = null) {
+async function getServerSettings(serverId: number | string, componentName: string): Promise<ServerSettingsRow | null>;
+async function getServerSettings(serverId: number | string, componentName?: null): Promise<ServerSettingsRow[]>;
+async function getServerSettings(serverId: number | string, componentName: string | null): Promise<ServerSettingsRow | ServerSettingsRow[] | null>;
+async function getServerSettings(serverId: number | string, componentName: string | null = null) {
 	await initializeDatabase();
 	if (componentName) {
 		const rows = await db
@@ -5613,7 +6480,9 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 			.from(schema.serverSettings)
 			.where(and(eq(schema.serverSettings.server_id, Number(serverId)), eq(schema.serverSettings.component_name, componentName)))
 			.limit(1);
-		if (!rows[0]) return null;
+		if (!rows[0]) {
+			return null;
+		}
 		const row = { ...rows[0] };
 		if (row.settings && typeof row.settings === 'string') {
 			try {
@@ -5633,7 +6502,7 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 		const r = { ...row };
 		if (r.settings && typeof r.settings === 'string') {
 			try {
-				r.settings = JSON.parse(r.settings as any);
+				r.settings = JSON.parse(r.settings);
 			} catch {
 				r.settings = {};
 			}
@@ -5643,13 +6512,13 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 	return isServerSettingsRowArray(mapped) ? mapped : [];
 }
 
-async function upsertServerSettings(serverId: any, componentName: string, settings: any) {
+async function upsertServerSettings(serverId: number | string, componentName: string, settings: unknown) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverSettings)
-		.values({ server_id: Number(serverId), component_name: componentName, settings, created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { settings, updated_at: now as any } });
+		.values({ server_id: Number(serverId), component_name: componentName, settings, created_at: now, updated_at: now })
+		.onDuplicateKeyUpdate({ set: { settings, updated_at: now } });
 	const rows = await db
 		.select()
 		.from(schema.serverSettings)
@@ -5662,19 +6531,21 @@ type PanelSettingsRow = {
 	id: number;
 	panel_id: number;
 	component_name: string;
-	settings: unknown;
+	settings: Record<string, unknown>;
 	created_at: Date;
 	updated_at: Date;
 };
 
-async function getPanelSettings(panelId: any, componentName: string): Promise<PanelSettingsRow | null> {
+async function getPanelSettings(panelId: number | string, componentName: string): Promise<PanelSettingsRow | null> {
 	await initializeDatabase();
 	const rows = await db
 		.select()
 		.from(schema.panelSettings)
 		.where(and(eq(schema.panelSettings.panel_id, Number(panelId)), eq(schema.panelSettings.component_name, componentName)))
 		.limit(1);
-	if (!rows[0]) return null;
+	if (!rows[0]) {
+		return null;
+	}
 	const row = { ...rows[0] };
 	if (row.settings && typeof row.settings === 'string') {
 		try {
@@ -5683,16 +6554,16 @@ async function getPanelSettings(panelId: any, componentName: string): Promise<Pa
 			row.settings = {};
 		}
 	}
-	return row;
+	return row as PanelSettingsRow;
 }
 
-async function upsertPanelSettings(panelId: any, componentName: string, settings: any) {
+async function upsertPanelSettings(panelId: number | string, componentName: string, settings: unknown) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.panelSettings)
-		.values({ panel_id: Number(panelId), component_name: componentName, settings, created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { settings, updated_at: now as any } });
+		.values({ panel_id: Number(panelId), component_name: componentName, settings, created_at: now, updated_at: now })
+		.onDuplicateKeyUpdate({ set: { settings, updated_at: now } });
 	const rows = await db
 		.select()
 		.from(schema.panelSettings)
@@ -5702,13 +6573,17 @@ async function upsertPanelSettings(panelId: any, componentName: string, settings
 }
 
 function questIsoToDbDate(iso: string | undefined | null): Date | null {
-	if (iso == null || typeof iso !== 'string' || !iso.trim()) return null;
+	if (iso == null || typeof iso !== 'string' || !iso.trim()) {
+		return null;
+	}
 	return toMySQLDateTime(iso.trim());
 }
 
 function questMediaUrlForDb(raw: string | null | undefined): string | null {
 	const s = raw?.trim() || '';
-	if (!s.startsWith('http') || s.length > 512) return null;
+	if (!s.startsWith('http') || s.length > URL_COLUMN_MAX_LENGTH) {
+		return null;
+	}
 	return s;
 }
 
@@ -5728,14 +6603,20 @@ function snapshotFromDiscordQuestSummary(q: DiscordQuestSummary) {
 
 async function syncBotDiscordQuestsFromApi(botId: number, quests: DiscordQuestSummary[]): Promise<void> {
 	await initializeDatabase();
-	if (quests.length === 0) return;
+	if (quests.length === 0) {
+		return;
+	}
 	const now = toMySQLDateTime();
 	for (const q of quests) {
 		const snap = snapshotFromDiscordQuestSummary(q);
 		const { thumbnail_url, banner_url, ...snapRest } = snap;
 		const mediaUpdate: Record<string, string> = {};
-		if (thumbnail_url) mediaUpdate.thumbnail_url = thumbnail_url;
-		if (banner_url) mediaUpdate.banner_url = banner_url;
+		if (thumbnail_url) {
+			mediaUpdate.thumbnail_url = thumbnail_url;
+		}
+		if (banner_url) {
+			mediaUpdate.banner_url = banner_url;
+		}
 		await db
 			.insert(schema.botDiscordQuest)
 			.values({
@@ -5743,7 +6624,7 @@ async function syncBotDiscordQuestsFromApi(botId: number, quests: DiscordQuestSu
 				quest_id: q.id,
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
-				created_at: now as any,
+				created_at: now,
 				...snap
 			})
 			.onDuplicateKeyUpdate({
@@ -5751,29 +6632,39 @@ async function syncBotDiscordQuestsFromApi(botId: number, quests: DiscordQuestSu
 					bot_id: botId,
 					quest_task_type: q.taskTypeKey || '',
 					quest_task_label: q.taskTypeLabel || '',
-					created_at: now as any,
+					created_at: now,
 					...snapRest,
 					...mediaUpdate
-				} as any
+				}
 			});
 	}
 }
 
 async function addMissingBotDiscordQuests(botId: number, quests: DiscordQuestSummary[]): Promise<DiscordQuestSummary[]> {
 	await initializeDatabase();
-	if (quests.length === 0) return [];
+	if (quests.length === 0) {
+		return [];
+	}
 	const byId = new Map<string, DiscordQuestSummary>();
 	for (const q of quests) {
-		if (q?.id && !byId.has(q.id)) byId.set(q.id, q);
+		if (q?.id && !byId.has(q.id)) {
+			byId.set(q.id, q);
+		}
 	}
-	if (byId.size === 0) return [];
+	if (byId.size === 0) {
+		return [];
+	}
 
 	const existing = await db
 		.select({ quest_id: schema.botDiscordQuest.quest_id })
 		.from(schema.botDiscordQuest)
 		.where(inArray(schema.botDiscordQuest.quest_id, [...byId.keys()]));
-	for (const row of existing) byId.delete(row.quest_id);
-	if (byId.size === 0) return [];
+	for (const row of existing) {
+		byId.delete(row.quest_id);
+	}
+	if (byId.size === 0) {
+		return [];
+	}
 
 	const now = toMySQLDateTime();
 	const added: DiscordQuestSummary[] = [];
@@ -5784,7 +6675,7 @@ async function addMissingBotDiscordQuests(botId: number, quests: DiscordQuestSum
 				quest_id: q.id,
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
-				created_at: now as any,
+				created_at: now,
 				...snapshotFromDiscordQuestSummary(q)
 			});
 			added.push(q);
@@ -5794,7 +6685,9 @@ async function addMissingBotDiscordQuests(botId: number, quests: DiscordQuestSum
 }
 
 async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, quests: DiscordQuestSummary[]): Promise<void> {
-	if (quests.length === 0) return;
+	if (quests.length === 0) {
+		return;
+	}
 	await syncBotDiscordQuestsFromApi(botId, quests);
 	await linkServerToBotDiscordQuests(
 		serverId,
@@ -5808,14 +6701,14 @@ async function listActiveBotDiscordQuests(botId: number): Promise<DiscordQuestSu
 	const rows = await db
 		.select()
 		.from(schema.botDiscordQuest)
-		.where(and(eq(schema.botDiscordQuest.bot_id, botId), or(isNull(schema.botDiscordQuest.expires_at), gt(schema.botDiscordQuest.expires_at, now as any))));
+		.where(and(eq(schema.botDiscordQuest.bot_id, botId), or(isNull(schema.botDiscordQuest.expires_at), gt(schema.botDiscordQuest.expires_at, now))));
 	return rows.map((r) => ({
 		id: r.quest_id,
 		questName: r.quest_name?.trim() || 'Discord Quest',
 		gameTitle: r.game_title?.trim() || 'Quest',
 		questUrl: r.quest_url?.trim() || `https://discord.com/quests/${r.quest_id}`,
-		startsAt: r.starts_at ? new Date(r.starts_at as any).toISOString() : '',
-		expiresAt: r.expires_at ? new Date(r.expires_at as any).toISOString() : '',
+		startsAt: r.starts_at ? new Date(r.starts_at).toISOString() : '',
+		expiresAt: r.expires_at ? new Date(r.expires_at).toISOString() : '',
 		reward: r.reward?.trim() || 'Quest reward',
 		taskTypeKey: r.quest_task_type || '',
 		taskTypeLabel: r.quest_task_label || '',
@@ -5828,19 +6721,23 @@ async function listActiveBotDiscordQuests(botId: number): Promise<DiscordQuestSu
 }
 
 async function linkServerToBotDiscordQuests(serverId: number, questIds: string[]): Promise<void> {
-	if (questIds.length === 0) return;
+	if (questIds.length === 0) {
+		return;
+	}
 	await initializeDatabase();
 	const rows = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(inArray(schema.botDiscordQuest.quest_id, questIds));
 	for (const r of rows) {
 		await db
 			.insert(schema.serverDiscordQuest)
 			.values({ server_id: serverId, quest_id: r.id, message_posted_at: null })
-			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
+			.onDuplicateKeyUpdate({ set: { server_id: serverId } });
 	}
 }
 
 async function listServerDiscordQuestUnpostedIds(serverId: number, activeQuestIds: string[]): Promise<string[]> {
-	if (activeQuestIds.length === 0) return [];
+	if (activeQuestIds.length === 0) {
+		return [];
+	}
 	await initializeDatabase();
 	const rows = await db
 		.select({ quest_id: schema.botDiscordQuest.quest_id })
@@ -5864,10 +6761,12 @@ async function claimServerDiscordQuestForPost(serverId: number, questId: string)
 		.from(schema.botDiscordQuest)
 		.where(eq(schema.botDiscordQuest.quest_id, questId))
 		.limit(1);
-	if (!questRow) return false;
+	if (!questRow) {
+		return false;
+	}
 	const result = await db
 		.update(schema.serverDiscordQuest)
-		.set({ message_posted_at: posted as any })
+		.set({ message_posted_at: posted })
 		.where(
 			and(
 				eq(schema.serverDiscordQuest.server_id, serverId),
@@ -5875,7 +6774,7 @@ async function claimServerDiscordQuestForPost(serverId: number, questId: string)
 				isNull(schema.serverDiscordQuest.message_posted_at)
 			)
 		);
-	const affected = (result as any)?.[0]?.affectedRows ?? (result as any)?.affectedRows ?? 0;
+	const affected = (result as unknown as WriteResult)?.[0]?.affectedRows ?? (result as unknown as WriteResult)?.affectedRows ?? 0;
 	return affected > 0;
 }
 
@@ -5886,10 +6785,12 @@ async function releaseServerDiscordQuestClaim(serverId: number, questId: string)
 		.from(schema.botDiscordQuest)
 		.where(eq(schema.botDiscordQuest.quest_id, questId))
 		.limit(1);
-	if (!questRow) return;
+	if (!questRow) {
+		return;
+	}
 	await db
 		.update(schema.serverDiscordQuest)
-		.set({ message_posted_at: null as any })
+		.set({ message_posted_at: null })
 		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, questRow.id)));
 }
 
@@ -5901,10 +6802,12 @@ async function markServerDiscordQuestMessagePosted(serverId: number, questId: st
 		.from(schema.botDiscordQuest)
 		.where(eq(schema.botDiscordQuest.quest_id, questId))
 		.limit(1);
-	if (!questRow) return;
+	if (!questRow) {
+		return;
+	}
 	await db
 		.update(schema.serverDiscordQuest)
-		.set({ message_posted_at: posted as any })
+		.set({ message_posted_at: posted })
 		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, questRow.id)));
 }
 
@@ -5925,120 +6828,136 @@ export type RobloxCatalogItemSnapshot = {
 };
 
 export function snapshotBigIntOrNull(v: bigint | number | null | undefined): bigint | null {
-	if (v == null) return null;
-	if (typeof v === 'bigint') return v;
+	if (v == null) {
+		return null;
+	}
+	if (typeof v === 'bigint') {
+		return v;
+	}
 	if (typeof v === 'number') {
-		if (!Number.isFinite(v)) return null;
+		if (!Number.isFinite(v)) {
+			return null;
+		}
 		return BigInt(Math.trunc(v));
 	}
 	return null;
 }
 
 function snapshotAssetIdBigInt(assetId: number | bigint): bigint {
-	if (typeof assetId === 'bigint') return assetId;
-	if (typeof assetId === 'number' && Number.isFinite(assetId)) return BigInt(Math.trunc(assetId));
+	if (typeof assetId === 'bigint') {
+		return assetId;
+	}
+	if (typeof assetId === 'number' && Number.isFinite(assetId)) {
+		return BigInt(Math.trunc(assetId));
+	}
 	throw new Error('invalid asset id');
 }
 
-async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
-	await initializeDatabase();
-	if (!items || items.length === 0) return;
-	const now = toMySQLDateTime();
+function robloxItemRow(botId: number, it: RobloxCatalogItemSnapshot, now: Date) {
+	try {
+		return {
+			bot_id: botId,
+			asset_id: snapshotAssetIdBigInt(it.assetId),
+			asset_type: it.assetType == null ? null : Number(it.assetType),
+			category: it.category ?? null,
+			name: it.name ?? null,
+			description: it.description ?? null,
+			creator_name: it.creatorName ?? null,
+			price: snapshotBigIntOrNull(it.price),
+			lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
+			total_quantity: snapshotBigIntOrNull(it.totalQuantity),
+			favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
+			units_available: snapshotBigIntOrNull(it.unitsAvailable),
+			thumbnail_url: it.thumbnailUrl ?? null,
+			item_created_at: it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null,
+			created_at: now
+		};
+	} catch {
+		return null;
+	}
+}
 
-	const rows = items
-		.filter((it) => !!it)
-		.map((it) => {
-			try {
-				return {
-					bot_id: botId,
-					asset_id: snapshotAssetIdBigInt(it.assetId),
-					asset_type: it.assetType == null ? null : Number(it.assetType),
-					category: it.category ?? null,
-					name: it.name ?? null,
-					description: it.description ?? null,
-					creator_name: it.creatorName ?? null,
-					price: snapshotBigIntOrNull(it.price),
-					lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
-					total_quantity: snapshotBigIntOrNull(it.totalQuantity),
-					favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
-					units_available: snapshotBigIntOrNull(it.unitsAvailable),
-					thumbnail_url: it.thumbnailUrl ?? null,
-					item_created_at: (it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null) as any,
-					created_at: now as any
-				};
-			} catch {
-				return null;
-			}
-		})
-		.filter((r): r is NonNullable<typeof r> => r !== null);
+type RobloxItemRow = NonNullable<ReturnType<typeof robloxItemRow>>;
 
-	if (rows.length === 0) return;
+const ROBLOX_ITEM_UPDATE_COLUMNS = [
+	'bot_id',
+	'asset_type',
+	'category',
+	'name',
+	'description',
+	'creator_name',
+	'price',
+	'lowest_resale_price',
+	'total_quantity',
+	'favorite_count',
+	'units_available',
+	'thumbnail_url',
+	'item_created_at',
+	'created_at'
+] as const;
 
-	await batchUpsert(
-		'roblox item',
-		rows,
-		(batch) =>
-			db
-				.insert(schema.botRobloxItems)
-				.values(batch)
-				.onDuplicateKeyUpdate({
-					set: {
-						bot_id: sql`values(${schema.botRobloxItems.bot_id})`,
-						asset_type: sql`values(${schema.botRobloxItems.asset_type})`,
-						category: sql`values(${schema.botRobloxItems.category})`,
-						name: sql`values(${schema.botRobloxItems.name})`,
-						description: sql`values(${schema.botRobloxItems.description})`,
-						creator_name: sql`values(${schema.botRobloxItems.creator_name})`,
-						price: sql`values(${schema.botRobloxItems.price})`,
-						lowest_resale_price: sql`values(${schema.botRobloxItems.lowest_resale_price})`,
-						total_quantity: sql`values(${schema.botRobloxItems.total_quantity})`,
-						favorite_count: sql`values(${schema.botRobloxItems.favorite_count})`,
-						units_available: sql`values(${schema.botRobloxItems.units_available})`,
-						thumbnail_url: sql`values(${schema.botRobloxItems.thumbnail_url})`,
-						item_created_at: sql`values(${schema.botRobloxItems.item_created_at})`,
-						created_at: sql`values(${schema.botRobloxItems.created_at})`
-					} as any
-				}),
-		(row) => {
+async function upsertRobloxItems(rows: RobloxItemRow[]) {
+	const set = Object.fromEntries(ROBLOX_ITEM_UPDATE_COLUMNS.map((column) => [column, sql`values(${schema.botRobloxItems[column]})`]));
+	await batchUpsert('roblox item', rows, {
+		runBatch: (batch) => db.insert(schema.botRobloxItems).values(batch).onDuplicateKeyUpdate({ set }),
+		runSingle: (row) => {
 			const { asset_id, ...updatable } = row;
-			return db
-				.insert(schema.botRobloxItems)
-				.values(row)
-				.onDuplicateKeyUpdate({ set: updatable as any });
+			return db.insert(schema.botRobloxItems).values(row).onDuplicateKeyUpdate({ set: updatable });
 		}
-	);
+	});
+}
 
-	const assetIds = rows.map((r) => r.asset_id);
+async function robloxItemIds(assetIds: bigint[]) {
 	const idRows: { id: number; asset_id: bigint }[] = [];
 	for (const batch of chunkRows(assetIds)) {
 		const found = await db
 			.select({ id: schema.botRobloxItems.id, asset_id: schema.botRobloxItems.asset_id })
 			.from(schema.botRobloxItems)
-			.where(inArray(schema.botRobloxItems.asset_id, batch as any));
-		idRows.push(...(found as any));
+			.where(inArray(schema.botRobloxItems.asset_id, batch));
+		idRows.push(...found);
 	}
-	if (idRows.length === 0) return;
+	return idRows;
+}
+
+async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
+	await initializeDatabase();
+	if (!items || items.length === 0) {
+		return;
+	}
+	const now = toMySQLDateTime();
+	const rows = items
+		.filter((it) => !!it)
+		.map((it) => robloxItemRow(botId, it, now))
+		.filter((r): r is RobloxItemRow => r !== null);
+	if (rows.length === 0) {
+		return;
+	}
+
+	await upsertRobloxItems(rows);
+	const idRows = await robloxItemIds(rows.map((r) => r.asset_id));
+	if (idRows.length === 0) {
+		return;
+	}
 
 	const links = idRows.map((r) => ({ server_id: serverId, item_id: r.id, message_posted_at: null }));
-
-	await batchUpsert(
-		'roblox server link',
-		links,
-		(batch) =>
+	await batchUpsert('roblox server link', links, {
+		runBatch: (batch) =>
 			db
 				.insert(schema.serverRobloxItems)
 				.values(batch)
-				.onDuplicateKeyUpdate({ set: { server_id: sql`values(${schema.serverRobloxItems.server_id})` } as any }),
-		(row) =>
+				.onDuplicateKeyUpdate({ set: { server_id: sql`values(${schema.serverRobloxItems.server_id})` } }),
+		runSingle: (row) =>
 			db
 				.insert(schema.serverRobloxItems)
 				.values(row)
-				.onDuplicateKeyUpdate({ set: { server_id: serverId } as any })
-	);
+				.onDuplicateKeyUpdate({ set: { server_id: serverId } })
+	});
 }
 
 async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds: readonly (number | bigint)[]): Promise<bigint[]> {
-	if (!activeAssetIds || activeAssetIds.length === 0) return [];
+	if (!activeAssetIds || activeAssetIds.length === 0) {
+		return [];
+	}
 	await initializeDatabase();
 	const idList = activeAssetIds.map((id) => snapshotAssetIdBigInt(id));
 	const rows = await db
@@ -6046,11 +6965,7 @@ async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds
 		.from(schema.serverRobloxItems)
 		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
 		.where(
-			and(
-				eq(schema.serverRobloxItems.server_id, serverId),
-				inArray(schema.botRobloxItems.asset_id, idList as any),
-				isNull(schema.serverRobloxItems.message_posted_at)
-			)
+			and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, idList), isNull(schema.serverRobloxItems.message_posted_at))
 		);
 	return rows.map((r) => r.asset_id);
 }
@@ -6069,7 +6984,9 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 		.from(schema.botRobloxItems)
 		.where(eq(schema.botRobloxItems.asset_id, snapshotAssetIdBigInt(assetId)))
 		.limit(1);
-	if (!item) return;
+	if (!item) {
+		return;
+	}
 	await db
 		.update(schema.botRobloxItems)
 		.set({
@@ -6077,11 +6994,11 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 			last_lowest_resale_price: item.lowest_resale_price ?? null,
 			last_total_quantity: item.total_quantity ?? null,
 			last_units_available: item.units_available ?? null
-		} as any)
+		})
 		.where(eq(schema.botRobloxItems.id, item.id));
 	await db
 		.update(schema.serverRobloxItems)
-		.set({ message_posted_at: posted as any })
+		.set({ message_posted_at: posted })
 		.where(and(eq(schema.serverRobloxItems.server_id, serverId), eq(schema.serverRobloxItems.item_id, item.id)));
 }
 
@@ -6101,7 +7018,9 @@ async function isBotRobloxItemsEmpty(botId: number): Promise<boolean> {
 async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<Map<bigint, RobloxItemChange[]>> {
 	await initializeDatabase();
 	const result = new Map<bigint, RobloxItemChange[]>();
-	if (!items || items.length === 0) return result;
+	if (!items || items.length === 0) {
+		return result;
+	}
 
 	const assetIds = items.map((x) => snapshotAssetIdBigInt(x.assetId));
 
@@ -6116,14 +7035,16 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		})
 		.from(schema.serverRobloxItems)
 		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
-		.where(and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, assetIds as any)));
+		.where(and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, assetIds)));
 
 	const rowMap = new Map(rows.map((r) => [r.asset_id, r]));
 
 	for (const it of items) {
 		const assetIdBi = snapshotAssetIdBigInt(it.assetId);
 		const row = rowMap.get(assetIdBi);
-		if (!row) continue;
+		if (!row) {
+			continue;
+		}
 
 		const nextPrice = snapshotBigIntOrNull(it.price);
 		const nextLowest = snapshotBigIntOrNull(it.lowestResalePrice);
@@ -6145,7 +7066,9 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 			changes.push({ assetId: assetIdBi, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: nextTotal });
 		}
 
-		if (changes.length > 0) result.set(assetIdBi, changes);
+		if (changes.length > 0) {
+			result.set(assetIdBi, changes);
+		}
 	}
 
 	return result;
@@ -6153,16 +7076,20 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 
 async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[]): Promise<void> {
 	await initializeDatabase();
-	if (!items || items.length === 0) return;
+	if (!items || items.length === 0) {
+		return;
+	}
 	const assetIds = items.map((x) => snapshotAssetIdBigInt(x.assetId));
 	const rows = await db
 		.select({ id: schema.botRobloxItems.id, asset_id: schema.botRobloxItems.asset_id })
 		.from(schema.botRobloxItems)
-		.where(inArray(schema.botRobloxItems.asset_id, assetIds as any));
+		.where(inArray(schema.botRobloxItems.asset_id, assetIds));
 	const rowMap = new Map(rows.map((r) => [r.asset_id, r.id]));
 	for (const it of items) {
 		const botItemId = rowMap.get(snapshotAssetIdBigInt(it.assetId));
-		if (!botItemId) continue;
+		if (!botItemId) {
+			continue;
+		}
 		await db
 			.update(schema.botRobloxItems)
 			.set({
@@ -6170,7 +7097,7 @@ async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[])
 				last_lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
 				last_total_quantity: snapshotBigIntOrNull(it.totalQuantity),
 				last_units_available: snapshotBigIntOrNull(it.unitsAvailable)
-			} as any)
+			})
 			.where(eq(schema.botRobloxItems.id, botItemId));
 	}
 }
@@ -6182,7 +7109,9 @@ async function getServerMemberRobloxItemNotificationTypes(memberId: number, item
 		.from(schema.serverMemberRobloxItemNotifications)
 		.where(and(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId), eq(schema.serverMemberRobloxItemNotifications.item_id, itemId)))
 		.limit(1);
-	if (!existing) return [];
+	if (!existing) {
+		return [];
+	}
 	return String(existing.types || '')
 		.split(',')
 		.map((x) => x.trim())
@@ -6203,8 +7132,8 @@ async function setServerMemberRobloxItemNotificationTypes(memberId: number, item
 	const joined = cleaned.join(',');
 	await db
 		.insert(schema.serverMemberRobloxItemNotifications)
-		.values({ member_id: memberId, item_id: itemId, types: joined, created_at: toMySQLDateTime() as any })
-		.onDuplicateKeyUpdate({ set: { types: joined } as any });
+		.values({ member_id: memberId, item_id: itemId, types: joined, created_at: toMySQLDateTime() })
+		.onDuplicateKeyUpdate({ set: { types: joined } });
 	return 'saved';
 }
 
@@ -6239,7 +7168,9 @@ async function clearServerMemberRobloxItemNotifications(memberId: number): Promi
 		.select({ id: schema.serverMemberRobloxItemNotifications.id })
 		.from(schema.serverMemberRobloxItemNotifications)
 		.where(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId));
-	if (rows.length === 0) return 0;
+	if (rows.length === 0) {
+		return 0;
+	}
 	await db.delete(schema.serverMemberRobloxItemNotifications).where(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId));
 	return rows.length;
 }
@@ -6252,7 +7183,7 @@ async function countServerRobloxItemNotifications(serverId: number, itemId: numb
 		INNER JOIN server_members m ON m.id = n.member_id
 		WHERE m.server_id = ${Number(serverId)} AND m.deleted_at IS NULL AND n.item_id = ${Number(itemId)}
 	`);
-	const row = ((rows[0] as unknown as any[]) || [])[0];
+	const row = ((rows[0] as unknown as Record<string, unknown>[]) || [])[0];
 	return Number(row?.total) || 0;
 }
 
@@ -6294,7 +7225,7 @@ async function listNotifiedRobloxItemsForBot(
 		ORDER BY watchers DESC, i.asset_id ASC
 		LIMIT ${Number(limit)}
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		assetId: BigInt(String(r.asset_id)),
 		assetType: r.asset_type == null ? null : Number(r.asset_type),
 		thumbnailUrl: typeof r.thumbnail_url === 'string' && r.thumbnail_url ? r.thumbnail_url : null
@@ -6328,15 +7259,15 @@ async function upsertBotCreator(botId: number, profile: CreatorProfile): Promise
 			account_id: profile.accountId,
 			handle: profile.handle,
 			name: profile.name,
-			thumbnail_url: profile.thumbnailUrl?.slice(0, 512) ?? null,
-			created_at: toMySQLDateTime() as any
+			thumbnail_url: profile.thumbnailUrl?.slice(0, URL_COLUMN_MAX_LENGTH) ?? null,
+			created_at: toMySQLDateTime()
 		})
 		.onDuplicateKeyUpdate({
 			set: {
 				handle: sql`coalesce(values(${schema.botCreators.handle}), ${schema.botCreators.handle})`,
 				name: sql`coalesce(values(${schema.botCreators.name}), ${schema.botCreators.name})`,
 				thumbnail_url: sql`coalesce(values(${schema.botCreators.thumbnail_url}), ${schema.botCreators.thumbnail_url})`
-			} as any
+			}
 		});
 	const [row] = await db
 		.select({ id: schema.botCreators.id })
@@ -6366,7 +7297,7 @@ async function listNotifiedCreatorsForBot(
 		GROUP BY c.id, c.platform, c.account_id, c.handle, c.checked_at
 		ORDER BY c.id
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: Number(r.id),
 		platform: r.platform as CreatorPlatform,
 		accountId: String(r.account_id),
@@ -6380,10 +7311,10 @@ async function markBotCreatorChecked(creatorId: number, profile?: Pick<CreatorPr
 	await db
 		.update(schema.botCreators)
 		.set({
-			checked_at: toMySQLDateTime() as any,
+			checked_at: toMySQLDateTime(),
 			...(profile?.handle ? { handle: profile.handle } : {}),
 			...(profile?.name ? { name: profile.name } : {}),
-			...(profile?.thumbnailUrl ? { thumbnail_url: profile.thumbnailUrl.slice(0, 512) } : {})
+			...(profile?.thumbnailUrl ? { thumbnail_url: profile.thumbnailUrl.slice(0, URL_COLUMN_MAX_LENGTH) } : {})
 		})
 		.where(eq(schema.botCreators.id, creatorId));
 }
@@ -6391,7 +7322,9 @@ async function markBotCreatorChecked(creatorId: number, profile?: Pick<CreatorPr
 async function recordBotCreatorContents(creatorId: number, contents: CreatorContent[]): Promise<(CreatorContent & { id: number })[]> {
 	await initializeDatabase();
 	const unique = [...new Map(contents.map((c) => [c.contentId, c])).values()];
-	if (unique.length === 0) return [];
+	if (unique.length === 0) {
+		return [];
+	}
 	const existing = await db
 		.select({ content_id: schema.botCreatorContents.content_id })
 		.from(schema.botCreatorContents)
@@ -6406,7 +7339,9 @@ async function recordBotCreatorContents(creatorId: number, contents: CreatorCont
 		);
 	const seen = new Set(existing.map((r) => r.content_id));
 	const fresh = unique.filter((c) => !seen.has(c.contentId));
-	if (fresh.length === 0) return [];
+	if (fresh.length === 0) {
+		return [];
+	}
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.botCreatorContents)
@@ -6416,13 +7351,13 @@ async function recordBotCreatorContents(creatorId: number, contents: CreatorCont
 				content_id: c.contentId,
 				type: c.type,
 				title: c.title,
-				url: c.url.slice(0, 512),
-				thumbnail_url: c.thumbnailUrl?.slice(0, 512) ?? null,
-				published_at: (c.publishedAt ? toMySQLDateTime(c.publishedAt) : null) as any,
-				created_at: now as any
+				url: c.url.slice(0, URL_COLUMN_MAX_LENGTH),
+				thumbnail_url: c.thumbnailUrl?.slice(0, URL_COLUMN_MAX_LENGTH) ?? null,
+				published_at: c.publishedAt ? toMySQLDateTime(c.publishedAt) : null,
+				created_at: now
 			}))
 		)
-		.onDuplicateKeyUpdate({ set: { content_id: sql`${schema.botCreatorContents.content_id}` } as any });
+		.onDuplicateKeyUpdate({ set: { content_id: sql`${schema.botCreatorContents.content_id}` } });
 	const rows = await db
 		.select({ id: schema.botCreatorContents.id, content_id: schema.botCreatorContents.content_id })
 		.from(schema.botCreatorContents)
@@ -6449,7 +7384,7 @@ async function listCreatorFollowerServerIds(botId: number, creatorId: number, ty
 		WHERE s.bot_id = ${Number(botId)} AND s.deleted_at IS NULL AND m.deleted_at IS NULL
 			AND n.creator_id = ${Number(creatorId)} AND FIND_IN_SET(${type}, n.types) > 0
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => Number(r.server_id));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => Number(r.server_id));
 }
 
 async function addServerCreatorContent(serverId: number, contentId: number): Promise<void> {
@@ -6457,14 +7392,14 @@ async function addServerCreatorContent(serverId: number, contentId: number): Pro
 	await db
 		.insert(schema.serverCreatorContents)
 		.values({ server_id: serverId, content_id: contentId })
-		.onDuplicateKeyUpdate({ set: { content_id: sql`${schema.serverCreatorContents.content_id}` } as any });
+		.onDuplicateKeyUpdate({ set: { content_id: sql`${schema.serverCreatorContents.content_id}` } });
 }
 
 async function markServerCreatorContentMessagePosted(serverId: number, contentId: number): Promise<void> {
 	await initializeDatabase();
 	await db
 		.update(schema.serverCreatorContents)
-		.set({ message_posted_at: toMySQLDateTime() as any })
+		.set({ message_posted_at: toMySQLDateTime() })
 		.where(and(eq(schema.serverCreatorContents.server_id, serverId), eq(schema.serverCreatorContents.content_id, contentId)));
 }
 
@@ -6525,8 +7460,8 @@ async function setServerMemberCreatorNotificationTypes(memberId: number, creator
 	const joined = cleaned.join(',');
 	await db
 		.insert(schema.serverMemberCreatorNotifications)
-		.values({ member_id: memberId, creator_id: creatorId, types: joined, created_at: toMySQLDateTime() as any })
-		.onDuplicateKeyUpdate({ set: { types: joined } as any });
+		.values({ member_id: memberId, creator_id: creatorId, types: joined, created_at: toMySQLDateTime() })
+		.onDuplicateKeyUpdate({ set: { types: joined } });
 	return 'saved';
 }
 
@@ -6556,7 +7491,9 @@ async function clearServerMemberCreatorNotifications(memberId: number): Promise<
 		.select({ id: schema.serverMemberCreatorNotifications.id })
 		.from(schema.serverMemberCreatorNotifications)
 		.where(eq(schema.serverMemberCreatorNotifications.member_id, memberId));
-	if (rows.length === 0) return 0;
+	if (rows.length === 0) {
+		return 0;
+	}
 	await db.delete(schema.serverMemberCreatorNotifications).where(eq(schema.serverMemberCreatorNotifications.member_id, memberId));
 	return rows.length;
 }
@@ -6569,7 +7506,7 @@ async function countServerCreatorNotifications(serverId: number, creatorId: numb
 		INNER JOIN server_members m ON m.id = n.member_id
 		WHERE m.server_id = ${Number(serverId)} AND m.deleted_at IS NULL AND n.creator_id = ${Number(creatorId)}
 	`);
-	const row = ((rows[0] as unknown as any[]) || [])[0];
+	const row = ((rows[0] as unknown as Record<string, unknown>[]) || [])[0];
 	return Number(row?.total) || 0;
 }
 
@@ -6607,13 +7544,17 @@ async function hasServerMemberClaimedDiscordQuest(serverId: number, memberId: nu
 		.from(schema.botDiscordQuest)
 		.where(eq(schema.botDiscordQuest.quest_id, questId))
 		.limit(1);
-	if (!botQuest) return false;
+	if (!botQuest) {
+		return false;
+	}
 	const [serverQuest] = await db
 		.select({ id: schema.serverDiscordQuest.id })
 		.from(schema.serverDiscordQuest)
 		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, botQuest.id)))
 		.limit(1);
-	if (!serverQuest) return false;
+	if (!serverQuest) {
+		return false;
+	}
 	const [row] = await db
 		.select({ id: schema.serverMemberDiscordQuest.id })
 		.from(schema.serverMemberDiscordQuest)
@@ -6635,21 +7576,25 @@ async function markServerMemberDiscordQuestClaimed(serverId: number, memberId: n
 		.from(schema.botDiscordQuest)
 		.where(eq(schema.botDiscordQuest.quest_id, questId))
 		.limit(1);
-	if (!botQuest) return;
+	if (!botQuest) {
+		return;
+	}
 	const [serverQuest] = await db
 		.select({ id: schema.serverDiscordQuest.id })
 		.from(schema.serverDiscordQuest)
 		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, botQuest.id)))
 		.limit(1);
-	if (!serverQuest) return;
+	if (!serverQuest) {
+		return;
+	}
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberDiscordQuest)
-		.values({ member_id: memberId, quest_id: serverQuest.id, reward_claimed: true, created_at: now as any })
-		.onDuplicateKeyUpdate({ set: { reward_claimed: true } as any });
+		.values({ member_id: memberId, quest_id: serverQuest.id, reward_claimed: true, created_at: now })
+		.onDuplicateKeyUpdate({ set: { reward_claimed: true } });
 }
 
-async function getChannelsForServer(serverId: any) {
+async function getChannelsForServer(serverId: unknown) {
 	await initializeDatabase();
 	return db
 		.select()
@@ -6658,7 +7603,7 @@ async function getChannelsForServer(serverId: any) {
 		.orderBy(asc(schema.serverChannels.position), asc(schema.serverChannels.name));
 }
 
-async function getCategoriesForServer(serverId: any) {
+async function getCategoriesForServer(serverId: unknown) {
 	await initializeDatabase();
 	return db
 		.select()
@@ -6667,7 +7612,7 @@ async function getCategoriesForServer(serverId: any) {
 		.orderBy(asc(schema.serverCategories.position));
 }
 
-export async function getAFKStatus(serverId: any, discordMemberId: string) {
+export async function getAFKStatus(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({
@@ -6680,36 +7625,35 @@ export async function getAFKStatus(serverId: any, discordMemberId: string) {
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
 	const afkData = rows[0];
-	if (!afkData) return null;
-
-	let timestamp: number;
-	if (afkData.created_at instanceof Date) {
-		timestamp = (afkData.created_at as Date).getTime();
-	} else {
-		const parsed = parseMySQLDateTimeUtc(afkData.created_at as any);
-		timestamp = parsed ? parsed.getTime() : Date.now();
+	if (!afkData) {
+		return null;
 	}
+
+	const createdAt = afkData.created_at instanceof Date ? afkData.created_at : parseMySQLDateTimeUtc(afkData.created_at);
+	const timestamp = createdAt ? createdAt.getTime() : Date.now();
 	return { message: afkData.message || 'Away', timestamp, serverDisplayName: afkData.server_display_name };
 }
 
-export async function setAFKStatus(serverId: any, discordMemberId: string, afkData: any) {
+export async function setAFKStatus(serverId: number | string, discordMemberId: string, afkData: { message?: string | null }) {
 	await initializeDatabase();
 	const memberRows = await db
 		.select({ id: schema.serverMembers.id })
 		.from(schema.serverMembers)
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	if (!memberRows[0]) return null;
+	if (!memberRows[0]) {
+		return null;
+	}
 
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberAfks)
-		.values({ member_id: memberRows[0].id, message: afkData.message || 'Away', created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { message: afkData.message || 'Away', updated_at: now as any } });
+		.values({ member_id: memberRows[0].id, message: afkData.message || 'Away', created_at: now, updated_at: now })
+		.onDuplicateKeyUpdate({ set: { message: afkData.message || 'Away', updated_at: now } });
 	return getAFKStatus(serverId, discordMemberId);
 }
 
-export async function removeAFKStatus(serverId: any, discordMemberId: string) {
+export async function removeAFKStatus(serverId: number | string, discordMemberId: string) {
 	await initializeDatabase();
 	await db.execute(sql`
 		DELETE sma FROM server_member_afks sma
@@ -6719,7 +7663,7 @@ export async function removeAFKStatus(serverId: any, discordMemberId: string) {
 	return true;
 }
 
-export async function getMemberTheme(memberId: any) {
+export async function getMemberTheme(memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({
@@ -6736,7 +7680,7 @@ export async function getMemberTheme(memberId: any) {
 	return rows[0] ?? null;
 }
 
-export async function getMemberThemesForServer(serverId: any) {
+export async function getMemberThemesForServer(serverId: number | string) {
 	await initializeDatabase();
 	return db
 		.select({
@@ -6754,18 +7698,30 @@ export async function getMemberThemesForServer(serverId: any) {
 }
 
 export async function setMemberTheme(
-	memberId: any,
+	memberId: number | string,
 	updates: { image?: string | null; accentColor?: string | null; accentAuto?: boolean; effect?: string; effectSeed?: number; effectEnabled?: boolean }
 ) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const set: Record<string, any> = { updated_at: now };
-	if (updates.image !== undefined) set.image = updates.image;
-	if (updates.accentColor !== undefined) set.accent_color = updates.accentColor;
-	if (updates.accentAuto !== undefined) set.accent_auto = updates.accentAuto;
-	if (updates.effect !== undefined) set.effect = updates.effect;
-	if (updates.effectSeed !== undefined) set.effect_seed = updates.effectSeed;
-	if (updates.effectEnabled !== undefined) set.effect_enabled = updates.effectEnabled;
+	const set: Record<string, unknown> = { updated_at: now };
+	if (updates.image !== undefined) {
+		set.image = updates.image;
+	}
+	if (updates.accentColor !== undefined) {
+		set.accent_color = updates.accentColor;
+	}
+	if (updates.accentAuto !== undefined) {
+		set.accent_auto = updates.accentAuto;
+	}
+	if (updates.effect !== undefined) {
+		set.effect = updates.effect;
+	}
+	if (updates.effectSeed !== undefined) {
+		set.effect_seed = updates.effectSeed;
+	}
+	if (updates.effectEnabled !== undefined) {
+		set.effect_enabled = updates.effectEnabled;
+	}
 
 	await db
 		.insert(schema.serverMemberThemes)
@@ -6777,15 +7733,15 @@ export async function setMemberTheme(
 			effect: updates.effect ?? 'none',
 			effect_seed: updates.effectSeed ?? 0,
 			effect_enabled: updates.effectEnabled ?? true,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		})
 		.onDuplicateKeyUpdate({ set });
 
 	return getMemberTheme(memberId);
 }
 
-export async function clearMemberTheme(memberId: any) {
+export async function clearMemberTheme(memberId: number | string) {
 	await initializeDatabase();
 	const existing = await getMemberTheme(memberId).catch(() => null);
 
@@ -6796,7 +7752,7 @@ export async function clearMemberTheme(memberId: any) {
 
 	await db
 		.update(schema.serverMemberThemes)
-		.set({ image: null, accent_color: null, accent_auto: true, updated_at: toMySQLDateTime() as any })
+		.set({ image: null, accent_color: null, accent_auto: true, updated_at: toMySQLDateTime() })
 		.where(eq(schema.serverMemberThemes.member_id, Number(memberId)));
 	return true;
 }
@@ -6804,7 +7760,9 @@ export async function clearMemberTheme(memberId: any) {
 export async function serversNeedSync(botId: number) {
 	await initializeDatabase();
 	const servers = await getServersForBot(botId);
-	if (!servers || servers.length === 0) return true;
+	if (!servers || servers.length === 0) {
+		return true;
+	}
 
 	for (const server of servers) {
 		const [cats, chans, roles, members] = await Promise.all([
@@ -6816,16 +7774,27 @@ export async function serversNeedSync(botId: number) {
 				.from(schema.serverMembers)
 				.where(and(eq(schema.serverMembers.server_id, server.id), isNull(schema.serverMembers.deleted_at)))
 		]);
-		if (!cats[0].count || !chans[0].count || !roles[0].count || !members[0].count) return true;
+		if (!cats[0].count || !chans[0].count || !roles[0].count || !members[0].count) {
+			return true;
+		}
 	}
 	return false;
 }
 
-export async function createGiveaway(giveawayData: any) {
+export async function createGiveaway(giveawayData: {
+	member_id: number;
+	title: string;
+	prize: string;
+	duration_minutes: number;
+	allowed_roles?: string[] | null;
+	multiple_entries_allowed?: boolean;
+	winner_count?: number;
+	min_invites?: number;
+}) {
 	await initializeDatabase();
 	const createdAt = new Date();
 	const durationMin = Number(giveawayData.duration_minutes);
-	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * 60_000);
+	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * MINUTE_MS);
 
 	const result = await db.insert(schema.serverMemberGiveaways).values({
 		member_id: giveawayData.member_id,
@@ -6837,14 +7806,14 @@ export async function createGiveaway(giveawayData: any) {
 		winner_count: giveawayData.winner_count || 1,
 		min_invites: Math.max(0, Math.floor(Number(giveawayData.min_invites) || 0)),
 		status: 'active',
-		ends_at: endsAt as any,
-		created_at: createdAt as any,
-		updated_at: createdAt as any
+		ends_at: endsAt,
+		created_at: createdAt,
+		updated_at: createdAt
 	});
-	return getGiveawayById((result[0] as any).insertId);
+	return getGiveawayById(result[0].insertId);
 }
 
-export async function updateGiveawayMessageId(giveawayId: any, discordMessageId: string) {
+export async function updateGiveawayMessageId(giveawayId: number | string, discordMessageId: string) {
 	await initializeDatabase();
 	await db
 		.update(schema.serverMemberGiveaways)
@@ -6862,11 +7831,11 @@ export async function getEndedGiveaways() {
 	const now = new Date();
 	return rows
 		.filter((r) => {
-			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at as any);
+			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at);
 			return endsAt != null && endsAt.getTime() <= now.getTime();
 		})
 		.map((r) => {
-			const g = { ...r.giveaway, server_id: r.server_id } as any;
+			const g = { ...r.giveaway, server_id: r.server_id };
 			if (g.allowed_roles) {
 				try {
 					g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
@@ -6878,7 +7847,7 @@ export async function getEndedGiveaways() {
 		});
 }
 
-export async function listActiveGiveawaysForServer(serverId: any) {
+export async function listActiveGiveawaysForServer(serverId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ giveaway: schema.serverMemberGiveaways, host_id: schema.serverMembers.discord_member_id })
@@ -6890,7 +7859,7 @@ export async function listActiveGiveawaysForServer(serverId: any) {
 	const now = Date.now();
 	return rows
 		.map((r) => {
-			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at as any);
+			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at);
 			return {
 				id: r.giveaway.id,
 				title: r.giveaway.title,
@@ -6899,7 +7868,9 @@ export async function listActiveGiveawaysForServer(serverId: any) {
 				multiple_entries_allowed: r.giveaway.multiple_entries_allowed === true,
 				allowed_roles: (() => {
 					const raw = r.giveaway.allowed_roles;
-					if (!raw) return [];
+					if (!raw) {
+						return [];
+					}
 					try {
 						return typeof raw === 'string' ? JSON.parse(raw) : raw;
 					} catch {
@@ -6914,7 +7885,7 @@ export async function listActiveGiveawaysForServer(serverId: any) {
 		.filter((g) => g.ends_at_ms == null || g.ends_at_ms > now);
 }
 
-export async function countGiveawayEntrants(giveawayId: any) {
+export async function countGiveawayEntrants(giveawayId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ n: sql<number>`COUNT(DISTINCT ${schema.serverMemberGiveawayEntries.member_id})` })
@@ -6923,7 +7894,7 @@ export async function countGiveawayEntrants(giveawayId: any) {
 	return Number(rows[0]?.n) || 0;
 }
 
-export async function getGiveawayById(giveawayId: any) {
+export async function getGiveawayById(giveawayId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ giveaway: schema.serverMemberGiveaways, server_id: schema.serverMembers.server_id })
@@ -6931,8 +7902,10 @@ export async function getGiveawayById(giveawayId: any) {
 		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
 		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)))
 		.limit(1);
-	if (!rows[0]) return null;
-	const g = { ...rows[0].giveaway, server_id: rows[0].server_id } as any;
+	if (!rows[0]) {
+		return null;
+	}
+	const g = { ...rows[0].giveaway, server_id: rows[0].server_id };
 	if (g.allowed_roles) {
 		try {
 			g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
@@ -6940,11 +7913,13 @@ export async function getGiveawayById(giveawayId: any) {
 			g.allowed_roles = [];
 		}
 	}
-	if (g.ends_at) g.ends_at = parseMySQLDateTimeUtc(g.ends_at) ?? g.ends_at;
+	if (g.ends_at) {
+		g.ends_at = parseMySQLDateTimeUtc(g.ends_at) ?? g.ends_at;
+	}
 	return g;
 }
 
-export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
+export async function getActiveGiveawayByMember(serverId: number | string, memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ giveaway: schema.serverMemberGiveaways })
@@ -6958,8 +7933,10 @@ export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
 			)
 		)
 		.limit(1);
-	if (!rows[0]) return null;
-	const g = { ...rows[0].giveaway } as any;
+	if (!rows[0]) {
+		return null;
+	}
+	const g = { ...rows[0].giveaway };
 	if (g.allowed_roles) {
 		try {
 			g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
@@ -6967,26 +7944,35 @@ export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
 			g.allowed_roles = [];
 		}
 	}
-	if (g.ends_at) g.ends_at = parseMySQLDateTimeUtc(g.ends_at) ?? g.ends_at;
+	if (g.ends_at) {
+		g.ends_at = parseMySQLDateTimeUtc(g.ends_at) ?? g.ends_at;
+	}
 	return g;
 }
 
-export async function addGiveawayEntry(giveawayId: any, memberId: any, increment = true) {
+export async function addGiveawayEntry(giveawayId: number | string, memberId: number | string) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	if (increment) {
-		await db.execute(sql`
-			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
-			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
-			ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
-		`);
-	} else {
-		await db.execute(sql`
-			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
-			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
-			ON DUPLICATE KEY UPDATE updated_at = ${now}
-		`);
-	}
+	await db.execute(sql`
+		INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+		VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
+	`);
+	return getGiveawayEntry(giveawayId, memberId);
+}
+
+export async function enterGiveawayOnce(giveawayId: number | string, memberId: number | string) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+		VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE updated_at = ${now}
+	`);
+	return getGiveawayEntry(giveawayId, memberId);
+}
+
+async function getGiveawayEntry(giveawayId: number | string, memberId: number | string) {
 	const rows = await db
 		.select()
 		.from(schema.serverMemberGiveawayEntries)
@@ -6995,7 +7981,7 @@ export async function addGiveawayEntry(giveawayId: any, memberId: any, increment
 	return rows[0] || null;
 }
 
-export async function getGiveawayEntries(giveawayId: any) {
+export async function getGiveawayEntries(giveawayId: number | string) {
 	await initializeDatabase();
 	return db
 		.select({ entry: schema.serverMemberGiveawayEntries, discord_member_id: schema.serverMembers.discord_member_id })
@@ -7006,32 +7992,36 @@ export async function getGiveawayEntries(giveawayId: any) {
 		.then((rows) => rows.map((r) => ({ ...r.entry, discord_member_id: r.discord_member_id })));
 }
 
-export async function getRandomGiveawayWinners(giveawayId: any, winnerCount: number) {
+export async function getRandomGiveawayWinners(giveawayId: number | string, winnerCount: number) {
 	await initializeDatabase();
 	const entries = await getGiveawayEntries(giveawayId);
-	if (entries.length === 0) return [];
+	if (entries.length === 0) {
+		return [];
+	}
 
 	const crypto = await import('crypto');
 	const shuffledEntries = [...entries];
-	for (let round = 0; round < 10; round++) {
+	for (let round = 0; round < GIVEAWAY_SHUFFLE_ROUNDS; round++) {
 		for (let i = shuffledEntries.length - 1; i > 0; i--) {
 			const j = crypto.randomInt(0, i + 1);
 			[shuffledEntries[i], shuffledEntries[j]] = [shuffledEntries[j], shuffledEntries[i]];
 		}
 	}
 
-	const weighted: any[] = [];
+	const weighted: typeof shuffledEntries = [];
 	for (const entry of shuffledEntries) {
-		for (let i = 0; i < (entry.entry_count ?? 1); i++) weighted.push(entry);
+		for (let i = 0; i < (entry.entry_count ?? 1); i++) {
+			weighted.push(entry);
+		}
 	}
-	for (let round = 0; round < 10; round++) {
+	for (let round = 0; round < GIVEAWAY_SHUFFLE_ROUNDS; round++) {
 		for (let i = weighted.length - 1; i > 0; i--) {
 			const j = crypto.randomInt(0, i + 1);
 			[weighted[i], weighted[j]] = [weighted[j], weighted[i]];
 		}
 	}
 
-	const winners: any[] = [];
+	const winners: typeof shuffledEntries = [];
 	const used = new Set();
 	const available = [...weighted];
 	while (winners.length < winnerCount && available.length > 0) {
@@ -7042,13 +8032,15 @@ export async function getRandomGiveawayWinners(giveawayId: any, winnerCount: num
 			used.add(selected.member_id);
 		}
 		for (let i = available.length - 1; i >= 0; i--) {
-			if (available[i].member_id === selected.member_id) available.splice(i, 1);
+			if (available[i].member_id === selected.member_id) {
+				available.splice(i, 1);
+			}
 		}
 	}
 	return winners;
 }
 
-export async function markGiveawayEnded(giveawayId: any) {
+export async function markGiveawayEnded(giveawayId: number | string) {
 	await initializeDatabase();
 	await db
 		.update(schema.serverMemberGiveaways)
@@ -7056,7 +8048,7 @@ export async function markGiveawayEnded(giveawayId: any) {
 		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
-export async function markGiveawayEndedForce(giveawayId: any) {
+export async function markGiveawayEndedForce(giveawayId: number | string) {
 	await initializeDatabase();
 	await db
 		.update(schema.serverMemberGiveaways)
@@ -7064,16 +8056,18 @@ export async function markGiveawayEndedForce(giveawayId: any) {
 		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
-export async function markGiveawayWinners(giveawayId: any, winnerMemberIds: any[]) {
+export async function markGiveawayWinners(giveawayId: unknown, winnerMemberIds: number[]) {
 	await initializeDatabase();
-	if (!winnerMemberIds?.length) return;
+	if (!winnerMemberIds?.length) {
+		return;
+	}
 	await db
 		.update(schema.serverMemberGiveawayEntries)
 		.set({ is_winner: true })
 		.where(and(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverMemberGiveawayEntries.member_id, winnerMemberIds)));
 }
 
-export async function getStaffRating(serverId: any, staffMemberId: any) {
+export async function getStaffRating(serverId: number | string, staffMemberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
@@ -7084,14 +8078,16 @@ export async function getStaffRating(serverId: any, staffMemberId: any) {
 	return rows[0]?.server_member_staff_ratings || null;
 }
 
-export async function upsertStaffRating(serverId: any, staffMemberId: any, ratingValue: number, totalReports: number) {
+type RatingTotals = { ratingValue: number | string; totalReports: number };
+
+export async function upsertStaffRating(serverId: number | string, staffMemberId: number | string, { ratingValue, totalReports }: RatingTotals) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const existing = await getStaffRating(serverId, staffMemberId);
 	if (existing) {
 		await db
 			.update(schema.serverMemberStaffRatings)
-			.set({ current_rating: String(ratingValue), total_reports: totalReports, updated_at: now as any })
+			.set({ current_rating: String(ratingValue), total_reports: totalReports, updated_at: now })
 			.where(eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)));
 	} else {
 		await db.insert(schema.serverMemberStaffRatings).values({
@@ -7099,21 +8095,18 @@ export async function upsertStaffRating(serverId: any, staffMemberId: any, ratin
 			role_id: null,
 			current_rating: String(ratingValue),
 			total_reports: totalReports,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		});
 	}
 	return getStaffRating(serverId, staffMemberId);
 }
 
+type StaffReportInput = { reporterMemberId: unknown; reportedStaffId: unknown; rating: number; category: string; description: string; isAnonymous: boolean };
+
 export async function createStaffRatingReport(
-	_serverId: any,
-	reporterMemberId: any,
-	reportedStaffId: any,
-	rating: number,
-	category: string,
-	description: string,
-	isAnonymous: boolean
+	_serverId: unknown,
+	{ reporterMemberId, reportedStaffId, rating, category, description, isAnonymous }: StaffReportInput
 ) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -7125,12 +8118,12 @@ export async function createStaffRatingReport(
 		description,
 		is_anonymous: isAnonymous,
 		status: 'pending',
-		reported_at: now as any
+		reported_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
-export async function getLastStaffRatingReport(serverId: any, reporterMemberId: any, reportedStaffId: any) {
+export async function getLastStaffRatingReport(serverId: number | string, reporterMemberId: number | string, reportedStaffId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ report: schema.serverMemberStaffRatingReviews })
@@ -7148,7 +8141,7 @@ export async function getLastStaffRatingReport(serverId: any, reporterMemberId: 
 	return rows[0]?.report || null;
 }
 
-export async function getStaffRatingAggregate(serverId: any, staffMemberId: any) {
+export async function getStaffRatingAggregate(serverId: number | string, staffMemberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ total_reports: count(), average_rating: avg(schema.serverMemberStaffRatingReviews.rating) })
@@ -7164,7 +8157,25 @@ export async function getStaffRatingAggregate(serverId: any, staffMemberId: any)
 	return { total_reports: rows[0]?.total_reports || 0, average_rating: rows[0]?.average_rating || 0 };
 }
 
-export async function getStaffReportById(serverId: any, reportId: any) {
+type StaffReportSqlRow = {
+	id: number;
+	reporter_member_id: number;
+	reported_staff_id: number;
+	rating: number;
+	category: string;
+	description: string | null;
+	is_anonymous: number | null;
+	status: 'pending' | 'approved' | 'rejected' | null;
+	reviewed_by_member_id: number | null;
+	reviewed_at: string | null;
+	review_reason: string | null;
+	reported_at: string;
+	reporter_discord_id: string;
+	staff_discord_id: string;
+	reviewer_discord_id: string | null;
+};
+
+export async function getStaffReportById(serverId: number | string, reportId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sr.*, reporter.discord_member_id AS reporter_discord_id, staff.discord_member_id AS staff_discord_id, reviewer.discord_member_id AS reviewer_discord_id
@@ -7175,27 +8186,29 @@ export async function getStaffReportById(serverId: any, reportId: any) {
 		WHERE reporter.server_id = ${Number(serverId)} AND sr.id = ${Number(reportId)}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (rows[0] as unknown as StaffReportSqlRow[])[0] || null;
 }
 
-export async function updateStaffReportStatus(reportId: any, status: string, reviewedByMemberId?: any, reviewReason?: string | null) {
+export async function updateStaffReportStatus(reportId: number | string, status: string, { reviewedByMemberId, reviewReason }: ReviewBy = {}) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const payload: Record<string, unknown> = {
-		status: status as any,
+		status: status,
 		reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
-		reviewed_at: now as any
+		reviewed_at: now
 	};
 	if (reviewReason !== undefined) {
 		payload.review_reason = reviewReason;
 	}
 	await db
 		.update(schema.serverMemberStaffRatingReviews)
-		.set(payload as any)
+		.set(payload)
 		.where(eq(schema.serverMemberStaffRatingReviews.id, Number(reportId)));
 }
 
-export async function createContentCreatorApplication(_serverId: any, memberId: any, tiktokUsername: string, reason: string) {
+type CreatorApplicationInput = { memberId: unknown; tiktokUsername: string; reason: string };
+
+export async function createContentCreatorApplication(_serverId: unknown, { memberId, tiktokUsername, reason }: CreatorApplicationInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverMemberContentCreatorReviews).values({
@@ -7203,12 +8216,12 @@ export async function createContentCreatorApplication(_serverId: any, memberId: 
 		tiktok_username: tiktokUsername,
 		reason,
 		status: 'pending',
-		submitted_at: now as any
+		submitted_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
-export async function getLastContentCreatorApplication(serverId: any, memberId: any) {
+export async function getLastContentCreatorApplication(serverId: number | string, memberId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ application: schema.serverMemberContentCreatorReviews })
@@ -7227,7 +8240,9 @@ export async function getContentCreatorTiktokConflict(normalizedUsername: string
 		.toLowerCase()
 		.replace(/^@+/, '');
 	const ex = String(excludeDiscordMemberId || '').trim();
-	if (!u || !ex) return null;
+	if (!u || !ex) {
+		return null;
+	}
 
 	const tiktokMatch = sql`LOWER(TRIM(REPLACE(${schema.serverMemberContentCreatorReviews.tiktok_username}, '@', ''))) = ${u}`;
 
@@ -7235,7 +8250,7 @@ export async function getContentCreatorTiktokConflict(normalizedUsername: string
 		.select({ discord_id: schema.serverMembers.discord_member_id })
 		.from(schema.serverMemberContentCreatorReviews)
 		.innerJoin(schema.serverMembers, eq(schema.serverMemberContentCreatorReviews.member_id, schema.serverMembers.id))
-		.where(and(tiktokMatch, ne(schema.serverMembers.discord_member_id, ex), eq(schema.serverMemberContentCreatorReviews.status, 'pending' as any)))
+		.where(and(tiktokMatch, ne(schema.serverMembers.discord_member_id, ex), eq(schema.serverMemberContentCreatorReviews.status, 'pending')))
 		.limit(1);
 
 	const pend = pendRows[0];
@@ -7264,7 +8279,21 @@ export async function getContentCreatorTiktokConflict(normalizedUsername: string
 	return null;
 }
 
-export async function getContentCreatorApplicationById(serverId: any, applicationId: any) {
+type ContentCreatorReviewSqlRow = {
+	id: number;
+	member_id: number;
+	tiktok_username: string;
+	reason: string;
+	status: 'pending' | 'approved' | 'rejected' | null;
+	reviewed_by_member_id: number | null;
+	reviewed_at: string | null;
+	review_reason: string | null;
+	submitted_at: string;
+	applicant_discord_id: string;
+	reviewer_discord_id: string | null;
+};
+
+export async function getContentCreatorApplicationById(serverId: number | string, applicationId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT cca.*, applicant.discord_member_id AS applicant_discord_id, reviewer.discord_member_id AS reviewer_discord_id
@@ -7274,32 +8303,33 @@ export async function getContentCreatorApplicationById(serverId: any, applicatio
 		WHERE applicant.server_id = ${Number(serverId)} AND cca.id = ${Number(applicationId)}
 		LIMIT 1
 	`);
-	return (rows[0] as unknown as any[])[0] || null;
+	return (rows[0] as unknown as ContentCreatorReviewSqlRow[])[0] || null;
 }
 
+type ReviewBy = { reviewedByMemberId?: number | string; reviewReason?: string | null };
+
 export async function updateContentCreatorApplicationStatus(
-	applicationId: any,
+	applicationId: number | string,
 	status: 'pending' | 'approved' | 'rejected',
-	reviewedByMemberId?: any,
-	reviewReason?: string | null
+	{ reviewedByMemberId, reviewReason }: ReviewBy = {}
 ) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const payload: Record<string, unknown> = {
-		status: status as any,
+		status: status,
 		reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
-		reviewed_at: now as any
+		reviewed_at: now
 	};
 	if (reviewReason !== undefined) {
 		payload.review_reason = reviewReason;
 	}
 	await db
 		.update(schema.serverMemberContentCreatorReviews)
-		.set(payload as any)
+		.set(payload)
 		.where(eq(schema.serverMemberContentCreatorReviews.id, Number(applicationId)));
 }
 
-export async function getApprovedContentCreators(serverId: any) {
+export async function getApprovedContentCreators(serverId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT cca.id, cca.member_id, cca.tiktok_username, cca.reviewed_at, sm.discord_member_id
@@ -7316,10 +8346,10 @@ export async function getApprovedContentCreators(serverId: any) {
 		  )
 		ORDER BY cca.reviewed_at DESC, cca.id DESC
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as { id: number; member_id: number; tiktok_username: string; reviewed_at: string | null; discord_member_id: string }[]) || [];
 }
 
-export async function getPendingContentCreatorApplications(serverId: any) {
+export async function getPendingContentCreatorApplications(serverId: number | string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT cca.id, cca.member_id, cca.tiktok_username, cca.submitted_at, sm.discord_member_id
@@ -7329,7 +8359,7 @@ export async function getPendingContentCreatorApplications(serverId: any) {
 		  AND cca.status = 'pending'
 		ORDER BY cca.submitted_at ASC, cca.id ASC
 	`);
-	return (rows[0] as unknown as any[]) || [];
+	return (rows[0] as unknown as { id: number; member_id: number; tiktok_username: string; submitted_at: string; discord_member_id: string }[]) || [];
 }
 
 export async function createContentCreatorStream(memberId: number, roomId: string | null) {
@@ -7338,11 +8368,11 @@ export async function createContentCreatorStream(memberId: number, roomId: strin
 	const result = await db.insert(schema.serverMemberContentCreatorStreams).values({
 		member_id: Number(memberId),
 		room_id: roomId || null,
-		status: 'active' as any,
-		started_at: now as any,
-		updated_at: now as any
+		status: 'active',
+		started_at: now,
+		updated_at: now
 	});
-	return Number((result[0] as any).insertId);
+	return Number(result[0].insertId);
 }
 
 export async function endContentCreatorStream(streamId: number, status: 'ended' | 'error', errorMessage: string | null = null) {
@@ -7351,9 +8381,9 @@ export async function endContentCreatorStream(streamId: number, status: 'ended' 
 	await db
 		.update(schema.serverMemberContentCreatorStreams)
 		.set({
-			status: status as any,
-			ended_at: now as any,
-			updated_at: now as any,
+			status: status,
+			ended_at: now,
+			updated_at: now,
 			error_message: errorMessage
 		})
 		.where(eq(schema.serverMemberContentCreatorStreams.id, Number(streamId)));
@@ -7369,7 +8399,9 @@ export async function incrementContentCreatorStreamCounters(
 	const gift = Math.max(0, Math.floor(Number(delta.gift) || 0));
 	const follow = Math.max(0, Math.floor(Number(delta.follow) || 0));
 	const share = Math.max(0, Math.floor(Number(delta.share) || 0));
-	if (!chat && !like && !gift && !follow && !share) return;
+	if (!chat && !like && !gift && !follow && !share) {
+		return;
+	}
 	const now = toMySQLDateTime();
 	await db.execute(sql`
 		UPDATE server_member_content_creator_streams
@@ -7387,7 +8419,9 @@ export async function incrementContentCreatorStreamCounters(
 export async function updateContentCreatorStreamPeakViewers(streamId: number, candidate: number) {
 	await initializeDatabase();
 	const n = Math.floor(Number(candidate));
-	if (!Number.isFinite(n) || n < 0) return;
+	if (!Number.isFinite(n) || n < 0) {
+		return;
+	}
 	const now = toMySQLDateTime();
 	await db.execute(sql`
 		UPDATE server_member_content_creator_streams
@@ -7404,35 +8438,37 @@ export async function insertContentCreatorStreamLog(streamId: number, eventType:
 	let jsonPayload: Record<string, unknown> | null = null;
 	try {
 		const s = JSON.stringify(payload, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
-		if (s.length > 60000) {
-			jsonPayload = { _truncated: true, length: s.length, preview: s.slice(0, 8000) };
+		if (s.length > STREAM_LOG_PAYLOAD_MAX_LENGTH) {
+			jsonPayload = { _truncated: true, length: s.length, preview: s.slice(0, STREAM_LOG_PREVIEW_LENGTH) };
 		} else {
 			jsonPayload = JSON.parse(s) as Record<string, unknown>;
 		}
 	} catch {
-		jsonPayload = { _raw: String(payload).slice(0, 8000) };
+		jsonPayload = { _raw: String(payload).slice(0, STREAM_LOG_PREVIEW_LENGTH) };
 	}
 	await db.insert(schema.serverMemberContentCreatorStreamLogs).values({
 		stream_id: Number(streamId),
-		event_type: String(eventType).slice(0, 64),
-		occurred_at: now as any,
-		payload: jsonPayload as any
+		event_type: String(eventType).slice(0, STREAM_LOG_EVENT_TYPE_MAX_LENGTH),
+		occurred_at: now,
+		payload: jsonPayload
 	});
 }
 
-export async function createFeedback(_serverId: any, memberId: any, description: string, isAnonymous: boolean) {
+type FeedbackInput = { memberId: unknown; description: string; isAnonymous: boolean };
+
+export async function createFeedback(_serverId: unknown, { memberId, description, isAnonymous }: FeedbackInput) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverFeedback).values({
 		member_id: Number(memberId),
 		description,
 		is_anonymous: isAnonymous,
-		submitted_at: now as any
+		submitted_at: now
 	});
-	return (result[0] as any).insertId;
+	return result[0].insertId;
 }
 
-export async function getFeedback(serverId: any, feedbackId: any) {
+export async function getFeedback(serverId: number | string, feedbackId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ feedback: schema.serverFeedback })
@@ -7443,9 +8479,9 @@ export async function getFeedback(serverId: any, feedbackId: any) {
 	return rows[0]?.feedback || null;
 }
 
-export async function getFeedbackByServer(serverId: any, limit = 100, offset = 0) {
+export async function getFeedbackByServer(serverId: number | string, limit = FEEDBACK_DEFAULT_LIMIT, offset = 0) {
 	await initializeDatabase();
-	const lim = Math.min(500, Math.max(1, parseInt(String(limit), 10) || 100));
+	const lim = Math.min(FEEDBACK_MAX_LIMIT, Math.max(1, parseInt(String(limit), 10) || FEEDBACK_DEFAULT_LIMIT));
 	const off = Math.max(0, parseInt(String(offset), 10) || 0);
 	return db
 		.select({ feedback: schema.serverFeedback })
@@ -7458,7 +8494,7 @@ export async function getFeedbackByServer(serverId: any, limit = 100, offset = 0
 		.then((rows) => rows.map((r) => r.feedback));
 }
 
-export async function getFeedbackCount(serverId: any) {
+export async function getFeedbackCount(serverId: number | string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ count: count() })
@@ -7468,22 +8504,26 @@ export async function getFeedbackCount(serverId: any) {
 	return rows[0]?.count || 0;
 }
 
-export async function markMemberRatingRole(serverId: any, staffMemberId: any, discordRoleId: string) {
+export async function markMemberRatingRole(serverId: number | string, staffMemberId: number | string, discordRoleId: string) {
 	await initializeDatabase();
-	if (!discordRoleId) return;
+	if (!discordRoleId) {
+		return;
+	}
 	const roleRows = await db
 		.select({ id: schema.serverRoles.id })
 		.from(schema.serverRoles)
 		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
 		.limit(1);
-	if (!roleRows[0]) return;
+	if (!roleRows[0]) {
+		return;
+	}
 	const now = toMySQLDateTime();
 
 	const existing = await getStaffRating(serverId, staffMemberId);
 	if (existing) {
 		await db
 			.update(schema.serverMemberStaffRatings)
-			.set({ role_id: roleRows[0].id, updated_at: now as any })
+			.set({ role_id: roleRows[0].id, updated_at: now })
 			.where(eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)));
 	} else {
 		await db.insert(schema.serverMemberStaffRatings).values({
@@ -7491,13 +8531,13 @@ export async function markMemberRatingRole(serverId: any, staffMemberId: any, di
 			role_id: roleRows[0].id,
 			current_rating: '0',
 			total_reports: 0,
-			created_at: now as any,
-			updated_at: now as any
+			created_at: now,
+			updated_at: now
 		});
 	}
 }
 
-export async function clearMemberRatingRole(staffMemberId: any) {
+export async function clearMemberRatingRole(staffMemberId: number | string) {
 	await initializeDatabase();
 	await db
 		.update(schema.serverMemberStaffRatings)
@@ -7505,7 +8545,7 @@ export async function clearMemberRatingRole(staffMemberId: any) {
 		.where(eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)));
 }
 
-export async function markMemberContentCreatorRole(serverId: any, memberId: any, memberDiscordRoleIds: string[]) {
+export async function markMemberContentCreatorRole(serverId: number | string, memberId: number | string, memberDiscordRoleIds: string[]) {
 	await initializeDatabase();
 	const ids = Array.isArray(memberDiscordRoleIds) ? memberDiscordRoleIds.filter(Boolean) : [];
 	const mid = Number(memberId);
@@ -7514,7 +8554,7 @@ export async function markMemberContentCreatorRole(serverId: any, memberId: any,
 	await refreshMemberIsContentCreator(mid, sid, ids);
 }
 
-export async function clearMemberContentCreatorRole(serverId: any, memberId: any, memberDiscordRoleIds: string[]) {
+export async function clearMemberContentCreatorRole(serverId: number | string, memberId: number | string, memberDiscordRoleIds: string[]) {
 	await initializeDatabase();
 	const ids = Array.isArray(memberDiscordRoleIds) ? memberDiscordRoleIds.filter(Boolean) : [];
 	const mid = Number(memberId);
@@ -7523,7 +8563,7 @@ export async function clearMemberContentCreatorRole(serverId: any, memberId: any
 	await refreshMemberIsContentCreator(mid, sid, ids);
 }
 
-export async function getAllStaffRatings(serverId: any) {
+export async function getAllStaffRatings(serverId: number | string) {
 	await initializeDatabase();
 	return db
 		.select({
@@ -7548,7 +8588,7 @@ export async function getAllStaffRatings(serverId: any) {
 		.orderBy(desc(schema.serverMemberStaffRatings.current_rating), asc(schema.serverMemberStaffRatings.created_at));
 }
 
-export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
+export async function getStaffRatingRole(serverId: number | string, staffMemberId: number | string | undefined) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ discord_role_id: schema.serverRoles.discord_role_id })
@@ -7566,6 +8606,24 @@ export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
 	return rows[0]?.discord_role_id || null;
 }
 
+type ModerationCaseRow = {
+	id: string;
+	case_number: number;
+	action: string;
+	reason: string | null;
+	duration_seconds: number | null;
+	expires_at: string | null;
+	active: number;
+	source: string;
+	revoked_at: string | null;
+	created_at: string;
+	discord_member_id: string;
+	member_name: string | null;
+	member_avatar: string | null;
+	staff_discord_id: string | null;
+	staff_name: string | null;
+};
+
 export async function createModerationLog(data: {
 	server_id: number;
 	member_id: number;
@@ -7582,7 +8640,7 @@ export async function createModerationLog(data: {
 		FROM server_member_moderation_logs l
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${data.server_id}
-	`)) as any;
+	`)) as unknown as SelectResult<{ next: number | string }>;
 	const caseNumber = Number(rows?.[0]?.next ?? 1);
 	await db.execute(sql`
 		INSERT INTO server_member_moderation_logs
@@ -7606,8 +8664,8 @@ export async function getActiveModerationCases(serverId: number | string) {
 		WHERE m.server_id = ${Number(serverId)} AND l.active = 1 AND l.action IN ('warn', 'timeout', 'ban', 'tempban')
 			AND (l.action <> 'timeout' OR l.expires_at IS NULL OR l.expires_at > UTC_TIMESTAMP())
 		ORDER BY l.case_number DESC
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<ModerationCaseRow & { member_left_at: string | null }>;
+	return rows ?? [];
 }
 
 export async function getMemberModerationCases(serverId: number | string, discordMemberId: string, limit = 200) {
@@ -7619,26 +8677,30 @@ export async function getMemberModerationCases(serverId: number | string, discor
 		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${String(discordMemberId)}
 		ORDER BY l.case_number DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<ModerationCaseRow>;
+	return rows ?? [];
 }
 
 export async function updateModerationCaseReason(serverId: number | string, caseNumber: number, reason: string | null) {
 	const row = await getModerationCase(serverId, caseNumber);
-	if (!row) return null;
+	if (!row) {
+		return null;
+	}
 	await db.execute(sql`UPDATE server_member_moderation_logs SET reason = ${reason} WHERE id = ${String(row.id)}`);
 	return { before: (row.reason as string | null) ?? null, discord_member_id: String(row.discord_member_id) };
 }
 
 export async function expireModerationWarnings(serverId: number | string, days: number) {
-	if (!(days > 0)) return 0;
-	const [result] = (await db.execute(sql`
+	if (!(days > 0)) {
+		return 0;
+	}
+	const [result] = await db.execute(sql`
 		UPDATE server_member_moderation_logs l
 		JOIN server_members m ON m.id = l.member_id
 		SET l.active = 0
 		WHERE m.server_id = ${Number(serverId)} AND l.action = 'warn' AND l.active = 1
 			AND l.created_at <= UTC_TIMESTAMP() - INTERVAL ${Math.trunc(days)} DAY
-	`)) as any;
+	`);
 	return Number(result?.affectedRows ?? 0);
 }
 
@@ -7649,34 +8711,38 @@ export async function getModerationCase(serverId: number | string, caseNumber: n
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${Number(serverId)} AND l.case_number = ${Number(caseNumber)}
 		LIMIT 1
-	`)) as any;
-	return (rows as any[])?.[0] ?? null;
+	`)) as unknown as SelectResult<
+		Omit<ModerationCaseRow, 'member_name' | 'member_avatar' | 'staff_discord_id' | 'staff_name'> & { member_id: number; staff_member_id: number | null }
+	>;
+	return rows?.[0] ?? null;
 }
 
 export async function revokeModerationCase(id: number | string) {
-	const [result] = (await db.execute(sql`
+	const [result] = await db.execute(sql`
 		UPDATE server_member_moderation_logs SET active = 0, revoked_at = ${toMySQLDateTime()} WHERE id = ${String(id)} AND active = 1
-	`)) as any;
+	`);
 	return Number(result?.affectedRows ?? 0);
 }
 
-export async function endActiveModeration(memberId: number, actions: string[], revoked = false) {
-	if (actions.length === 0) return 0;
-	const [result] = (await db.execute(sql`
+export async function endActiveModeration(memberId: number, actions: string[], isRevoked = false) {
+	if (actions.length === 0) {
+		return 0;
+	}
+	const [result] = await db.execute(sql`
 		UPDATE server_member_moderation_logs
-		SET active = 0, revoked_at = ${revoked ? toMySQLDateTime() : null}
+		SET active = 0, revoked_at = ${isRevoked ? toMySQLDateTime() : null}
 		WHERE member_id = ${memberId} AND active = 1 AND action IN (${sql.join(
 			actions.map((a) => sql`${a}`),
 			sql`, `
 		)})
-	`)) as any;
+	`);
 	return Number(result?.affectedRows ?? 0);
 }
 
 export async function countActiveWarnings(memberId: number) {
 	const [rows] = (await db.execute(sql`
 		SELECT COUNT(*) AS c FROM server_member_moderation_logs WHERE member_id = ${memberId} AND action = 'warn' AND active = 1
-	`)) as any;
+	`)) as unknown as SelectResult<{ c: string }>;
 	return Number(rows?.[0]?.c ?? 0);
 }
 
@@ -7688,8 +8754,15 @@ export async function getDueTempbans(botId: number) {
 		JOIN servers s ON s.id = m.server_id
 		WHERE l.action = 'tempban' AND l.active = 1 AND l.expires_at IS NOT NULL AND l.expires_at <= UTC_TIMESTAMP() AND s.bot_id = ${botId}
 		LIMIT 50
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: string;
+		member_id: number;
+		case_number: number;
+		discord_member_id: string;
+		server_id: number;
+		discord_server_id: string;
+	}>;
+	return rows ?? [];
 }
 
 export async function expireModerationTimeouts() {
@@ -7699,7 +8772,7 @@ export async function expireModerationTimeouts() {
 	`);
 }
 
-function rewardFromRow(r: any): Reward {
+function rewardFromRow(r: Record<string, unknown>): Reward {
 	return {
 		id: Number(r.id),
 		goal_type: String(r.goal_type) as RewardGoal,
@@ -7713,7 +8786,7 @@ function rewardFromRow(r: any): Reward {
 	};
 }
 
-export async function getRewards(serverId: any): Promise<Reward[]> {
+export async function getRewards(serverId: unknown): Promise<Reward[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT r.id, r.goal_type, r.goal, r.kind, r.xp, r.name, r.image, r.winner_limit, sr.discord_role_id
@@ -7722,24 +8795,26 @@ export async function getRewards(serverId: any): Promise<Reward[]> {
 		WHERE r.server_id = ${Number(serverId)}
 		ORDER BY r.goal_type, r.goal, r.id
 	`);
-	return sortRewards(((rows[0] as unknown as any[]) || []).map(rewardFromRow).filter((r) => r.kind !== 'role' || r.role_id !== null));
+	return sortRewards(((rows[0] as unknown as Record<string, unknown>[]) || []).map(rewardFromRow).filter((r) => r.kind !== 'role' || r.role_id !== null));
 }
 
-export async function saveRewards(serverId: any, drafts: RewardDraft[]): Promise<{ removedImages: string[] }> {
+export async function saveRewards(serverId: unknown, drafts: RewardDraft[]): Promise<{ removedImages: string[] }> {
 	await initializeDatabase();
 	const sid = Number(serverId);
 	const now = toMySQLDateTime();
 	const existingRows = await db.execute(sql`SELECT id, goal_type, kind, image FROM server_rewards WHERE server_id = ${sid}`);
-	const existing = new Map(((existingRows[0] as unknown as any[]) || []).map((r: any) => [Number(r.id), r]));
+	const existing = new Map(((existingRows[0] as unknown as Record<string, unknown>[]) || []).map((r: Record<string, unknown>) => [Number(r.id), r]));
 	const roleRows = await db.execute(sql`SELECT id, discord_role_id FROM server_roles WHERE server_id = ${sid}`);
-	const roleIdOf = new Map(((roleRows[0] as unknown as any[]) || []).map((r: any) => [String(r.discord_role_id), Number(r.id)]));
+	const roleIdOf = new Map(((roleRows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [String(r.discord_role_id), Number(r.id)]));
 
 	const kept = new Set<number>();
 	const keptImages = new Set<string>();
 	for (const d of drafts) {
 		const roleId = d.kind === 'role' && d.role_id ? (roleIdOf.get(d.role_id) ?? null) : null;
 		const before = d.id !== null ? existing.get(d.id) : null;
-		if (d.image) keptImages.add(d.image);
+		if (d.image) {
+			keptImages.add(d.image);
+		}
 		if (before && String(before.goal_type) === d.goal_type && String(before.kind) === d.kind) {
 			kept.add(Number(before.id));
 			await db.execute(sql`
@@ -7757,19 +8832,23 @@ export async function saveRewards(serverId: any, drafts: RewardDraft[]): Promise
 
 	const removedImages: string[] = [];
 	for (const [id, row] of existing) {
-		if (row.image && !keptImages.has(String(row.image))) removedImages.push(String(row.image));
-		if (!kept.has(id)) await db.execute(sql`DELETE FROM server_rewards WHERE id = ${id} AND server_id = ${sid}`);
+		if (row.image && !keptImages.has(String(row.image))) {
+			removedImages.push(String(row.image));
+		}
+		if (!kept.has(id)) {
+			await db.execute(sql`DELETE FROM server_rewards WHERE id = ${id} AND server_id = ${sid}`);
+		}
 	}
 	return { removedImages };
 }
 
-export async function getMemberRewardEarnings(memberId: any): Promise<Map<number, RewardEarning>> {
+export async function getMemberRewardEarnings(memberId: unknown): Promise<Map<number, RewardEarning>> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT reward_id, delivered_at FROM server_member_rewards WHERE member_id = ${Number(memberId)}`);
-	return new Map(((rows[0] as unknown as any[]) || []).map((r: any) => [Number(r.reward_id), { delivered: r.delivered_at != null }]));
+	return new Map(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [Number(r.reward_id), { delivered: r.delivered_at != null }]));
 }
 
-export async function getRewardEarningsForServer(serverId: any): Promise<Map<number, Map<number, RewardEarning>>> {
+export async function getRewardEarningsForServer(serverId: number | string): Promise<Map<number, Map<number, RewardEarning>>> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT smr.member_id, smr.reward_id, smr.delivered_at
@@ -7778,15 +8857,17 @@ export async function getRewardEarningsForServer(serverId: any): Promise<Map<num
 		WHERE r.server_id = ${Number(serverId)}
 	`);
 	const out = new Map<number, Map<number, RewardEarning>>();
-	for (const r of (rows[0] as unknown as any[]) || []) {
+	for (const r of (rows[0] as unknown as Record<string, unknown>[]) || []) {
 		const memberId = Number(r.member_id);
-		if (!out.has(memberId)) out.set(memberId, new Map());
+		if (!out.has(memberId)) {
+			out.set(memberId, new Map());
+		}
 		out.get(memberId)!.set(Number(r.reward_id), { delivered: r.delivered_at != null });
 	}
 	return out;
 }
 
-export async function getRewardWinnerCounts(serverId: any): Promise<Map<number, number>> {
+export async function getRewardWinnerCounts(serverId: unknown): Promise<Map<number, number>> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT smr.reward_id, COUNT(*) AS winners
@@ -7795,35 +8876,39 @@ export async function getRewardWinnerCounts(serverId: any): Promise<Map<number, 
 		WHERE r.server_id = ${Number(serverId)}
 		GROUP BY smr.reward_id
 	`);
-	return new Map(((rows[0] as unknown as any[]) || []).map((r: any) => [Number(r.reward_id), Number(r.winners) || 0]));
+	return new Map(((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => [Number(r.reward_id), Number(r.winners) || 0]));
 }
 
-export async function earnMemberReward(memberId: any, rewardId: any, winnerLimit: number | null, delivered = false): Promise<boolean> {
+type RewardEarn = { rewardId: number | string; winnerLimit: number | null; delivered?: boolean };
+
+export async function earnMemberReward(memberId: number | string, { rewardId, winnerLimit, delivered: isDelivered = false }: RewardEarn): Promise<boolean> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const room =
 		winnerLimit === null
 			? sql`1 = 1`
 			: sql`(SELECT COUNT(*) FROM server_member_rewards taken WHERE taken.reward_id = ${Number(rewardId)}) < ${Number(winnerLimit)}`;
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		INSERT IGNORE INTO server_member_rewards (member_id, reward_id, delivered_at, created_at)
-		SELECT ${Number(memberId)}, ${Number(rewardId)}, ${delivered ? now : null}, ${now}
+		SELECT ${Number(memberId)}, ${Number(rewardId)}, ${isDelivered ? now : null}, ${now}
 		FROM DUAL
 		WHERE ${room}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function withdrawMemberReward(memberId: any, rewardId: any): Promise<boolean> {
+export async function withdrawMemberReward(memberId: number | string, rewardId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE FROM server_member_rewards
 		WHERE member_id = ${Number(memberId)} AND reward_id = ${Number(rewardId)} AND delivered_at IS NULL
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function getRewardProgressForServer(serverId: any): Promise<{ member_id: number; discord_member_id: string; stats: Record<string, unknown> }[]> {
+export async function getRewardProgressForServer(
+	serverId: number | string
+): Promise<{ member_id: number; discord_member_id: string; stats: Record<string, unknown> }[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sm.id AS member_id, sm.discord_member_id, sml.level, sml.chat_total, sml.voice_minutes_active, sml.voice_minutes_video, sml.voice_minutes_streaming
@@ -7831,10 +8916,14 @@ export async function getRewardProgressForServer(serverId: any): Promise<{ membe
 		INNER JOIN server_members sm ON sml.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ member_id: Number(r.member_id), discord_member_id: String(r.discord_member_id), stats: r }));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r: Record<string, unknown>) => ({
+		member_id: Number(r.member_id),
+		discord_member_id: String(r.discord_member_id),
+		stats: r
+	}));
 }
 
-export async function getPendingRewardDeliveries(serverId: any) {
+export async function getPendingRewardDeliveries(serverId: unknown) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT smr.id, smr.created_at, r.name, r.image, r.goal_type, r.goal,
@@ -7845,7 +8934,7 @@ export async function getPendingRewardDeliveries(serverId: any) {
 		WHERE r.server_id = ${Number(serverId)} AND r.kind = 'custom' AND smr.delivered_at IS NULL
 		ORDER BY smr.created_at ASC
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: String(r.id),
 		name: String(r.name ?? 'Reward'),
 		image: r.image != null ? String(r.image) : null,
@@ -7858,7 +8947,7 @@ export async function getPendingRewardDeliveries(serverId: any) {
 	}));
 }
 
-export async function markRewardDelivered(serverId: any, earningId: any): Promise<{ reward: string; member: string } | null> {
+export async function markRewardDelivered(serverId: number | string, earningId: number | string): Promise<{ reward: string; member: string } | null> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT smr.id, r.name, COALESCE(sm.server_display_name, sm.display_name, sm.username) AS member_name
@@ -7868,8 +8957,10 @@ export async function markRewardDelivered(serverId: any, earningId: any): Promis
 		WHERE smr.id = ${String(earningId)} AND r.server_id = ${Number(serverId)} AND r.kind = 'custom' AND smr.delivered_at IS NULL
 		LIMIT 1
 	`);
-	const row = (rows[0] as unknown as any[])?.[0];
-	if (!row) return null;
+	const row = (rows[0] as unknown as Record<string, unknown>[])?.[0];
+	if (!row) {
+		return null;
+	}
 	await db.execute(sql`UPDATE server_member_rewards SET delivered_at = ${toMySQLDateTime()} WHERE id = ${String(earningId)}`);
 	return { reward: String(row.name ?? 'Reward'), member: String(row.member_name ?? 'member') };
 }
@@ -7888,8 +8979,8 @@ export type ServerMessagePost = {
 	created_at: string;
 };
 
-function messageFromRow(r: any, scope: MessageScope = 'server'): ServerMessage {
-	let content = r.content;
+function messageFromRow(r: Record<string, unknown>, scope: MessageScope = 'server'): ServerMessage {
+	let { content } = r;
 	if (typeof content === 'string') {
 		try {
 			content = JSON.parse(content);
@@ -7901,7 +8992,9 @@ function messageFromRow(r: any, scope: MessageScope = 'server'): ServerMessage {
 }
 
 function postContent(raw: unknown, scope: MessageScope): MessageDoc | null {
-	if (raw == null) return null;
+	if (raw == null) {
+		return null;
+	}
 	let content = raw;
 	if (typeof content === 'string') {
 		try {
@@ -7913,46 +9006,48 @@ function postContent(raw: unknown, scope: MessageScope): MessageDoc | null {
 	return normalizeMessageDoc(content, undefined, scope);
 }
 
-export async function getServerMessages(serverId: any): Promise<ServerMessage[]> {
+export async function getServerMessages(serverId: unknown): Promise<ServerMessage[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT id, name, content, updated_at FROM server_messages WHERE server_id = ${Number(serverId)} ORDER BY name, id`);
-	return ((rows[0] as unknown as any[]) || []).map(messageFromRow);
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => messageFromRow(r));
 }
 
-export async function getServerMessage(serverId: any, messageId: any): Promise<ServerMessage | null> {
+export async function getServerMessage(serverId: number | string, messageId: number | string): Promise<ServerMessage | null> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT id, name, content, updated_at FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)} LIMIT 1
 	`);
-	const row = (rows[0] as unknown as any[])?.[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])?.[0];
 	return row ? messageFromRow(row) : null;
 }
 
-export async function saveServerMessage(serverId: any, messageId: number | null, name: string, content: MessageDoc): Promise<number | null> {
+export async function saveServerMessage(serverId: number | string, { messageId, name, content }: MessageSave): Promise<number | null> {
 	await initializeDatabase();
 	const sid = Number(serverId);
 	const now = toMySQLDateTime();
 	const body = JSON.stringify(content);
 	if (messageId === null) {
-		const result: any = await db.execute(sql`
+		const result = (await db.execute(sql`
 			INSERT INTO server_messages (server_id, name, content, created_at, updated_at) VALUES (${sid}, ${name}, ${body}, ${now}, ${now})
-		`);
+		`)) as unknown as WriteResult;
 		const id = Number(result?.[0]?.insertId ?? result?.insertId);
 		return Number.isFinite(id) && id > 0 ? id : null;
 	}
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE server_messages SET name = ${name}, content = ${body}, updated_at = ${now} WHERE id = ${Number(messageId)} AND server_id = ${sid}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0 ? Number(messageId) : null;
 }
 
-export async function deleteServerMessage(serverId: any, messageId: any): Promise<boolean> {
+export async function deleteServerMessage(serverId: number | string, messageId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`DELETE FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)}`);
+	const result = (await db.execute(
+		sql`DELETE FROM server_messages WHERE id = ${Number(messageId)} AND server_id = ${Number(serverId)}`
+	)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function getServerMessagePosts(serverId: any, messageId: number | null = null): Promise<ServerMessagePost[]> {
+export async function getServerMessagePosts(serverId: unknown, messageId: number | null = null): Promise<ServerMessagePost[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.content, p.created_at, c.discord_channel_id, c.name AS channel_name
@@ -7962,7 +9057,7 @@ export async function getServerMessagePosts(serverId: any, messageId: number | n
 		WHERE e.server_id = ${Number(serverId)} AND ${messageId === null ? sql`1 = 1` : sql`p.message_id = ${Number(messageId)}`}
 		ORDER BY p.created_at DESC, p.id DESC
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: Number(r.id),
 		message_id: Number(r.message_id),
 		discord_channel_id: String(r.discord_channel_id),
@@ -7975,14 +9070,18 @@ export async function getServerMessagePosts(serverId: any, messageId: number | n
 	}));
 }
 
+type ServerPostInput = {
+	messageId: number | string;
+	discordChannelId: string;
+	discordMessageId: string;
+	language: string;
+	mentions: string | null;
+	content: MessageDoc;
+};
+
 export async function addServerMessagePost(
-	serverId: any,
-	messageId: any,
-	discordChannelId: string,
-	discordMessageId: string,
-	language: string,
-	mentions: string | null,
-	content: MessageDoc
+	serverId: number | string,
+	{ messageId, discordChannelId, discordMessageId, language, mentions, content }: ServerPostInput
 ): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -7995,7 +9094,7 @@ export async function addServerMessagePost(
 	`);
 }
 
-export async function setServerMessagePostContent(serverId: any, postId: any, content: MessageDoc): Promise<void> {
+export async function setServerMessagePostContent(serverId: number | string, postId: number | string, content: MessageDoc): Promise<void> {
 	await initializeDatabase();
 	await db.execute(sql`
 		UPDATE server_message_posts p
@@ -8005,58 +9104,60 @@ export async function setServerMessagePostContent(serverId: any, postId: any, co
 	`);
 }
 
-export async function deleteServerMessagePost(serverId: any, postId: any): Promise<boolean> {
+export async function deleteServerMessagePost(serverId: number | string, postId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE p FROM server_message_posts p
 		INNER JOIN server_messages e ON e.id = p.message_id
 		WHERE p.id = ${Number(postId)} AND e.server_id = ${Number(serverId)}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
 export type GlobalMessagePost = ServerMessagePost & { server_id: number; server_name: string; discord_server_id: string; bot_id: number | null };
 
-export async function getGlobalMessages(panelId: any): Promise<ServerMessage[]> {
+export async function getGlobalMessages(panelId: unknown): Promise<ServerMessage[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT id, name, content, updated_at FROM messages WHERE panel_id = ${Number(panelId)} ORDER BY name, id`);
-	return ((rows[0] as unknown as any[]) || []).map((r) => messageFromRow(r, 'global'));
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => messageFromRow(r, 'global'));
 }
 
-export async function getGlobalMessage(panelId: any, messageId: any): Promise<ServerMessage | null> {
+export async function getGlobalMessage(panelId: number | string, messageId: number | string): Promise<ServerMessage | null> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT id, name, content, updated_at FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)} LIMIT 1
 	`);
-	const row = (rows[0] as unknown as any[])?.[0];
+	const row = (rows[0] as unknown as Record<string, unknown>[])?.[0];
 	return row ? messageFromRow(row, 'global') : null;
 }
 
-export async function saveGlobalMessage(panelId: any, messageId: number | null, name: string, content: MessageDoc): Promise<number | null> {
+type MessageSave = { messageId: number | null; name: string; content: MessageDoc };
+
+export async function saveGlobalMessage(panelId: number | string, { messageId, name, content }: MessageSave): Promise<number | null> {
 	await initializeDatabase();
 	const pid = Number(panelId);
 	const now = toMySQLDateTime();
 	const body = JSON.stringify(content);
 	if (messageId === null) {
-		const result: any = await db.execute(sql`
+		const result = (await db.execute(sql`
 			INSERT INTO messages (panel_id, name, content, created_at, updated_at) VALUES (${pid}, ${name}, ${body}, ${now}, ${now})
-		`);
+		`)) as unknown as WriteResult;
 		const id = Number(result?.[0]?.insertId ?? result?.insertId);
 		return Number.isFinite(id) && id > 0 ? id : null;
 	}
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		UPDATE messages SET name = ${name}, content = ${body}, updated_at = ${now} WHERE id = ${Number(messageId)} AND panel_id = ${pid}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0 ? Number(messageId) : null;
 }
 
-export async function deleteGlobalMessage(panelId: any, messageId: any): Promise<boolean> {
+export async function deleteGlobalMessage(panelId: number | string, messageId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`DELETE FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)}`);
+	const result = (await db.execute(sql`DELETE FROM messages WHERE id = ${Number(messageId)} AND panel_id = ${Number(panelId)}`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-export async function getGlobalMessagePosts(panelId: any, messageId: number | null = null, botId: number | null = null): Promise<GlobalMessagePost[]> {
+export async function getGlobalMessagePosts(panelId: unknown, messageId: number | null = null, botId: number | null = null): Promise<GlobalMessagePost[]> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT p.id, p.message_id, p.discord_message_id, p.language, p.mentions, p.content, p.created_at,
@@ -8070,7 +9171,7 @@ export async function getGlobalMessagePosts(panelId: any, messageId: number | nu
 		  AND ${botId === null ? sql`1 = 1` : sql`s.bot_id = ${Number(botId)}`}
 		ORDER BY s.name, p.id DESC
 	`);
-	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({
+	return ((rows[0] as unknown as Record<string, unknown>[]) || []).map((r) => ({
 		id: Number(r.id),
 		message_id: Number(r.message_id),
 		discord_channel_id: String(r.discord_channel_id),
@@ -8087,15 +9188,19 @@ export async function getGlobalMessagePosts(panelId: any, messageId: number | nu
 	}));
 }
 
+type GlobalPostInput = {
+	messageId: number | string;
+	serverId: number | string;
+	discordChannelId: string;
+	discordMessageId: string;
+	language: string;
+	mentions: string | null;
+	content: MessageDoc;
+};
+
 export async function addGlobalMessagePost(
-	panelId: any,
-	messageId: any,
-	serverId: any,
-	discordChannelId: string,
-	discordMessageId: string,
-	language: string,
-	mentions: string | null,
-	content: MessageDoc
+	panelId: number | string,
+	{ messageId, serverId, discordChannelId, discordMessageId, language, mentions, content }: GlobalPostInput
 ): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -8108,7 +9213,7 @@ export async function addGlobalMessagePost(
 	`);
 }
 
-export async function setGlobalMessagePostContent(panelId: any, postId: any, content: MessageDoc): Promise<void> {
+export async function setGlobalMessagePostContent(panelId: number | string, postId: number | string, content: MessageDoc): Promise<void> {
 	await initializeDatabase();
 	await db.execute(sql`
 		UPDATE message_posts p
@@ -8118,31 +9223,36 @@ export async function setGlobalMessagePostContent(panelId: any, postId: any, con
 	`);
 }
 
-export async function deleteGlobalMessagePost(panelId: any, postId: any): Promise<boolean> {
+export async function deleteGlobalMessagePost(panelId: number | string, postId: number | string): Promise<boolean> {
 	await initializeDatabase();
-	const result: any = await db.execute(sql`
+	const result = (await db.execute(sql`
 		DELETE p FROM message_posts p
 		INNER JOIN messages m ON m.id = p.message_id
 		WHERE p.id = ${Number(postId)} AND m.panel_id = ${Number(panelId)}
-	`);
+	`)) as unknown as WriteResult;
 	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
+
+type PanelLogEntry = { action: string; changes: { key: string; before: string | null; after: string | null }[] };
 
 export async function createServerPanelLog(
 	serverId: number,
 	actor: { server_account_id?: number | null; account_id?: number | null },
-	action: string,
-	changes: { key: string; before: string | null; after: string | null }[]
+	{ action, changes }: PanelLogEntry
 ) {
-	if (!changes.length) return;
+	if (!changes.length) {
+		return;
+	}
 	await db.execute(sql`
 		INSERT INTO server_panel_logs (server_id, server_account_id, account_id, action, changes, created_at)
-		VALUES (${Number(serverId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${action.slice(0, 24)}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
+		VALUES (${Number(serverId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${action.slice(0, PANEL_LOG_ACTION_MAX_LENGTH)}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
 	`);
 }
 
 export async function getServerPanelLogs(serverIds: number[], limit = 300) {
-	if (serverIds.length === 0) return [];
+	if (serverIds.length === 0) {
+		return [];
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT l.id, l.action, l.changes, l.created_at,
 			sa.username AS server_account_username, sa.account_type AS server_account_type,
@@ -8156,12 +9266,24 @@ export async function getServerPanelLogs(serverIds: number[], limit = 300) {
 		)})
 		ORDER BY l.id DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: string;
+		action: string;
+		changes: unknown;
+		created_at: string;
+		server_account_username: string | null;
+		server_account_type: string | null;
+		account_username: string | null;
+		server_account_id: number | null;
+		account_id: number | null;
+	}>;
+	return rows ?? [];
 }
 
 export async function getMemberNamesByDiscordIds(serverId: number | string, discordIds: string[]) {
-	if (discordIds.length === 0) return [];
+	if (discordIds.length === 0) {
+		return [];
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT discord_member_id, username, COALESCE(server_display_name, display_name, username) AS name
 		FROM server_members
@@ -8169,19 +9291,37 @@ export async function getMemberNamesByDiscordIds(serverId: number | string, disc
 			discordIds.map((id) => sql`${id}`),
 			sql`, `
 		)})
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ discord_member_id: string; username: string | null; name: string | null }>;
+	return rows ?? [];
 }
 
 const INVITE_NAME = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
 
-function inviteStatus(row: any): 'active' | 'left' | 'fake' {
-	if (row.fake_reason) return 'fake';
-	if (row.left_at) return 'left';
+function inviteStatus(row: Record<string, unknown>): 'active' | 'left' | 'fake' {
+	if (row.fake_reason) {
+		return 'fake';
+	}
+	if (row.left_at) {
+		return 'left';
+	}
 	return 'active';
 }
 
-const PRIOR_MEMBER_MARGIN_MS = 5 * 60_000;
+const PRIOR_MEMBER_MARGIN_MS = PRIOR_MEMBER_MARGIN_MINUTES * MINUTE_MS;
+
+type InviteRow = {
+	id: number;
+	code: string | null;
+	source: string;
+	fake_reason: string | null;
+	xp: number;
+	share_xp: string;
+	rewarded_at: string | null;
+	joined_at: string;
+	left_at: string | null;
+	created_at: string;
+};
+type InviteMemberColumns = { discord_member_id: string; name: string | null; avatar: string | null };
 
 export async function recordMemberJoinInvite(data: {
 	member_id: number;
@@ -8195,22 +9335,22 @@ export async function recordMemberJoinInvite(data: {
 	const now = toMySQLDateTime();
 	const [existingRows] = (await db.execute(sql`
 		SELECT id, inviter_member_id, rewarded_at FROM server_member_invites WHERE member_id = ${data.member_id} LIMIT 1
-	`)) as any;
-	const existing = (existingRows as any[])?.[0] ?? null;
+	`)) as unknown as SelectResult<{ id: number; inviter_member_id: number | null; rewarded_at: string | null }>;
+	const existing = existingRows?.[0] ?? null;
 
 	if (!existing) {
 		const cutoff = toMySQLDateTime(new Date(data.joined_at.getTime() - PRIOR_MEMBER_MARGIN_MS));
 		const [priorRows] = (await db.execute(sql`
 			SELECT created_at < ${cutoff} AS prior FROM server_members WHERE id = ${data.member_id} LIMIT 1
-		`)) as any;
-		const prior = Number((priorRows as any[])?.[0]?.prior) === 1;
-		const fakeReason = data.fake_reason ?? (prior && data.inviter_member_id != null ? 'rejoin' : null);
+		`)) as unknown as SelectResult<{ prior: number | string | null }>;
+		const hasPrior = Number(priorRows?.[0]?.prior) === 1;
+		const fakeReason = data.fake_reason ?? (hasPrior && data.inviter_member_id != null ? 'rejoin' : null);
 		await db.execute(sql`
 			INSERT INTO server_member_invites (member_id, inviter_member_id, code, source, fake_reason, xp, joined_at, created_at)
 			VALUES (${data.member_id}, ${data.inviter_member_id}, ${data.code}, ${data.source}, ${fakeReason}, 0, ${now}, ${now})
 			ON DUPLICATE KEY UPDATE left_at = NULL, joined_at = VALUES(joined_at)
 		`);
-		return { rejoin: prior };
+		return { rejoin: hasPrior };
 	}
 
 	if (existing.inviter_member_id == null && data.inviter_member_id != null && existing.rewarded_at == null) {
@@ -8229,9 +9369,9 @@ export async function recordMemberJoinInvite(data: {
 
 export async function markMemberInviteLeft(memberId: number) {
 	await initializeDatabase();
-	const [result] = (await db.execute(sql`
+	const [result] = await db.execute(sql`
 		UPDATE server_member_invites SET left_at = ${toMySQLDateTime()} WHERE member_id = ${Number(memberId)} AND left_at IS NULL
-	`)) as any;
+	`);
 	return Number(result?.affectedRows ?? 0);
 }
 
@@ -8244,8 +9384,8 @@ export async function getPendingInviteServers(botId: number) {
 		JOIN servers s ON s.id = m.server_id
 		WHERE i.rewarded_at IS NULL AND i.inviter_member_id IS NOT NULL AND i.fake_reason IS NULL AND i.left_at IS NULL
 			AND m.deleted_at IS NULL AND s.bot_id = ${Number(botId)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ server_id: number; discord_server_id: string }>;
+	return rows ?? [];
 }
 
 export async function getDueInviteRewards(serverId: number, joinedBefore: Date, limit = 50) {
@@ -8261,8 +9401,17 @@ export async function getDueInviteRewards(serverId: number, joinedBefore: Date, 
 			AND m.deleted_at IS NULL AND im.deleted_at IS NULL AND i.joined_at <= ${toMySQLDateTime(joinedBefore)}
 		ORDER BY i.joined_at ASC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: number;
+		member_id: number;
+		inviter_member_id: number;
+		code: string | null;
+		joined_at: string;
+		invitee_discord_id: string;
+		invitee_name: string | null;
+		inviter_discord_id: string;
+	}>;
+	return rows ?? [];
 }
 
 export async function getActiveInviterForShare(memberId: number) {
@@ -8274,8 +9423,8 @@ export async function getActiveInviterForShare(memberId: number) {
 		WHERE i.member_id = ${Number(memberId)} AND i.fake_reason IS NULL AND i.left_at IS NULL AND i.source <> 'manual'
 			AND i.rewarded_at IS NOT NULL AND m.deleted_at IS NULL AND m.is_bot = 0
 		LIMIT 1
-	`)) as any;
-	return (rows as any[])?.[0] ?? null;
+	`)) as unknown as SelectResult<{ id: number; inviter_member_id: number; inviter_discord_id: string; inviter_name: string | null }>;
+	return rows?.[0] ?? null;
 }
 
 export async function addInviteShareXp(inviteId: number, xp: number) {
@@ -8290,17 +9439,19 @@ export async function releaseInviteReward(inviteId: number) {
 
 export async function claimInviteReward(inviteId: number, xp: number) {
 	await initializeDatabase();
-	const [result] = (await db.execute(sql`
+	const [result] = await db.execute(sql`
 		UPDATE server_member_invites SET rewarded_at = ${toMySQLDateTime()}, xp = ${Math.max(0, Math.floor(Number(xp) || 0))}
 		WHERE id = ${Number(inviteId)} AND rewarded_at IS NULL
-	`)) as any;
+	`);
 	return Number(result?.affectedRows ?? 0) > 0;
 }
 
 export async function getMemberInviteStats(memberId: number) {
 	await initializeDatabase();
 	const empty = { joins: 0, active: 0, left: 0, fake: 0, pending: 0, bonus: 0, total: 0, xp: 0, join_xp: 0, share_xp: 0 };
-	if (!memberId) return empty;
+	if (!memberId) {
+		return empty;
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT
 			COUNT(*) AS joins,
@@ -8312,13 +9463,21 @@ export async function getMemberInviteStats(memberId: number) {
 			COALESCE(SUM(i.share_xp), 0) AS share_xp
 		FROM server_member_invites i
 		WHERE i.inviter_member_id = ${Number(memberId)}
-	`)) as any;
+	`)) as unknown as SelectResult<{
+		joins: string;
+		active: string;
+		left_count: string;
+		fake: string;
+		pending: string;
+		xp: string;
+		share_xp: string;
+	}>;
 	const [bonusRows] = (await db.execute(sql`
 		SELECT COALESCE(SUM(amount), 0) AS bonus FROM server_member_invite_logs WHERE member_id = ${Number(memberId)}
-	`)) as any;
-	const r = (rows as any[])?.[0] ?? {};
+	`)) as unknown as SelectResult<{ bonus: string }>;
+	const r: Partial<(typeof rows)[number]> = rows?.[0] ?? {};
 	const active = Number(r.active) || 0;
-	const bonus = Number((bonusRows as any[])?.[0]?.bonus) || 0;
+	const bonus = Number(bonusRows?.[0]?.bonus) || 0;
 	return {
 		joins: Number(r.joins) || 0,
 		active,
@@ -8335,7 +9494,9 @@ export async function getMemberInviteStats(memberId: number) {
 
 export async function getMemberInviter(memberId: number) {
 	await initializeDatabase();
-	if (!memberId) return null;
+	if (!memberId) {
+		return null;
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
 			m.discord_member_id AS inviter_discord_id, ${INVITE_NAME} AS inviter_name, m.avatar AS inviter_avatar
@@ -8343,14 +9504,16 @@ export async function getMemberInviter(memberId: number) {
 		LEFT JOIN server_members m ON m.id = i.inviter_member_id
 		WHERE i.member_id = ${Number(memberId)}
 		LIMIT 1
-	`)) as any;
-	const row = (rows as any[])?.[0];
+	`)) as unknown as SelectResult<Omit<InviteRow, 'share_xp'> & { inviter_discord_id: string | null; inviter_name: string | null; inviter_avatar: string | null }>;
+	const row = rows?.[0];
 	return row ? { ...row, status: inviteStatus(row) } : null;
 }
 
 export async function getMemberInvitees(memberId: number, limit = 100) {
 	await initializeDatabase();
-	if (!memberId) return [] as any[];
+	if (!memberId) {
+		return [];
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT i.id, i.code, i.source, i.fake_reason, i.xp, i.share_xp, i.rewarded_at, i.joined_at, i.left_at, i.created_at,
 			m.discord_member_id, ${INVITE_NAME} AS name, m.avatar
@@ -8359,8 +9522,8 @@ export async function getMemberInvitees(memberId: number, limit = 100) {
 		WHERE i.inviter_member_id = ${Number(memberId)}
 		ORDER BY i.created_at DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
+	`)) as unknown as SelectResult<InviteRow & InviteMemberColumns>;
+	return (rows ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
 }
 
 export async function getServerInviters(serverId: number | string) {
@@ -8396,8 +9559,23 @@ export async function getServerInviters(serverId: number | string) {
 			GROUP BY l.member_id
 		) b ON b.member_id = m.id
 		WHERE m.server_id = ${Number(serverId)} AND m.is_bot = 0 AND (a.inviter_member_id IS NOT NULL OR b.member_id IS NOT NULL)
-	`)) as any;
-	return ((rows as any[]) ?? [])
+	`)) as unknown as SelectResult<
+		InviteMemberColumns & {
+			deleted_at: string | null;
+			joins: string;
+			active: string;
+			left_count: string;
+			fake: string;
+			pending: string;
+			xp: string;
+			share_xp: string;
+			personal: string;
+			discord: string;
+			bonus: string;
+			last_join_at: string | null;
+		}
+	>;
+	return (rows ?? [])
 		.map((r) => {
 			const active = Number(r.active) || 0;
 			const bonus = Number(r.bonus) || 0;
@@ -8435,13 +9613,15 @@ export async function getServerInviteJoins(serverId: number | string, limit = 30
 		WHERE jm.server_id = ${Number(serverId)}
 		ORDER BY i.joined_at DESC, i.id DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
+	`)) as unknown as SelectResult<InviteRow & InviteMemberColumns & { inviter_discord_id: string | null; inviter_name: string | null }>;
+	return (rows ?? []).map((r) => ({ ...r, status: inviteStatus(r) }));
 }
 
 export async function getMemberInviteLogs(memberId: number, limit = 50) {
 	await initializeDatabase();
-	if (!memberId) return [] as any[];
+	if (!memberId) {
+		return [];
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT l.id, l.amount, l.reason, l.created_at, sa.username AS server_account_username, a.username AS account_username
 		FROM server_member_invite_logs l
@@ -8450,15 +9630,23 @@ export async function getMemberInviteLogs(memberId: number, limit = 50) {
 		WHERE l.member_id = ${Number(memberId)}
 		ORDER BY l.id DESC
 		LIMIT ${Number(limit)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{
+		id: string;
+		amount: number;
+		reason: string | null;
+		created_at: string;
+		server_account_username: string | null;
+		account_username: string | null;
+	}>;
+	return rows ?? [];
 }
+
+type InviteAdjustment = { amount: number; reason: string | null };
 
 export async function addMemberInviteAdjustment(
 	memberId: number,
 	actor: { server_account_id?: number | null; account_id?: number | null },
-	amount: number,
-	reason: string | null
+	{ amount, reason }: InviteAdjustment
 ) {
 	await initializeDatabase();
 	await db.execute(sql`
@@ -8469,15 +9657,32 @@ export async function addMemberInviteAdjustment(
 
 export async function assignMemberInviter(inviteeMemberId: number, inviterMemberId: number) {
 	await initializeDatabase();
-	const [result] = (await db.execute(sql`
+	const [result] = await db.execute(sql`
 		UPDATE server_member_invites SET inviter_member_id = ${Number(inviterMemberId)}, source = 'manual', rewarded_at = ${toMySQLDateTime()}, xp = 0
 		WHERE member_id = ${Number(inviteeMemberId)} AND inviter_member_id IS NULL AND rewarded_at IS NULL
-	`)) as any;
+	`);
 	return Number(result?.affectedRows ?? 0) > 0;
 }
 
-export async function getServerInviteStats(serverId: number | string, codeLimit = 10) {
-	await initializeDatabase();
+type InviteTotalsRow = Record<
+	| 'tracked'
+	| 'active'
+	| 'left_count'
+	| 'fake'
+	| 'unknown_count'
+	| 'vanity'
+	| 'server_link'
+	| 'personal'
+	| 'discord'
+	| 'pending'
+	| 'xp_paid'
+	| 'share_xp'
+	| 'inviters',
+	string
+>;
+type InviteCodeRow = { code: string; inviter_name: string | null; inviter_discord_id: string | null; source: string | null; joins: string; active: string };
+
+async function inviteTotals(serverId: number): Promise<Partial<InviteTotalsRow>> {
 	const [rows] = (await db.execute(sql`
 		SELECT
 			COUNT(*) AS tracked,
@@ -8495,26 +9700,49 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 			COUNT(DISTINCT i.inviter_member_id) AS inviters
 		FROM server_member_invites i
 		JOIN server_members m ON m.id = i.member_id
-		WHERE m.server_id = ${Number(serverId)}
-	`)) as any;
+		WHERE m.server_id = ${serverId}
+	`)) as unknown as SelectResult<InviteTotalsRow>;
+	return rows?.[0] ?? {};
+}
+
+async function inviteBonus(serverId: number) {
 	const [bonusRows] = (await db.execute(sql`
 		SELECT COALESCE(SUM(l.amount), 0) AS bonus
 		FROM server_member_invite_logs l
 		JOIN server_members m ON m.id = l.member_id
-		WHERE m.server_id = ${Number(serverId)}
-	`)) as any;
+		WHERE m.server_id = ${serverId}
+	`)) as unknown as SelectResult<{ bonus: string }>;
+	return Number(bonusRows?.[0]?.bonus) || 0;
+}
+
+async function inviteCodes(serverId: number, codeLimit: number) {
 	const [codeRows] = (await db.execute(sql`
 		SELECT i.code, ${INVITE_NAME} AS inviter_name, m.discord_member_id AS inviter_discord_id, MAX(i.source) AS source,
 			COUNT(*) AS joins, COALESCE(SUM(i.fake_reason IS NULL AND i.left_at IS NULL), 0) AS active
 		FROM server_member_invites i
 		JOIN server_members im ON im.id = i.member_id
 		LEFT JOIN server_members m ON m.id = i.inviter_member_id
-		WHERE im.server_id = ${Number(serverId)} AND i.code IS NOT NULL
+		WHERE im.server_id = ${serverId} AND i.code IS NOT NULL
 		GROUP BY i.code, m.id, m.discord_member_id, m.server_display_name, m.display_name, m.username
 		ORDER BY active DESC, joins DESC
-		LIMIT ${Number(codeLimit)}
-	`)) as any;
-	const r = (rows as any[])?.[0] ?? {};
+		LIMIT ${codeLimit}
+	`)) as unknown as SelectResult<InviteCodeRow>;
+	return (codeRows ?? []).map((c) => ({
+		code: String(c.code),
+		inviter_name: c.inviter_name ?? null,
+		inviter_discord_id: c.inviter_discord_id ?? null,
+		source: c.source ? String(c.source) : null,
+		joins: Number(c.joins) || 0,
+		active: Number(c.active) || 0
+	}));
+}
+
+export async function getServerInviteStats(serverId: number | string, codeLimit = 10) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+	const r = await inviteTotals(sid);
+	const bonus = await inviteBonus(sid);
+	const codes = await inviteCodes(sid, Number(codeLimit));
 	return {
 		tracked: Number(r.tracked) || 0,
 		active: Number(r.active) || 0,
@@ -8529,21 +9757,16 @@ export async function getServerInviteStats(serverId: number | string, codeLimit 
 		xp_paid: Number(r.xp_paid) || 0,
 		share_xp: Number(r.share_xp) || 0,
 		inviters: Number(r.inviters) || 0,
-		bonus: Number((bonusRows as any[])?.[0]?.bonus) || 0,
-		codes: ((codeRows as any[]) ?? []).map((c) => ({
-			code: String(c.code),
-			inviter_name: c.inviter_name ?? null,
-			inviter_discord_id: c.inviter_discord_id ?? null,
-			source: c.source ? String(c.source) : null,
-			joins: Number(c.joins) || 0,
-			active: Number(c.active) || 0
-		}))
+		bonus,
+		codes
 	};
 }
 
-export async function getInvitesLeaderboard(serverId: any, since: Date | null) {
+export async function getInvitesLeaderboard(serverId: number | string, since: Date | null) {
 	await initializeDatabase();
-	if (!serverId) return [] as any[];
+	if (!serverId) {
+		return [];
+	}
 	const disguisedIds = await getDisguisedMemberIds(serverId);
 	const hideDisguised = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
 	const sinceClause = since ? sql`AND i.created_at >= ${toMySQLDateTime(since)}` : sql``;
@@ -8574,8 +9797,19 @@ export async function getInvitesLeaderboard(serverId: any, since: Date | null) {
 		) inv ON inv.inviter_member_id = sm.id
 		${bonusJoin}
 		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0 ${hideDisguised}
-	`)) as any;
-	return ((rows as any[]) ?? []).map((r) => {
+	`)) as unknown as SelectResult<{
+		discord_member_id: string;
+		username: string | null;
+		display_name: string | null;
+		server_display_name: string | null;
+		avatar: string | null;
+		level: number | null;
+		invites_active: string;
+		invites_left: string;
+		invites_fake: string;
+		invites_bonus: string | number;
+	}>;
+	return (rows ?? []).map((r) => {
 		const active = Number(r.invites_active) || 0;
 		const bonus = Number(r.invites_bonus) || 0;
 		return {
@@ -8610,9 +9844,11 @@ export async function getMemberInviteCountsByServer(serverId: number | string) {
 			GROUP BY l.member_id
 		) b ON b.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)} AND (inv.inviter_member_id IS NOT NULL OR b.member_id IS NOT NULL)
-	`)) as any;
+	`)) as unknown as SelectResult<{ member_id: number; invites_total: string }>;
 	const map = new Map<number, number>();
-	for (const r of (rows as any[]) ?? []) map.set(Number(r.member_id), Number(r.invites_total) || 0);
+	for (const r of rows ?? []) {
+		map.set(Number(r.member_id), Number(r.invites_total) || 0);
+	}
 	return map;
 }
 
@@ -8624,27 +9860,34 @@ export async function serverTracksInvites(serverId: number | string) {
 		JOIN server_members m ON m.id = i.member_id
 		WHERE m.server_id = ${Number(serverId)} AND i.inviter_member_id IS NOT NULL AND i.created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
 		LIMIT 1
-	`)) as any;
-	return ((rows as any[]) ?? []).length > 0;
+	`)) as unknown as SelectResult<{ ok: number }>;
+	return (rows ?? []).length > 0;
 }
 
 export async function getMemberInviteLink(memberId: number): Promise<{ code: string; slug: string | null } | null> {
 	await initializeDatabase();
-	const [rows] = (await db.execute(sql`SELECT code, slug FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`)) as any;
-	const row = (rows as any[])?.[0];
+	const [rows] = (await db.execute(
+		sql`SELECT code, slug FROM server_member_invite_links WHERE member_id = ${Number(memberId)} LIMIT 1`
+	)) as unknown as SelectResult<{
+		code: string;
+		slug: string | null;
+	}>;
+	const row = rows?.[0];
 	return row ? { code: String(row.code), slug: row.slug ?? null } : null;
 }
 
 export async function getPersonalInviteCodes(codes: string[]): Promise<Set<string>> {
 	await initializeDatabase();
-	if (codes.length === 0) return new Set();
+	if (codes.length === 0) {
+		return new Set();
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT code FROM server_member_invite_links WHERE code IN (${sql.join(
 			codes.map((c) => sql`${c}`),
 			sql`, `
 		)})
-	`)) as any;
-	return new Set(((rows as any[]) ?? []).map((r) => String(r.code)));
+	`)) as unknown as SelectResult<{ code: string }>;
+	return new Set((rows ?? []).map((r) => String(r.code)));
 }
 
 export async function setServerInviteCode(serverId: number, code: string) {
@@ -8655,10 +9898,12 @@ export async function setServerInviteCode(serverId: number, code: string) {
 export async function setMemberInviteSlug(memberId: number, slug: string): Promise<boolean> {
 	await initializeDatabase();
 	try {
-		const [result] = (await db.execute(sql`UPDATE server_member_invite_links SET slug = ${slug} WHERE member_id = ${Number(memberId)}`)) as any;
+		const [result] = await db.execute(sql`UPDATE server_member_invite_links SET slug = ${slug} WHERE member_id = ${Number(memberId)}`);
 		return Number(result?.affectedRows ?? 0) > 0;
-	} catch (error: any) {
-		if (error?.code === 'ER_DUP_ENTRY' || error?.cause?.code === 'ER_DUP_ENTRY') return false;
+	} catch (error) {
+		if ((error as DriverError)?.code === 'ER_DUP_ENTRY' || (error as DriverError)?.cause?.code === 'ER_DUP_ENTRY') {
+			return false;
+		}
 		throw error;
 	}
 }
@@ -8673,13 +9918,27 @@ export async function getInviteLinkBySlug(slug: string) {
 		JOIN servers s ON s.id = m.server_id
 		WHERE l.slug = ${slug} AND m.deleted_at IS NULL AND m.is_bot = 0
 		LIMIT 1
-	`)) as any;
-	return (rows as any[])?.[0] ?? null;
+	`)) as unknown as SelectResult<{
+		slug: string;
+		code: string;
+		created_at: string;
+		member_id: number;
+		discord_member_id: string;
+		avatar: string | null;
+		member_name: string | null;
+		server_id: number;
+		server_name: string | null;
+		server_icon: string | null;
+		total_members: number | null;
+	}>;
+	return rows?.[0] ?? null;
 }
 
 export async function listInviteSlugsForServers(serverIds: number[]) {
 	await initializeDatabase();
-	if (serverIds.length === 0) return [] as { slug: string; created_at: any }[];
+	if (serverIds.length === 0) {
+		return [] as { slug: string; created_at: string }[];
+	}
 	const [rows] = (await db.execute(sql`
 		SELECT l.slug, l.created_at, m.id AS member_id, m.server_id
 		FROM server_member_invite_links l
@@ -8688,10 +9947,14 @@ export async function listInviteSlugsForServers(serverIds: number[]) {
 			serverIds.map((id) => sql`${id}`),
 			sql`, `
 		)})
-	`)) as any;
+	`)) as unknown as SelectResult<{ slug: string; created_at: string; member_id: number; server_id: number }>;
 	const hidden = new Set<number>();
-	for (const id of serverIds) for (const memberId of await getDisguisedMemberIds(id).catch(() => [] as number[])) hidden.add(Number(memberId));
-	return ((rows as any[]) ?? []).filter((r) => !hidden.has(Number(r.member_id))).map((r) => ({ slug: String(r.slug), created_at: r.created_at }));
+	for (const id of serverIds) {
+		for (const memberId of await getDisguisedMemberIds(id).catch(() => [] as number[])) {
+			hidden.add(Number(memberId));
+		}
+	}
+	return (rows ?? []).filter((r) => !hidden.has(Number(r.member_id))).map((r) => ({ slug: String(r.slug), created_at: r.created_at }));
 }
 
 export async function setMemberInviteLink(memberId: number, code: string) {
@@ -8710,8 +9973,8 @@ export async function getInviteLinkOwners(serverId: number | string) {
 		FROM server_member_invite_links l
 		JOIN server_members m ON m.id = l.member_id
 		WHERE m.server_id = ${Number(serverId)}
-	`)) as any;
-	return (rows as any[]) ?? [];
+	`)) as unknown as SelectResult<{ code: string; member_id: number; discord_member_id: string }>;
+	return rows ?? [];
 }
 
 export default {
@@ -9022,6 +10285,7 @@ export default {
 	getGiveawayById,
 	getActiveGiveawayByMember,
 	addGiveawayEntry,
+	enterGiveawayOnce,
 	getGiveawayEntries,
 	getRandomGiveawayWinners,
 	markGiveawayEnded,

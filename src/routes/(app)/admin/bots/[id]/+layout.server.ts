@@ -4,9 +4,12 @@ import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, webRouteUp, isBotSectionPath, adminServerPath } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/backend/panelServer.js';
+import { HTTP } from '$lib/http.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(HTTP.FOUND, '/login');
+	}
 
 	const botId = Number(params.id);
 	const isBotSection = isBotSectionPath(url.pathname);
@@ -17,16 +20,20 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 			const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 			const targetBot = ob ?? fallback;
 			if (targetBot != null) {
-				redirect(302, adminServerPath(targetBot, locals.user.server_id));
+				redirect(HTTP.FOUND, adminServerPath(targetBot, locals.user.server_id));
 			}
-			redirect(302, DASHBOARD_PATH);
+			redirect(HTTP.FOUND, DASHBOARD_PATH);
 		}
 
-		if (!(await accountOwnsBot(locals, botId))) redirect(302, webRouteUp(url.pathname));
+		if (!(await accountOwnsBot(locals, botId))) {
+			redirect(HTTP.FOUND, webRouteUp(url.pathname));
+		}
 	}
 
 	const rawBot = await db.getBot(params.id);
-	if (!rawBot) redirect(302, webRouteUp(url.pathname));
+	if (!rawBot) {
+		redirect(HTTP.FOUND, webRouteUp(url.pathname));
+	}
 
 	if ((rawBot.status === 'running' || rawBot.status === 'starting' || rawBot.status === 'stopping') && rawBot.process_id) {
 		try {
@@ -37,7 +44,7 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 		}
 	}
 
-	const { token, ...bot } = rawBot;
+	const { token, ...bot }: typeof rawBot & { uptime_ms?: number } = rawBot;
 	bot.uptime_ms = getBotUptimeMs(bot);
 
 	return { bot, user: locals.user };

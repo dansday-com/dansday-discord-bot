@@ -1,7 +1,17 @@
+import { PERCENT } from '../../../utils/numbers.js';
+
 export type PieItem = { value: number; color: string; label: string; icon?: string };
 export type PieSegment = PieItem & { pct: number; d: string };
 
 export const CHART_PALETTE = ['#e43d12', '#d6536d', '#c8911a', '#1f8a4c', '#b23b3b', '#6d5bd0', '#e07a5f', '#2a9d8f', '#9b2c6f', '#457b9d'];
+
+const COMPACT_UNITS = [
+	{ size: 1e9, suffix: 'B' },
+	{ size: 1e6, suffix: 'M' },
+	{ size: 1e3, suffix: 'K' }
+];
+const COMPACT_WHOLE_FROM_UNITS = 10;
+const MIN_PIE_SLICE_PCT = 0.5;
 
 export const FILL = {
 	primary: 'linear-gradient(90deg, var(--color-secondary), var(--color-primary))',
@@ -15,28 +25,35 @@ export const FILL = {
 
 export function compact(value: number): string {
 	const n = Math.abs(Number(value) || 0);
-	if (n >= 1e9) return (value / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B';
-	if (n >= 1e6) return (value / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M';
-	if (n >= 1e3) return (value / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K';
+	const unit = COMPACT_UNITS.find((u) => n >= u.size);
+	if (unit) {
+		return `${(value / unit.size).toFixed(n >= unit.size * COMPACT_WHOLE_FROM_UNITS ? 0 : 1)}${unit.suffix}`;
+	}
 	return String(Math.round(value || 0));
 }
 
-function polar(cx: number, cy: number, r: number, pctPoint: number) {
-	const a = (pctPoint / 100) * 2 * Math.PI - Math.PI / 2;
+type Circle = { cx: number; cy: number; r: number };
+
+function polar({ cx, cy, r }: Circle, pctPoint: number) {
+	const a = (pctPoint / PERCENT) * 2 * Math.PI - Math.PI / 2;
 	return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
 }
 
 export function buildPie(items: PieItem[]): { total: number; segments: PieSegment[] } {
 	const total = items.reduce((s, x) => s + x.value, 0);
-	if (total <= 0) return { total: 0, segments: [] };
-	const visible = items.filter((it) => (it.value / total) * 100 >= 0.5);
-	if (visible.length === 1) return { total, segments: [{ ...visible[0], pct: 100, d: '' }] };
+	if (total <= 0) {
+		return { total: 0, segments: [] };
+	}
+	const visible = items.filter((it) => (it.value / total) * PERCENT >= MIN_PIE_SLICE_PCT);
+	if (visible.length === 1) {
+		return { total, segments: [{ ...visible[0], pct: PERCENT, d: '' }] };
+	}
 	let offset = 0;
 	const segments = visible.map((it) => {
-		const pct = (it.value / total) * 100;
-		const large = pct > 50 ? 1 : 0;
-		const p1 = polar(50, 50, 48, offset);
-		const p2 = polar(50, 50, 48, offset + pct);
+		const pct = (it.value / total) * PERCENT;
+		const large = pct > PERCENT / 2 ? 1 : 0;
+		const p1 = polar({ cx: 50, cy: 50, r: 48 }, offset);
+		const p2 = polar({ cx: 50, cy: 50, r: 48 }, offset + pct);
 		const seg = {
 			...it,
 			pct,
@@ -50,11 +67,13 @@ export function buildPie(items: PieItem[]): { total: number; segments: PieSegmen
 
 export function sharePct(value: number, rows: number[], floor = 4): number {
 	const max = Math.max(1, ...rows);
-	return Math.max(floor, Math.round(((Number(value) || 0) / max) * 100));
+	return Math.max(floor, Math.round(((Number(value) || 0) / max) * PERCENT));
 }
 
 export function buildArea(values: number[], width = 300, height = 90) {
-	if (values.length < 2) return null;
+	if (values.length < 2) {
+		return null;
+	}
 	const min = Math.min(0, ...values);
 	const max = Math.max(0, ...values);
 	const span = max - min || 1;

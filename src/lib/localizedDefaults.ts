@@ -21,7 +21,9 @@ function greetingDefaultsInAnyLanguage(kind: GreetingKind): Set<string> {
 }
 
 export function isDefaultGreetingSet(kind: GreetingKind, messages: unknown): boolean {
-	if (!Array.isArray(messages) || messages.length === 0) return true;
+	if (!Array.isArray(messages) || messages.length === 0) {
+		return true;
+	}
 	const defaults = greetingDefaultsInAnyLanguage(kind);
 	return messages.every((m) => typeof m === 'string' && defaults.has(m));
 }

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { cubicOut } from 'svelte/easing';
 	import { onMount } from 'svelte';
-	import { avatar } from '../scripts/common.js';
+	import { CAST } from '../scripts/common.js';
+	import { isTapped } from '../clock.svelte.js';
 	import type { SceneScreenProps } from '../types.js';
 
 	type Effect = typeof import('$lib/frontend/components/ThemeEffect.svelte').default;
@@ -34,14 +36,14 @@
 		import('$lib/frontend/components/ThemeEffect.svelte').then((m) => (Effect = m.default));
 	});
 
-	const tapped = (at: number) => t >= at && t < at + 520;
-	const modalOpen = $derived(t >= SPIN.open && t < SPIN.close);
-	const landed = $derived(t >= SPIN.land);
-	const xp = $derived(landed ? START_XP - SPIN_COST : START_XP);
+	const tapped = (at: number) => isTapped(t, at);
+	const isModalOpen = $derived(t >= SPIN.open && t < SPIN.close);
+	const hasLanded = $derived(t >= SPIN.land);
+	const xp = $derived(hasLanded ? START_XP - SPIN_COST : START_XP);
 
 	const reelOffset = $derived.by(() => {
 		const p = Math.max(0, Math.min(1, (t - SPIN.open) / (SPIN.land - SPIN.open)));
-		return (1 - Math.pow(1 - p, 3)) * (REEL.length - 1) * CELL;
+		return cubicOut(p) * (REEL.length - 1) * CELL;
 	});
 </script>
 
@@ -69,7 +71,7 @@
 
 	<div class="from-primary relative isolate mx-3 mt-1 flex h-24 shrink-0 items-center gap-3 overflow-hidden rounded-2xl bg-linear-to-br to-[#7a1e06] px-3.5">
 		{@render paint(PAINT.hero)}
-		<img src={avatar(2)} alt="" class="relative size-10 shrink-0 rounded-full ring-2 ring-white/60" loading="lazy" />
+		<img src={CAST.mira.avatar} alt="" class="relative size-10 shrink-0 rounded-full ring-2 ring-white/60" loading="lazy" />
 		<div class="relative min-w-0 flex-1">
 			<p class="flex items-center gap-1 text-[9px] font-bold tracking-[0.08em] text-white/60 uppercase"><i class="fas fa-wallet"></i>Wallet</p>
 			<p class="truncate text-[13px] font-extrabold text-white">Mira</p>
@@ -106,7 +108,7 @@
 	>
 		{@render rowPaint(PAINT.row)}
 		<span class="text-base-content/60 relative w-6 shrink-0 text-center text-[12px] font-extrabold tabular-nums">#9</span>
-		<img src={avatar(2)} alt="" class="relative size-8 shrink-0 rounded-full" loading="lazy" />
+		<img src={CAST.mira.avatar} alt="" class="relative size-8 shrink-0 rounded-full" loading="lazy" />
 		<span class="relative min-w-0 flex-1">
 			<span class="text-base-content block truncate text-[12.5px] leading-tight font-bold">Mira</span>
 			<span class="text-base-content/60 block text-[10.5px]">Lvl 12</span>
@@ -122,7 +124,7 @@
 		style="--row-accent: {ACCENT}"
 	>
 		{@render rowPaint(PAINT.card)}
-		<img src={avatar(2)} alt="" class="relative size-10 shrink-0 rounded-full" loading="lazy" />
+		<img src={CAST.mira.avatar} alt="" class="relative size-10 shrink-0 rounded-full" loading="lazy" />
 		<span class="relative min-w-0 flex-1">
 			<span class="text-base-content block truncate text-[12.5px] leading-tight font-bold">Mira</span>
 			<span
@@ -134,20 +136,20 @@
 		<span class="text-base-content/60 relative shrink-0 text-[10.5px] font-bold">Lvl 12</span>
 	</div>
 
-	<div class="themes-overlay absolute inset-0 bg-black/40" class:themes-overlay-on={modalOpen}></div>
+	<div class="themes-overlay absolute inset-0 bg-black/40" class:themes-overlay-on={isModalOpen}></div>
 
 	<div
 		class="themes-modal border-base-300 bg-base-200 absolute top-1/2 left-1/2 w-[82%] rounded-2xl border px-4 pt-4 pb-4 text-center shadow-2xl"
-		class:themes-modal-on={modalOpen}
+		class:themes-modal-on={isModalOpen}
 	>
 		<p class="text-base-content flex items-center justify-center gap-1.5 text-[13px] font-extrabold">
 			<i class="fas fa-wand-magic-sparkles text-[#d9a528]"></i>Effect spin
 		</p>
-		<div class="border-base-300 bg-base-100 relative mt-3 overflow-hidden rounded-xl border {landed ? 'border-[#d9a528]' : ''}" style="height: {CELL}px">
+		<div class="border-base-300 bg-base-100 relative mt-3 overflow-hidden rounded-xl border {hasLanded ? 'border-[#d9a528]' : ''}" style="height: {CELL}px">
 			<ul style="transform: translateY(-{reelOffset}px)">
 				{#each REEL as item (item.id)}
 					<li
-						class="flex items-center justify-center gap-2 text-[15px] font-extrabold {landed && item === WON ? 'text-primary' : 'text-base-content/75'}"
+						class="flex items-center justify-center gap-2 text-[15px] font-extrabold {hasLanded && item === WON ? 'text-primary' : 'text-base-content/75'}"
 						style="height: {CELL}px"
 					>
 						<i class="fas {item.icon} text-[13px]"></i>{item.label}
@@ -155,8 +157,8 @@
 				{/each}
 			</ul>
 		</div>
-		<p class="mt-2.5 text-[11.5px] font-bold {landed ? 'text-success' : 'text-base-content/55'}">
-			{landed ? `${WON.label} is yours. −${fmt(SPIN_COST)} XP` : 'Rolling…'}
+		<p class="mt-2.5 text-[11.5px] font-bold {hasLanded ? 'text-success' : 'text-base-content/55'}">
+			{hasLanded ? `${WON.label} is yours. −${fmt(SPIN_COST)} XP` : 'Rolling…'}
 		</p>
 	</div>
 </div>

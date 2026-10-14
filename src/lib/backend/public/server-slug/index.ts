@@ -5,9 +5,9 @@ export type PublicSlugServerRow = {
 	id: number;
 	bot_id?: number | null;
 	name: string | null;
-	updated_at: any;
+	updated_at: unknown;
 	server_icon?: string | null;
-	deleted_at?: any;
+	deleted_at?: unknown;
 };
 
 export type SluggedPublicServer = { slug: string; updated_at: unknown; item: PublicSlugServerRow };
@@ -17,7 +17,7 @@ function serverSlugKey(s: PublicSlugServerRow) {
 }
 
 async function listPublicServerRows(): Promise<PublicSlugServerRow[]> {
-	const servers: PublicSlugServerRow[] = await (db as any).listPublicServers();
+	const servers: PublicSlugServerRow[] = await db.listPublicServers();
 	return Array.isArray(servers) ? servers : [];
 }
 
@@ -35,13 +35,17 @@ export async function listLivePublicServers(): Promise<SluggedPublicServer[]> {
 
 export async function resolvePublicServerBySlug(requestedSlug: string): Promise<{ server: PublicSlugServerRow; computedSlug: string } | null> {
 	const servers = await listPublicServerRows();
-	if (servers.length === 0) return null;
+	if (servers.length === 0) {
+		return null;
+	}
 	const resolved = resolveIndexedSlugToItem(requestedSlug, servers, serverSlugKey);
-	if (!resolved || !isLivePublicServer(resolved.item)) return null;
+	if (!resolved || !isLivePublicServer(resolved.item)) {
+		return null;
+	}
 	return { server: resolved.item, computedSlug: resolved.computedSlug };
 }
 
-export async function listPublicServerSlugs(): Promise<{ id: number; slug: string; updated_at: any }[]> {
+export async function listPublicServerSlugs(): Promise<{ id: number; slug: string; updated_at: unknown }[]> {
 	const rows = await listLivePublicServers();
 	return rows.map((row) => ({
 		id: Number(row.item.id),
@@ -52,7 +56,9 @@ export async function listPublicServerSlugs(): Promise<{ id: number; slug: strin
 
 export async function computePublicServerSlugForServerId(serverId: number): Promise<string | null> {
 	const servers = await listPublicServerRows();
-	if (servers.length === 0) return null;
+	if (servers.length === 0) {
+		return null;
+	}
 	return computeIndexedSlugForItemId(serverId, servers, serverSlugKey);
 }
 

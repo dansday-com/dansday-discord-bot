@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/backend/panelServer.js';
+	import { APP_NAME, SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
-	import { SERVER_SETTINGS } from '$lib/backend/panelServer.js';
 	import { adminServerSectionPath } from '$lib/frontend/redirect.js';
 
 	let { data, children }: LayoutProps = $props();
@@ -13,7 +12,9 @@
 
 	function isActive(suffix: string) {
 		const full = base + suffix;
-		if (suffix === '') return page.url.pathname === base;
+		if (suffix === '') {
+			return page.url.pathname === base;
+		}
 		return page.url.pathname === full;
 	}
 </script>

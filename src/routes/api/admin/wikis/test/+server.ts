@@ -1,26 +1,27 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { testWiki } from '$lib/frontend/wikis.server.js';
+import { HTTP } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated) {
-		return json({ success: false, error: 'Authentication required' }, { status: 401 });
+		return json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 
 	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	let body: Record<string, unknown>;
-	try {
-		body = await request.json();
-	} catch {
-		return json({ success: false, error: 'Invalid JSON' }, { status: 400 });
+	const body: Record<string, unknown> | null = await request.json().catch(() => null);
+	if (!body) {
+		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const result = await testWiki(body);
-	if (!result.ok) return json({ success: false, error: result.error }, { status: 400 });
+	if (!result.ok) {
+		return json({ success: false, error: result.error }, { status: HTTP.BAD_REQUEST });
+	}
 
-	const { ok, ...site } = result;
+	const { ok: isOk, ...site } = result;
 	return json({ success: true, ...site });
 };

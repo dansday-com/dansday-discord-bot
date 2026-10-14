@@ -5,6 +5,7 @@
 
 	type Token = { kind: 'text' | 'bold' | 'code' | 'user' | 'channel' | 'link'; value: string };
 
+	const BOLD_MARK = '**';
 	const TOKEN = /(\*\*.+?\*\*|`[^`]+`|<@[^>]+>|<#[^>]+>|\[[^\]]+\]\([^)]*\))/g;
 
 	const tokens = $derived(
@@ -12,11 +13,21 @@
 			.split(TOKEN)
 			.filter(Boolean)
 			.map((part): Token => {
-				if (part.startsWith('**')) return { kind: 'bold', value: part.slice(2, -2) };
-				if (part.startsWith('`')) return { kind: 'code', value: part.slice(1, -1) };
-				if (part.startsWith('<@')) return { kind: 'user', value: part === '<@bot>' ? APP_NAME : part.slice(2, -1) };
-				if (part.startsWith('<#')) return { kind: 'channel', value: part.slice(2, -1) };
-				if (part.startsWith('[') && part.includes('](')) return { kind: 'link', value: part.slice(1, part.indexOf('](')) };
+				if (part.startsWith(BOLD_MARK)) {
+					return { kind: 'bold', value: part.slice(BOLD_MARK.length, -BOLD_MARK.length) };
+				}
+				if (part.startsWith('`')) {
+					return { kind: 'code', value: part.slice(1, -1) };
+				}
+				if (part.startsWith('<@')) {
+					return { kind: 'user', value: part === '<@bot>' ? APP_NAME : part.slice(2, -1) };
+				}
+				if (part.startsWith('<#')) {
+					return { kind: 'channel', value: part.slice(2, -1) };
+				}
+				if (part.startsWith('[') && part.includes('](')) {
+					return { kind: 'link', value: part.slice(1, part.indexOf('](')) };
+				}
 				return { kind: 'text', value: part };
 			})
 	);

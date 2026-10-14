@@ -9,6 +9,8 @@
 		"build": "vite build",
 		"build:otel": "tsc -p tsconfig.otel.json",
 		"build:format": "prettier --write . && prettier --check .",
+		"build:lint": "eslint .",
+		"build:test": "node --import ./tests/resolve.ts --test \"tests/*.test.ts\"",
 		"build:sync": "svelte-kit sync"
 	},
 	"dependencies": {
@@ -47,6 +49,7 @@
 		"tiktok-live-connector": "^2.5.0"
 	},
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.70.3",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
@@ -55,6 +58,9 @@
 		"@types/three": "^0.186.0",
 		"daisyui": "^5.7.47",
 		"drizzle-kit": "^0.31.11",
+		"eslint": "^10.12.0",
+		"eslint-plugin-svelte": "^3.23.0",
+		"globals": "^17.13.0",
 		"prettier": "^3.9.9",
 		"prettier-plugin-svelte": "^4.1.1",
 		"prettier-plugin-tailwindcss": "^0.8.1",
@@ -62,6 +68,7 @@
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.71.1",
 		"vite": "^8.3.1"
 	}
 }

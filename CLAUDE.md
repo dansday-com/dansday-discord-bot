@@ -15,6 +15,18 @@ Rules:
 
 - Run `npm run build:format` after every edit. Prettier rewrites files on disk, so skipping it makes the next exact-string edit fail against reformatted source.
 
+## Code practices
+
+Before writing a new feature, read https://github.com/andredesousa/typescript-best-practices and the rules below. The whole codebase follows them, and new code must match.
+
+- `npm run build:lint` must pass. It is the required `Lint` check on `master` (`.github/workflows/lint.yml` plus the `Lint` ruleset), so a pull request with lint errors cannot merge.
+- Functions take at most three parameters (pass an object for more), nest at most four blocks deep and stay under 80 lines. Split by responsibility, not by line count.
+- Booleans start with `is`/`has`/`are`/`can`/`should`/`did`/`was`/`will`/`does`. No `any` and no `eslint-disable` comments.
+- No magic numbers. Use a shared constant first: `utils/time.ts` (`SECOND_MS`, `MINUTE_MS`, `DAY_MS`, `formatElapsed`), `http.ts` (`HTTP.NOT_FOUND`, `isHttpSuccess`), `discordLimits.ts` (`DISCORD_LIMITS`, `truncateToLimit`, `embedFieldText`), `utils/numbers.ts` (`PERCENT`, `HEX_RADIX`, `roundTo`, `QUARTER_PERCENTS`). Otherwise add a module-level constant named for what the number means (`REASON_MAX_LENGTH`), never for its value. Data tables are objects (`{ amount: 6, unit: 'hour' }`) or generated lists, not bare tuples. Only the modules in `numericDataModules` in `eslint.config.js` are exempt; never add a file there to get around the rule.
+- Reuse before writing. Check `src/lib/utils/` (time, numbers, format, rgb, random, datetime, mentions, discordChannels, guildSyncDebounce), `discordAvatars.ts`, `accounts.ts`, `frontend/eventStream.server.ts`, `frontend/toast.svelte.ts` (`TOAST_MS`) and `components/public/reel.ts` for an existing helper. When logic or a constant would exist twice, move it to a shared module instead of copying it.
+- Prefer library constants to raw values: discord.js `MessageFlags.Ephemeral`, `RESTJSONErrorCodes`, `ChannelType`, and `svelte/easing`.
+- Bot code (`src/lib/backend/bots/**` and everything it imports) uses relative imports, because the bot build has no `$lib` alias. Panel code uses `$lib/`.
+
 ## Discord UI
 
 Every message, button, select and form the bot sends follows Discord's own developer guidance: the DevRel talk "Discord App Best Practices: UI/UX for Developers" and "Deep Dive: New Message Components". Apply these without being asked, and check existing screens against them when you touch a feature.

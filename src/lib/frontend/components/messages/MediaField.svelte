@@ -4,6 +4,7 @@
 	import { messageEditor } from './editorContext.js';
 	import { mediaKinds, uploadMedia } from './mediaUpload.js';
 	import { FIELD, GHOST_BUTTON, ICON_BUTTON, LABEL } from './styles.js';
+	import { PERCENT } from '$lib/utils/numbers.js';
 
 	let {
 		value = $bindable(''),
@@ -27,10 +28,14 @@
 	async function pick(input: HTMLInputElement) {
 		const file = input.files?.[0];
 		input.value = '';
-		if (!file) return;
+		if (!file) {
+			return;
+		}
 		try {
-			const key = await uploadMedia(editor, file, video, (fraction) => (progress = fraction));
-			if (key) value = key;
+			const key = await uploadMedia(editor, file, { video, onProgress: (fraction) => (progress = fraction) });
+			if (key) {
+				value = key;
+			}
 		} finally {
 			progress = null;
 		}
@@ -60,7 +65,7 @@
 		{/if}
 		<label for="media-{uid}" class="{GHOST_BUTTON} shrink-0 cursor-pointer {progress !== null ? 'pointer-events-none opacity-60' : ''}">
 			<i class="fas {progress !== null ? 'fa-spinner fa-spin' : 'fa-upload'}"></i>
-			{progress !== null ? `${Math.round(progress * 100)}%` : value ? 'Replace' : 'Upload'}
+			{progress !== null ? `${Math.round(progress * PERCENT)}%` : value ? 'Replace' : 'Upload'}
 		</label>
 		{#if value && link}
 			<button type="button" class={ICON_BUTTON} aria-label="Remove {label || 'file'}" onclick={() => (value = '')}><i class="fas fa-xmark"></i></button>

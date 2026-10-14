@@ -1,19 +1,21 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { formatDbDateTime, formatDbDateTimeLocal, dbUtcValueToIso } from '$lib/utils/datetime.js';
+	import { formatDbDateTime, formatDbDateTimeLocal, dbUtcValueToIso, type TimePrecision } from '$lib/utils/datetime.js';
 
 	interface Props {
 		value: unknown;
-		includeSeconds?: boolean;
+		precision?: TimePrecision;
 		fallback?: string;
 		class?: string;
 	}
 
-	let { value, includeSeconds = false, fallback = '—', class: className = '' }: Props = $props();
+	let { value, precision = 'minute', fallback = '—', class: className = '' }: Props = $props();
 
 	const utcText = $derived.by(() => {
-		if (value == null || value === '') return fallback;
-		const s = formatDbDateTime(value, includeSeconds);
+		if (value == null || value === '') {
+			return fallback;
+		}
+		const s = formatDbDateTime(value, precision);
 		return s === '—' ? fallback : s;
 	});
 
@@ -28,7 +30,7 @@
 			localText = null;
 			return;
 		}
-		const s = formatDbDateTimeLocal(value, includeSeconds);
+		const s = formatDbDateTimeLocal(value, precision);
 		localText = s === '—' ? null : s;
 	});
 

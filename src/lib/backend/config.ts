@@ -5,13 +5,20 @@ import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-s
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings, normalizeForwarderKeywords } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
-import { logger } from '../utils/index.js';
+import { attempt, logger } from '../utils/index.js';
 import { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 import { getEffectiveMainEmbedAppearance } from '../utils/mainConfig.js';
 import { moderationRulesFromSettings, type ModerationRules } from '../moderation-rules.js';
 import { rewardRuleFlags, type RewardRules } from '../rewards.js';
 import { normalizeServerLanguage } from '../languages.js';
 import { greetingMessagesFor, isDefaultGreetingSet } from '../localizedDefaults.js';
+import type { GuildMember } from 'discord.js';
+import { MINUTE_MS } from '../utils/time.js';
+import { INVITE_SHARE_PERCENT_MAX } from '../invites.js';
+import { mentionChunks } from '../utils/mentions.js';
+import { DEFAULT_LEVELING_SETTINGS } from '../levelingDefaults.js';
+
+const CREATOR_ALERTS_TIKTOK_COOLDOWN_MINUTES = 15;
 
 interface BotConfig {
 	id: number;
@@ -26,10 +33,16 @@ let botConfig: BotConfig | null = null;
 
 function inferBotRuntimeKind(): 'official' | 'selfbot' | null {
 	const e = process.env.BOT_KIND;
-	if (e === 'official' || e === 'selfbot') return e;
+	if (e === 'official' || e === 'selfbot') {
+		return e;
+	}
 	const script = process.argv[1] || '';
-	if (/officialbot\.(js|mjs|cjs|ts)$/i.test(script)) return 'official';
-	if (/selfbot\.(js|mjs|cjs|ts)$/i.test(script)) return 'selfbot';
+	if (/officialbot\.(js|mjs|cjs|ts)$/i.test(script)) {
+		return 'official';
+	}
+	if (/selfbot\.(js|mjs|cjs|ts)$/i.test(script)) {
+		return 'selfbot';
+	}
 	return null;
 }
 
@@ -121,15 +134,17 @@ function requireBotConfig() {
 	}
 }
 
-function requireGuildId(guildId: any, action = 'operation') {
+function requireGuildId(guildId: number | string, action = 'operation') {
 	if (!guildId) {
 		throw new Error(`Guild ID is required for ${action}.`);
 	}
 }
 
-async function getServerSettingsRow(serverId: any, componentName: string) {
+async function getServerSettingsRow(serverId: number | string, componentName: string) {
 	const rowOrRows = await db.getServerSettings(serverId, componentName);
-	if (!rowOrRows) return null;
+	if (!rowOrRows) {
+		return null;
+	}
 	return Array.isArray(rowOrRows) ? (rowOrRows[0] ?? null) : rowOrRows;
 }
 
@@ -137,7 +152,9 @@ async function getOfficialBotId() {
 	requireBotConfig();
 	if (botConfig!.isSelfbot) {
 		const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
-		if (officialBot) return officialBot.id as number;
+		if (officialBot) {
+			return officialBot.id as number;
+		}
 	}
 	return botConfig!.id;
 }
@@ -187,33 +204,42 @@ export async function resolveServerIdForGuildSetting(guildDiscordId: string, com
 }
 
 export async function isComponentFeatureEnabled(guildDiscordId: string, component: string): Promise<boolean> {
-	if (!guildDiscordId) return true;
+	if (!guildDiscordId) {
+		return true;
+	}
 	try {
 		requireBotConfig();
 		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, component);
-		if (serverId == null) return true;
+		if (serverId == null) {
+			return true;
+		}
 		const row = await db.getServerSettings(serverId, component);
 		if (!row || Array.isArray(row) || !row.settings || typeof row.settings !== 'object') {
-			return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
+			return !SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName);
 		}
 		return (row.settings as Record<string, unknown>).enabled === true;
 	} catch {
-		return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
+		return !SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName);
 	}
 }
 
 export async function resolveGuildAiConfig<T extends AiInput>(guildDiscordId: string, config: T): Promise<T> {
-	if (!guildDiscordId) return config;
-
-	let overrides: ServerAiSettings;
-	try {
-		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, serverSettingsComponent.ai);
-		if (serverId == null) return config;
-		const row = await getServerSettingsRow(serverId, serverSettingsComponent.ai);
-		overrides = normalizeServerAiSettings(row?.settings ?? null);
-	} catch {
+	if (!guildDiscordId) {
 		return config;
 	}
+
+	const loaded = await attempt(async () => {
+		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, serverSettingsComponent.ai);
+		if (serverId == null) {
+			return null;
+		}
+		const row = await getServerSettingsRow(serverId, serverSettingsComponent.ai);
+		return normalizeServerAiSettings(row?.settings ?? null);
+	});
+	if (!loaded.ok || !loaded.value) {
+		return config;
+	}
+	const overrides: ServerAiSettings = loaded.value;
 
 	return {
 		...config,
@@ -275,8 +301,10 @@ export const PERMISSIONS = {
 		};
 	},
 
-	async hasAnyRole(member: any, roleIds: string[]) {
-		if (!roleIds || roleIds.length === 0) return false;
+	async hasAnyRole(member: GuildMember, roleIds: string[]) {
+		if (!roleIds || roleIds.length === 0) {
+			return false;
+		}
 		try {
 			const cache = member?.roles?.cache;
 			if (cache && typeof cache.has === 'function') {
@@ -331,7 +359,7 @@ export async function getLevelingSettings(guildId: string) {
 			XP: Math.max(0, Number(inviteCfg?.XP ?? DEFAULT_LEVELING_SETTINGS.INVITE.XP)),
 			MIN_ACCOUNT_AGE_DAYS: Math.max(0, Number(inviteCfg?.MIN_ACCOUNT_AGE_DAYS ?? DEFAULT_LEVELING_SETTINGS.INVITE.MIN_ACCOUNT_AGE_DAYS)),
 			HOLD_HOURS: Math.max(0, Number(inviteCfg?.HOLD_HOURS ?? DEFAULT_LEVELING_SETTINGS.INVITE.HOLD_HOURS)),
-			SHARE_PERCENT: Math.max(0, Math.min(25, Number(inviteCfg?.SHARE_PERCENT ?? DEFAULT_LEVELING_SETTINGS.INVITE.SHARE_PERCENT)))
+			SHARE_PERCENT: Math.max(0, Math.min(INVITE_SHARE_PERCENT_MAX, Number(inviteCfg?.SHARE_PERCENT ?? DEFAULT_LEVELING_SETTINGS.INVITE.SHARE_PERCENT)))
 		},
 		REQUIREMENTS: {
 			BASE_XP: req.BASE_XP ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
@@ -341,12 +369,14 @@ export async function getLevelingSettings(guildId: string) {
 	};
 }
 
-async function getPublicStatsSettings(guildId: string): Promise<Record<string, any> | null> {
+async function getPublicStatsSettings(guildId: string): Promise<Record<string, unknown> | null> {
 	try {
 		const officialBotServer = await getOfficialBotServer(guildId);
 		const row = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.public);
-		if (!row || !row.settings || typeof row.settings !== 'object' || Array.isArray(row.settings)) return null;
-		return row.settings as Record<string, any>;
+		if (!row || !row.settings || typeof row.settings !== 'object' || Array.isArray(row.settings)) {
+			return null;
+		}
+		return row.settings as Record<string, unknown>;
 	} catch (_) {
 		return null;
 	}
@@ -371,18 +401,30 @@ export async function getMinigamesChannelId(guildId: string): Promise<string | n
 
 export const COMMUNICATION = {
 	get WEBHOOK_URL() {
-		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
-		if (!botConfig.port) throw new Error('Port not found in database configuration.');
+		if (!botConfig) {
+			throw new Error('Bot config not loaded. Call initializeConfig() first.');
+		}
+		if (!botConfig.port) {
+			throw new Error('Port not found in database configuration.');
+		}
 		return `http://localhost:${botConfig.port}`;
 	},
 	get SECRET_KEY() {
-		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
-		if (!botConfig.secret_key) throw new Error('Secret key not found in database configuration.');
+		if (!botConfig) {
+			throw new Error('Bot config not loaded. Call initializeConfig() first.');
+		}
+		if (!botConfig.secret_key) {
+			throw new Error('Secret key not found in database configuration.');
+		}
 		return botConfig.secret_key;
 	},
 	get PORT() {
-		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
-		if (!botConfig.port) throw new Error('Port not found in database configuration.');
+		if (!botConfig) {
+			throw new Error('Bot config not loaded. Call initializeConfig() first.');
+		}
+		if (!botConfig.port) {
+			throw new Error('Port not found in database configuration.');
+		}
 		return botConfig.port;
 	}
 };
@@ -501,7 +543,7 @@ export const CREATOR_ALERTS_FETCH_TIMEOUT_MS = 15_000;
 export const CREATOR_ALERTS_YOUTUBE_CONCURRENCY = 4;
 export const CREATOR_ALERTS_TIKTOK_SPACING_MS = 1_500;
 export const CREATOR_ALERTS_TIKTOK_MAX_PER_TICK = 20;
-export const CREATOR_ALERTS_TIKTOK_COOLDOWN_MS = 15 * 60_000;
+export const CREATOR_ALERTS_TIKTOK_COOLDOWN_MS = CREATOR_ALERTS_TIKTOK_COOLDOWN_MINUTES * MINUTE_MS;
 export const CREATOR_ALERTS_HISTORY_LIMIT = 20;
 
 export const creatorAlertsEmbedColors = {
@@ -553,7 +595,7 @@ export async function getEmbedConfig(guildId: string) {
 	return { COLOR: color, FOOTER: footerText, NICKNAME: bot_nickname || DEFAULT_BOT_NICKNAME };
 }
 
-async function getServerLanguageById(serverId: any) {
+async function getServerLanguageById(serverId: number | string) {
 	const row = await getServerSettingsRow(serverId, serverSettingsComponent.main).catch(() => null);
 	return normalizeServerLanguage(row?.settings?.language);
 }
@@ -562,16 +604,22 @@ export const WELCOMER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer channels');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) {
+			return [];
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
-		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
+		if (settings?.settings?.channels?.length > 0) {
+			return settings.settings.channels;
+		}
 		return [];
 	},
 
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer messages');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) {
+			return [];
+		}
 		const serverId = (await getOfficialBotServer(guildId)).id;
 		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.welcomer);
 		return greetingMessagesFor('welcomer', settings?.settings?.messages, await getServerLanguageById(serverId));
@@ -589,16 +637,22 @@ export const LEAVER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting leaver channels');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaver))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaver))) {
+			return [];
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.leaver);
-		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
+		if (settings?.settings?.channels?.length > 0) {
+			return settings.settings.channels;
+		}
 		return [];
 	},
 
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting leaver messages');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaver))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaver))) {
+			return [];
+		}
 		const serverId = (await getOfficialBotServer(guildId)).id;
 		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.leaver);
 		return greetingMessagesFor('leaver', settings?.settings?.messages, await getServerLanguageById(serverId));
@@ -616,9 +670,13 @@ export const BOOSTER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster channels');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) {
+			return [];
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
-		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
+		if (settings?.settings?.channels?.length > 0) {
+			return settings.settings.channels;
+		}
 		return [];
 	},
 
@@ -630,7 +688,9 @@ export const BOOSTER = {
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster messages');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) {
+			return [];
+		}
 		const serverId = (await getOfficialBotServer(guildId)).id;
 		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.booster);
 		return greetingMessagesFor('booster', settings?.settings?.messages, await getServerLanguageById(serverId));
@@ -663,9 +723,13 @@ export const NOTIFICATIONS = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting notifications config');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
+			return null;
+		}
 		const sid = await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications);
-		if (sid == null) return null;
+		if (sid == null) {
+			return null;
+		}
 		const settings = await getServerSettingsRow(sid, serverSettingsComponent.notifications);
 		return settings?.settings || null;
 	},
@@ -676,48 +740,54 @@ export const NOTIFICATIONS = {
 	},
 
 	async getNotificationChannels(guildId: string) {
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
+			return [];
+		}
 		const server = await getOfficialBotServer(guildId).catch(() => null);
-		if (!server) return [];
+		if (!server) {
+			return [];
+		}
 		const config = await this.getConfigByServerId(server.id);
 		const channelIds = config?.channel_ids || [];
-		if (channelIds.length === 0) return [];
+		if (channelIds.length === 0) {
+			return [];
+		}
 		return await db.getNotificationChannels(server.id, channelIds);
 	},
 
 	async getNotifiedMemberMentionsForChannel(guildId: string, channelId: string): Promise<string[] | null> {
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
-		const server = await getOfficialBotServer(guildId).catch(() => null);
-		if (!server || !channelId) return null;
-		const ids = await db.getNotifiedMemberDiscordIds(server.id, channelId);
-		if (!ids || ids.length === 0) return null;
-
-		const chunks: string[] = [];
-		let currentChunk = '';
-		for (const id of ids) {
-			const mention = `<@${id}> `;
-			if (currentChunk.length + mention.length > 1950) {
-				chunks.push(currentChunk.trim());
-				currentChunk = mention;
-			} else {
-				currentChunk += mention;
-			}
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
+			return null;
 		}
-		if (currentChunk) chunks.push(currentChunk.trim());
+		const server = await getOfficialBotServer(guildId).catch(() => null);
+		if (!server || !channelId) {
+			return null;
+		}
+		const ids = await db.getNotifiedMemberDiscordIds(server.id, channelId);
+		if (!ids || ids.length === 0) {
+			return null;
+		}
 
+		const chunks = mentionChunks(ids);
 		return chunks.length > 0 ? chunks : null;
 	},
 
 	async getMemberNotificationChannelIds(guildId: string, memberId: string) {
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
+			return [];
+		}
 		const server = await getOfficialBotServer(guildId).catch(() => null);
-		if (!server || !memberId) return [];
+		if (!server || !memberId) {
+			return [];
+		}
 		return await db.getMemberNotificationChannelIds(server.id, memberId);
 	},
 
 	async updateMemberNotificationChannels(guildId: string, memberId: string, channelIds: string[]) {
 		const server = await getOfficialBotServer(guildId).catch(() => null);
-		if (!server || !memberId) return false;
+		if (!server || !memberId) {
+			return false;
+		}
 		return await db.updateMemberNotificationChannels(server.id, memberId, channelIds);
 	}
 };
@@ -726,16 +796,22 @@ export const FEEDBACK = {
 	async getChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback channel');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) {
+			return null;
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
-		if (settings?.settings?.feedback_channel) return settings.settings.feedback_channel;
+		if (settings?.settings?.feedback_channel) {
+			return settings.settings.feedback_channel;
+		}
 		return null;
 	},
 
 	async getRole(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback role');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) {
+			return null;
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		return settings?.settings?.feedback_role || null;
 	}
@@ -745,7 +821,9 @@ export const GIVEAWAY = {
 	async getChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway channel');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return null;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) {
+			return null;
+		}
 		return GIVEAWAY.getStoredGiveawayChannelId(guildId);
 	},
 
@@ -761,14 +839,18 @@ export const GIVEAWAY = {
 
 	async getStoredGiveawayChannelId(guildId: string): Promise<string | null> {
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
-		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
+		if (settings?.settings?.giveaway_channel) {
+			return settings.settings.giveaway_channel;
+		}
 		return null;
 	},
 
 	async getCreatorCanParticipate(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway creator can participate setting');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return false;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) {
+			return false;
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		return settings?.settings?.giveaway_creator_can_participate ?? false;
 	}
@@ -810,7 +892,9 @@ export const STAFF_RATING = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting staff rating config');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.staff_rating))) return null;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.staff_rating))) {
+			return null;
+		}
 		const serverId = (await getOfficialBotServer(guildId)).id;
 		const row = await getServerSettingsRow(serverId, serverSettingsComponent.staff_rating);
 		return row?.settings || null;
@@ -820,7 +904,9 @@ export const STAFF_RATING = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting staff rating channel');
 		const config = await STAFF_RATING.getConfig(guildId);
-		if (config?.rating_channel_id) return config.rating_channel_id;
+		if (config?.rating_channel_id) {
+			return config.rating_channel_id;
+		}
 		return null;
 	},
 
@@ -829,7 +915,9 @@ export const STAFF_RATING = {
 		requireGuildId(guildId, 'getting staff rating review channel');
 		const config = await STAFF_RATING.getConfig(guildId);
 		const reviewId = config?.review_channel_id || config?.report_channel_id;
-		if (reviewId) return reviewId;
+		if (reviewId) {
+			return reviewId;
+		}
 		return null;
 	},
 
@@ -853,7 +941,9 @@ export const CONTENT_CREATOR = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting content creator config');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.content_creator))) return null;
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.content_creator))) {
+			return null;
+		}
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.content_creator);
 		return settings?.settings || null;
 	},
@@ -865,7 +955,9 @@ export const CONTENT_CREATOR = {
 
 	async getTargetChannel(guildId: string) {
 		const config = await CONTENT_CREATOR.getConfig(guildId);
-		if (config?.target_channel_id) return config.target_channel_id;
+		if (config?.target_channel_id) {
+			return config.target_channel_id;
+		}
 		return null;
 	},
 
@@ -890,81 +982,117 @@ export const CONTENT_CREATOR = {
 	}
 };
 
-async function forwarderMatchesSourceGuild(forwarder: any, sourceGuildId: string) {
-	if (forwarder?.source_guild_id) return String(forwarder.source_guild_id) === String(sourceGuildId);
-	if (!forwarder?.server_id) return false;
+async function forwarderMatchesSourceGuild(forwarder: Record<string, unknown>, sourceGuildId: string) {
+	if (forwarder?.source_guild_id) {
+		return String(forwarder.source_guild_id) === String(sourceGuildId);
+	}
+	if (!forwarder?.server_id) {
+		return false;
+	}
 	const legacyGuildId = await db.getSelfbotServerDiscordId(Number(forwarder.server_id));
 	return legacyGuildId != null && String(legacyGuildId) === String(sourceGuildId);
 }
 
-async function forwarderSourceGuildId(forwarder: any): Promise<string | null> {
-	if (forwarder?.source_guild_id) return String(forwarder.source_guild_id);
-	if (!forwarder?.server_id) return null;
+async function forwarderSourceGuildId(forwarder: Record<string, unknown>): Promise<string | null> {
+	if (forwarder?.source_guild_id) {
+		return String(forwarder.source_guild_id);
+	}
+	if (!forwarder?.server_id) {
+		return null;
+	}
 	const legacyGuildId = await db.getSelfbotServerDiscordId(Number(forwarder.server_id));
 	return legacyGuildId != null ? String(legacyGuildId) : null;
 }
 
 type ForwardMatch = { onlyForwardWhenMentionsSelfBot: boolean; keywords: string[]; target_guild_id: string };
+export type ForwarderTarget = {
+	target_channel_id: string;
+	role_pings: string[];
+	target_guild_id: string;
+	only_forward_when_mentions_member: boolean;
+	keywords: string[];
+};
 
-const FORWARD_INDEX_TTL_MS = 60 * 1000;
+const FORWARD_INDEX_TTL_MS = MINUTE_MS;
 let forwardIndex: Map<string, ForwardMatch[]> | null = null;
 let forwardIndexAt = 0;
 let forwardIndexBuilding: Promise<Map<string, ForwardMatch[]>> | null = null;
+
+type ForwarderIndexing = { targetGuildId: string; isSourceGuildAllowed: (guildId: string) => Promise<boolean> };
+
+function forwarderChannelId(channel: unknown): string {
+	if (typeof channel === 'string') {
+		return channel;
+	}
+	const channelId = channel && typeof channel === 'object' ? (channel as { channel_id?: unknown }).channel_id : '';
+	return String(channelId || '');
+}
+
+async function indexForwarder(index: Map<string, ForwardMatch[]>, forwarder: Record<string, unknown>, indexing: ForwarderIndexing) {
+	if (!Array.isArray(forwarder?.source_channels) || forwarder.source_channels.length === 0) {
+		return;
+	}
+
+	const sourceGuildId = await forwarderSourceGuildId(forwarder);
+	if (!sourceGuildId || !(await indexing.isSourceGuildAllowed(sourceGuildId))) {
+		return;
+	}
+
+	const match: ForwardMatch = {
+		onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
+		keywords: normalizeForwarderKeywords(forwarder.keywords),
+		target_guild_id: indexing.targetGuildId
+	};
+
+	for (const channel of forwarder.source_channels) {
+		const channelId = forwarderChannelId(channel);
+		if (!channelId) {
+			continue;
+		}
+		const key = `${sourceGuildId}:${channelId}`;
+		index.set(key, [...(index.get(key) ?? []), match]);
+	}
+}
 
 async function buildForwardIndex(): Promise<{ index: Map<string, ForwardMatch[]>; failed: number }> {
 	const index = new Map<string, ForwardMatch[]>();
 	let failed = 0;
 
 	const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
-	if (!officialBot) return { index, failed };
+	if (!officialBot) {
+		return { index, failed };
+	}
 
 	const officialServers = await db.getServersForBot(officialBot.id);
 	const guildAllowed = new Map<string, boolean>();
 
 	const isSourceGuildAllowed = async (guildId: string) => {
-		const cached = guildAllowed.get(guildId);
-		if (cached !== undefined) return cached;
+		const isCached = guildAllowed.get(guildId);
+		if (isCached !== undefined) {
+			return isCached;
+		}
 
-		let allowed = false;
+		let isAllowed = false;
 		const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
 		if (selfbotServer) {
 			const primarySelfbotId = await db.getPrimarySelfbotIdForSourceGuild(officialBot.id, guildId);
-			allowed = primarySelfbotId === null || String(primarySelfbotId) === String(botConfig!.id);
+			isAllowed = primarySelfbotId === null || String(primarySelfbotId) === String(botConfig!.id);
 		}
-		guildAllowed.set(guildId, allowed);
-		return allowed;
+		guildAllowed.set(guildId, isAllowed);
+		return isAllowed;
 	};
 
 	for (const officialServer of officialServers) {
 		try {
 			const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
-			const list = (forwarders.forwarders || []) as any[];
+			const list = (forwarders.forwarders || []) as Record<string, unknown>[];
 
 			for (const forwarder of list) {
-				if (!Array.isArray(forwarder?.source_channels) || forwarder.source_channels.length === 0) continue;
-
-				const sourceGuildId = await forwarderSourceGuildId(forwarder);
-				if (!sourceGuildId) continue;
-				if (!(await isSourceGuildAllowed(sourceGuildId))) continue;
-
-				const match: ForwardMatch = {
-					onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
-					keywords: normalizeForwarderKeywords(forwarder.keywords),
-					target_guild_id: officialServer.discord_server_id
-				};
-
-				for (const ch of forwarder.source_channels) {
-					const channelId = typeof ch === 'string' ? String(ch) : String(ch?.channel_id || '');
-					if (!channelId) continue;
-					const key = `${sourceGuildId}:${channelId}`;
-					const existing = index.get(key);
-					if (existing) existing.push(match);
-					else index.set(key, [match]);
-				}
+				await indexForwarder(index, forwarder, { targetGuildId: officialServer.discord_server_id, isSourceGuildAllowed });
 			}
-		} catch (error: any) {
+		} catch (error) {
 			failed++;
-			logger.log(`⚠️  Forward index: could not read forwarder config for server ${officialServer.discord_server_id}: ${error?.message || error}`);
+			logger.log(`⚠️  Forward index: could not read forwarder config for server ${officialServer.discord_server_id}: ${(error as Error)?.message || error}`);
 		}
 	}
 
@@ -972,8 +1100,12 @@ async function buildForwardIndex(): Promise<{ index: Map<string, ForwardMatch[]>
 }
 
 async function getForwardIndex(): Promise<Map<string, ForwardMatch[]>> {
-	if (forwardIndex && Date.now() - forwardIndexAt < FORWARD_INDEX_TTL_MS) return forwardIndex;
-	if (forwardIndexBuilding) return forwardIndexBuilding;
+	if (forwardIndex && Date.now() - forwardIndexAt < FORWARD_INDEX_TTL_MS) {
+		return forwardIndex;
+	}
+	if (forwardIndexBuilding) {
+		return forwardIndexBuilding;
+	}
 
 	forwardIndexBuilding = buildForwardIndex()
 		.then(({ index, failed }) => {
@@ -986,9 +1118,11 @@ async function getForwardIndex(): Promise<Map<string, ForwardMatch[]>> {
 			forwardIndexAt = Date.now();
 			return index;
 		})
-		.catch((error: any) => {
+		.catch((error) => {
 			logger.log(`❌ Forward index rebuild failed: ${error?.message || error}`);
-			if (forwardIndex) return forwardIndex;
+			if (forwardIndex) {
+				return forwardIndex;
+			}
 			throw error;
 		})
 		.finally(() => {
@@ -999,8 +1133,12 @@ async function getForwardIndex(): Promise<Map<string, ForwardMatch[]>> {
 }
 
 export function peekForwardChannel(guildId: string, channelId: string): boolean | null {
-	if (!forwardIndex) return null;
-	if (Date.now() - forwardIndexAt > FORWARD_INDEX_TTL_MS) getForwardIndex().catch(() => {});
+	if (!forwardIndex) {
+		return null;
+	}
+	if (Date.now() - forwardIndexAt > FORWARD_INDEX_TTL_MS) {
+		getForwardIndex().catch(() => {});
+	}
 	return forwardIndex.has(`${guildId}:${channelId}`);
 }
 
@@ -1012,18 +1150,26 @@ export const FORWARDER = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting forwarder config');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.forwarder))) return { forwarders: [] };
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.forwarder))) {
+			return { forwarders: [] };
+		}
 		const botIdToUse = await getOfficialBotId();
 		const server = await db.getServerByDiscordId(botIdToUse, guildId);
-		if (!server) return { forwarders: [] };
+		if (!server) {
+			return { forwarders: [] };
+		}
 		const settings = await getServerSettingsRow(server.id, serverSettingsComponent.forwarder);
-		if (!settings || !settings.settings) return { forwarders: [] };
+		if (!settings || !settings.settings) {
+			return { forwarders: [] };
+		}
 		return normalizeForwarderSettings(settings.settings);
 	},
 
 	async shouldForwardChannel(channelId: string, guildId: string) {
 		requireBotConfig();
-		if (!channelId || !guildId) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+		if (!channelId || !guildId) {
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+		}
 		if (!botConfig!.isSelfbot) {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
 		}
@@ -1031,7 +1177,9 @@ export const FORWARDER = {
 		try {
 			const index = await getForwardIndex();
 			const matches = index.get(`${guildId}:${channelId}`);
-			if (!matches || matches.length === 0) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+			if (!matches || matches.length === 0) {
+				return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
+			}
 			return { shouldForward: true, matches, ...matches[0] };
 		} catch (_) {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false, keywords: [] as string[] };
@@ -1045,25 +1193,31 @@ export const FORWARDER = {
 		}
 
 		const allGuilds = await db.getServersForBot(botConfig!.id);
-		const matches: any[] = [];
+		const matches: ForwarderTarget[] = [];
 
 		for (const officialServer of allGuilds) {
 			try {
 				const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
-				const list = (forwarders.forwarders || []) as any[];
+				const list = (forwarders.forwarders || []) as Record<string, unknown>[];
 
 				for (const forwarder of list) {
-					if (!forwarder.source_channels || !Array.isArray(forwarder.source_channels)) continue;
+					if (!forwarder.source_channels || !Array.isArray(forwarder.source_channels)) {
+						continue;
+					}
 
-					const foundChannel = forwarder.source_channels.find((ch: any) =>
+					const foundChannel = forwarder.source_channels.find((ch: Record<string, unknown>) =>
 						typeof ch === 'string' ? String(ch) === String(sourceChannelId) : String(ch?.channel_id || '') === String(sourceChannelId)
 					);
-					if (!foundChannel) continue;
-					if (!(await forwarderMatchesSourceGuild(forwarder, sourceGuildId))) continue;
+					if (!foundChannel) {
+						continue;
+					}
+					if (!(await forwarderMatchesSourceGuild(forwarder, sourceGuildId))) {
+						continue;
+					}
 
 					matches.push({
-						target_channel_id: forwarder.target_channel_id,
-						role_pings: forwarder.role_pings || forwarder.roles || [],
+						target_channel_id: forwarder.target_channel_id as string,
+						role_pings: (forwarder.role_pings || forwarder.roles || []) as string[],
 						target_guild_id: officialServer.discord_server_id,
 						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true,
 						keywords: normalizeForwarderKeywords(forwarder.keywords)
@@ -1111,11 +1265,8 @@ export const SETUP_CHANNEL_DEFS = [
 
 export { AUTO_ENABLED_COMPONENTS } from './panelServer.js';
 
-export const DEFAULT_LEVELING_SETTINGS = {
-	REQUIREMENTS: { BASE_XP: 100, MULTIPLIER: 1.2 },
-	MESSAGE: { XP: 15, COOLDOWN_SECONDS: 15 },
-	VOICE: { XP_PER_MINUTE: 50, AFK_XP_PER_MINUTE: 10, COOLDOWN_SECONDS: 60 },
-	VIDEO: { XP_PER_MINUTE: 50 },
-	STREAMING: { XP_PER_MINUTE: 50 },
-	INVITE: { XP: 1000, MIN_ACCOUNT_AGE_DAYS: 7, HOLD_HOURS: 24, SHARE_PERCENT: 25 }
-};
+type LevelingDefaults = typeof DEFAULT_LEVELING_SETTINGS;
+
+export type StoredLevelingSettings = { enabled?: unknown } & { [K in keyof LevelingDefaults]?: { [F in keyof LevelingDefaults[K]]?: unknown } };
+
+export { DEFAULT_LEVELING_SETTINGS };

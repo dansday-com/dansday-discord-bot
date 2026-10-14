@@ -20,12 +20,12 @@
 	let systemPrompt = $state(data.settings.system_prompt ?? '');
 	let voiceSystemPrompt = $state(data.settings.voice_system_prompt ?? '');
 	let voiceName = $state(data.settings.voice_name ?? '');
-	let saving = $state(false);
+	let isSaving = $state(false);
 
 	const blankToNull = (value: string) => (value.trim() === '' ? null : value.trim());
 
 	async function save() {
-		saving = true;
+		isSaving = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/settings`, {
 				method: 'POST',
@@ -42,9 +42,11 @@
 			if (d.success) {
 				showToast('Saved', 'success');
 				invalidateAll();
-			} else showToast(d.error || 'Failed to save', 'error');
+			} else {
+				showToast(d.error || 'Failed to save', 'error');
+			}
 		} finally {
-			saving = false;
+			isSaving = false;
 		}
 	}
 </script>
@@ -91,10 +93,10 @@
 
 	<button
 		onclick={save}
-		disabled={saving}
+		disabled={isSaving}
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
+		{#if isSaving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{isSaving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

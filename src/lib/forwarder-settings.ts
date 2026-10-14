@@ -1,42 +1,84 @@
+import type { APIEmbed } from 'discord.js';
+
+export type ForwardedMessage = {
+	id: string;
+	content: string;
+	author: { id: string; username: string; displayName: string; discriminator: string; avatar: string | null; bot: boolean };
+	selfbot_user_id?: string;
+	channel: { id: string; name: string };
+	guild: { id?: string; name?: string };
+	createdTimestamp: number;
+	editedTimestamp: number | null;
+	attachments: { id: string; name: string; url: string; size: number; contentType: string | null }[];
+	embeds: APIEmbed[];
+	mentioned_user_ids: string[];
+	timestamp: number;
+};
+
 export function normalizeForwarderSettings(raw: unknown): { forwarders: unknown[]; enabled?: boolean } {
-	if (!raw || typeof raw !== 'object') return { forwarders: [] };
+	if (!raw || typeof raw !== 'object') {
+		return { forwarders: [] };
+	}
 	const s = raw as Record<string, unknown>;
 	const forwarders = Array.isArray(s.forwarders) ? s.forwarders : [];
-	const enabled = typeof s.enabled === 'boolean' ? s.enabled : undefined;
-	return enabled === undefined ? { forwarders } : { forwarders, enabled };
+	const isEnabled = typeof s.enabled === 'boolean' ? s.enabled : undefined;
+	return isEnabled === undefined ? { forwarders } : { forwarders, enabled: isEnabled };
 }
 
 export function normalizeForwarderKeywords(raw: unknown): string[] {
-	if (!Array.isArray(raw)) return [];
+	if (!Array.isArray(raw)) {
+		return [];
+	}
 	const seen = new Set<string>();
 	const keywords: string[] = [];
 	for (const entry of raw) {
 		const value = String(entry ?? '').trim();
-		if (!value) continue;
+		if (!value) {
+			continue;
+		}
 		const key = value.toLowerCase();
-		if (seen.has(key)) continue;
+		if (seen.has(key)) {
+			continue;
+		}
 		seen.add(key);
 		keywords.push(value);
 	}
 	return keywords;
 }
 
+function fieldTexts(field: unknown): string[] {
+	if (!field || typeof field !== 'object') {
+		return [];
+	}
+	const { name, value } = field as { name?: unknown; value?: unknown };
+	return [name, value].filter((text): text is string => typeof text === 'string');
+}
+
 export function forwarderKeywordHaystack(content: unknown, embeds: unknown): string {
 	const parts: string[] = [];
-	if (typeof content === 'string' && content) parts.push(content);
+	if (typeof content === 'string' && content) {
+		parts.push(content);
+	}
 	if (Array.isArray(embeds)) {
 		for (const embed of embeds) {
-			if (!embed || typeof embed !== 'object') continue;
-			const e = embed as Record<string, any>;
-			if (typeof e.title === 'string') parts.push(e.title);
-			if (typeof e.description === 'string') parts.push(e.description);
-			if (typeof e.author?.name === 'string') parts.push(e.author.name);
-			if (typeof e.footer?.text === 'string') parts.push(e.footer.text);
+			if (!embed || typeof embed !== 'object') {
+				continue;
+			}
+			const e = embed as Record<string, Record<string, unknown>>;
+			if (typeof e.title === 'string') {
+				parts.push(e.title);
+			}
+			if (typeof e.description === 'string') {
+				parts.push(e.description);
+			}
+			if (typeof e.author?.name === 'string') {
+				parts.push(e.author.name);
+			}
+			if (typeof e.footer?.text === 'string') {
+				parts.push(e.footer.text);
+			}
 			if (Array.isArray(e.fields)) {
-				for (const field of e.fields) {
-					if (typeof field?.name === 'string') parts.push(field.name);
-					if (typeof field?.value === 'string') parts.push(field.value);
-				}
+				parts.push(...e.fields.flatMap(fieldTexts));
 			}
 		}
 	}
@@ -45,7 +87,11 @@ export function forwarderKeywordHaystack(content: unknown, embeds: unknown): str
 
 export function forwarderKeywordsMatch(keywords: unknown, haystack: string): boolean {
 	const list = normalizeForwarderKeywords(keywords);
-	if (list.length === 0) return true;
-	if (!haystack) return false;
+	if (list.length === 0) {
+		return true;
+	}
+	if (!haystack) {
+		return false;
+	}
 	return list.some((keyword) => haystack.includes(keyword.toLowerCase()));
 }

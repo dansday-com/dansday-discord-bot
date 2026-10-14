@@ -1,6 +1,9 @@
 import { drizzle } from 'drizzle-orm/mysql2';
+import type { MySql2Database } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import * as schema from './schema.js';
+
+const DEFAULT_POOL_SIZE = 25;
 
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -16,11 +19,21 @@ function getConnectionConfig() {
 		};
 	}
 
-	if (!process.env.DB_HOST) throw new Error('Missing DB_HOST environment variable');
-	if (!process.env.DB_PORT) throw new Error('Missing DB_PORT environment variable');
-	if (!process.env.DB_USER) throw new Error('Missing DB_USER environment variable');
-	if (!process.env.DB_PASSWORD) throw new Error('Missing DB_PASSWORD environment variable');
-	if (!process.env.DB_NAME) throw new Error('Missing DB_NAME environment variable');
+	if (!process.env.DB_HOST) {
+		throw new Error('Missing DB_HOST environment variable');
+	}
+	if (!process.env.DB_PORT) {
+		throw new Error('Missing DB_PORT environment variable');
+	}
+	if (!process.env.DB_USER) {
+		throw new Error('Missing DB_USER environment variable');
+	}
+	if (!process.env.DB_PASSWORD) {
+		throw new Error('Missing DB_PASSWORD environment variable');
+	}
+	if (!process.env.DB_NAME) {
+		throw new Error('Missing DB_NAME environment variable');
+	}
 
 	return {
 		host: process.env.DB_HOST,
@@ -33,14 +46,14 @@ function getConnectionConfig() {
 
 const tzOffset = 'Z';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: (MySql2Database<typeof schema> & { $client: mysql.Pool }) | null = null;
 
 function getDb() {
 	if (!_db) {
 		const pool = mysql.createPool({
 			...getConnectionConfig(),
 			waitForConnections: true,
-			connectionLimit: Number(process.env.DB_POOL_SIZE) || 25,
+			connectionLimit: Number(process.env.DB_POOL_SIZE) || DEFAULT_POOL_SIZE,
 			queueLimit: 0,
 			dateStrings: true,
 			timezone: tzOffset,
@@ -54,7 +67,7 @@ function getDb() {
 
 export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 	get(_target, prop) {
-		return (getDb() as any)[prop];
+		return Reflect.get(getDb(), prop);
 	}
 });
 

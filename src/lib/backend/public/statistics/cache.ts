@@ -13,10 +13,14 @@ function redisKey(serverId: number) {
 
 export async function getCachedPublicStatistics(serverId: number): Promise<PublicStatisticsSnapshot | null> {
 	const redis = await getRedisClient();
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(redisKey(serverId));
-		if (!raw) return null;
+		if (!raw) {
+			return null;
+		}
 		return JSON.parse(raw) as PublicStatisticsSnapshot;
 	} catch (_) {
 		return null;
@@ -25,7 +29,9 @@ export async function getCachedPublicStatistics(serverId: number): Promise<Publi
 
 export async function setCachedPublicStatistics(serverId: number, snapshot: PublicStatisticsSnapshot, ttlSeconds = 20) {
 	const redis = await getRedisClient();
-	if (!redis) return false;
+	if (!redis) {
+		return false;
+	}
 	try {
 		await redis.set(redisKey(serverId), JSON.stringify(snapshot), { EX: ttlSeconds });
 		return true;

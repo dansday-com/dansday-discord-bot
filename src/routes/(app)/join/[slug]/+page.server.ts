@@ -7,12 +7,15 @@ import { inviteJoinPath, isValidInviteSlug, normalizeInviteSlug } from '$lib/inv
 import { serverThemeUrl } from '$lib/backend/storage/serverThemes.js';
 import { DEFAULT_ACCENT, normalizeAccent, type MemberTheme } from '$lib/themes.js';
 import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { HTTP } from '$lib/http.js';
 
-function inviteTheme(settings: Record<string, any> | null | undefined): MemberTheme | null {
-	const image = serverThemeUrl(settings?.invite_theme_image);
+function inviteTheme(settings: Record<string, unknown> | null | undefined): MemberTheme | null {
+	const image = serverThemeUrl(typeof settings?.invite_theme_image === 'string' ? settings.invite_theme_image : null);
 	const accent = normalizeAccent(settings?.invite_theme_accent);
 	const effect = normalizeEffect(settings?.invite_theme_effect);
-	if (!image && !accent && effect === 'none') return null;
+	if (!image && !accent && effect === 'none') {
+		return null;
+	}
 	return {
 		image,
 		accent: accent ?? DEFAULT_ACCENT,
@@ -29,8 +32,12 @@ export const load: PageServerLoad = async ({ params }) => {
 	const publicServer = await resolvePublicServerBySlug(raw.toLowerCase()).catch(() => null);
 	if (publicServer) {
 		const settingsRow = await db.getServerSettings(publicServer.server.id, SERVER_SETTINGS.component.public).catch(() => null);
-		if (!publicSubfeatureEnabled((settingsRow as any)?.settings, 'invite')) error(404, 'Invite not found');
-		if (publicServer.computedSlug !== raw) redirect(301, inviteJoinPath(publicServer.computedSlug));
+		if (!publicSubfeatureEnabled(settingsRow?.settings, 'invite')) {
+			error(HTTP.NOT_FOUND, 'Invite not found');
+		}
+		if (publicServer.computedSlug !== raw) {
+			redirect(HTTP.MOVED_PERMANENTLY, inviteJoinPath(publicServer.computedSlug));
+		}
 		const slug = publicServer.computedSlug;
 		const server = await db.getServer(publicServer.server.id);
 		const code = server?.vanity_url_code || server?.invite_code || null;
@@ -45,16 +52,22 @@ export const load: PageServerLoad = async ({ params }) => {
 			},
 			serverSlug: slug,
 			indexable: true,
-			memberTheme: inviteTheme((settingsRow as any)?.settings)
+			memberTheme: inviteTheme(settingsRow?.settings)
 		};
 	}
 
 	const slug = normalizeInviteSlug(raw);
-	if (!isValidInviteSlug(slug)) error(404, 'Invite not found');
-	if (slug !== raw) redirect(301, inviteJoinPath(slug));
+	if (!isValidInviteSlug(slug)) {
+		error(HTTP.NOT_FOUND, 'Invite not found');
+	}
+	if (slug !== raw) {
+		redirect(HTTP.MOVED_PERMANENTLY, inviteJoinPath(slug));
+	}
 
 	const link = await db.getInviteLinkBySlug(slug);
-	if (!link) error(404, 'Invite not found');
+	if (!link) {
+		error(HTTP.NOT_FOUND, 'Invite not found');
+	}
 
 	const serverSlug = await computePublicServerSlugForServerId(Number(link.server_id)).catch(() => null);
 

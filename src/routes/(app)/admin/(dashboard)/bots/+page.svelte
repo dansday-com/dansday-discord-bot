@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatElapsed, SECOND_MS } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -11,7 +12,7 @@
 
 	let { data }: PageProps = $props();
 
-	let showAddBot = $state(false);
+	let isAddBotShown = $state(false);
 	let sortBy = $state('oldest');
 
 	const botSortOptions: LabeledSelectOption[] = [
@@ -20,15 +21,19 @@
 		{ value: 'name', label: 'Name (A-Z)' }
 	];
 
-	type LiveBot = { status: string; uptimeBase: number; uptimeTick: number };
+	type LiveBot = { status: string | null; uptimeBase: number; uptimeTick: number };
 	let liveMap = $state<Record<number, LiveBot>>({});
 	let tickInterval: ReturnType<typeof setInterval> | null = null;
-	let streams: EventSource[] = [];
+	const streams: EventSource[] = [];
 
 	const sortedBots = $derived(
-		[...data.bots].sort((a: { name: string; created_at: string }, b: { name: string; created_at: string }) => {
-			if (sortBy === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
-			if (sortBy === 'newest') return dbDateTimeToMs(b.created_at) - dbDateTimeToMs(a.created_at);
+		[...data.bots].sort((a, b) => {
+			if (sortBy === 'name') {
+				return (a.name ?? '').localeCompare(b.name ?? '');
+			}
+			if (sortBy === 'newest') {
+				return dbDateTimeToMs(b.created_at) - dbDateTimeToMs(a.created_at);
+			}
 			return dbDateTimeToMs(a.created_at) - dbDateTimeToMs(b.created_at);
 		})
 	);
@@ -60,48 +65,46 @@
 				next[Number(id)] = live.status === 'running' ? { ...live, uptimeTick: elapsed } : live;
 			}
 			liveMap = next;
-		}, 1000);
+		}, SECOND_MS);
 	});
 
 	onDestroy(() => {
 		streams.forEach((es) => es.close());
-		if (tickInterval) clearInterval(tickInterval);
+		if (tickInterval) {
+			clearInterval(tickInterval);
+		}
 	});
 
-	function getLiveStatus(botId: number, fallback: string) {
+	function getLiveStatus(botId: number, fallback: string | null) {
 		return liveMap[botId]?.status ?? fallback;
 	}
 
 	function getLiveUptime(botId: number, fallback: number) {
 		const live = liveMap[botId];
-		if (!live) return fallback;
+		if (!live) {
+			return fallback;
+		}
 		return live.status === 'running' ? live.uptimeBase + live.uptimeTick : 0;
 	}
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
-	function formatUptime(ms: number): string {
-		if (!ms) return '';
-		const s = Math.floor(ms / 1000);
-		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
-		return `${s}s`;
-	}
+	const formatUptime = (ms: number) => formatElapsed(ms, '');
 </script>
 
 <svelte:head>
 	<title>Bots | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<AddBotModal open={showAddBot} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />
+<AddBotModal open={isAddBotShown} onclose={() => (isAddBotShown = false)} onadded={() => invalidateAll()} />
 
 <div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
 	<div class="min-w-0">
@@ -124,7 +127,7 @@
 		/>
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
-				onclick={() => (showAddBot = true)}
+				onclick={() => (isAddBotShown = true)}
 				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 			>
 				<i class="fas fa-plus text-xs text-violet-300 sm:text-sm"></i>
@@ -143,7 +146,7 @@
 		<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
-				onclick={() => (showAddBot = true)}
+				onclick={() => (isAddBotShown = true)}
 				class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
 			>
 				<i class="fas fa-plus text-violet-300"></i>Add Your First Bot

@@ -1,29 +1,39 @@
 <script lang="ts">
+	import { formatUnits } from '$lib/utils/format.js';
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
-	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
-	import { EmptyState, GameModal, OutcomeModal } from '$lib/frontend/components/public';
+	import { EmptyState, GameModal, OutcomeModal, RESULT_POPUP_MS } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
+	import { PERCENT, QUARTER_PERCENTS } from '$lib/utils/numbers.js';
+
+	const SEARCH_DEBOUNCE_MS = 300;
 
 	let { data }: PageProps = $props();
 
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 	const { fmt } = ctx;
 
 	let outcome = $state<{ tone: 'win' | 'lose' | 'neutral'; icon: string; title: string; line: string; deltaXp: number | null } | null>(null);
 	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
 	function showOutcome(o: { tone: 'win' | 'lose' | 'neutral'; icon: string; title: string; line: string; deltaXp: number | null }) {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = o;
-		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+		outcomeTimer = setTimeout(() => (outcome = null), RESULT_POPUP_MS);
 	}
 	function dismissOutcome() {
-		if (outcomeTimer) clearTimeout(outcomeTimer);
+		if (outcomeTimer) {
+			clearTimeout(outcomeTimer);
+		}
 		outcome = null;
 	}
 	$effect(() => {
-		if (outcome === null) return;
+		if (outcome === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
@@ -35,10 +45,22 @@
 		set(digits === '' ? null : Number(digits));
 	}
 
-	let board = $state<any[]>(data.board ?? []);
-	let gainers = $state<any[]>(data.gainers ?? []);
-	let losers = $state<any[]>(data.losers ?? []);
-	let positions = $state<any[]>(data.positions ?? []);
+	type MarketAsset = {
+		asset_type: string;
+		asset_id: string;
+		symbol: string;
+		name?: string | null;
+		image: string | null;
+		price: number;
+		change24h: number;
+		sparkline?: number[];
+	};
+	type Position = NonNullable<typeof data.positions>[number];
+
+	let board = $state<MarketAsset[]>(data.board ?? []);
+	let gainers = $state<MarketAsset[]>(data.gainers ?? []);
+	let losers = $state<MarketAsset[]>(data.losers ?? []);
+	let positions = $state<Position[]>(data.positions ?? []);
 
 	$effect(() => {
 		board = data.board ?? [];
@@ -49,7 +71,9 @@
 
 	const priceMap = $derived.by(() => {
 		const m = new Map<string, { price: number; change24h: number }>();
-		for (const r of [...board, ...gainers, ...losers]) m.set(`${r.asset_type}:${r.asset_id}`, { price: r.price, change24h: r.change24h });
+		for (const r of [...board, ...gainers, ...losers]) {
+			m.set(`${r.asset_type}:${r.asset_id}`, { price: r.price, change24h: r.change24h });
+		}
 		return m;
 	});
 
@@ -64,7 +88,7 @@
 				change24h: live?.change24h ?? p.change24h,
 				value,
 				pnl: value - p.xp_invested,
-				pnl_percent: p.xp_invested > 0 ? ((value - p.xp_invested) / p.xp_invested) * 100 : 0
+				pnl_percent: p.xp_invested > 0 ? ((value - p.xp_invested) / p.xp_invested) * PERCENT : 0
 			};
 		})
 	);
@@ -72,7 +96,7 @@
 	const totalInvested = $derived(livePositions.reduce((s, p) => s + p.xp_invested, 0));
 	const totalValue = $derived(livePositions.reduce((s, p) => s + p.value, 0));
 	const totalPnl = $derived(totalValue - totalInvested);
-	const totalPnlPct = $derived(totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0);
+	const totalPnlPct = $derived(totalInvested > 0 ? (totalPnl / totalInvested) * PERCENT : 0);
 
 	$effect(() => {
 		ctx.setAssetSummary?.({ invested: totalInvested, value: totalValue, pnl: totalPnl, pnlPct: totalPnlPct, count: livePositions.length });
@@ -81,28 +105,29 @@
 
 	function fmtPrice(n: number): string {
 		const v = Number(n) || 0;
-		if (v >= 1) return v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+		if (v >= 1) {
+			return v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+		}
 		return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumSignificantDigits: 4 });
 	}
 	function pctText(n: number): string {
 		const v = Number(n) || 0;
 		return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 	}
-	function fmtUnits(qty: number): string {
-		const v = Number(qty) || 0;
-		if (v <= 0) return '0';
-		if (v >= 1) return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
-		if (v >= 0.0001) return v.toFixed(6);
-		return v.toFixed(8);
-	}
 	function dirColor(n: number): string {
-		if (n > 0) return '#1a7f57';
-		if (n < 0) return '#b23b2e';
+		if (n > 0) {
+			return '#1a7f57';
+		}
+		if (n < 0) {
+			return '#b23b2e';
+		}
 		return 'var(--color-base-content)';
 	}
 
 	function sparkPath(prices: number[], w = 72, h = 24): string {
-		if (!prices || prices.length < 2) return '';
+		if (!prices || prices.length < 2) {
+			return '';
+		}
 		const min = Math.min(...prices);
 		const max = Math.max(...prices);
 		const span = max - min || 1;
@@ -111,58 +136,67 @@
 	}
 
 	let searchQuery = $state('');
-	let searchResults = $state<any[]>([]);
-	let searching = $state(false);
+	let searchResults = $state<MarketAsset[]>([]);
+	let isSearching = $state(false);
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function onSearchInput() {
-		if (searchTimer) clearTimeout(searchTimer);
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+		}
 		const q = searchQuery.trim();
 		if (!q) {
 			searchResults = [];
 			return;
 		}
 		searchTimer = setTimeout(async () => {
-			searching = true;
+			isSearching = true;
 			try {
 				const res = await fetch(`/api/market/${encodeURIComponent(ctx.serverSlug)}/search?q=${encodeURIComponent(q)}`);
 				const d = await res.json();
 				searchResults = d.success ? d.results : [];
-				if (!d.success && d.error) showToast(d.error, 'error');
+				if (!d.success && d.error) {
+					showToast(d.error, 'error');
+				}
 			} catch {
 				searchResults = [];
 			} finally {
-				searching = false;
+				isSearching = false;
 			}
-		}, 300);
+		}, SEARCH_DEBOUNCE_MS);
 	}
 
-	let buyAsset = $state<any | null>(null);
-	let buyPercent = $state<number | 'custom'>(25);
+	let buyAsset = $state<MarketAsset | null>(null);
+	let buyPercent = $state<number | 'custom'>(QUARTER_PERCENTS[0]);
 	let buyCustom = $state<number | null>(null);
-	let buyBusy = $state(false);
+	let isBuyBusy = $state(false);
 
-	const BUY_PCTS = [25, 50, 75, 100];
 	const MIN_BUY = 10_000;
 
 	const buyAmount = $derived(
-		buyPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(buyCustom) || 0)), ctx.liveXp) : Math.floor((ctx.liveXp * (buyPercent as number)) / 100)
+		buyPercent === 'custom'
+			? Math.min(Math.max(0, Math.floor(Number(buyCustom) || 0)), ctx.liveXp)
+			: Math.floor((ctx.liveXp * (buyPercent as number)) / PERCENT)
 	);
 
-	function openBuy(asset: any) {
+	function openBuy(asset: MarketAsset) {
 		buyAsset = asset;
-		buyPercent = 25;
+		buyPercent = QUARTER_PERCENTS[0];
 		buyCustom = null;
 	}
 
 	$effect(() => {
-		if (buyAsset === null) return;
+		if (buyAsset === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
 	async function confirmBuy() {
 		const asset = buyAsset;
-		if (!asset || buyBusy) return;
+		if (!asset || isBuyBusy) {
+			return;
+		}
 		const amount = Math.floor(buyAmount || 0);
 		if (amount < MIN_BUY) {
 			showToast(`Minimum is ${fmt(MIN_BUY)} XP`, 'error');
@@ -172,7 +206,7 @@
 			showToast('Not enough XP', 'error');
 			return;
 		}
-		buyBusy = true;
+		isBuyBusy = true;
 		try {
 			const res = await fetch(`/api/market/${encodeURIComponent(ctx.serverSlug)}/buy`, {
 				method: 'POST',
@@ -191,22 +225,22 @@
 					deltaXp: -amount
 				});
 				await ctx.invalidateAll();
-			} else showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: d.error || 'Please try again.', deltaXp: null });
+			} else {
+				showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: d.error || 'Please try again.', deltaXp: null });
+			}
 		} catch {
 			showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: 'Please try again.', deltaXp: null });
 		} finally {
-			buyBusy = false;
+			isBuyBusy = false;
 		}
 	}
 
-	let sellPos = $state<any | null>(null);
-	let sellPercent = $state<number | 'custom'>(25);
+	let sellPos = $state<Position | null>(null);
+	let sellPercent = $state<number | 'custom'>(QUARTER_PERCENTS[0]);
 	let sellCustom = $state<number | null>(null);
-	let sellBusy = $state(false);
+	let isSellBusy = $state(false);
 
-	const SELL_PCTS = [25, 50, 75, 100];
-
-	function sellPosValue(p: any): number {
+	function sellPosValue(p: Position): number {
 		const live = priceMap.get(`${p.asset_type}:${p.asset_id}`);
 		const price = live?.price ?? p.current_price ?? p.buy_price ?? 0;
 		return p.buy_price > 0 ? Math.round(p.xp_invested * (price / p.buy_price)) : p.xp_invested;
@@ -214,29 +248,33 @@
 
 	const sellMax = $derived(sellPos ? sellPosValue(sellPos) : 0);
 	const sellAmount = $derived(
-		sellPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(sellCustom) || 0)), sellMax) : Math.floor((sellMax * (sellPercent as number)) / 100)
+		sellPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(sellCustom) || 0)), sellMax) : Math.floor((sellMax * (sellPercent as number)) / PERCENT)
 	);
 
-	function openSell(p: any) {
+	function openSell(p: Position) {
 		sellPos = p;
-		sellPercent = 25;
+		sellPercent = QUARTER_PERCENTS[0];
 		sellCustom = null;
 	}
 
 	$effect(() => {
-		if (sellPos === null) return;
+		if (sellPos === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
 	async function confirmSell() {
 		const p = sellPos;
-		if (!p || sellBusy) return;
+		if (!p || isSellBusy) {
+			return;
+		}
 		const amount = Math.floor(sellAmount || 0);
 		if (amount <= 0) {
 			showToast('Enter an XP amount', 'error');
 			return;
 		}
-		sellBusy = true;
+		isSellBusy = true;
 		try {
 			const res = await fetch(`/api/market/${encodeURIComponent(ctx.serverSlug)}/sell`, {
 				method: 'POST',
@@ -257,11 +295,13 @@
 					deltaXp: net
 				});
 				await ctx.invalidateAll();
-			} else showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: d.error || 'Please try again.', deltaXp: null });
+			} else {
+				showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: d.error || 'Please try again.', deltaXp: null });
+			}
 		} catch {
 			showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: 'Please try again.', deltaXp: null });
 		} finally {
-			sellBusy = false;
+			isSellBusy = false;
 		}
 	}
 
@@ -293,7 +333,7 @@
 	{/if}
 {/snippet}
 
-{#snippet marketRow(a: any)}
+{#snippet marketRow(a: MarketAsset)}
 	{@const live = priceMap.get(`${a.asset_type}:${a.asset_id}`)}
 	{@const price = live?.price ?? a.price ?? 0}
 	{@const change = live?.change24h ?? a.change24h ?? 0}
@@ -313,7 +353,7 @@
 			</span>
 		</span>
 
-		{#if a.sparkline?.length > 1}
+		{#if a.sparkline && a.sparkline.length > 1}
 			<svg class="h-6 w-14 shrink-0 text-(--dir)" viewBox="0 0 72 24" preserveAspectRatio="none" aria-hidden="true">
 				<path d={sparkPath(a.sparkline)} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
 			</svg>
@@ -337,7 +377,7 @@
 				disabled={busy}
 				onclick={() => pick(p)}
 			>
-				{p === 100 ? maxLabel : `${p}%`}
+				{p === PERCENT ? maxLabel : `${p}%`}
 			</button>
 		{/each}
 		<button
@@ -370,7 +410,7 @@
 						<span class="flex min-w-0 flex-col gap-px leading-tight">
 							<span class="text-base-content text-sm font-extrabold tracking-[0.01em]">{p.symbol}</span>
 							<span class="text-base-content/60 truncate text-[11px] font-medium">
-								{fmtUnits(p.buy_price > 0 ? p.xp_invested / p.buy_price : 0)}
+								{formatUnits(p.buy_price > 0 ? p.xp_invested / p.buy_price : 0)}
 								{p.symbol}
 							</span>
 						</span>
@@ -389,12 +429,12 @@
 	<label class="input border-base-300 bg-base-100 mb-3 flex h-[46px] w-full items-center gap-2.5 rounded-[13px]">
 		<i class="fas fa-magnifying-glass text-base-content/40"></i>
 		<input type="text" class="grow" placeholder="Search any coin (BTC, ETH, SOL…)" bind:value={searchQuery} oninput={onSearchInput} />
-		{#if searching}<i class="fas fa-spinner fa-spin text-primary"></i>{/if}
+		{#if isSearching}<i class="fas fa-spinner fa-spin text-primary"></i>{/if}
 	</label>
 	{#if searchResults.length === 0}
 		<EmptyState
-			icon={searchQuery.trim() && searching ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'}
-			message={searchQuery.trim() ? (searching ? 'Searching…' : 'No coins found.') : 'Type to search thousands of coins.'}
+			icon={searchQuery.trim() && isSearching ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'}
+			message={searchQuery.trim() ? (isSearching ? 'Searching…' : 'No coins found.') : 'Type to search thousands of coins.'}
 			boxed
 		/>
 	{:else}
@@ -415,13 +455,14 @@
 {/if}
 
 {#if buyAsset}
+	{@const buying = buyAsset}
 	{@const live = priceMap.get(`${buyAsset.asset_type}:${buyAsset.asset_id}`)}
 	{@const price = live?.price ?? buyAsset.price ?? 0}
 	{@const change = live?.change24h ?? buyAsset.change24h ?? 0}
-	<GameModal title={buyAsset.symbol} closable={!buyBusy} onclose={() => (buyAsset = null)}>
+	<GameModal title={buyAsset.symbol} closable={!isBuyBusy} onclose={() => (buyAsset = null)}>
 		{#snippet leading()}
 			<span class="text-base-content inline-flex items-center" style="--dir: {dirColor(change)}">
-				{@render assetLogo(buyAsset.image, buyAsset.symbol, 'size-6')}
+				{@render assetLogo(buying.image, buying.symbol, 'size-6')}
 			</span>
 		{/snippet}
 
@@ -432,7 +473,7 @@
 			</span>
 		</div>
 
-		{@render pctButtons(BUY_PCTS, buyPercent, buyBusy, 'Max', (v) => (buyPercent = v))}
+		{@render pctButtons(QUARTER_PERCENTS, buyPercent, isBuyBusy, 'Max', (v) => (buyPercent = v))}
 
 		{#if buyPercent === 'custom'}
 			<input
@@ -442,22 +483,22 @@
 				placeholder="XP to invest (min {fmt(MIN_BUY)})"
 				value={grp(buyCustom)}
 				oninput={(e) => onAmountInput(e, (v) => (buyCustom = v))}
-				disabled={buyBusy}
+				disabled={isBuyBusy}
 			/>
 		{/if}
 
 		<div class="text-base-content/60 mb-3 flex justify-between gap-2.5 text-xs tabular-nums">
 			<span>Balance: {fmt(ctx.liveXp)} XP</span>
-			<span>≈ {buyAmount && price > 0 ? fmtUnits(buyAmount / price) : '0'} {buyAsset.symbol}</span>
+			<span>≈ {buyAmount && price > 0 ? formatUnits(buyAmount / price) : '0'} {buyAsset.symbol}</span>
 		</div>
 
 		<button
 			type="button"
 			class="btn animate-game-charge h-auto w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] py-3.5 text-[15px] font-black text-white"
-			disabled={buyBusy || buyAmount < MIN_BUY || buyAmount > ctx.liveXp}
+			disabled={isBuyBusy || buyAmount < MIN_BUY || buyAmount > ctx.liveXp}
 			onclick={confirmBuy}
 		>
-			{#if buyBusy}<i class="fas fa-circle-notch fa-spin"></i>Buying…{:else}<i class="fas fa-arrow-trend-up"></i>Invest {buyAmount
+			{#if isBuyBusy}<i class="fas fa-circle-notch fa-spin"></i>Buying…{:else}<i class="fas fa-arrow-trend-up"></i>Invest {buyAmount
 					? `${fmt(buyAmount)} XP`
 					: ''}{/if}
 		</button>
@@ -465,16 +506,17 @@
 {/if}
 
 {#if sellPos}
+	{@const selling = sellPos}
 	{@const live = priceMap.get(`${sellPos.asset_type}:${sellPos.asset_id}`)}
 	{@const price = live?.price ?? sellPos.current_price ?? sellPos.buy_price ?? 0}
 	{@const value = sellPos.buy_price > 0 ? Math.round(sellPos.xp_invested * (price / sellPos.buy_price)) : sellPos.xp_invested}
 	{@const payout = Math.min(Math.max(0, Math.floor(sellAmount || 0)), value)}
 	{@const costBasis = value > 0 ? Math.round(sellPos.xp_invested * (payout / value)) : 0}
 	{@const realized = payout - costBasis}
-	<GameModal title={sellPos.symbol} closable={!sellBusy} onclose={() => (sellPos = null)}>
+	<GameModal title={sellPos.symbol} closable={!isSellBusy} onclose={() => (sellPos = null)}>
 		{#snippet leading()}
-			<span class="text-base-content inline-flex items-center" style="--dir: {dirColor(sellPos.pnl)}">
-				{@render assetLogo(sellPos.asset_image, sellPos.symbol, 'size-6')}
+			<span class="text-base-content inline-flex items-center" style="--dir: {dirColor(selling.pnl)}">
+				{@render assetLogo(selling.asset_image, selling.symbol, 'size-6')}
 			</span>
 		{/snippet}
 
@@ -485,7 +527,7 @@
 			</span>
 		</div>
 
-		{@render pctButtons(SELL_PCTS, sellPercent, sellBusy, 'All', (v) => (sellPercent = v))}
+		{@render pctButtons(QUARTER_PERCENTS, sellPercent, isSellBusy, 'All', (v) => (sellPercent = v))}
 
 		{#if sellPercent === 'custom'}
 			<input
@@ -495,7 +537,7 @@
 				placeholder="XP to cash out (max {fmt(value)})"
 				value={grp(sellCustom)}
 				oninput={(e) => onAmountInput(e, (v) => (sellCustom = v))}
-				disabled={sellBusy}
+				disabled={isSellBusy}
 			/>
 		{/if}
 
@@ -507,10 +549,10 @@
 		<button
 			type="button"
 			class="btn animate-game-charge h-auto w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] py-3.5 text-[15px] font-black text-white"
-			disabled={sellBusy || payout <= 0}
+			disabled={isSellBusy || payout <= 0}
 			onclick={confirmSell}
 		>
-			{#if sellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {payout >= value ? 'all' : ''} · {fmt(
+			{#if isSellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {payout >= value ? 'all' : ''} · {fmt(
 					payout
 				)} XP{/if}
 		</button>

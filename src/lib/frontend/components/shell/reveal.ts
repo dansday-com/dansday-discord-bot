@@ -1,5 +1,8 @@
 const HIDDEN = ['opacity-0', 'translate-y-5'];
 const SHOWN = ['opacity-100', 'translate-y-0'];
+const STAT_STAGGER_MS = 70;
+const LIST_STAGGER_MS = 60;
+const LIST_STAGGER_MAX_STEPS = 8;
 
 export function reveal(node: HTMLElement) {
 	const show = () => {
@@ -28,3 +31,7 @@ export function reveal(node: HTMLElement) {
 }
 
 export const REVEAL_CLASS = 'translate-y-5 opacity-0 transition-all duration-500 ease-out';
+
+export const statDelay = (i: number) => `${i * STAT_STAGGER_MS}ms`;
+export const listDelay = (i: number) => `${i * LIST_STAGGER_MS}ms`;
+export const cappedListDelay = (i: number) => `${Math.min(i, LIST_STAGGER_MAX_STEPS) * LIST_STAGGER_MS}ms`;

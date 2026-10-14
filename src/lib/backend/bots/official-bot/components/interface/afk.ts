@@ -1,24 +1,43 @@
-import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { getEmbedConfig, getBotConfig, AFK_CONFIG } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
-import { memberTranslator, translate, translateServer, errorReason } from '../../i18n.js';
+import { memberTranslator, translate, translateServer, errorReason, type Translator } from '../../i18n.js';
 import { textField, checkboxField, checkboxValue } from './formFields.js';
 import { menuBackButton } from './menuBack.js';
+import type {
+	ButtonInteraction,
+	Client,
+	GuildMember,
+	GuildTextBasedChannel,
+	VoiceState,
+	Message,
+	ModalSubmitInteraction,
+	MessageActionRowComponentBuilder,
+	MessageComponentInteraction
+} from 'discord.js';
+import { MINUTES_PER_HOUR, SECONDS_PER_MINUTE, SECOND_MS } from '../../../../../utils/time.js';
+import { DISCORD_LIMITS } from '../../../../../discordLimits.js';
 
 const DEFAULT_AFK_MESSAGE = 'Away';
+const AFK_MESSAGE_MAX_LENGTH = 100;
+const MENTION_PREVIEW_LENGTH = 200;
+const AFK_NOTICE_TTL_SECONDS = 10;
+const WELCOME_BACK_TTL_SECONDS = 5;
 
-async function afkMessageLabel(message, guildId, userId) {
-	return message === DEFAULT_AFK_MESSAGE ? await translate('afk.messages.away', guildId, userId) : message;
+async function afkMessageLabel(message: string, guildId: string, userId: string) {
+	return message === DEFAULT_AFK_MESSAGE ? await translate('afk.messages.away', { guildId, userId }) : message;
 }
 
-function stripAfkPrefix(name) {
-	if (!name || typeof name !== 'string') return '';
+function stripAfkPrefix(name: string) {
+	if (!name || typeof name !== 'string') {
+		return '';
+	}
 	return name.replace(/^\s*(\[AFK\]\s*)+/gi, '').trim();
 }
 
-async function getAFKStatus(userId, guildId) {
+async function getAFKStatus(userId: string, guildId: string) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -36,7 +55,7 @@ async function getAFKStatus(userId, guildId) {
 	}
 }
 
-async function setAFK(member, message, shouldDeafen = true) {
+async function setAFK(member: GuildMember, message: string, shouldDeafen = true) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -66,7 +85,7 @@ async function setAFK(member, message, shouldDeafen = true) {
 				await member.voice.setMute(true);
 				await logger.log(`🔇 Muted ${member.id} in voice channel (AFK)`);
 			} catch (err) {
-				await logger.log(`⚠️ Could not mute ${member.id} in voice channel: ${err.message}`);
+				await logger.log(`⚠️ Could not mute ${member.id} in voice channel: ${(err as Error).message}`);
 			}
 
 			if (shouldDeafen) {
@@ -74,7 +93,7 @@ async function setAFK(member, message, shouldDeafen = true) {
 					await member.voice.setDeaf(true);
 					await logger.log(`🔇 Deafened ${member.id} in voice channel (AFK)`);
 				} catch (err) {
-					await logger.log(`⚠️ Could not deafen ${member.id} in voice channel: ${err.message}`);
+					await logger.log(`⚠️ Could not deafen ${member.id} in voice channel: ${(err as Error).message}`);
 				}
 			}
 		}
@@ -85,19 +104,19 @@ async function setAFK(member, message, shouldDeafen = true) {
 
 		try {
 			const newNickname = `[AFK] ${nameToUse}`;
-			if (newNickname.length <= 32) {
+			if (newNickname.length <= DISCORD_LIMITS.NICKNAME) {
 				await member.setNickname(newNickname);
 			}
 			await db.upsertMember(serverData.id, member);
 		} catch (err) {
-			await logger.log(`⚠️ Could not update nickname for ${member.id}: ${err.message}`);
+			await logger.log(`⚠️ Could not update nickname for ${member.id}: ${(err as Error).message}`);
 		}
 	} catch (error) {
-		await logger.log(`❌ Error setting AFK: ${error.message}`);
+		await logger.log(`❌ Error setting AFK: ${(error as Error).message}`);
 	}
 }
 
-async function removeAFK(member, reason = '') {
+async function removeAFK(member: GuildMember, reason = '') {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
@@ -121,14 +140,14 @@ async function removeAFK(member, reason = '') {
 				await member.voice.setMute(false);
 				await logger.log(`🔊 Unmuted ${member.id} in voice channel (AFK removed)`);
 			} catch (err) {
-				await logger.log(`⚠️ Could not unmute ${member.id} in voice channel: ${err.message}`);
+				await logger.log(`⚠️ Could not unmute ${member.id} in voice channel: ${(err as Error).message}`);
 			}
 
 			try {
 				await member.voice.setDeaf(false);
 				await logger.log(`🔊 Undeafened ${member.id} in voice channel (AFK removed)`);
 			} catch (err) {
-				await logger.log(`⚠️ Could not undeafen ${member.id} in voice channel: ${err.message}`);
+				await logger.log(`⚠️ Could not undeafen ${member.id} in voice channel: ${(err as Error).message}`);
 			}
 		}
 
@@ -138,7 +157,7 @@ async function removeAFK(member, reason = '') {
 				memberData?.server_display_name || memberData?.display_name || member.user.globalName || member.user.displayName || member.user.username;
 			const restoredName = stripAfkPrefix(storedName);
 
-			if (restoredName && restoredName.length <= 32) {
+			if (restoredName && restoredName.length <= DISCORD_LIMITS.NICKNAME) {
 				await member.setNickname(restoredName);
 			} else {
 				await member.setNickname(null);
@@ -149,138 +168,113 @@ async function removeAFK(member, reason = '') {
 				await member.setNickname(null);
 				await db.upsertMember(serverData.id, member);
 			} catch (err2) {
-				await logger.log(`⚠️ Could not restore nickname for ${member.id}: ${err2.message}`);
+				await logger.log(`⚠️ Could not restore nickname for ${member.id}: ${(err2 as Error).message}`);
 			}
 		}
 
 		await db.removeAFKStatus(serverData.id, userId);
 
-		const duration = Math.floor((Date.now() - afkData.timestamp) / 1000);
-		const minutes = Math.floor(duration / 60);
-		const hours = Math.floor(minutes / 60);
-
-		let durationText = '';
-		if (hours > 0) {
-			durationText = `${hours}h ${minutes % 60}m`;
-		} else if (minutes > 0) {
-			durationText = `${minutes}m`;
-		} else {
-			durationText = `${duration}s`;
-		}
+		const durationText = afkDurationText(afkData.timestamp);
 
 		await logger.log(`✅ Removed AFK status for ${member.id} - Was AFK for ${durationText}${reason ? ` - ${reason}` : ''}`);
 
 		return true;
 	} catch (error) {
-		await logger.log(`❌ Error removing AFK: ${error.message}`);
+		await logger.log(`❌ Error removing AFK: ${(error as Error).message}`);
 		return false;
 	}
 }
 
-export async function handleAFKButton(interaction) {
+async function currentAfkPanel(interaction: MessageComponentInteraction<'cached'>, afkData: AfkStatus) {
+	const scope = { guildId: interaction.guild.id, userId: interaction.user.id };
+	const removeButton = new ButtonBuilder()
+		.setCustomId('afk_remove')
+		.setLabel(await translate('afk.buttons.remove', scope))
+		.setStyle(ButtonStyle.Primary);
+	const buttonRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+		removeButton,
+		await menuBackButton(scope.guildId, scope.userId, 'me')
+	);
+	const embedConfig = await getEmbedConfig(scope.guildId);
+	const description = await translate('afk.current.description', scope, {
+		message: await afkMessageLabel(afkData.message, scope.guildId, scope.userId),
+		duration: afkDurationText(afkData.timestamp)
+	});
+	const embed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(await translate('afk.current.title', scope))
+		.setDescription(description)
+		.addFields({ name: await translate('afk.current.howToRemove', scope), value: await translate('afk.current.howToRemoveValue', scope), inline: false })
+		.setTimestamp()
+		.setFooter({ text: embedConfig.FOOTER });
+	return { embeds: [embed], components: [buttonRow] };
+}
+
+function afkModal(tr: Translator) {
+	const messageInput = new TextInputBuilder()
+		.setCustomId('afk_message')
+		.setStyle(TextInputStyle.Short)
+		.setPlaceholder(tr('afk.modal.messagePlaceholder'))
+		.setRequired(false)
+		.setMaxLength(AFK_MESSAGE_MAX_LENGTH);
+	return new ModalBuilder()
+		.setCustomId('afk_set')
+		.setTitle(tr('afk.title'))
+		.addLabelComponents(textField(tr('afk.modal.messageLabel'), messageInput), checkboxField(tr('afk.modal.deafenLabel'), 'afk_deafen', true));
+}
+
+export async function handleAFKButton(interaction: MessageComponentInteraction<'cached'>) {
 	try {
-		const member = interaction.member;
+		const { member } = interaction;
 
 		if (!(await hasPermission(member, 'afk'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'afk', interaction.user.id);
 			await interaction
 				.reply({
 					content: errorMessage,
-					flags: 64
+					flags: MessageFlags.Ephemeral
 				})
 				.catch(() => null);
 			return;
 		}
 
 		if (!(await AFK_CONFIG.isEnabled(interaction.guild.id))) {
-			const errorMsg = await translate('afk.errors.disabledOnServer', interaction.guild.id, interaction.user.id);
-			await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
+			const errorMsg = await translate('afk.errors.disabledOnServer', { guildId: interaction.guild.id, userId: interaction.user.id });
+			await interaction.reply({ content: errorMsg, flags: MessageFlags.Ephemeral }).catch(() => null);
 			return;
 		}
 
 		const afkData = await getAFKStatus(member.id, member.guild.id);
-
 		if (afkData) {
-			const removeButtonLabel = await translate('afk.buttons.remove', interaction.guild.id, interaction.user.id);
-			const removeButton = new ButtonBuilder().setCustomId('afk_remove').setLabel(removeButtonLabel).setStyle(ButtonStyle.Primary);
-
-			const menuButton = await menuBackButton(interaction.guild.id, interaction.user.id, 'me');
-
-			const buttonRow = new ActionRowBuilder().addComponents(removeButton, menuButton);
-
-			const duration = Math.floor((Date.now() - afkData.timestamp) / 1000);
-			const minutes = Math.floor(duration / 60);
-			const hours = Math.floor(minutes / 60);
-
-			let durationText = '';
-			if (hours > 0) {
-				durationText = `${hours}h ${minutes % 60}m`;
-			} else if (minutes > 0) {
-				durationText = `${minutes}m`;
-			} else {
-				durationText = `${duration}s`;
-			}
-
-			const embedConfig = await getEmbedConfig(interaction.guild.id);
-			const currentTitle = await translate('afk.current.title', interaction.guild.id, interaction.user.id);
-			const currentDescription = await translate('afk.current.description', interaction.guild.id, interaction.user.id, {
-				message: await afkMessageLabel(afkData.message, interaction.guild.id, interaction.user.id),
-				duration: durationText
-			});
-			const howToRemoveName = await translate('afk.current.howToRemove', interaction.guild.id, interaction.user.id);
-			const howToRemoveValue = await translate('afk.current.howToRemoveValue', interaction.guild.id, interaction.user.id);
-			const embed = new EmbedBuilder()
-				.setColor(embedConfig.COLOR)
-				.setTitle(currentTitle)
-				.setDescription(currentDescription)
-				.addFields({
-					name: howToRemoveName,
-					value: howToRemoveValue,
-					inline: false
-				})
-				.setTimestamp()
-				.setFooter({ text: embedConfig.FOOTER });
-
-			await interaction.update({
-				embeds: [embed],
-				components: [buttonRow]
-			});
+			await interaction.update(await currentAfkPanel(interaction, afkData));
 			await logger.log(`⏸️ AFK status shown to ${member.id}`);
 			return;
 		}
 
-		const modalTitle = await translate('afk.title', interaction.guild.id, interaction.user.id);
-		const modal = new ModalBuilder().setCustomId('afk_set').setTitle(modalTitle);
-
-		const tr = await memberTranslator(interaction.guild.id, interaction.user.id);
-		const messageInput = new TextInputBuilder()
-			.setCustomId('afk_message')
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(tr('afk.modal.messagePlaceholder'))
-			.setRequired(false)
-			.setMaxLength(100);
-
-		modal.addLabelComponents(textField(tr('afk.modal.messageLabel'), messageInput), checkboxField(tr('afk.modal.deafenLabel'), 'afk_deafen', true));
-
+		const modal = afkModal(await memberTranslator(interaction.guild.id, interaction.user.id));
 		await interaction.showModal(modal);
 		await logger.log(`⏸️ AFK modal shown to ${member.id}`);
 	} catch (error) {
-		await logger.log(`❌ Error showing AFK modal: ${error.message}`);
-		const errorMsg = await translate('afk.errors.failed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
+		await logger.log(`❌ Error showing AFK modal: ${(error as Error).message}`);
+		const errorMsg = await translate(
+			'afk.errors.failed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			}
+		);
 		await interaction.reply({
 			content: errorMsg,
-			flags: 64
+			flags: MessageFlags.Ephemeral
 		});
 	}
 }
 
-export async function handleAFKModal(interaction) {
+export async function handleAFKModal(interaction: ModalSubmitInteraction<'cached'>) {
 	try {
-		await interaction.deferReply({ flags: 64 });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-		const member = interaction.member;
+		const { member } = interaction;
 
 		if (!(await hasPermission(member, 'afk'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'afk', interaction.user.id);
@@ -293,7 +287,7 @@ export async function handleAFKModal(interaction) {
 		}
 
 		if (!(await AFK_CONFIG.isEnabled(interaction.guild.id))) {
-			const errorMsg = await translate('afk.errors.disabledOnServer', interaction.guild.id, interaction.user.id);
+			const errorMsg = await translate('afk.errors.disabledOnServer', { guildId: interaction.guild.id, userId: interaction.user.id });
 			await interaction.editReply({ content: errorMsg }).catch(() => null);
 			return;
 		}
@@ -307,20 +301,24 @@ export async function handleAFKModal(interaction) {
 		let voiceInfo = '';
 		if (member.voice.channel) {
 			if (shouldDeafen) {
-				voiceInfo = await translate('afk.set.voiceMutedDeafened', interaction.guild.id, interaction.user.id);
+				voiceInfo = await translate('afk.set.voiceMutedDeafened', { guildId: interaction.guild.id, userId: interaction.user.id });
 			} else {
-				voiceInfo = await translate('afk.set.voiceMutedOnly', interaction.guild.id, interaction.user.id);
+				voiceInfo = await translate('afk.set.voiceMutedOnly', { guildId: interaction.guild.id, userId: interaction.user.id });
 			}
 		}
 
 		const embedConfig = await getEmbedConfig(interaction.guild.id);
-		const setTitle = await translate('afk.set.title', interaction.guild.id, interaction.user.id);
-		const setDescription = await translate('afk.set.description', interaction.guild.id, interaction.user.id, {
-			message: await afkMessageLabel(afkMessage, interaction.guild.id, interaction.user.id),
-			voiceInfo
-		});
-		const howToRemoveName = await translate('afk.set.howToRemove', interaction.guild.id, interaction.user.id);
-		const howToRemoveValue = await translate('afk.set.howToRemoveValue', interaction.guild.id, interaction.user.id);
+		const setTitle = await translate('afk.set.title', { guildId: interaction.guild.id, userId: interaction.user.id });
+		const setDescription = await translate(
+			'afk.set.description',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{
+				message: await afkMessageLabel(afkMessage, interaction.guild.id, interaction.user.id),
+				voiceInfo
+			}
+		);
+		const howToRemoveName = await translate('afk.set.howToRemove', { guildId: interaction.guild.id, userId: interaction.user.id });
+		const howToRemoveValue = await translate('afk.set.howToRemoveValue', { guildId: interaction.guild.id, userId: interaction.user.id });
 		const embed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(setTitle)
@@ -339,19 +337,23 @@ export async function handleAFKModal(interaction) {
 
 		await logger.log(`✅ AFK status set for ${member.id}: "${afkMessage}"${shouldDeafen ? ' (will be deafened)' : ' (not deafened)'}`);
 	} catch (error) {
-		await logger.log(`❌ Error setting AFK: ${error.message}`);
-		const errorMsg = await translate('afk.errors.setFailed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
+		await logger.log(`❌ Error setting AFK: ${(error as Error).message}`);
+		const errorMsg = await translate(
+			'afk.errors.setFailed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			}
+		);
 		await interaction.editReply({
 			content: errorMsg
 		});
 	}
 }
 
-export async function handleRemoveAFKButton(interaction) {
+export async function handleRemoveAFKButton(interaction: ButtonInteraction<'cached'>) {
 	try {
-		const member = interaction.member;
+		const { member } = interaction;
 
 		if (!(await hasPermission(member, 'afk'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'afk', interaction.user.id);
@@ -359,14 +361,13 @@ export async function handleRemoveAFKButton(interaction) {
 				.update({
 					content: errorMessage,
 					components: [],
-					embeds: [],
-					flags: 64
+					embeds: []
 				})
 				.catch(() =>
 					interaction
 						.reply({
 							content: errorMessage,
-							flags: 64
+							flags: MessageFlags.Ephemeral
 						})
 						.catch(() => null)
 				);
@@ -376,17 +377,17 @@ export async function handleRemoveAFKButton(interaction) {
 		const wasAFK = await removeAFK(member, 'Manually removed');
 
 		if (!wasAFK) {
-			const errorMsg = await translate('afk.errors.notAFK', interaction.guild.id, interaction.user.id);
+			const errorMsg = await translate('afk.errors.notAFK', { guildId: interaction.guild.id, userId: interaction.user.id });
 			await interaction.reply({
 				content: errorMsg,
-				flags: 64
+				flags: MessageFlags.Ephemeral
 			});
 			return;
 		}
 
 		const embedConfig = await getEmbedConfig(interaction.guild.id);
-		const removedTitle = await translate('afk.removed.title', interaction.guild.id, interaction.user.id);
-		const removedDescription = await translate('afk.removed.description', interaction.guild.id, interaction.user.id);
+		const removedTitle = await translate('afk.removed.title', { guildId: interaction.guild.id, userId: interaction.user.id });
+		const removedDescription = await translate('afk.removed.description', { guildId: interaction.guild.id, userId: interaction.user.id });
 		const embed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(removedTitle)
@@ -396,25 +397,88 @@ export async function handleRemoveAFKButton(interaction) {
 
 		const payload = {
 			embeds: [embed],
-			components: [new ActionRowBuilder().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'me'))]
+			components: [
+				new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(await menuBackButton(interaction.guild.id, interaction.user.id, 'me'))
+			]
 		};
-		await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
+		await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => null));
 
 		await logger.log(`✅ AFK manually removed by ${member.id}`);
 	} catch (error) {
-		await logger.log(`❌ Error removing AFK: ${error.message}`);
-		const errorMsg = await translate('afk.errors.removeFailed', interaction.guild.id, interaction.user.id, {
-			error: await errorReason(error, interaction.guild.id, interaction.user.id)
-		});
+		await logger.log(`❌ Error removing AFK: ${(error as Error).message}`);
+		const errorMsg = await translate(
+			'afk.errors.removeFailed',
+			{ guildId: interaction.guild.id, userId: interaction.user.id },
+			{
+				error: await errorReason(error, interaction.guild.id, interaction.user.id)
+			}
+		);
 		await interaction.reply({
 			content: errorMsg,
-			flags: 64
+			flags: MessageFlags.Ephemeral
 		});
 	}
 }
 
-export function init(client) {
-	client.on('messageCreate', async (message) => {
+type AfkStatus = NonNullable<Awaited<ReturnType<typeof getAFKStatus>>>;
+type AfkMention = { message: Message; senderDisplayName: string };
+
+function afkDurationText(since: number): string {
+	const duration = Math.floor((Date.now() - since) / SECOND_MS);
+	const minutes = Math.floor(duration / SECONDS_PER_MINUTE);
+	const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+	if (hours > 0) {
+		return `${hours}h ${minutes % MINUTES_PER_HOUR}m`;
+	}
+	if (minutes > 0) {
+		return `${minutes}m`;
+	}
+	return `${duration}s`;
+}
+
+async function dmMentionedAfkMember(mentionedMember: GuildMember, { message, senderDisplayName }: AfkMention) {
+	try {
+		const scope = { guildId: mentionedMember.guild.id, userId: mentionedMember.id };
+		const dmTitle = await translate('afk.messages.dmEmbedTitle', scope, {});
+		const dmMessageText = await translate('afk.messages.dmMentioned', scope, {
+			sender: senderDisplayName,
+			server: mentionedMember.guild.name,
+			channel: (message.channel as GuildTextBasedChannel).name,
+			message: message.content.substring(0, MENTION_PREVIEW_LENGTH) + (message.content.length > MENTION_PREVIEW_LENGTH ? '...' : '')
+		});
+		const embedConfig = await getEmbedConfig(mentionedMember.guild.id);
+		const embed = new EmbedBuilder()
+			.setColor(embedConfig.COLOR)
+			.setTitle(dmTitle)
+			.setDescription(dmMessageText)
+			.setTimestamp()
+			.setFooter({ text: embedConfig.FOOTER });
+		await mentionedMember.send({ embeds: [embed] });
+	} catch (dmErr) {
+		await logger.log(`⚠️ Could not DM ${mentionedMember.id} about mention: ${(dmErr as Error).message}`);
+	}
+}
+
+async function noticeAfkMention(mentionedMember: GuildMember, afk: AfkStatus, mention: AfkMention) {
+	try {
+		const guildId = mentionedMember.guild.id;
+		const durationText = afkDurationText(afk.timestamp);
+		const afkMessage =
+			afk.message && afk.message !== DEFAULT_AFK_MESSAGE
+				? await translateServer('afk.messages.isAfkWithMessage', guildId, { member: mentionedMember.toString(), message: afk.message, duration: durationText })
+				: await translateServer('afk.messages.isAfk', guildId, { member: mentionedMember.toString(), duration: durationText });
+
+		const afkNotice = await mention.message.reply(afkMessage);
+		setTimeout(() => afkNotice.delete().catch(() => {}), AFK_NOTICE_TTL_SECONDS * SECOND_MS);
+
+		await dmMentionedAfkMember(mentionedMember, mention);
+	} catch (err) {
+		await logger.log(`⚠️ Could not send AFK notice for ${mentionedMember.id}: ${(err as Error).message}`);
+	}
+}
+
+export function init(client: Client) {
+	client.on('messageCreate', async (message: Message) => {
 		if (message.author.bot || !message.guild) {
 			return;
 		}
@@ -424,7 +488,7 @@ export function init(client) {
 				return;
 			}
 
-			const member = message.member;
+			const { member } = message;
 			if (!member) {
 				return;
 			}
@@ -457,78 +521,26 @@ export function init(client) {
 
 				try {
 					const welcomeMsgText = await translateServer('afk.messages.welcomeBack', member.guild.id, { member: member.toString() });
-					const welcomeMsg = await message.channel.send(welcomeMsgText);
-					setTimeout(() => welcomeMsg.delete().catch(() => {}), 5000);
+					const welcomeMsg = await (message.channel as GuildTextBasedChannel).send(welcomeMsgText);
+					setTimeout(() => welcomeMsg.delete().catch(() => {}), WELCOME_BACK_TTL_SECONDS * SECOND_MS);
 				} catch (err) {}
 			}
 
-			if (message.mentions.members && message.mentions.members.size > 0) {
-				for (const [mentionedId, mentionedMember] of message.mentions.members) {
-					if (mentionedId === member.id) {
-						continue;
-					}
-
-					const mentionedAFKData = await getAFKStatus(mentionedId, member.guild.id);
-					if (mentionedAFKData) {
-						try {
-							const duration = Math.floor((Date.now() - mentionedAFKData.timestamp) / 1000);
-							const minutes = Math.floor(duration / 60);
-							const hours = Math.floor(minutes / 60);
-
-							let durationText = '';
-							if (hours > 0) {
-								durationText = `${hours}h ${minutes % 60}m`;
-							} else if (minutes > 0) {
-								durationText = `${minutes}m`;
-							} else {
-								durationText = `${duration}s`;
-							}
-
-							let afkMessage;
-							if (mentionedAFKData.message && mentionedAFKData.message !== DEFAULT_AFK_MESSAGE) {
-								afkMessage = await translateServer('afk.messages.isAfkWithMessage', member.guild.id, {
-									member: mentionedMember.toString(),
-									message: mentionedAFKData.message,
-									duration: durationText
-								});
-							} else {
-								afkMessage = await translateServer('afk.messages.isAfk', member.guild.id, { member: mentionedMember.toString(), duration: durationText });
-							}
-
-							const afkNotice = await message.reply(afkMessage);
-							setTimeout(() => afkNotice.delete().catch(() => {}), 10000);
-
-							try {
-								const dmTitle = await translate('afk.messages.dmEmbedTitle', member.guild.id, mentionedMember.id, {});
-								const dmMessageText = await translate('afk.messages.dmMentioned', member.guild.id, mentionedMember.id, {
-									sender: senderDisplayName,
-									server: message.guild.name,
-									channel: message.channel.name,
-									message: message.content.substring(0, 200) + (message.content.length > 200 ? '...' : '')
-								});
-								const embedConfig = await getEmbedConfig(member.guild.id);
-								const embed = new EmbedBuilder()
-									.setColor(embedConfig.COLOR)
-									.setTitle(dmTitle)
-									.setDescription(dmMessageText)
-									.setTimestamp()
-									.setFooter({ text: embedConfig.FOOTER });
-								await mentionedMember.send({ embeds: [embed] });
-							} catch (dmErr) {
-								await logger.log(`⚠️ Could not DM ${mentionedMember.id} about mention: ${dmErr.message}`);
-							}
-						} catch (err) {
-							await logger.log(`⚠️ Could not send AFK notice for ${mentionedMember.id}: ${err.message}`);
-						}
-					}
+			for (const [mentionedId, mentionedMember] of message.mentions.members ?? []) {
+				if (mentionedId === member.id) {
+					continue;
+				}
+				const mentionedAFKData = await getAFKStatus(mentionedId, member.guild.id);
+				if (mentionedAFKData) {
+					await noticeAfkMention(mentionedMember, mentionedAFKData, { message, senderDisplayName });
 				}
 			}
 		} catch (err) {
-			await logger.log(`❌ Error checking AFK in messageCreate: ${err.message}`);
+			await logger.log(`❌ Error checking AFK in messageCreate: ${(err as Error).message}`);
 		}
 	});
 
-	client.on('voiceStateUpdate', async (oldState, newState) => {
+	client.on('voiceStateUpdate', async (oldState: VoiceState, newState) => {
 		if (!newState.guild || newState.member?.user.bot) {
 			return;
 		}
@@ -545,13 +557,13 @@ export function init(client) {
 			const isSelfUndeafened = !newState.deaf && !newState.serverDeaf;
 
 			if ((wasSelfMuted && isSelfUnmuted) || (wasSelfDeafened && isSelfUndeafened)) {
-				const afkData = await getAFKStatus(newState.member.id, newState.guild.id);
+				const afkData = await getAFKStatus(newState.member!.id, newState.guild.id);
 				if (afkData) {
-					await removeAFK(newState.member, 'Self-unmuted/undeafened in voice channel');
+					await removeAFK(newState.member!, 'Self-unmuted/undeafened in voice channel');
 				}
 			}
 		} catch (err) {
-			await logger.log(`❌ Error checking AFK in voiceStateUpdate: ${err.message}`);
+			await logger.log(`❌ Error checking AFK in voiceStateUpdate: ${(err as Error).message}`);
 		}
 	});
 }

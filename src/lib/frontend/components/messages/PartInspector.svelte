@@ -10,6 +10,9 @@
 	import { PART_LABELS, locatePart, removePart, type Selection } from './selection.js';
 	import { FIELD, GHOST_BUTTON, ICON_BUTTON, LABEL } from './styles.js';
 
+	const TEXT_BLOCK_ROWS = 7;
+	const SECTION_TEXT_ROWS = 4;
+
 	let { doc = $bindable(), selection = $bindable(), nonce }: { doc: MessageDoc; selection: Selection; nonce: number } = $props();
 
 	const SIDES = [
@@ -22,15 +25,21 @@
 	const position = $derived(part && part.list.length > 1 ? ` ${part.index + 1} of ${part.list.length}` : '');
 
 	$effect(() => {
-		if (selection && selection.id !== 'text' && !part) selection = null;
+		if (selection && selection.id !== 'text' && !part) {
+			selection = null;
+		}
 	});
 
 	function setColor(next: string) {
-		if (part && (next === '' || /^#[0-9a-f]{6}$/i.test(next))) part.item.color = next.toLowerCase();
+		if (part?.kind === 'container' && (next === '' || /^#[0-9a-f]{6}$/i.test(next))) {
+			part.item.color = next.toLowerCase();
+		}
 	}
 
 	function remove() {
-		if (part) removePart(part);
+		if (part) {
+			removePart(part);
+		}
 		selection = null;
 	}
 </script>
@@ -83,12 +92,19 @@
 				label="Text"
 				max={MESSAGE_LIMITS.blockText}
 				multiline
-				rows={7}
+				rows={TEXT_BLOCK_ROWS}
 				placeholder="Markdown works here: # Heading, **bold**, -# small text, lists and [links](https://)."
 			/>
 		{:else if part.kind === 'section'}
 			<div class="flex flex-col gap-3">
-				<LocalizedField bind:value={part.item.text} label="Text on the left" max={MESSAGE_LIMITS.blockText} multiline rows={4} placeholder="Write something" />
+				<LocalizedField
+					bind:value={part.item.text}
+					label="Text on the left"
+					max={MESSAGE_LIMITS.blockText}
+					multiline
+					rows={SECTION_TEXT_ROWS}
+					placeholder="Write something"
+				/>
 				<div>
 					<span class="{LABEL} mb-1.5 block">On the right</span>
 					<div class="flex gap-1.5">

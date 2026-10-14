@@ -34,13 +34,17 @@
 	onMount(() => sfx.alert());
 
 	function cancel() {
-		if (loading) return;
+		if (loading) {
+			return;
+		}
 		sfx.close();
 		oncancel();
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') cancel();
+		if (event.key === 'Escape') {
+			cancel();
+		}
 	}
 </script>
 

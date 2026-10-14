@@ -1,7 +1,14 @@
 <script lang="ts">
+	import { formatElapsed, HOURS_PER_DAY, MINUTES_PER_HOUR } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { DashGrid, KpiTile, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
+
+	const BILLION = 1_000_000_000;
+	const MILLION = 1_000_000;
+	const THOUSAND = 1_000;
+	const COMPACT_WHOLE_FROM_UNITS = 10;
+	const HEADLINE_COLUMNS = 4;
 
 	let { data }: PageProps = $props();
 
@@ -18,9 +25,15 @@
 
 	function compact(val: unknown): string {
 		const v = n(val);
-		if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(v >= 10_000_000_000 ? 0 : 1)}B`;
-		if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
-		if (v >= 10_000) return `${(v / 1_000).toFixed(0)}K`;
+		if (v >= BILLION) {
+			return `${(v / BILLION).toFixed(v >= COMPACT_WHOLE_FROM_UNITS * BILLION ? 0 : 1)}B`;
+		}
+		if (v >= MILLION) {
+			return `${(v / MILLION).toFixed(v >= COMPACT_WHOLE_FROM_UNITS * MILLION ? 0 : 1)}M`;
+		}
+		if (v >= COMPACT_WHOLE_FROM_UNITS * THOUSAND) {
+			return `${(v / THOUSAND).toFixed(0)}K`;
+		}
 		return v.toLocaleString();
 	}
 
@@ -29,25 +42,19 @@
 		return `${v >= 0 ? '+' : ''}${v.toLocaleString()}`;
 	}
 
-	function formatUptime(ms: number): string {
-		if (!ms || ms <= 0) return '0s';
-		const s = Math.floor(ms / 1000);
-		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
-		return `${s}s`;
-	}
+	const formatUptime = (ms: number) => formatElapsed(ms, '0s');
 
 	function formatMinutes(minutes: unknown): string {
 		const m = n(minutes);
-		if (m < 60) return `${m}m`;
-		const h = Math.floor(m / 60);
-		if (h < 24) return `${h}h ${m % 60}m`;
-		const d = Math.floor(h / 24);
-		return `${fmt(d)}d ${h % 24}h`;
+		if (m < MINUTES_PER_HOUR) {
+			return `${m}m`;
+		}
+		const h = Math.floor(m / MINUTES_PER_HOUR);
+		if (h < HOURS_PER_DAY) {
+			return `${h}h ${m % MINUTES_PER_HOUR}m`;
+		}
+		const d = Math.floor(h / HOURS_PER_DAY);
+		return `${fmt(d)}d ${h % HOURS_PER_DAY}h`;
 	}
 
 	const avgUptimeMs = $derived(
@@ -263,7 +270,7 @@
 </div>
 
 <div class="space-y-3 sm:space-y-4 lg:space-y-5">
-	<DashGrid cols={4}>
+	<DashGrid cols={HEADLINE_COLUMNS}>
 		{#each headline as tile}
 			<KpiTile icon={tile.icon} label={tile.label} value={tile.value} tone={tile.tone} />
 		{/each}

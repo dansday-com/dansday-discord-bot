@@ -5,7 +5,11 @@
 		"moduleResolution": "NodeNext",
 		"outDir": "./bots",
 		"rootDir": "./src/lib",
-		"strict": false,
+		"strict": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"noFallthroughCasesInSwitch": true,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
 		"allowJs": true,
@@ -14,6 +18,7 @@
 		"isolatedModules": false
 	},
 	"include": [
+		"src/app.d.ts",
 		"src/lib/backend/**/*.ts",
 		"src/lib/utils/**/*.ts",
 		"src/lib/botProcesses.ts",

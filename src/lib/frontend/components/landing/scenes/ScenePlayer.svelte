@@ -4,7 +4,7 @@
 	import { quintOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
-	import { SceneClock, playWhenVisible, typed } from './clock.svelte.js';
+	import { SCENE_ANIM_MS, SCENE_RESET_MS, SceneClock, playWhenVisible, typed } from './clock.svelte.js';
 	import DiscordCall from './DiscordCall.svelte';
 	import DiscordComponents from './DiscordComponents.svelte';
 	import DiscordEmbed from './DiscordEmbed.svelte';
@@ -20,19 +20,28 @@
 	let { scenes, label, variant = 'desktop' }: { scenes: Scene[]; label: string; variant?: 'desktop' | 'phone' } = $props();
 
 	const POP_TONES = { gold: '#efb11d', red: '#f23f43' } as const;
+	const POP_DELAY_MS = 120;
+	const POP_MS = 1100;
+	const SLASH_TAP_LEAD_MS = 120;
+	const MODAL_LINGER_MS = 260;
+	const FADE_IN_MS = 300;
+	const FADE_OUT_MS = 400;
 
 	let index = $state(0);
 	const scene = $derived(scenes[index]);
 
 	const clock = untrack(() => new SceneClock(scenes[0].duration, scenes[0].rest));
-	let startedFromRest = true;
+	let hasStartedFromRest = true;
 	clock.onend = () => {
-		if (startedFromRest) startedFromRest = false;
-		else select((index + 1) % scenes.length);
+		if (hasStartedFromRest) {
+			hasStartedFromRest = false;
+		} else {
+			select((index + 1) % scenes.length);
+		}
 	};
 
 	function select(i: number) {
-		startedFromRest = false;
+		hasStartedFromRest = false;
 		index = i;
 		clock.duration = scenes[i].duration;
 		clock.t = clock.still ? scenes[i].rest : 0;
@@ -69,18 +78,26 @@
 
 	const shown = $derived((scene.events ?? []).filter((e) => t >= e.at).length);
 	const lines = $derived(build(scene, shown));
-	const resetting = $derived(t < 500);
-	const animMs = $derived(clock.still ? 0 : 320);
+	const isResetting = $derived(t < SCENE_RESET_MS);
+	const animMs = $derived(clock.still ? 0 : SCENE_ANIM_MS);
 
 	function view(e: SceneEvent, now: number) {
-		let text = e.text;
-		let embed = e.embed;
-		let rows = e.rows;
+		let { text } = e;
+		let { embed } = e;
+		let { rows } = e;
 		for (const p of scene.patches ?? []) {
-			if (p.id !== e.id || now < p.at) continue;
-			if (p.text !== undefined) text = p.text;
-			if (p.embed !== undefined) embed = p.embed ?? undefined;
-			if (p.rows !== undefined) rows = p.rows;
+			if (p.id !== e.id || now < p.at) {
+				continue;
+			}
+			if (p.text !== undefined) {
+				text = p.text;
+			}
+			if (p.embed !== undefined) {
+				embed = p.embed ?? undefined;
+			}
+			if (p.rows !== undefined) {
+				rows = p.rows;
+			}
 		}
 		return { text, embed, rows };
 	}
@@ -94,14 +111,14 @@
 
 	const commands = $derived(draft.startsWith('/') ? (scene.commands ?? []).filter((c) => `/${c.name}`.startsWith(draft)) : []);
 
-	const modal = $derived((scene.modals ?? []).find((m) => t >= m.at && t < m.submitAt + 260) ?? null);
+	const modal = $derived((scene.modals ?? []).find((m) => t >= m.at && t < m.submitAt + MODAL_LINGER_MS) ?? null);
 
 	const typingWho = $derived.by(() => {
 		const run = scene.typing?.find((r) => t >= r.from && t < r.to);
 		return run ? (scene.people?.[run.who]?.name ?? null) : null;
 	});
 
-	const fade = $derived(Math.max(0, Math.min(1, t / 300, (scene.duration - t) / 400)));
+	const fade = $derived(Math.max(0, Math.min(1, t / FADE_IN_MS, (scene.duration - t) / FADE_OUT_MS)));
 	const active = $derived(scene.steps.findIndex((s) => t >= s.from && t < s.to));
 	const progress = $derived(active < 0 ? 0 : (t - scene.steps[active].from) / (scene.steps[active].to - scene.steps[active].from));
 </script>
@@ -109,7 +126,7 @@
 {#snippet feed()}
 	{#each lines as line (line.key)}
 		{@const v = view(line.event, t)}
-		<div animate:flip={{ duration: resetting ? 0 : animMs, easing: quintOut }} in:fly={{ y: 8, duration: animMs, easing: quintOut }}>
+		<div animate:flip={{ duration: isResetting ? 0 : animMs, easing: quintOut }} in:fly={{ y: 8, duration: animMs, easing: quintOut }}>
 			<DiscordMessage
 				name={line.person.name}
 				avatar={line.person.avatar}
@@ -123,8 +140,8 @@
 				{#if v.embed}<DiscordEmbed embed={v.embed} />{/if}
 				{#if v.rows?.length}<DiscordComponents rows={v.rows} {t} still={clock.still} />{/if}
 				{#snippet aside()}
-					{@const pop = line.event.pop}
-					{#if pop && t >= line.event.at + 120 && t < line.event.at + 1220}
+					{@const { pop } = line.event}
+					{#if pop && t >= line.event.at + POP_DELAY_MS && t < line.event.at + POP_DELAY_MS + POP_MS}
 						<span
 							class="scene-pop pointer-events-none absolute top-1 right-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold"
 							style="color: {POP_TONES[pop.tone]}; background: color-mix(in srgb, {POP_TONES[pop.tone]} 16%, transparent);"
@@ -146,7 +163,7 @@
 
 {#snippet picker()}
 	{#if commands.length > 0}
-		<SlashPicker {commands} {draft} {t} tapAt={composing ? composing.at - 120 : undefined} still={clock.still} />
+		<SlashPicker {commands} {draft} {t} tapAt={composing ? composing.at - SLASH_TAP_LEAD_MS : undefined} still={clock.still} />
 	{/if}
 {/snippet}
 

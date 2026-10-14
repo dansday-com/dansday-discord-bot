@@ -1,25 +1,35 @@
 import { cleanupDemoSession } from './seedDemo.js';
 import { DEMO_EXPIRE_REDIS_PREFIX, deleteSessionsWithDemoPanelSlug, getRedis } from '../../utils/session.js';
 
-let listenerStarted = false;
+let hasListenerStarted = false;
 
 function expiredKeyToDemoSlug(key: string): string | null {
-	if (!key.startsWith(DEMO_EXPIRE_REDIS_PREFIX)) return null;
+	if (!key.startsWith(DEMO_EXPIRE_REDIS_PREFIX)) {
+		return null;
+	}
 	const slug = key.slice(DEMO_EXPIRE_REDIS_PREFIX.length);
-	if (!slug.startsWith('demo_')) return null;
+	if (!slug.startsWith('demo_')) {
+		return null;
+	}
 	return slug;
 }
 
 export async function startDemoSessionExpiryListener(): Promise<void> {
-	if (listenerStarted) return;
+	if (hasListenerStarted) {
+		return;
+	}
 	const url = process.env.REDIS_URL;
-	if (!url) return;
+	if (!url) {
+		return;
+	}
 
 	try {
 		const redis = await getRedis();
-		if (!redis) return;
+		if (!redis) {
+			return;
+		}
 
-		listenerStarted = true;
+		hasListenerStarted = true;
 
 		try {
 			await redis.configSet('notify-keyspace-events', 'Ex');
@@ -35,7 +45,9 @@ export async function startDemoSessionExpiryListener(): Promise<void> {
 		await sub.pSubscribe('__keyevent@*__:expired', async (message) => {
 			const key = typeof message === 'string' ? message : String(message);
 			const slug = expiredKeyToDemoSlug(key);
-			if (!slug) return;
+			if (!slug) {
+				return;
+			}
 
 			try {
 				await deleteSessionsWithDemoPanelSlug(slug);
@@ -49,7 +61,7 @@ export async function startDemoSessionExpiryListener(): Promise<void> {
 			}
 		});
 	} catch (e) {
-		listenerStarted = false;
+		hasListenerStarted = false;
 		console.warn('[demo-expiry] Failed to start Redis expiry listener:', e);
 	}
 }

@@ -2,7 +2,7 @@ import { EFFECTS, EFFECT_SPIN_COST } from './effects.js';
 import { APP_URL } from './backend/panelServer.js';
 import { imageSizeLabel } from './images.js';
 import { serverLanguageList } from './languages.js';
-import { MESSAGE_LIMITS, MESSAGE_VIDEO_FORMATS_LABEL, messageUploadLimit } from './messages.js';
+import { MESSAGE_LIMITS, MESSAGE_VIDEO_FORMATS_LABEL, messageUploadLimit, TOP_BOOST_LEVEL } from './messages.js';
 
 export const DOCS_TITLE = 'Bot documentation';
 export const DOCS_URL = `${APP_URL}/docs`;
@@ -776,7 +776,7 @@ export const modules = [
 			},
 			{
 				label: 'Upload limit',
-				desc: `Images (PNG, JPG, GIF, WEBP) and videos (${MESSAGE_VIDEO_FORMATS_LABEL}) up to Discord's limit for the server: ${imageSizeLabel(messageUploadLimit(0))}, ${imageSizeLabel(messageUploadLimit(2))} at boost level 2 and ${imageSizeLabel(messageUploadLimit(3))} at level 3.`
+				desc: `Images (PNG, JPG, GIF, WEBP) and videos (${MESSAGE_VIDEO_FORMATS_LABEL}) up to Discord's limit for the server: ${imageSizeLabel(messageUploadLimit(0))}, ${imageSizeLabel(messageUploadLimit(2))} at boost level 2 and ${imageSizeLabel(messageUploadLimit(TOP_BOOST_LEVEL))} at level 3.`
 			},
 			{ label: 'Placeholders', desc: '{server} becomes the server name and {year} the current year, in any text.' },
 			{

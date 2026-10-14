@@ -23,10 +23,18 @@ function buttonTexts(button: MessageButton): MessageText[] {
 }
 
 function innerTexts(block: InnerBlock): MessageText[] {
-	if (block.type === 'text') return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }];
-	if (block.type === 'section') return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }, ...buttonTexts(block.button)];
-	if (block.type === 'gallery') return block.items.map((item) => ({ key: `${item.id}.caption`, value: item.caption, max: L.caption }));
-	if (block.type === 'buttons') return block.buttons.flatMap(buttonTexts);
+	if (block.type === 'text') {
+		return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }];
+	}
+	if (block.type === 'section') {
+		return [{ key: `${block.id}.text`, value: block.text, max: L.blockText }, ...buttonTexts(block.button)];
+	}
+	if (block.type === 'gallery') {
+		return block.items.map((item) => ({ key: `${item.id}.caption`, value: item.caption, max: L.caption }));
+	}
+	if (block.type === 'buttons') {
+		return block.buttons.flatMap(buttonTexts);
+	}
 	if (block.type === 'select') {
 		return [
 			{ key: `${block.id}.placeholder`, value: block.placeholder, max: L.placeholder },
@@ -41,7 +49,9 @@ function innerTexts(block: InnerBlock): MessageText[] {
 }
 
 export function messageTexts(doc: MessageDoc): MessageText[] {
-	if (doc.layout === 'components') return doc.blocks.flatMap((block) => (block.type === 'container' ? block.blocks.flatMap(innerTexts) : innerTexts(block)));
+	if (doc.layout === 'components') {
+		return doc.blocks.flatMap((block) => (block.type === 'container' ? block.blocks.flatMap(innerTexts) : innerTexts(block)));
+	}
 	return [
 		{ key: 'text', value: doc.text, max: L.text },
 		...doc.embeds.flatMap((embed) => [
@@ -71,7 +81,9 @@ Answer with one JSON object and nothing else, giving the translation for every i
 function parse(answer: string): Record<string, unknown> | null {
 	const start = answer.indexOf('{');
 	const end = answer.lastIndexOf('}');
-	if (start < 0 || end <= start) return null;
+	if (start < 0 || end <= start) {
+		return null;
+	}
 	try {
 		const parsed = JSON.parse(answer.slice(start, end + 1));
 		return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
@@ -80,19 +92,27 @@ function parse(answer: string): Record<string, unknown> | null {
 	}
 }
 
-async function run(job: Job, source: ServerLanguage, note: string, ask: TranslationAsk): Promise<boolean> {
+type TranslationRun = { source: ServerLanguage; note: string; ask: TranslationAsk };
+
+async function run(job: Job, { source, note, ask }: TranslationRun): Promise<boolean> {
 	for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
 		const answer = await ask(system(source, job.target, note), JSON.stringify(job.items)).catch(() => '');
 		const translated = parse(answer);
-		if (!translated) continue;
+		if (!translated) {
+			continue;
+		}
 		let filled = 0;
 		for (const item of job.items) {
 			const text = translated[item.id];
-			if (typeof text !== 'string' || !text.trim()) continue;
+			if (typeof text !== 'string' || !text.trim()) {
+				continue;
+			}
 			job.values.get(item.id)![job.target] = text.slice(0, item.max);
 			filled++;
 		}
-		if (filled > 0) return true;
+		if (filled > 0) {
+			return true;
+		}
 	}
 	return false;
 }
@@ -105,22 +125,26 @@ export async function translateMessage(
 	const source = doc.language;
 	const targets = doc.languages.filter((code) => code !== source);
 	const before = new Map(messageTexts(original).map((text) => [text.key, text.value]));
-	const sameSource = original.language === source;
+	const isSameSource = original.language === source;
 	const jobs: Job[] = [];
 
 	for (const target of targets) {
-		const again = options.retranslate.includes(target);
+		const shouldRetranslate = options.retranslate.includes(target);
 		let job: Job | null = null;
 		let size = 0;
 		let next = 0;
 
 		for (const entry of messageTexts(doc)) {
 			const text = (entry.value[source] ?? '').trim();
-			if (!text) continue;
-			if (!again && (entry.value[target] ?? '').trim()) continue;
+			if (!text) {
+				continue;
+			}
+			if (!shouldRetranslate && (entry.value[target] ?? '').trim()) {
+				continue;
+			}
 
 			const old = before.get(entry.key);
-			const kept = sameSource && !again && old && (old[source] ?? '').trim() === text ? (old[target] ?? '').trim() : '';
+			const kept = isSameSource && !shouldRetranslate && old && (old[source] ?? '').trim() === text ? (old[target] ?? '').trim() : '';
 			if (kept) {
 				entry.value[target] = old![target];
 				continue;
@@ -138,8 +162,10 @@ export async function translateMessage(
 		}
 	}
 
-	const ask = options.ask;
-	if (!ask) return { translated: [], failed: [] };
+	const { ask } = options;
+	if (!ask) {
+		return { translated: [], failed: [] };
+	}
 
 	const failed = new Set<ServerLanguage>();
 	let cursor = 0;
@@ -147,7 +173,9 @@ export async function translateMessage(
 		Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
 			while (cursor < jobs.length) {
 				const job = jobs[cursor++];
-				if (!(await run(job, source, options.note, ask))) failed.add(job.target);
+				if (!(await run(job, { source, note: options.note, ask }))) {
+					failed.add(job.target);
+				}
 			}
 		})
 	);

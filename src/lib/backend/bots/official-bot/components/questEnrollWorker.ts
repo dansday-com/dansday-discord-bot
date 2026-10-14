@@ -1,13 +1,16 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client, type SendableChannels } from 'discord.js';
 import { getEmbedConfig, runQuestUserAutomation, type QuestAutomationResult } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { serverTranslator } from '../i18n.js';
 import { questResultText, questRewardText } from './questText.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
+import { EMBED_COLORS } from './embedColors.js';
 
 const activeEnrollUsers = new Set<string>();
 
 const CLAIM_ALL_QUEST_GAP_MS = 5_000;
+const ERROR_DETAIL_MAX_LENGTH = 3400;
 
 export function isUserEnrollRunning(requesterId: string): boolean {
 	return activeEnrollUsers.has(requesterId);
@@ -29,67 +32,81 @@ export type QuestClaimAllJob = Omit<QuestEnrollJob, 'questId'> & { questIds: str
 
 export function queueQuestEnrollJob(job: QuestEnrollJob): void {
 	activeEnrollUsers.add(job.requesterId);
-	void runQuestEnrollJob(job).finally(() => activeEnrollUsers.delete(job.requesterId));
+	runQuestEnrollJob(job).finally(() => activeEnrollUsers.delete(job.requesterId));
 }
 
 export function queueQuestClaimAllJob(job: QuestClaimAllJob): void {
 	activeEnrollUsers.add(job.requesterId);
-	void runQuestClaimAllJob(job).finally(() => activeEnrollUsers.delete(job.requesterId));
+	runQuestClaimAllJob(job).finally(() => activeEnrollUsers.delete(job.requesterId));
 }
 
 async function textChannelForJob(client: Client, channelId: string | null) {
-	if (!channelId) return null;
+	if (!channelId) {
+		return null;
+	}
 	const channel = await client.channels.fetch(channelId).catch(() => null);
 	if (!channel || !channel.isTextBased()) {
 		await logger.log(`⚠️ Quest enroll: channel ${channelId} missing for result embed`);
 		return null;
 	}
-	return channel;
+	return channel as SendableChannels;
 }
 
 async function postQuestResult(job: QuestEnrollJob | QuestClaimAllJob, result: QuestAutomationResult): Promise<void> {
 	const channel = await textChannelForJob(job.client, job.channelId);
-	if (!channel) return;
+	if (!channel) {
+		return;
+	}
 	const embedConfig = await getEmbedConfig(job.guildId);
 	const tr = await serverTranslator(job.guildId);
 	const text = questResultText(tr, result);
 	const embed = new EmbedBuilder()
-		.setColor(result.ok ? embedConfig.COLOR : 0xed4245)
-		.setTitle(text.title.slice(0, 256))
-		.setDescription(text.description.slice(0, 4096))
-		.addFields({ name: tr('questEnroll.result.reward'), value: questRewardText(tr, result.rewardLine).slice(0, 1024), inline: false })
+		.setColor(result.ok ? embedConfig.COLOR : EMBED_COLORS.danger)
+		.setTitle(text.title.slice(0, DISCORD_LIMITS.EMBED_TITLE))
+		.setDescription(text.description.slice(0, DISCORD_LIMITS.EMBED_DESCRIPTION))
+		.addFields({
+			name: tr('questEnroll.result.reward'),
+			value: questRewardText(tr, result.rewardLine).slice(0, DISCORD_LIMITS.EMBED_FIELD_VALUE),
+			inline: false
+		})
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(result.questUrl).setLabel(tr('questEnroll.result.openInDiscord').slice(0, 80)).setEmoji('🖥️')
+		new ButtonBuilder()
+			.setStyle(ButtonStyle.Link)
+			.setURL(result.questUrl)
+			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
+			.setEmoji('🖥️')
 	);
 	await channel.send({ content: `<@${job.requesterId}>`, embeds: [embed], components: [row] });
 }
 
 async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: string, message: string): Promise<void> {
 	const channel = await textChannelForJob(job.client, job.channelId);
-	if (!channel) return;
+	if (!channel) {
+		return;
+	}
 	const embedConfig = await getEmbedConfig(job.guildId);
 	const tr = await serverTranslator(job.guildId);
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder()
 			.setStyle(ButtonStyle.Link)
 			.setURL(`https://discord.com/quests/${questId}`)
-			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, 80))
+			.setLabel(tr('questEnroll.result.openInDiscord').slice(0, DISCORD_LIMITS.BUTTON_LABEL))
 			.setEmoji('🖥️')
 	);
 	await channel.send({
 		content: `<@${job.requesterId}>`,
 		embeds: [
 			new EmbedBuilder()
-				.setColor(0xed4245)
+				.setColor(EMBED_COLORS.danger)
 				.setTitle(tr('questEnroll.result.errorTitle'))
 				.setDescription(
 					tr('questEnroll.result.errorDescription', {
 						member: `<@${job.requesterId}>`,
 						tag: job.requesterTag,
 						quest: questId,
-						error: message.slice(0, 3400)
+						error: message.slice(0, ERROR_DETAIL_MAX_LENGTH)
 					})
 				)
 				.setFooter({ text: embedConfig.FOOTER })
@@ -109,7 +126,7 @@ async function enrollOneQuest(job: QuestEnrollJob | QuestClaimAllJob, questId: s
 		await logger.log(`🔮 Quest enroll job finished (${result.ok ? 'ok' : 'fail'}) quest ${questId} user ${job.requesterId}`);
 		return result.ok;
 	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
+		const msg = e instanceof Error ? (e as Error).message : String(e);
 		await logger.log(`❌ Quest enroll job error on quest ${questId}: ${msg}`);
 		await postQuestError(job, questId, msg).catch(() => null);
 		return false;
@@ -124,8 +141,12 @@ async function runQuestClaimAllJob(job: QuestClaimAllJob): Promise<void> {
 	let okCount = 0;
 	for (let i = 0; i < job.questIds.length; i++) {
 		const questId = job.questIds[i];
-		if (await enrollOneQuest(job, questId)) okCount++;
-		if (i < job.questIds.length - 1) await new Promise((resolve) => setTimeout(resolve, CLAIM_ALL_QUEST_GAP_MS));
+		if (await enrollOneQuest(job, questId)) {
+			okCount++;
+		}
+		if (i < job.questIds.length - 1) {
+			await new Promise((resolve) => setTimeout(resolve, CLAIM_ALL_QUEST_GAP_MS));
+		}
 	}
 	await logger.log(`🔮 Quest claim all finished for user ${job.requesterId}: ${okCount}/${job.questIds.length} quest(s) claimed`);
 }

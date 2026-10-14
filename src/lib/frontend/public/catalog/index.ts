@@ -1,9 +1,11 @@
 import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
 import { TASK_DEFINITIONS, type TaskRequirement } from '../../../tasks.js';
+import type { ItemSchedule } from '../../../items.js';
 
 const TTL_SECONDS = 300;
 const MAX_ROWS = 300;
+const DEFAULT_SAMPLE_GOAL = 10;
 
 export type QuestEntry = {
 	quest_id: string;
@@ -60,8 +62,8 @@ export type ItemEntry = {
 	usable: boolean;
 	available_from: string | null;
 	available_to: string | null;
-	recurring_schedule: any;
-	config: Record<string, any>;
+	recurring_schedule: ItemSchedule | null;
+	config: Record<string, unknown>;
 };
 
 export type WikiEntry = {
@@ -115,26 +117,31 @@ async function cached<T>(key: string, build: () => Promise<T>, fallback: T): Pro
 	if (redis) {
 		try {
 			const raw = await redis.get(key);
-			if (raw) return JSON.parse(raw) as T;
+			if (raw) {
+				return JSON.parse(raw) as T;
+			}
 		} catch (_) {}
 	}
-	let value: T;
-	try {
-		value = await build();
-	} catch (_) {
+	const built = await build().then(
+		(value) => ({ value }),
+		() => null
+	);
+	if (!built) {
 		return fallback;
 	}
 	if (redis) {
 		try {
-			await redis.set(key, JSON.stringify(value), { EX: TTL_SECONDS });
+			await redis.set(key, JSON.stringify(built.value), { EX: TTL_SECONDS });
 		} catch (_) {}
 	}
-	return value;
+	return built.value;
 }
 
 function iso(d: unknown): string | null {
-	if (!d) return null;
-	const dt = d instanceof Date ? d : new Date(String(d).replace(' ', 'T') + 'Z');
+	if (!d) {
+		return null;
+	}
+	const dt = d instanceof Date ? d : new Date(`${String(d).replace(' ', 'T')}Z`);
 	return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
 }
 
@@ -145,7 +152,9 @@ function num(v: unknown): number {
 
 function hostOf(url: unknown): string | null {
 	const raw = typeof url === 'string' ? url.trim() : '';
-	if (!raw) return null;
+	if (!raw) {
+		return null;
+	}
 	try {
 		return new URL(raw).host.replace(/^www\./, '') || null;
 	} catch (_) {
@@ -157,7 +166,7 @@ export function resolveQuestDirectory(): Promise<QuestEntry[]> {
 	return cached(
 		'dansday:quest_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicDiscordQuests(MAX_ROWS);
+			const rows = await db.listPublicDiscordQuests(MAX_ROWS);
 			const now = Date.now();
 			return rows.map((r) => {
 				const starts = iso(r.starts_at);
@@ -186,7 +195,7 @@ export function resolveRobloxDirectory(limit: number | null = null, offset = 0):
 	return cached(
 		`dansday:roblox_directory:${limit ?? 'all'}:${offset}`,
 		async () => {
-			const rows: any[] = await (db as any).listPublicRobloxItems(limit, offset);
+			const rows = await db.listPublicRobloxItems(limit, offset);
 			return rows.map((r) => {
 				const price = num(r.price);
 				return {
@@ -214,7 +223,7 @@ export function resolveRobloxMostNotified(limit = 6): Promise<RobloxEntry[]> {
 	return cached(
 		`dansday:roblox_most_notified:${limit}`,
 		async () => {
-			const rows: any[] = await (db as any).listPublicRobloxItemsByNotifications(limit);
+			const rows = await db.listPublicRobloxItemsByNotifications(limit);
 			return rows.map((r) => {
 				const price = num(r.price);
 				return {
@@ -239,12 +248,12 @@ export function resolveRobloxMostNotified(limit = 6): Promise<RobloxEntry[]> {
 }
 
 export function resolveRobloxTrackedCount(): Promise<number> {
-	return cached('dansday:roblox_tracked_count', async () => (await (db as any).countPublicRobloxItems()) as number, 0);
+	return cached('dansday:roblox_tracked_count', async () => (await db.countPublicRobloxItems()) as number, 0);
 }
 
 export function resolveTaskDirectory(): TaskEntry[] {
 	return TASK_DEFINITIONS.map((def) => {
-		const goal = SAMPLE_GOAL[def.unit] ?? 10;
+		const goal = SAMPLE_GOAL[def.unit] ?? DEFAULT_SAMPLE_GOAL;
 		return {
 			id: def.id,
 			label: def.label,
@@ -265,19 +274,19 @@ export function resolveItemDirectory(): Promise<ItemEntry[]> {
 	return cached(
 		'dansday:item_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicItems(MAX_ROWS);
+			const rows = await db.listPublicItems(MAX_ROWS);
 			return rows.map((r) => ({
 				id: Number(r.id),
 				name: r.name || `Item ${r.id}`,
 				effect_type: String(r.effect_type || ''),
 				description: r.description || null,
 				cost: num(r.cost),
-				buyable: r.enabled !== false && r.enabled !== 0,
-				usable: r.usable !== false && r.usable !== 0,
+				buyable: r.enabled,
+				usable: r.usable,
 				available_from: r.available_from ? String(r.available_from) : null,
 				available_to: r.available_to ? String(r.available_to) : null,
-				recurring_schedule: r.recurring_schedule ?? null,
-				config: (r.config as Record<string, any>) ?? {}
+				recurring_schedule: (r.recurring_schedule as ItemSchedule | null) ?? null,
+				config: (r.config as Record<string, unknown>) ?? {}
 			}));
 		},
 		EMPTY_ITEMS
@@ -288,7 +297,7 @@ export function resolveWikiDirectory(): Promise<WikiEntry[]> {
 	return cached(
 		'dansday:wiki_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicWikis(MAX_ROWS);
+			const rows = await db.listPublicWikis(MAX_ROWS);
 
 			return rows.map((r) => {
 				const site = typeof r.site_url === 'string' && r.site_url.trim() ? r.site_url.trim() : null;
@@ -298,7 +307,7 @@ export function resolveWikiDirectory(): Promise<WikiEntry[]> {
 					description: r.description || null,
 					site_url: site,
 					site_host: hostOf(site),
-					active: r.enabled === true || r.enabled === 1
+					active: r.enabled
 				};
 			});
 		},
@@ -310,7 +319,7 @@ export function resolveForwarderSourceDirectory(): Promise<ForwarderSourceEntry[
 	return cached(
 		'dansday:forwarder_source_directory',
 		async () => {
-			const rows: any[] = await (db as any).listPublicForwarderSources(MAX_ROWS);
+			const rows = await db.listPublicForwarderSources(MAX_ROWS);
 			return rows.map((r) => ({
 				discord_server_id: String(r.discord_server_id),
 				name: r.name || 'Unnamed server',

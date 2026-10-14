@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	let total_selfbots = 0;
 	let running_selfbots = 0;
 	let total_uptime_ms = 0;
-	let panel = {
+	const panel = {
 		total_members: 0,
 		largest_server_members: 0,
 		total_panel_accounts: 0,
@@ -27,11 +27,11 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 			total_selfbots = panelData.total_selfbots;
 			running_selfbots = panelData.running_selfbots;
 
-			const bot_uptime_ms = bots.reduce((acc: number, b: any) => acc + (b.uptime_ms || 0), 0);
+			const bot_uptime_ms = bots.reduce((acc: number, b) => acc + (b.uptime_ms || 0), 0);
 			total_uptime_ms = bot_uptime_ms + panelData.selfbot_uptime_ms;
 
 			for (const key of Object.keys(panel) as (keyof typeof panel)[]) {
-				panel[key] = Number((panelData as any)[key]) || 0;
+				panel[key] = Number((panelData as Record<string, unknown>)[key]) || 0;
 			}
 		} catch (err) {
 			console.error('Failed to load overview stats', err);
@@ -54,8 +54,8 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	return {
 		stats: {
 			total_bots: bots?.length || 0,
-			running_bots: bots?.filter((b: any) => b.status === 'running').length || 0,
-			stopped_bots: bots?.filter((b: any) => b.status !== 'running').length || 0,
+			running_bots: bots?.filter((b) => b.status === 'running').length || 0,
+			stopped_bots: bots?.filter((b) => b.status !== 'running').length || 0,
 			total_servers,
 			total_selfbots,
 			running_selfbots,

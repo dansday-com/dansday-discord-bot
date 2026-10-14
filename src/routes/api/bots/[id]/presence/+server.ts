@@ -2,45 +2,51 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db, { presenceFromDbRow, type BotStatusInput } from '$lib/database.js';
 import { accountOwnsBot } from '$lib/backend/panelServer.js';
+import { attemptSync } from '$lib/utils/attempt.js';
+import { HTTP } from '$lib/http.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'] as const;
+const ACTIVITY_TEXT_MAX_LENGTH = 128;
 
 function normalizeHttpUrl(input: string): string | null {
 	const t = input.trim();
-	if (!t) return null;
+	if (!t) {
+		return null;
+	}
 	return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 }
 
 function isDiscordStreamingUrl(urlStr: string): boolean {
-	let u: URL;
-	try {
-		u = new URL(urlStr);
-	} catch {
+	const parsed = attemptSync(() => new URL(urlStr));
+	if (!parsed.ok) {
 		return false;
 	}
-	if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+	const u = parsed.value;
+	if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+		return false;
+	}
 	const h = u.hostname.toLowerCase();
 	return h === 'twitch.tv' || h === 'www.twitch.tv' || h === 'youtube.com' || h === 'www.youtube.com' || h === 'youtu.be' || h === 'm.youtube.com';
 }
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
+		return json({ error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 
 	const botId = Number(params.id);
 	if (!Number.isFinite(botId)) {
-		return json({ error: 'Invalid bot id' }, { status: 400 });
+		return json({ error: 'Invalid bot id' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const bot = await db.getBot(botId);
 	if (!bot) {
-		return json({ error: 'Bot not found' }, { status: 404 });
+		return json({ error: 'Bot not found' }, { status: HTTP.NOT_FOUND });
 	}
 
 	if (!(await accountOwnsBot(locals, botId))) {
-		return json({ error: 'Access denied' }, { status: 403 });
+		return json({ error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
 	const row = await db.getBotStatusByBotId(botId);
@@ -49,50 +55,48 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
-		return json({ success: false, error: 'Authentication required' }, { status: 401 });
+		return json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
 	}
 
 	const botId = Number(params.id);
 	if (!Number.isFinite(botId)) {
-		return json({ success: false, error: 'Invalid bot id' }, { status: 400 });
+		return json({ success: false, error: 'Invalid bot id' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const bot = await db.getBot(botId);
 	if (!bot) {
-		return json({ success: false, error: 'Bot not found' }, { status: 404 });
+		return json({ success: false, error: 'Bot not found' }, { status: HTTP.NOT_FOUND });
 	}
 
 	if (!(await accountOwnsBot(locals, botId))) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	let body: Record<string, unknown>;
-	try {
-		body = await request.json();
-	} catch {
-		return json({ success: false, error: 'Invalid JSON' }, { status: 400 });
+	const body: Record<string, unknown> | null = await request.json().catch(() => null);
+	if (!body) {
+		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const discord_status = body.discord_status;
-	const activity_type = body.activity_type;
+	const { discord_status } = body;
+	const { activity_type } = body;
 	let activity_name = typeof body.activity_name === 'string' ? body.activity_name : '';
 	const rawUrl = body.activity_url === null || body.activity_url === undefined ? '' : String(body.activity_url);
 	const activity_state = body.activity_state === null || body.activity_state === undefined || body.activity_state === '' ? null : String(body.activity_state);
 
 	if (typeof discord_status !== 'string' || !DISCORD_STATUSES.includes(discord_status as (typeof DISCORD_STATUSES)[number])) {
-		return json({ success: false, error: 'Invalid discord_status' }, { status: 400 });
+		return json({ success: false, error: 'Invalid discord_status' }, { status: HTTP.BAD_REQUEST });
 	}
 	if (typeof activity_type !== 'string' || !ACTIVITY_TYPES.includes(activity_type as (typeof ACTIVITY_TYPES)[number])) {
-		return json({ success: false, error: 'Invalid activity_type' }, { status: 400 });
+		return json({ success: false, error: 'Invalid activity_type' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	if (activity_type === 'custom') {
 		activity_name = '';
-	} else if (activity_name.length > 128) {
-		return json({ success: false, error: 'activity_name must be at most 128 characters' }, { status: 400 });
+	} else if (activity_name.length > ACTIVITY_TEXT_MAX_LENGTH) {
+		return json({ success: false, error: `activity_name must be at most ${ACTIVITY_TEXT_MAX_LENGTH} characters` }, { status: HTTP.BAD_REQUEST });
 	}
-	if (activity_state && activity_state.length > 128) {
-		return json({ success: false, error: 'activity_state must be at most 128 characters' }, { status: 400 });
+	if (activity_state && activity_state.length > ACTIVITY_TEXT_MAX_LENGTH) {
+		return json({ success: false, error: `activity_state must be at most ${ACTIVITY_TEXT_MAX_LENGTH} characters` }, { status: HTTP.BAD_REQUEST });
 	}
 
 	let activity_url: string | null = null;
@@ -104,7 +108,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 					success: false,
 					error: 'Streaming requires a Twitch or YouTube URL (e.g. https://twitch.tv/yourchannel). Plain https:// is added if missing.'
 				},
-				{ status: 400 }
+				{ status: HTTP.BAD_REQUEST }
 			);
 		}
 		if (!isDiscordStreamingUrl(normalized)) {
@@ -113,12 +117,12 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 					success: false,
 					error: 'Discord only accepts Twitch or YouTube URLs for streaming presence. Use twitch.tv, youtube.com, or youtu.be links.'
 				},
-				{ status: 400 }
+				{ status: HTTP.BAD_REQUEST }
 			);
 		}
 		activity_url = normalized;
 		if (activity_name.trim() === '') {
-			return json({ success: false, error: 'Streaming activity requires an activity name (e.g. stream title)' }, { status: 400 });
+			return json({ success: false, error: 'Streaming activity requires an activity name (e.g. stream title)' }, { status: HTTP.BAD_REQUEST });
 		}
 	}
 

@@ -3,6 +3,16 @@
 	import { backOut, cubicOut } from 'svelte/easing';
 	import { getToasts, dismissToast, pauseToast, resumeToast } from '$lib/frontend/toast.svelte';
 
+	const ENTER_MS = 460;
+	const ENTER_OFFSET_PX = -22;
+	const ENTER_MIN_SCALE = 0.9;
+	const ENTER_SCALE_RANGE = 0.1;
+	const EXIT_MS = 240;
+	const EXIT_SLIDE_PX = 28;
+	const EXIT_MIN_SCALE = 0.94;
+	const EXIT_SCALE_RANGE = 0.06;
+	const REORDER_MS = 280;
+
 	const toasts = getToasts();
 
 	const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -13,19 +23,19 @@
 		info: { icon: 'fa-circle-info', tint: 'bg-primary/12 text-primary', bar: 'bg-primary' }
 	} as const;
 
-	function enter() {
+	function enter(_node: Element) {
 		return {
-			duration: reduced ? 0 : 460,
+			duration: reduced ? 0 : ENTER_MS,
 			easing: backOut,
-			css: (t: number, u: number) => `opacity: ${t}; transform: translate3d(0, ${u * -22}px, 0) scale(${0.9 + 0.1 * t})`
+			css: (t: number, u: number) => `opacity: ${t}; transform: translate3d(0, ${u * ENTER_OFFSET_PX}px, 0) scale(${ENTER_MIN_SCALE + ENTER_SCALE_RANGE * t})`
 		};
 	}
 
-	function exit() {
+	function exit(_node: Element) {
 		return {
-			duration: reduced ? 0 : 240,
+			duration: reduced ? 0 : EXIT_MS,
 			easing: cubicOut,
-			css: (t: number, u: number) => `opacity: ${t}; transform: translate3d(${u * 28}px, 0, 0) scale(${0.94 + 0.06 * t})`
+			css: (t: number, u: number) => `opacity: ${t}; transform: translate3d(${u * EXIT_SLIDE_PX}px, 0, 0) scale(${EXIT_MIN_SCALE + EXIT_SCALE_RANGE * t})`
 		};
 	}
 </script>
@@ -38,7 +48,7 @@
 	{#each toasts as toast (toast.id)}
 		{@const meta = META[toast.type] ?? META.info}
 		<div
-			animate:flip={{ duration: reduced ? 0 : 280 }}
+			animate:flip={{ duration: reduced ? 0 : REORDER_MS }}
 			in:enter
 			out:exit
 			role="status"

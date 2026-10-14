@@ -4,6 +4,7 @@ import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { postBotWebhook } from '$lib/backend/public/items/index.js';
 import { messageUploadKeys } from '$lib/messages.js';
 import { pruneMessageFiles } from '$lib/backend/storage/messageFiles.js';
+import { HTTP } from '$lib/http.js';
 
 export const GLOBAL_MENTION_GROUPS = ['everyone', 'here', 'admin', 'staff'] as const;
 
@@ -11,42 +12,47 @@ type Change = { key: string; before: string | null; after: string | null };
 
 export function globalPanelAccess(locals: App.Locals): { panelId: number } | Response {
 	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin' || locals.user.account_source !== 'accounts') {
-		return json({ ok: false, error: 'Only the panel admin can use global messages.' }, { status: 401 });
+		return json({ ok: false, error: 'Only the panel admin can use global messages.' }, { status: HTTP.UNAUTHORIZED });
 	}
 	const panelId = Number(locals.user.panel_id);
-	if (!Number.isFinite(panelId) || panelId <= 0) return json({ ok: false, error: 'No panel available' }, { status: 404 });
+	if (!Number.isFinite(panelId) || panelId <= 0) {
+		return json({ ok: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND });
+	}
 	return { panelId };
 }
 
 async function callBots(panelId: number, type: string, payload: Record<string, unknown>) {
-	const bots = ((await db.getAllBots(panelId)) ?? []) as any[];
+	const bots = (await db.getAllBots(panelId)) ?? [];
 	const running = bots.filter((bot) => bot.status === 'running' && bot.port && bot.secret_key);
-	const bodies: any[] = [];
+	const bodies: Record<string, unknown>[] = [];
 	for (const bot of running) {
 		const result = await postBotWebhook(bot, { type, ...payload });
-		if (result.body?.ok) bodies.push(result.body);
+		if (result.body?.ok) {
+			bodies.push(result.body);
+		}
 	}
 	return { total: bots.length, offline: bots.length - bodies.length, results: bodies.flatMap((body) => (Array.isArray(body.results) ? body.results : [])) };
 }
 
 export async function logGlobalMessageAction(locals: App.Locals, action: string, entries: { serverId: number; changes: Change[] }[]) {
-	for (const entry of entries) await db.createServerPanelLog(entry.serverId, panelActorIds(locals), action, entry.changes).catch(() => null);
+	for (const entry of entries) {
+		await db.createServerPanelLog(entry.serverId, panelActorIds(locals), { action, changes: entry.changes }).catch(() => null);
+	}
 }
 
-export async function sendGlobalMessage(locals: App.Locals, panelId: number, message: ServerMessage, groups: string[]) {
+export async function sendGlobalMessage({ locals, panelId }: PanelActor, message: ServerMessage, groups: string[]) {
 	const call = await callBots(panelId, 'global_message_send', { message_id: message.id, mention_groups: groups });
 	const sent = call.results.filter((r) => r.ok);
 	for (const r of sent) {
-		await db.addGlobalMessagePost(
-			panelId,
-			message.id,
-			r.server_id,
-			String(r.channel_id),
-			String(r.message_id),
-			String(r.language),
-			r.mentions ?? null,
-			message.content
-		);
+		await db.addGlobalMessagePost(panelId, {
+			messageId: message.id,
+			serverId: r.server_id,
+			discordChannelId: String(r.channel_id),
+			discordMessageId: String(r.message_id),
+			language: String(r.language),
+			mentions: r.mentions ?? null,
+			content: message.content
+		});
 	}
 	await logGlobalMessageAction(
 		locals,
@@ -68,12 +74,12 @@ export async function sendGlobalMessage(locals: App.Locals, panelId: number, mes
 	};
 }
 
+type SyncOptions = { interactive?: boolean; refresh?: number[] | 'all' | null };
+
 export async function syncGlobalMessagePosts(
-	locals: App.Locals,
-	panelId: number,
+	{ locals, panelId }: PanelActor,
 	message: ServerMessage,
-	interactive = true,
-	refresh: number[] | 'all' | null = null
+	{ interactive: isInteractive = true, refresh = null }: SyncOptions = {}
 ) {
 	const wanted = Array.isArray(refresh) ? new Set(refresh) : null;
 	const posts = (await db.getGlobalMessagePosts(panelId, message.id)).filter((post) => !wanted || wanted.has(post.id));
@@ -82,7 +88,7 @@ export async function syncGlobalMessagePosts(
 		posts.length > 0
 			? await callBots(panelId, 'global_message_sync', {
 					message_id: message.id,
-					interactive,
+					interactive: isInteractive,
 					refresh: refresh !== null,
 					...(wanted ? { post_ids: [...wanted] } : {})
 				})
@@ -92,12 +98,17 @@ export async function syncGlobalMessagePosts(
 	let removed = 0;
 	for (const result of call.results) {
 		const post = byId.get(Number(result.post_id));
-		if (!post) continue;
+		if (!post) {
+			continue;
+		}
 		if (result.gone) {
 			await db.deleteGlobalMessagePost(panelId, post.id).catch(() => null);
 			removed++;
-		} else if (result.ok) updated.push(post);
-		else failed.push(`${post.server_name}: ${result.error ?? 'could not update the copy.'}`);
+		} else if (result.ok) {
+			updated.push(post);
+		} else {
+			failed.push(`${post.server_name}: ${result.error ?? 'could not update the copy.'}`);
+		}
 	}
 	if (refresh !== null) {
 		await logGlobalMessageAction(
@@ -112,15 +123,21 @@ export async function syncGlobalMessagePosts(
 	return { total: posts.length, updated: updated.length, removed, failed, unreached: posts.length - call.results.length };
 }
 
-export async function removeGlobalMessagePosts(locals: App.Locals, panelId: number, message: ServerMessage, posts: GlobalMessagePost[]) {
-	if (posts.length === 0) return { removed: 0, failed: [] as string[], unreached: 0 };
+type PanelActor = { locals: App.Locals; panelId: number };
+
+export async function removeGlobalMessagePosts({ locals, panelId }: PanelActor, message: ServerMessage, posts: GlobalMessagePost[]) {
+	if (posts.length === 0) {
+		return { removed: 0, failed: [] as string[], unreached: 0 };
+	}
 	const byId = new Map(posts.map((post) => [post.id, post]));
 	const call = await callBots(panelId, 'global_message_remove_posts', { message_id: message.id, post_ids: posts.map((post) => post.id) });
 	const removed: GlobalMessagePost[] = [];
 	const failed: string[] = [];
 	for (const result of call.results) {
 		const post = byId.get(Number(result.post_id));
-		if (!post) continue;
+		if (!post) {
+			continue;
+		}
 		if (!result.ok) {
 			failed.push(String(result.error ?? `${post.server_name}: could not remove the copy.`));
 			continue;
@@ -142,7 +159,9 @@ export async function removeGlobalMessagePosts(locals: App.Locals, panelId: numb
 export async function pruneGlobalMessageFiles(panelId: number, messages?: ServerMessage[]) {
 	const all = messages ?? (await db.getGlobalMessages(panelId).catch(() => null));
 	const posts = await db.getGlobalMessagePosts(panelId).catch(() => null);
-	if (!all || !posts) return;
+	if (!all || !posts) {
+		return;
+	}
 	const kept = new Set(all.map((message) => message.id));
 	const used = [...all.map((message) => message.content), ...posts.flatMap((post) => (post.content && kept.has(post.message_id) ? [post.content] : []))];
 	await pruneMessageFiles({ scope: 'global', id: panelId }, new Set(used.flatMap((content) => messageUploadKeys(content)))).catch(() => null);

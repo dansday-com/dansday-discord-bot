@@ -5,8 +5,8 @@ import { destroySession, clearSessionCookie, logger, getClientIp, getSession } f
 import { cleanupDemoSession } from '$lib/backend/demo/seedDemo.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-	const sessionId = locals.sessionId;
-	const user = locals.user;
+	const { sessionId } = locals;
+	const { user } = locals;
 
 	const session = sessionId ? await getSession(sessionId).catch(() => null) : null;
 

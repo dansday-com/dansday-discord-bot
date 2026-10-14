@@ -6,7 +6,8 @@ import {
 	ModalBuilder,
 	TextInputBuilder,
 	TextInputStyle,
-	type ModalActionRowComponentBuilder
+	type ModalActionRowComponentBuilder,
+	MessageFlags
 } from 'discord.js';
 import type { ButtonInteraction, ModalSubmitInteraction } from 'discord.js';
 import db from '../../../../database.js';
@@ -20,11 +21,13 @@ import {
 	serverSettingsComponent,
 	type DiscordQuestSummary
 } from '../../../config.js';
-import { logger } from '../../../../utils/index.js';
+import { attempt, logger } from '../../../../utils/index.js';
 import { memberTranslator, translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, queueQuestClaimAllJob, isUserEnrollRunning } from './questEnrollWorker.js';
 import { menuBackButton } from './interface/menuBack.js';
+import { SECOND_MS } from '../../../../utils/time.js';
+import { DISCORD_LIMITS } from '../../../../discordLimits.js';
 
 export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';
 export const LEGACY_ENROLL_BUTTON_PREFIX = '\u006f\u0072\u0062_enroll:';
@@ -38,6 +41,11 @@ export const QUEST_CLAIM_ALL_MODAL_ID = 'quest_claim_all_submit';
 
 const TOKEN_FIELD_ID = 'quest_enroll_token';
 const LEGACY_TOKEN_FIELD_ID = '\u006f\u0072\u0062_enroll_token';
+const TOKEN_MIN_LENGTH = 20;
+const TOKEN_MAX_LENGTH = 4000;
+const REWARD_PREVIEW_MAX_LENGTH = 120;
+const QUEST_LIST_MAX_LENGTH = 4000;
+const SKIPPED_BLOCK_MAX_LENGTH = 2000;
 
 export function isQuestEnrollButtonId(customId: string): boolean {
 	return customId.startsWith(QUEST_ENROLL_BUTTON_PREFIX) || customId.startsWith(LEGACY_ENROLL_BUTTON_PREFIX);
@@ -60,8 +68,12 @@ function questIdFromButtonCustomId(customId: string): string | null {
 }
 
 function questIdFromModalCustomId(customId: string): string {
-	if (customId.startsWith(QUEST_ENROLL_MODAL_PREFIX)) return customId.slice(QUEST_ENROLL_MODAL_PREFIX.length).trim();
-	if (customId.startsWith(LEGACY_ENROLL_MODAL_PREFIX)) return customId.slice(LEGACY_ENROLL_MODAL_PREFIX.length).trim();
+	if (customId.startsWith(QUEST_ENROLL_MODAL_PREFIX)) {
+		return customId.slice(QUEST_ENROLL_MODAL_PREFIX.length).trim();
+	}
+	if (customId.startsWith(LEGACY_ENROLL_MODAL_PREFIX)) {
+		return customId.slice(LEGACY_ENROLL_MODAL_PREFIX.length).trim();
+	}
 	return '';
 }
 
@@ -71,7 +83,9 @@ function tokenFromModal(interaction: ModalSubmitInteraction): string {
 
 async function isAutoQuestEnrollmentEnabled(serverId: number): Promise<boolean> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
-	if (!panelId) return false;
+	if (!panelId) {
+		return false;
+	}
 	const row = await db.getPanelSettings(panelId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 	const raw = row?.settings;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
@@ -89,40 +103,46 @@ async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest:
 }
 
 async function announceTargetLine(guildId: string, userId: string, channelId: string | null): Promise<string> {
-	if (!channelId) return translate('questEnroll.announceDisabled', guildId, userId);
-	return translate('questEnroll.announceInChannel', guildId, userId, { channel: `<#${channelId}>` });
+	if (!channelId) {
+		return translate('questEnroll.announceDisabled', { guildId, userId });
+	}
+	return translate('questEnroll.announceInChannel', { guildId, userId }, { channel: `<#${channelId}>` });
 }
 
-async function buildTokenModal(customId: string, titleKey: string, guildId: string, userId: string): Promise<ModalBuilder> {
+type MemberScope = { guildId: string; userId: string };
+
+async function buildTokenModal(customId: string, titleKey: string, { guildId, userId }: MemberScope): Promise<ModalBuilder> {
 	const tr = await memberTranslator(guildId, userId);
-	const modal = new ModalBuilder().setCustomId(customId.slice(0, 100)).setTitle(tr(titleKey).slice(0, 45));
+	const modal = new ModalBuilder().setCustomId(customId.slice(0, DISCORD_LIMITS.CUSTOM_ID)).setTitle(tr(titleKey).slice(0, DISCORD_LIMITS.MODAL_TITLE));
 
 	const tokenInput = new TextInputBuilder()
 		.setCustomId(TOKEN_FIELD_ID)
-		.setLabel(tr('questEnroll.tokenModal.label').slice(0, 45))
+		.setLabel(tr('questEnroll.tokenModal.label').slice(0, DISCORD_LIMITS.LABEL))
 		.setStyle(TextInputStyle.Paragraph)
-		.setPlaceholder(tr('questEnroll.tokenModal.placeholder').slice(0, 100))
+		.setPlaceholder(tr('questEnroll.tokenModal.placeholder').slice(0, DISCORD_LIMITS.TEXT_INPUT_PLACEHOLDER))
 		.setRequired(true)
-		.setMinLength(20)
-		.setMaxLength(4000);
+		.setMinLength(TOKEN_MIN_LENGTH)
+		.setMaxLength(TOKEN_MAX_LENGTH);
 
 	modal.addComponents(new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(tokenInput));
 	return modal;
 }
 
 async function autoQuestDisabledReply(interaction: ButtonInteraction | ModalSubmitInteraction): Promise<void> {
-	const message = await translate('questEnroll.autoQuestDisabled', interaction.guild!.id, interaction.user.id);
+	const message = await translate('questEnroll.autoQuestDisabled', { guildId: interaction.guild!.id, userId: interaction.user.id });
 	if (interaction.replied || interaction.deferred) {
 		await interaction.editReply({ content: message, embeds: [], components: [] }).catch(() => null);
 	} else {
-		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => null);
 	}
 }
 
 function questExpiresLine(quest: DiscordQuestSummary): string {
 	const t = quest.expiresAt ? Date.parse(quest.expiresAt) : NaN;
-	if (!Number.isFinite(t)) return '';
-	return `<t:${Math.floor(t / 1000)}:R>`;
+	if (!Number.isFinite(t)) {
+		return '';
+	}
+	return `<t:${Math.floor(t / SECOND_MS)}:R>`;
 }
 
 function sortQuestsByExpiry(quests: DiscordQuestSummary[]): DiscordQuestSummary[] {
@@ -135,11 +155,17 @@ function sortQuestsByExpiry(quests: DiscordQuestSummary[]): DiscordQuestSummary[
 
 async function harvestQuestsFromMemberPayload(serverId: number, questsPayload: unknown): Promise<void> {
 	const botConfig = getBotConfig();
-	if (!botConfig) return;
+	if (!botConfig) {
+		return;
+	}
 	const discovered = extractDiscordQuestSummaries(questsPayload);
-	if (discovered.length === 0) return;
+	if (discovered.length === 0) {
+		return;
+	}
 	const added = await db.addMissingBotDiscordQuests(botConfig.id, discovered).catch(() => [] as DiscordQuestSummary[]);
-	if (added.length === 0) return;
+	if (added.length === 0) {
+		return;
+	}
 	await db
 		.linkServerToBotDiscordQuests(
 			serverId,
@@ -157,8 +183,8 @@ async function listActiveQuestsForMember(serverId: number, memberId: number): Pr
 	const sorted = sortQuestsByExpiry(quests);
 	const rows: { quest: DiscordQuestSummary; claimed: boolean }[] = [];
 	for (const quest of sorted) {
-		const claimed = memberId ? await db.hasServerMemberClaimedDiscordQuest(serverId, memberId, quest.id).catch(() => false) : false;
-		rows.push({ quest, claimed });
+		const isClaimed = memberId ? await db.hasServerMemberClaimedDiscordQuest(serverId, memberId, quest.id).catch(() => false) : false;
+		rows.push({ quest, claimed: isClaimed });
 	}
 	return rows;
 }
@@ -168,7 +194,7 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 	const member = interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null;
 	if (!member || !(await hasPermission(member, 'quest_enroll'))) {
 		const errorMessage = await getPermissionDeniedMessage(interaction.guild!, 'quest_enroll', interaction.user.id);
-		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+		await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
@@ -182,17 +208,21 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 	const lines = unclaimed.map(({ quest }, index) => {
 		const expires = questExpiresLine(quest);
 		const parts = [`[${quest.questName}](${quest.questUrl})`];
-		if (quest.reward?.trim()) parts.push(quest.reward.trim().replace(/\s+/g, ' ').slice(0, 120));
-		if (expires) parts.push(expires);
+		if (quest.reward?.trim()) {
+			parts.push(quest.reward.trim().replace(/\s+/g, ' ').slice(0, REWARD_PREVIEW_MAX_LENGTH));
+		}
+		if (expires) {
+			parts.push(expires);
+		}
 		return `**${index + 1}.** ${parts.join(' · ')}`;
 	});
 
 	const emptyKey = rows.length > 0 ? 'questEnroll.listAllClaimed' : 'questEnroll.listEmpty';
-	const description = lines.length > 0 ? lines.join('\n').slice(0, 4000) : await translate(emptyKey, guildId, interaction.user.id);
+	const description = lines.length > 0 ? lines.join('\n').slice(0, QUEST_LIST_MAX_LENGTH) : await translate(emptyKey, { guildId, userId: interaction.user.id });
 
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('questEnroll.listTitle', guildId, interaction.user.id))
+		.setTitle(await translate('questEnroll.listTitle', { guildId, userId: interaction.user.id }))
 		.setDescription(description)
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
@@ -202,7 +232,7 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId(QUEST_CLAIM_ALL_BUTTON_ID)
-				.setLabel(await translate('questEnroll.claimAllButton', guildId, interaction.user.id))
+				.setLabel(await translate('questEnroll.claimAllButton', { guildId, userId: interaction.user.id }))
 				.setStyle(ButtonStyle.Primary)
 				.setEmoji('⚠️')
 		);
@@ -213,7 +243,7 @@ export async function handleDiscordQuestButton(interaction: ButtonInteraction): 
 	if (interaction.replied || interaction.deferred) {
 		await interaction.editReply(payload).catch(() => null);
 	} else {
-		await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
+		await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => null));
 	}
 }
 
@@ -221,7 +251,7 @@ export async function handleQuestClaimAllButton(interaction: ButtonInteraction):
 	const member = interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null;
 	if (!member || !(await hasPermission(member, 'quest_enroll'))) {
 		const errorMessage = await getPermissionDeniedMessage(interaction.guild!, 'quest_enroll', interaction.user.id);
-		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+		await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
@@ -234,104 +264,125 @@ export async function handleQuestClaimAllButton(interaction: ButtonInteraction):
 
 	if (isUserEnrollRunning(interaction.user.id)) {
 		await interaction
-			.reply({ content: await translate('questEnroll.alreadyRunning', interaction.guild!.id, interaction.user.id), flags: 64 })
+			.reply({
+				content: await translate('questEnroll.alreadyRunning', { guildId: interaction.guild!.id, userId: interaction.user.id }),
+				flags: MessageFlags.Ephemeral
+			})
 			.catch(() => null);
 		return;
 	}
 
 	await interaction.showModal(
-		await buildTokenModal(QUEST_CLAIM_ALL_MODAL_ID, 'questEnroll.tokenModal.claimAllTitle', interaction.guild!.id, interaction.user.id)
+		await buildTokenModal(QUEST_CLAIM_ALL_MODAL_ID, 'questEnroll.tokenModal.claimAllTitle', { guildId: interaction.guild!.id, userId: interaction.user.id })
 	);
 }
 
-export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
-	const guildId = interaction.guild!.id;
-	const token = tokenFromModal(interaction);
-	if (token.length < 20) {
-		await interaction.reply({ content: await translate('questEnroll.tokenTooShort', guildId, interaction.user.id), flags: 64 }).catch(() => null);
-		return;
-	}
+type Notice = { title: string; description: string };
+type QuestRow = Awaited<ReturnType<typeof listActiveQuestsForMember>>[number];
+type Precheck = ReturnType<typeof precheckQuestPayloadForEnrollment>;
+const PRECHECK_KEYS: Record<string, string> = {
+	not_found: 'precheckNotFound',
+	expired: 'precheckExpired',
+	reward_claimed: 'precheckRewardClaimed'
+};
 
+function precheckKey(pre: Extract<Precheck, { ok: false }>) {
+	return PRECHECK_KEYS[pre.code] ?? 'precheckCompleted';
+}
+
+async function noticeEmbed(guildId: string, { title, description }: Notice) {
+	const embedConfig = await getEmbedConfig(guildId);
+	return new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(title).setDescription(description).setFooter({ text: embedConfig.FOOTER }).setTimestamp();
+}
+
+async function enrollmentGate(interaction: ModalSubmitInteraction) {
+	const guildId = interaction.guild!.id;
 	const server = await getServerForCurrentBot(guildId);
 	const settings = await readQuestNotifierSettings(server.id);
 	if (!settings.autoQuest) {
 		await autoQuestDisabledReply(interaction);
-		return;
+		return null;
 	}
-
 	if (isUserEnrollRunning(interaction.user.id)) {
-		await interaction.reply({ content: await translate('questEnroll.alreadyRunning', guildId, interaction.user.id), flags: 64 }).catch(() => null);
-		return;
+		await interaction
+			.reply({ content: await translate('questEnroll.alreadyRunning', { guildId, userId: interaction.user.id }), flags: MessageFlags.Ephemeral })
+			.catch(() => null);
+		return null;
 	}
+	return { server, settings };
+}
 
-	await interaction.deferReply({ flags: 64 });
-
-	const embedConfig = await getEmbedConfig(guildId);
-
-	let questsPayload: unknown;
-	try {
-		questsPayload = await fetchQuestsMe(token);
-	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
-		const invalidEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(await translate('questEnroll.invalidTokenTitle', guildId, interaction.user.id))
-			.setDescription(await translate('questEnroll.invalidTokenDescription', guildId, interaction.user.id, { error: msg.slice(0, 500) }))
-			.setFooter({ text: embedConfig.FOOTER })
-			.setTimestamp();
-		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
-		return;
+async function memberQuestsPayload(interaction: ModalSubmitInteraction, token: string): Promise<{ payload: unknown } | null> {
+	const questsResult = await attempt(() => fetchQuestsMe(token));
+	if (questsResult.ok) {
+		return { payload: questsResult.value };
 	}
+	const scope = { guildId: interaction.guild!.id, userId: interaction.user.id };
+	await logger.log(`⚠️ Quest token check failed: ${questsResult.error instanceof Error ? questsResult.error.message : String(questsResult.error)}`);
+	const invalidEmbed = await noticeEmbed(scope.guildId, {
+		title: await translate('questEnroll.invalidTokenTitle', scope),
+		description: await translate('questEnroll.invalidTokenDescription', scope)
+	});
+	await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
+	return null;
+}
 
-	await harvestQuestsFromMemberPayload(server.id, questsPayload);
-
-	const dbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
-	const rows = await listActiveQuestsForMember(server.id, dbMember?.id ?? 0);
-
+async function sortClaimableQuests(rows: QuestRow[], { payload, scope }: { payload: unknown; scope: MemberScope }) {
 	const queued: DiscordQuestSummary[] = [];
 	const skipped: { quest: DiscordQuestSummary; reason: string }[] = [];
-	for (const { quest, claimed } of rows) {
-		if (claimed) {
-			skipped.push({ quest, reason: await translate('questEnroll.listClaimedTag', guildId, interaction.user.id) });
-			continue;
+	for (const { quest, claimed: isClaimed } of rows) {
+		const pre = isClaimed ? null : precheckQuestPayloadForEnrollment(payload, quest.id);
+		if (isClaimed) {
+			skipped.push({ quest, reason: await translate('questEnroll.listClaimedTag', scope) });
+		} else if (pre && !pre.ok) {
+			skipped.push({ quest, reason: await translate(`questEnroll.${precheckKey(pre)}Title`, scope) });
+		} else {
+			queued.push(quest);
 		}
-		const pre = precheckQuestPayloadForEnrollment(questsPayload, quest.id);
-		if (!pre.ok) {
-			const keyBase =
-				pre.code === 'not_found'
-					? 'precheckNotFound'
-					: pre.code === 'expired'
-						? 'precheckExpired'
-						: pre.code === 'reward_claimed'
-							? 'precheckRewardClaimed'
-							: 'precheckCompleted';
-			skipped.push({ quest, reason: await translate(`questEnroll.${keyBase}Title`, guildId, interaction.user.id) });
-			continue;
-		}
-		queued.push(quest);
+	}
+	return { queued, skipped };
+}
+
+export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+	const guildId = interaction.guild!.id;
+	const scope = { guildId, userId: interaction.user.id };
+	const token = tokenFromModal(interaction);
+	if (token.length < TOKEN_MIN_LENGTH) {
+		await interaction.reply({ content: await translate('questEnroll.tokenTooShort', scope), flags: MessageFlags.Ephemeral }).catch(() => null);
+		return;
 	}
 
-	const skippedBlock = skipped.length > 0 ? `\n\n${skipped.map(({ quest, reason }) => `• ${quest.questName} — ${reason}`).join('\n')}`.slice(0, 2000) : '';
+	const gate = await enrollmentGate(interaction);
+	if (!gate) {
+		return;
+	}
+	const { server, settings } = gate;
+
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+	const quests = await memberQuestsPayload(interaction, token);
+	if (!quests) {
+		return;
+	}
+	await harvestQuestsFromMemberPayload(server.id, quests.payload);
+
+	const dbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
+	const { queued, skipped } = await sortClaimableQuests(await listActiveQuestsForMember(server.id, dbMember?.id ?? 0), { payload: quests.payload, scope });
+	const skippedBlock =
+		skipped.length > 0 ? `\n\n${skipped.map(({ quest, reason }) => `• ${quest.questName} — ${reason}`).join('\n')}`.slice(0, SKIPPED_BLOCK_MAX_LENGTH) : '';
 
 	if (queued.length === 0) {
-		const nothingEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(await translate('questEnroll.claimAllNothingTitle', guildId, interaction.user.id))
-			.setDescription(`${await translate('questEnroll.claimAllNothingDescription', guildId, interaction.user.id)}${skippedBlock}`)
-			.setFooter({ text: embedConfig.FOOTER })
-			.setTimestamp();
+		const nothingEmbed = await noticeEmbed(guildId, {
+			title: await translate('questEnroll.claimAllNothingTitle', scope),
+			description: `${await translate('questEnroll.claimAllNothingDescription', scope)}${skippedBlock}`
+		});
 		await interaction.editReply({ embeds: [nothingEmbed] }).catch(() => null);
 		return;
 	}
 
-	const pendingEmbed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('questEnroll.claimAllPendingTitle', guildId, interaction.user.id))
-		.setDescription(
-			`${await announceTargetLine(guildId, interaction.user.id, settings.channelId)}\n\n${await translate('questEnroll.claimAllPendingDescription', guildId, interaction.user.id, { count: queued.length })}${skippedBlock}`
-		)
-		.setFooter({ text: embedConfig.FOOTER })
-		.setTimestamp();
+	const pendingEmbed = await noticeEmbed(guildId, {
+		title: await translate('questEnroll.claimAllPendingTitle', scope),
+		description: `${await announceTargetLine(guildId, interaction.user.id, settings.channelId)}\n\n${await translate('questEnroll.claimAllPendingDescription', scope, { count: queued.length })}${skippedBlock}`
+	});
 	await interaction.editReply({ embeds: [pendingEmbed] });
 
 	queueQuestClaimAllJob({
@@ -351,7 +402,10 @@ export async function handleQuestEnrollButton(interaction: ButtonInteraction): P
 	const questId = questIdFromButtonCustomId(interaction.customId);
 	if (!questId) {
 		await interaction
-			.reply({ content: await translate('questEnroll.invalidQuestId', interaction.guild!.id, interaction.user.id), flags: 64 })
+			.reply({
+				content: await translate('questEnroll.invalidQuestId', { guildId: interaction.guild!.id, userId: interaction.user.id }),
+				flags: MessageFlags.Ephemeral
+			})
 			.catch(() => null);
 		return;
 	}
@@ -359,7 +413,7 @@ export async function handleQuestEnrollButton(interaction: ButtonInteraction): P
 	const member = interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null;
 	if (!member || !(await hasPermission(member, 'quest_enroll'))) {
 		const errorMessage = await getPermissionDeniedMessage(interaction.guild!, 'quest_enroll', interaction.user.id);
-		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+		await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
@@ -373,104 +427,70 @@ export async function handleQuestEnrollButton(interaction: ButtonInteraction): P
 
 	const dbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
 	if (dbMember) {
-		const alreadyClaimed = await db.hasServerMemberClaimedDiscordQuest(server.id, dbMember.id, questId).catch(() => false);
-		if (alreadyClaimed) {
+		const isAlreadyClaimed = await db.hasServerMemberClaimedDiscordQuest(server.id, dbMember.id, questId).catch(() => false);
+		if (isAlreadyClaimed) {
 			const embedConfig = await getEmbedConfig(interaction.guild!.id);
 			const botDiscordQuest = await db.getBotDiscordQuestByQuestId(questId).catch(() => null);
 			const questName = botDiscordQuest?.quest_name || questId;
 			const embed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
-				.setTitle(`🔮 ${await translate('questEnroll.alreadyClaimed', interaction.guild!.id, interaction.user.id)}`)
-				.setDescription(await translate('questEnroll.alreadyClaimedDescription', interaction.guild!.id, interaction.user.id, { questName }))
+				.setTitle(`🔮 ${await translate('questEnroll.alreadyClaimed', { guildId: interaction.guild!.id, userId: interaction.user.id })}`)
+				.setDescription(
+					await translate('questEnroll.alreadyClaimedDescription', { guildId: interaction.guild!.id, userId: interaction.user.id }, { questName })
+				)
 				.setFooter({ text: embedConfig.FOOTER })
 				.setTimestamp();
-			await interaction.reply({ embeds: [embed], flags: 64 }).catch(() => null);
+			await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral }).catch(() => null);
 			return;
 		}
 	}
 
 	await interaction.showModal(
-		await buildTokenModal(`${QUEST_ENROLL_MODAL_PREFIX}${questId}`, 'questEnroll.tokenModal.enrollTitle', interaction.guild!.id, interaction.user.id)
+		await buildTokenModal(`${QUEST_ENROLL_MODAL_PREFIX}${questId}`, 'questEnroll.tokenModal.enrollTitle', {
+			guildId: interaction.guild!.id,
+			userId: interaction.user.id
+		})
 	);
 }
 
 export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+	const guildId = interaction.guild!.id;
+	const scope = { guildId, userId: interaction.user.id };
 	const questId = questIdFromModalCustomId(interaction.customId);
 	const token = tokenFromModal(interaction);
-
-	if (!questId || token.length < 20) {
-		await interaction
-			.reply({ content: await translate('questEnroll.missingQuestOrToken', interaction.guild!.id, interaction.user.id), flags: 64 })
-			.catch(() => null);
+	if (!questId || token.length < TOKEN_MIN_LENGTH) {
+		await interaction.reply({ content: await translate('questEnroll.missingQuestOrToken', scope), flags: MessageFlags.Ephemeral }).catch(() => null);
 		return;
 	}
 
-	const server = await getServerForCurrentBot(interaction.guild!.id);
-	const settings = await readQuestNotifierSettings(server.id);
-
-	if (!settings.autoQuest) {
-		await autoQuestDisabledReply(interaction);
+	const gate = await enrollmentGate(interaction);
+	if (!gate) {
 		return;
 	}
+	const { server, settings } = gate;
 
-	if (isUserEnrollRunning(interaction.user.id)) {
-		await interaction
-			.reply({ content: await translate('questEnroll.alreadyRunning', interaction.guild!.id, interaction.user.id), flags: 64 })
-			.catch(() => null);
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+	const quests = await memberQuestsPayload(interaction, token);
+	if (!quests) {
 		return;
 	}
+	await harvestQuestsFromMemberPayload(server.id, quests.payload);
 
-	await interaction.deferReply({ flags: 64 });
-
-	let questsPayload: unknown;
-	try {
-		questsPayload = await fetchQuestsMe(token);
-	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
-		const embedConfig = await getEmbedConfig(interaction.guild!.id);
-		const invalidEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(await translate('questEnroll.invalidTokenTitle', interaction.guild!.id, interaction.user.id))
-			.setDescription(await translate('questEnroll.invalidTokenDescription', interaction.guild!.id, interaction.user.id, { error: msg.slice(0, 500) }))
-			.setFooter({ text: embedConfig.FOOTER })
-			.setTimestamp();
-		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
-		return;
-	}
-
-	await harvestQuestsFromMemberPayload(server.id, questsPayload);
-
-	const pre = precheckQuestPayloadForEnrollment(questsPayload, questId);
+	const pre = precheckQuestPayloadForEnrollment(quests.payload, questId);
 	if (!pre.ok) {
-		const embedConfig = await getEmbedConfig(interaction.guild!.id);
-		const keyBase =
-			pre.code === 'not_found'
-				? 'precheckNotFound'
-				: pre.code === 'expired'
-					? 'precheckExpired'
-					: pre.code === 'reward_claimed'
-						? 'precheckRewardClaimed'
-						: 'precheckCompleted';
-		const title = await translate(`questEnroll.${keyBase}Title`, interaction.guild!.id, interaction.user.id);
-		const description = await translate(`questEnroll.${keyBase}Description`, interaction.guild!.id, interaction.user.id);
-		const blockEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(title)
-			.setDescription(description)
-			.setFooter({ text: embedConfig.FOOTER })
-			.setTimestamp();
+		const keyBase = precheckKey(pre);
+		const blockEmbed = await noticeEmbed(guildId, {
+			title: await translate(`questEnroll.${keyBase}Title`, scope),
+			description: await translate(`questEnroll.${keyBase}Description`, scope)
+		});
 		await interaction.editReply({ embeds: [blockEmbed] }).catch(() => null);
 		return;
 	}
-	const embedConfig = await getEmbedConfig(interaction.guild!.id);
-	const pendingEmbed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('questEnroll.pendingTitle', interaction.guild!.id, interaction.user.id))
-		.setDescription(
-			`${await announceTargetLine(interaction.guild!.id, interaction.user.id, settings.channelId)}\n\n${await translate('questEnroll.pendingDescription', interaction.guild!.id, interaction.user.id)}`
-		)
-		.setFooter({ text: embedConfig.FOOTER })
-		.setTimestamp();
+
+	const pendingEmbed = await noticeEmbed(guildId, {
+		title: await translate('questEnroll.pendingTitle', scope),
+		description: `${await announceTargetLine(guildId, interaction.user.id, settings.channelId)}\n\n${await translate('questEnroll.pendingDescription', scope)}`
+	});
 	await interaction.editReply({ embeds: [pendingEmbed] });
 
 	const member = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);

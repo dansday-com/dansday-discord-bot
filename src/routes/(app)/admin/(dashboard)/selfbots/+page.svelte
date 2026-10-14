@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatElapsed, SECOND_MS } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -8,32 +9,26 @@
 
 	let { data }: PageProps = $props();
 
-	let showAdd = $state(false);
+	let isAddShown = $state(false);
 
-	type LiveBot = { status: string; process_id: number | null; uptime_ms: number };
-	let liveData = $state<Record<number, LiveBot>>({});
-	let uptimeTicks = $state<Record<number, number>>({});
-	let tickBase: Record<number, number> = {};
-	let intervals: Record<number, ReturnType<typeof setInterval>> = {};
-	let streams: Record<number, EventSource> = {};
+	type LiveBot = { status: string | null; process_id: number | null; uptime_ms: number };
+	const liveData = $state<Record<number, LiveBot>>({});
+	const uptimeTicks = $state<Record<number, number>>({});
+	const tickBase: Record<number, number> = {};
+	const intervals: Record<number, ReturnType<typeof setInterval>> = {};
+	const streams: Record<number, EventSource> = {};
 
-	function statusColor(status: string) {
-		if (status === 'running') return 'bg-green-500';
-		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
+	function statusColor(status: string | null) {
+		if (status === 'running') {
+			return 'bg-green-500';
+		}
+		if (status === 'starting' || status === 'stopping') {
+			return 'bg-yellow-500';
+		}
 		return 'bg-ash-500';
 	}
 
-	function formatUptime(ms: number): string {
-		if (!ms) return '—';
-		const s = Math.floor(ms / 1000);
-		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		const d = Math.floor(h / 24);
-		if (d > 0) return `${d}d ${h % 24}h`;
-		if (h > 0) return `${h}h ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}s`;
-		return `${s}s`;
-	}
+	const formatUptime = (ms: number) => formatElapsed(ms, '—');
 
 	function startTick(id: number) {
 		stopTick(id);
@@ -41,7 +36,7 @@
 		uptimeTicks[id] = 0;
 		intervals[id] = setInterval(() => {
 			uptimeTicks[id] = Date.now() - tickBase[id];
-		}, 1000);
+		}, SECOND_MS);
 	}
 
 	function stopTick(id: number) {
@@ -53,7 +48,9 @@
 	}
 
 	function subscribeBot(id: number) {
-		if (streams[id]) return;
+		if (streams[id]) {
+			return;
+		}
 		const es = new EventSource(`/api/selfbots/${id}/stream`);
 		es.onmessage = (e) => {
 			const d = JSON.parse(e.data);
@@ -75,8 +72,12 @@
 	});
 
 	onDestroy(() => {
-		for (const es of Object.values(streams)) es.close();
-		for (const id of Object.keys(intervals)) clearInterval(intervals[Number(id)]);
+		for (const es of Object.values(streams)) {
+			es.close();
+		}
+		for (const id of Object.keys(intervals)) {
+			clearInterval(intervals[Number(id)]);
+		}
 	});
 
 	function getDisplayUptime(id: number): number {
@@ -88,7 +89,7 @@
 	<title>Selfbots | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<AddSelfbotModal open={showAdd} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />
+<AddSelfbotModal open={isAddShown} onclose={() => (isAddShown = false)} onadded={() => invalidateAll()} />
 
 <div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
 	<div class="min-w-0">
@@ -101,7 +102,7 @@
 	</div>
 	<div class="flex items-center gap-2 sm:gap-3">
 		<button
-			onclick={() => (showAdd = true)}
+			onclick={() => (isAddShown = true)}
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 		>
 			<i class="fas fa-plus text-xs text-fuchsia-300 sm:text-sm"></i>
@@ -118,7 +119,7 @@
 		<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No selfbots yet</h3>
 		<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first selfbot</p>
 		<button
-			onclick={() => (showAdd = true)}
+			onclick={() => (isAddShown = true)}
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
 		>
 			<i class="fas fa-plus text-fuchsia-300"></i>Add Your First Selfbot

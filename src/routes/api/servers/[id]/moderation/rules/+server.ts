@@ -5,6 +5,7 @@ import { SERVER_SETTINGS, canEditServerSettings } from '$lib/backend/panelServer
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { MODERATION_RULE_KEYS, moderationRulesFromSettings, type ModerationRules } from '$lib/moderation-rules.js';
 import { MODERATION_ACTION_META, formatDuration } from '$lib/frontend/moderation.js';
+import { HTTP } from '$lib/http.js';
 
 const RULE_LABELS: Record<keyof ModerationRules, string> = {
 	warn_expiry_days: 'warning expiry',
@@ -13,8 +14,10 @@ const RULE_LABELS: Record<keyof ModerationRules, string> = {
 };
 
 function describe(rules: ModerationRules, key: keyof ModerationRules): string {
-	if (key === 'warn_expiry_days') return rules.warn_expiry_days > 0 ? `${rules.warn_expiry_days} days` : 'Never';
-	if (key === 'escalation')
+	if (key === 'warn_expiry_days') {
+		return rules.warn_expiry_days > 0 ? `${rules.warn_expiry_days} days` : 'Never';
+	}
+	if (key === 'escalation') {
 		return (
 			rules.escalation
 				.map(
@@ -23,14 +26,21 @@ function describe(rules: ModerationRules, key: keyof ModerationRules): string {
 				)
 				.join('; ') || 'Off'
 		);
+	}
 	return rules.reason_presets.join(' · ') || 'None';
 }
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
-	if (!locals.user.authenticated) return json({ ok: false, error: 'Authentication required' }, { status: 401 });
+	if (!locals.user.authenticated) {
+		return json({ ok: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED });
+	}
 	const serverId = parseInt(params.id ?? '');
-	if (isNaN(serverId)) return json({ ok: false, error: 'Invalid server ID' }, { status: 400 });
-	if (!(await canEditServerSettings(locals, serverId))) return json({ ok: false, error: 'Access denied' }, { status: 403 });
+	if (isNaN(serverId)) {
+		return json({ ok: false, error: 'Invalid server ID' }, { status: HTTP.BAD_REQUEST });
+	}
+	if (!(await canEditServerSettings(locals, serverId))) {
+		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
+	}
 
 	const body = await request.json().catch(() => null);
 	const rules = moderationRulesFromSettings({
@@ -52,7 +62,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const changes = (Object.keys(MODERATION_RULE_KEYS) as (keyof typeof MODERATION_RULE_KEYS)[])
 		.filter((key) => JSON.stringify(previous[key]) !== JSON.stringify(rules[key]))
 		.map((key) => ({ key: RULE_LABELS[key], before: describe(previous, key), after: describe(rules, key) }));
-	if (changes.length > 0) await db.createServerPanelLog(serverId, panelActorIds(locals), 'moderation_rules', changes).catch(() => null);
+	if (changes.length > 0) {
+		await db.createServerPanelLog(serverId, panelActorIds(locals), { action: 'moderation_rules', changes }).catch(() => null);
+	}
 
 	return json({ ok: true, rules });
 };

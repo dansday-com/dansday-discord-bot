@@ -41,29 +41,42 @@ const LETTERFORM_FOLD: Record<string, string> = {
 
 const CYRILLIC_LOOKALIKES = new Set(['ѕ', 'х']);
 
+const LATIN_LETTERS = 26;
+const DECIMAL_DIGITS = 10;
+const ASCII_UPPER_A = 0x41;
+const ASCII_LOWER_A = 0x61;
+const ASCII_ZERO = 0x30;
+const MATH_ALPHANUMERIC_START = 0x1d400;
+const MATH_ALPHANUMERIC_END = 0x1d7ff;
+const MATH_LETTER_STYLES = 13;
+const MATH_LETTER_BLOCK = 2 * LATIN_LETTERS;
+const MATH_LETTERS_END = MATH_ALPHANUMERIC_START + MATH_LETTER_STYLES * MATH_LETTER_BLOCK - 1;
+const MATH_DIGITS_START = 0x1d7ce;
+const FULLWIDTH_OFFSET = 0xfee0;
+const FULLWIDTH_LETTERS = { from: 0xff21, to: 0xff5a };
+const FULLWIDTH_DIGITS = { from: 0xff10, to: 0xff19 };
+
+const inRange = (code: number, range: { from: number; to: number }) => code >= range.from && code <= range.to;
+
 function foldLetterforms(input: string): string {
-	const cyrillicText = /[\u0400-\u04ff]/.test(input.replace(/[ѕх]/g, ''));
+	const hasCyrillicText = /[\u0400-\u04ff]/.test(input.replace(/[ѕх]/g, ''));
 	let out = '';
 	for (const ch of input) {
 		const mapped = LETTERFORM_FOLD[ch];
-		if (mapped !== undefined && !(cyrillicText && CYRILLIC_LOOKALIKES.has(ch))) {
+		if (mapped !== undefined && !(hasCyrillicText && CYRILLIC_LOOKALIKES.has(ch))) {
 			out += mapped;
 			continue;
 		}
 		const code = ch.codePointAt(0)!;
-		if (code >= 0x1d400 && code <= 0x1d7ff) {
+		if (code >= MATH_ALPHANUMERIC_START && code <= MATH_ALPHANUMERIC_END) {
 			const folded = foldMathAlphanumeric(code);
 			if (folded) {
 				out += folded;
 				continue;
 			}
 		}
-		if (code >= 0xff21 && code <= 0xff5a) {
-			out += String.fromCharCode(code - 0xfee0);
-			continue;
-		}
-		if (code >= 0xff10 && code <= 0xff19) {
-			out += String.fromCharCode(code - 0xfee0);
+		if (inRange(code, FULLWIDTH_LETTERS) || inRange(code, FULLWIDTH_DIGITS)) {
+			out += String.fromCharCode(code - FULLWIDTH_OFFSET);
 			continue;
 		}
 		out += ch;
@@ -72,29 +85,13 @@ function foldLetterforms(input: string): string {
 }
 
 function foldMathAlphanumeric(code: number): string | null {
-	const blocks: [number, number, string][] = [
-		[0x1d400, 0x1d433, 'Aa'],
-		[0x1d434, 0x1d467, 'Aa'],
-		[0x1d468, 0x1d49b, 'Aa'],
-		[0x1d49c, 0x1d4cf, 'Aa'],
-		[0x1d4d0, 0x1d503, 'Aa'],
-		[0x1d504, 0x1d537, 'Aa'],
-		[0x1d538, 0x1d56b, 'Aa'],
-		[0x1d56c, 0x1d59f, 'Aa'],
-		[0x1d5a0, 0x1d5d3, 'Aa'],
-		[0x1d5d4, 0x1d607, 'Aa'],
-		[0x1d608, 0x1d63b, 'Aa'],
-		[0x1d63c, 0x1d66f, 'Aa'],
-		[0x1d670, 0x1d6a3, 'Aa']
-	];
-	for (const [start, end] of blocks) {
-		if (code < start || code > end) continue;
-		const offset = code - start;
-		if (offset < 26) return String.fromCharCode(0x41 + offset);
-		if (offset < 52) return String.fromCharCode(0x61 + (offset - 26));
-		return null;
+	if (code >= MATH_ALPHANUMERIC_START && code <= MATH_LETTERS_END) {
+		const offset = (code - MATH_ALPHANUMERIC_START) % MATH_LETTER_BLOCK;
+		return offset < LATIN_LETTERS ? String.fromCharCode(ASCII_UPPER_A + offset) : String.fromCharCode(ASCII_LOWER_A + (offset - LATIN_LETTERS));
 	}
-	if (code >= 0x1d7ce && code <= 0x1d7ff) return String.fromCharCode(0x30 + ((code - 0x1d7ce) % 10));
+	if (code >= MATH_DIGITS_START && code <= MATH_ALPHANUMERIC_END) {
+		return String.fromCharCode(ASCII_ZERO + ((code - MATH_DIGITS_START) % DECIMAL_DIGITS));
+	}
 	return null;
 }
 
@@ -116,17 +113,25 @@ export function parseIndexedSlug(slug: string): { base: string; index: number } 
 		.trim()
 		.toLowerCase()
 		.normalize('NFC');
-	if (!s) return { base: '', index: 1 };
+	if (!s) {
+		return { base: '', index: 1 };
+	}
 	const m = s.match(/^(.*?)(?:_(\d+))$/);
-	if (!m) return { base: s, index: 1 };
+	if (!m) {
+		return { base: s, index: 1 };
+	}
 	const base = (m[1] || '').trim();
 	const idx = Number(m[2]);
-	if (!base || !Number.isFinite(idx) || idx < 1) return { base: s, index: 1 };
+	if (!base || !Number.isFinite(idx) || idx < 1) {
+		return { base: s, index: 1 };
+	}
 	return { base, index: idx + 1 };
 }
 
 export function formatIndexedSlug(base: string, index: number): string {
-	if (index <= 1) return base;
+	if (index <= 1) {
+		return base;
+	}
 	return `${base}_${index - 1}`;
 }
 
@@ -138,23 +143,31 @@ export function resolveIndexedSlugToItem<T extends WithId>(
 	slugKey: (row: T) => string
 ): { item: T; computedSlug: string } | null {
 	const { base, index } = parseIndexedSlug(requestedSlug);
-	if (!base) return null;
+	if (!base) {
+		return null;
+	}
 	const matches = items
 		.map((row) => ({ row, base: slugifyDisplayName(slugKey(row), 'item') }))
 		.filter((x) => x.base === base)
 		.sort((a, b) => Number(a.row.id) - Number(b.row.id));
 	const picked = matches[index - 1];
-	if (!picked) return null;
+	if (!picked) {
+		return null;
+	}
 	return { item: picked.row, computedSlug: formatIndexedSlug(base, index) };
 }
 
 export function computeIndexedSlugForItemId<T extends WithId>(itemId: number, items: T[], slugKey: (row: T) => string): string | null {
 	const current = items.find((s) => Number(s.id) === Number(itemId));
-	if (!current) return null;
+	if (!current) {
+		return null;
+	}
 	const base = slugifyDisplayName(slugKey(current), 'item');
 	const matches = items.filter((s) => slugifyDisplayName(slugKey(s), 'item') === base).sort((a, b) => Number(a.id) - Number(b.id));
 	const idx = matches.findIndex((s) => Number(s.id) === Number(itemId));
-	if (idx < 0) return null;
+	if (idx < 0) {
+		return null;
+	}
 	return formatIndexedSlug(base, idx + 1);
 }
 
@@ -166,7 +179,9 @@ export function listIndexedSlugsForItems<T extends WithId>(
 	const groups = new Map<string, T[]>();
 	for (const row of items) {
 		const base = slugifyDisplayName(slugKey(row), 'item');
-		if (!groups.has(base)) groups.set(base, []);
+		if (!groups.has(base)) {
+			groups.set(base, []);
+		}
 		groups.get(base)!.push(row);
 	}
 	const out: { slug: string; updated_at: unknown; item: T }[] = [];

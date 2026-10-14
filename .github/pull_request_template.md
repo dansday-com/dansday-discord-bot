@@ -22,9 +22,11 @@ Fixes #
 
 - [ ] One concern, branched off `master`.
 - [ ] Matches the surrounding code — same naming, same idiom, no inline comments.
-- [ ] Bot-facing strings updated in **both** `en.json` and `id.json`, with orphaned keys deleted.
+- [ ] Bot-facing strings updated in **every** locale file, with orphaned keys deleted.
 - [ ] Schema changes add a new migration instead of editing an existing one.
 - [ ] `npm run build:format`
+- [ ] `npm run build:lint`
+- [ ] `npm run build:test`
 - [ ] `npm run build:sync`
 - [ ] `npm run build`
 - [ ] `npx svelte-check`

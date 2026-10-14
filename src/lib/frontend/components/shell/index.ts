@@ -12,5 +12,5 @@ export { default as PageMeta } from './PageMeta.svelte';
 export { default as DiscordIcon } from './DiscordIcon.svelte';
 export { default as BoltIcon } from './BoltIcon.svelte';
 
-export { reveal, REVEAL_CLASS } from './reveal';
+export { reveal, REVEAL_CLASS, statDelay, listDelay, cappedListDelay } from './reveal';
 export type { NavTab } from './types';

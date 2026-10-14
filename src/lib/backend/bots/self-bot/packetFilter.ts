@@ -1,4 +1,6 @@
 import { logger } from '../../../utils/index.js';
+import { MINUTE_MS } from '../../../utils/time.js';
+import { PERCENT } from '../../../utils/numbers.js';
 
 const DROPPED_EVENTS = new Set([
 	'TYPING_START',
@@ -83,12 +85,19 @@ const DROPPED_EVENTS = new Set([
 type Stats = { seen: number; dropped: number; forwarded: number };
 
 const stats: Stats = { seen: 0, dropped: 0, forwarded: 0 };
-const STATS_INTERVAL_MS = 5 * 60 * 1000;
+const STATS_INTERVAL_MINUTES = 5;
+const STATS_INTERVAL_MS = STATS_INTERVAL_MINUTES * MINUTE_MS;
 
 const NEVER_DROP = new Set(['READY', 'RESUMED', 'GUILD_CREATE', 'GUILD_DELETE', 'GUILD_UPDATE', 'GUILD_MEMBERS_CHUNK', 'USER_UPDATE']);
 
-export function installPacketFilter(client: any, isForwardChannel: (guildId: string, channelId: string) => boolean | null): void {
-	const manager = client?.ws;
+type GatewayPacket = { t?: string | null; d?: { user?: { id?: string }; guild_id?: string; channel_id?: string } | null };
+type PacketManager = { handlePacket?: (packet?: GatewayPacket, shard?: unknown) => boolean; packetQueue?: unknown[] };
+
+export function installPacketFilter(
+	client: { ws?: unknown; user?: { id: string } | null },
+	isForwardChannel: (guildId: string, channelId: string) => boolean | null
+): void {
+	const manager = client?.ws as PacketManager | undefined;
 	if (!manager || typeof manager.handlePacket !== 'function') {
 		logger.log('⚠️  Packet filter NOT installed: websocket manager has no handlePacket. Selfbot will run unfiltered at full CPU.');
 		return;
@@ -106,27 +115,39 @@ export function installPacketFilter(client: any, isForwardChannel: (guildId: str
 
 	function drop() {
 		stats.dropped++;
-		if (manager.packetQueue?.length) original();
+		if (manager?.packetQueue?.length) {
+			original();
+		}
 		return true;
 	}
 
-	manager.handlePacket = function patchedHandlePacket(packet: any, shard: any) {
-		if (!packet || !packet.t) return original(packet, shard);
+	manager.handlePacket = function patchedHandlePacket(packet?: GatewayPacket, shard?: unknown) {
+		if (!packet || !packet.t) {
+			return original(packet, shard);
+		}
 
 		stats.seen++;
 
-		if (DROPPED_EVENTS.has(packet.t)) return drop();
+		if (DROPPED_EVENTS.has(packet.t)) {
+			return drop();
+		}
 
 		if (packet.t === 'GUILD_MEMBER_UPDATE') {
 			const own = selfId();
-			if (own && packet.d?.user?.id && String(packet.d.user.id) !== String(own)) return drop();
+			if (own && packet.d?.user?.id && String(packet.d.user.id) !== String(own)) {
+				return drop();
+			}
 		}
 
 		if (packet.t === 'MESSAGE_CREATE') {
 			const guildId = packet.d?.guild_id;
 			const channelId = packet.d?.channel_id;
-			if (!guildId) return drop();
-			if (channelId && isForwardChannel(String(guildId), String(channelId)) === false) return drop();
+			if (!guildId) {
+				return drop();
+			}
+			if (channelId && isForwardChannel(String(guildId), String(channelId)) === false) {
+				return drop();
+			}
 			stats.forwarded++;
 		}
 
@@ -139,8 +160,10 @@ export function installPacketFilter(client: any, isForwardChannel: (guildId: str
 	}
 
 	const timer = setInterval(() => {
-		if (stats.seen === 0) return;
-		const pct = Math.round((stats.dropped / stats.seen) * 100);
+		if (stats.seen === 0) {
+			return;
+		}
+		const pct = Math.round((stats.dropped / stats.seen) * PERCENT);
 		logger.log(`🧹 Packet filter: ${stats.dropped}/${stats.seen} gateway events dropped (${pct}%), ${stats.forwarded} message(s) in forwarded channels`);
 		stats.seen = 0;
 		stats.dropped = 0;

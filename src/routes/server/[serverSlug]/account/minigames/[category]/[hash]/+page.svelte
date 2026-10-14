@@ -1,16 +1,35 @@
 <script lang="ts">
+	import { accountContext } from '$lib/frontend/accountContext.js';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
-	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { sfx } from '$lib/frontend/sfx';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { luckBoostLabel } from '$lib/items';
-	import { ColorGame, EmptyState, GameModal, REEL_CURVE, REEL_SECONDS, ReelStrip, TowerGame, WagerPicker } from '$lib/frontend/components/public';
+	import {
+		ColorGame,
+		EmptyState,
+		GameModal,
+		REEL_CURVE,
+		REEL_SECONDS,
+		ReelStrip,
+		TowerGame,
+		WagerPicker,
+		reelCellOffset,
+		SPIN_REEL_CELLS,
+		IDLE_REEL_CELLS,
+		REEL_RESULT_DELAY_MS
+	} from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
+	import { PERCENT, QUARTER_PERCENTS } from '$lib/utils/numbers.js';
+
+	const REEL_WIN_CELL_ODDS = 0.5;
+	const SHAKE_MS = 500;
+	const REEL_FRAME_WIDTH_PX = 88;
+	const REEL_FRAME_WIDTH_LG_PX = 96;
 
 	let { data }: PageProps = $props();
 
-	const ctx = getContext('items') as any;
+	const ctx = accountContext();
 	const { fmt } = ctx;
 
 	const spendable = $derived(Math.max(0, Number(ctx.liveXp) || 0));
@@ -51,71 +70,73 @@
 
 	const MIN_MULT = 2;
 	const MAX_MULT = 10;
-	const WAGER_PERCENTS = [25, 50, 75, 100];
 
 	const luckPercent = $derived(Number(ctx.luckPercent) || 0);
 
 	let playing = $state<string | null>(null);
 	let multiplier = $state(2);
-	const baseWinChance = $derived(100 / multiplier);
-	let gamblePercent = $state<number | 'custom'>(25);
+	const baseWinChance = $derived(PERCENT / multiplier);
+	let gamblePercent = $state<number | 'custom'>(QUARTER_PERCENTS[0]);
 	let gambleCustom = $state<number | null>(null);
-	let busy = $state(false);
+	let isBusy = $state(false);
 
 	const wagerXp = $derived(
 		gamblePercent === 'custom'
 			? Math.min(Math.max(0, Math.floor(Number(gambleCustom) || 0)), spendable)
-			: Math.floor((spendable * (gamblePercent as number)) / 100)
+			: Math.floor((spendable * (gamblePercent as number)) / PERCENT)
 	);
 	const potentialWin = $derived(Math.floor(wagerXp * multiplier));
 
 	function openPlay(gameId: string) {
-		if (ctx.readOnly) return;
+		if (ctx.readOnly) {
+			return;
+		}
 		playing = gameId;
-		if (gameId !== 'gamble') return;
+		if (gameId !== 'gamble') {
+			return;
+		}
 		multiplier = 2;
-		gamblePercent = 25;
+		gamblePercent = QUARTER_PERCENTS[0];
 		gambleCustom = null;
 		initReel();
 	}
 
 	function resetGamble() {
 		sfx.press();
-		gamblePercent = 25;
+		gamblePercent = QUARTER_PERCENTS[0];
 		gambleCustom = null;
 		initReel();
 	}
 
 	$effect(() => {
-		if (playing === null) return;
+		if (playing === null) {
+			return;
+		}
 		return lockScroll();
 	});
 
 	let reel = $state<('win' | 'lose')[]>([]);
 	let reelOffset = $state(0);
 	let reelResult = $state<'win' | 'lose' | null>(null);
-	let reelAnimating = $state(false);
-	let shake = $state(false);
+	let isReelAnimating = $state(false);
+	let isShaking = $state(false);
 	let winAmt = $state(0);
 	let lostAmt = $state(0);
 	let reelWrapEl: HTMLDivElement | undefined = $state();
 
 	function randomCells(n: number): ('win' | 'lose')[] {
-		return Array.from({ length: n }, () => (Math.random() < 0.5 ? 'win' : 'lose'));
+		return Array.from({ length: n }, () => (Math.random() < REEL_WIN_CELL_ODDS ? 'win' : 'lose'));
 	}
 	function centerCell(index: number) {
 		requestAnimationFrame(() => {
-			const wrapW = reelWrapEl?.clientWidth ?? 360;
-			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
-			if (!cell) return;
-			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
+			reelOffset = reelCellOffset(reelWrapEl, index) ?? reelOffset;
 		});
 	}
 	function initReel() {
-		reel = randomCells(14);
+		reel = randomCells(IDLE_REEL_CELLS);
 		reelOffset = 0;
 		reelResult = null;
-		reelAnimating = false;
+		isReelAnimating = false;
 		winAmt = 0;
 		lostAmt = 0;
 		centerCell(2);
@@ -123,9 +144,11 @@
 
 	async function play() {
 		const bet = wagerXp;
-		if (busy || bet <= 0 || bet > spendable) return;
+		if (isBusy || bet <= 0 || bet > spendable) {
+			return;
+		}
 		sfx.press();
-		busy = true;
+		isBusy = true;
 		reelResult = null;
 		try {
 			const res = await fetch(`/api/minigames/${encodeURIComponent(ctx.serverSlug)}/play`, {
@@ -136,23 +159,23 @@
 			const d = await res.json();
 			if (!d.success) {
 				showToast(d.error || 'Play failed', 'error');
-				busy = false;
+				isBusy = false;
 				return;
 			}
 			const won = d.result?.outcome === 'win';
 			const net = Number(d.result?.net) || 0;
 			const payout = Number(d.result?.payout) || 0;
 
-			reel = randomCells(40);
+			reel = randomCells(SPIN_REEL_CELLS);
 			const landIndex = 32;
 			reel[landIndex] = won ? 'win' : 'lose';
-			reelAnimating = false;
+			isReelAnimating = false;
 			reelOffset = 0;
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			reelWrapEl?.offsetHeight;
 			centerCell(2);
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
-			reelAnimating = true;
+			isReelAnimating = true;
 			centerCell(landIndex);
 			sfx.reel(landIndex - 2, REEL_SECONDS, REEL_CURVE);
 
@@ -165,15 +188,15 @@
 				} else {
 					lostAmt = bet;
 					sfx.bust();
-					shake = true;
-					setTimeout(() => (shake = false), 500);
+					isShaking = true;
+					setTimeout(() => (isShaking = false), SHAKE_MS);
 				}
-				busy = false;
+				isBusy = false;
 				ctx.invalidateAll();
-			}, 7000);
+			}, REEL_RESULT_DELAY_MS);
 		} catch {
 			showToast('Play failed', 'error');
-			busy = false;
+			isBusy = false;
 		}
 	}
 </script>
@@ -250,8 +273,8 @@
 		icon="fa-dice"
 		title="Gamble"
 		state={reelResult === 'win' ? 'win' : reelResult === 'lose' ? 'lose' : 'idle'}
-		{shake}
-		closable={!busy}
+		shake={isShaking}
+		closable={!isBusy}
 		onclose={() => (playing = null)}
 	>
 		<div class="mb-3.5">
@@ -259,9 +282,9 @@
 				bind:wrap={reelWrapEl}
 				items={reel}
 				offset={reelOffset}
-				animating={reelAnimating}
-				frameWidth={88}
-				frameWidthLg={96}
+				animating={isReelAnimating}
+				frameWidth={REEL_FRAME_WIDTH_PX}
+				frameWidthLg={REEL_FRAME_WIDTH_LG_PX}
 				padLeft="92px"
 				padLeftLg="100px"
 				cellClass="basis-21 h-[70px] min-[600px]:basis-23 min-[600px]:h-[76px]"
@@ -306,13 +329,13 @@
 					step="0.05"
 					bind:value={multiplier}
 					oninput={(e) => sfx.notch((Number(e.currentTarget.value) - MIN_MULT) / (MAX_MULT - MIN_MULT))}
-					disabled={busy}
+					disabled={isBusy}
 					aria-label="Multiplier"
 				/>
 			</div>
 		{/if}
 
-		{#if reelResult && !busy}
+		{#if reelResult && !isBusy}
 			<div class="animate-game-verdict flex gap-2.5">
 				<button type="button" class="btn border-base-300 bg-base-200 text-base-content shrink-0 font-bold" onclick={resetGamble}>
 					<i class="fas fa-sliders"></i>Change bet
@@ -327,7 +350,7 @@
 				</button>
 			</div>
 		{:else}
-			<WagerPicker percents={WAGER_PERCENTS} bind:selected={gamblePercent} bind:custom={gambleCustom} max={spendable} disabled={busy} />
+			<WagerPicker percents={QUARTER_PERCENTS} bind:selected={gamblePercent} bind:custom={gambleCustom} max={spendable} disabled={isBusy} />
 
 			<div class="border-base-300 bg-base-200 mb-3 flex items-center justify-center gap-3.5 rounded-xl border px-3 py-2.5">
 				<div class="flex min-w-0 flex-col items-center gap-0.5">
@@ -343,13 +366,13 @@
 
 			<button
 				type="button"
-				class="btn h-auto w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] py-3.5 text-[15px] font-black text-white {!busy && wagerXp > 0
+				class="btn h-auto w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] py-3.5 text-[15px] font-black text-white {!isBusy && wagerXp > 0
 					? 'animate-game-charge'
 					: ''}"
-				disabled={busy || wagerXp <= 0}
+				disabled={isBusy || wagerXp <= 0}
 				onclick={play}
 			>
-				{#if busy}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
+				{#if isBusy}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
 						? ''
 						: `${gamblePercent}%`}{/if}
 			</button>

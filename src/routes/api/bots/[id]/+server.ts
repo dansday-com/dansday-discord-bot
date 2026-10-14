@@ -1,12 +1,15 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import db from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
+import { HTTP } from '$lib/http.js';
 
-async function getEnrichedBot(id: any) {
+async function getEnrichedBot(id: string) {
 	const bot = await db.getBot(id);
-	if (!bot) return null;
+	if (!bot) {
+		return null;
+	}
 
 	if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 		try {
@@ -17,7 +20,7 @@ async function getEnrichedBot(id: any) {
 		}
 	}
 
-	const { token, ...botData } = bot;
+	const { token, ...botData }: typeof bot & { uptime_ms?: number } = bot;
 	botData.uptime_ms = getBotUptimeMs(botData);
 	return botData;
 }
@@ -25,10 +28,12 @@ async function getEnrichedBot(id: any) {
 export const GET: RequestHandler = async ({ params }) => {
 	try {
 		const botData = await getEnrichedBot(params.id);
-		if (!botData) return json({ error: 'Bot not found' }, { status: 404 });
+		if (!botData) {
+			return json({ error: 'Bot not found' }, { status: HTTP.NOT_FOUND });
+		}
 		return json(botData);
-	} catch (error: any) {
-		return json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };
 
@@ -40,7 +45,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		}
 		await db.deleteBot(params.id);
 		return json({ success: true });
-	} catch (error: any) {
-		return json({ success: false, error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

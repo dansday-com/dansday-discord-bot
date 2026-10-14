@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -20,9 +20,13 @@
 
 	const filtered = $derived(
 		data.tasks.filter((task) => {
-			if (module !== 'all' && task.requires !== module) return false;
+			if (module !== 'all' && task.requires !== module) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${task.label} ${task.example} ${task.unit}`.toLowerCase().includes(needle);
 		})
 	);
@@ -82,7 +86,7 @@
 						<article
 							use:reveal
 							class="{REVEAL_CLASS} border-base-300 bg-base-100 flex flex-col rounded-sm border p-4"
-							style="transition-delay: {Math.min(i, 8) * 60}ms"
+							style="transition-delay: {cappedListDelay(i)}"
 						>
 							<div class="mb-2.5 flex items-start gap-3">
 								<span class="bg-base-200 grid size-8 shrink-0 place-items-center rounded-sm text-[13px] leading-none" style="color: {task.accent}">

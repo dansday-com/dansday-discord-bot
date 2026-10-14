@@ -1,19 +1,58 @@
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
+import { MIN_BUY_XP, pnlPercent } from '../../../public/market/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
+import type { Client } from 'discord.js';
+import { HTTP } from '../../../../http.js';
+import { MINUTE_MS, MINUTE_SECONDS, SECOND_MS } from '../../../../utils/time.js';
+
+type CoinGeckoMarket = {
+	id: string;
+	symbol: string;
+	name: string;
+	image?: string | null;
+	current_price?: number | null;
+	price_change_percentage_24h?: number | null;
+	market_cap_rank?: number | null;
+	sparkline_in_7d?: { price?: unknown[] } | null;
+};
+export type MarketRow = ReturnType<typeof shapeMarketRow>;
+type PriceMap = Record<string, { price: number; change24h: number }>;
+type AssetSearchResult = {
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	name: string | undefined;
+	image: string | null;
+	market_cap_rank: number | null;
+	price: number;
+	change24h: number;
+};
+type AssetRow = Awaited<ReturnType<typeof db.getOpenAssetPositions>>[number];
+type PortfolioPosition = Pick<AssetRow, 'id' | 'asset_type' | 'asset_id' | 'symbol' | 'asset_name' | 'asset_image'> & {
+	xp_invested: number;
+	buy_price: number;
+	current_price: number;
+	change24h: number;
+	value: number;
+	pnl: number;
+	pnl_percent: number;
+};
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
-const POLL_INTERVAL_MS = 30 * 60_000;
-const MARKETS_TTL_MS = 30 * 60_000;
-const SEARCH_TTL_MS = 30 * 60_000;
-const POLL_LOCK_TTL_S = Math.ceil(POLL_INTERVAL_MS / 1000) - 60;
+const POLL_INTERVAL_MINUTES = 30;
+const CACHE_TTL_MINUTES = 30;
+const POLL_INTERVAL_MS = POLL_INTERVAL_MINUTES * MINUTE_MS;
+const MARKETS_TTL_MS = CACHE_TTL_MINUTES * MINUTE_MS;
+const SEARCH_TTL_MS = CACHE_TTL_MINUTES * MINUTE_MS;
+const POLL_LOCK_TTL_S = Math.ceil(POLL_INTERVAL_MS / SECOND_MS) - MINUTE_SECONDS;
+const SEARCH_RESULTS_LIMIT = 25;
 const MARKETS_PER_PAGE = 50;
 const UNIVERSE_PER_PAGE = 250;
 const UNIVERSE_PAGES = 4;
 const MOVERS_COUNT = 50;
-export const MIN_BUY_XP = 10_000;
 
 const MARKETS_KEY = 'market:usd:markets';
 const MOVERS_KEY = 'market:usd:movers';
@@ -32,21 +71,27 @@ function apiHeaders(): Record<string, string> {
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
 let rateLimitedUntil = 0;
 
-async function cgFetch(path: string): Promise<any> {
-	if (Date.now() < rateLimitedUntil) throw new Error(`coingecko rate-limited, cooling down ${path}`);
+async function cgFetch<T = unknown>(path: string): Promise<T> {
+	if (Date.now() < rateLimitedUntil) {
+		throw new Error(`coingecko rate-limited, cooling down ${path}`);
+	}
 	const res = await fetch(`${COINGECKO_BASE}${path}`, { headers: apiHeaders() });
-	if (res.status === 429) {
+	if (res.status === HTTP.TOO_MANY_REQUESTS) {
 		const retryAfterS = Number(res.headers.get('retry-after')) || 0;
-		rateLimitedUntil = Date.now() + Math.max(RATE_LIMIT_COOLDOWN_MS, retryAfterS * 1000);
+		rateLimitedUntil = Date.now() + Math.max(RATE_LIMIT_COOLDOWN_MS, retryAfterS * SECOND_MS);
 		logger.warn(`coingecko 429 ${path}; backing off until ${new Date(rateLimitedUntil).toISOString()}`);
 	}
-	if (!res.ok) throw new Error(`coingecko ${res.status} ${path}`);
-	return res.json();
+	if (!res.ok) {
+		throw new Error(`coingecko ${res.status} ${path}`);
+	}
+	return res.json() as Promise<T>;
 }
 
-async function cacheGet(key: string): Promise<any | null> {
+async function cacheGet<T>(key: string): Promise<T | null> {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return null;
+	if (!redis) {
+		return null;
+	}
 	try {
 		const raw = await redis.get(key);
 		return raw != null ? JSON.parse(raw) : null;
@@ -55,15 +100,17 @@ async function cacheGet(key: string): Promise<any | null> {
 	}
 }
 
-async function cacheSet(key: string, value: any, ttlMs: number): Promise<void> {
+async function cacheSet(key: string, value: unknown, ttlMs: number): Promise<void> {
 	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return;
+	if (!redis) {
+		return;
+	}
 	try {
 		await redis.set(key, JSON.stringify(value), { PX: ttlMs });
 	} catch {}
 }
 
-function shapeMarketRow(row: any) {
+function shapeMarketRow(row: CoinGeckoMarket) {
 	return {
 		asset_type: 'crypto',
 		asset_id: String(row.id),
@@ -73,35 +120,40 @@ function shapeMarketRow(row: any) {
 		price: Number(row.current_price) || 0,
 		change24h: Number(row.price_change_percentage_24h) || 0,
 		market_cap_rank: row.market_cap_rank != null ? Number(row.market_cap_rank) : null,
-		sparkline: Array.isArray(row.sparkline_in_7d?.price) ? row.sparkline_in_7d.price.map((n: any) => Number(n) || 0) : []
+		sparkline: Array.isArray(row.sparkline_in_7d?.price) ? row.sparkline_in_7d.price.map((n: unknown) => Number(n) || 0) : []
 	};
 }
 
 async function fetchTopMarkets() {
-	const path = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${MARKETS_PER_PAGE}` + `&page=1&sparkline=true&price_change_percentage=24h`;
-	const rows = await cgFetch(path);
+	const path = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${MARKETS_PER_PAGE}&page=1&sparkline=true&price_change_percentage=24h`;
+	const rows = await cgFetch<CoinGeckoMarket[]>(path);
 	return Array.isArray(rows) ? rows.map(shapeMarketRow) : [];
 }
 
 async function fetchUniverse() {
-	const all: any[] = [];
+	const all: MarketRow[] = [];
 	for (let page = 1; page <= UNIVERSE_PAGES; page++) {
 		const sparkline = page === 1 ? 'true' : 'false';
-		const path =
-			`/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}` + `&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
-		const rows = await cgFetch(path).catch(() => null);
-		if (!Array.isArray(rows) || rows.length === 0) break;
-		for (const r of rows) all.push(shapeMarketRow(r));
+		const path = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
+		const rows = await cgFetch<CoinGeckoMarket[]>(path).catch(() => null);
+		if (!Array.isArray(rows) || rows.length === 0) {
+			break;
+		}
+		for (const r of rows) {
+			all.push(shapeMarketRow(r));
+		}
 	}
 	return all;
 }
 
 async function fetchPricesFor(assetIds: string[]): Promise<Record<string, { price: number; change24h: number }>> {
-	if (assetIds.length === 0) return {};
+	if (assetIds.length === 0) {
+		return {};
+	}
 	const ids = encodeURIComponent(assetIds.join(','));
-	const data = await cgFetch(`/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
+	const data = await cgFetch<Record<string, Record<string, unknown>> | null>(`/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
 	const out: Record<string, { price: number; change24h: number }> = {};
-	for (const [id, val] of Object.entries<any>(data || {})) {
+	for (const [id, val] of Object.entries<Record<string, unknown>>(data || {})) {
 		out[id] = { price: Number(val?.usd) || 0, change24h: Number(val?.usd_24h_change) || 0 };
 	}
 	return out;
@@ -111,19 +163,35 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 async function distinctHeldCryptoIds(): Promise<string[]> {
 	const rows = await db.getDistinctHeldAssetIds('crypto').catch(() => []);
-	return ((rows as any[]) || []).map((r) => String(r.asset_id)).filter(Boolean);
+	return (rows || []).map((r) => String(r.asset_id)).filter(Boolean);
 }
 
-async function pollOnce(botId: string, force = false): Promise<void> {
+async function claimPollLock(botId: string): Promise<boolean> {
 	const redis = await getRedisClient().catch(() => null);
-	if (redis) {
-		const token = `${process.pid}:${botId}`;
-		const got = force
-			? await redis.set('market:poll:lock', token, { EX: POLL_LOCK_TTL_S }).catch(() => null)
-			: await redis.set('market:poll:lock', token, { NX: true, EX: POLL_LOCK_TTL_S }).catch(() => null);
-		if (!force && got !== 'OK') return;
+	if (!redis) {
+		return true;
 	}
+	const got = await redis.set('market:poll:lock', `${process.pid}:${botId}`, { NX: true, EX: POLL_LOCK_TTL_S }).catch(() => null);
+	return got === 'OK';
+}
 
+async function takePollLock(botId: string): Promise<void> {
+	const redis = await getRedisClient().catch(() => null);
+	await redis?.set('market:poll:lock', `${process.pid}:${botId}`, { EX: POLL_LOCK_TTL_S }).catch(() => null);
+}
+
+async function pollOnce(botId: string): Promise<void> {
+	if (await claimPollLock(botId)) {
+		await refreshMarkets();
+	}
+}
+
+async function forcePoll(botId: string): Promise<void> {
+	await takePollLock(botId);
+	await refreshMarkets();
+}
+
+async function refreshMarkets(): Promise<void> {
 	if (!apiKey()) {
 		logger.warn('Market poll skipped: COINGECKO_API_KEY not set');
 		return;
@@ -141,7 +209,9 @@ async function pollOnce(botId: string, force = false): Promise<void> {
 			const losers = [...withChange].sort((a, b) => a.change24h - b.change24h).slice(0, MOVERS_COUNT);
 			await cacheSet(MOVERS_KEY, { gainers, losers, ts: Date.now() }, MARKETS_TTL_MS);
 
-			for (const m of universe) priceMap[`crypto:${m.asset_id}`] = { price: m.price, change24h: m.change24h };
+			for (const m of universe) {
+				priceMap[`crypto:${m.asset_id}`] = { price: m.price, change24h: m.change24h };
+			}
 		}
 
 		const held = await distinctHeldCryptoIds();
@@ -149,19 +219,27 @@ async function pollOnce(botId: string, force = false): Promise<void> {
 		const missing = held.filter((id) => !inUniverse.has(id));
 		if (missing.length > 0) {
 			const prices = await fetchPricesFor(missing);
-			for (const [id, p] of Object.entries(prices)) priceMap[`crypto:${id}`] = { price: p.price, change24h: p.change24h };
+			for (const [id, p] of Object.entries(prices)) {
+				priceMap[`crypto:${id}`] = { price: p.price, change24h: p.change24h };
+			}
 		}
 
-		if (Object.keys(priceMap).length > 0) await cacheSet(PRICES_KEY, { map: priceMap, ts: Date.now() }, MARKETS_TTL_MS);
-	} catch (err: any) {
-		logger.warn(`Market poll failed: ${err?.message || err}`);
+		if (Object.keys(priceMap).length > 0) {
+			await cacheSet(PRICES_KEY, { map: priceMap, ts: Date.now() }, MARKETS_TTL_MS);
+		}
+	} catch (err) {
+		logger.warn(`Market poll failed: ${(err as Error)?.message || err}`);
 	}
 }
 
 export function startMarketPoller(botId: string): void {
-	if (pollTimer) return;
-	void pollOnce(botId, true);
-	pollTimer = setInterval(() => void pollOnce(botId), POLL_INTERVAL_MS);
+	if (pollTimer) {
+		return;
+	}
+	forcePoll(botId);
+	pollTimer = setInterval(() => {
+		pollOnce(botId);
+	}, POLL_INTERVAL_MS);
 	pollTimer.unref?.();
 }
 
@@ -172,12 +250,16 @@ export function stopMarketPoller(): void {
 	}
 }
 
-export async function getMarketsBoard(): Promise<any[]> {
-	const cached = await cacheGet(MARKETS_KEY);
-	if (cached?.rows?.length) return cached.rows;
+export async function getMarketsBoard(): Promise<MarketRow[]> {
+	const cached = await cacheGet<{ rows?: MarketRow[] }>(MARKETS_KEY);
+	if (cached?.rows?.length) {
+		return cached.rows;
+	}
 	try {
 		const markets = await fetchTopMarkets();
-		if (markets.length > 0) await cacheSet(MARKETS_KEY, { rows: markets, ts: Date.now() }, MARKETS_TTL_MS);
+		if (markets.length > 0) {
+			await cacheSet(MARKETS_KEY, { rows: markets, ts: Date.now() }, MARKETS_TTL_MS);
+		}
 		return markets;
 	} catch {
 		return [];
@@ -185,27 +267,39 @@ export async function getMarketsBoard(): Promise<any[]> {
 }
 
 export async function getAssetPrice(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {
-	const cached = await cacheGet(PRICES_KEY);
+	const cached = await cacheGet<{ map?: PriceMap }>(PRICES_KEY);
 	const hit = cached?.map?.[`${assetType}:${assetId}`];
-	if (hit && Number(hit.price) > 0) return { price: Number(hit.price), change24h: Number(hit.change24h) || 0 };
-	if (assetType !== 'crypto') return null;
+	if (hit && Number(hit.price) > 0) {
+		return { price: Number(hit.price), change24h: Number(hit.change24h) || 0 };
+	}
+	if (assetType !== 'crypto') {
+		return null;
+	}
 	try {
 		const prices = await fetchPricesFor([assetId]);
 		const p = prices[assetId];
-		if (p && p.price > 0) return p;
+		if (p && p.price > 0) {
+			return p;
+		}
 	} catch {}
 	return null;
 }
 
-export async function searchAssets(query: string): Promise<any[]> {
+export async function searchAssets(query: string): Promise<AssetSearchResult[]> {
 	const q = String(query || '').trim();
-	if (!q) return [];
-	const cached = await cacheGet(searchKey(q));
-	if (cached) return cached;
+	if (!q) {
+		return [];
+	}
+	const cached = await cacheGet<AssetSearchResult[]>(searchKey(q));
+	if (cached) {
+		return cached;
+	}
 	try {
-		const data = await cgFetch(`/search?query=${encodeURIComponent(q)}`);
+		const data = await cgFetch<{
+			coins?: { id: string; symbol?: string; name?: string; thumb?: string | null; large?: string | null; market_cap_rank?: number | null }[];
+		}>(`/search?query=${encodeURIComponent(q)}`);
 		const coins = Array.isArray(data?.coins) ? data.coins : [];
-		const results = coins.slice(0, 25).map((c: any) => ({
+		const results = coins.slice(0, SEARCH_RESULTS_LIMIT).map((c) => ({
 			asset_type: 'crypto',
 			asset_id: String(c.id),
 			symbol: String(c.symbol || '').toUpperCase(),
@@ -216,7 +310,7 @@ export async function searchAssets(query: string): Promise<any[]> {
 			change24h: 0
 		}));
 
-		const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
+		const cachedPrices = (await cacheGet<{ map?: PriceMap }>(PRICES_KEY))?.map ?? {};
 		const needFetch: string[] = [];
 		for (const r of results) {
 			const hit = cachedPrices[`crypto:${r.asset_id}`];
@@ -240,18 +334,20 @@ export async function searchAssets(query: string): Promise<any[]> {
 
 		await cacheSet(searchKey(q), results, SEARCH_TTL_MS);
 		return results;
-	} catch (err: any) {
-		logger.warn(`Asset search failed: ${err?.message || err}`);
+	} catch (err) {
+		logger.warn(`Asset search failed: ${(err as Error)?.message || err}`);
 		return [];
 	}
 }
 
-async function resolveServerMemberId(serverId: any, discordMemberId: any) {
+async function resolveServerMemberId(serverId: number | string, discordMemberId: number | string) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordMemberId)).catch(() => null);
 	return member?.id ?? null;
 }
 
-async function finalize(guildId: any, memberId: any, before: any, reason: string) {
+type FinalizeInfo = { before: { level?: unknown; rank?: unknown; xp?: unknown } | null; reason: string };
+
+async function finalize(guildId: string, memberId: number | string, { before, reason }: FinalizeInfo) {
 	await evaluateMemberLevelAndRank(guildId, memberId, {
 		previousLevel: before?.level != null ? Number(before.level) : null,
 		previousRank: before?.rank != null ? Number(before.rank) : null,
@@ -260,59 +356,77 @@ async function finalize(guildId: any, memberId: any, before: any, reason: string
 	}).catch(() => null);
 }
 
-export async function handleAssetBuy(_client: any, payload: any) {
+type OpenPosition = NonNullable<Awaited<ReturnType<typeof db.getOpenAssetPosition>>>;
+
+async function topUpPosition(existing: OpenPosition, amount: number, price: number) {
+	const prevInvested = Number(existing.xp_invested) || 0;
+	const prevPrice = Number(existing.buy_price) || price;
+	const newInvested = prevInvested + amount;
+	const avgPrice = newInvested > 0 ? (prevInvested * prevPrice + amount * price) / newInvested : price;
+	await db.mergeAssetPosition(existing.id, { xp_invested: newInvested, buy_price: avgPrice });
+	return db.getAssetPosition(existing.id);
+}
+
+export async function handleAssetBuy(
+	_client: Client,
+	payload: { guild_id?: string; actor_discord_id?: string; asset_type?: string; asset_id?: string | number; xp?: unknown }
+) {
 	const { guild_id, actor_discord_id, asset_type, asset_id, xp } = payload || {};
-	if (!guild_id || !actor_discord_id || !asset_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id || !asset_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!memberId) return { ok: false, error: 'member_not_found' };
+	if (!memberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const type = String(asset_type || 'crypto');
 	const amount = Math.max(0, Math.floor(Number(xp) || 0));
-	if (amount <= 0) return { ok: false, error: 'invalid_amount' };
-	if (amount < MIN_BUY_XP) return { ok: false, error: 'below_minimum', min: MIN_BUY_XP };
+	if (amount <= 0) {
+		return { ok: false, error: 'invalid_amount' };
+	}
+	if (amount < MIN_BUY_XP) {
+		return { ok: false, error: 'below_minimum', min: MIN_BUY_XP };
+	}
 
 	const market = await getAssetPrice(type, String(asset_id));
-	if (!market || market.price <= 0) return { ok: false, error: 'price_unavailable' };
+	if (!market || market.price <= 0) {
+		return { ok: false, error: 'price_unavailable' };
+	}
 
 	const spendable = await getSpendableXp(memberId, guild_id);
-	if (spendable.total < amount) return { ok: false, error: 'insufficient_xp' };
+	if (spendable.total < amount) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const meta = await resolveAssetMeta(type, String(asset_id));
 
 	const before = await db.getMemberLevel(memberId).catch(() => null);
 	const spent = await spendXp(memberId, amount, guild_id);
-	if (!spent.ok) return { ok: false, error: 'insufficient_xp' };
+	if (!spent.ok) {
+		return { ok: false, error: 'insufficient_xp' };
+	}
 
 	const existing = await db.getOpenAssetPosition(memberId, type, String(asset_id)).catch(() => null);
-	let position;
-	if (existing) {
-		const prevInvested = Number(existing.xp_invested) || 0;
-		const prevPrice = Number(existing.buy_price) || market.price;
-		const newInvested = prevInvested + amount;
-		const avgPrice = newInvested > 0 ? (prevInvested * prevPrice + amount * market.price) / newInvested : market.price;
-		await db.mergeAssetPosition(existing.id, { xp_invested: newInvested, buy_price: avgPrice });
-		position = await db.getAssetPosition(existing.id);
-	} else {
-		position = await db.openAssetPosition({
-			member_id: memberId,
-			asset_type: type,
-			asset_id: String(asset_id),
-			symbol: meta.symbol,
-			asset_name: meta.name,
-			asset_image: meta.image,
-			xp_invested: amount,
-			buy_price: market.price
-		});
-	}
+	const position = existing
+		? await topUpPosition(existing, amount, market.price)
+		: await db.openAssetPosition({
+				member_id: memberId,
+				asset_type: type,
+				asset_id: String(asset_id),
+				symbol: meta.symbol,
+				asset_name: meta.name,
+				asset_image: meta.image,
+				xp_invested: amount,
+				buy_price: market.price
+			});
 
 	await db
 		.logAssetEvent({
@@ -328,30 +442,36 @@ export async function handleAssetBuy(_client: any, payload: any) {
 		})
 		.catch(() => null);
 
-	await finalize(guild_id, memberId, before, 'asset-buy');
+	await finalize(guild_id, memberId, { before, reason: 'asset-buy' });
 	return { ok: true, position, price: market.price };
 }
 
-export async function handleAssetSell(_client: any, payload: any) {
+export async function handleAssetSell(_client: Client, payload: { guild_id?: string; actor_discord_id?: string; position_id?: number | string; xp?: unknown }) {
 	const { guild_id, actor_discord_id, position_id, xp: amount } = payload || {};
-	if (!guild_id || !actor_discord_id || !position_id) return { ok: false, error: 'missing_fields' };
+	if (!guild_id || !actor_discord_id || !position_id) {
+		return { ok: false, error: 'missing_fields' };
+	}
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch {
+	const server = await getServerForCurrentBot(guild_id).catch(() => null);
+	if (!server) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!memberId) return { ok: false, error: 'member_not_found' };
+	if (!memberId) {
+		return { ok: false, error: 'member_not_found' };
+	}
 
 	const position = await db.getAssetPosition(position_id).catch(() => null);
-	if (!position || Number(position.member_id) !== Number(memberId)) return { ok: false, error: 'not_owner' };
+	if (!position || Number(position.member_id) !== Number(memberId)) {
+		return { ok: false, error: 'not_owner' };
+	}
 
 	const market = await getAssetPrice(position.asset_type, position.asset_id);
-	if (!market || market.price <= 0) return { ok: false, error: 'price_unavailable' };
+	if (!market || market.price <= 0) {
+		return { ok: false, error: 'price_unavailable' };
+	}
 
 	const buyPrice = Number(position.buy_price) || 0;
 	const invested = Number(position.xp_invested) || 0;
@@ -359,16 +479,18 @@ export async function handleAssetSell(_client: any, payload: any) {
 
 	const requested = Math.floor(Number(amount) || 0);
 	const targetPayout = requested > 0 ? Math.min(requested, currentValue) : currentValue;
-	if (targetPayout <= 0) return { ok: false, error: 'invalid_amount' };
+	if (targetPayout <= 0) {
+		return { ok: false, error: 'invalid_amount' };
+	}
 
-	const full = targetPayout >= currentValue;
-	const soldInvested = full ? invested : Math.max(1, Math.min(invested, Math.round(invested * (targetPayout / currentValue))));
-	const payout = full ? currentValue : buyPrice > 0 ? Math.max(0, Math.round(soldInvested * (market.price / buyPrice))) : soldInvested;
+	const isFull = targetPayout >= currentValue;
+	const soldInvested = isFull ? invested : Math.max(1, Math.min(invested, Math.round(invested * (targetPayout / currentValue))));
+	const payout = isFull ? currentValue : buyPrice > 0 ? Math.max(0, Math.round(soldInvested * (market.price / buyPrice))) : soldInvested;
 
 	const before = await db.getMemberLevel(memberId).catch(() => null);
 	await db.ensureMemberLevel(memberId);
 	await db.updateMemberLevelStats(memberId, { xpIncrement: payout });
-	if (full) {
+	if (isFull) {
 		await db.closeAssetPosition(position_id);
 	} else {
 		await db.reduceAssetPosition(position_id, { sold_invested: soldInvested });
@@ -387,18 +509,20 @@ export async function handleAssetSell(_client: any, payload: any) {
 			net: payout - soldInvested
 		})
 		.catch(() => null);
-	await finalize(guild_id, memberId, before, 'asset-sell');
+	await finalize(guild_id, memberId, { before, reason: 'asset-sell' });
 
-	return { ok: true, payout, invested: soldInvested, sell_price: market.price, net: payout - soldInvested, full };
+	return { ok: true, payout, invested: soldInvested, sell_price: market.price, net: payout - soldInvested, full: isFull };
 }
 
 async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ symbol: string; name: string; image: string | null }> {
 	const board = await getMarketsBoard();
 	const hit = board.find((m) => m.asset_type === assetType && m.asset_id === assetId);
-	if (hit) return { symbol: hit.symbol, name: hit.name, image: hit.image ?? null };
+	if (hit) {
+		return { symbol: hit.symbol, name: hit.name, image: hit.image ?? null };
+	}
 	if (assetType === 'crypto') {
 		try {
-			const data = await cgFetch(
+			const data = await cgFetch<{ symbol?: string; name?: string; image?: { thumb?: string | null } | null }>(
 				`/coins/${encodeURIComponent(assetId)}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false`
 			);
 			return {
@@ -411,14 +535,14 @@ async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ s
 	return { symbol: assetId.toUpperCase(), name: assetId, image: null };
 }
 
-export async function getMemberPortfolio(memberId: any): Promise<{
-	positions: any[];
+export async function getMemberPortfolio(memberId: number | string): Promise<{
+	positions: PortfolioPosition[];
 	totalInvested: number;
 	totalValue: number;
 }> {
-	const rows = ((await db.getOpenAssetPositions(memberId).catch(() => [])) as any[]) || [];
+	const rows = (await db.getOpenAssetPositions(memberId).catch(() => [])) || [];
 
-	const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
+	const cachedPrices = (await cacheGet<{ map?: PriceMap }>(PRICES_KEY))?.map ?? {};
 	const marketByKey = new Map<string, { price: number; change24h: number }>();
 	const needFetch = new Set<string>();
 	for (const p of rows) {
@@ -432,10 +556,12 @@ export async function getMemberPortfolio(memberId: any): Promise<{
 	}
 	if (needFetch.size > 0) {
 		const prices = await fetchPricesFor([...needFetch]).catch(() => ({}));
-		for (const [id, p] of Object.entries(prices)) marketByKey.set(`crypto:${id}`, p);
+		for (const [id, p] of Object.entries(prices)) {
+			marketByKey.set(`crypto:${id}`, p);
+		}
 	}
 
-	const positions: any[] = [];
+	const positions: PortfolioPosition[] = [];
 	let totalInvested = 0;
 	let totalValue = 0;
 	for (const p of rows) {
@@ -459,7 +585,7 @@ export async function getMemberPortfolio(memberId: any): Promise<{
 			change24h: market?.change24h ?? 0,
 			value,
 			pnl: value - invested,
-			pnl_percent: invested > 0 ? ((value - invested) / invested) * 100 : 0
+			pnl_percent: pnlPercent(value, invested)
 		});
 	}
 	return { positions, totalInvested, totalValue };

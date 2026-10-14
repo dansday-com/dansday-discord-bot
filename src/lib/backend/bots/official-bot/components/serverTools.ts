@@ -10,46 +10,31 @@ import { rewardGoalLabel } from '../../../../rewards.js';
 import { COLOR_MAX_TOTAL } from '../../../../color.js';
 import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer } from './aiToolShared.js';
+import type { ToolContext, ToolFeatures } from './aiToolShared.js';
+import type { MemberListRow } from '../../../../database.js';
+import { LEADERBOARD_METRICS, LEADERBOARD_PERIODS, type LeaderboardMetric, type LeaderboardPeriod } from '../../../public/leaderboard/metrics.js';
 
 const MAX_LEADERBOARD_ROWS = 25;
 const MAX_MEMBER_MATCHES = 8;
 const MAX_SHOP_ITEMS = 40;
 const VOICE_LEADERBOARD_ROWS = 5;
+const DEFAULT_LEADERBOARD_ROWS = 10;
+const DEFAULT_ROSTER_ROWS = 5;
+const LEVEL_TABLE_LAST_LEVEL = 11;
+const EXAMPLE_VOICE_MINUTES = 60;
+const EXAMPLE_MESSAGES = 10;
 
-const LEADERBOARD_METRICS = [
-	'xp',
-	'chat',
-	'voice_total',
-	'voice_active',
-	'voice_afk',
-	'video',
-	'streaming',
-	'minigames_gamble_net',
-	'minigames_gamble_ratio',
-	'minigames_gamble_big',
-	'minigames_tower_net',
-	'minigames_tower_ratio',
-	'minigames_tower_big',
-	'minigames_color_net',
-	'minigames_color_avg',
-	'minigames_color_best',
-	'items_bounty_total',
-	'items_bounty_claimer',
-	'items_bounty_give',
-	'items_steal_total',
-	'items_steal_rate',
-	'items_steal_big',
-	'items_bomb_total',
-	'items_bomb_rate',
-	'items_bomb_big',
-	'items_gift_give',
-	'items_gift_receive',
-	'invites'
-];
+const LEADERBOARD_METRIC_VALUES: LeaderboardMetric[] = [...LEADERBOARD_METRICS];
+const LEADERBOARD_PERIOD_VALUES: LeaderboardPeriod[] = [...LEADERBOARD_PERIODS];
 
-const LEADERBOARD_PERIODS = ['all', 'month', 'week'];
+type CatalogItem = Awaited<ReturnType<typeof loadItemsCatalog>>[number];
+type LeaderboardRow = NonNullable<Awaited<ReturnType<typeof resolveLeaderboardSnapshot>>>['rows'][number];
+type LeaderboardArgs = { metric?: LeaderboardMetric; period?: LeaderboardPeriod; limit?: unknown; order?: unknown };
+type RosterArgs = { sort?: string; limit?: unknown };
+type ShopArgs = { viewerDiscordId?: string | null; availability?: unknown; type?: unknown };
+type ToDate = (raw: unknown) => Date | null;
 
-function shapeItem(item, tzOffsetMin, nowMs) {
+function shapeItem(item: CatalogItem, tzOffsetMin: number | undefined, nowMs: number) {
 	const window = itemAvailability(item, nowMs, tzOffsetMin);
 	const effect = getItemEffect(item.effect_type);
 	const config = item.config ?? {};
@@ -59,9 +44,8 @@ function shapeItem(item, tzOffsetMin, nowMs) {
 		name: item.name,
 		type: item.effect_type,
 		label: effect?.label ?? item.effect_type,
-		category: item.category ?? null,
+		category: null,
 		cost_xp: num(item.cost),
-		...(item.original_cost != null ? { original_cost_xp: num(item.original_cost) } : {}),
 		what_it_does: effectSummary({ effect_type: item.effect_type, description: item.description, config }),
 		usable: item.usable !== false,
 		targeted: effect?.targeted === true,
@@ -74,12 +58,16 @@ function shapeItem(item, tzOffsetMin, nowMs) {
 	};
 }
 
-export async function runServerStatsTool(botId, guildId) {
+export async function runServerStatsTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const snapshot = await resolvePublicStatisticsSnapshot(ctx.server.id).catch(() => null);
-	if (!snapshot?.stats) return fail('no_statistics_yet');
+	if (!snapshot?.stats) {
+		return fail('no_statistics_yet');
+	}
 
 	const s = snapshot.stats;
 	const rawCreated = ctx.server.discord_created_at;
@@ -132,111 +120,131 @@ export async function runServerStatsTool(botId, guildId) {
 	};
 }
 
-function levelRequirementXp(level, baseXp, multiplier) {
-	if (level <= 1) return 0;
-	if (multiplier === 1) return baseXp * (level - 1);
-	return (baseXp * (Math.pow(multiplier, level - 1) - 1)) / (multiplier - 1);
+function levelRequirementXp(level: number, baseXp: number, multiplier: number) {
+	if (level <= 1) {
+		return 0;
+	}
+	if (multiplier === 1) {
+		return baseXp * (level - 1);
+	}
+	return (baseXp * (multiplier ** (level - 1) - 1)) / (multiplier - 1);
 }
 
-export async function runLevelingRulesTool(botId, guildId, args) {
-	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+type LevelingSettings = NonNullable<Awaited<ReturnType<typeof getLevelingSettings>>>;
+type LevelCurve = { baseXp: number; multiplier: number };
+type RulesServer = { id: number; name?: string | null };
 
-	let settings;
-	try {
-		settings = await getLevelingSettings(guildId);
-	} catch {
-		return fail('leveling_not_configured');
+const INVITE_NOTE =
+	'The one-off invite XP is paid once the new member has stayed the hold time. After that the inviter also gets share_percent of every chat and voice XP gain that member makes, for as long as they stay (staff get share_percent_staff). Accounts younger than the minimum age, own links and rejoins pay nothing. Each member gets a personal invite link from the Invites button in the bot menu.';
+const REWARDS_NOTE =
+	'Each reward is given automatically when a member reaches its goal. Voice hours count active time only. A custom reward is handed over by staff after it is earned. If kept_when_level_drops is false, dropping below a level after a steal or bomb takes its reward back until they climb back. If lower_rewards_kept is false, a higher reward on the same goal replaces the lower one. XP already paid and delivered rewards always stay.';
+
+function levelTable({ baseXp, multiplier }: LevelCurve) {
+	const table = [];
+	for (let lv = 2; lv <= LEVEL_TABLE_LAST_LEVEL; lv++) {
+		const total = Math.ceil(levelRequirementXp(lv, baseXp, multiplier));
+		table.push({ level: lv, total_xp_needed: total, from_previous_level: total - Math.ceil(levelRequirementXp(lv - 1, baseXp, multiplier)) });
 	}
+	return table;
+}
 
-	const msgXp = num(settings.MESSAGE.XP);
-	const msgCooldown = num(settings.MESSAGE.COOLDOWN_SECONDS);
-	const voiceXp = num(settings.VOICE.XP_PER_MINUTE);
-	const afkXp = num(settings.VOICE.AFK_XP_PER_MINUTE);
-	const videoXp = num(settings.VIDEO.XP_PER_MINUTE);
-	const streamXp = num(settings.STREAMING.XP_PER_MINUTE);
-	const baseXp = num(settings.REQUIREMENTS.BASE_XP);
-	const multiplier = Number(settings.REQUIREMENTS.MULTIPLIER) || 1;
-
-	const minutes = Math.max(0, Math.floor(num(args?.minutes))) || 60;
-	const messages = Math.max(0, Math.floor(num(args?.messages))) || 10;
-
-	const [levelingOn, rewardRules, roles] = await Promise.all([
+async function rewardRulesSummary(guildId: string, { server, curve }: { server: RulesServer; curve: LevelCurve }) {
+	const [isLevelingOn, rewardRules, roles] = await Promise.all([
 		isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling),
 		REWARDS_CONFIG.getRules(guildId).catch(() => null),
-		db.getRoles(ctx.server.id).catch(() => [])
+		db.getRoles(server.id).catch(() => [])
 	]);
-	const roleNames = new Map((roles as any[]).map((r) => [String(r.discord_role_id), String(r.name ?? '')]));
-	const rewardList = (levelingOn ? (rewardRules?.rewards ?? []) : []).map((r) => ({
+	const roleNames = new Map(roles.map((r) => [String(r.discord_role_id), String(r.name ?? '')]));
+	const rewards = (isLevelingOn ? (rewardRules?.rewards ?? []) : []).map((r) => ({
 		goal: rewardGoalLabel(r),
 		gives: r.kind === 'role' ? `the ${roleNames.get(r.role_id ?? '') ?? 'reward'} role` : r.kind === 'xp' ? `${r.xp} XP` : (r.name ?? 'a custom reward'),
 		...(r.winner_limit !== null ? { only_first_members: r.winner_limit } : {}),
-		...(r.goal_type === 'level' ? { total_xp_needed: Math.ceil(levelRequirementXp(r.goal, baseXp, multiplier)) } : {})
+		...(r.goal_type === 'level' ? { total_xp_needed: Math.ceil(levelRequirementXp(r.goal, curve.baseXp, curve.multiplier)) } : {})
 	}));
+	return {
+		rewards,
+		kept_when_level_drops: rewardRules?.keep !== false,
+		lower_rewards_kept: rewardRules?.stack !== false,
+		note: rewards.length > 0 ? REWARDS_NOTE : 'This server has no rewards set.'
+	};
+}
 
-	const levelTable = [];
-	for (let lv = 2; lv <= 11; lv++) {
-		const total = Math.ceil(levelRequirementXp(lv, baseXp, multiplier));
-		levelTable.push({ level: lv, total_xp_needed: total, from_previous_level: total - Math.ceil(levelRequirementXp(lv - 1, baseXp, multiplier)) });
+function inviteRules(settings: LevelingSettings) {
+	return {
+		xp_per_invite: num(settings.INVITE.XP),
+		xp_per_invite_staff: num(settings.INVITE.XP) * INVITE_STAFF_MULTIPLIER,
+		hold_hours: num(settings.INVITE.HOLD_HOURS),
+		min_account_age_days: num(settings.INVITE.MIN_ACCOUNT_AGE_DAYS),
+		share_percent: num(settings.INVITE.SHARE_PERCENT),
+		share_percent_staff: num(settings.INVITE.SHARE_PERCENT) * INVITE_STAFF_MULTIPLIER,
+		note: INVITE_NOTE
+	};
+}
+
+function xpExamples(settings: LevelingSettings, args: Record<string, unknown>) {
+	const msgXp = num(settings.MESSAGE.XP);
+	const voiceXp = num(settings.VOICE.XP_PER_MINUTE);
+	const minutes = Math.max(0, Math.floor(num(args?.minutes))) || EXAMPLE_VOICE_MINUTES;
+	const messages = Math.max(0, Math.floor(num(args?.messages))) || EXAMPLE_MESSAGES;
+	return {
+		voice_minutes: minutes,
+		voice_xp_active: voiceXp * minutes,
+		voice_xp_afk: num(settings.VOICE.AFK_XP_PER_MINUTE) * minutes,
+		voice_xp_with_video: (voiceXp + num(settings.VIDEO.XP_PER_MINUTE)) * minutes,
+		voice_xp_with_streaming: (voiceXp + num(settings.STREAMING.XP_PER_MINUTE)) * minutes,
+		messages_counted: messages,
+		chat_xp: msgXp * messages,
+		note: `${minutes} minutes of active voice is ${voiceXp * minutes} XP. ${messages} messages past the cooldown is ${msgXp * messages} XP.`
+	};
+}
+
+export async function runLevelingRulesTool(botId: number, guildId: string, args: Record<string, unknown>) {
+	const ctx = await publicServer(botId, guildId);
+	if (ctx.error) {
+		return ctx.error;
 	}
+
+	const settings = await getLevelingSettings(guildId).catch(() => null);
+	if (!settings) {
+		return fail('leveling_not_configured');
+	}
+
+	const msgCooldown = num(settings.MESSAGE.COOLDOWN_SECONDS);
+	const curve: LevelCurve = { baseXp: num(settings.REQUIREMENTS.BASE_XP), multiplier: Number(settings.REQUIREMENTS.MULTIPLIER) || 1 };
 
 	return {
 		ok: true,
 		server_name: ctx.server.name ?? null,
 		chat: {
-			xp_per_message: msgXp,
+			xp_per_message: num(settings.MESSAGE.XP),
 			cooldown_seconds: msgCooldown,
 			note: msgCooldown > 0 ? `Only one message every ${msgCooldown}s earns XP. Faster messages earn nothing.` : 'Every message earns XP.'
 		},
 		voice: {
-			xp_per_minute_active: voiceXp,
-			xp_per_minute_afk: afkXp,
-			xp_per_minute_video: videoXp,
-			xp_per_minute_streaming: streamXp,
+			xp_per_minute_active: num(settings.VOICE.XP_PER_MINUTE),
+			xp_per_minute_afk: num(settings.VOICE.AFK_XP_PER_MINUTE),
+			xp_per_minute_video: num(settings.VIDEO.XP_PER_MINUTE),
+			xp_per_minute_streaming: num(settings.STREAMING.XP_PER_MINUTE),
 			note: 'Video and streaming XP stack on top of the voice rate for the same minute. Muted or deafened counts as AFK.'
 		},
-		invites: {
-			xp_per_invite: num(settings.INVITE.XP),
-			xp_per_invite_staff: num(settings.INVITE.XP) * INVITE_STAFF_MULTIPLIER,
-			hold_hours: num(settings.INVITE.HOLD_HOURS),
-			min_account_age_days: num(settings.INVITE.MIN_ACCOUNT_AGE_DAYS),
-			share_percent: num(settings.INVITE.SHARE_PERCENT),
-			share_percent_staff: num(settings.INVITE.SHARE_PERCENT) * INVITE_STAFF_MULTIPLIER,
-			note: 'The one-off invite XP is paid once the new member has stayed the hold time. After that the inviter also gets share_percent of every chat and voice XP gain that member makes, for as long as they stay (staff get share_percent_staff). Accounts younger than the minimum age, own links and rejoins pay nothing. Each member gets a personal invite link from the Invites button in the bot menu.'
-		},
+		invites: inviteRules(settings),
 		bonuses: {
 			voice_friend_bonus_percent_each: 10,
 			note: 'Each other member in the same voice channel adds 10% to that voice XP, and an active luck buff adds its own percent on top. Both apply to voice only, not chat.'
 		},
 		levels: {
-			base_xp: baseXp,
-			multiplier,
-			formula: multiplier === 1 ? 'total XP for level N = base_xp * (N - 1)' : 'total XP for level N = base_xp * (multiplier^(N-1) - 1) / (multiplier - 1)',
-			first_levels: levelTable
+			base_xp: curve.baseXp,
+			multiplier: curve.multiplier,
+			formula:
+				curve.multiplier === 1 ? 'total XP for level N = base_xp * (N - 1)' : 'total XP for level N = base_xp * (multiplier^(N-1) - 1) / (multiplier - 1)',
+			first_levels: levelTable(curve)
 		},
-		rewards: {
-			rewards: rewardList,
-			kept_when_level_drops: rewardRules?.keep !== false,
-			lower_rewards_kept: rewardRules?.stack !== false,
-			note:
-				rewardList.length > 0
-					? 'Each reward is given automatically when a member reaches its goal. Voice hours count active time only. A custom reward is handed over by staff after it is earned. If kept_when_level_drops is false, dropping below a level after a steal or bomb takes its reward back until they climb back. If lower_rewards_kept is false, a higher reward on the same goal replaces the lower one. XP already paid and delivered rewards always stay.'
-					: 'This server has no rewards set.'
-		},
-		examples: {
-			voice_minutes: minutes,
-			voice_xp_active: voiceXp * minutes,
-			voice_xp_afk: afkXp * minutes,
-			voice_xp_with_video: (voiceXp + videoXp) * minutes,
-			voice_xp_with_streaming: (voiceXp + streamXp) * minutes,
-			messages_counted: messages,
-			chat_xp: msgXp * messages,
-			note: `${minutes} minutes of active voice is ${voiceXp * minutes} XP. ${messages} messages past the cooldown is ${msgXp * messages} XP.`
-		}
+		rewards: await rewardRulesSummary(guildId, { server: ctx.server, curve }),
+		examples: xpExamples(settings, args)
 	};
 }
 
-function metricValue(metric, r) {
+function metricValue(metric: unknown, r: LeaderboardRow) {
 	switch (metric) {
 		case 'chat':
 			return num(r.chat_total);
@@ -290,7 +298,7 @@ function metricValue(metric, r) {
 	}
 }
 
-function metricDetail(metric, r) {
+function metricDetail(metric: string, r: LeaderboardRow) {
 	if (metric.startsWith('minigames_tower_')) {
 		const total = num(r.minigame_total);
 		const wins = num(r.minigame_wins);
@@ -337,40 +345,48 @@ function metricDetail(metric, r) {
 	if (metric.startsWith('items_bounty')) {
 		return { bounty_on_them: num(r.bounty_on_them), bounty_collected: num(r.bounty_collected), bounty_given: num(r.bounty_given) };
 	}
-	if (metric.startsWith('items_gift')) return { gift_given: num(r.gift_given), gift_received: num(r.gift_received) };
+	if (metric.startsWith('items_gift')) {
+		return { gift_given: num(r.gift_given), gift_received: num(r.gift_received) };
+	}
 	if (metric === 'invites') {
 		return { invites_total: num(r.invites_total), still_here: num(r.invites_active), left: num(r.invites_left), staff_bonus: num(r.invites_bonus) };
 	}
 	return { xp: num(r.xp), messages: num(r.chat_total), voice_minutes: num(r.voice_minutes_total) };
 }
 
-export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_LEADERBOARD_ROWS } = {}) {
+type ToolServer = { botId: number; guildId: string };
+
+export async function runLeaderboardTool({ botId, guildId }: ToolServer, args: LeaderboardArgs, { maxRows = MAX_LEADERBOARD_ROWS } = {}) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
-	const metric = LEADERBOARD_METRICS.includes(args?.metric) ? args.metric : 'xp';
-	const period = LEADERBOARD_PERIODS.includes(args?.period) ? args.period : 'all';
-	const limit = Math.max(1, Math.min(num(args?.limit) || 10, maxRows));
-	const worst = args?.order === 'worst';
+	const metric = LEADERBOARD_METRIC_VALUES.includes(args?.metric as LeaderboardMetric) ? args.metric! : 'xp';
+	const period = LEADERBOARD_PERIOD_VALUES.includes(args?.period as LeaderboardPeriod) ? args.period! : 'all';
+	const limit = Math.max(1, Math.min(num(args?.limit) || DEFAULT_LEADERBOARD_ROWS, maxRows));
+	const isWorst = args?.order === 'worst';
 
-	const snapshot = await resolveLeaderboardSnapshot(ctx.server.id, metric, period, 100).catch(() => null);
+	const snapshot = await resolveLeaderboardSnapshot(ctx.server.id, { metric, period, limit: 100 }).catch(() => null);
 	const rows = snapshot?.rows ?? [];
-	if (!rows.length) return fail('leaderboard_empty', { metric, period });
+	if (!rows.length) {
+		return fail('leaderboard_empty', { metric, period });
+	}
 
 	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => String(n)));
 	const members = await db.getServerMembersList(ctx.server.id).catch(() => []);
 	const disguisedDiscordIds = new Set(members.filter((m) => disguised.has(String(m.id))).map((m) => String(m.discord_member_id)));
 
 	const visible = rows.filter((r) => !disguisedDiscordIds.has(String(r.discord_member_id)));
-	const picked = worst ? visible.slice(-limit).reverse() : visible.slice(0, limit);
+	const picked = isWorst ? visible.slice(-limit).reverse() : visible.slice(0, limit);
 
 	return {
 		ok: true,
 		metric,
 		period,
-		order: worst ? 'worst' : 'best',
+		order: isWorst ? 'worst' : 'best',
 		ranked_members: visible.length,
-		note: worst
+		note: isWorst
 			? 'These are the bottom places on this metric, worst first. A negative value means they are down overall.'
 			: 'These are the top places on this metric. Ask with order "worst" for the biggest losers.',
 		rows: picked.map((r) => ({
@@ -383,14 +399,18 @@ export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_L
 	};
 }
 
-export async function runMemberInfoTool(botId, guildId, args) {
+export async function runMemberInfoTool(botId: number, guildId: string, args: Record<string, unknown>) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const query = String(args?.name ?? '')
 		.trim()
 		.toLowerCase();
-	if (!query) return fail('missing_name');
+	if (!query) {
+		return fail('missing_name');
+	}
 
 	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => Number(n)));
 	const members = (await db.getServerMembersList(ctx.server.id).catch(() => [])).filter((m) => !disguised.has(Number(m.id)));
@@ -402,7 +422,9 @@ export async function runMemberInfoTool(botId, guildId, args) {
 		? byId
 		: members.filter((m) => [m.server_display_name, m.display_name, m.username].filter(Boolean).some((n) => String(n).toLowerCase().includes(query)));
 
-	if (!matches.length) return fail('member_not_found', { searched: args.name });
+	if (!matches.length) {
+		return fail('member_not_found', { searched: args.name });
+	}
 
 	if (matches.length > 1) {
 		return {
@@ -417,8 +439,10 @@ export async function runMemberInfoTool(botId, guildId, args) {
 	const rating = await db.getStaffRatingAggregate(ctx.server.id, m.id).catch(() => null);
 	const reviews = Number(rating?.total_reports) || 0;
 
-	const toDate = (raw) => {
-		if (!raw) return null;
+	const toDate: ToDate = (raw) => {
+		if (!raw) {
+			return null;
+		}
 		const d = raw instanceof Date ? raw : parseMySQLDateTimeUtc(raw);
 		return d && !Number.isNaN(d.getTime()) ? d : null;
 	};
@@ -426,12 +450,12 @@ export async function runMemberInfoTool(botId, guildId, args) {
 	return {
 		ok: true,
 		...publicMemberShape(m, toDate),
-		...(reviews > 0 ? { staff_rating: Number(rating.average_rating) || 0, staff_reviews: reviews } : {}),
+		...(reviews > 0 ? { staff_rating: Number(rating!.average_rating) || 0, staff_reviews: reviews } : {}),
 		note: "These are public profile fields. joined_server is when they joined this server; account_created is how old their Discord account is. This member's bag, assets, minigames, history and tasks are private and must not be requested."
 	};
 }
 
-function publicMemberShape(m, toDate) {
+function publicMemberShape(m: MemberListRow, toDate: ToDate) {
 	const afkSince = toDate(m.afk_since);
 	return {
 		name: nameOfMember(m),
@@ -456,47 +480,57 @@ function publicMemberShape(m, toDate) {
 
 const ROSTER_SORTS = ['joined_oldest', 'joined_newest', 'account_oldest', 'account_newest'];
 
-export async function runMemberRosterTool(botId, guildId, args) {
+export async function runMemberRosterTool(botId: number, guildId: string, args: RosterArgs) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
-	const sort = ROSTER_SORTS.includes(args?.sort) ? args.sort : 'joined_oldest';
-	const limit = Math.max(1, Math.min(num(args?.limit) || 5, MAX_MEMBER_MATCHES));
+	const sort = ROSTER_SORTS.includes(args?.sort as string) ? args.sort! : 'joined_oldest';
+	const limit = Math.max(1, Math.min(num(args?.limit) || DEFAULT_ROSTER_ROWS, MAX_MEMBER_MATCHES));
 
 	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => Number(n)));
 	const members = (await db.getServerMembersList(ctx.server.id).catch(() => [])).filter((m) => !disguised.has(Number(m.id)));
 
-	const byAccount = sort.startsWith('account');
-	const toDate = (raw) => {
-		if (!raw) return null;
+	const isSortedByAccount = sort.startsWith('account');
+	const toDate: ToDate = (raw) => {
+		if (!raw) {
+			return null;
+		}
 		const d = raw instanceof Date ? raw : parseMySQLDateTimeUtc(raw);
 		return d && !Number.isNaN(d.getTime()) ? d : null;
 	};
 
-	const dated = members.map((m) => ({ m, at: toDate(byAccount ? m.profile_created_at : m.member_since) })).filter((e) => e.at);
-	if (!dated.length) return fail('no_dates_synced', { sort });
+	const dated = members.map((m) => ({ m, at: toDate(isSortedByAccount ? m.profile_created_at : m.member_since) })).filter((e) => e.at);
+	if (!dated.length) {
+		return fail('no_dates_synced', { sort });
+	}
 
-	const newest = sort.endsWith('newest');
-	dated.sort((a, b) => (newest ? b.at.getTime() - a.at.getTime() : a.at.getTime() - b.at.getTime()));
+	const isNewest = sort.endsWith('newest');
+	dated.sort((a, b) => (isNewest ? b.at!.getTime() - a.at!.getTime() : a.at!.getTime() - b.at!.getTime()));
 
 	return {
 		ok: true,
 		sort,
 		total_members: members.length,
 		members_with_date: dated.length,
-		note: byAccount
+		note: isSortedByAccount
 			? 'Sorted by when each Discord account itself was created. This is not when they joined this server.'
 			: 'Sorted by when each member joined THIS server. The first entry is the longest-standing member — do not confuse it with the server creation date or with account age.',
 		rows: dated.slice(0, limit).map((e, i) => ({ position: i + 1, ...publicMemberShape(e.m, toDate) }))
 	};
 }
 
-export async function runStaffRatingTool(botId, guildId) {
+export async function runStaffRatingTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const ratings = await db.getAllStaffRatings(ctx.server.id).catch(() => []);
-	if (!ratings.length) return fail('no_staff_ratings');
+	if (!ratings.length) {
+		return fail('no_staff_ratings');
+	}
 
 	const members = await db.getServerMembersList(ctx.server.id).catch(() => []);
 	const byId = new Map(members.map((m) => [Number(m.id), m]));
@@ -511,12 +545,16 @@ export async function runStaffRatingTool(botId, guildId) {
 	};
 }
 
-export async function runGiveawaysTool(botId, guildId) {
+export async function runGiveawaysTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const giveaways = await db.listActiveGiveawaysForServer(ctx.server.id).catch(() => []);
-	if (!giveaways.length) return fail('no_active_giveaways');
+	if (!giveaways.length) {
+		return fail('no_active_giveaways');
+	}
 
 	const withEntrants = await Promise.all(
 		giveaways.map(async (g) => ({
@@ -534,12 +572,16 @@ export async function runGiveawaysTool(botId, guildId) {
 	return { ok: true, giveaways: withEntrants };
 }
 
-export async function runQuestsTool(botId, guildId) {
+export async function runQuestsTool(botId: number, guildId: string) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
+	if (ctx.error) {
+		return ctx.error;
+	}
 
 	const quests = await db.listActiveBotDiscordQuests(botId).catch(() => []);
-	if (!quests.length) return fail('no_active_quests');
+	if (!quests.length) {
+		return fail('no_active_quests');
+	}
 
 	const now = Date.now();
 	return {
@@ -559,14 +601,20 @@ export async function runQuestsTool(botId, guildId) {
 	};
 }
 
-export async function runShopTool(botId, guildId, args) {
+export async function runShopTool(botId: number, guildId: string, args: ShopArgs) {
 	const ctx = await publicServer(botId, guildId);
-	if (ctx.error) return ctx.error;
-	if (!ctx.itemsEnabled) return fail('items_not_enabled_for_this_server');
+	if (ctx.error) {
+		return ctx.error;
+	}
+	if (!ctx.itemsEnabled) {
+		return fail('items_not_enabled_for_this_server');
+	}
 
 	const catalog = await loadItemsCatalog(ctx.server.id).catch(() => []);
 	const live = catalog.filter((i) => i.live);
-	if (!live.length) return fail('shop_is_empty');
+	if (!live.length) {
+		return fail('shop_is_empty');
+	}
 
 	const member = args?.viewerDiscordId ? await memberByDiscordId(ctx.server.id, args.viewerDiscordId) : null;
 	const tzOffsetMin = member ? await memberTzOffset(member.id) : 0;
@@ -586,7 +634,9 @@ export async function runShopTool(botId, guildId, args) {
 		.toLowerCase();
 	const byType = typeFilter ? filtered.filter((i) => i.type === typeFilter || i.label.toLowerCase() === typeFilter) : filtered;
 
-	if (!byType.length) return fail('no_items_match', { availability: wanted, type: typeFilter || null });
+	if (!byType.length) {
+		return fail('no_items_match', { availability: wanted, type: typeFilter || null });
+	}
 
 	return {
 		ok: true,
@@ -626,121 +676,137 @@ const ROSTER_DESCRIPTION =
 
 const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_leveling_rules', 'get_member_roster']);
 
-function allowedServerTool(name, features) {
-	if (!features) return true;
-	if (!features.publicData) return false;
-	if (ALWAYS_ON.has(name)) return true;
-	if (name === 'get_shop') return features.items === true;
-	if (name === 'get_giveaways') return features.giveaway === true;
-	if (name === 'get_quests') return features.quests === true;
-	if (name === 'get_staff_ratings') return features.staffRating === true;
+function allowedServerTool(name: string, features: ToolFeatures | null) {
+	if (!features) {
+		return true;
+	}
+	if (!features.publicData) {
+		return false;
+	}
+	if (ALWAYS_ON.has(name)) {
+		return true;
+	}
+	if (name === 'get_shop') {
+		return features.items === true;
+	}
+	if (name === 'get_giveaways') {
+		return features.giveaway === true;
+	}
+	if (name === 'get_quests') {
+		return features.quests === true;
+	}
+	if (name === 'get_staff_ratings') {
+		return features.staffRating === true;
+	}
 	return true;
 }
 
-export function buildServerTools(features = null) {
-	return [
-		{
-			type: 'function',
-			function: {
-				name: 'get_server_stats',
-				description: STATS_DESCRIPTION,
-				parameters: { type: 'object', properties: {} }
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'get_leaderboard',
-				description: LEADERBOARD_DESCRIPTION,
-				parameters: {
-					type: 'object',
-					properties: {
-						metric: { type: 'string', enum: LEADERBOARD_METRICS, description: 'Which ranking to read. Leave out for overall XP.' },
-						period: { type: 'string', enum: LEADERBOARD_PERIODS, description: 'Time range. Leave out for all time.' },
-						order: {
-							type: 'string',
-							enum: ['best', 'worst'],
-							description: 'Use "worst" for the bottom of the table — biggest losers, most XP lost, worst win rate. Leave out for the top.'
-						},
-						limit: { type: 'integer', description: `How many places to read, 1 to ${MAX_LEADERBOARD_ROWS}. Leave out for 10.` }
-					}
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'get_member_info',
-				description: MEMBER_DESCRIPTION,
-				parameters: {
-					type: 'object',
-					properties: { name: { type: 'string', description: "The member's name or their <@id> mention, exactly as the user wrote it." } },
-					required: ['name']
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'get_member_roster',
-				description: ROSTER_DESCRIPTION,
-				parameters: {
-					type: 'object',
-					properties: {
-						sort: { type: 'string', enum: ROSTER_SORTS, description: 'Which order to read. Leave out for the members who joined this server earliest.' },
-						limit: { type: 'integer', description: `How many members to read, 1 to ${MAX_MEMBER_MATCHES}. Leave out for 5.` }
-					}
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'get_leveling_rules',
-				description: LEVELING_RULES_DESCRIPTION,
-				parameters: {
-					type: 'object',
-					properties: {
-						minutes: { type: 'integer', description: 'Voice minutes to work the example for, e.g. 60 for one hour. Leave out for 60.' },
-						messages: { type: 'integer', description: 'Number of messages to work the chat example for. Leave out for 10.' }
-					}
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: { name: 'get_staff_ratings', description: STAFF_DESCRIPTION, parameters: { type: 'object', properties: {} } }
-		},
-		{
-			type: 'function',
-			function: { name: 'get_giveaways', description: GIVEAWAYS_DESCRIPTION, parameters: { type: 'object', properties: {} } }
-		},
-		{
-			type: 'function',
-			function: { name: 'get_quests', description: QUESTS_DESCRIPTION, parameters: { type: 'object', properties: {} } }
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'get_shop',
-				description: SHOP_DESCRIPTION,
-				parameters: {
-					type: 'object',
-					properties: {
-						availability: {
-							type: 'string',
-							enum: ['all', 'active', 'upcoming'],
-							description: 'Use "upcoming" only when they ask what is coming soon. Leave out for everything.'
-						},
-						type: { type: 'string', description: 'Filter to one item type such as steal, shield or luck. Leave out to list all.' }
-					}
+const SERVER_TOOLS = [
+	{
+		type: 'function',
+		function: {
+			name: 'get_server_stats',
+			description: STATS_DESCRIPTION,
+			parameters: { type: 'object', properties: {} }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_leaderboard',
+			description: LEADERBOARD_DESCRIPTION,
+			parameters: {
+				type: 'object',
+				properties: {
+					metric: { type: 'string', enum: LEADERBOARD_METRIC_VALUES, description: 'Which ranking to read. Leave out for overall XP.' },
+					period: { type: 'string', enum: LEADERBOARD_PERIOD_VALUES, description: 'Time range. Leave out for all time.' },
+					order: {
+						type: 'string',
+						enum: ['best', 'worst'],
+						description: 'Use "worst" for the bottom of the table — biggest losers, most XP lost, worst win rate. Leave out for the top.'
+					},
+					limit: { type: 'integer', description: `How many places to read, 1 to ${MAX_LEADERBOARD_ROWS}. Leave out for 10.` }
 				}
 			}
 		}
-	].filter((t) => allowedServerTool(t.function.name, features));
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_member_info',
+			description: MEMBER_DESCRIPTION,
+			parameters: {
+				type: 'object',
+				properties: { name: { type: 'string', description: "The member's name or their <@id> mention, exactly as the user wrote it." } },
+				required: ['name']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_member_roster',
+			description: ROSTER_DESCRIPTION,
+			parameters: {
+				type: 'object',
+				properties: {
+					sort: { type: 'string', enum: ROSTER_SORTS, description: 'Which order to read. Leave out for the members who joined this server earliest.' },
+					limit: { type: 'integer', description: `How many members to read, 1 to ${MAX_MEMBER_MATCHES}. Leave out for 5.` }
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_leveling_rules',
+			description: LEVELING_RULES_DESCRIPTION,
+			parameters: {
+				type: 'object',
+				properties: {
+					minutes: { type: 'integer', description: 'Voice minutes to work the example for, e.g. 60 for one hour. Leave out for 60.' },
+					messages: { type: 'integer', description: 'Number of messages to work the chat example for. Leave out for 10.' }
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: { name: 'get_staff_ratings', description: STAFF_DESCRIPTION, parameters: { type: 'object', properties: {} } }
+	},
+	{
+		type: 'function',
+		function: { name: 'get_giveaways', description: GIVEAWAYS_DESCRIPTION, parameters: { type: 'object', properties: {} } }
+	},
+	{
+		type: 'function',
+		function: { name: 'get_quests', description: QUESTS_DESCRIPTION, parameters: { type: 'object', properties: {} } }
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_shop',
+			description: SHOP_DESCRIPTION,
+			parameters: {
+				type: 'object',
+				properties: {
+					availability: {
+						type: 'string',
+						enum: ['all', 'active', 'upcoming'],
+						description: 'Use "upcoming" only when they ask what is coming soon. Leave out for everything.'
+					},
+					type: { type: 'string', description: 'Filter to one item type such as steal, shield or luck. Leave out to list all.' }
+				}
+			}
+		}
+	}
+];
+
+export function buildServerTools(features: ToolFeatures | null = null) {
+	return SERVER_TOOLS.filter((t) => allowedServerTool(t.function.name, features));
 }
 
-export function buildServerDeclarations(features = null) {
+export function buildServerDeclarations(features: ToolFeatures | null = null) {
 	return [
 		{ name: 'get_server_stats', description: `${STATS_DESCRIPTION}\n\n${VOICE_NOTE}`, parameters: { type: Type.OBJECT, properties: {} } },
 		{
@@ -749,8 +815,8 @@ export function buildServerDeclarations(features = null) {
 			parameters: {
 				type: Type.OBJECT,
 				properties: {
-					metric: { type: Type.STRING, enum: LEADERBOARD_METRICS, description: 'Which ranking to read. Leave out for overall XP.' },
-					period: { type: Type.STRING, enum: LEADERBOARD_PERIODS, description: 'Time range. Leave out for all time.' },
+					metric: { type: Type.STRING, enum: LEADERBOARD_METRIC_VALUES, description: 'Which ranking to read. Leave out for overall XP.' },
+					period: { type: Type.STRING, enum: LEADERBOARD_PERIOD_VALUES, description: 'Time range. Leave out for all time.' },
 					order: { type: Type.STRING, enum: ['best', 'worst'], description: 'Use "worst" for the biggest losers at the bottom of the table.' }
 				}
 			}
@@ -814,18 +880,36 @@ export const SERVER_TOOL_NAMES = new Set([
 	'get_shop'
 ]);
 
-export function runServerTool(name, args, { botId, guildId, callerDiscordId, voice = false }) {
-	const opts = voice ? { maxRows: VOICE_LEADERBOARD_ROWS } : {};
+export function runServerTool(name: string, args: Record<string, unknown>, { botId, guildId, callerDiscordId, voice: isVoice = false }: ToolContext) {
+	const opts = isVoice ? { maxRows: VOICE_LEADERBOARD_ROWS } : {};
 
-	if (name === 'get_server_stats') return runServerStatsTool(botId, guildId);
-	if (name === 'get_leaderboard') return runLeaderboardTool(botId, guildId, args, opts);
-	if (name === 'get_member_info') return runMemberInfoTool(botId, guildId, args);
-	if (name === 'get_leveling_rules') return runLevelingRulesTool(botId, guildId, args);
-	if (name === 'get_member_roster') return runMemberRosterTool(botId, guildId, args);
-	if (name === 'get_staff_ratings') return runStaffRatingTool(botId, guildId);
-	if (name === 'get_giveaways') return runGiveawaysTool(botId, guildId);
-	if (name === 'get_quests') return runQuestsTool(botId, guildId);
-	if (name === 'get_shop') return runShopTool(botId, guildId, { ...args, viewerDiscordId: callerDiscordId });
+	if (name === 'get_server_stats') {
+		return runServerStatsTool(botId, guildId);
+	}
+	if (name === 'get_leaderboard') {
+		return runLeaderboardTool({ botId, guildId }, args as LeaderboardArgs, opts);
+	}
+	if (name === 'get_member_info') {
+		return runMemberInfoTool(botId, guildId, args);
+	}
+	if (name === 'get_leveling_rules') {
+		return runLevelingRulesTool(botId, guildId, args);
+	}
+	if (name === 'get_member_roster') {
+		return runMemberRosterTool(botId, guildId, args as RosterArgs);
+	}
+	if (name === 'get_staff_ratings') {
+		return runStaffRatingTool(botId, guildId);
+	}
+	if (name === 'get_giveaways') {
+		return runGiveawaysTool(botId, guildId);
+	}
+	if (name === 'get_quests') {
+		return runQuestsTool(botId, guildId);
+	}
+	if (name === 'get_shop') {
+		return runShopTool(botId, guildId, { ...args, viewerDiscordId: callerDiscordId });
+	}
 	return Promise.resolve(fail('unknown_tool'));
 }
 

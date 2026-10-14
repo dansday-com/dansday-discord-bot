@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { ISO_MINUTE_LENGTH } from '$lib/utils/datetime.js';
+	import { DAYS_PER_WEEK, MINUTE_MS } from '$lib/utils/time.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { PageMeta, PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import { PageMeta, PageShell, reveal, REVEAL_CLASS, cappedListDelay } from '$lib/frontend/components/shell';
 	import { effectLabel, effectIcon, effectAccentHex, effectSummary, effectMeta, itemAvailability } from '$lib/items.js';
 	import type { ItemEntry } from '$lib/frontend/public/catalog/index.js';
 
@@ -15,7 +17,7 @@
 
 	$effect(() => {
 		tz = -new Date().getTimezoneOffset();
-		const timer = setInterval(() => (now = Date.now()), 60_000);
+		const timer = setInterval(() => (now = Date.now()), MINUTE_MS);
 		return () => clearInterval(timer);
 	});
 
@@ -25,29 +27,39 @@
 	const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 	const STATE_LABEL: Record<string, string> = { active: 'In window', upcoming: 'Upcoming', ended: 'Ended', always: 'Always on' };
 
-	const wallClock = (raw: string | null) => (raw ? String(raw).replace('T', ' ').slice(0, 16) : '');
+	const wallClock = (raw: string | null) => (raw ? String(raw).replace('T', ' ').slice(0, ISO_MINUTE_LENGTH) : '');
 
 	function windowLabel(item: ItemEntry): string {
 		const schedule = item.recurring_schedule;
 		if (schedule && Array.isArray(schedule.days) && schedule.days.length) {
 			const days =
-				schedule.days.length === 7
+				schedule.days.length === DAYS_PER_WEEK
 					? 'Every day'
 					: schedule.days
-							.map((d: any) => DAY_NAMES[Number(d)] ?? '')
+							.map((d: unknown) => DAY_NAMES[Number(d)] ?? '')
 							.filter(Boolean)
 							.join(' ');
 			return `${days} · ${schedule.from || '00:00'}–${schedule.to || '23:59'}`;
 		}
-		if (item.available_from && item.available_to) return `${wallClock(item.available_from)} → ${wallClock(item.available_to)}`;
-		if (item.available_from) return `From ${wallClock(item.available_from)}`;
-		if (item.available_to) return `Until ${wallClock(item.available_to)}`;
+		if (item.available_from && item.available_to) {
+			return `${wallClock(item.available_from)} → ${wallClock(item.available_to)}`;
+		}
+		if (item.available_from) {
+			return `From ${wallClock(item.available_from)}`;
+		}
+		if (item.available_to) {
+			return `Until ${wallClock(item.available_to)}`;
+		}
 		return 'Always';
 	}
 
 	function statusLabel(item: ItemEntry): string {
-		if (item.buyable) return 'Can buy';
-		if (item.usable) return 'Use only';
+		if (item.buyable) {
+			return 'Can buy';
+		}
+		if (item.usable) {
+			return 'Use only';
+		}
 		return 'Disabled';
 	}
 
@@ -57,10 +69,16 @@
 
 	const filtered = $derived(
 		rows.filter(({ item }) => {
-			if (mode === 'buy' && !item.buyable) return false;
-			if (mode === 'nobuy' && item.buyable) return false;
+			if (mode === 'buy' && !item.buyable) {
+				return false;
+			}
+			if (mode === 'nobuy' && item.buyable) {
+				return false;
+			}
 			const needle = query.trim().toLowerCase();
-			if (!needle) return true;
+			if (!needle) {
+				return true;
+			}
 			return `${item.name} ${effectLabel(item.effect_type)} ${item.description ?? ''}`.toLowerCase().includes(needle);
 		})
 	);
@@ -123,7 +141,7 @@
 						<article
 							use:reveal
 							class="{REVEAL_CLASS} border-base-300 bg-base-100 flex flex-col rounded-sm border p-4"
-							style="transition-delay: {Math.min(i, 8) * 60}ms"
+							style="transition-delay: {cappedListDelay(i)}"
 						>
 							<div class="mb-2.5 flex items-start gap-3">
 								<span

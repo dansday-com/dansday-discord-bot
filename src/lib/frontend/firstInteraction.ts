@@ -6,8 +6,12 @@ export function onFirstInteraction(callback: () => void): () => void {
 		callback();
 	};
 	const stop = () => {
-		for (const type of EVENTS) window.removeEventListener(type, fire);
+		for (const type of EVENTS) {
+			window.removeEventListener(type, fire);
+		}
 	};
-	for (const type of EVENTS) window.addEventListener(type, fire, { passive: true });
+	for (const type of EVENTS) {
+		window.addEventListener(type, fire, { passive: true });
+	}
 	return stop;
 }

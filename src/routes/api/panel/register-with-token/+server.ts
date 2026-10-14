@@ -3,9 +3,6 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import {
 	sanitizeString,
-	sanitizeUsername,
-	sanitizeEmail,
-	validateInputLength,
 	isUtcSqlExpired,
 	getCurrentDateTime,
 	toMySQLDateTime,
@@ -17,48 +14,20 @@ import {
 	logger
 } from '$lib/utils/index.js';
 import bcrypt from 'bcryptjs';
+import { HTTP } from '$lib/http.js';
+import { INVITE_TOKEN_LENGTH } from '$lib/accounts.js';
+import { BCRYPT_SALT_ROUNDS, validateRegistrationInputs } from '$lib/frontend/registration.server.js';
 
 const MAX_REGISTER_ATTEMPTS = 5;
-
-async function validateRegistrationInputs(username: string, email: string, password: string) {
-	const errors: string[] = [];
-
-	const sanitizedUsername = sanitizeUsername(username);
-	if (!sanitizedUsername || sanitizedUsername.length < 3) {
-		errors.push('Username must be at least 3 characters long');
-	} else if (!/^[a-zA-Z]+$/.test(sanitizedUsername)) {
-		errors.push('Username can only contain uppercase and lowercase letters');
-	} else {
-		const r = validateInputLength(sanitizedUsername, 'Username', 3, 50);
-		if (!r.valid) errors.push(r.error);
-	}
-
-	const sanitizedEmail = sanitizeEmail(email);
-	if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-		errors.push('Valid email is required');
-	} else {
-		const r = validateInputLength(sanitizedEmail, 'Email', 5, 255);
-		if (!r.valid) errors.push(r.error);
-	}
-
-	if (!password || typeof password !== 'string') {
-		errors.push('Password is required');
-	} else {
-		const r = validateInputLength(password, 'Password', 6, 128);
-		if (!r.valid) errors.push(r.error);
-	}
-
-	return { valid: errors.length === 0, errors, sanitizedUsername: sanitizedUsername || '', sanitizedEmail: sanitizedEmail || '' };
-}
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const ip = getClientIp(request);
-		const rateLimit = await checkRateLimit(ip, 'register-with-token', MAX_REGISTER_ATTEMPTS);
+		const rateLimit = await checkRateLimit(ip, 'register-with-token', { maxAttempts: MAX_REGISTER_ATTEMPTS });
 		if (!rateLimit.allowed) {
 			return json(
 				{ success: false, error: 'Too many registration attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
-				{ status: 429 }
+				{ status: HTTP.TOO_MANY_REQUESTS }
 			);
 		}
 
@@ -66,38 +35,38 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { token, username, email, password } = body;
 
 		if (!token || typeof token !== 'string') {
-			return json({ success: false, error: 'Token is required' }, { status: 400 });
+			return json({ success: false, error: 'Token is required' }, { status: HTTP.BAD_REQUEST });
 		}
 
-		const sanitizedToken = sanitizeString(token, 255);
-		if (!sanitizedToken || sanitizedToken.length < 32) {
-			return json({ success: false, error: 'Invalid token format' }, { status: 400 });
+		const sanitizedToken = sanitizeString(token, INVITE_TOKEN_LENGTH.max);
+		if (!sanitizedToken || sanitizedToken.length < INVITE_TOKEN_LENGTH.min) {
+			return json({ success: false, error: 'Invalid token format' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const validation = await validateRegistrationInputs(username, email, password);
 		if (!validation.valid) {
-			return json({ success: false, error: validation.errors[0] }, { status: 400 });
+			return json({ success: false, error: validation.errors[0] }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const inviteLink = await db.getServerAccountInviteByToken(sanitizedToken);
 		if (!inviteLink) {
-			return json({ success: false, error: 'Invalid invite link' }, { status: 404 });
+			return json({ success: false, error: 'Invalid invite link' }, { status: HTTP.NOT_FOUND });
 		}
 
 		if (inviteLink.used_by || inviteLink.used_at) {
-			return json({ success: false, error: 'Invite link has already been used' }, { status: 400 });
+			return json({ success: false, error: 'Invite link has already been used' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		if (inviteLink.expires_at && isUtcSqlExpired(inviteLink.expires_at)) {
-			return json({ success: false, error: 'Invite link has expired' }, { status: 400 });
+			return json({ success: false, error: 'Invite link has expired' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const existingInScope = await db.getServerAccountByNormalizedEmailServer(validation.sanitizedEmail, inviteLink.server_id);
 		if (existingInScope) {
-			return json({ success: false, error: 'Email already registered for this server' }, { status: 400 });
+			return json({ success: false, error: 'Email already registered for this server' }, { status: HTTP.BAD_REQUEST });
 		}
 
-		const passwordHash = await bcrypt.hash(password, 12);
+		const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
 		const account = await db.createServerAccount({
 			server_id: inviteLink.server_id,
@@ -110,9 +79,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		await db.updateServerAccountInvite(inviteLink.id, { used_by: account.id, used_at: toMySQLDateTime(getCurrentDateTime()) ?? undefined });
 		await db
-			.createServerPanelLog(Number(inviteLink.server_id), { server_account_id: Number(account.id) }, 'account_invite', [
-				{ key: 'invite link', before: `${inviteLink.account_type}, open`, after: `${inviteLink.account_type}, used by ${account.username}` }
-			])
+			.createServerPanelLog(
+				Number(inviteLink.server_id),
+				{ server_account_id: Number(account.id) },
+				{
+					action: 'account_invite',
+					changes: [{ key: 'invite link', before: `${inviteLink.account_type}, open`, after: `${inviteLink.account_type}, used by ${account.username}` }]
+				}
+			)
 			.catch(() => null);
 
 		const sessionId = newSessionId();
@@ -134,7 +108,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
 		);
-	} catch (error: any) {
-		return json({ success: false, error: error.message }, { status: 500 });
+	} catch (error) {
+		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

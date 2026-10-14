@@ -3,18 +3,13 @@ import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { DASHBOARD_PATH, adminServerSectionPath } from '$lib/frontend/redirect.js';
 import { isUtcSqlExpired } from '$lib/utils/index.js';
-
-function maskEmail(email: string) {
-	const at = email.indexOf('@');
-	if (at <= 0) return email.slice(0, 3) + '***';
-	const local = email.slice(0, at);
-	const domain = email.slice(at + 1);
-	const prefix = local.slice(0, 3);
-	return `${prefix}***@${domain}`;
-}
+import { HTTP } from '$lib/http.js';
+import { maskEmail } from '$lib/accounts.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user.authenticated) redirect(302, '/login');
+	if (!locals.user.authenticated) {
+		redirect(HTTP.FOUND, '/login');
+	}
 	const serverId = Number(params.serverId);
 
 	if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== serverId) {
@@ -22,21 +17,23 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 		const targetBot = ob ?? fallback;
 		if (targetBot != null) {
-			redirect(302, adminServerSectionPath(targetBot, locals.user.server_id, 'accounts'));
+			redirect(HTTP.FOUND, adminServerSectionPath(targetBot, locals.user.server_id, 'accounts'));
 		}
-		redirect(302, DASHBOARD_PATH);
+		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
 	const isSuperadmin = locals.user.account_source === 'accounts';
 
-	const accounts = rawAccounts.map((a: any) => {
+	const accounts = rawAccounts.map((a) => {
 		const base = { ...a, password_hash: undefined };
-		if (isSuperadmin) return base;
+		if (isSuperadmin) {
+			return base;
+		}
 		return { ...base, email: typeof a.email === 'string' ? maskEmail(a.email) : a.email, ip_address: null };
 	});
 
-	const openInvites = (invites as any[]).filter((i) => i.used_by == null && !i.used_at && !(i.expires_at && isUtcSqlExpired(i.expires_at)));
+	const openInvites = invites.filter((i) => i.used_by == null && !i.used_at && !(i.expires_at && isUtcSqlExpired(i.expires_at)));
 
 	return { accounts, invites: openInvites, serverId, botId: params.id, user: locals.user };
 };

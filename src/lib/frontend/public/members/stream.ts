@@ -22,7 +22,7 @@ const POLL_MS = 3_000;
 
 async function fetchMembers(serverId: number): Promise<PublicMembersStreamPayload> {
 	const disguisedIds = new Set((await getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
-	const members = ((await getServerMembersList(serverId)) ?? []).filter((m: any) => !disguisedIds.has(Number(m.id)));
+	const members = ((await getServerMembersList(serverId)) ?? []).filter((m) => !disguisedIds.has(Number(m.id)));
 	return { members: await attachMemberThemes(serverId, members), updated_at: Date.now() };
 }
 
@@ -42,33 +42,47 @@ export function subscribePublicMembersList(serverId: number, fn: Listener): () =
 	if (!state.timer) {
 		state.timer = setInterval(async () => {
 			const current = streams.get(serverId);
-			if (!current || current.listeners.size === 0) return;
+			if (!current || current.listeners.size === 0) {
+				return;
+			}
 			try {
 				const payload = await fetchMembers(serverId);
 				const json = JSON.stringify(payload);
-				if (json === current.lastJson) return;
+				if (json === current.lastJson) {
+					return;
+				}
 				current.lastJson = json;
-				for (const l of current.listeners) l(payload);
+				for (const l of current.listeners) {
+					l(payload);
+				}
 			} catch (_) {}
 		}, POLL_MS);
 
 		(async () => {
 			const current = streams.get(serverId);
-			if (!current || current.listeners.size === 0) return;
+			if (!current || current.listeners.size === 0) {
+				return;
+			}
 			try {
 				const payload = await fetchMembers(serverId);
 				current.lastJson = JSON.stringify(payload);
-				for (const l of current.listeners) l(payload);
+				for (const l of current.listeners) {
+					l(payload);
+				}
 			} catch (_) {}
 		})();
 	}
 
 	return () => {
 		const current = streams.get(serverId);
-		if (!current) return;
+		if (!current) {
+			return;
+		}
 		current.listeners.delete(fn);
 		if (current.listeners.size === 0) {
-			if (current.timer) clearInterval(current.timer);
+			if (current.timer) {
+				clearInterval(current.timer);
+			}
 			streams.delete(serverId);
 		}
 	};

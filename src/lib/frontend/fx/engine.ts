@@ -1,4 +1,5 @@
-import { effectPalette, familySalt, mulberry32, normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { effectPalette, familySalt, normalizeEffect, normalizeSeed } from '$lib/effects.js';
+import { mulberry32 } from '$lib/utils/random.js';
 
 export type FxVariant = {
 	seed: number;
@@ -27,6 +28,7 @@ export type FxScene = {
 	rnd: () => number;
 	t: number;
 	out?: number;
+	[extra: string]: unknown;
 };
 
 export type FxProgram = {
@@ -41,7 +43,9 @@ const HEX = /^#([0-9a-f]{6})$/i;
 
 function hueOf(hex: string): [number, number, number] {
 	const m = HEX.exec(hex);
-	if (!m) return [24, 90, 55];
+	if (!m) {
+		return [24, 90, 55];
+	}
 	const int = parseInt(m[1], 16);
 	const r = ((int >> 16) & 255) / 255;
 	const g = ((int >> 8) & 255) / 255;
@@ -50,12 +54,11 @@ function hueOf(hex: string): [number, number, number] {
 	const min = Math.min(r, g, b);
 	const l = (max + min) / 2;
 	const d = max - min;
-	if (d < 0.06) return [0, 0, l * 100];
+	if (d < 0.06) {
+		return [0, 0, l * 100];
+	}
 	const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-	let h: number;
-	if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-	else if (max === g) h = ((b - r) / d + 2) / 6;
-	else h = ((r - g) / d + 4) / 6;
+	const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) / 6 : max === g ? ((b - r) / d + 2) / 6 : ((r - g) / d + 4) / 6;
 	return [h * 360, s * 100, l * 100];
 }
 
@@ -115,7 +118,9 @@ export function runScene(canvas: HTMLCanvasElement, program: FxProgram, scene: F
 	const interval = 1000 / fps;
 	const tick = (now: number) => {
 		raf = requestAnimationFrame(tick);
-		if (now - last < interval) return;
+		if (now - last < interval) {
+			return;
+		}
 		last = now;
 		scene.t += 1;
 		program.frame(scene);
@@ -134,9 +139,11 @@ export function blit(s: FxScene) {
 }
 
 export function plot(s: FxScene, x: number, y: number, r: number, g: number, b: number, a: number) {
-	if (x < 0 || y < 0 || x >= s.w || y >= s.h) return;
+	if (x < 0 || y < 0 || x >= s.w || y >= s.h) {
+		return;
+	}
 	const i = ((y | 0) * s.w + (x | 0)) * 4;
-	const px = s.px;
+	const { px } = s;
 	const na = a * 255;
 	px[i] = Math.min(255, px[i] + r * a);
 	px[i + 1] = Math.min(255, px[i + 1] + g * a);
@@ -156,11 +163,21 @@ export function hsl(h: number, s: number, l: number): [number, number, number] {
 	const p = 2 * ll - q;
 	const f = (t: number) => {
 		let x = t;
-		if (x < 0) x += 1;
-		if (x > 1) x -= 1;
-		if (x < 1 / 6) return p + (q - p) * 6 * x;
-		if (x < 1 / 2) return q;
-		if (x < 2 / 3) return p + (q - p) * (2 / 3 - x) * 6;
+		if (x < 0) {
+			x += 1;
+		}
+		if (x > 1) {
+			x -= 1;
+		}
+		if (x < 1 / 6) {
+			return p + (q - p) * 6 * x;
+		}
+		if (x < 1 / 2) {
+			return q;
+		}
+		if (x < 2 / 3) {
+			return p + (q - p) * (2 / 3 - x) * 6;
+		}
 		return p;
 	};
 	return [f(hh + 1 / 3) * 255, f(hh) * 255, f(hh - 1 / 3) * 255];
@@ -177,21 +194,27 @@ export function stamp(
 	a: number,
 	squash = 1
 ) {
-	if (a <= 0.01) return;
+	if (a <= 0.01) {
+		return;
+	}
 	const ox = cx - (m.w * squash) / 2;
 	const oy = cy - m.h / 2;
 	for (let y = 0; y < m.h; y++) {
 		for (let x = 0; x < m.w; x++) {
-			if (!m.bits[y * m.w + x]) continue;
+			if (!m.bits[y * m.w + x]) {
+				continue;
+			}
 			plot(s, ox + x * squash, oy + y, r, g, b, a);
 		}
 	}
 }
 
 export function paint(s: FxScene, x: number, y: number, r: number, g: number, b: number, a: number) {
-	if (x < 0 || y < 0 || x >= s.w || y >= s.h || a <= 0) return;
+	if (x < 0 || y < 0 || x >= s.w || y >= s.h || a <= 0) {
+		return;
+	}
 	const i = ((y | 0) * s.w + (x | 0)) * 4;
-	const px = s.px;
+	const { px } = s;
 	const k = 1 - a;
 	px[i] = r * a + px[i] * k;
 	px[i + 1] = g * a + px[i + 1] * k;
@@ -200,7 +223,9 @@ export function paint(s: FxScene, x: number, y: number, r: number, g: number, b:
 }
 
 export function edge(v: number, lo: number, hi: number, m: number) {
-	if (m <= 0) return 1;
+	if (m <= 0) {
+		return 1;
+	}
 	return Math.max(0, Math.min(1, Math.min((v - lo) / m, (hi - v) / m)));
 }
 
@@ -209,7 +234,7 @@ export function backdrop(s: FxScene, r: number, g: number, b: number, rim: numbe
 	const cy = s.h * 0.5;
 	const rx = s.w * 0.5;
 	const ry = s.h * 0.5;
-	const ph = ((s as any).__gph ??= [s.v.seed % 6.28, (s.v.seed * 1.7) % 6.28]) as number[];
+	const ph = (s.__gph ??= [s.v.seed % 6.28, (s.v.seed * 1.7) % 6.28]) as number[];
 	for (let y = 0; y < s.h; y++) {
 		for (let x = 0; x < s.w; x++) {
 			const d = Math.min(1, Math.hypot((x - cx) / rx, (y - cy) / ry));

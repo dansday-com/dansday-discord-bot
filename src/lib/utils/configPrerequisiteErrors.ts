@@ -5,12 +5,12 @@ const MAIN = 'Configuration → Main';
 export function collectMainAppearanceIssues(mainSettingsRaw: unknown): string[] {
 	const { color, footer } = normalizeMainConfigForPanel(mainSettingsRaw);
 	const issues: string[] = [];
-	const colorOk = color.replace(/#/g, '').trim().length > 0;
-	if (!colorOk) {
+	const isColorOk = color.replace(/#/g, '').trim().length > 0;
+	if (!isColorOk) {
 		issues.push(`Set a default embed color under ${MAIN} (bot appearance).`);
 	}
-	const footerOk = footer.trim().length > 0;
-	if (!footerOk) {
+	const isFooterOk = footer.trim().length > 0;
+	if (!isFooterOk) {
 		issues.push(`Set a default embed footer under ${MAIN} (bot appearance).`);
 	}
 	return issues;
@@ -18,13 +18,19 @@ export function collectMainAppearanceIssues(mainSettingsRaw: unknown): string[] 
 
 export function mainAppearanceBlockingMessage(mainSettingsRaw: unknown): string | null {
 	const issues = collectMainAppearanceIssues(mainSettingsRaw);
-	if (issues.length === 0) return null;
-	if (issues.length === 1) return issues[0];
+	if (issues.length === 0) {
+		return null;
+	}
+	if (issues.length === 1) {
+		return issues[0];
+	}
 	return `Complete bot appearance under ${MAIN}: set default embed color and footer.`;
 }
 
 export function humanizeConfigPrerequisiteMessage(source: string | undefined | null): string {
-	if (source == null || source === '') return '';
+	if (source == null || source === '') {
+		return '';
+	}
 	const t = source.trim();
 	if (/default footer not configured/i.test(t)) {
 		return `Set a default embed footer under ${MAIN} (bot appearance).`;
@@ -59,10 +65,20 @@ export function messageFromBotWebhookPayload(body: unknown): string {
 	const det = typeof b.details === 'string' ? b.details.trim() : '';
 	const humanDet = humanizeConfigPrerequisiteMessage(det);
 	const humanErr = humanizeConfigPrerequisiteMessage(err);
-	if (humanDet) return humanDet;
-	if (humanErr) return humanErr;
-	if (det && err) return `${err}: ${det}`;
-	if (det) return det;
-	if (err) return err;
+	if (humanDet) {
+		return humanDet;
+	}
+	if (humanErr) {
+		return humanErr;
+	}
+	if (det && err) {
+		return `${err}: ${det}`;
+	}
+	if (det) {
+		return det;
+	}
+	if (err) {
+		return err;
+	}
 	return 'Request failed. Check that the bot is running and try again.';
 }

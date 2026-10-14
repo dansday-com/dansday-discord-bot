@@ -1,0 +1,2 @@
+export const WIKI_NAME_MAX_LENGTH = 64;
+export const WIKI_DESCRIPTION_MAX_LENGTH = 255;

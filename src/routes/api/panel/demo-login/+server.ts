@@ -3,15 +3,28 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { seedDemoSession } from '$lib/backend/demo/seedDemo.js';
 import { getClientIp, checkRateLimit, logger, makeSessionCookie, newSessionId, setSession } from '$lib/utils/index.js';
+import { HTTP } from '$lib/http.js';
+import { MINUTE_SECONDS, SECOND_MS } from '$lib/utils/time.js';
+import { CAPTCHA_LENGTH } from '$lib/accounts.js';
 
 const MAX_DEMO_LOGIN_ATTEMPTS = 5;
-const DEMO_SESSION_TTL_SECONDS = 60 * 10;
-const CAPTCHA_TTL_SECONDS = 60 * 2;
+const DEMO_SESSION_TTL_MINUTES = 10;
+const DEMO_SESSION_TTL_SECONDS = DEMO_SESSION_TTL_MINUTES * MINUTE_SECONDS;
+const CAPTCHA_TTL_MINUTES = 2;
+const CAPTCHA_TTL_SECONDS = CAPTCHA_TTL_MINUTES * MINUTE_SECONDS;
+const CAPTCHA_NOISE_LINES = 6;
+const CAPTCHA_ROTATION_JITTER_DEGREES = 18;
+const CAPTCHA_X_JITTER = 4;
+const CAPTCHA_Y_JITTER = 6;
+const CAPTCHA_NONCE_BYTES = 16;
+const CAPTCHA_TOKEN_PARTS = 3;
+const GCM_IV_BYTES = 12;
+const DEMO_SLUG_BYTES = 6;
 
 function generateCaptchaAnswer(): string {
 	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 	let answer = '';
-	for (let i = 0; i < 6; i++) {
+	for (let i = 0; i < CAPTCHA_LENGTH; i++) {
 		answer += chars[Math.floor(Math.random() * chars.length)];
 	}
 	return answer;
@@ -19,6 +32,10 @@ function generateCaptchaAnswer(): string {
 
 function escapeXml(s: string): string {
 	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function jitter(max: number): number {
+	return -max + Math.floor(Math.random() * (max * 2 + 1));
 }
 
 function renderCaptchaSvg(answer: string): string {
@@ -33,9 +50,9 @@ function renderCaptchaSvg(answer: string): string {
 	const y = 48;
 	const pieces = chars
 		.map((c, i) => {
-			const rot = -18 + Math.floor(Math.random() * 37);
-			const dx = -4 + Math.floor(Math.random() * 9);
-			const dy = -6 + Math.floor(Math.random() * 13);
+			const rot = jitter(CAPTCHA_ROTATION_JITTER_DEGREES);
+			const dx = jitter(CAPTCHA_X_JITTER);
+			const dy = jitter(CAPTCHA_Y_JITTER);
 			const x = x0 + i * step + dx;
 			const yy = y + dy;
 			return `<text x="${x}" y="${yy}" fill="${fg}" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="800" transform="rotate(${rot} ${x} ${yy})">${escapeXml(
@@ -44,7 +61,7 @@ function renderCaptchaSvg(answer: string): string {
 		})
 		.join('');
 
-	const lines = Array.from({ length: 6 })
+	const lines = Array.from({ length: CAPTCHA_NOISE_LINES })
 		.map(() => {
 			const x1 = Math.floor(Math.random() * w);
 			const y1 = Math.floor(Math.random() * h);
@@ -66,9 +83,9 @@ function makeCaptchaToken(answer: string, secret: string): string {
 	const payload = JSON.stringify({
 		answer,
 		iat: Date.now(),
-		nonce: randomBytes(16).toString('hex')
+		nonce: randomBytes(CAPTCHA_NONCE_BYTES).toString('hex')
 	});
-	const iv = randomBytes(12);
+	const iv = randomBytes(GCM_IV_BYTES);
 	const cipher = createCipheriv('aes-256-gcm', keyFromSecret(secret), iv);
 	const ct = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
 	const tag = cipher.getAuthTag();
@@ -77,7 +94,9 @@ function makeCaptchaToken(answer: string, secret: string): string {
 
 function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answer?: string } {
 	const parts = token.split('.');
-	if (parts.length !== 3) return { ok: false };
+	if (parts.length !== CAPTCHA_TOKEN_PARTS) {
+		return { ok: false };
+	}
 	const [ivB64, tagB64, ctB64] = parts;
 	try {
 		const iv = Buffer.from(ivB64, 'base64url');
@@ -87,8 +106,12 @@ function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answe
 		decipher.setAuthTag(tag);
 		const pt = Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
 		const payload = JSON.parse(pt) as { answer?: string; iat?: number };
-		if (!payload?.answer || typeof payload.iat !== 'number') return { ok: false };
-		if (Date.now() - payload.iat > CAPTCHA_TTL_SECONDS * 1000) return { ok: false };
+		if (!payload?.answer || typeof payload.iat !== 'number') {
+			return { ok: false };
+		}
+		if (Date.now() - payload.iat > CAPTCHA_TTL_SECONDS * SECOND_MS) {
+			return { ok: false };
+		}
 		return { ok: true, answer: payload.answer };
 	} catch (_) {
 		return { ok: false };
@@ -97,7 +120,9 @@ function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answe
 
 export const GET: RequestHandler = async () => {
 	const secret = process.env.SECRET;
-	if (!secret) return json({ error: 'Captcha is not configured.' }, { status: 500 });
+	if (!secret) {
+		return json({ error: 'Captcha is not configured.' }, { status: HTTP.INTERNAL_ERROR });
+	}
 	const answer = generateCaptchaAnswer();
 	const token = makeCaptchaToken(answer, secret);
 	const svg = renderCaptchaSvg(answer);
@@ -107,9 +132,9 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const ip = getClientIp(request);
-		const rateLimit = await checkRateLimit(ip, 'demo_login', MAX_DEMO_LOGIN_ATTEMPTS);
+		const rateLimit = await checkRateLimit(ip, 'demo_login', { maxAttempts: MAX_DEMO_LOGIN_ATTEMPTS });
 		if (!rateLimit.allowed) {
-			return json({ success: false, error: 'Too many demo login attempts. Please try again later.' }, { status: 429 });
+			return json({ success: false, error: 'Too many demo login attempts. Please try again later.' }, { status: HTTP.TOO_MANY_REQUESTS });
 		}
 
 		const body = await request.json().catch(() => ({}));
@@ -120,23 +145,23 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const secret = process.env.SECRET;
 		if (!secret) {
-			return json({ success: false, error: 'Captcha is not configured.' }, { status: 500 });
+			return json({ success: false, error: 'Captcha is not configured.' }, { status: HTTP.INTERNAL_ERROR });
 		}
 
 		if (!captcha_input || !captcha_token) {
-			return json({ success: false, error: 'Captcha is required.' }, { status: 400 });
+			return json({ success: false, error: 'Captcha is required.' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const verified = verifyCaptchaToken(captcha_token, secret);
 		if (!verified.ok || !verified.answer) {
-			return json({ success: false, error: 'Captcha expired. Please try again.' }, { status: 400 });
+			return json({ success: false, error: 'Captcha expired. Please try again.' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		if (captcha_input !== verified.answer) {
-			return json({ success: false, error: 'Incorrect captcha. Please try again.' }, { status: 400 });
+			return json({ success: false, error: 'Incorrect captcha. Please try again.' }, { status: HTTP.BAD_REQUEST });
 		}
 
-		const sessionSlug = `demo_${randomBytes(6).toString('hex')}`;
+		const sessionSlug = `demo_${randomBytes(DEMO_SLUG_BYTES).toString('hex')}`;
 		const seeded = await seedDemoSession(sessionSlug);
 
 		const sessionId = newSessionId();
@@ -156,11 +181,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		logger.log(`Demo login (IP: ${ip}) -> superadmin_account_id=${seeded.superadmin_account_id}, panel_slug=${sessionSlug}`);
 
 		return json({ success: true, message: 'Demo login successful' }, { headers: { 'Set-Cookie': makeSessionCookie(sessionId) } });
-	} catch (error: any) {
-		logger.log(`❌ Demo login error: ${error?.message || String(error)}`);
+	} catch (error) {
+		logger.log(`❌ Demo login error: ${(error as Error)?.message || String(error)}`);
 		try {
 			console.error(error);
 		} catch (_) {}
-		return json({ success: false, error: error.message }, { status: 500 });
+		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}
 };

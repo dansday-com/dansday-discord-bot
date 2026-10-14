@@ -24,27 +24,31 @@
 		disabled = false
 	}: Props = $props();
 
-	let open = $state(false);
+	let isOpen = $state(false);
 	let search = $state('');
 
 	const displayLabel = $derived(formatOption(value ?? 0));
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		if (!q) return values;
+		if (!q) {
+			return values;
+		}
 		return values.filter((v) => formatOption(v).toLowerCase().includes(q));
 	});
 
 	const titleId = $derived(id ? `${id}-number-picker-title` : undefined);
 
 	function openModal() {
-		if (disabled || values.length === 0) return;
+		if (disabled || values.length === 0) {
+			return;
+		}
 		search = '';
-		open = true;
+		isOpen = true;
 	}
 
 	function close() {
-		open = false;
+		isOpen = false;
 		search = '';
 	}
 
@@ -54,16 +58,22 @@
 	}
 
 	$effect(() => {
-		if (!open) return;
+		if (!isOpen) {
+			return;
+		}
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') close();
+			if (e.key === 'Escape') {
+				close();
+			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
 	$effect(() => {
-		if (disabled) open = false;
+		if (disabled) {
+			isOpen = false;
+		}
 	});
 </script>
 
@@ -84,14 +94,14 @@
 		onclick={openModal}
 		class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 		aria-haspopup="dialog"
-		aria-expanded={open}
+		aria-expanded={isOpen}
 	>
 		<span class="text-ash-100 min-w-0 truncate">{displayLabel}</span>
 		<i class={NUMERIC_SELECT_ACCENT.chevron}></i>
 	</button>
 </div>
 
-{#if open}
+{#if isOpen}
 	<div
 		use:scrollLocked
 		class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"

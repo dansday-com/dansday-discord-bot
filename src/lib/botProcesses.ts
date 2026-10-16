@@ -668,19 +668,38 @@ async function verifyOne(kind: BotProcessKind, row: BotProcessRow, scriptName: s
 	}
 }
 
+const ACTIVE_STATUSES = new Set(['running', 'starting', 'stopping']);
+const TRANSITION_STATUSES = new Set(['starting', 'stopping']);
+
+async function markLiveChildRunning(mapKey: string, row: BotProcessRow): Promise<void> {
+	const pid = botProcesses.get(mapKey)?.process?.pid ?? null;
+	const isRecorded = row.status === 'running' && row.process_id === pid;
+	if (isRecorded || TRANSITION_STATUSES.has(row.status ?? '')) {
+		return;
+	}
+	await updateBotStatus(row, { status: 'running', process_id: pid, uptime_started_at: getCurrentDateTime() });
+	emitBotStatus(mapKey, { status: 'running', process_id: pid, uptime_started_at: Date.now() });
+	logger.log(`♻️  Marked ${mapKey} running again (PID: ${pid})`);
+}
+
+async function verifyRow(kind: BotProcessKind, row: BotProcessRow, scriptName: string): Promise<void> {
+	const mapKey = botProcessMapKey(kind, row.id);
+	if (hasLiveChildProcess(mapKey)) {
+		await markLiveChildRunning(mapKey, row);
+		return;
+	}
+	if (ACTIVE_STATUSES.has(row.status ?? '')) {
+		await verifyOne(kind, row, scriptName);
+	}
+}
+
 export async function verifyBotStatuses() {
 	try {
-		const bots = await db.getAllBots();
-		for (const bot of bots) {
-			if (bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') {
-				await verifyOne('official', bot, 'officialbot.js');
-			}
+		for (const bot of await db.getAllBots()) {
+			await verifyRow('official', bot, 'officialbot.js');
 		}
-		const selfbots = await db.getAllSelfbots();
-		for (const sb of selfbots) {
-			if (sb.status === 'running' || sb.status === 'starting' || sb.status === 'stopping') {
-				await verifyOne('selfbot', sb, 'selfbot.js');
-			}
+		for (const sb of await db.getAllSelfbots()) {
+			await verifyRow('selfbot', sb, 'selfbot.js');
 		}
 	} catch (error) {
 		logger.log(`⚠️  Error verifying bot statuses: ${(error as Error).message}`);

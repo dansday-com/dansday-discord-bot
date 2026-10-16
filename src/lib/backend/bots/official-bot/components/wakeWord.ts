@@ -6,7 +6,8 @@ import { logger } from '../../../../utils/index.js';
 
 const MODEL_FILES = ['melspectrogram.onnx', 'embedding_model.onnx', 'hey_stupid.onnx'];
 const MODEL_DIR_SEARCH_DEPTH = 24;
-const DEFAULT_DETECT_THRESHOLD = 0.2;
+const DEFAULT_DETECT_THRESHOLD = 0.5;
+const DETECT_PATIENCE = 2;
 const WARM_TIMEOUT_MS = 15_000;
 
 function findModelDir() {
@@ -87,6 +88,7 @@ function getWorker() {
 				embPath: EMB_PATH,
 				wakePath: WAKE_PATH,
 				threshold: DETECT_THRESHOLD,
+				patience: DETECT_PATIENCE,
 				refractoryMs: REFRACTORY_MS,
 				debug: DEBUG_WAKE
 			}

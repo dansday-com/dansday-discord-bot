@@ -125,6 +125,26 @@ const LOOKUP_TIMEOUT_HINT =
 const WAKE_ACK_PROMPT =
 	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
 
+const DONE_ACCEPTED = {
+	ok: true,
+	next_step:
+		'You are muted now. Say nothing. The next wake phrase starts a new conversation: answer whoever woke you, and only call conversation_done again once that person says they are finished.'
+};
+
+const DONE_ALREADY_ASLEEP = { ok: true, next_step: 'You are already muted. Say nothing.' };
+
+const DONE_TOO_EARLY = {
+	ok: false,
+	reason: 'just_woken',
+	next_step: 'Someone just said the wake phrase and has not asked you anything yet, so this conversation has not ended. Say "yes?" and listen.'
+};
+
+const DONE_LOOKUP_RUNNING = {
+	ok: false,
+	reason: 'lookup_running',
+	next_step: 'A lookup is still running. Answer from its result first, then call conversation_done if they are finished.'
+};
+
 function splitForChat(text: string) {
 	const chunks = [];
 	let remaining = text;
@@ -248,7 +268,7 @@ When a lookup is running, say at most one short line about it, and only if you h
 The get_my_* tools only ever read the account of the person talking to you. Never call one to answer a question about somebody else. If they ask what another member has in their bag, their history or their tasks, say plainly that it is private to that member, and offer their public level, rank and roles instead.`;
 
 const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
-const SILENT_TOOLS = new Set(['leave_voice', 'conversation_done']);
+const SILENT_TOOLS = new Set(['leave_voice']);
 const LOOKUP_TOOLS = new Set([
 	'send_to_chat',
 	'search_wiki',
@@ -354,6 +374,8 @@ class VoiceSession {
 	private lockedSpeakerId = '';
 	private turnOwnerId = '';
 	private isAwake = false;
+	private wokeAt = 0;
+	private isAwaitingFirstTurn = false;
 	private isSelfMuted = false;
 	private muteTimer: ReturnType<typeof setTimeout> | null = null;
 	private muteRetryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -397,6 +419,10 @@ class VoiceSession {
 			this.lockedSpeakerId = speaker;
 		}
 
+		if (!wasAddressed) {
+			this.wokeAt = Date.now();
+			this.isAwaitingFirstTurn = true;
+		}
 		this.isAwake = true;
 		this.setSelfMute(false);
 		return wasAddressed;
@@ -404,12 +430,6 @@ class VoiceSession {
 
 	private readonly finishConversation = () => {
 		if (this.isClosed || this.isGoodbyePending) {
-			return;
-		}
-
-		if (this.lookupBusy()) {
-			logger.log('🔎 Voice AI ignoring done request, a lookup is still running');
-			this.keepAwakeForTool();
 			return;
 		}
 
@@ -673,6 +693,9 @@ class VoiceSession {
 		}
 		this.isTurnOpen = false;
 		this.turnOwnerId = '';
+		if (this.turnOpenedAt >= this.wokeAt) {
+			this.isAwaitingFirstTurn = false;
+		}
 		if (this.turnTimer) {
 			clearTimeout(this.turnTimer);
 			this.turnTimer = null;
@@ -1194,12 +1217,30 @@ class VoiceSession {
 	};
 
 	private readonly handleDoneRequest = () => {
+		if (!this.isAddressed()) {
+			logger.log('🚫 Voice AI ignoring done request while asleep');
+			return DONE_ALREADY_ASLEEP;
+		}
+		if (this.isAwaitingFirstTurn) {
+			logger.log(`🚫 Voice AI ignoring done request, ${this.nameOf(this.lockedSpeakerId) || 'nobody'} has not spoken since the wake phrase`);
+			return DONE_TOO_EARLY;
+		}
 		if (this.lockedSpeakerId && this.lastSpeakerId && this.lastSpeakerId !== this.lockedSpeakerId) {
 			logger.log(`🚫 Voice AI ignoring done request from ${this.nameOf(this.lastSpeakerId)} (talking with ${this.nameOf(this.lockedSpeakerId)})`);
-			return;
+			return {
+				ok: false,
+				reason: 'not_your_speaker',
+				next_step: `Only ${this.nameOf(this.lockedSpeakerId)} can end this conversation. Keep listening to them.`
+			};
+		}
+		if (this.lookupBusy()) {
+			logger.log('🔎 Voice AI ignoring done request, a lookup is still running');
+			this.keepAwakeForTool();
+			return DONE_LOOKUP_RUNNING;
 		}
 		logger.log(`✅ Voice AI done with ${this.nameOf(this.lockedSpeakerId) || 'this turn'}, releasing lock and muting`);
 		this.finishConversation();
+		return DONE_ACCEPTED;
 	};
 
 	private readonly handleLeaveRequest = () => {
@@ -1223,23 +1264,15 @@ class VoiceSession {
 	};
 
 	private readonly handleToolCall = (calls: LiveToolCall[]) => {
-		const responses = calls
-			.filter((call) => !LOOKUP_TOOLS.has(call.name) && !SILENT_TOOLS.has(call.name))
-			.map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
-
-		this.sendToolResponses(responses);
-
 		for (const call of calls.filter((c) => LOOKUP_TOOLS.has(c.name))) {
 			this.startLookup(call);
 		}
 
-		if (calls.some((call) => call.name === 'conversation_done')) {
-			if (!this.isAddressed()) {
-				logger.log('🚫 Voice AI ignoring done request while asleep');
-				return;
-			}
-			this.handleDoneRequest();
-		}
+		const responses = calls
+			.filter((call) => !LOOKUP_TOOLS.has(call.name) && !SILENT_TOOLS.has(call.name))
+			.map((call) => this.toolResponse(call, call.name === 'conversation_done' ? this.handleDoneRequest() : { ok: true }));
+
+		this.sendToolResponses(responses);
 
 		if (calls.some((call) => call.name === 'leave_voice')) {
 			this.handleLeaveRequest();
@@ -1300,7 +1333,7 @@ class VoiceSession {
 			this.isModelThinking = isThinking;
 			logger.log(isThinking ? '🧠 Voice AI reasoning in the background' : '🧠 Voice AI finished reasoning');
 		}
-		if (isThinking) {
+		if (isThinking && this.isAddressed()) {
 			this.keepAwakeForTool();
 		}
 	};

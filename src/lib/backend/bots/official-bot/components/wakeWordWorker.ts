@@ -1,7 +1,8 @@
 import type { InferenceSession } from 'onnxruntime-node';
 import { parentPort, workerData } from 'node:worker_threads';
+import { SECOND_MS } from '../../../../utils/time.js';
 
-const { melPath, embPath, wakePath, threshold, refractoryMs, debug } = workerData;
+const { melPath, embPath, wakePath, threshold, patience, refractoryMs, debug } = workerData;
 
 const SAMPLE_RATE = 16000;
 const STEP_SAMPLES = 1280;
@@ -24,6 +25,11 @@ const SCORE_LOG_DECIMALS = 5;
 const LEVEL_RMS_SMOOTHING = 0.05;
 const MEL_SCALE_DIVISOR = 10;
 const PREDICTION_HISTORY = 30;
+const GAP_MS = 200;
+const GAP_CHECK_MS = 100;
+const GAP_FILL_MS = 1000;
+const GAP_FILL_SAMPLES = (SAMPLE_RATE * GAP_FILL_MS) / SECOND_MS;
+const PRIME_MEL_STEPS = Math.ceil(MEL_WINDOW_FRAMES / MEL_STRIDE_FRAMES);
 
 let sessions: {
 	mel: InferenceSession;
@@ -70,14 +76,18 @@ type Detector = {
 	peakScore: number;
 	allTimePeak: number;
 	lastScore: number;
+	streak: number;
 	inferences: number;
 	levelRms: number;
 	melMin: number;
 	melMax: number;
+	isPrimed: boolean;
+	isGapFilled: boolean;
 };
+type QueuedAudio = { userId: string; samples: Float32Array; isSpeech: boolean };
 
 const detectors = new Map<string, Detector>();
-let queue: Array<{ userId: string; samples: Float32Array }> = [];
+let queue: QueuedAudio[] = [];
 let isDraining = false;
 let lastDebugAt = 0;
 let framesReceived = 0;
@@ -90,7 +100,7 @@ function reportStats() {
 	);
 	post({
 		type: 'debug',
-		text: `threshold=${threshold} users=${detectors.size} frames=${framesReceived} steps=${stepsProcessed} queued=${queue.length} ${parts.join(' ')}`
+		text: `threshold=${threshold} patience=${patience} users=${detectors.size} frames=${framesReceived} steps=${stepsProcessed} queued=${queue.length} ${parts.join(' ')}`
 	});
 	for (const state of detectors.values()) {
 		state.peakScore = 0;
@@ -122,14 +132,28 @@ function createDetector(): Detector {
 		peakScore: 0,
 		allTimePeak: 0,
 		lastScore: 0,
+		streak: 0,
 		inferences: 0,
 		levelRms: 0,
 		melMin: 0,
-		melMax: 0
+		melMax: 0,
+		isPrimed: false,
+		isGapFilled: false
 	};
 }
 
+function detectorFor(userId: string) {
+	let state = detectors.get(userId);
+	if (!state) {
+		state = createDetector();
+		detectors.set(userId, state);
+	}
+	return state;
+}
+
 function resetDetector(state: Detector) {
+	state.isPrimed = false;
+	state.streak = 0;
 	state.rawFilled = 0;
 	state.remainder = new Float32Array(0);
 	state.accumulated = 0;
@@ -248,15 +272,10 @@ async function classify(active: NonNullable<typeof sessions>, state: Detector, o
 	return (out[active.wake.outputNames[0]].data as Float32Array)[0];
 }
 
-function ingest(userId: string, incomingSamples: Float32Array) {
-	let state = detectors.get(userId);
-	if (!state) {
-		state = createDetector();
-		detectors.set(userId, state);
+function ingest(state: Detector, { samples: incomingSamples, isSpeech }: QueuedAudio) {
+	if (isSpeech) {
+		trackLevel(state, incomingSamples);
 	}
-
-	state.lastSeenAt = Date.now();
-	trackLevel(state, incomingSamples);
 
 	let x = incomingSamples;
 	if (state.remainder.length) {
@@ -282,8 +301,6 @@ function ingest(userId: string, incomingSamples: Float32Array) {
 		state.accumulated += x.length;
 		appendRaw(state, x);
 	}
-
-	return state;
 }
 
 async function processUser(active: NonNullable<typeof sessions>, userId: string, state: Detector) {
@@ -302,27 +319,19 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 		state.features.splice(0, state.features.length - FEATURE_BUFFER_MAX_ROWS);
 	}
 
-	let best: number | null = null;
 	for (let i = steps - 1; i >= 0; i--) {
 		const score = await classify(active, state, i);
-		if (score === null) {
-			continue;
-		}
-		if (best === null || score > best) {
-			best = score;
+		if (score !== null) {
+			scoreStep(userId, state, score);
 		}
 	}
-	if (best === null) {
-		return;
-	}
+}
 
-	stepsProcessed += steps;
+function scoreStep(userId: string, state: Detector, rawScore: number) {
+	stepsProcessed++;
 	state.inferences++;
 
-	let score = best;
-	if (state.predictions.length < PREDICTION_WARMUP) {
-		score = 0;
-	}
+	const score = state.predictions.length < PREDICTION_WARMUP ? 0 : rawScore;
 	state.predictions.push(score);
 	if (state.predictions.length > PREDICTION_HISTORY) {
 		state.predictions.shift();
@@ -336,9 +345,12 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 		state.allTimePeak = score;
 	}
 
+	state.streak = score >= threshold ? state.streak + 1 : 0;
+
 	const now = Date.now();
-	if (score >= threshold && now - state.lastDetectionAt > refractoryMs) {
+	if (state.streak >= patience && now - state.lastDetectionAt > refractoryMs) {
 		state.lastDetectionAt = now;
+		state.streak = 0;
 		state.predictions.splice(0);
 		for (let i = 0; i < PREDICTION_WARMUP; i++) {
 			state.predictions.push(0);
@@ -346,6 +358,33 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 		post({ type: 'detected', userId, score });
 	}
 }
+
+async function primeDetector(active: NonNullable<typeof sessions>, userId: string, state: Detector) {
+	state.isPrimed = true;
+	const steps = PRIME_MEL_STEPS + active.wakeInputRows + PREDICTION_WARMUP;
+	for (let i = 0; i < steps; i++) {
+		ingest(state, { userId, samples: new Float32Array(STEP_SAMPLES), isSpeech: false });
+		await processUser(active, userId, state);
+	}
+}
+
+function fillGaps() {
+	const now = Date.now();
+	let hasGap = false;
+	for (const [userId, state] of detectors) {
+		if (state.isGapFilled || now - state.lastSeenAt < GAP_MS) {
+			continue;
+		}
+		state.isGapFilled = true;
+		queue.push({ userId, samples: new Float32Array(GAP_FILL_SAMPLES), isSpeech: false });
+		hasGap = true;
+	}
+	if (hasGap) {
+		drain();
+	}
+}
+
+setInterval(fillGaps, GAP_CHECK_MS).unref();
 
 async function drain() {
 	if (isDraining) {
@@ -360,24 +399,25 @@ async function drain() {
 			const batch = queue;
 			queue = [];
 
-			const byUser = new Map<string, Float32Array[]>();
+			const byUser = new Map<string, QueuedAudio[]>();
 			for (const item of batch) {
 				const list = byUser.get(item.userId);
 				if (list) {
-					list.push(item.samples);
+					list.push(item);
 				} else {
-					byUser.set(item.userId, [item.samples]);
+					byUser.set(item.userId, [item]);
 				}
 			}
 
 			for (const [userId, chunks] of byUser) {
-				let state: Detector | null = null;
-				for (const samples of chunks) {
-					state = ingest(userId, samples);
+				const state = detectorFor(userId);
+				if (!state.isPrimed) {
+					await primeDetector(active, userId, state);
 				}
-				if (state) {
-					await processUser(active, userId, state);
+				for (const chunk of chunks) {
+					ingest(state, chunk);
 				}
+				await processUser(active, userId, state);
 			}
 		}
 
@@ -404,7 +444,10 @@ async function drain() {
 parentPort?.on('message', (msg) => {
 	if (msg?.type === 'audio') {
 		framesReceived++;
-		queue.push({ userId: msg.userId, samples: new Float32Array(msg.samples) });
+		const state = detectorFor(msg.userId);
+		state.lastSeenAt = Date.now();
+		state.isGapFilled = false;
+		queue.push({ userId: msg.userId, samples: new Float32Array(msg.samples), isSpeech: true });
 		drain();
 		return;
 	}

@@ -1,4 +1,4 @@
-FROM node:25.8.1-slim AS builder
+FROM node:26.12.1-slim AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN npx tsc -p tsconfig.bots.json || true
 
 RUN npm prune --production
 
-FROM node:25.8.1-slim AS runner
+FROM node:26.12.1-slim AS runner
 
 WORKDIR /app
 

@@ -6,7 +6,7 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, numberFieldOr, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
@@ -26,7 +26,7 @@ function parseTowerBody(body: Record<string, unknown>): TowerBody | string {
 	if (typeof card !== 'string') {
 		return 'Invalid card';
 	}
-	const doorIndex = door == null ? 0 : typeof door === 'number' || typeof door === 'string' ? Number(door) || 0 : Number.NaN;
+	const doorIndex = numberFieldOr(door, 0);
 	if (!Number.isInteger(doorIndex)) {
 		return 'Invalid door';
 	}

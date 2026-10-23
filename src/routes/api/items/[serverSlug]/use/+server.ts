@@ -5,7 +5,7 @@ import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServ
 import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, numberField, readJsonObject } from '$lib/http.js';
 
 type UseBody = { card: string; memberItemId: number; targetDiscordId: string | null };
 
@@ -20,7 +20,7 @@ function parseUseBody(body: Record<string, unknown>): UseBody | string {
 	if (typeof card !== 'string') {
 		return 'Invalid card';
 	}
-	const memberItemId = typeof member_item_id === 'number' || typeof member_item_id === 'string' ? Number(member_item_id) : Number.NaN;
+	const memberItemId = numberField(member_item_id);
 	if (!Number.isInteger(memberItemId) || memberItemId <= 0) {
 		return 'Invalid member_item_id';
 	}

@@ -6,7 +6,7 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, numberField, numberFieldOr, readJsonObject } from '$lib/http.js';
 
 type ClaimBody = { card: string; slot: number; period: 'daily' | 'weekly'; tzOffsetMin: number };
 
@@ -21,11 +21,11 @@ function parseClaimBody(body: Record<string, unknown>): ClaimBody | string {
 	if (typeof card !== 'string') {
 		return 'Invalid card';
 	}
-	const slotIndex = typeof slot === 'number' || typeof slot === 'string' ? Number(slot) : Number.NaN;
+	const slotIndex = numberField(slot);
 	if (!Number.isInteger(slotIndex) || slotIndex < 0) {
 		return 'Invalid slot';
 	}
-	const tzOffsetMin = tz_offset == null ? 0 : typeof tz_offset === 'number' || typeof tz_offset === 'string' ? Number(tz_offset) || 0 : Number.NaN;
+	const tzOffsetMin = numberFieldOr(tz_offset, 0);
 	if (!Number.isFinite(tzOffsetMin)) {
 		return 'Invalid tz_offset';
 	}

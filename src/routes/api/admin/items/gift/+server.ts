@@ -4,15 +4,10 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, positiveIntegerField, readJsonObject } from '$lib/http.js';
 
 const GIFT_SEARCH_LIMIT = 50;
 const MAX_GIFT_QUANTITY = 99;
-
-function positiveId(value: unknown): number | null {
-	const id = Number(value);
-	return Number.isInteger(id) && id > 0 ? id : null;
-}
 
 function isSuperadmin(locals: App.Locals) {
 	return locals.user.authenticated && locals.user.account_type === 'superadmin' && locals.user.account_source === 'accounts';
@@ -53,8 +48,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const body = await readJsonObject(request);
-	const itemId = positiveId(body.item_id);
-	const memberId = positiveId(body.member_id);
+	const itemId = positiveIntegerField(body.item_id);
+	const memberId = positiveIntegerField(body.member_id);
 	if (itemId === null || memberId === null) {
 		return json({ success: false, error: 'item_id and member_id are required' }, { status: HTTP.BAD_REQUEST });
 	}

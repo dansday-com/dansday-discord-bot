@@ -7,7 +7,7 @@ import { MIN_BUY_XP } from '$lib/backend/public/market/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, numberField, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
@@ -32,7 +32,7 @@ function parseMarketBuyBody(body: Record<string, unknown>): MarketBuyBody | stri
 	if (typeof asset_id !== 'string' && typeof asset_id !== 'number') {
 		return 'Invalid asset_id';
 	}
-	const xpAmount = typeof xp === 'number' || typeof xp === 'string' ? Number(xp) : Number.NaN;
+	const xpAmount = numberField(xp);
 	if (!Number.isFinite(xpAmount)) {
 		return 'Invalid xp';
 	}

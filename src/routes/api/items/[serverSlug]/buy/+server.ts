@@ -5,7 +5,7 @@ import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServ
 import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, numberField, numberFieldOr, readJsonObject } from '$lib/http.js';
 import { BAG_CAPACITY } from '$lib/items.js';
 
 type BuyBody = { card: string; itemId: number; quantity: number; tzOffset: number };
@@ -21,15 +21,15 @@ function parseBuyBody(body: Record<string, unknown>): BuyBody | string {
 	if (typeof card !== 'string') {
 		return 'Invalid card';
 	}
-	const itemId = typeof item_id === 'number' || typeof item_id === 'string' ? Number(item_id) : Number.NaN;
+	const itemId = numberField(item_id);
 	if (!Number.isInteger(itemId) || itemId <= 0) {
 		return 'Invalid item_id';
 	}
-	const quantityCount = quantity == null ? 1 : typeof quantity === 'number' || typeof quantity === 'string' ? Number(quantity) || 1 : Number.NaN;
+	const quantityCount = numberFieldOr(quantity, 1);
 	if (!Number.isInteger(quantityCount) || quantityCount <= 0) {
 		return 'Invalid quantity';
 	}
-	const tzOffset = tz_offset == null ? 0 : typeof tz_offset === 'number' || typeof tz_offset === 'string' ? Number(tz_offset) || 0 : Number.NaN;
+	const tzOffset = numberFieldOr(tz_offset, 0);
 	if (!Number.isFinite(tzOffset)) {
 		return 'Invalid tz_offset';
 	}

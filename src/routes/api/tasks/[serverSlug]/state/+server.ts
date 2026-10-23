@@ -6,23 +6,7 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken } from '$lib/backend/public/items/index.js';
 import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
 import { HTTP, readJsonObject } from '$lib/http.js';
-
-type CardBody = { card: string; tzOffsetMin: number };
-
-function parseCardBody(body: Record<string, unknown>): CardBody | string {
-	const { card, tz_offset } = body;
-	if (!card) {
-		return 'Missing fields';
-	}
-	if (typeof card !== 'string') {
-		return 'Invalid card';
-	}
-	const tzOffsetMin = tz_offset == null ? 0 : typeof tz_offset === 'number' || typeof tz_offset === 'string' ? Number(tz_offset) || 0 : Number.NaN;
-	if (!Number.isFinite(tzOffsetMin)) {
-		return 'Invalid tz_offset';
-	}
-	return { card, tzOffsetMin };
-}
+import { parseTaskCardBody } from '$lib/tasks.js';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -38,7 +22,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Tasks are disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const parsed = parseCardBody(await readJsonObject(request));
+	const parsed = parseTaskCardBody(await readJsonObject(request));
 	if (typeof parsed === 'string') {
 		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}

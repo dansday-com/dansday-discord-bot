@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger, attempt } from '$lib/utils/index.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, positiveIntegerField, readJsonObject } from '$lib/http.js';
 
 function panelIdFor(locals: App.Locals): number | null {
 	if (!locals.user.authenticated) {
@@ -59,8 +59,8 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const { selfbot_id } = await readJsonObject(request);
-	const selfbotId = typeof selfbot_id === 'number' || typeof selfbot_id === 'string' ? Number(selfbot_id) : 0;
-	if (!Number.isInteger(selfbotId) || selfbotId <= 0) {
+	const selfbotId = positiveIntegerField(selfbot_id);
+	if (selfbotId === null) {
 		return json({ success: false, error: 'selfbot_id required' }, { status: HTTP.BAD_REQUEST });
 	}
 

@@ -6,7 +6,7 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, numberField, numberFieldOr, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
@@ -25,11 +25,11 @@ function parseMarketSellBody(body: Record<string, unknown>): MarketSellBody | st
 	if (typeof card !== 'string') {
 		return 'Invalid card';
 	}
-	const positionId = typeof position_id === 'number' || typeof position_id === 'string' ? Number(position_id) : Number.NaN;
+	const positionId = numberField(position_id);
 	if (!Number.isInteger(positionId) || positionId <= 0) {
 		return 'Invalid position_id';
 	}
-	const xp = amount == null ? 0 : typeof amount === 'number' || typeof amount === 'string' ? Number(amount) || 0 : Number.NaN;
+	const xp = numberFieldOr(amount, 0);
 	if (!Number.isFinite(xp)) {
 		return 'Invalid amount';
 	}

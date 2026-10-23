@@ -32,37 +32,37 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 type AiBody = Record<string, unknown>;
 
-function optionalText(value: unknown): string | null {
+function trimmedText(value: unknown): string | null {
 	return typeof value === 'string' ? value.trim() || null : null;
 }
 
 function keyOrExisting(value: unknown, existing: string | null): string | null {
-	return optionalText(value) ?? existing;
+	return trimmedText(value) ?? existing;
 }
 
 function readAiInput(body: AiBody, existing: AiInput): AiInput {
 	return {
 		enabled: body.enabled === true,
-		api_url: optionalText(body.api_url),
+		api_url: trimmedText(body.api_url),
 		api_key: keyOrExisting(body.api_key, existing.api_key),
-		model: optionalText(body.model),
-		system_prompt: optionalText(body.system_prompt),
+		model: trimmedText(body.model),
+		system_prompt: trimmedText(body.system_prompt),
 		reasoning: (typeof body.reasoning === 'string' ? body.reasoning : 'none') as AiReasoning,
 		voice_enabled: body.voice_enabled === true,
-		voice_model: optionalText(body.voice_model),
-		voice_name: optionalText(body.voice_name),
+		voice_model: trimmedText(body.voice_model),
+		voice_name: trimmedText(body.voice_name),
 		voice_thinking: (typeof body.voice_thinking === 'string' ? body.voice_thinking : 'low') as AiVoiceThinking,
 		voice_api_key: keyOrExisting(body.voice_api_key, existing.voice_api_key),
-		voice_system_prompt: optionalText(body.voice_system_prompt),
-		search_api_url: optionalText(body.search_api_url),
+		voice_system_prompt: trimmedText(body.voice_system_prompt),
+		search_api_url: trimmedText(body.search_api_url),
 		search_api_key: keyOrExisting(body.search_api_key, existing.search_api_key),
-		search_model: optionalText(body.search_model),
-		fetch_api_url: optionalText(body.fetch_api_url),
+		search_model: trimmedText(body.search_model),
+		fetch_api_url: trimmedText(body.fetch_api_url),
 		fetch_api_key: keyOrExisting(body.fetch_api_key, existing.fetch_api_key),
-		fetch_model: optionalText(body.fetch_model),
-		image_api_url: optionalText(body.image_api_url),
+		fetch_model: trimmedText(body.fetch_model),
+		image_api_url: trimmedText(body.image_api_url),
 		image_api_key: keyOrExisting(body.image_api_key, existing.image_api_key),
-		image_model: optionalText(body.image_model)
+		image_model: trimmedText(body.image_model)
 	};
 }
 

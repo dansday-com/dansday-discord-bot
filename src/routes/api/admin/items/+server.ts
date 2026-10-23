@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { EFFECT_TYPE_IDS } from '$lib/items.js';
-import { HTTP, readJsonObject } from '$lib/http.js';
+import { HTTP, optionalText, positiveIntegerField, readJsonObject } from '$lib/http.js';
 
 type FieldCheck = { field: string; isValid: (value: unknown) => boolean };
 
@@ -33,15 +33,6 @@ const ITEM_FIELD_CHECKS: FieldCheck[] = [
 function itemFieldError(body: Record<string, unknown>): string | null {
 	const invalid = ITEM_FIELD_CHECKS.find(({ field, isValid }) => !isValid(body[field]));
 	return invalid ? `${invalid.field} has the wrong type` : null;
-}
-
-function itemId(value: unknown): number | null {
-	const id = Number(value);
-	return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-function optionalText(value: unknown): string | null {
-	return typeof value === 'string' && value ? value : null;
 }
 
 function isSuperadmin(locals: App.Locals) {
@@ -110,7 +101,7 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 		return json({ success: false, error: 'Unauthorized' }, { status: HTTP.UNAUTHORIZED });
 	}
 	const body = await readJsonObject(request);
-	const id = itemId(body.id);
+	const id = positiveIntegerField(body.id);
 	if (id === null) {
 		return json({ success: false, error: 'id required' }, { status: HTTP.BAD_REQUEST });
 	}
@@ -153,7 +144,7 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 	if (!isSuperadmin(locals)) {
 		return json({ success: false, error: 'Unauthorized' }, { status: HTTP.UNAUTHORIZED });
 	}
-	const id = itemId((await readJsonObject(request)).id);
+	const id = positiveIntegerField((await readJsonObject(request)).id);
 	if (id === null) {
 		return json({ success: false, error: 'id required' }, { status: HTTP.BAD_REQUEST });
 	}

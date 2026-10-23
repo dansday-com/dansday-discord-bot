@@ -11,21 +11,99 @@ Rules:
 - A post-commit git hook rebuilds the graph on every commit, so the graph is current as of the last commit. Run `graphify update .` only to pick up uncommitted edits (AST-only, no API cost).
 - `.svelte` files log "syntax errors" during extraction — expected, not breakage: tree-sitter parses the JS grammar and cannot read the markup layer, so a regex fallback rescues the imports. Symbol-level detail inside components is thinner than for plain `.ts`.
 
-## Formatting
-
-- Run `npm run build:format` after every edit. Prettier rewrites files on disk, so skipping it makes the next exact-string edit fail against reformatted source.
-
 ## Code practices
 
-Before writing a new feature, read https://github.com/andredesousa/typescript-best-practices and the rules below. The whole codebase follows them, and new code must match.
+These rules are mandatory for every change. They include all 50 rules of [TypeScript Best Practices](https://github.com/andredesousa/typescript-best-practices) by andredesousa, adapted to this codebase, so there is no need to open the source. `(#n)` is the rule's number in the source's table of contents. Where this file and the source differ, this file wins. **Lint** marks a rule `npm run build:lint` enforces; the others are checked in review and are just as binding.
 
-- `npm run build:lint` must pass. It is the required `Lint` check on `master` (`.github/workflows/lint.yml` plus the `Lint` ruleset), so a pull request with lint errors cannot merge.
-- Functions take at most three parameters (pass an object for more), nest at most four blocks deep and stay under 80 lines. Split by responsibility, not by line count.
-- Booleans start with `is`/`has`/`are`/`can`/`should`/`did`/`was`/`will`/`does`. No `any` and no `eslint-disable` comments.
-- No magic numbers. Use a shared constant first: `utils/time.ts` (`SECOND_MS`, `MINUTE_MS`, `DAY_MS`, `formatElapsed`), `http.ts` (`HTTP.NOT_FOUND`, `isHttpSuccess`), `discordLimits.ts` (`DISCORD_LIMITS`, `truncateToLimit`, `embedFieldText`), `utils/numbers.ts` (`PERCENT`, `HEX_RADIX`, `roundTo`, `QUARTER_PERCENTS`). Otherwise add a module-level constant named for what the number means (`REASON_MAX_LENGTH`), never for its value. Data tables are objects (`{ amount: 6, unit: 'hour' }`) or generated lists, not bare tuples. Only the modules in `numericDataModules` in `eslint.config.js` are exempt; never add a file there to get around the rule.
-- Reuse before writing. Check `src/lib/utils/` (time, numbers, format, rgb, random, datetime, mentions, discordChannels, guildSyncDebounce), `discordAvatars.ts`, `accounts.ts`, `frontend/eventStream.server.ts`, `frontend/toast.svelte.ts` (`TOAST_MS`) and `components/public/reel.ts` for an existing helper. When logic or a constant would exist twice, move it to a shared module instead of copying it.
+### Gates
+
+- `npm run build:lint` must pass. It is the required `Lint` check on `master` (`.github/workflows/lint.yml` plus the `Lint` ruleset), so a pull request with lint errors cannot merge. Never add an `eslint-disable` comment, and never add a file to an exemption (`numericDataModules` or the `src/lib/frontend/fx/**` override in `eslint.config.js`) to get around a rule. (#1)
+- Run `npm run build:format` after every edit. Prettier rewrites files on disk, so skipping it makes the next exact-string edit fail against reformatted source. The conventions are `.prettierrc` (tabs, single quotes, no trailing commas, 160 columns) plus `eslint.config.js`; where neither decides, match the surrounding code. (#1)
+- New logic in `src/lib` gets a test: `tests/<module>.test.ts` using `node:test` and `node:assert/strict`, importing from `../src/lib/<module>.ts`. `npm run build:test` must pass before you finish. (#2)
+- `tsconfig.json` keeps `strict`, `noImplicitReturns`, `noUnusedLocals`, `noFallthroughCasesInSwitch` and `forceConsistentCasingInFileNames` on. Never loosen them. (#3)
+
+### Types
+
+- No `any` (**Lint**). Annotate what TypeScript cannot infer. A value from outside is `unknown` until narrowed. (#4)
+- A string with a fixed set of values is a union type. When the values are also needed at runtime, derive the type from an `as const` list: `type EffectFamily = (typeof EFFECT_FAMILIES)[number]`. (#5)
+- Derive types instead of restating shapes: `Partial`, `Pick`, `Omit`, `Readonly`, `Record`, `ReturnType`, Drizzle's `$inferSelect`. Split a type only where the domain splits. (#7)
+
+### Naming
+
+- A name says what a thing means, not its value or how it is computed: `isLegalAge`, not `isOverEighteen`; `REASON_MAX_LENGTH`, not `TWO_HUNDRED`. English, no cryptic abbreviations, no sentence-long names. (#6)
+- Booleans start with `is`/`has`/`are`/`can`/`should`/`did`/`was`/`will`/`does` (**Lint**). (#26)
+
+### Functions
+
+- At most three parameters; pass an object for more (**Lint**). (#15)
+- Nest at most four blocks deep (**Lint**). Return early rather than wrapping the rest in `else`. (#13)
+- Under 80 lines (**Lint**). 80 is the cap, not the target: a function does one job, and a function with distinct steps becomes a function per step. Split by responsibility, not by line count. (#14)
+- No boolean flag parameters. A boolean that changes what a function does means two functions. (#16)
+- Optional parameters take default values and come last (**Lint**). (#22)
+- Keep logic pure: compute from inputs and return a value. Database, Discord API, Redis, file and network calls sit in a thin outer layer that calls the pure functions, which is also what makes them testable. (#30, #32)
+
+### Variables and syntax
+
+- `const` by default, `let` only when reassigned, never `var` (**Lint**). (#8)
+- `===` and `!==` (**Lint**). `== null` is the one allowed loose comparison, for null-or-undefined. (#9)
+- Literals, never constructors: `{}`, `[]`, `''`, regex literals; no `new Object`, `new Array`, `new String`, `new Number`, `new Boolean` or `new Function` (**Lint**). (#10)
+- Every `if`, `else`, `for` and `while` body has braces, one-liners included (**Lint**). (#21)
+- Spread, rest and object destructuring instead of `apply`, `arguments`, `Object.assign` and `const name = user.name` (**Lint**). (#23)
+- Template literals, never `+` concatenation (**Lint**). (#24)
+- File order: imports, then module constants and types, then functions. Inside a function, declare what it works with before the logic that uses it. (#27)
+- Initialise every variable where it is declared (**Lint**). (#28)
+- None of the language's traps: `eval`, string `setTimeout`/`setInterval`, `new Function`, `void`, `with`, `__proto__`, `arguments.caller`, `javascript:` URLs, extending built-in prototypes, chained assignment, or writing to an array's `length` (use `splice`) (**Lint**). (#37)
+
+### Control flow
+
+- Every `switch` ends with a `default` (**Lint**). (#25)
+- An `if`/`switch` chain keyed on a kind becomes a lookup table, as `PROGRAMS`, `READY` and `EFFECTS` are, so adding a kind is one entry rather than another branch. No `else` after `return`, and no lone `if` inside an `else` (**Lint**). (#34)
+
+### Data
+
+- Array methods (`map`, `filter`, `reduce`, `find`, `some`, `flatMap`) chained without intermediate variables by default. An indexed `for` loop only where speed is measured to matter: per-frame canvas code in `src/lib/frontend/fx/` and large server-side batches. (#18, #19)
+- Data that arrives in pages or as a stream (paged Discord or platform APIs, database batches) is exposed as a generator or async generator and consumed with `for...of` or `for await...of`. (#29)
+- Never reassign or mutate a parameter (**Lint**). Return a new object or array built with spread, and mark tables `as const` or `readonly`. (#31)
+- Trust no input. Request bodies, URL and query params, form data, Discord interaction and modal values, and external API responses stay `unknown` until validated and narrowed; `normalizeEffect` in `effects.ts` is the pattern. Check permission on the server for every action: hiding a control in the panel or the bot is not a check. (#20)
+
+### Errors and async
+
+- Throw and reject only `Error` instances (**Lint**), and no `catch` that only rethrows (**Lint**). Member-facing failures go through `errorReason` (see Discord UI). (#35)
+- `async`/`await` instead of callbacks and `.then` chains. Wrap a callback API in a promise once, in a helper. (#36)
+
+### Numbers and constants
+
+- No magic numbers (**Lint**; `-1`, `0`, `1` and `2` are allowed). Use a shared constant first: `utils/time.ts` (`SECOND_MS`, `MINUTE_MS`, `DAY_MS`, `formatElapsed`), `http.ts` (`HTTP.NOT_FOUND`, `isHttpSuccess`), `discordLimits.ts` (`DISCORD_LIMITS`, `truncateToLimit`, `embedFieldText`), `utils/numbers.ts` (`PERCENT`, `HEX_RADIX`, `roundTo`, `QUARTER_PERCENTS`). Otherwise add a module-level constant named for what the number means (`REASON_MAX_LENGTH`), never for its value. Data tables are objects (`{ amount: 6, unit: 'hour' }`) or generated lists, not bare tuples. Only the modules in `numericDataModules` in `eslint.config.js` are exempt. (#33)
 - Prefer library constants to raw values: discord.js `MessageFlags.Ephemeral`, `RESTJSONErrorCodes`, `ChannelType`, and `svelte/easing`.
+
+### Comments
+
+- The codebase has no comments, and new code adds none: no explanations, no TODOs, no commented-out code. If code seems to need a comment, rename or split it until it doesn't. Delete dead code; git keeps the history. Before finishing, check your diff for added `//` and `/*` comments. (#17, stricter than the source)
+
+### Modules and reuse
+
+- Reuse before writing. Check `src/lib/utils/` (time, numbers, format, rgb, random, datetime, mentions, discordChannels, guildSyncDebounce), `discordAvatars.ts`, `accounts.ts`, `frontend/eventStream.server.ts`, `frontend/toast.svelte.ts` (`TOAST_MS`) and `components/public/reel.ts` for an existing helper. When logic or a constant would exist twice, move it to a shared module instead of copying it. (#45)
+- No globals: no implicit globals (**Lint**) and no writes to `window` or `globalThis`. State lives in a module and is exported from it. (#11)
+- No unused imports, variables or functions (**Lint**), and one import statement per module, with type imports allowed separately (**Lint**). (#44)
+- Don't add a dependency for what the platform (`Intl`, array methods, `structuredClone`) or an existing dependency already does. (#43)
 - Bot code (`src/lib/backend/bots/**` and everything it imports) uses relative imports, because the bot build has no `$lib` alias. Panel code uses `$lib/`.
+
+### Configuration and translation
+
+- Member-facing text is never hard-coded; it goes through the locale files in all 12 languages (see Discord UI). Per-server behaviour is a setting in the bot configuration panel, per-environment values are env variables listed in `.env.example`, and tunable values are named constants at the top of their module. (#41)
+
+### Frontend and performance
+
+- Each concern stays in its layer: data loading and mutations in `+page.server.ts`, `+layout.server.ts` and `+server.ts`; markup in `.svelte`; styling as Tailwind/DaisyUI classes and the stylesheets below. Inline `style` only carries values computed at runtime. (#12)
+- Build on web standards. Feature-detect, never sniff the user agent, and add vendor prefixes only where a supported browser needs them (the iOS rules under Theme effects). (#38)
+- Leave script loading to SvelteKit. Don't add `<script>` tags to `app.html` or `<svelte:head>`; a third-party script that has to be there gets `defer` or `async`. (#39)
+- Let Svelte own the DOM. In a component, render elements in markup and reach them with `bind:this`, not `document.querySelector` or `createElement`. `document` is for what lies outside any component, such as a `<link>` in the head or an offscreen canvas. Canvas effects draw a whole frame per `requestAnimationFrame`. (#40)
+- Pages work before JavaScript loads: navigation is an `<a href>`, forms are `<form>` elements, and `goto()` is only for navigating after an action completes (save, delete, sign-out). (#42)
+- Load heavy modules where they are used with `await import()`, as `GlobeScene.svelte` does with `three` and `redis.ts` with `redis`. (#46)
+- `adapter-node` precompresses assets with gzip and brotli by default; keep `precompress` on. (#47)
+- `vite build` minifies the output; never disable minification or ship unbuilt sources. (#48)
+- After a change to what a public page loads (homepage, server statistics, leaderboard, members), run Lighthouse on it and don't regress its scores. (#49)
+- CPU-heavy work runs off the main thread: `worker_threads` in the bot, as `wakeWordWorker.ts` does, and a Web Worker in the browser. (#50)
 
 ## Discord UI
 

@@ -1,3 +1,5 @@
+DELETE sa FROM server_accounts sa LEFT JOIN servers s ON s.id = sa.server_id WHERE s.id IS NULL;
+
 ALTER TABLE accounts MODIFY account_type ENUM('superadmin', 'user') NOT NULL DEFAULT 'user';
 
 INSERT INTO accounts (username, email, password_hash, account_type, ip_address, created_at, updated_at)

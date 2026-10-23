@@ -317,29 +317,39 @@ async function seedServerChannels(serverId: number, pfx: string, nowDb: Date) {
 		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 }
 
-async function upsertServerAccount(serverId: number, account: { username: string; accountType: 'owner' | 'staff' }, nowDb: Date) {
+async function upsertAccountServer(serverId: number, account: { username: string; accountType: 'owner' | 'staff' }, nowDb: Date) {
 	const passwordHash = await bcrypt.hash('demo', 10);
 	await db
-		.insert(schema.serverAccounts)
+		.insert(schema.accounts)
 		.values({
-			server_id: serverId,
 			username: account.username,
 			email: `${account.username}@dansday.local`,
 			password_hash: passwordHash,
-			account_type: account.accountType,
+			account_type: 'user',
 			ip_address: null,
-			is_frozen: false,
 			created_at: nowDb,
 			updated_at: nowDb
 		})
 		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+	const [row] = await db
+		.select({ id: schema.accounts.id })
+		.from(schema.accounts)
+		.where(sql`${schema.accounts.username} = ${account.username}`)
+		.limit(1);
+	if (!row) {
+		return;
+	}
+	await db
+		.insert(schema.accountServers)
+		.values({ account_id: row.id, server_id: serverId, account_type: account.accountType, is_frozen: false, created_at: nowDb, updated_at: nowDb })
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 }
 
-async function seedServerAccounts(serverId: number, { sessionSlug, index, clock }: ServerSeed) {
-	await upsertServerAccount(serverId, { username: `${sessionSlug}_owner_${index}`, accountType: 'owner' }, clock.nowDb);
+async function seedAccountServers(serverId: number, { sessionSlug, index, clock }: ServerSeed) {
+	await upsertAccountServer(serverId, { username: `${sessionSlug}_owner_${index}`, accountType: 'owner' }, clock.nowDb);
 	const moderatorCount = 1 + (rngFor(index)(serverId + 77) % 10);
 	for (let m = 1; m <= moderatorCount; m++) {
-		await upsertServerAccount(serverId, { username: `${sessionSlug}_mod_${index}_${m}`, accountType: 'staff' }, clock.nowDb);
+		await upsertAccountServer(serverId, { username: `${sessionSlug}_mod_${index}_${m}`, accountType: 'staff' }, clock.nowDb);
 	}
 }
 
@@ -574,7 +584,7 @@ async function seedDemoServer(seed: ServerSeed): Promise<number> {
 	await seedPublicSettings(serverId, slugifySimple(`${seed.sessionSlug}-${seed.index}`), nowDb);
 	const roleId = await seedServerRoles(serverId, pfx, nowDb);
 	await seedServerChannels(serverId, pfx, nowDb);
-	await seedServerAccounts(serverId, seed);
+	await seedAccountServers(serverId, seed);
 
 	const ctx: ServerContext = { ...seed, serverId, roleId };
 	const memberCount = DEMO.membersPerServerMin + (rngFor(seed.index)(serverId) % (DEMO.membersPerServerMax - DEMO.membersPerServerMin + 1));
@@ -646,5 +656,9 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 export async function cleanupDemoSession(sessionSlug: string): Promise<void> {
 	await initializeDatabase();
 	const sessionUsername = `demo_${sessionSlug}`;
+	const memberPrefix = `${sessionSlug}_`;
 	await db.delete(schema.accounts).where(sql`${schema.accounts.username} = ${sessionUsername}`);
+	await db
+		.delete(schema.accounts)
+		.where(sql`${schema.accounts.account_type} = 'user' AND LEFT(${schema.accounts.username}, ${memberPrefix.length}) = ${memberPrefix}`);
 }

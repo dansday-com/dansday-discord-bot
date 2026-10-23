@@ -37,11 +37,9 @@
 </script>
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-	{#if !data.user.authenticated || data.user.account_source !== 'server_accounts'}
-		<a href={adminBotPath(data.botId)} class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
-			<i class="fas fa-arrow-left text-violet-300"></i>Back to Bot
-		</a>
-	{/if}
+	<a href={adminBotPath(data.botId)} class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
+		<i class="fas fa-arrow-left text-violet-300"></i>Back to Bot
+	</a>
 
 	<header class="bg-ash-700 border-ash-600 mb-4 rounded-lg border px-3 py-3 sm:mb-5 sm:rounded-xl sm:px-4 sm:py-3.5">
 		<div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

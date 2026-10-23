@@ -94,39 +94,46 @@ async function anonymousUser(): Promise<LocalsUser> {
 	return { authenticated: false, can_register: !(await db.hasAnyPanel()) };
 }
 
-async function serverAccountUser(session: SessionData & { account_id: number }): Promise<LocalsUser | null> {
-	const account = await db.getServerAccountById(session.account_id);
-	if (!account || account.is_frozen) {
+type Account = NonNullable<Awaited<ReturnType<typeof db.getAccountById>>>;
+
+const SERVER_PATH_RE = /^\/(?:admin\/bots\/\d+\/servers|api\/servers)\/(\d+)(?:\/|$)/;
+
+function requestedServerId(url: URL): number | null {
+	const fromPath = url.pathname.match(SERVER_PATH_RE)?.[1] ?? url.searchParams.get('server_id');
+	const serverId = Number(fromPath);
+	return Number.isInteger(serverId) && serverId > 0 ? serverId : null;
+}
+
+async function serverAccountUser(account: Account, session: SessionData, url: URL): Promise<LocalsUser | null> {
+	const accountServers = await db.getActiveAccountServers(account.id);
+	const wantedServerId = requestedServerId(url) ?? session.server_id;
+	const accountServer =
+		accountServers.find((s) => s.server_id === wantedServerId) ?? accountServers.find((s) => s.server_id === session.server_id) ?? accountServers[0];
+	if (!accountServer) {
 		return null;
 	}
-	const server = await db.getServer(account.server_id);
-	const panelBotId = await db.resolveOfficialBotIdForServer(server);
 	return {
 		authenticated: true,
 		account_id: account.id,
 		username: account.username,
 		email: account.email,
-		account_type: account.account_type,
+		account_type: accountServer.account_type,
 		account_source: 'server_accounts',
-		bot_id: panelBotId ?? 0,
-		server_id: account.server_id,
+		bot_id: accountServer.bot_id ?? 0,
+		server_id: accountServer.server_id,
 		is_demo: session.is_demo === true,
 		session_expires_at: session.expires_at
 	};
 }
 
-async function panelAccountUser(session: SessionData & { account_id: number }): Promise<LocalsUser | null> {
-	const account = await db.getAccountById(session.account_id);
-	if (!account) {
-		return null;
-	}
+async function panelAccountUser(account: Account, session: SessionData): Promise<LocalsUser> {
 	const accountPanel = await db.getPanel(account.id);
 	return {
 		authenticated: true,
 		account_id: account.id,
 		username: account.username,
 		email: account.email,
-		account_type: account.account_type,
+		account_type: 'superadmin',
 		account_source: 'accounts',
 		panel_id: accountPanel?.id ?? null,
 		is_demo: session.is_demo === true,
@@ -134,23 +141,25 @@ async function panelAccountUser(session: SessionData & { account_id: number }): 
 	};
 }
 
-async function sessionUser(sessionId: string): Promise<LocalsUser> {
+async function sessionUser(sessionId: string, url: URL): Promise<LocalsUser> {
 	const session = await getSession(sessionId);
 	if (!session) {
 		return anonymousUser();
 	}
-	const accountId = session.account_id;
-	if (!session.authenticated || !accountId) {
+	if (!session.authenticated || !session.account_id || session.account_source === 'server_accounts') {
 		return ANONYMOUS_USER;
 	}
-	const scoped = { ...session, account_id: accountId };
-	const user = session.account_source === 'server_accounts' ? await serverAccountUser(scoped) : await panelAccountUser(scoped);
+	const account = await db.getAccountById(session.account_id);
+	if (!account) {
+		return ANONYMOUS_USER;
+	}
+	const user = account.account_type === 'superadmin' ? await panelAccountUser(account, session) : await serverAccountUser(account, session, url);
 	return user ?? ANONYMOUS_USER;
 }
 
-async function resolveLocalsUser(sessionId: string | null): Promise<LocalsUser> {
+async function resolveLocalsUser(sessionId: string | null, url: URL): Promise<LocalsUser> {
 	try {
-		return sessionId ? await sessionUser(sessionId) : await anonymousUser();
+		return sessionId ? await sessionUser(sessionId, url) : await anonymousUser();
 	} catch (_) {
 		return ANONYMOUS_USER;
 	}
@@ -176,7 +185,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const sessionId = getSessionIdFromCookie(cookieHeader);
 	event.locals.sessionId = sessionId;
 
-	event.locals.user = await resolveLocalsUser(sessionId);
+	event.locals.user = await resolveLocalsUser(sessionId, event.url);
 
 	const guardResponse = await guardApiRoute(event.locals, event.url.pathname);
 	if (guardResponse) {

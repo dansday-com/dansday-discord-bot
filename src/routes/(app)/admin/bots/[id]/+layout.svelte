@@ -55,7 +55,7 @@
 	}
 
 	onMount(() => {
-		if (!isBotSection) {
+		if (!isBotSection || !isAdmin) {
 			return;
 		}
 
@@ -161,9 +161,11 @@
 	{@render children()}
 {:else}
 	<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-		<a href={DASHBOARD_PATH} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
-			<i class="fas fa-arrow-left text-violet-300"></i>Back to Dashboard
-		</a>
+		{#if isAdmin}
+			<a href={DASHBOARD_PATH} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
+				<i class="fas fa-arrow-left text-violet-300"></i>Back to Dashboard
+			</a>
+		{/if}
 
 		<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -220,52 +222,56 @@
 				{/if}
 			</div>
 
-			<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-ash-400 mb-1 text-xs">Status</p>
-					<div class="flex items-center gap-2">
-						<span class="h-2 w-2 rounded-full {statusColor(liveBot.status)}"></span>
-						<span class="text-sm font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
+			{#if isAdmin}
+				<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div class="bg-ash-700 rounded-lg p-3">
+						<p class="text-ash-400 mb-1 text-xs">Status</p>
+						<div class="flex items-center gap-2">
+							<span class="h-2 w-2 rounded-full {statusColor(liveBot.status)}"></span>
+							<span class="text-sm font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
+						</div>
 					</div>
+
+					{#if isRunning}
+						<div class="bg-ash-700 rounded-lg p-3">
+							<p class="text-ash-400 mb-1 text-xs">Uptime</p>
+							<p class="text-ash-100 text-sm font-medium">{formatUptime(displayUptime)}</p>
+						</div>
+					{/if}
+
+					{#if liveBot.process_id}
+						<div class="bg-ash-700 rounded-lg p-3">
+							<p class="text-ash-400 mb-1 text-xs">Process ID</p>
+							<p class="text-ash-100 text-sm font-medium">{liveBot.process_id}</p>
+						</div>
+					{/if}
+
+					{#if data.bot.port}
+						<div class="bg-ash-700 rounded-lg p-3">
+							<p class="text-ash-400 mb-1 text-xs">Port</p>
+							<p class="text-ash-100 text-sm font-medium">{data.bot.port}</p>
+						</div>
+					{/if}
 				</div>
-
-				{#if isRunning}
-					<div class="bg-ash-700 rounded-lg p-3">
-						<p class="text-ash-400 mb-1 text-xs">Uptime</p>
-						<p class="text-ash-100 text-sm font-medium">{formatUptime(displayUptime)}</p>
-					</div>
-				{/if}
-
-				{#if liveBot.process_id}
-					<div class="bg-ash-700 rounded-lg p-3">
-						<p class="text-ash-400 mb-1 text-xs">Process ID</p>
-						<p class="text-ash-100 text-sm font-medium">{liveBot.process_id}</p>
-					</div>
-				{/if}
-
-				{#if data.bot.port}
-					<div class="bg-ash-700 rounded-lg p-3">
-						<p class="text-ash-400 mb-1 text-xs">Port</p>
-						<p class="text-ash-100 text-sm font-medium">{data.bot.port}</p>
-					</div>
-				{/if}
-			</div>
+			{/if}
 		</div>
 
-		<div class="bg-ash-800 border-ash-700 mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1">
-			{#each tabs as tab}
-				{@const active = isActive(tab.href)}
-				<a
-					href={tab.href}
-					data-sveltekit-preload-data="hover"
-					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-all sm:px-4
+		{#if isAdmin}
+			<div class="bg-ash-800 border-ash-700 mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1">
+				{#each tabs as tab}
+					{@const active = isActive(tab.href)}
+					<a
+						href={tab.href}
+						data-sveltekit-preload-data="hover"
+						class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-all sm:px-4
 					{active ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
-				>
-					<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>
-					<span>{tab.label}</span>
-				</a>
-			{/each}
-		</div>
+					>
+						<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>
+						<span>{tab.label}</span>
+					</a>
+				{/each}
+			</div>
+		{/if}
 
 		{@render children()}
 	</div>

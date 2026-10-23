@@ -31,6 +31,7 @@ function getTransporter() {
 }
 
 import { APP_NAME, APP_DOMAIN, APP_URL } from '../backend/panelServer.js';
+import { escapeHtml } from '../utils/format.js';
 
 const APP_NAME_TEXT = `${APP_NAME} Discord Bot`;
 const APP_NAME_HTML = `${APP_NAME.replace(/</g, '&lt;').replace(/>/g, '&gt;')} Discord Bot`;
@@ -110,20 +111,20 @@ function emailLayout(title: string, { accentColor, bodyContent, year }: LayoutBo
     `;
 }
 
-export async function sendAccountFrozenEmail(email: string, username: string) {
+export async function sendAccountFrozenEmail(email: string, username: string, serverName: string) {
 	const transporter = getTransporter();
-	const subject = 'Account Frozen - Action Required';
+	const subject = 'Server Access Frozen - Action Required';
 	const year = new Date().getFullYear();
 
 	const body = `
         <p>Hello ${username},</p>
-        <p>Your account has been frozen by an administrator.</p>
+        <p>Your access to <strong>${escapeHtml(serverName)}</strong> has been frozen by a server owner.</p>
         <div class="status-box">
             <div class="icon">⚠️</div>
-            <p>Your account access has been temporarily restricted.</p>
+            <p>Your access to this server has been temporarily restricted.</p>
         </div>
         <div class="highlight-box">
-            <p><strong>What does this mean?</strong><br>You will not be able to log in or access your account until it is unfrozen by an administrator. If you believe this is an error, please contact an administrator.</p>
+            <p><strong>What does this mean?</strong><br>This server will not show up in your panel until an owner unfreezes you. Your other servers are not affected. If you believe this is an error, please contact the server owner.</p>
         </div>
     `;
 
@@ -142,20 +143,20 @@ export async function sendAccountFrozenEmail(email: string, username: string) {
 	}
 }
 
-export async function sendAccountUnfrozenEmail(email: string, username: string) {
+export async function sendAccountUnfrozenEmail(email: string, username: string, serverName: string) {
 	const transporter = getTransporter();
-	const subject = 'Account Unfrozen - Access Restored';
+	const subject = 'Server Access Restored';
 	const year = new Date().getFullYear();
 
 	const body = `
         <p>Hello ${username},</p>
-        <p>Your account has been unfrozen by an administrator.</p>
+        <p>Your access to <strong>${escapeHtml(serverName)}</strong> has been unfrozen by a server owner.</p>
         <div class="status-box">
             <div class="icon">🎉</div>
-            <p>Your account access has been restored.</p>
+            <p>Your access to this server has been restored.</p>
         </div>
         <div class="highlight-box">
-            <p><strong>What's next?</strong><br>You can now log in and access your account normally. If you have any questions or need assistance, feel free to reach out.</p>
+            <p><strong>What's next?</strong><br>You can now log in and manage this server again. If you have any questions or need assistance, feel free to reach out.</p>
         </div>
     `;
 
@@ -174,20 +175,20 @@ export async function sendAccountUnfrozenEmail(email: string, username: string) 
 	}
 }
 
-export async function sendAccountDeletedEmail(email: string, username: string) {
+export async function sendAccountDeletedEmail(email: string, username: string, serverName: string) {
 	const transporter = getTransporter();
-	const subject = 'Account Deleted - Important Notice';
+	const subject = 'Removed From Server - Important Notice';
 	const year = new Date().getFullYear();
 
 	const body = `
         <p>Hello ${username},</p>
-        <p>Your account has been deleted by an administrator.</p>
+        <p>You have been removed from <strong>${escapeHtml(serverName)}</strong> by a server owner.</p>
         <div class="status-box">
             <div class="icon">🗑️</div>
-            <p>Your account and all associated data have been permanently removed.</p>
+            <p>You can no longer manage this server from the panel.</p>
         </div>
         <div class="highlight-box">
-            <p><strong>Important:</strong><br>This action cannot be undone. If you believe this is an error, please contact an administrator immediately.</p>
+            <p><strong>Important:</strong><br>Your other servers are not affected. If this was your only server, your account was deleted too. If you believe this is an error, please contact the server owner.</p>
         </div>
     `;
 

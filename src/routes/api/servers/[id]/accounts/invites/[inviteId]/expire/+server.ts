@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Invalid invite' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const invite = await db.getServerAccountInviteByIdForServer(inviteId, serverId);
+	const invite = await db.getAccountInviteByIdForServer(inviteId, serverId);
 	if (!invite) {
 		return json({ success: false, error: 'Invite not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -51,7 +51,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	}
 
 	const expiredAt = DateTime.utc().minus({ seconds: 1 }).toJSDate();
-	await db.updateServerAccountInvite(inviteId, { expires_at: expiredAt });
+	await db.updateAccountInvite(inviteId, { expires_at: expiredAt });
 
 	logger.log(`${locals.user.username} expired server account invite ${inviteId} (server ${serverId})`);
 	await db

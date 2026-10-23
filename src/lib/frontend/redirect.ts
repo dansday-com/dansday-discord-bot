@@ -6,6 +6,7 @@ const BOTS_ROOT = `${ADMIN_BASE}/bots` as const;
 
 export const ADMIN_TAB_PATHS = {
 	overview: DASHBOARD_PATH,
+	accounts: `${ADMIN_BASE}/accounts`,
 	bots: BOTS_ROOT,
 	selfbots: `${ADMIN_BASE}/selfbots`,
 	globalMessages: `${ADMIN_BASE}/global-messages`,

@@ -15,7 +15,7 @@ export const accounts = mysqlTable(
 		username: varchar('username', { length: 255 }).notNull().unique(),
 		email: varchar('email', { length: 255 }).notNull().unique(),
 		password_hash: text('password_hash').notNull(),
-		account_type: mysqlEnum('account_type', ['superadmin']).notNull().default('superadmin'),
+		account_type: mysqlEnum('account_type', ['superadmin', 'user']).notNull().default('user'),
 		ip_address: text('ip_address'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
@@ -171,32 +171,26 @@ export const servers = mysqlTable(
 	]
 );
 
-export const serverAccounts = mysqlTable(
-	'server_accounts',
+export const accountServers = mysqlTable(
+	'account_servers',
 	{
 		id: int('id').primaryKey().autoincrement(),
+		account_id: int('account_id')
+			.notNull()
+			.references(() => accounts.id, { onDelete: 'cascade' }),
 		server_id: int('server_id')
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
-		username: varchar('username', { length: 255 }).notNull(),
-		email: varchar('email', { length: 255 }).notNull(),
-		password_hash: text('password_hash').notNull(),
 		account_type: mysqlEnum('account_type', ['owner', 'staff']).notNull(),
-		ip_address: text('ip_address'),
 		is_frozen: boolean('is_frozen').default(false),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [
-		uniqueIndex('unique_email_server').on(t.email, t.server_id),
-		uniqueIndex('unique_username_server').on(t.username, t.server_id),
-		index('idx_server_accounts_server_id').on(t.server_id),
-		index('idx_server_accounts_email').on(t.email)
-	]
+	(t) => [uniqueIndex('uq_account_servers').on(t.account_id, t.server_id), index('idx_account_servers_server_id').on(t.server_id)]
 );
 
-export const serverAccountInvites = mysqlTable(
-	'server_account_invites',
+export const accountInvites = mysqlTable(
+	'account_invites',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		token: varchar('token', { length: 255 }).notNull().unique(),
@@ -204,12 +198,12 @@ export const serverAccountInvites = mysqlTable(
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
 		account_type: mysqlEnum('account_type', ['owner', 'staff']).notNull(),
-		used_by: int('used_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
+		used_by: int('used_by').references(() => accounts.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at'),
 		created_at: datetime('created_at').notNull(),
 		used_at: datetime('used_at')
 	},
-	(t) => [index('idx_server_account_invites_token').on(t.token), index('idx_server_account_invites_server_id').on(t.server_id)]
+	(t) => [index('idx_account_invites_token').on(t.token), index('idx_account_invites_server_id').on(t.server_id)]
 );
 
 export const selfbots = mysqlTable(
@@ -564,7 +558,6 @@ export const serverPanelLogs = mysqlTable(
 		server_id: int('server_id')
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
-		server_account_id: int('server_account_id').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
 		action: varchar('action', { length: 24 }).notNull(),
 		changes: json('changes').notNull(),
@@ -931,32 +924,6 @@ export const serverMemberContentCreatorStreamLogs = mysqlTable(
 	},
 	(t) => [index('idx_cc_stream_logs_stream_time').on(t.stream_id, t.occurred_at), index('idx_cc_stream_logs_event').on(t.stream_id, t.event_type)]
 );
-
-export const accountInvites = mysqlTable('account_invites', {
-	id: int('id').primaryKey().autoincrement(),
-	token: varchar('token', { length: 255 }).notNull().unique(),
-	account_type: text('account_type').notNull(),
-	server_id: int('server_id').references(() => servers.id, { onDelete: 'set null' }),
-	created_by: int('created_by')
-		.notNull()
-		.references(() => accounts.id, { onDelete: 'cascade' }),
-	used_by: int('used_by').references(() => accounts.id, { onDelete: 'set null' }),
-	expires_at: datetime('expires_at'),
-	created_at: datetime('created_at').notNull(),
-	used_at: datetime('used_at')
-});
-
-export const accountServerAccess = mysqlTable('account_server_access', {
-	id: int('id').primaryKey().autoincrement(),
-	account_id: int('account_id')
-		.notNull()
-		.references(() => accounts.id, { onDelete: 'cascade' }),
-	server_id: int('server_id')
-		.notNull()
-		.references(() => servers.id, { onDelete: 'cascade' }),
-	role: mysqlEnum('role', ['owner', 'staff']).notNull(),
-	created_at: datetime('created_at').notNull()
-});
 
 export const items = mysqlTable(
 	'items',
@@ -1356,7 +1323,6 @@ export const serverMemberInviteLogs = mysqlTable(
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
-		server_account_id: int('server_account_id').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
 		amount: int('amount').notNull(),
 		reason: text('reason'),

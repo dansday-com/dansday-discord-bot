@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
+	const [rawAccounts, invites] = await Promise.all([db.getAccountServersByServer(serverId), db.getAccountInvitesByServer(serverId)]);
 	const isSuperadmin = locals.user.authenticated && locals.user.account_source === 'accounts';
 
 	const accounts = rawAccounts.map((a) => {
@@ -79,7 +79,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	const token = randomBytes(INVITE_TOKEN_BYTES).toString('hex');
 
-	await db.createServerAccountInvite({
+	await db.createAccountInvite({
 		token,
 		server_id: serverId,
 		account_type

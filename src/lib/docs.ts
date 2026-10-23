@@ -321,7 +321,7 @@ export const aiAssistantRules = [
 	{ icon: 'fa-rotate-left', title: 'Undo', desc: 'One click puts the message back the way it was before the change.' },
 	{ icon: 'fa-language', title: 'Translations', desc: 'Ask for any languages. Only text you changed is translated again, the rest is kept.' },
 	{ icon: 'fa-ban', title: 'Never deletes', desc: 'It adds and edits. Deleting stays a click of your own in the panel.' },
-	{ icon: 'fa-user-lock', title: 'Own server only', desc: 'Owner and staff accounts reach their own server and nothing else.' },
+	{ icon: 'fa-user-lock', title: 'Open server only', desc: 'Owner and staff accounts reach the server they have open and nothing else.' },
 	{ icon: 'fa-robot', title: 'Needs the bot online', desc: 'Live server data comes from the running bot.' }
 ];
 
@@ -445,7 +445,7 @@ export const startSteps = [
 	{
 		icon: 'fa-right-to-bracket',
 		title: 'Open the panel',
-		desc: 'After /setup, register the owner account from the link it gives you, then sign in to the web panel to configure everything.'
+		desc: 'After /setup, open the link it gives you to register the owner account, or log in and accept it if you already have one, then configure everything in the web panel.'
 	}
 ];
 
@@ -476,15 +476,23 @@ export const accountFields = [
 	},
 	{
 		label: 'Send Invite',
-		desc: 'Pick an invite type (Owner or Staff), choose Discord members, and the bot DMs them a registration link that expires 24 hours after creation.'
+		desc: 'Pick an invite type (Owner or Staff), choose Discord members, and the bot DMs them an invite link that expires 24 hours after creation. Someone new registers from it; someone who already has an account logs in and accepts it.'
 	},
 	{
 		label: 'Accounts list',
-		desc: 'Every registered account with its type. Lock/unlock freezes an account (frozen accounts cannot log in), and delete removes it permanently.'
+		desc: 'Every account on this server with its type. Lock/unlock freezes the account on this server only, and delete removes it from this server. An account left with no servers is deleted.'
 	},
 	{
 		label: 'Invite Links',
 		desc: 'All generated invites with their status (Pending, Used, Expired) and a countdown. Expire a pending invite to revoke it before use.'
+	},
+	{
+		label: 'Accounts tab',
+		desc: 'The panel admin sees every owner and staff account across all servers, and can freeze or delete one on every server at once.'
+	},
+	{
+		label: 'Several servers',
+		desc: 'One account can be owner or staff on several servers. After login it opens the server list, where any of them can be picked, and Back to Bot returns to the list.'
 	}
 ];
 

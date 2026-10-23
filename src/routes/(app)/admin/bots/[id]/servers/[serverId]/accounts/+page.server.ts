@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		redirect(HTTP.FOUND, DASHBOARD_PATH);
 	}
 
-	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
+	const [rawAccounts, invites] = await Promise.all([db.getAccountServersByServer(serverId), db.getAccountInvitesByServer(serverId)]);
 	const isSuperadmin = locals.user.account_source === 'accounts';
 
 	const accounts = rawAccounts.map((a) => {

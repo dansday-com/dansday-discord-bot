@@ -1,4 +1,5 @@
 import { SECOND_MS } from '../../../utils/time.js';
+import { escapeHtml } from '../../../utils/format.js';
 export type MarkdownContext = {
 	roles: Map<string, { name: string; color: string | null }>;
 	channels: Map<string, string>;
@@ -8,10 +9,6 @@ export type MarkdownContext = {
 const HEX = /^#[0-9a-f]{6}$/i;
 const LIST_INDENT_MAX_CHARS = 8;
 const LIST_INDENT_PX_PER_CHAR = 8;
-
-function escapeHtml(value: string): string {
-	return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
 
 function inline(value: string): string {
 	return value

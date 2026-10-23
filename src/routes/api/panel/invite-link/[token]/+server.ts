@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/database.js';
-import { sanitizeString, isUtcSqlExpired, getClientIp, checkRateLimit } from '$lib/utils/index.js';
+import { sanitizeString, getClientIp, checkRateLimit } from '$lib/utils/index.js';
+import { INVITE_PROBLEM_MESSAGES, findOpenInvite } from '$lib/frontend/accountServers.server.js';
 import { HTTP } from '$lib/http.js';
 import { INVITE_TOKEN_LENGTH } from '$lib/accounts.js';
 
@@ -23,20 +23,15 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			return json({ success: false, error: 'Invalid token format' }, { status: HTTP.BAD_REQUEST });
 		}
 
-		const inviteLink = await db.getServerAccountInviteByToken(sanitizedToken);
-		if (!inviteLink) {
-			return json({ success: false, error: 'Invite link not found' }, { status: HTTP.NOT_FOUND });
+		const found = await findOpenInvite(sanitizedToken);
+		if ('problem' in found) {
+			return json(
+				{ success: false, error: INVITE_PROBLEM_MESSAGES[found.problem] },
+				{ status: found.problem === 'invite_not_found' ? HTTP.NOT_FOUND : HTTP.BAD_REQUEST }
+			);
 		}
 
-		if (inviteLink.used_by || inviteLink.used_at) {
-			return json({ success: false, error: 'Invite link has already been used' }, { status: HTTP.BAD_REQUEST });
-		}
-
-		if (inviteLink.expires_at && isUtcSqlExpired(inviteLink.expires_at)) {
-			return json({ success: false, error: 'Invite link has expired' }, { status: HTTP.BAD_REQUEST });
-		}
-
-		return json({ success: true, account_type: inviteLink.account_type });
+		return json({ success: true, account_type: found.invite.account_type });
 	} catch (error) {
 		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}

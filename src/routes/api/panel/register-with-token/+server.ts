@@ -1,22 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import {
-	sanitizeString,
-	isUtcSqlExpired,
-	getCurrentDateTime,
-	toMySQLDateTime,
-	getClientIp,
-	checkRateLimit,
-	newSessionId,
-	setSession,
-	makeSessionCookie,
-	logger
-} from '$lib/utils/index.js';
+import { sanitizeString, getClientIp, checkRateLimit, makeSessionCookie, logger } from '$lib/utils/index.js';
 import bcrypt from 'bcryptjs';
 import { HTTP } from '$lib/http.js';
 import { INVITE_TOKEN_LENGTH } from '$lib/accounts.js';
 import { BCRYPT_SALT_ROUNDS, validateRegistrationInputs } from '$lib/frontend/registration.server.js';
+import { INVITE_PROBLEM_MESSAGES, acceptAccountInvite, findOpenInvite, openAccountSession } from '$lib/frontend/accountServers.server.js';
 
 const MAX_REGISTER_ATTEMPTS = 5;
 
@@ -48,66 +38,46 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: validation.errors[0] }, { status: HTTP.BAD_REQUEST });
 		}
 
-		const inviteLink = await db.getServerAccountInviteByToken(sanitizedToken);
-		if (!inviteLink) {
-			return json({ success: false, error: 'Invalid invite link' }, { status: HTTP.NOT_FOUND });
+		const found = await findOpenInvite(sanitizedToken);
+		if ('problem' in found) {
+			return json({ success: false, error: INVITE_PROBLEM_MESSAGES[found.problem] }, { status: HTTP.BAD_REQUEST });
 		}
 
-		if (inviteLink.used_by || inviteLink.used_at) {
-			return json({ success: false, error: 'Invite link has already been used' }, { status: HTTP.BAD_REQUEST });
+		const existingByEmail = await db.getAccountByNormalizedEmail(validation.sanitizedEmail);
+		if (existingByEmail?.account_type === 'superadmin') {
+			return json({ success: false, error: 'This email belongs to the panel admin account, which already manages every server.' }, { status: HTTP.CONFLICT });
+		}
+		if (existingByEmail) {
+			return json(
+				{ success: false, error: 'An account with this email already exists. Log in to accept this invite.', has_account: true },
+				{ status: HTTP.CONFLICT }
+			);
 		}
 
-		if (inviteLink.expires_at && isUtcSqlExpired(inviteLink.expires_at)) {
-			return json({ success: false, error: 'Invite link has expired' }, { status: HTTP.BAD_REQUEST });
+		if (await db.getAccountByUsername(validation.sanitizedUsername)) {
+			return json({ success: false, error: 'This username is taken. Choose another one, or sign in if it is yours.' }, { status: HTTP.CONFLICT });
 		}
 
-		const existingInScope = await db.getServerAccountByNormalizedEmailServer(validation.sanitizedEmail, inviteLink.server_id);
-		if (existingInScope) {
-			return json({ success: false, error: 'Email already registered for this server' }, { status: HTTP.BAD_REQUEST });
-		}
-
-		const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-
-		const account = await db.createServerAccount({
-			server_id: inviteLink.server_id,
+		const account = await db.createAccount({
 			username: validation.sanitizedUsername,
 			email: validation.sanitizedEmail,
-			password_hash: passwordHash,
-			account_type: inviteLink.account_type,
+			password_hash: await bcrypt.hash(password, BCRYPT_SALT_ROUNDS),
+			account_type: 'user',
 			ip_address: ip
 		});
+		if (!account) {
+			return json({ success: false, error: 'Could not create your account. Please try again.' }, { status: HTTP.INTERNAL_ERROR });
+		}
 
-		await db.updateServerAccountInvite(inviteLink.id, { used_by: account.id, used_at: toMySQLDateTime(getCurrentDateTime()) ?? undefined });
-		await db
-			.createServerPanelLog(
-				Number(inviteLink.server_id),
-				{ server_account_id: Number(account.id) },
-				{
-					action: 'account_invite',
-					changes: [{ key: 'invite link', before: `${inviteLink.account_type}, open`, after: `${inviteLink.account_type}, used by ${account.username}` }]
-				}
-			)
-			.catch(() => null);
+		const refusal = await acceptAccountInvite(found.invite, account);
+		if (refusal) {
+			await db.deleteAccount(account.id);
+			return json({ success: false, error: refusal }, { status: HTTP.CONFLICT });
+		}
+		const sessionId = await openAccountSession(account.id, found.invite.server_id);
+		logger.log(`Registered and logged in: ${account.username} (${found.invite.account_type}, IP: ${ip})`);
 
-		const sessionId = newSessionId();
-		await setSession(sessionId, {
-			authenticated: true,
-			account_id: account.id,
-			account_type: account.account_type,
-			account_source: 'server_accounts'
-		});
-
-		logger.log(`Registered and logged in: ${account.username} (${account.account_type}, IP: ${ip})`);
-
-		return json(
-			{
-				success: true,
-				message: 'Registration successful.',
-				account_type: account.account_type,
-				account_source: 'server_accounts'
-			},
-			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
-		);
+		return json({ success: true, message: 'Registration successful.' }, { headers: { 'Set-Cookie': makeSessionCookie(sessionId) } });
 	} catch (error) {
 		return json({ success: false, error: (error as Error).message }, { status: HTTP.INTERNAL_ERROR });
 	}

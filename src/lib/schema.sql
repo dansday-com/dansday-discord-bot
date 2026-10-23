@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    account_type ENUM('superadmin') NOT NULL DEFAULT 'superadmin',
+    account_type ENUM('superadmin', 'user') NOT NULL DEFAULT 'user',
     ip_address TEXT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
@@ -125,23 +125,20 @@ CREATE TABLE IF NOT EXISTS servers (
     FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_accounts (
+CREATE TABLE IF NOT EXISTS account_servers (
     id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
     server_id INT NOT NULL,
-    username VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    password_hash TEXT NOT NULL,
     account_type ENUM('owner', 'staff') NOT NULL,
-    ip_address TEXT NULL,
     is_frozen BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY unique_email_server (email, server_id),
-    UNIQUE KEY unique_username_server (username, server_id),
+    UNIQUE KEY uq_account_servers (account_id, server_id),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_account_invites (
+CREATE TABLE IF NOT EXISTS account_invites (
     id INT PRIMARY KEY AUTO_INCREMENT,
     token VARCHAR(255) NOT NULL UNIQUE,
     server_id INT NOT NULL,
@@ -151,7 +148,7 @@ CREATE TABLE IF NOT EXISTS server_account_invites (
     created_at DATETIME NOT NULL,
     used_at DATETIME NULL,
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (used_by) REFERENCES server_accounts(id) ON DELETE SET NULL
+    FOREIGN KEY (used_by) REFERENCES accounts(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS selfbots (
@@ -388,13 +385,11 @@ CREATE TABLE IF NOT EXISTS server_settings (
 CREATE TABLE IF NOT EXISTS server_panel_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     server_id INT NOT NULL,
-    server_account_id INT NULL,
     account_id INT NULL,
     action VARCHAR(24) NOT NULL,
     changes JSON NOT NULL,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (server_account_id) REFERENCES server_accounts(id) ON DELETE SET NULL,
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
 );
 
@@ -848,13 +843,11 @@ CREATE TABLE IF NOT EXISTS server_member_invites (
 CREATE TABLE IF NOT EXISTS server_member_invite_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
-    server_account_id INT NULL,
     account_id INT NULL,
     amount INT NOT NULL,
     reason TEXT NULL,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
-    FOREIGN KEY (server_account_id) REFERENCES server_accounts(id) ON DELETE SET NULL,
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
 );
 
@@ -944,10 +937,9 @@ CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(serv
 CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username);
-CREATE INDEX IF NOT EXISTS idx_server_accounts_server_id ON server_accounts(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_accounts_email ON server_accounts(email);
-CREATE INDEX IF NOT EXISTS idx_server_account_invites_token ON server_account_invites(token);
-CREATE INDEX IF NOT EXISTS idx_server_account_invites_server_id ON server_account_invites(server_id);
+CREATE INDEX IF NOT EXISTS idx_account_servers_server_id ON account_servers(server_id);
+CREATE INDEX IF NOT EXISTS idx_account_invites_token ON account_invites(token);
+CREATE INDEX IF NOT EXISTS idx_account_invites_server_id ON account_invites(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_member_id ON server_member_giveaways(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_status ON server_member_giveaways(status);
 CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_ends_at ON server_member_giveaways(ends_at);

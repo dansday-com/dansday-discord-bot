@@ -420,17 +420,17 @@ function linkButtonRow(url: string, label: string) {
 }
 
 async function ownerInviteToken(serverId: number) {
-	const activeInvite = findActiveOwnerInvite(await db.getServerAccountInvitesByServer(serverId));
+	const activeInvite = findActiveOwnerInvite(await db.getAccountInvitesByServer(serverId));
 	if (activeInvite) {
 		return activeInvite.token;
 	}
 	const token = randomBytes(INVITE_TOKEN_BYTES).toString('hex');
-	await db.createServerAccountInvite({ token, server_id: serverId, account_type: 'owner' });
+	await db.createAccountInvite({ token, server_id: serverId, account_type: 'owner' });
 	return token;
 }
 
 async function setupCompletionReply(tr: Translator, { serverId, menuChannel, summary }: SetupResult) {
-	const accounts = await db.getServerAccountsByServer(serverId);
+	const accounts = await db.getAccountServersByServer(serverId);
 	if (accounts.some((a: { account_type: string }) => a.account_type === 'owner')) {
 		const loginUrl = `${publicSiteOrigin()}/login`;
 		const description = `${summary}\n\n${tr('interface.panel.setupHasOwnerAccount', { channel: menuChannel.toString() })}\n\n${tr('interface.panel.setupSignInLinkLine', { url: loginUrl })}`;

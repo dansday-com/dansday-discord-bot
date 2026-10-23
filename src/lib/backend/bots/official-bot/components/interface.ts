@@ -107,7 +107,7 @@ import {
 import { handleMessageComponent, isMessageComponentId } from './messages.js';
 import { memberTranslator, translate, translateServer, type Translator } from '../i18n.js';
 import { levelProgressField } from './leveling.js';
-import { SETUP_LANGUAGE_SELECT_ID, handleSetupLanguageSelect } from './commands/admin/setup.js';
+import { SETUP_LANGUAGE_SELECT_ID, handleSetupContinueButton, handleSetupLanguageSelect, isSetupContinueButtonId } from './commands/admin/setup.js';
 import db from '../../../../database.js';
 import { computeCardToken } from '../../../public/items/index.js';
 import { resolvePublicStatisticsSnapshot } from '../../../public/statistics/stream.js';
@@ -564,6 +564,7 @@ const startsWithAny =
 
 const PREFIX_BUTTON_ROUTES: PrefixRoute[] = [
 	{ matches: startsWithAny('menu_cat|'), handle: (interaction) => handleMenuCategory(interaction, interaction.customId.split('|')[1]) },
+	{ matches: isSetupContinueButtonId, handle: handleSetupContinueButton },
 	{ matches: startsWithAny('staff_rating_approve', 'staff_report_approve'), handle: handleStaffRatingApprove, feature: serverSettingsComponent.staff_rating },
 	{ matches: startsWithAny('staff_rating_reject', 'staff_report_reject'), handle: handleStaffRatingReject, feature: serverSettingsComponent.staff_rating },
 	{ matches: startsWithAny('content_creator_approve'), handle: handleContentCreatorApprove, feature: serverSettingsComponent.content_creator },
@@ -734,7 +735,7 @@ const STRING_SELECT_ROUTES: ComponentRoute<CachedStringSelect>[] = [
 	{ matches: isMessageComponentId, handle: handleMessageComponent },
 	{ matches: startsWithAny('moderation_action|'), handle: handleModerationActionSelect },
 	{ matches: isExactly('settings_language_select'), handle: handleLanguageSelect },
-	{ matches: (customId) => customId === SETUP_LANGUAGE_SELECT_ID, handle: (interaction) => handleSetupLanguageSelect(interaction, interaction.client) },
+	{ matches: isExactly(SETUP_LANGUAGE_SELECT_ID), handle: handleSetupLanguageSelect },
 	{ matches: isExactly('notifications_select'), handle: handleNotificationsSelect },
 	{ matches: isExactly(ROBLOX_NOTIFICATIONS_SELECT_ID), handle: handleRobloxNotificationsSelect, feature: serverSettingsComponent.roblox_catalog_notifier },
 	{ matches: isRobloxItemNotificationTypesSelectId, handle: handleRobloxItemNotificationTypesSelect, feature: serverSettingsComponent.roblox_catalog_notifier },

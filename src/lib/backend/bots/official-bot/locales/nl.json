@@ -1047,7 +1047,8 @@
 			"description": "Kies de taal voor deze server. Daarin krijgen de kanalen die `/setup` aanmaakt hun naam, en de taal wordt gebruikt voor het menu, goedkeuringsberichten, elk openbaar botbericht en de chat en spraak van de AI.\n\nLeden kunnen in het menu nog steeds hun eigen taal kiezen voor hun privéantwoorden en DM's. Je kunt dit later wijzigen in het webpaneel onder **Configuration → Main**.",
 			"placeholder": "Kies de servertaal",
 			"working": "⏳ Bezig met instellen in **{language}**…",
-			"applied": "🌐 Servertaal: **{language}**"
+			"applied": "🌐 Servertaal: **{language}**",
+			"continue": "Doorgaan"
 		},
 		"commandDescription": "Stel de bot in: kies de servertaal en maak dan het menu en de kanalen aan. Alleen admins."
 	},

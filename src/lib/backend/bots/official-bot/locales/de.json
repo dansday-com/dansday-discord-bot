@@ -1047,7 +1047,8 @@
 			"description": "Wähle die Sprache für diesen Server. Sie bestimmt die Namen der Kanäle, die `/setup` erstellt, und wird für das Menü, Freigabe-Beiträge, alle öffentlichen Bot-Nachrichten sowie den Chat und die Sprachausgabe der KI verwendet.\n\nMitglieder können im Menü weiterhin ihre eigene Sprache für private Antworten und DMs wählen. Du kannst das später im Webpanel unter **Configuration → Main** ändern.",
 			"placeholder": "Serversprache auswählen",
 			"working": "⏳ Einrichtung auf **{language}** läuft…",
-			"applied": "🌐 Serversprache: **{language}**"
+			"applied": "🌐 Serversprache: **{language}**",
+			"continue": "Weiter"
 		},
 		"commandDescription": "Bot einrichten: Serversprache wählen, dann Menü und Kanäle erstellen. Nur für Admins."
 	},

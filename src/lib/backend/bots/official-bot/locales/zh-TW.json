@@ -1047,7 +1047,8 @@
 			"description": "為這個伺服器選擇語言。`/setup` 建立的頻道會以這個語言命名，選單、審核貼文、機器人的所有公開訊息，以及 AI 的聊天和語音也都會使用它。\n\n成員仍然可以在選單中，為自己的私人回覆和私訊選擇語言。你之後可以在網頁面板的 **Configuration → Main** 中變更。",
 			"placeholder": "選擇伺服器語言",
 			"working": "⏳ 正在以 **{language}** 進行設定……",
-			"applied": "🌐 伺服器語言：**{language}**"
+			"applied": "🌐 伺服器語言：**{language}**",
+			"continue": "繼續"
 		},
 		"commandDescription": "設定機器人：選擇伺服器語言，然後建立選單與頻道。僅限管理員。"
 	},

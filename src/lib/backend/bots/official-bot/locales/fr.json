@@ -1047,7 +1047,8 @@
 			"description": "Choisis la langue de ce serveur. Elle sert à nommer les salons créés par `/setup` et s'applique au menu, aux publications d'approbation, à tous les messages publics du bot ainsi qu'aux discussions écrites et vocales de l'IA.\n\nLes membres peuvent toujours choisir leur propre langue dans le menu pour leurs réponses privées et leurs MP. Tu pourras la changer plus tard dans le panel web, sous **Configuration → Main**.",
 			"placeholder": "Choisis la langue du serveur",
 			"working": "⏳ Configuration en **{language}**…",
-			"applied": "🌐 Langue du serveur : **{language}**"
+			"applied": "🌐 Langue du serveur : **{language}**",
+			"continue": "Continuer"
 		},
 		"commandDescription": "Configure le bot : choisis la langue du serveur, puis crée le menu et les salons. Admins seulement."
 	},

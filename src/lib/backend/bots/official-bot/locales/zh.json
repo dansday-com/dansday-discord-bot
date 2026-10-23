@@ -1047,7 +1047,8 @@
 			"description": "为此服务器选择语言。它用于 `/setup` 创建的频道名称、菜单、审批消息、机器人的所有公开消息，以及 AI 的聊天和语音。\n\n成员仍可在菜单中为自己的私密回复和私信选择语言。你之后可以在网页面板的 **Configuration → Main** 中更改。",
 			"placeholder": "选择服务器语言",
 			"working": "⏳ 正在以 **{language}** 进行设置…",
-			"applied": "🌐 服务器语言：**{language}**"
+			"applied": "🌐 服务器语言：**{language}**",
+			"continue": "继续"
 		},
 		"commandDescription": "设置机器人：选择服务器语言，然后创建菜单和频道。仅限管理员。"
 	},

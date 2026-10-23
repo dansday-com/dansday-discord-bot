@@ -1047,7 +1047,8 @@
 			"description": "Pilih bahasa untuk server ini. Bahasa ini dipakai untuk nama channel yang dibuat `/setup`, menu, postingan persetujuan, semua pesan publik bot, serta obrolan dan suara AI.\n\nAnggota tetap bisa memilih bahasa sendiri di menu untuk balasan pribadi dan DM mereka. Kamu bisa mengubahnya nanti di panel web pada **Configuration → Main**.",
 			"placeholder": "Pilih bahasa server",
 			"working": "⏳ Menyiapkan dalam **{language}**…",
-			"applied": "🌐 Bahasa server: **{language}**"
+			"applied": "🌐 Bahasa server: **{language}**",
+			"continue": "Lanjut"
 		},
 		"commandDescription": "Siapkan bot: pilih bahasa server, lalu buat menu dan channel. Khusus admin."
 	},

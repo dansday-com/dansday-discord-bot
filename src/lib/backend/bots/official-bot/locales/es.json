@@ -1047,7 +1047,8 @@
 			"description": "Elige el idioma de este servidor. Se usa para nombrar los canales que crea `/setup`, para el menú, las publicaciones de aprobación, todos los mensajes públicos del bot y el chat y la voz de la IA.\n\nLos miembros aún pueden elegir su propio idioma en el menú para sus respuestas privadas y MD. Puedes cambiarlo después en el panel web en **Configuration → Main**.",
 			"placeholder": "Selecciona el idioma del servidor",
 			"working": "⏳ Configurando en **{language}**…",
-			"applied": "🌐 Idioma del servidor: **{language}**"
+			"applied": "🌐 Idioma del servidor: **{language}**",
+			"continue": "Continuar"
 		},
 		"commandDescription": "Configura el bot: elige el idioma del servidor y luego crea el menú y los canales. Solo admins."
 	},

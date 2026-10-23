@@ -1047,7 +1047,8 @@
 			"description": "Pick the language for this server. It names the channels `/setup` creates and is used for the menu, approval posts, every public bot message, and the AI's chat and voice.\n\nMembers can still choose their own language in the menu for their private replies and DMs. You can change this later in the web panel under **Configuration → Main**.",
 			"placeholder": "Select the server language",
 			"working": "⏳ Setting up in **{language}**…",
-			"applied": "🌐 Server language: **{language}**"
+			"applied": "🌐 Server language: **{language}**",
+			"continue": "Continue"
 		},
 		"commandDescription": "Set up the bot: pick the server language, then create the menu and channels. Admins only."
 	},

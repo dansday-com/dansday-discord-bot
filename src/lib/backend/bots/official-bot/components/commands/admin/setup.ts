@@ -34,6 +34,7 @@ import {
 import { defaultGreetingMessages } from '../../../../../../localizedDefaults.js';
 import { DISCORD_LIMITS } from '../../../../../../discordLimits.js';
 import type {
+	ButtonInteraction,
 	ChatInputCommandInteraction,
 	Client,
 	Guild,
@@ -57,6 +58,11 @@ export const commandDefinition = {
 };
 
 export const SETUP_LANGUAGE_SELECT_ID = 'setup_language';
+const SETUP_CONTINUE_PREFIX = 'setup_continue|';
+
+export function isSetupContinueButtonId(customId: string) {
+	return customId.startsWith(SETUP_CONTINUE_PREFIX);
+}
 
 const COLOR_WARN = 0xfee75c;
 
@@ -317,31 +323,7 @@ export async function execute(interaction: ChatInputCommandInteraction, _client:
 		}
 
 		const suggested = await suggestedSetupLanguage(interaction.guild);
-		const embedConfig = await getEmbedConfig(gid).catch(() => ({ COLOR: EMBED_COLORS.success, FOOTER: '' }));
-		const embed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(await translate('setup.language.title', { guildId: gid, userId: uid }))
-			.setDescription(await translate('setup.language.description', { guildId: gid, userId: uid }));
-		if (embedConfig.FOOTER) {
-			embed.setFooter({ text: embedConfig.FOOTER });
-		}
-
-		const select = new StringSelectMenuBuilder()
-			.setCustomId(SETUP_LANGUAGE_SELECT_ID)
-			.setPlaceholder(await translate('setup.language.placeholder', { guildId: gid, userId: uid }))
-			.addOptions(
-				SERVER_LANGUAGES.map((l) => ({
-					label: serverLanguageLabel(l.code),
-					value: l.code,
-					default: l.code === suggested
-				}))
-			);
-
-		await interaction.reply({
-			embeds: [embed],
-			components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
-			flags: MessageFlags.Ephemeral
-		});
+		await interaction.reply({ ...(await setupLanguagePicker(interaction.guild.id, { userId: uid, selected: suggested })), flags: MessageFlags.Ephemeral });
 	} catch (error) {
 		const errorMsg = await translate('interface.panel.error', { guildId: gid, userId: uid }, { error: await errorReason(error, gid, uid) });
 		if (interaction.deferred || interaction.replied) {
@@ -350,6 +332,35 @@ export async function execute(interaction: ChatInputCommandInteraction, _client:
 			await replySetupEphemeral(interaction, { color: EMBED_COLORS.danger, description: errorMsg });
 		}
 	}
+}
+
+async function setupLanguagePicker(guildId: string, { userId, selected }: { userId: string; selected: ServerLanguage }) {
+	const tr = await memberTranslator(guildId, userId);
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: EMBED_COLORS.success, FOOTER: '' }));
+	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(tr('setup.language.title')).setDescription(tr('setup.language.description'));
+	if (embedConfig.FOOTER) {
+		embed.setFooter({ text: embedConfig.FOOTER });
+	}
+
+	const select = new StringSelectMenuBuilder()
+		.setCustomId(SETUP_LANGUAGE_SELECT_ID)
+		.setPlaceholder(tr('setup.language.placeholder'))
+		.addOptions(
+			SERVER_LANGUAGES.map((l) => ({
+				label: serverLanguageLabel(l.code),
+				value: l.code,
+				default: l.code === selected
+			}))
+		);
+	const continueButton = new ButtonBuilder()
+		.setCustomId(`${SETUP_CONTINUE_PREFIX}${selected}`)
+		.setStyle(ButtonStyle.Primary)
+		.setLabel(tr('setup.language.continue'));
+
+	return {
+		embeds: [embed],
+		components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select), new ActionRowBuilder<ButtonBuilder>().addComponents(continueButton)]
+	};
 }
 
 type ChannelMap = Record<string, string>;
@@ -460,7 +471,7 @@ async function setupServerRow(guildId: string): Promise<{ serverId: number } | {
 }
 
 async function runServerSetup(
-	interaction: StringSelectMenuInteraction<'cached'>,
+	interaction: ButtonInteraction<'cached'>,
 	{ serverId, lang, client }: { serverId: number; lang: ServerLanguage; client: Client<true> }
 ) {
 	const { guild } = interaction;
@@ -479,9 +490,9 @@ async function runServerSetup(
 	await interaction.editReply(await setupCompletionReply(tr, { serverId, menuChannel, summary }));
 }
 
-export async function handleSetupLanguageSelect(interaction: StringSelectMenuInteraction<'cached'>, client: Client<true>) {
-	const gid = interaction.guild?.id ?? '';
-	const uid = interaction.user?.id ?? '';
+async function guardSetupInteraction(interaction: StringSelectMenuInteraction<'cached'> | ButtonInteraction<'cached'>, run: () => Promise<void>) {
+	const gid = interaction.guild.id;
+	const uid = interaction.user.id;
 
 	try {
 		if (!isSetupAllowed(interaction)) {
@@ -492,8 +503,30 @@ export async function handleSetupLanguageSelect(interaction: StringSelectMenuInt
 			});
 			return;
 		}
+		await run();
+	} catch (error) {
+		const errorMsg = await translate('interface.panel.error', { guildId: gid, userId: uid }, { error: await errorReason(error, gid, uid) });
+		if (interaction.deferred || interaction.replied) {
+			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(EMBED_COLORS.danger).setDescription(errorMsg)] });
+		} else {
+			await replySetupEphemeral(interaction, { color: EMBED_COLORS.danger, description: errorMsg });
+		}
+	}
+}
 
-		const lang = interaction.values?.[0];
+export async function handleSetupLanguageSelect(interaction: StringSelectMenuInteraction<'cached'>) {
+	await guardSetupInteraction(interaction, async () => {
+		const lang = interaction.values[0];
+		if (!isServerLanguage(lang)) {
+			return;
+		}
+		await interaction.update(await setupLanguagePicker(interaction.guild.id, { userId: interaction.user.id, selected: lang }));
+	});
+}
+
+export async function handleSetupContinueButton(interaction: ButtonInteraction<'cached'>) {
+	await guardSetupInteraction(interaction, async () => {
+		const lang = interaction.customId.slice(SETUP_CONTINUE_PREFIX.length);
 		if (!isServerLanguage(lang)) {
 			return;
 		}
@@ -506,18 +539,15 @@ export async function handleSetupLanguageSelect(interaction: StringSelectMenuInt
 		const server = await setupServerRow(interaction.guild.id);
 		if ('warningKey' in server) {
 			await interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(COLOR_WARN).setDescription(await translate(server.warningKey, { guildId: gid, userId: uid }))]
+				embeds: [
+					new EmbedBuilder()
+						.setColor(COLOR_WARN)
+						.setDescription(await translate(server.warningKey, { guildId: interaction.guild.id, userId: interaction.user.id }))
+				]
 			});
 			return;
 		}
 
-		await runServerSetup(interaction, { serverId: server.serverId, lang, client });
-	} catch (error) {
-		const errorMsg = await translate('interface.panel.error', { guildId: gid, userId: uid }, { error: await errorReason(error, gid, uid) });
-		if (interaction.deferred || interaction.replied) {
-			await interaction.editReply({ embeds: [new EmbedBuilder().setColor(EMBED_COLORS.danger).setDescription(errorMsg)] });
-		} else {
-			await replySetupEphemeral(interaction, { color: EMBED_COLORS.danger, description: errorMsg });
-		}
-	}
+		await runServerSetup(interaction, { serverId: server.serverId, lang, client: interaction.client });
+	});
 }

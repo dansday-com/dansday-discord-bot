@@ -92,13 +92,13 @@ async function snowflakeNames(serverIds: number[], ids: Set<string>) {
 }
 
 function logEntry({ r, id, component, component_label, changes }: ParsedLog, resolve: (value: string | null) => string | null) {
-	const isPanelAdmin = r.account_id != null;
+	const isPanelAdmin = r.account_type === 'superadmin';
 	return {
 		id,
 		component,
 		component_label,
 		created_at: r.created_at,
-		who: (isPanelAdmin ? r.account_username : r.server_account_username) ?? null,
+		who: r.account_username ?? null,
 		role: isPanelAdmin ? 'Admin' : r.server_account_type === 'owner' ? 'Owner' : r.server_account_type === 'staff' ? 'Staff' : null,
 		changes: changes.map((c) => ({ key: c.key, before: resolve(c.before), after: resolve(c.after) }))
 	};

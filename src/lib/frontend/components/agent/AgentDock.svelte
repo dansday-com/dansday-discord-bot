@@ -147,7 +147,7 @@
 
 	async function call(body: Record<string, unknown>): Promise<AnswerBody | null> {
 		try {
-			const res = await fetch('/api/agent', {
+			const res = await fetch(serverId ? `/api/agent?server_id=${serverId}` : '/api/agent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ ...body, server_id: serverId })

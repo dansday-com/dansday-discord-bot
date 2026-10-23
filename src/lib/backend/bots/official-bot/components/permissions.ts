@@ -130,7 +130,7 @@ export async function getPermissionDeniedMessage(guild: Guild, action: string, u
 
 	try {
 		const server = await getServerForCurrentBot(guild.id);
-		const accounts = await db.getServerAccountsByServer(server.id);
+		const accounts = await db.getAccountServersByServer(server.id);
 		const hasOwner = accounts.some((a) => a.account_type === 'owner');
 
 		if (!hasOwner) {

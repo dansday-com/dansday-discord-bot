@@ -73,7 +73,7 @@ async function sendInviteDm(ctx: InviteContext, discordMemberId: string): Promis
 	}
 
 	const token = randomBytes(INVITE_TOKEN_BYTES).toString('hex');
-	await db.createServerAccountInvite({ token, server_id: server.id, account_type: accountType });
+	await db.createAccountInvite({ token, server_id: server.id, account_type: accountType });
 
 	const inviteUrl = `${ctx.origin}/register?token=${token}`;
 	const displayName = member.server_display_name || member.display_name || member.username || 'there';

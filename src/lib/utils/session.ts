@@ -6,6 +6,7 @@ import { SECOND_MS, DAY_SECONDS } from './time.js';
 export type SessionData = {
 	authenticated: boolean;
 	account_id?: number;
+	server_id?: number;
 	account_type?: string;
 	account_source?: 'accounts' | 'server_accounts';
 	is_demo?: boolean;

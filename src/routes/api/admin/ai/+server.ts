@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db, { aiFromDbRow, AI_REASONING_LEVELS, AI_VOICE_THINKING_LEVELS, type AiInput, type AiReasoning, type AiVoiceThinking } from '$lib/database.js';
 import { GEMINI_VOICE_NAMES } from '$lib/geminiVoices.js';
 import { HTTP } from '$lib/http.js';
+import { authorizeSuperadmin } from '$lib/frontend/panelGuards.server.js';
 
 const MAX_MODEL_LENGTH = 191;
 const MAX_SYSTEM_PROMPT_LENGTH = 8000;
@@ -19,25 +20,8 @@ function maskConfig(config: AiInput) {
 	};
 }
 
-function authorize(locals: App.Locals) {
-	if (!locals.user.authenticated) {
-		return { error: json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED }) };
-	}
-
-	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		return { error: json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN }) };
-	}
-
-	const panelId = Number(locals.user.panel_id);
-	if (!Number.isFinite(panelId) || panelId <= 0) {
-		return { error: json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND }) };
-	}
-
-	return { panelId };
-}
-
 export const GET: RequestHandler = async ({ locals }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}
@@ -140,7 +124,7 @@ function aiInputError(input: AiInput): string | null {
 }
 
 export const PATCH: RequestHandler = async ({ locals, request }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}

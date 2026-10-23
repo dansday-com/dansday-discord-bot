@@ -54,7 +54,6 @@
 		id: number;
 		amount: number;
 		reason: string | null;
-		server_account_username: string | null;
 		account_username: string | null;
 		created_at: string;
 	};
@@ -313,7 +312,7 @@
 										{Number(l.amount) > 0 ? '+' : ''}{Number(l.amount).toLocaleString()}
 									</span>
 									<span class="text-ash-200 min-w-0 flex-1 truncate">{l.reason ?? ''}</span>
-									<span class="text-ash-400 hidden shrink-0 sm:inline">{l.server_account_username ?? l.account_username ?? 'Panel'}</span>
+									<span class="text-ash-400 hidden shrink-0 sm:inline">{l.account_username ?? 'Panel'}</span>
 									<span class="text-ash-400 shrink-0"><LocalTime value={l.created_at} fallback="" /></span>
 								</li>
 							{/each}

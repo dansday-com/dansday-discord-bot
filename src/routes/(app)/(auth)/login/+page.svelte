@@ -91,15 +91,18 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ username_or_email: usernameOrEmail, password })
+				body: JSON.stringify({ username_or_email: usernameOrEmail, password, invite_token: data.invite?.token })
 			});
-			const data = await res.json();
+			const result = await res.json();
 
-			if (data.success) {
-				showToast(data.message || 'Login successful!', 'success');
+			if (result.success) {
+				showToast(result.message || 'Login successful!', 'success');
+				if (result.notice) {
+					showToast(result.notice, 'info');
+				}
 				setTimeout(() => goto(DASHBOARD_PATH), LOGIN_REDIRECT_DELAY_MS);
 			} else {
-				showToast(data.error || 'Login failed', 'error');
+				showToast(result.error || 'Login failed', 'error');
 			}
 		} catch (_) {
 			showToast('Login failed. Please try again.', 'error');
@@ -121,6 +124,12 @@
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold sm:text-3xl">{APP_NAME}</h1>
 		<p class="text-ash-400 text-xs sm:text-sm">Discord Bot Panel</p>
 	</div>
+
+	{#if data.invite}
+		<p class="bg-ash-700 border-ash-600 text-ash-200 mb-5 rounded-lg border px-3 py-2.5 text-center text-xs sm:text-sm">
+			You are joining <span class="text-ash-100 font-semibold">{data.invite.server_name}</span> as {data.invite.account_type === 'owner' ? 'Owner' : 'Staff'}.
+		</p>
+	{/if}
 
 	<form
 		onsubmit={(e) => {
@@ -173,7 +182,7 @@
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
 			{#if isLoading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
-			{isLoading ? 'Processing...' : 'Login'}
+			{isLoading ? 'Processing...' : data.invite ? `Log in and join as ${data.invite.account_type === 'owner' ? 'Owner' : 'Staff'}` : 'Login'}
 		</button>
 
 		<div class="flex items-center gap-3">

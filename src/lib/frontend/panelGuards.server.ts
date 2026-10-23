@@ -8,11 +8,11 @@ function denied(locals: App.Locals) {
 	return json({ ok: false, success: false, error: actor ? TIER_DENIED[actor] : 'Access denied' }, { status: HTTP.FORBIDDEN });
 }
 
-export function panelActorIds(locals: App.Locals): { server_account_id?: number; account_id?: number } {
+export function panelActorIds(locals: App.Locals): { account_id?: number } {
 	if (!locals.user.authenticated) {
 		return {};
 	}
-	return locals.user.account_source === 'server_accounts' ? { server_account_id: locals.user.account_id } : { account_id: locals.user.account_id };
+	return { account_id: locals.user.account_id };
 }
 
 export async function guardMemberAction(locals: App.Locals, serverId: number | string, discordMemberId: string): Promise<Response | null> {
@@ -24,4 +24,21 @@ export async function guardMemberAction(locals: App.Locals, serverId: number | s
 
 export function guardAccountAction(locals: App.Locals, accountType: string): Response | null {
 	return canActOnAccount(panelActorOf(locals.user), accountType) ? null : denied(locals);
+}
+
+export function authorizeSuperadmin(locals: App.Locals) {
+	if (!locals.user.authenticated) {
+		return { error: json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED }) };
+	}
+
+	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
+		return { error: json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN }) };
+	}
+
+	const panelId = Number(locals.user.panel_id);
+	if (!Number.isFinite(panelId) || panelId <= 0) {
+		return { error: json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND }) };
+	}
+
+	return { panelId };
 }

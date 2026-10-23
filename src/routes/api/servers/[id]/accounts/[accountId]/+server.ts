@@ -20,47 +20,54 @@ async function canManageAccounts(locals: App.Locals, serverId: number): Promise<
 	return false;
 }
 
-function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: number): boolean {
-	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetServerAccountId;
+function isTargetSelfServerAccount(locals: App.Locals, targetAccountId: number): boolean {
+	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetAccountId;
+}
+
+type Target = { account: NonNullable<Awaited<ReturnType<typeof db.getAccountById>>>; serverName: string };
+
+async function findTarget(
+	locals: App.Locals,
+	{ serverId, accountId, verb }: { serverId: number; accountId: number; verb: string }
+): Promise<Target | Response> {
+	if (!(await canManageAccounts(locals, serverId))) {
+		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
+	}
+	const [account, accountServer, server] = await Promise.all([db.getAccountById(accountId), db.getAccountServer(accountId, serverId), db.getServer(serverId)]);
+	if (!account || !accountServer) {
+		return json({ success: false, error: 'Account not found' }, { status: HTTP.NOT_FOUND });
+	}
+	if (isTargetSelfServerAccount(locals, account.id)) {
+		return json({ success: false, error: `Cannot ${verb} your own account` }, { status: HTTP.BAD_REQUEST });
+	}
+	return guardAccountAction(locals, accountServer.account_type) ?? { account, serverName: server?.name || 'this server' };
+}
+
+function actorName(locals: App.Locals): string {
+	return (locals.user as Extract<App.Locals['user'], { authenticated: true }>).username;
 }
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
+	const target = await findTarget(locals, { serverId, accountId: Number(params.accountId), verb: 'modify' });
+	if (target instanceof Response) {
+		return target;
 	}
-
-	const accountId = Number(params.accountId);
-	const account = await db.getServerAccountById(accountId);
-	if (!account || account.server_id !== serverId) {
-		return json({ success: false, error: 'Account not found' }, { status: HTTP.NOT_FOUND });
-	}
-
-	if (isTargetSelfServerAccount(locals, account.id)) {
-		return json({ success: false, error: 'Cannot modify your own account' }, { status: HTTP.BAD_REQUEST });
-	}
-
-	const denied = guardAccountAction(locals, account.account_type);
-	if (denied) {
-		return denied;
-	}
+	const { account, serverName } = target;
 
 	const { is_frozen } = await request.json();
 	if (typeof is_frozen !== 'boolean') {
 		return json({ success: false, error: 'is_frozen must be a boolean' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	await db.updateServerAccount(accountId, { is_frozen });
-	const action = is_frozen ? 'froze' : 'unfroze';
-	logger.log(
-		`${(locals.user as Extract<App.Locals['user'], { authenticated: true }>).username} ${action} server account ${account.username} (server ${serverId})`
-	);
+	await db.updateAccountServer(account.id, serverId, { is_frozen });
+	logger.log(`${actorName(locals)} ${is_frozen ? 'froze' : 'unfroze'} server account ${account.username} (server ${serverId})`);
 
 	try {
 		if (is_frozen) {
-			await sendAccountFrozenEmail(account.email, account.username);
+			await sendAccountFrozenEmail(account.email, account.username, serverName);
 		} else {
-			await sendAccountUnfrozenEmail(account.email, account.username);
+			await sendAccountUnfrozenEmail(account.email, account.username, serverName);
 		}
 	} catch (err) {
 		logger.log(`⚠️ Failed to send ${is_frozen ? 'frozen' : 'unfrozen'} email to ${account.email}: ${(err as Error)?.message ?? String(err)}`);
@@ -71,32 +78,17 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (!(await canManageAccounts(locals, serverId))) {
-		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
+	const target = await findTarget(locals, { serverId, accountId: Number(params.accountId), verb: 'delete' });
+	if (target instanceof Response) {
+		return target;
 	}
+	const { account, serverName } = target;
 
-	const accountId = Number(params.accountId);
-	const account = await db.getServerAccountById(accountId);
-	if (!account || account.server_id !== serverId) {
-		return json({ success: false, error: 'Account not found' }, { status: HTTP.NOT_FOUND });
-	}
-
-	if (isTargetSelfServerAccount(locals, account.id)) {
-		return json({ success: false, error: 'Cannot delete your own account' }, { status: HTTP.BAD_REQUEST });
-	}
-
-	const denied = guardAccountAction(locals, account.account_type);
-	if (denied) {
-		return denied;
-	}
-
-	await db.deleteServerAccount(accountId);
-	logger.log(
-		`${(locals.user as Extract<App.Locals['user'], { authenticated: true }>).username} deleted server account ${account.username} (server ${serverId})`
-	);
+	await db.deleteAccountServer(account.id, serverId);
+	logger.log(`${actorName(locals)} removed server account ${account.username} (server ${serverId})`);
 
 	try {
-		await sendAccountDeletedEmail(account.email, account.username);
+		await sendAccountDeletedEmail(account.email, account.username, serverName);
 	} catch (err) {
 		logger.log(`⚠️ Failed to send deleted email to ${account.email}: ${(err as Error)?.message ?? String(err)}`);
 	}

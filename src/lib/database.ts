@@ -953,6 +953,12 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		await db.delete(schema.serverMembers).where(eq(schema.serverMembers.id, Number(row.id)));
 	}
 
+	await db.execute(sql`
+		DELETE a FROM accounts a
+		LEFT JOIN account_servers s ON s.account_id = a.id
+		WHERE a.account_type = 'user' AND s.id IS NULL AND a.created_at <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY
+	`);
+
 	return { servers: areServersSkipped ? 0 : staleServers.length, members: membersBatch.length, skipped: areServersSkipped };
 }
 
@@ -5742,8 +5748,8 @@ export async function getPanelOverview(panelId: number) {
 
 	try {
 		const accountsRes = await db.execute(sql`
-            SELECT COUNT(*) AS count
-            FROM server_accounts sa
+            SELECT COUNT(DISTINCT sa.account_id) AS count
+            FROM account_servers sa
             JOIN servers s ON sa.server_id = s.id
             JOIN bots b ON s.bot_id = b.id
             WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
@@ -6086,13 +6092,19 @@ async function getAccountByUsername(username: string) {
 	return rows[0] || null;
 }
 
-async function createAccount(accountData: { username: string; email: string; password_hash: string; account_type?: 'superadmin'; ip_address?: string | null }) {
+async function createAccount(accountData: {
+	username: string;
+	email: string;
+	password_hash: string;
+	account_type?: 'superadmin' | 'user';
+	ip_address?: string | null;
+}) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.accounts).values({
 		username: accountData.username,
 		email: accountData.email,
 		password_hash: accountData.password_hash,
-		account_type: accountData.account_type || 'superadmin',
+		account_type: accountData.account_type || 'user',
 		ip_address: accountData.ip_address || null,
 		created_at: now,
 		updated_at: now
@@ -6127,205 +6139,155 @@ async function getAllAccounts() {
 		.orderBy(asc(schema.accounts.created_at));
 }
 
-async function createInviteLink(linkData: {
-	token: string;
-	account_type: string;
-	server_id?: number | null;
-	created_by: number;
-	expires_at?: string | Date | null;
-}) {
-	const now = toMySQLDateTime();
-	const result = await db.insert(schema.accountInvites).values({
-		token: linkData.token,
-		account_type: linkData.account_type,
-		server_id: linkData.server_id || null,
-		created_by: linkData.created_by,
-		expires_at: linkData.expires_at ? toMySQLDateTime(linkData.expires_at) : null,
-		created_at: now
-	});
-	const rows = await db.select().from(schema.accountInvites).where(eq(schema.accountInvites.id, result[0].insertId)).limit(1);
-	return rows[0];
+async function deleteAccountIfServerless(accountId: number) {
+	await db.execute(sql`
+		DELETE a FROM accounts a
+		LEFT JOIN account_servers s ON s.account_id = a.id
+		WHERE a.id = ${accountId} AND a.account_type = 'user' AND s.id IS NULL
+	`);
 }
 
-async function getInviteLinkByToken(token: string) {
-	const rows = await db.select().from(schema.accountInvites).where(eq(schema.accountInvites.token, token)).limit(1);
-	return rows[0] || null;
-}
-
-async function updateInviteLink(linkId: unknown, updateData: Record<string, unknown>) {
-	const data: Record<string, unknown> = { ...updateData };
-	if (data.used_at) {
-		data.used_at = toMySQLDateTime(data.used_at as string | Date);
-	}
-	await db
-		.update(schema.accountInvites)
-		.set(data)
-		.where(eq(schema.accountInvites.id, Number(linkId)));
-	const rows = await db
-		.select()
-		.from(schema.accountInvites)
-		.where(eq(schema.accountInvites.id, Number(linkId)))
-		.limit(1);
-	return rows[0];
-}
-
-async function getAllInviteLinks() {
+async function getActiveAccountServers(accountId: number) {
 	return db
 		.select({
-			invite: schema.accountInvites,
+			server_id: schema.servers.id,
 			server_name: schema.servers.name,
-			creator_username: schema.accounts.username,
-			creator_email: schema.accounts.email
+			server_icon: schema.servers.server_icon,
+			bot_id: schema.servers.bot_id,
+			account_type: schema.accountServers.account_type
 		})
-		.from(schema.accountInvites)
-		.leftJoin(schema.servers, eq(schema.accountInvites.server_id, schema.servers.id))
-		.leftJoin(schema.accounts, eq(schema.accountInvites.created_by, schema.accounts.id))
-		.orderBy(desc(schema.accountInvites.created_at))
-		.then((rows) => rows.map((r) => ({ ...r.invite, server_name: r.server_name, creator_username: r.creator_username, creator_email: r.creator_email })));
-}
-
-async function getServerInviteLinks(serverId: number) {
-	return db
-		.select({
-			invite: schema.accountInvites,
-			creator_username: schema.accounts.username
-		})
-		.from(schema.accountInvites)
-		.leftJoin(schema.accounts, eq(schema.accountInvites.created_by, schema.accounts.id))
-		.where(eq(schema.accountInvites.server_id, serverId))
-		.orderBy(desc(schema.accountInvites.created_at))
-		.then((rows) => rows.map((r) => ({ ...r.invite, creator_username: r.creator_username })));
-}
-
-async function getAccountServerAccess(accountId: number) {
-	return db
-		.select({ server_id: schema.accountServerAccess.server_id, role: schema.accountServerAccess.role })
-		.from(schema.accountServerAccess)
-		.where(eq(schema.accountServerAccess.account_id, accountId));
-}
-
-async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'staff' }) {
-	const now = toMySQLDateTime();
-	await db
-		.insert(schema.accountServerAccess)
-		.values({ account_id: data.account_id, server_id: data.server_id, role: data.role, created_at: now })
-		.onDuplicateKeyUpdate({ set: { role: data.role } });
-}
-
-async function deleteAccountServerAccess(accountId: number, serverId: number) {
-	await db
-		.delete(schema.accountServerAccess)
-		.where(and(eq(schema.accountServerAccess.account_id, accountId), eq(schema.accountServerAccess.server_id, serverId)));
-}
-
-async function getServerAccountById(id: number) {
-	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.id, id)).limit(1);
-	return rows[0] || null;
-}
-
-async function getServerAccountByEmail(email: string) {
-	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.email, email)).limit(1);
-	return rows[0] || null;
-}
-
-async function getServerAccountByUsername(username: string) {
-	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.username, username)).limit(1);
-	return rows[0] || null;
-}
-
-async function getServerAccountByEmailServer(email: string, serverId: number) {
-	const rows = await db
-		.select()
-		.from(schema.serverAccounts)
-		.where(and(eq(schema.serverAccounts.email, email), eq(schema.serverAccounts.server_id, serverId)))
-		.limit(1);
-	return rows[0] || null;
-}
-
-async function getServerAccountByNormalizedEmailServer(email: string, serverId: number) {
-	const atIndex = email.lastIndexOf('@');
-	if (atIndex === -1) {
-		return null;
-	}
-	const domain = email.substring(atIndex + 1);
-	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
-		return getServerAccountByEmailServer(email, serverId);
-	}
-	const normalizedLocal = email.substring(0, atIndex).replace(/\./g, '');
-	const rows = await db
-		.select()
-		.from(schema.serverAccounts)
+		.from(schema.accountServers)
+		.innerJoin(schema.servers, eq(schema.servers.id, schema.accountServers.server_id))
 		.where(
 			and(
-				eq(schema.serverAccounts.server_id, serverId),
-				sql`SUBSTRING_INDEX(${schema.serverAccounts.email}, '@', -1) IN ('gmail.com', 'googlemail.com')
-				    AND REPLACE(SUBSTRING_INDEX(${schema.serverAccounts.email}, '@', 1), '.', '') = ${normalizedLocal}`
+				eq(schema.accountServers.account_id, accountId),
+				isNull(schema.servers.deleted_at),
+				or(isNull(schema.accountServers.is_frozen), eq(schema.accountServers.is_frozen, false))
 			)
 		)
+		.orderBy(asc(schema.servers.name));
+}
+
+async function getServersForAccount(accountId: number) {
+	return db
+		.select({
+			id: schema.servers.id,
+			bot_id: schema.servers.bot_id,
+			discord_server_id: schema.servers.discord_server_id,
+			name: schema.servers.name,
+			server_icon: schema.servers.server_icon,
+			total_members: schema.servers.total_members,
+			total_channels: schema.servers.total_channels,
+			total_boosters: schema.servers.total_boosters,
+			boost_level: schema.servers.boost_level,
+			is_frozen: schema.accountServers.is_frozen
+		})
+		.from(schema.accountServers)
+		.innerJoin(schema.servers, eq(schema.servers.id, schema.accountServers.server_id))
+		.where(and(eq(schema.accountServers.account_id, accountId), isNull(schema.servers.deleted_at)))
+		.orderBy(asc(schema.servers.name));
+}
+
+async function getAccountServer(accountId: number, serverId: number) {
+	const rows = await db
+		.select()
+		.from(schema.accountServers)
+		.where(and(eq(schema.accountServers.account_id, accountId), eq(schema.accountServers.server_id, serverId)))
 		.limit(1);
 	return rows[0] || null;
 }
 
-async function createServerAccount(data: {
-	server_id: number;
-	username: string;
-	email: string;
-	password_hash: string;
-	account_type: 'owner' | 'staff';
-	ip_address?: string | null;
-	is_frozen?: boolean;
-}) {
+async function createAccountServer(data: { account_id: number; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.serverAccounts).values({
-		server_id: data.server_id,
-		username: data.username,
-		email: data.email,
-		password_hash: data.password_hash,
-		account_type: data.account_type,
-		ip_address: data.ip_address ?? null,
-		is_frozen: data.is_frozen ?? false,
-		created_at: now,
-		updated_at: now
-	});
-	return getServerAccountById(result[0].insertId);
+	const existing = await getAccountServer(data.account_id, data.server_id);
+	if (!existing) {
+		await db.insert(schema.accountServers).values({ ...data, is_frozen: false, created_at: now, updated_at: now });
+		return;
+	}
+	if (data.account_type === 'owner' && existing.account_type !== 'owner') {
+		await db.update(schema.accountServers).set({ account_type: 'owner', updated_at: now }).where(eq(schema.accountServers.id, existing.id));
+	}
 }
 
-async function updateServerAccount(
-	id: number,
-	data: Partial<{
-		username: string;
-		email: string;
-		password_hash: string;
-		account_type: 'owner' | 'staff';
-		ip_address: string | null;
-		is_frozen: boolean;
-	}>
-) {
+async function updateAccountServer(accountId: number, serverId: number, data: { is_frozen: boolean }) {
 	await db
-		.update(schema.serverAccounts)
+		.update(schema.accountServers)
 		.set({ ...data, updated_at: toMySQLDateTime() })
-		.where(eq(schema.serverAccounts.id, id));
+		.where(and(eq(schema.accountServers.account_id, accountId), eq(schema.accountServers.server_id, serverId)));
 }
 
-async function deleteServerAccount(id: number) {
-	await db.delete(schema.serverAccounts).where(eq(schema.serverAccounts.id, id));
+async function deleteAccountServer(accountId: number, serverId: number) {
+	await db.delete(schema.accountServers).where(and(eq(schema.accountServers.account_id, accountId), eq(schema.accountServers.server_id, serverId)));
+	await deleteAccountIfServerless(accountId);
 }
 
-async function getServerAccountsByServer(serverId: number) {
+async function getPanelAccounts(panelId: number) {
 	return db
-		.select()
-		.from(schema.serverAccounts)
-		.where(eq(schema.serverAccounts.server_id, serverId))
-		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
+		.select({
+			id: schema.accounts.id,
+			username: schema.accounts.username,
+			email: schema.accounts.email,
+			ip_address: schema.accounts.ip_address,
+			server_id: schema.servers.id,
+			server_name: schema.servers.name,
+			account_type: schema.accountServers.account_type,
+			is_frozen: schema.accountServers.is_frozen
+		})
+		.from(schema.accountServers)
+		.innerJoin(schema.accounts, eq(schema.accounts.id, schema.accountServers.account_id))
+		.innerJoin(schema.servers, eq(schema.servers.id, schema.accountServers.server_id))
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.where(and(eq(schema.bots.panel_id, panelId), isNull(schema.servers.deleted_at)))
+		.orderBy(asc(schema.accounts.username), asc(schema.servers.name));
 }
 
-const SERVER_ACCOUNT_INVITE_TTL_MINUTES = DAY_MINUTES;
+async function updatePanelAccountServers(panelId: number, accountId: number, data: { is_frozen: boolean }): Promise<number> {
+	const result = (await db.execute(sql`
+		UPDATE account_servers s
+		JOIN servers sv ON sv.id = s.server_id
+		JOIN bots b ON b.id = sv.bot_id
+		SET s.is_frozen = ${data.is_frozen}, s.updated_at = ${toMySQLDateTime()}
+		WHERE s.account_id = ${accountId} AND b.panel_id = ${panelId}
+	`)) as unknown as WriteResult;
+	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+}
 
-async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
+async function deletePanelAccount(panelId: number, accountId: number): Promise<number> {
+	const result = (await db.execute(sql`
+		DELETE s FROM account_servers s
+		JOIN servers sv ON sv.id = s.server_id
+		JOIN bots b ON b.id = sv.bot_id
+		WHERE s.account_id = ${accountId} AND b.panel_id = ${panelId}
+	`)) as unknown as WriteResult;
+	await deleteAccountIfServerless(accountId);
+	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+}
+
+async function getAccountServersByServer(serverId: number) {
+	return db
+		.select({
+			id: schema.accounts.id,
+			username: schema.accounts.username,
+			email: schema.accounts.email,
+			ip_address: schema.accounts.ip_address,
+			account_type: schema.accountServers.account_type,
+			is_frozen: schema.accountServers.is_frozen,
+			created_at: schema.accountServers.created_at,
+			updated_at: schema.accountServers.updated_at
+		})
+		.from(schema.accountServers)
+		.innerJoin(schema.accounts, eq(schema.accounts.id, schema.accountServers.account_id))
+		.where(eq(schema.accountServers.server_id, serverId))
+		.orderBy(asc(schema.accountServers.account_type), asc(schema.accountServers.created_at));
+}
+
+const ACCOUNT_INVITE_TTL_MINUTES = DAY_MINUTES;
+
+async function createAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
-	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
-	await db.insert(schema.serverAccountInvites).values({
+	const expiresAt = now.plus({ minutes: ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
+	await db.insert(schema.accountInvites).values({
 		token: data.token,
 		server_id: data.server_id,
 		account_type: data.account_type,
@@ -6334,33 +6296,37 @@ async function createServerAccountInvite(data: { token: string; server_id: numbe
 	});
 }
 
-async function getServerAccountInviteByToken(token: string) {
-	const rows = await db.select().from(schema.serverAccountInvites).where(eq(schema.serverAccountInvites.token, token)).limit(1);
+async function getAccountInviteByToken(token: string) {
+	const rows = await db.select().from(schema.accountInvites).where(eq(schema.accountInvites.token, token)).limit(1);
 	return rows[0] || null;
 }
 
-async function getServerAccountInviteByIdForServer(inviteId: number, serverId: number) {
+async function getAccountInviteByIdForServer(inviteId: number, serverId: number) {
 	const rows = await db
 		.select()
-		.from(schema.serverAccountInvites)
-		.where(and(eq(schema.serverAccountInvites.id, inviteId), eq(schema.serverAccountInvites.server_id, serverId)))
+		.from(schema.accountInvites)
+		.where(and(eq(schema.accountInvites.id, inviteId), eq(schema.accountInvites.server_id, serverId)))
 		.limit(1);
 	return rows[0] || null;
 }
 
-async function updateServerAccountInvite(id: number, data: Partial<{ used_by: number; used_at: string | Date; expires_at: Date | string }>) {
-	await db
-		.update(schema.serverAccountInvites)
-		.set(data as Record<string, unknown>)
-		.where(eq(schema.serverAccountInvites.id, id));
+async function claimAccountInvite(inviteId: number, accountId: number): Promise<boolean> {
+	const result = (await db.execute(sql`
+		UPDATE account_invites SET used_by = ${accountId}, used_at = UTC_TIMESTAMP()
+		WHERE id = ${inviteId} AND used_by IS NULL AND used_at IS NULL AND (expires_at IS NULL OR expires_at > UTC_TIMESTAMP())
+	`)) as unknown as WriteResult;
+	return (result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) > 0;
 }
 
-async function getServerAccountInvitesByServer(serverId: number) {
-	return db
-		.select()
-		.from(schema.serverAccountInvites)
-		.where(eq(schema.serverAccountInvites.server_id, serverId))
-		.orderBy(desc(schema.serverAccountInvites.created_at));
+async function updateAccountInvite(id: number, data: Partial<{ used_by: number; used_at: string | Date; expires_at: Date | string }>) {
+	await db
+		.update(schema.accountInvites)
+		.set(data as Record<string, unknown>)
+		.where(eq(schema.accountInvites.id, id));
+}
+
+async function getAccountInvitesByServer(serverId: number) {
+	return db.select().from(schema.accountInvites).where(eq(schema.accountInvites.server_id, serverId)).orderBy(desc(schema.accountInvites.created_at));
 }
 
 async function getAllSelfbots() {
@@ -9235,17 +9201,13 @@ export async function deleteGlobalMessagePost(panelId: number | string, postId: 
 
 type PanelLogEntry = { action: string; changes: { key: string; before: string | null; after: string | null }[] };
 
-export async function createServerPanelLog(
-	serverId: number,
-	actor: { server_account_id?: number | null; account_id?: number | null },
-	{ action, changes }: PanelLogEntry
-) {
+export async function createServerPanelLog(serverId: number, actor: { account_id?: number | null }, { action, changes }: PanelLogEntry) {
 	if (!changes.length) {
 		return;
 	}
 	await db.execute(sql`
-		INSERT INTO server_panel_logs (server_id, server_account_id, account_id, action, changes, created_at)
-		VALUES (${Number(serverId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${action.slice(0, PANEL_LOG_ACTION_MAX_LENGTH)}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
+		INSERT INTO server_panel_logs (server_id, account_id, action, changes, created_at)
+		VALUES (${Number(serverId)}, ${actor.account_id ?? null}, ${action.slice(0, PANEL_LOG_ACTION_MAX_LENGTH)}, ${JSON.stringify(changes)}, ${toMySQLDateTime()})
 	`);
 }
 
@@ -9255,11 +9217,10 @@ export async function getServerPanelLogs(serverIds: number[], limit = 300) {
 	}
 	const [rows] = (await db.execute(sql`
 		SELECT l.id, l.action, l.changes, l.created_at,
-			sa.username AS server_account_username, sa.account_type AS server_account_type,
-			a.username AS account_username, l.server_account_id, l.account_id
+			a.username AS account_username, a.account_type, s.account_type AS server_account_type, l.account_id
 		FROM server_panel_logs l
-		LEFT JOIN server_accounts sa ON sa.id = l.server_account_id
 		LEFT JOIN accounts a ON a.id = l.account_id
+		LEFT JOIN account_servers s ON s.account_id = l.account_id AND s.server_id = l.server_id
 		WHERE l.server_id IN (${sql.join(
 			serverIds.map((id) => sql`${id}`),
 			sql`, `
@@ -9271,10 +9232,9 @@ export async function getServerPanelLogs(serverIds: number[], limit = 300) {
 		action: string;
 		changes: unknown;
 		created_at: string;
-		server_account_username: string | null;
-		server_account_type: string | null;
 		account_username: string | null;
-		server_account_id: number | null;
+		account_type: string | null;
+		server_account_type: string | null;
 		account_id: number | null;
 	}>;
 	return rows ?? [];
@@ -9623,9 +9583,8 @@ export async function getMemberInviteLogs(memberId: number, limit = 50) {
 		return [];
 	}
 	const [rows] = (await db.execute(sql`
-		SELECT l.id, l.amount, l.reason, l.created_at, sa.username AS server_account_username, a.username AS account_username
+		SELECT l.id, l.amount, l.reason, l.created_at, a.username AS account_username
 		FROM server_member_invite_logs l
-		LEFT JOIN server_accounts sa ON sa.id = l.server_account_id
 		LEFT JOIN accounts a ON a.id = l.account_id
 		WHERE l.member_id = ${Number(memberId)}
 		ORDER BY l.id DESC
@@ -9635,7 +9594,6 @@ export async function getMemberInviteLogs(memberId: number, limit = 50) {
 		amount: number;
 		reason: string | null;
 		created_at: string;
-		server_account_username: string | null;
 		account_username: string | null;
 	}>;
 	return rows ?? [];
@@ -9643,15 +9601,11 @@ export async function getMemberInviteLogs(memberId: number, limit = 50) {
 
 type InviteAdjustment = { amount: number; reason: string | null };
 
-export async function addMemberInviteAdjustment(
-	memberId: number,
-	actor: { server_account_id?: number | null; account_id?: number | null },
-	{ amount, reason }: InviteAdjustment
-) {
+export async function addMemberInviteAdjustment(memberId: number, actor: { account_id?: number | null }, { amount, reason }: InviteAdjustment) {
 	await initializeDatabase();
 	await db.execute(sql`
-		INSERT INTO server_member_invite_logs (member_id, server_account_id, account_id, amount, reason, created_at)
-		VALUES (${Number(memberId)}, ${actor.server_account_id ?? null}, ${actor.account_id ?? null}, ${Math.trunc(amount)}, ${reason}, ${toMySQLDateTime()})
+		INSERT INTO server_member_invite_logs (member_id, account_id, amount, reason, created_at)
+		VALUES (${Number(memberId)}, ${actor.account_id ?? null}, ${Math.trunc(amount)}, ${reason}, ${toMySQLDateTime()})
 	`);
 }
 
@@ -10235,28 +10189,22 @@ export default {
 	updateAccount,
 	deleteAccount,
 	getAllAccounts,
-	createInviteLink,
-	getInviteLinkByToken,
-	updateInviteLink,
-	getAllInviteLinks,
-	getServerInviteLinks,
-	getAccountServerAccess,
-	createAccountServerAccess,
-	deleteAccountServerAccess,
-	getServerAccountById,
-	getServerAccountByEmail,
-	getServerAccountByUsername,
-	getServerAccountByEmailServer,
-	getServerAccountByNormalizedEmailServer,
-	createServerAccount,
-	updateServerAccount,
-	deleteServerAccount,
-	getServerAccountsByServer,
-	createServerAccountInvite,
-	getServerAccountInviteByToken,
-	getServerAccountInviteByIdForServer,
-	updateServerAccountInvite,
-	getServerAccountInvitesByServer,
+	getActiveAccountServers,
+	getServersForAccount,
+	getAccountServer,
+	createAccountServer,
+	updateAccountServer,
+	deleteAccountServer,
+	getPanelAccounts,
+	updatePanelAccountServers,
+	deletePanelAccount,
+	getAccountServersByServer,
+	createAccountInvite,
+	getAccountInviteByToken,
+	getAccountInviteByIdForServer,
+	claimAccountInvite,
+	updateAccountInvite,
+	getAccountInvitesByServer,
 	getAllSelfbots,
 	getSelfbotById,
 	addSelfbot,

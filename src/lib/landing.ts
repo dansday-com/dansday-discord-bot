@@ -197,7 +197,7 @@ export const features: Feature[] = [
 		icon: 'fa-id-card',
 		title: 'Server accounts',
 		desc: 'Invite owners and staff into the panel with roles that fit your team.',
-		more: 'Separate from who can chat or moderate in Discord.'
+		more: 'Separate from who can chat or moderate in Discord. One login covers every server they belong to.'
 	},
 	{
 		icon: 'fa-circle-dot',

@@ -10,6 +10,7 @@
 		total_channels: number | null;
 		total_boosters: number | null;
 		boost_level: number | null;
+		is_frozen?: boolean;
 	};
 
 	interface Props {
@@ -62,9 +63,14 @@
 				{#each pageRows as s (s.id)}
 					<li>
 						<svelte:element
-							this={href ? 'a' : 'div'}
-							href={href?.(s)}
-							class="bg-ash-700 border-ash-600 flex items-center gap-3 rounded-lg border p-3 {href ? 'hover:border-ash-500 transition-colors' : ''}"
+							this={href && !s.is_frozen ? 'a' : 'div'}
+							href={s.is_frozen ? undefined : href?.(s)}
+							aria-disabled={s.is_frozen || undefined}
+							class="bg-ash-700 border-ash-600 flex items-center gap-3 rounded-lg border p-3 {s.is_frozen
+								? 'opacity-50'
+								: href
+									? 'hover:border-ash-500 transition-colors'
+									: ''}"
 						>
 							<div class="bg-ash-600 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
 								{#if s.server_icon}
@@ -79,13 +85,16 @@
 									{#if (s.boost_level ?? 0) > 0}
 										<span class="shrink-0 text-xs font-medium text-purple-400" title="Boost level"><i class="fas fa-gem mr-0.5"></i>LV {s.boost_level}</span>
 									{/if}
+									{#if s.is_frozen}
+										<span class="shrink-0 text-xs font-medium text-sky-300"><i class="fas fa-lock mr-0.5"></i>Frozen</span>
+									{/if}
 								</p>
 								<p class="text-ash-400 truncate text-xs tabular-nums">
 									{count(s.total_members, 'member')} · {count(s.total_channels, 'channel')}{#if (s.total_boosters ?? 0) > 0}
 										· {count(s.total_boosters, 'booster')}{/if}
 								</p>
 							</div>
-							{#if href}
+							{#if href && !s.is_frozen}
 								<i class="fas fa-chevron-right text-ash-400 shrink-0 text-xs"></i>
 							{/if}
 						</svelte:element>

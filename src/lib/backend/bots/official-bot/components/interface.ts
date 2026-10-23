@@ -735,7 +735,7 @@ const STRING_SELECT_ROUTES: ComponentRoute<CachedStringSelect>[] = [
 	{ matches: isMessageComponentId, handle: handleMessageComponent },
 	{ matches: startsWithAny('moderation_action|'), handle: handleModerationActionSelect },
 	{ matches: isExactly('settings_language_select'), handle: handleLanguageSelect },
-	{ matches: isExactly(SETUP_LANGUAGE_SELECT_ID), handle: handleSetupLanguageSelect },
+	{ matches: (customId) => customId === SETUP_LANGUAGE_SELECT_ID, handle: handleSetupLanguageSelect },
 	{ matches: isExactly('notifications_select'), handle: handleNotificationsSelect },
 	{ matches: isExactly(ROBLOX_NOTIFICATIONS_SELECT_ID), handle: handleRobloxNotificationsSelect, feature: serverSettingsComponent.roblox_catalog_notifier },
 	{ matches: isRobloxItemNotificationTypesSelectId, handle: handleRobloxItemNotificationTypesSelect, feature: serverSettingsComponent.roblox_catalog_notifier },

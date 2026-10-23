@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { setAutoQuest } from '$lib/frontend/panelSettings.server.js';
 import { logger } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 function panelIdFor(locals: App.Locals): number | null {
 	if (!locals.user.authenticated) {
@@ -20,15 +20,15 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json();
-	if (typeof body.auto_quest !== 'boolean') {
+	const { auto_quest: isAutoQuest } = await readJsonObject(request);
+	if (typeof isAutoQuest !== 'boolean') {
 		return json({ success: false, error: 'auto_quest must be a boolean' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	await setAutoQuest(panelId, body.auto_quest);
+	await setAutoQuest(panelId, isAutoQuest);
 
 	if (locals.user.authenticated) {
-		logger.log(`${locals.user.username} set auto quest enrollment to ${body.auto_quest} for panel ${panelId}`);
+		logger.log(`${locals.user.username} set auto quest enrollment to ${isAutoQuest} for panel ${panelId}`);
 	}
-	return json({ success: true, auto_quest: body.auto_quest });
+	return json({ success: true, auto_quest: isAutoQuest });
 };

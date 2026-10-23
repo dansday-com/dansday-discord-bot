@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { USERNAME_MIN_LENGTH } from '$lib/accounts.js';
+	import { ACCOUNT_ROLE_LABELS, USERNAME_MIN_LENGTH } from '$lib/accounts.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
@@ -22,7 +22,7 @@
 	let email = $state('');
 	let password = $state('');
 
-	const roleLabel = $derived(data.invite?.account_type === 'owner' ? 'Owner' : 'Staff');
+	const roleLabel = $derived(data.invite ? ACCOUNT_ROLE_LABELS[data.invite.account_type] : '');
 	const loginHref = $derived(data.token ? `/login?invite=${encodeURIComponent(data.token)}` : '/login');
 
 	function createFormProblem(): string | null {
@@ -130,10 +130,17 @@
 	{:else if data.invite && data.signedInAs}
 		<div class="space-y-4">
 			<p class="text-ash-300 text-center text-sm">Logged in as <span class="text-ash-100 font-semibold">{data.signedInAs}</span></p>
-			<button type="button" onclick={handleAccept} disabled={isLoading} class={SUBMIT_CLASS}>
-				{#if isLoading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
-				Accept as {roleLabel}
-			</button>
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleAccept();
+				}}
+			>
+				<button type="submit" disabled={isLoading} class={SUBMIT_CLASS}>
+					{#if isLoading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
+					Accept as {roleLabel}
+				</button>
+			</form>
 			<button type="button" onclick={useAnotherAccount} disabled={isLoading} class="text-ash-400 hover:text-ash-200 w-full text-center text-xs sm:text-sm">
 				Use another account
 			</button>

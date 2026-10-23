@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { GLOBAL_MENTION_GROUPS, globalPanelAccess, sendGlobalMessage } from '$lib/frontend/globalMessages.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const access = globalPanelAccess(locals);
@@ -22,9 +22,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ ok: false, error: 'That message no longer exists. It may have been deleted.' }, { status: HTTP.NOT_FOUND });
 		}
 
-		const body = await request.json().catch(() => null);
-		const groups = (Array.isArray(body?.mention_groups) ? body.mention_groups : []).filter((group: unknown) =>
-			(GLOBAL_MENTION_GROUPS as readonly unknown[]).includes(group)
+		const { mention_groups: mentionGroups } = await readJsonObject(request);
+		const groups = (Array.isArray(mentionGroups) ? mentionGroups : []).filter(
+			(group: unknown): group is string => typeof group === 'string' && (GLOBAL_MENTION_GROUPS as readonly string[]).includes(group)
 		);
 
 		const out = await sendGlobalMessage({ locals, panelId }, message, groups);

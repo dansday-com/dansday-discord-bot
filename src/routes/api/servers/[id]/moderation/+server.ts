@@ -5,11 +5,43 @@ import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { guardMemberAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { MODERATION_REASON_MAX_LENGTH } from '$lib/moderation-rules.js';
 
 const LOG_REASON_MAX_LENGTH = 500;
 const ACTIONS = ['warn', 'timeout', 'untimeout', 'kick', 'ban', 'tempban', 'unban', 'unwarn', 'clearwarns', 'edit_reason'];
+const TEXT_FIELDS = ['action', 'target_id', 'reason'] as const;
+const NUMBER_FIELDS = ['case_number', 'duration_seconds'] as const;
+
+type ModerationInput = { action: string; targetId: string | null; caseNumber: number | null; reason: string; durationSeconds: number | null };
+type CaseRow = NonNullable<Awaited<ReturnType<typeof db.getModerationCase>>>;
+type ServerRow = NonNullable<Awaited<ReturnType<typeof db.getServer>>>;
+type ActionRequest = { serverId: number; action: string; input: ModerationInput; targetDiscordId: string | null };
+
+function isText(value: unknown): value is string | number {
+	return typeof value === 'string' || typeof value === 'number';
+}
+
+function invalidModerationField(body: Record<string, unknown>): string | null {
+	const badText = TEXT_FIELDS.find((key) => body[key] != null && !isText(body[key]));
+	if (badText) {
+		return `${badText} must be text`;
+	}
+	const badNumber = NUMBER_FIELDS.find((key) => body[key] != null && !(isText(body[key]) && Number.isFinite(Number(body[key]))));
+	return badNumber ? `${badNumber} must be a number` : null;
+}
+
+function moderationInput(body: Record<string, unknown>): ModerationInput {
+	const text = (value: unknown) => (isText(value) ? String(value) : '');
+	const amount = (value: unknown) => (isText(value) && value ? Number(value) : null);
+	return {
+		action: text(body.action),
+		targetId: text(body.target_id) || null,
+		caseNumber: amount(body.case_number),
+		reason: text(body.reason),
+		durationSeconds: amount(body.duration_seconds)
+	};
+}
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) {
@@ -46,19 +78,11 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	});
 };
 
-type ModerationBody = Record<string, unknown> | null;
-type CaseRow = NonNullable<Awaited<ReturnType<typeof db.getModerationCase>>>;
-type ServerRow = NonNullable<Awaited<ReturnType<typeof db.getServer>>>;
-type ActionRequest = { serverId: number; action: string; body: ModerationBody; targetDiscordId: string | null };
-
-async function editCaseReason(locals: App.Locals, serverId: number, { caseRow, body }: { caseRow: CaseRow | null; body: ModerationBody }) {
+async function editCaseReason(locals: App.Locals, serverId: number, { caseRow, input }: { caseRow: CaseRow | null; input: ModerationInput }) {
 	if (!caseRow) {
 		return json({ ok: false, error: 'Case not found' }, { status: HTTP.NOT_FOUND });
 	}
-	const reason =
-		String(body?.reason ?? '')
-			.trim()
-			.slice(0, MODERATION_REASON_MAX_LENGTH) || null;
+	const reason = input.reason.trim().slice(0, MODERATION_REASON_MAX_LENGTH) || null;
 	const updated = await db.updateModerationCaseReason(serverId, Number(caseRow.case_number), reason);
 	if (!updated) {
 		return json({ ok: false, error: 'Case not found' }, { status: HTTP.NOT_FOUND });
@@ -91,15 +115,15 @@ async function runningBot(server: ServerRow) {
 }
 
 async function logModerationAction(locals: App.Locals, request: ActionRequest, caseNumber: unknown) {
-	const { body, targetDiscordId } = request;
+	const { input, targetDiscordId } = request;
 	await db
 		.createServerPanelLog(request.serverId, panelActorIds(locals), {
 			action: 'moderation',
 			changes: [
 				...(targetDiscordId ? [{ key: 'member', before: null, after: targetDiscordId }] : []),
 				{ key: 'action', before: null, after: request.action },
-				...(body?.reason ? [{ key: 'reason', before: null, after: String(body.reason).slice(0, LOG_REASON_MAX_LENGTH) }] : []),
-				...(body?.duration_seconds ? [{ key: 'duration seconds', before: null, after: String(Number(body.duration_seconds)) }] : []),
+				...(input.reason ? [{ key: 'reason', before: null, after: input.reason.slice(0, LOG_REASON_MAX_LENGTH) }] : []),
+				...(input.durationSeconds ? [{ key: 'duration seconds', before: null, after: String(input.durationSeconds) }] : []),
 				...(caseNumber ? [{ key: 'case', before: null, after: `#${caseNumber}` }] : [])
 			]
 		})
@@ -111,15 +135,15 @@ async function sendModerationAction(locals: App.Locals, server: ServerRow, reque
 	if (bot instanceof Response) {
 		return bot;
 	}
-	const { body, action } = request;
+	const { input, action } = request;
 	const result = await postBotWebhook(bot, {
 		type: 'moderation_action',
 		guild_id: server.discord_server_id,
 		action,
-		target_id: body?.target_id ? String(body.target_id) : undefined,
-		case_number: body?.case_number ? Number(body.case_number) : null,
-		reason: body?.reason ? String(body.reason).slice(0, MODERATION_REASON_MAX_LENGTH) : null,
-		duration_seconds: body?.duration_seconds ? Number(body.duration_seconds) : null,
+		target_id: input.targetId ?? undefined,
+		case_number: input.caseNumber,
+		reason: input.reason ? input.reason.slice(0, MODERATION_REASON_MAX_LENGTH) : null,
+		duration_seconds: input.durationSeconds,
 		staff_name: (locals.user.authenticated && locals.user.username) || 'Panel',
 		source: 'panel'
 	});
@@ -128,7 +152,7 @@ async function sendModerationAction(locals: App.Locals, server: ServerRow, reque
 	}
 	const payload = result.body ?? {};
 	if (payload.ok) {
-		await logModerationAction(locals, request, payload.case_number ?? body?.case_number ?? null);
+		await logModerationAction(locals, request, payload.case_number ?? input.caseNumber);
 	}
 	return json(payload.ok ? payload : { ok: false, error: payload.error || 'Moderation action failed' }, {
 		status: payload.ok ? HTTP.OK : result.status || HTTP.BAD_REQUEST
@@ -148,8 +172,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body: ModerationBody = await request.json().catch(() => null);
-	const action = String(body?.action ?? '');
+	const body = await readJsonObject(request);
+	const invalid = invalidModerationField(body);
+	if (invalid) {
+		return json({ ok: false, error: invalid }, { status: HTTP.BAD_REQUEST });
+	}
+	const input = moderationInput(body);
+	const { action } = input;
 	if (!ACTIONS.includes(action)) {
 		return json({ ok: false, error: 'Unknown action' }, { status: HTTP.BAD_REQUEST });
 	}
@@ -159,15 +188,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ ok: false, error: 'Server not found' }, { status: HTTP.NOT_FOUND });
 	}
 
-	const caseRow = !body?.target_id && body?.case_number ? await db.getModerationCase(serverId, Number(body.case_number)).catch(() => null) : null;
-	const targetDiscordId = body?.target_id ? String(body.target_id) : caseRow?.discord_member_id ? String(caseRow.discord_member_id) : null;
+	const caseRow = !input.targetId && input.caseNumber ? await db.getModerationCase(serverId, input.caseNumber).catch(() => null) : null;
+	const targetDiscordId = input.targetId ?? (caseRow?.discord_member_id ? String(caseRow.discord_member_id) : null);
 	const denied = targetDiscordId ? await guardMemberAction(locals, serverId, targetDiscordId) : null;
 	if (denied) {
 		return denied;
 	}
 
 	if (action === 'edit_reason') {
-		return editCaseReason(locals, serverId, { caseRow, body });
+		return editCaseReason(locals, serverId, { caseRow, input });
 	}
-	return sendModerationAction(locals, server, { serverId, action, body, targetDiscordId });
+	return sendModerationAction(locals, server, { serverId, action, input, targetDiscordId });
 };

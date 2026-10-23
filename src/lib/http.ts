@@ -38,3 +38,31 @@ export function isHttpServerError(status: number) {
 export function isHttpError(status: number) {
 	return statusClass(status) === HTTP.BAD_REQUEST || isHttpServerError(status);
 }
+
+export async function readJsonObject(request: Request): Promise<Record<string, unknown>> {
+	const body: unknown = await request.json().catch(() => null);
+	return body !== null && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+}
+
+export function optionalText(value: unknown): string | null {
+	return typeof value === 'string' && value ? value : null;
+}
+
+export function numberField(value: unknown): number {
+	return typeof value === 'number' || typeof value === 'string' ? Number(value) : Number.NaN;
+}
+
+export function numberFieldOr(value: unknown, fallback: number): number {
+	if (value == null) {
+		return fallback;
+	}
+	if (typeof value !== 'number' && typeof value !== 'string') {
+		return Number.NaN;
+	}
+	return Number(value) || fallback;
+}
+
+export function positiveIntegerField(value: unknown): number | null {
+	const parsed = numberField(value);
+	return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}

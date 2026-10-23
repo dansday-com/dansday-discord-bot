@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CAPTCHA_LENGTH } from '$lib/accounts.js';
+	import { ACCOUNT_ROLE_LABELS, CAPTCHA_LENGTH } from '$lib/accounts.js';
 	import { scrollLocked } from '$lib/frontend/scrollLock.js';
 	import { APP_NAME } from '$lib/backend/panelServer.js';
 	import { goto } from '$app/navigation';
@@ -127,7 +127,7 @@
 
 	{#if data.invite}
 		<p class="bg-ash-700 border-ash-600 text-ash-200 mb-5 rounded-lg border px-3 py-2.5 text-center text-xs sm:text-sm">
-			You are joining <span class="text-ash-100 font-semibold">{data.invite.server_name}</span> as {data.invite.account_type === 'owner' ? 'Owner' : 'Staff'}.
+			You are joining <span class="text-ash-100 font-semibold">{data.invite.server_name}</span> as {ACCOUNT_ROLE_LABELS[data.invite.account_type]}.
 		</p>
 	{/if}
 
@@ -182,7 +182,7 @@
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
 			{#if isLoading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
-			{isLoading ? 'Processing...' : data.invite ? `Log in and join as ${data.invite.account_type === 'owner' ? 'Owner' : 'Staff'}` : 'Login'}
+			{isLoading ? 'Processing...' : data.invite ? `Log in and join as ${ACCOUNT_ROLE_LABELS[data.invite.account_type]}` : 'Login'}
 		</button>
 
 		<div class="flex items-center gap-3">

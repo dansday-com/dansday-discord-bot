@@ -9,6 +9,9 @@ import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExp
 import { guardApiRoute } from '$lib/backend/panelServer.js';
 import { apexHome, isPublicServerSubpath, publicServerSlugFromHost, publicSiteOrigin } from '$lib/url.js';
 import { HTTP } from '$lib/http.js';
+import { serverIdFromUrl } from '$lib/frontend/redirect.js';
+
+type Account = NonNullable<Awaited<ReturnType<typeof db.getAccountById>>>;
 
 export const init = async () => {
 	if (!building) {
@@ -94,19 +97,9 @@ async function anonymousUser(): Promise<LocalsUser> {
 	return { authenticated: false, can_register: !(await db.hasAnyPanel()) };
 }
 
-type Account = NonNullable<Awaited<ReturnType<typeof db.getAccountById>>>;
-
-const SERVER_PATH_RE = /^\/(?:admin\/bots\/\d+\/servers|api\/servers)\/(\d+)(?:\/|$)/;
-
-function requestedServerId(url: URL): number | null {
-	const fromPath = url.pathname.match(SERVER_PATH_RE)?.[1] ?? url.searchParams.get('server_id');
-	const serverId = Number(fromPath);
-	return Number.isInteger(serverId) && serverId > 0 ? serverId : null;
-}
-
 async function serverAccountUser(account: Account, session: SessionData, url: URL): Promise<LocalsUser | null> {
 	const accountServers = await db.getActiveAccountServers(account.id);
-	const wantedServerId = requestedServerId(url) ?? session.server_id;
+	const wantedServerId = serverIdFromUrl(url) ?? session.server_id;
 	const accountServer =
 		accountServers.find((s) => s.server_id === wantedServerId) ?? accountServers.find((s) => s.server_id === session.server_id) ?? accountServers[0];
 	if (!accountServer) {

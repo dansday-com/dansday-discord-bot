@@ -8,6 +8,7 @@ import {
 	adminServerSectionPath,
 	isBotSectionPath,
 	parentPathname,
+	serverIdFromUrl,
 	webBotHome,
 	webRouteUp
 } from '../src/lib/frontend/redirect.ts';
@@ -50,4 +51,14 @@ test('webBotHome returns the bot page when the path names a bot', () => {
 	assert.equal(webBotHome('/admin/bots/5/servers/9/config'), '/admin/bots/5');
 	assert.equal(webBotHome('/admin/bots/abc'), '/admin/bots/abc');
 	assert.equal(webBotHome('/admin/overview'), '/');
+});
+
+test('serverIdFromUrl reads the server from admin and api paths, then the server_id query', () => {
+	assert.equal(serverIdFromUrl(new URL('https://x.test/admin/bots/1/servers/42/members')), 42);
+	assert.equal(serverIdFromUrl(new URL('https://x.test/admin/bots/1/servers/42')), 42);
+	assert.equal(serverIdFromUrl(new URL('https://x.test/api/servers/7/settings')), 7);
+	assert.equal(serverIdFromUrl(new URL('https://x.test/api/agent?server_id=9')), 9);
+	assert.equal(serverIdFromUrl(new URL('https://x.test/admin/bots/1')), null);
+	assert.equal(serverIdFromUrl(new URL('https://x.test/api/servers/abc')), null);
+	assert.equal(serverIdFromUrl(new URL('https://x.test/api/agent?server_id=-3')), null);
 });

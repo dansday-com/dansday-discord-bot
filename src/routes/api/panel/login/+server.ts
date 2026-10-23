@@ -12,12 +12,14 @@ import {
 	logger
 } from '$lib/utils/index.js';
 import bcrypt from 'bcryptjs';
-import { HTTP } from '$lib/http.js';
-import { INVITE_TOKEN_LENGTH, USERNAME_MIN_LENGTH } from '$lib/accounts.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+import { ACCOUNT_ROLE_LABELS, INVITE_TOKEN_LENGTH, USERNAME_MIN_LENGTH } from '$lib/accounts.js';
 import { INVITE_PROBLEM_MESSAGES, acceptAccountInvite, findOpenInvite, openAccountSession } from '$lib/frontend/accountServers.server.js';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_INPUT_MAX_LENGTH = 255;
+
+type LoginAccount = NonNullable<Awaited<ReturnType<typeof db.getAccountByEmail>>>;
 
 async function findAccountByLogin(input: string) {
 	const email = input.includes('@') ? sanitizeEmail(input) : '';
@@ -30,8 +32,6 @@ async function findAccountByLogin(input: string) {
 	const username = sanitizeUsername(input);
 	return username && username.length >= USERNAME_MIN_LENGTH ? db.getAccountByUsername(username) : null;
 }
-
-type LoginAccount = NonNullable<Awaited<ReturnType<typeof findAccountByLogin>>>;
 
 async function acceptLoginInvite(account: LoginAccount, rawToken: unknown): Promise<{ serverId: number | null; notice: string | null }> {
 	if (account.account_type === 'superadmin' || typeof rawToken !== 'string' || !rawToken) {
@@ -47,7 +47,7 @@ async function acceptLoginInvite(account: LoginAccount, rawToken: unknown): Prom
 	}
 	return {
 		serverId: found.invite.server_id,
-		notice: `You joined ${found.server.name || 'the server'} as ${found.invite.account_type === 'owner' ? 'Owner' : 'Staff'}`
+		notice: `You joined ${found.server.name || 'the server'} as ${ACCOUNT_ROLE_LABELS[found.invite.account_type]}`
 	};
 }
 
@@ -63,18 +63,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		const body = await request.json();
+		const body = await readJsonObject(request);
 		const { username_or_email, password } = body;
 
-		if (!username_or_email || !password) {
+		if (typeof username_or_email !== 'string' || typeof password !== 'string' || !username_or_email || !password) {
 			return json({ success: false, error: 'Username/Email and password are required' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const account = await findAccountByLogin(sanitizeString(username_or_email, LOGIN_INPUT_MAX_LENGTH));
-
-		if (typeof password !== 'string') {
-			return json({ success: false, error: 'Invalid password format' }, { status: HTTP.BAD_REQUEST });
-		}
 
 		const passwordValidation = validateInputLength(password, 'Password', { minLength: 1, maxLength: 128 });
 		if (!passwordValidation.valid) {

@@ -12,7 +12,7 @@ import { BOT_PROFILE_IMAGE, BOT_PROFILE_IMAGE_FORMATS_LABEL, sniffBotProfileImag
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { isServerLanguage } from '$lib/languages.js';
 import { attemptSync } from '$lib/utils/attempt.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { postBotWebhook } from '$lib/botControl.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
@@ -306,7 +306,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	}
 
 	try {
-		const { component, ...settings } = (await request.json()) as SettingsBody;
+		const { component, ...settings } = await readJsonObject(request);
 		if (!component || typeof component !== 'string') {
 			return json({ error: 'component is required' }, { status: HTTP.BAD_REQUEST });
 		}

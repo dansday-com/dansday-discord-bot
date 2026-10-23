@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { seedDemoSession } from '$lib/backend/demo/seedDemo.js';
 import { getClientIp, checkRateLimit, logger, makeSessionCookie, newSessionId, setSession } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { MINUTE_SECONDS, SECOND_MS } from '$lib/utils/time.js';
 import { CAPTCHA_LENGTH } from '$lib/accounts.js';
 
@@ -137,18 +137,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Too many demo login attempts. Please try again later.' }, { status: HTTP.TOO_MANY_REQUESTS });
 		}
 
-		const body = await request.json().catch(() => ({}));
-		const { captcha_input, captcha_token } = body as {
-			captcha_input?: string;
-			captcha_token?: string;
-		};
+		const { captcha_input, captcha_token } = await readJsonObject(request);
 
 		const secret = process.env.SECRET;
 		if (!secret) {
 			return json({ success: false, error: 'Captcha is not configured.' }, { status: HTTP.INTERNAL_ERROR });
 		}
 
-		if (!captcha_input || !captcha_token) {
+		if (typeof captcha_input !== 'string' || typeof captcha_token !== 'string' || !captcha_input || !captcha_token) {
 			return json({ success: false, error: 'Captcha is required.' }, { status: HTTP.BAD_REQUEST });
 		}
 

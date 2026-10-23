@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
-import { DASHBOARD_PATH, webRouteUp, isBotSectionPath, adminBotPath, adminServerPath } from '$lib/frontend/redirect.js';
+import { DASHBOARD_PATH, webRouteUp, isBotSectionPath, adminBotPath } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/backend/panelServer.js';
 import { HTTP } from '$lib/http.js';
 import { hasLostBotProcess } from '$lib/botControl.js';
@@ -24,8 +24,11 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 				redirect(HTTP.FOUND, DASHBOARD_PATH);
 			}
 			const ownBotIds = new Set((await db.getServersForAccount(locals.user.account_id)).map((s) => s.bot_id));
-			if (!ownBotIds.has(botId) || url.pathname !== adminBotPath(botId)) {
-				redirect(HTTP.FOUND, adminServerPath(targetBot, locals.user.server_id));
+			if (!ownBotIds.has(botId)) {
+				redirect(HTTP.FOUND, adminBotPath(targetBot));
+			}
+			if (url.pathname !== adminBotPath(botId)) {
+				redirect(HTTP.FOUND, adminBotPath(botId));
 			}
 		} else if (!(await accountOwnsBot(locals, botId))) {
 			redirect(HTTP.FOUND, webRouteUp(url.pathname));

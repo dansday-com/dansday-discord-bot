@@ -4,7 +4,7 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, positiveIntegerField, readJsonObject } from '$lib/http.js';
 
 const GIFT_SEARCH_LIMIT = 50;
 const MAX_GIFT_QUANTITY = 99;
@@ -47,14 +47,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body?.item_id || !body?.member_id) {
+	const body = await readJsonObject(request);
+	const itemId = positiveIntegerField(body.item_id);
+	const memberId = positiveIntegerField(body.member_id);
+	if (itemId === null || memberId === null) {
 		return json({ success: false, error: 'item_id and member_id are required' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const quantity = Math.max(1, Math.min(MAX_GIFT_QUANTITY, Number(body.quantity) || 1));
 
-	const item = await db.getItem(body.item_id);
+	const item = await db.getItem(itemId);
 	if (!item) {
 		return json({ success: false, error: 'Item not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -62,27 +64,27 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return json({ success: false, error: 'Forbidden' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const isEnabled = await db.memberServerHasItemsEnabled(body.member_id, panelId);
+	const isEnabled = await db.memberServerHasItemsEnabled(memberId, panelId);
 	if (!isEnabled) {
 		return json({ success: false, error: 'That member’s server does not have the items module enabled.' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const owned = await db.grantMemberItem(body.member_id, body.item_id, quantity);
+	const owned = await db.grantMemberItem(memberId, itemId, quantity);
 	for (let i = 0; i < quantity; i++) {
 		await db
-			.logMemberItemAction(body.member_id, {
-				item_id: body.item_id,
+			.logMemberItemAction(memberId, {
+				item_id: itemId,
 				action: 'gift',
 				xp: 0,
 				outcome: 'admin'
 			})
 			.catch(() => null);
 	}
-	await logger.log(`${(locals.user as Record<string, unknown>).username} gifted ${quantity}× item ${body.item_id} to member ${body.member_id}`);
+	await logger.log(`${(locals.user as Record<string, unknown>).username} gifted ${quantity}× item ${itemId} to member ${memberId}`);
 
 	let wasAnnounced = false;
 	try {
-		const member = await db.getServerMemberById(body.member_id);
+		const member = await db.getServerMemberById(memberId);
 		if (member?.server_id && member?.discord_member_id) {
 			const server = await db.getServer(member.server_id);
 			if (server?.discord_server_id) {
@@ -101,7 +103,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			}
 		}
 	} catch (err) {
-		await logger.log(`⚠️ gift announce failed for member ${body.member_id}: ${(err as Error).message}`);
+		await logger.log(`⚠️ gift announce failed for member ${memberId}: ${(err as Error).message}`);
 	}
 
 	return json({ success: true, quantity: owned?.quantity, announced: wasAnnounced });

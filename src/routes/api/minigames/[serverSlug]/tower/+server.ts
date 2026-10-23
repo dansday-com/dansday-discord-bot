@@ -6,12 +6,32 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, numberFieldOr, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
 const MAX_ACTIONS = 60;
 const ACTIONS = ['state', 'start', 'pick', 'cashout'];
+
+type TowerBody = { card: string; action: string; door: number };
+
+function parseTowerBody(body: Record<string, unknown>): TowerBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, action, door } = body;
+	if (!card || typeof action !== 'string' || !ACTIONS.includes(action)) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const doorIndex = numberFieldOr(door, 0);
+	if (!Number.isInteger(doorIndex)) {
+		return 'Invalid door';
+	}
+	return { card, action, door: doorIndex };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
@@ -33,16 +53,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Minigames are disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
-	}
-	const { card, action, door } = body;
-	if (!card || !ACTIONS.includes(action)) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseTowerBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -60,8 +76,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'minigame_tower',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		action,
-		door: Number(door) || 0
+		action: parsed.action,
+		door: parsed.door
 	});
 
 	if (webhookResult.status !== HTTP.OK || !webhookResult.body?.ok) {

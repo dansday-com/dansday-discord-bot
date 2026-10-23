@@ -5,7 +5,7 @@ import { logger } from '$lib/utils/index.js';
 import { randomBytes } from 'crypto';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { INVITE_TOKEN_BYTES } from '$lib/accounts.js';
 
 const EMAIL_MASK_VISIBLE_CHARS = 3;
@@ -65,15 +65,15 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json();
-	const { account_type } = body;
+	const { account_type } = await readJsonObject(request);
 
 	const denied = guardAccountAction(locals, account_type === 'owner' ? 'owner' : 'staff');
 	if (denied) {
 		return denied;
 	}
-	const validTypes: string[] = invitableAccountTypes(panelActorOf(locals.user));
-	if (!account_type || !validTypes.includes(account_type)) {
+	const validTypes = invitableAccountTypes(panelActorOf(locals.user));
+	const accountType = validTypes.find((type) => type === account_type);
+	if (!accountType) {
 		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: HTTP.BAD_REQUEST });
 	}
 
@@ -82,14 +82,14 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	await db.createAccountInvite({
 		token,
 		server_id: serverId,
-		account_type
+		account_type: accountType
 	});
 
-	logger.log(`${locals.user.username} generated server invite for ${account_type} (server ${serverId})`);
+	logger.log(`${locals.user.username} generated server invite for ${accountType} (server ${serverId})`);
 	await db
 		.createServerPanelLog(serverId, panelActorIds(locals), {
 			action: 'account_invite',
-			changes: [{ key: 'invite link', before: null, after: `${account_type}, copied link` }]
+			changes: [{ key: 'invite link', before: null, after: `${accountType}, copied link` }]
 		})
 		.catch(() => null);
 

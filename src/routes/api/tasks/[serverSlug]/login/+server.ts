@@ -6,7 +6,8 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+import { parseTaskCardBody } from '$lib/tasks.js';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -22,17 +23,17 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Tasks are disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body?.card) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseTaskCardBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(body.card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
 
-	const tzOffsetMin = Number(body.tz_offset) || 0;
+	const { tzOffsetMin } = parsed;
 
 	const fullServer = await db.getServer(server.id);
 	if (!fullServer?.discord_server_id) {

@@ -33,6 +33,7 @@ const BOT_SECTION_RE = new RegExp(`^${BOTS_ROOT}/[^/]+(?:/presence)?/?$`);
 const BOT_SERVERS_ROOT_RE = new RegExp(`^${BOTS_ROOT}/[^/]+/servers$`);
 
 const BOT_ID_RE = new RegExp(`^${BOTS_ROOT}/([^/]+)`);
+const SERVER_ID_PATH_RE = new RegExp(`^(?:${BOTS_ROOT}/\\d+/servers|/api/servers)/(\\d+)(?:/|$)`);
 
 export function isBotSectionPath(pathname: string): boolean {
 	return BOT_SECTION_RE.test(pathname);
@@ -66,4 +67,9 @@ export function webBotHome(pathname: string): string {
 		return adminBotPath(m[1]);
 	}
 	return webRouteUp(pathname);
+}
+
+export function serverIdFromUrl(url: URL): number | null {
+	const serverId = Number(url.pathname.match(SERVER_ID_PATH_RE)?.[1] ?? url.searchParams.get('server_id'));
+	return Number.isInteger(serverId) && serverId > 0 ? serverId : null;
 }

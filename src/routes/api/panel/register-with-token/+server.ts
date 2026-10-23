@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { sanitizeString, getClientIp, checkRateLimit, makeSessionCookie, logger } from '$lib/utils/index.js';
 import bcrypt from 'bcryptjs';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { INVITE_TOKEN_LENGTH } from '$lib/accounts.js';
 import { BCRYPT_SALT_ROUNDS, validateRegistrationInputs } from '$lib/frontend/registration.server.js';
 import { INVITE_PROBLEM_MESSAGES, acceptAccountInvite, findOpenInvite, openAccountSession } from '$lib/frontend/accountServers.server.js';
@@ -21,11 +21,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		const body = await request.json();
-		const { token, username, email, password } = body;
+		const { token, username, email, password } = await readJsonObject(request);
 
 		if (!token || typeof token !== 'string') {
 			return json({ success: false, error: 'Token is required' }, { status: HTTP.BAD_REQUEST });
+		}
+		if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+			return json({ success: false, error: 'Username, email and password are required' }, { status: HTTP.BAD_REQUEST });
 		}
 
 		const sanitizedToken = sanitizeString(token, INVITE_TOKEN_LENGTH.max);

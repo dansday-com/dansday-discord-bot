@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db, { presenceFromDbRow, type BotStatusInput } from '$lib/database.js';
 import { accountOwnsBot } from '$lib/backend/panelServer.js';
 import { attemptSync } from '$lib/utils/attempt.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'] as const;
@@ -72,16 +72,16 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body: Record<string, unknown> | null = await request.json().catch(() => null);
-	if (!body) {
+	const body = await readJsonObject(request);
+	if (Object.keys(body).length === 0) {
 		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 
 	const { discord_status } = body;
 	const { activity_type } = body;
 	let activity_name = typeof body.activity_name === 'string' ? body.activity_name : '';
-	const rawUrl = body.activity_url === null || body.activity_url === undefined ? '' : String(body.activity_url);
-	const activity_state = body.activity_state === null || body.activity_state === undefined || body.activity_state === '' ? null : String(body.activity_state);
+	const rawUrl = typeof body.activity_url === 'string' ? body.activity_url : '';
+	const activity_state = typeof body.activity_state === 'string' && body.activity_state !== '' ? body.activity_state : null;
 
 	if (typeof discord_status !== 'string' || !DISCORD_STATUSES.includes(discord_status as (typeof DISCORD_STATUSES)[number])) {
 		return json({ success: false, error: 'Invalid discord_status' }, { status: HTTP.BAD_REQUEST });

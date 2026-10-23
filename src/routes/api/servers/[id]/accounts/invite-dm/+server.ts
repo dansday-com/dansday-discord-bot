@@ -7,7 +7,7 @@ import { postBotWebhook } from '$lib/botControl.js';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { guardAccountAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { invitableAccountTypes, panelActorOf } from '$lib/panelHierarchy.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { INVITE_TOKEN_BYTES } from '$lib/accounts.js';
 
 const MEMBER_ID_MIN_LENGTH = 5;
@@ -119,8 +119,8 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => ({}));
-	const accountType = body.account_type === 'owner' || body.account_type === 'staff' ? (body.account_type as 'owner' | 'staff') : null;
+	const body = await readJsonObject(request);
+	const accountType = body.account_type === 'owner' || body.account_type === 'staff' ? body.account_type : null;
 	const memberIds = requestedMemberIds(body);
 
 	const denied = guardAccountAction(locals, accountType ?? 'staff');

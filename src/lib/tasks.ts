@@ -2,6 +2,7 @@ import { TOWER_FLOOR_CHANCES, TOWER_HIGH_FLOOR, towerReachChance } from './tower
 import { MINUTE_MS, DAY_MINUTES, WEEK_MINUTES, DAYS_PER_WEEK, SECONDS_PER_MINUTE } from './utils/time.js';
 import { PERCENT } from './utils/numbers.js';
 import { fnv1a, mulberry32 } from './utils/random.js';
+import { numberFieldOr } from './http.js';
 
 const MINUTE_GOAL_DAY_PARTS = 16;
 const DIFFICULTY_TIER_COUNT = 3;
@@ -2987,4 +2988,21 @@ export function streakMilestone(streak: number): StreakMilestone | null {
 
 export function nextMilestone(streak: number): StreakMilestone {
 	return STREAK_MILESTONES.find((m) => m.at > streak) ?? { at: streak + LEGEND_MILESTONE_STEP, label: 'Legend', emoji: '🌟' };
+}
+
+export type TaskCardBody = { card: string; tzOffsetMin: number };
+
+export function parseTaskCardBody(body: Record<string, unknown>): TaskCardBody | string {
+	const { card, tz_offset } = body;
+	if (!card) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const tzOffsetMin = numberFieldOr(tz_offset, 0);
+	if (!Number.isFinite(tzOffsetMin)) {
+		return 'Invalid tz_offset';
+	}
+	return { card, tzOffsetMin };
 }

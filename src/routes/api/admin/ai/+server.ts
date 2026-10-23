@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db, { aiFromDbRow, AI_REASONING_LEVELS, AI_VOICE_THINKING_LEVELS, type AiInput, type AiReasoning, type AiVoiceThinking } from '$lib/database.js';
 import { GEMINI_VOICE_NAMES } from '$lib/geminiVoices.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { authorizeSuperadmin } from '$lib/frontend/panelGuards.server.js';
 
 const MAX_MODEL_LENGTH = 191;
@@ -32,38 +32,37 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 type AiBody = Record<string, unknown>;
 
-function optionalText(value: unknown): string | null {
-	return value === null || value === undefined ? null : String(value).trim() || null;
+function trimmedText(value: unknown): string | null {
+	return typeof value === 'string' ? value.trim() || null : null;
 }
 
 function keyOrExisting(value: unknown, existing: string | null): string | null {
-	const raw = value === null || value === undefined ? '' : String(value).trim();
-	return raw || existing;
+	return trimmedText(value) ?? existing;
 }
 
 function readAiInput(body: AiBody, existing: AiInput): AiInput {
 	return {
 		enabled: body.enabled === true,
-		api_url: optionalText(body.api_url),
+		api_url: trimmedText(body.api_url),
 		api_key: keyOrExisting(body.api_key, existing.api_key),
-		model: optionalText(body.model),
-		system_prompt: optionalText(body.system_prompt),
-		reasoning: (body.reasoning === null || body.reasoning === undefined ? 'none' : String(body.reasoning)) as AiReasoning,
+		model: trimmedText(body.model),
+		system_prompt: trimmedText(body.system_prompt),
+		reasoning: (typeof body.reasoning === 'string' ? body.reasoning : 'none') as AiReasoning,
 		voice_enabled: body.voice_enabled === true,
-		voice_model: optionalText(body.voice_model),
-		voice_name: optionalText(body.voice_name),
-		voice_thinking: (body.voice_thinking === null || body.voice_thinking === undefined ? 'low' : String(body.voice_thinking)) as AiVoiceThinking,
+		voice_model: trimmedText(body.voice_model),
+		voice_name: trimmedText(body.voice_name),
+		voice_thinking: (typeof body.voice_thinking === 'string' ? body.voice_thinking : 'low') as AiVoiceThinking,
 		voice_api_key: keyOrExisting(body.voice_api_key, existing.voice_api_key),
-		voice_system_prompt: optionalText(body.voice_system_prompt),
-		search_api_url: optionalText(body.search_api_url),
+		voice_system_prompt: trimmedText(body.voice_system_prompt),
+		search_api_url: trimmedText(body.search_api_url),
 		search_api_key: keyOrExisting(body.search_api_key, existing.search_api_key),
-		search_model: optionalText(body.search_model),
-		fetch_api_url: optionalText(body.fetch_api_url),
+		search_model: trimmedText(body.search_model),
+		fetch_api_url: trimmedText(body.fetch_api_url),
 		fetch_api_key: keyOrExisting(body.fetch_api_key, existing.fetch_api_key),
-		fetch_model: optionalText(body.fetch_model),
-		image_api_url: optionalText(body.image_api_url),
+		fetch_model: trimmedText(body.fetch_model),
+		image_api_url: trimmedText(body.image_api_url),
 		image_api_key: keyOrExisting(body.image_api_key, existing.image_api_key),
-		image_model: optionalText(body.image_model)
+		image_model: trimmedText(body.image_model)
 	};
 }
 
@@ -130,8 +129,8 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 	}
 	const panelId = auth.panelId!;
 
-	const body: AiBody | null = await request.json().catch(() => null);
-	if (!body) {
+	const body = await readJsonObject(request);
+	if (Object.keys(body).length === 0) {
 		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 

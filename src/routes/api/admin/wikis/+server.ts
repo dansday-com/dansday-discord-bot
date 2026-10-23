@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { parseWikiInput } from '$lib/frontend/wikis.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { authorizeSuperadmin } from '$lib/frontend/panelGuards.server.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -21,8 +21,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 	const panelId = auth.panelId!;
 
-	const body: Record<string, unknown> | null = await request.json().catch(() => null);
-	if (!body) {
+	const body = await readJsonObject(request);
+	if (Object.keys(body).length === 0) {
 		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 
@@ -46,8 +46,8 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 	}
 	const panelId = auth.panelId!;
 
-	const body: Record<string, unknown> | null = await request.json().catch(() => null);
-	if (!body) {
+	const body = await readJsonObject(request);
+	if (Object.keys(body).length === 0) {
 		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 
@@ -80,8 +80,8 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 		return auth.error;
 	}
 
-	const body: Record<string, unknown> | null = await request.json().catch(() => null);
-	if (!body) {
+	const body = await readJsonObject(request);
+	if (Object.keys(body).length === 0) {
 		return json({ success: false, error: 'Invalid JSON' }, { status: HTTP.BAD_REQUEST });
 	}
 

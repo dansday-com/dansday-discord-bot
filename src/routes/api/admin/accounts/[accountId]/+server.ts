@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { authorizeSuperadmin } from '$lib/frontend/panelGuards.server.js';
 import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
 
@@ -27,11 +27,10 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return auth.error;
 	}
 	const accountId = accountIdFrom(params);
-	const body = await request.json().catch(() => null);
-	if (!accountId || typeof body?.is_frozen !== 'boolean') {
+	const { is_frozen: isFrozen } = await readJsonObject(request);
+	if (!accountId || typeof isFrozen !== 'boolean') {
 		return json({ success: false, error: 'A valid account and is_frozen boolean are required' }, { status: HTTP.BAD_REQUEST });
 	}
-	const isFrozen: boolean = body.is_frozen;
 
 	const account = await db.getAccountById(accountId);
 	if (!account || (await db.updatePanelAccountServers(auth.panelId!, accountId, { is_frozen: isFrozen })) === 0) {

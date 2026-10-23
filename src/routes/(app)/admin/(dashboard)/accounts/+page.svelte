@@ -5,10 +5,49 @@
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { PageProps } from './$types';
 
+	type PendingAction = 'freeze' | 'unfreeze' | 'delete';
+	type ActionCopy = {
+		method: 'PATCH' | 'DELETE';
+		isFrozen: boolean | null;
+		title: string;
+		confirmLabel: string;
+		done: string;
+		message: (label: string) => string;
+	};
+
+	const ACTIONS: Record<PendingAction, ActionCopy> = {
+		freeze: {
+			method: 'PATCH',
+			isFrozen: true,
+			title: 'Freeze Account',
+			confirmLabel: 'Freeze',
+			done: 'Account frozen',
+			message: (label) => `Freeze "${label}" on every server? They won't be able to open any of them until unfrozen.`
+		},
+		unfreeze: {
+			method: 'PATCH',
+			isFrozen: false,
+			title: 'Unfreeze Account',
+			confirmLabel: 'Unfreeze',
+			done: 'Account unfrozen',
+			message: (label) => `Unfreeze "${label}" on every server? They regain access immediately.`
+		},
+		delete: {
+			method: 'DELETE',
+			isFrozen: null,
+			title: 'Delete Account',
+			confirmLabel: 'Delete',
+			done: 'Account deleted',
+			message: (label) => `Delete "${label}" from every server? They lose access to all of them immediately.`
+		}
+	};
+
 	let { data }: PageProps = $props();
 
-	let pending = $state<{ type: 'freeze' | 'unfreeze' | 'delete'; accountId: number; label: string } | null>(null);
+	let pending = $state<{ type: PendingAction; accountId: number; label: string } | null>(null);
 	let isConfirming = $state(false);
+
+	const pendingAction = $derived(pending ? ACTIONS[pending.type] : null);
 
 	function isAllFrozen(account: (typeof data.accounts)[number]) {
 		return account.servers.every((s) => s.is_frozen);
@@ -18,19 +57,19 @@
 		if (!pending) {
 			return;
 		}
-		const { type, accountId } = pending;
+		const action = ACTIONS[pending.type];
+		const { accountId } = pending;
 		isConfirming = true;
 		try {
-			const isDelete = type === 'delete';
 			const res = await fetch(`/api/admin/accounts/${accountId}`, {
-				method: isDelete ? 'DELETE' : 'PATCH',
+				method: action.method,
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: isDelete ? undefined : JSON.stringify({ is_frozen: type === 'freeze' })
+				body: action.isFrozen === null ? undefined : JSON.stringify({ is_frozen: action.isFrozen })
 			});
 			const d = await res.json();
 			if (d.success) {
-				showToast(isDelete ? 'Account deleted' : type === 'freeze' ? 'Account frozen' : 'Account unfrozen', 'success');
+				showToast(action.done, 'success');
 				invalidateAll();
 			} else {
 				showToast(d.error || 'Failed to update account', 'error');
@@ -102,13 +141,9 @@
 
 <ConfirmModal
 	open={pending !== null}
-	title={pending?.type === 'delete' ? 'Delete Account' : pending?.type === 'freeze' ? 'Freeze Account' : 'Unfreeze Account'}
-	message={pending?.type === 'delete'
-		? `Delete "${pending.label}" from every server? They lose access to all of them immediately.`
-		: pending?.type === 'freeze'
-			? `Freeze "${pending?.label}" on every server? They won't be able to open any of them until unfrozen.`
-			: `Unfreeze "${pending?.label}" on every server? They regain access immediately.`}
-	confirmLabel={pending?.type === 'delete' ? 'Delete' : pending?.type === 'freeze' ? 'Freeze' : 'Unfreeze'}
+	title={pendingAction?.title ?? ''}
+	message={pending && pendingAction ? pendingAction.message(pending.label) : ''}
+	confirmLabel={pendingAction?.confirmLabel}
 	dangerous={pending?.type === 'delete'}
 	loading={isConfirming}
 	onconfirm={confirmPending}

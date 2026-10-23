@@ -38,3 +38,8 @@ export function isHttpServerError(status: number) {
 export function isHttpError(status: number) {
 	return statusClass(status) === HTTP.BAD_REQUEST || isHttpServerError(status);
 }
+
+export async function readJsonObject(request: Request): Promise<Record<string, unknown>> {
+	const body: unknown = await request.json().catch(() => null);
+	return body !== null && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+}

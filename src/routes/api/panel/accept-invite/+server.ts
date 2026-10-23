@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { sanitizeString, logger } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { INVITE_TOKEN_LENGTH } from '$lib/accounts.js';
 import { INVITE_PROBLEM_MESSAGES, acceptAccountInvite, findOpenInvite, switchSessionServer } from '$lib/frontend/accountServers.server.js';
 
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return json({ success: false, error: 'Log in first, then open the invite link again to accept it.' }, { status: HTTP.UNAUTHORIZED });
 		}
 
-		const body = await request.json();
+		const body = await readJsonObject(request);
 		const token = typeof body.token === 'string' ? sanitizeString(body.token, INVITE_TOKEN_LENGTH.max) : '';
 		if (!token || token.length < INVITE_TOKEN_LENGTH.min) {
 			return json({ success: false, error: 'Invalid token format' }, { status: HTTP.BAD_REQUEST });

@@ -4,7 +4,9 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
 import { guardAccountAction } from '$lib/frontend/panelGuards.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+
+type Target = { account: NonNullable<Awaited<ReturnType<typeof db.getAccountById>>>; serverName: string };
 
 async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) {
@@ -23,8 +25,6 @@ async function canManageAccounts(locals: App.Locals, serverId: number): Promise<
 function isTargetSelfServerAccount(locals: App.Locals, targetAccountId: number): boolean {
 	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetAccountId;
 }
-
-type Target = { account: NonNullable<Awaited<ReturnType<typeof db.getAccountById>>>; serverName: string };
 
 async function findTarget(
 	locals: App.Locals,
@@ -55,7 +55,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	}
 	const { account, serverName } = target;
 
-	const { is_frozen } = await request.json();
+	const { is_frozen } = await readJsonObject(request);
 	if (typeof is_frozen !== 'boolean') {
 		return json({ success: false, error: 'is_frozen must be a boolean' }, { status: HTTP.BAD_REQUEST });
 	}

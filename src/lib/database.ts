@@ -6241,12 +6241,12 @@ async function getPanelAccounts(panelId: number) {
 		.orderBy(asc(schema.accounts.username), asc(schema.servers.name));
 }
 
-async function setPanelAccountFrozen(panelId: number, accountId: number, isFrozen: boolean): Promise<number> {
+async function updatePanelAccountServers(panelId: number, accountId: number, data: { is_frozen: boolean }): Promise<number> {
 	const result = (await db.execute(sql`
 		UPDATE account_servers s
 		JOIN servers sv ON sv.id = s.server_id
 		JOIN bots b ON b.id = sv.bot_id
-		SET s.is_frozen = ${isFrozen}, s.updated_at = ${toMySQLDateTime()}
+		SET s.is_frozen = ${data.is_frozen}, s.updated_at = ${toMySQLDateTime()}
 		WHERE s.account_id = ${accountId} AND b.panel_id = ${panelId}
 	`)) as unknown as WriteResult;
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
@@ -10196,7 +10196,7 @@ export default {
 	updateAccountServer,
 	deleteAccountServer,
 	getPanelAccounts,
-	setPanelAccountFrozen,
+	updatePanelAccountServers,
 	deletePanelAccount,
 	getAccountServersByServer,
 	createAccountInvite,

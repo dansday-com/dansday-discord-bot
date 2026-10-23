@@ -34,7 +34,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const isFrozen: boolean = body.is_frozen;
 
 	const account = await db.getAccountById(accountId);
-	if (!account || (await db.setPanelAccountFrozen(auth.panelId!, accountId, isFrozen)) === 0) {
+	if (!account || (await db.updatePanelAccountServers(auth.panelId!, accountId, { is_frozen: isFrozen })) === 0) {
 		return notFound();
 	}
 	logger.log(`${actorName(locals)} ${isFrozen ? 'froze' : 'unfroze'} account ${account.username} on every server`);

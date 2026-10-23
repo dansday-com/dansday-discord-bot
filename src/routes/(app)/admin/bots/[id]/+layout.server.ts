@@ -20,7 +20,7 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 			const ob = await getOfficialBotIdForServer(locals.user.server_id);
 			const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
 			const targetBot = ob ?? fallback;
-			if (targetBot == null) {
+			if (targetBot === null) {
 				redirect(HTTP.FOUND, DASHBOARD_PATH);
 			}
 			const ownBotIds = new Set((await db.getServersForAccount(locals.user.account_id)).map((s) => s.bot_id));

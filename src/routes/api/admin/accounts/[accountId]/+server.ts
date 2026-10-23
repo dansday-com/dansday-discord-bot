@@ -3,26 +3,14 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { HTTP } from '$lib/http.js';
+import { authorizeSuperadmin } from '$lib/frontend/panelGuards.server.js';
 import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
 
-function authorize(locals: App.Locals) {
-	if (!locals.user.authenticated) {
-		return { error: json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED }) };
-	}
-
-	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		return { error: json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN }) };
-	}
-
-	const panelId = Number(locals.user.panel_id);
-	if (!Number.isFinite(panelId) || panelId <= 0) {
-		return { error: json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND }) };
-	}
-
-	return { panelId, username: locals.user.username };
-}
-
 const ALL_SERVERS_LABEL = 'all your servers';
+
+function actorName(locals: App.Locals): string {
+	return locals.user.authenticated ? locals.user.username : 'Someone';
+}
 
 function accountIdFrom(params: Partial<Record<string, string>>): number | null {
 	const accountId = Number(params.accountId);
@@ -34,7 +22,7 @@ function notFound(): Response {
 }
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}
@@ -49,7 +37,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (!account || (await db.setPanelAccountFrozen(auth.panelId!, accountId, isFrozen)) === 0) {
 		return notFound();
 	}
-	logger.log(`${auth.username} ${isFrozen ? 'froze' : 'unfroze'} account ${account.username} on every server`);
+	logger.log(`${actorName(locals)} ${isFrozen ? 'froze' : 'unfroze'} account ${account.username} on every server`);
 
 	try {
 		if (isFrozen) {
@@ -64,7 +52,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}
@@ -77,7 +65,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	if (!account || (await db.deletePanelAccount(auth.panelId!, accountId)) === 0) {
 		return notFound();
 	}
-	logger.log(`${auth.username} deleted account ${account.username} from every server`);
+	logger.log(`${actorName(locals)} deleted account ${account.username} from every server`);
 
 	try {
 		await sendAccountDeletedEmail(account.email, account.username, ALL_SERVERS_LABEL);

@@ -3,26 +3,10 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { parseWikiInput } from '$lib/frontend/wikis.server.js';
 import { HTTP } from '$lib/http.js';
-
-function authorize(locals: App.Locals) {
-	if (!locals.user.authenticated) {
-		return { error: json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED }) };
-	}
-
-	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
-		return { error: json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN }) };
-	}
-
-	const panelId = Number(locals.user.panel_id);
-	if (!Number.isFinite(panelId) || panelId <= 0) {
-		return { error: json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND }) };
-	}
-
-	return { panelId };
-}
+import { authorizeSuperadmin } from '$lib/frontend/panelGuards.server.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}
@@ -31,7 +15,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}
@@ -56,7 +40,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 };
 
 export const PATCH: RequestHandler = async ({ locals, request }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}
@@ -91,7 +75,7 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 };
 
 export const DELETE: RequestHandler = async ({ locals, request }) => {
-	const auth = authorize(locals);
+	const auth = authorizeSuperadmin(locals);
 	if (auth.error) {
 		return auth.error;
 	}

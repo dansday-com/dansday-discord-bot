@@ -25,3 +25,20 @@ export async function guardMemberAction(locals: App.Locals, serverId: number | s
 export function guardAccountAction(locals: App.Locals, accountType: string): Response | null {
 	return canActOnAccount(panelActorOf(locals.user), accountType) ? null : denied(locals);
 }
+
+export function authorizeSuperadmin(locals: App.Locals) {
+	if (!locals.user.authenticated) {
+		return { error: json({ success: false, error: 'Authentication required' }, { status: HTTP.UNAUTHORIZED }) };
+	}
+
+	if (locals.user.account_source !== 'accounts' || locals.user.account_type !== 'superadmin') {
+		return { error: json({ success: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN }) };
+	}
+
+	const panelId = Number(locals.user.panel_id);
+	if (!Number.isFinite(panelId) || panelId <= 0) {
+		return { error: json({ success: false, error: 'No panel available' }, { status: HTTP.NOT_FOUND }) };
+	}
+
+	return { panelId };
+}

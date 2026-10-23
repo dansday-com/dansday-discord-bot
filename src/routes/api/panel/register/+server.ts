@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { checkRateLimit, getClientIp, newSessionId, setSession, makeSessionCookie, logger } from '$lib/utils/index.js';
 import bcrypt from 'bcryptjs';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { BCRYPT_SALT_ROUNDS, validateRegistrationInputs } from '$lib/frontend/registration.server.js';
 
 const MAX_REGISTER_ATTEMPTS = 3;
@@ -24,7 +24,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const { username, email, password } = await request.json();
+		const { username, email, password } = await readJsonObject(request);
+		if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+			return json({ success: false, error: 'Username, email and password are required' }, { status: HTTP.BAD_REQUEST });
+		}
 		const validation = await validateRegistrationInputs(username, email, password);
 
 		if (!validation.valid) {

@@ -13,7 +13,7 @@ import {
 } from '$lib/messages.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
 import { logMessageAction, messagePanelAccess, pruneMessageFiles } from '$lib/frontend/serverMessages.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const access = await messagePanelAccess(locals, params.id);
@@ -22,20 +22,18 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	}
 	const { serverId, server } = access;
 
-	const body = await request.json().catch(() => null);
-	const name = String(body?.name ?? '')
-		.trim()
-		.slice(0, MESSAGE_LIMITS.name);
+	const body = await readJsonObject(request);
+	const name = typeof body.name === 'string' ? body.name.trim().slice(0, MESSAGE_LIMITS.name) : '';
 	if (!name) {
 		return json({ ok: false, error: 'Give the message a name so you can find it later.' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const messageId = body?.id == null ? null : Math.trunc(Number(body.id));
+	const messageId = body.id == null ? null : Math.trunc(typeof body.id === 'number' || typeof body.id === 'string' ? Number(body.id) : Number.NaN);
 	if (messageId !== null && !(messageId > 0)) {
 		return json({ ok: false, error: 'Invalid message ID' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const content = normalizeMessageDoc(body?.content, (key) => messageFileBelongsTo(key, { scope: 'server', id: serverId }));
+	const content = normalizeMessageDoc(body.content, (key) => messageFileBelongsTo(key, { scope: 'server', id: serverId }));
 	const problems = messageDocProblems(content);
 	if (problems.length > 0) {
 		return json({ ok: false, error: problems[0], problems }, { status: HTTP.BAD_REQUEST });

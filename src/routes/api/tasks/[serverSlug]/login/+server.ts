@@ -6,7 +6,24 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+
+type CardBody = { card: string; tzOffsetMin: number };
+
+function parseCardBody(body: Record<string, unknown>): CardBody | string {
+	const { card, tz_offset } = body;
+	if (!card) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const tzOffsetMin = tz_offset == null ? 0 : typeof tz_offset === 'number' || typeof tz_offset === 'string' ? Number(tz_offset) || 0 : Number.NaN;
+	if (!Number.isFinite(tzOffsetMin)) {
+		return 'Invalid tz_offset';
+	}
+	return { card, tzOffsetMin };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -22,17 +39,17 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Tasks are disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body?.card) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseCardBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(body.card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
 
-	const tzOffsetMin = Number(body.tz_offset) || 0;
+	const { tzOffsetMin } = parsed;
 
 	const fullServer = await db.getServer(server.id);
 	if (!fullServer?.discord_server_id) {

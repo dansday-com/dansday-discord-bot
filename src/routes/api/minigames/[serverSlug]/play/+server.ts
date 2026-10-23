@@ -6,11 +6,35 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
 const MAX_PLAYS = 30;
+
+type PlayBody = { card: string; multiplier: number; xp: number };
+
+function parsePlayBody(body: Record<string, unknown>): PlayBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, multiplier, amount } = body;
+	if (!card || !multiplier || !amount) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const multiplierValue = typeof multiplier === 'number' || typeof multiplier === 'string' ? Number(multiplier) : Number.NaN;
+	if (!Number.isFinite(multiplierValue)) {
+		return 'Invalid multiplier';
+	}
+	const xp = typeof amount === 'number' || typeof amount === 'string' ? Number(amount) : Number.NaN;
+	if (!Number.isFinite(xp)) {
+		return 'Invalid amount';
+	}
+	return { card, multiplier: multiplierValue, xp };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
@@ -32,16 +56,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Minigames are disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
-	}
-	const { card, multiplier, amount } = body;
-	if (!card || !multiplier || !amount) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parsePlayBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -59,8 +79,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'minigame_play',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		multiplier: Number(multiplier) || 0,
-		xp: Number(amount) || 0
+		multiplier: parsed.multiplier,
+		xp: parsed.xp
 	});
 
 	if (webhookResult.status !== HTTP.OK || !webhookResult.body?.ok) {

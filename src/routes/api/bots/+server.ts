@@ -3,8 +3,44 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { hasLostBotProcess } from '$lib/botControl.js';
+
+type NewBot = { name: string | null; token: string; application_id: string; bot_icon: string | null; port: number; secret_key: string };
+
+function textField(body: Record<string, unknown>, field: string): string {
+	const value = body[field];
+	return typeof value === 'string' ? value : '';
+}
+
+function readNewBot(body: Record<string, unknown>): { error: string } | { value: NewBot } {
+	const token = textField(body, 'token');
+	const applicationId = textField(body, 'application_id');
+	const secretKey = textField(body, 'secret_key');
+	const port = Number(body.port);
+	if (!token) {
+		return { error: 'Token is required' };
+	}
+	if (!applicationId) {
+		return { error: 'Application ID is required' };
+	}
+	if (!Number.isInteger(port) || port <= 0) {
+		return { error: 'Port is required' };
+	}
+	if (!secretKey) {
+		return { error: 'Secret Key is required' };
+	}
+	return {
+		value: {
+			name: textField(body, 'name') || null,
+			token,
+			application_id: applicationId,
+			bot_icon: textField(body, 'bot_icon') || null,
+			port,
+			secret_key: secretKey
+		}
+	};
+}
 
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
@@ -53,28 +89,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	try {
-		const { name, token, application_id, bot_icon, port, secret_key } = await request.json();
-
 		const account = await db.getAccountById(locals.user.account_id);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: HTTP.UNAUTHORIZED });
 		}
 
-		if (!token) {
-			return json({ success: false, error: 'Token is required' }, { status: HTTP.BAD_REQUEST });
+		const parsed = readNewBot(await readJsonObject(request));
+		if ('error' in parsed) {
+			return json({ success: false, error: parsed.error }, { status: HTTP.BAD_REQUEST });
 		}
-
-		if (!application_id) {
-			return json({ success: false, error: 'Application ID is required' }, { status: HTTP.BAD_REQUEST });
-		}
-
-		if (!port) {
-			return json({ success: false, error: 'Port is required' }, { status: HTTP.BAD_REQUEST });
-		}
-
-		if (!secret_key) {
-			return json({ success: false, error: 'Secret Key is required' }, { status: HTTP.BAD_REQUEST });
-		}
+		const { name, port } = parsed.value;
 
 		const existingBots = await db.getAllBots();
 		const isPortInUse = existingBots.some((b) => b.port === port);
@@ -87,15 +111,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return json({ success: false, error: 'Panel not found for this account' }, { status: HTTP.INTERNAL_ERROR });
 		}
 
-		const bot = await db.createBot({
-			name: name || 'Bot',
-			token,
-			application_id,
-			bot_icon: bot_icon || null,
-			port,
-			secret_key: secret_key || null,
-			panel_id: panel.id
-		});
+		const bot = await db.createBot({ ...parsed.value, name: name || 'Bot', panel_id: panel.id });
 
 		logger.log(`${locals.user.username} added official bot: "${name || 'Bot'}" (ID: ${bot.id})`);
 

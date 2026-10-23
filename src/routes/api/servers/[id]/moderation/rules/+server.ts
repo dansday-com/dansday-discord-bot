@@ -5,7 +5,7 @@ import { SERVER_SETTINGS, canEditServerSettings } from '$lib/backend/panelServer
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { MODERATION_RULE_KEYS, moderationRulesFromSettings, type ModerationRules } from '$lib/moderation-rules.js';
 import { MODERATION_ACTION_META, formatDuration } from '$lib/frontend/moderation.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 const RULE_LABELS: Record<keyof ModerationRules, string> = {
 	warn_expiry_days: 'warning expiry',
@@ -42,11 +42,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
+	const body = await readJsonObject(request);
 	const rules = moderationRulesFromSettings({
-		[MODERATION_RULE_KEYS.warn_expiry_days]: body?.warn_expiry_days,
-		[MODERATION_RULE_KEYS.escalation]: body?.escalation,
-		[MODERATION_RULE_KEYS.reason_presets]: body?.reason_presets
+		[MODERATION_RULE_KEYS.warn_expiry_days]: body.warn_expiry_days,
+		[MODERATION_RULE_KEYS.escalation]: body.escalation,
+		[MODERATION_RULE_KEYS.reason_presets]: body.reason_presets
 	});
 
 	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);

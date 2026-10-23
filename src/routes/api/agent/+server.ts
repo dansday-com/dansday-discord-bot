@@ -1,13 +1,13 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { answerAssistant, describeAssistant } from '$lib/frontend/agent/assistant.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 const HEARTBEAT_MS = 15_000;
 
 export const GET: RequestHandler = ({ locals, url }) => describeAssistant(locals, url);
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-	const body = await request.json().catch(() => null);
+	const body = await readJsonObject(request);
 	const encoder = new TextEncoder();
 	let heartbeat: ReturnType<typeof setInterval> | undefined = undefined;
 

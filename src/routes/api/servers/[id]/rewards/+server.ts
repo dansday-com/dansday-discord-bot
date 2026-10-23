@@ -7,7 +7,7 @@ import { resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { REWARD_KEYS, normalizeRewardDrafts, rewardGoalLabel, rewardRuleFlags, type Reward, type RewardDraft } from '$lib/rewards.js';
 import { removeRewardImage, rewardImageBelongsTo } from '$lib/backend/storage/rewards.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 function describe(rewards: (Reward | RewardDraft)[]): string {
 	return (
@@ -37,10 +37,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ ok: false, error: 'Server not found' }, { status: HTTP.NOT_FOUND });
 	}
 
-	const body = await request.json().catch(() => null);
+	const body = await readJsonObject(request);
+	if ([body.keep, body.stack].some((value) => value != null && typeof value !== 'boolean')) {
+		return json({ ok: false, error: 'keep and stack must be true or false' }, { status: HTTP.BAD_REQUEST });
+	}
 	const roles = await db.getRoles(serverId).catch(() => []);
 	const known = new Set(roles.map((r) => String(r.discord_role_id)).filter((id) => id !== String(server.discord_server_id)));
-	const { rewards, error } = normalizeRewardDrafts(body?.rewards, known);
+	const { rewards, error } = normalizeRewardDrafts(body.rewards, known);
 	if (error) {
 		return json({ ok: false, error }, { status: HTTP.BAD_REQUEST });
 	}
@@ -53,7 +56,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const row = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
 	const existing = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
 	const previous = { rewards: await db.getRewards(serverId), ...rewardRuleFlags(existing) };
-	const next = { keep: body?.keep !== false, stack: body?.stack !== false };
+	const next = { keep: body.keep !== false, stack: body.stack !== false };
 
 	const { removedImages } = await db.saveRewards(serverId, rewards);
 	await db.upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {

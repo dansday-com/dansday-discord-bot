@@ -6,7 +6,31 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { loadTasksShared } from '$lib/backend/public/tasks/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+
+type ClaimBody = { card: string; slot: number; period: 'daily' | 'weekly'; tzOffsetMin: number };
+
+function parseClaimBody(body: Record<string, unknown>): ClaimBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, slot, tz_offset } = body;
+	if (!card || slot == null) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const slotIndex = typeof slot === 'number' || typeof slot === 'string' ? Number(slot) : Number.NaN;
+	if (!Number.isInteger(slotIndex) || slotIndex < 0) {
+		return 'Invalid slot';
+	}
+	const tzOffsetMin = tz_offset == null ? 0 : typeof tz_offset === 'number' || typeof tz_offset === 'string' ? Number(tz_offset) || 0 : Number.NaN;
+	if (!Number.isFinite(tzOffsetMin)) {
+		return 'Invalid tz_offset';
+	}
+	return { card, slot: slotIndex, period: body.period === 'weekly' ? 'weekly' : 'daily', tzOffsetMin };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -22,22 +46,16 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Tasks are disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseClaimBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
-	const { card, slot, tz_offset } = body;
-	const period = body.period === 'weekly' ? 'weekly' : 'daily';
-	if (!card || slot == null) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
-	}
+	const { tzOffsetMin } = parsed;
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
-
-	const tzOffsetMin = Number(tz_offset) || 0;
 
 	await loadTasksShared({
 		server,
@@ -61,8 +79,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'claim_task',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		slot: Number(slot),
-		period,
+		slot: parsed.slot,
+		period: parsed.period,
 		tz_offset: tzOffsetMin
 	});
 

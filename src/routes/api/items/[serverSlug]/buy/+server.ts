@@ -5,8 +5,36 @@ import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServ
 import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { BAG_CAPACITY } from '$lib/items.js';
+
+type BuyBody = { card: string; itemId: number; quantity: number; tzOffset: number };
+
+function parseBuyBody(body: Record<string, unknown>): BuyBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, item_id, quantity, tz_offset } = body;
+	if (!card || !item_id) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const itemId = typeof item_id === 'number' || typeof item_id === 'string' ? Number(item_id) : Number.NaN;
+	if (!Number.isInteger(itemId) || itemId <= 0) {
+		return 'Invalid item_id';
+	}
+	const quantityCount = quantity == null ? 1 : typeof quantity === 'number' || typeof quantity === 'string' ? Number(quantity) || 1 : Number.NaN;
+	if (!Number.isInteger(quantityCount) || quantityCount <= 0) {
+		return 'Invalid quantity';
+	}
+	const tzOffset = tz_offset == null ? 0 : typeof tz_offset === 'number' || typeof tz_offset === 'string' ? Number(tz_offset) || 0 : Number.NaN;
+	if (!Number.isFinite(tzOffset)) {
+		return 'Invalid tz_offset';
+	}
+	return { card, itemId, quantity: quantityCount, tzOffset };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -22,16 +50,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'The items shop is disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
-	}
-	const { card, item_id, quantity, tz_offset } = body;
-	if (!card || !item_id) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseBuyBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -49,9 +73,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'buy_item',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		item_id: Number(item_id),
-		quantity: Number(quantity) || 1,
-		tz_offset: Number(tz_offset) || 0
+		item_id: parsed.itemId,
+		quantity: parsed.quantity,
+		tz_offset: parsed.tzOffset
 	});
 
 	if (webhookResult.status !== HTTP.OK || !webhookResult.body?.ok) {

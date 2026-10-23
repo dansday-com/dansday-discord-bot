@@ -6,7 +6,7 @@ import { resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
 import { TIER_DENIED, canActOn, panelActorOf, type MemberTier } from '$lib/panelHierarchy.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 const ACTIONS = ['role_add', 'role_remove'];
 const MAX_SELECTED = 5000;
@@ -24,14 +24,16 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	const action = String(body?.action ?? '');
+	const body = await readJsonObject(request);
+	const action = typeof body.action === 'string' ? body.action : '';
 	if (!ACTIONS.includes(action)) {
 		return json({ ok: false, error: 'Unknown action' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const roleId = String(body?.role_id ?? '').trim();
-	const targetIds = Array.isArray(body?.target_ids) ? [...new Set((body.target_ids as unknown[]).map(String).filter((id) => /^\d{15,25}$/.test(id)))] : [];
+	const roleId = typeof body.role_id === 'string' ? body.role_id.trim() : '';
+	const targetIds = Array.isArray(body.target_ids)
+		? [...new Set(body.target_ids.filter((id): id is string => typeof id === 'string' && /^\d{15,25}$/.test(id)))]
+		: [];
 	if (!roleId) {
 		return json({ ok: false, error: 'Pick a role' }, { status: HTTP.BAD_REQUEST });
 	}

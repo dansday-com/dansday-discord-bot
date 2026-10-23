@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canUseEmbedBuilder } from '$lib/backend/panelServer.js';
 import { guardMemberAction, panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 const MAX_ADJUST = 10_000;
 const INVITEES_LIMIT = 100;
@@ -54,9 +54,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return g.error;
 	}
 
-	const body = await request.json().catch(() => null);
-	const action = String(body?.action ?? '');
-	const discordId = String(body?.member ?? '').trim();
+	const body = await readJsonObject(request);
+	const action = typeof body.action === 'string' ? body.action : '';
+	const discordId = typeof body.member === 'string' ? body.member.trim() : '';
 	const member = discordId ? await db.getMemberByDiscordId(g.serverId, discordId, { includeDeleted: true }) : null;
 	if (!member) {
 		return json({ ok: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
@@ -68,10 +68,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	}
 
 	if (action === 'adjust') {
-		const amount = Math.trunc(Number(body?.amount));
-		const reason = String(body?.reason ?? '')
-			.trim()
-			.slice(0, REASON_MAX_LENGTH);
+		const amount = Math.trunc(typeof body.amount === 'number' || typeof body.amount === 'string' ? Number(body.amount) : Number.NaN);
+		const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, REASON_MAX_LENGTH) : '';
 		if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > MAX_ADJUST) {
 			return json({ ok: false, error: `Amount must be a whole number between -${MAX_ADJUST} and ${MAX_ADJUST}, not 0` }, { status: HTTP.BAD_REQUEST });
 		}
@@ -99,7 +97,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (member.deleted_at) {
 			return json({ ok: false, error: 'This member has left the server' }, { status: HTTP.CONFLICT });
 		}
-		const inviterDiscordId = String(body?.inviter ?? '').trim();
+		const inviterDiscordId = typeof body.inviter === 'string' ? body.inviter.trim() : '';
 		if (!inviterDiscordId || inviterDiscordId === discordId) {
 			return json({ ok: false, error: 'Pick a different member as the inviter' }, { status: HTTP.BAD_REQUEST });
 		}

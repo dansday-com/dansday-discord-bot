@@ -7,11 +7,37 @@ import { MIN_BUY_XP } from '$lib/backend/public/market/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
 const MAX_TRADES = 20;
+
+type MarketBuyBody = { card: string; assetType: string; assetId: string; xp: number };
+
+function parseMarketBuyBody(body: Record<string, unknown>): MarketBuyBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, asset_type, asset_id, xp } = body;
+	if (!card || !asset_id || !xp) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	if (asset_type != null && typeof asset_type !== 'string') {
+		return 'Invalid asset_type';
+	}
+	if (typeof asset_id !== 'string' && typeof asset_id !== 'number') {
+		return 'Invalid asset_id';
+	}
+	const xpAmount = typeof xp === 'number' || typeof xp === 'string' ? Number(xp) : Number.NaN;
+	if (!Number.isFinite(xpAmount)) {
+		return 'Invalid xp';
+	}
+	return { card, assetType: asset_type || 'crypto', assetId: String(asset_id), xp: xpAmount };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
@@ -33,16 +59,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Market is disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
-	}
-	const { card, asset_type, asset_id, xp } = body;
-	if (!card || !asset_id || !xp) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseMarketBuyBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -60,9 +82,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'asset_buy',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		asset_type: String(asset_type || 'crypto'),
-		asset_id: String(asset_id),
-		xp: Number(xp) || 0
+		asset_type: parsed.assetType,
+		asset_id: parsed.assetId,
+		xp: parsed.xp
 	});
 
 	if (webhookResult.status !== HTTP.OK || !webhookResult.body?.ok) {

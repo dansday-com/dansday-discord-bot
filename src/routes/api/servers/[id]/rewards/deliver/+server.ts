@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { canEditServerSettings } from '$lib/backend/panelServer.js';
 import { panelActorIds } from '$lib/frontend/panelGuards.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
@@ -17,8 +17,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ ok: false, error: 'Access denied' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	const earningId = String(body?.id ?? '');
+	const { id } = await readJsonObject(request);
+	const earningId = typeof id === 'string' || typeof id === 'number' ? String(id) : '';
 	if (!/^\d+$/.test(earningId)) {
 		return json({ ok: false, error: 'Invalid reward' }, { status: HTTP.BAD_REQUEST });
 	}

@@ -5,7 +5,30 @@ import { SERVER_SETTINGS, publicSubfeatureEnabled } from '$lib/backend/panelServ
 import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+
+type UseBody = { card: string; memberItemId: number; targetDiscordId: string | null };
+
+function parseUseBody(body: Record<string, unknown>): UseBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, target_discord_id, member_item_id } = body;
+	if (!card || !member_item_id) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const memberItemId = typeof member_item_id === 'number' || typeof member_item_id === 'string' ? Number(member_item_id) : Number.NaN;
+	if (!Number.isInteger(memberItemId) || memberItemId <= 0) {
+		return 'Invalid member_item_id';
+	}
+	if (target_discord_id != null && typeof target_discord_id !== 'string') {
+		return 'Invalid target_discord_id';
+	}
+	return { card, memberItemId, targetDiscordId: target_discord_id || null };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -21,22 +44,18 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'The items shop is disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
-	}
-	const { card, target_discord_id, member_item_id } = body;
-	if (!card || !member_item_id) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseUseBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
 
-	const target = target_discord_id ? await db.getMemberByDiscordId(server.id, String(target_discord_id)).catch(() => null) : null;
-	if (target_discord_id && (!target || target.is_bot)) {
+	const target = parsed.targetDiscordId ? await db.getMemberByDiscordId(server.id, parsed.targetDiscordId).catch(() => null) : null;
+	if (parsed.targetDiscordId && (!target || target.is_bot)) {
 		return json({ success: false, error: 'Target not found' }, { status: HTTP.NOT_FOUND });
 	}
 	const targetDiscordId = target?.discord_member_id;
@@ -55,7 +74,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
 		target_discord_id: targetDiscordId,
-		member_item_id: Number(member_item_id)
+		member_item_id: parsed.memberItemId
 	});
 
 	if (webhookResult.status !== HTTP.OK || !webhookResult.body?.ok) {

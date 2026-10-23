@@ -6,11 +6,35 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
 const MAX_TRADES = 20;
+
+type MarketSellBody = { card: string; positionId: number; xp: number };
+
+function parseMarketSellBody(body: Record<string, unknown>): MarketSellBody | string {
+	if (Object.keys(body).length === 0) {
+		return 'Invalid body';
+	}
+	const { card, position_id, amount } = body;
+	if (!card || !position_id) {
+		return 'Missing fields';
+	}
+	if (typeof card !== 'string') {
+		return 'Invalid card';
+	}
+	const positionId = typeof position_id === 'number' || typeof position_id === 'string' ? Number(position_id) : Number.NaN;
+	if (!Number.isInteger(positionId) || positionId <= 0) {
+		return 'Invalid position_id';
+	}
+	const xp = amount == null ? 0 : typeof amount === 'number' || typeof amount === 'string' ? Number(amount) || 0 : Number.NaN;
+	if (!Number.isFinite(xp)) {
+		return 'Invalid amount';
+	}
+	return { card, positionId, xp };
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const ip = getClientIp(request);
@@ -32,16 +56,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ success: false, error: 'Market is disabled for this server.' }, { status: HTTP.FORBIDDEN });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
-	}
-	const { card, position_id, amount } = body;
-	if (!card || !position_id) {
-		return json({ success: false, error: 'Missing fields' }, { status: HTTP.BAD_REQUEST });
+	const parsed = parseMarketSellBody(await readJsonObject(request));
+	if (typeof parsed === 'string') {
+		return json({ success: false, error: parsed }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, parsed.card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}
@@ -59,8 +79,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'asset_sell',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		position_id: Number(position_id),
-		xp: Number(amount) || 0
+		position_id: parsed.positionId,
+		xp: parsed.xp
 	});
 
 	if (webhookResult.status !== HTTP.OK || !webhookResult.body?.ok) {

@@ -5,7 +5,7 @@ import { resolvePublicServerBySlug } from '$lib/backend/public/server-slug/index
 import { resolveMemberByCardToken, resolveActiveBotForServer } from '$lib/backend/public/items/index.js';
 import { postBotWebhook } from '$lib/botControl.js';
 import { checkRateLimit, getClientIp } from '$lib/utils/index.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 import { MINUTE_MS } from '$lib/utils/time.js';
 
 const RATE_WINDOW_MS = MINUTE_MS;
@@ -24,12 +24,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	}
 	const { server } = resolved;
 
-	const body = await request.json().catch(() => null);
-	if (!body?.card) {
+	const { card } = await readJsonObject(request);
+	if (typeof card !== 'string' || !card) {
 		return json({ success: false, error: 'Missing card' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const actor = await resolveMemberByCardToken(server.id, String(body.card));
+	const actor = await resolveMemberByCardToken(server.id, card);
 	if (!actor) {
 		return json({ success: false, error: 'Member not found' }, { status: HTTP.NOT_FOUND });
 	}

@@ -10,17 +10,17 @@ import { themeImageToWebp } from '$lib/backend/storage/imageConvert.js';
 import { memberThemeFilename, memberThemeKey, removeMemberTheme, resolveMemberThemeForClient, saveMemberTheme } from '$lib/backend/storage/memberThemes.js';
 import { normalizeAccent } from '$lib/themes.js';
 import { normalizeEffect, normalizeSeed } from '$lib/effects.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 async function resolveActor(serverSlug: string, card: unknown) {
 	const resolved = await resolvePublicServerBySlug(String(serverSlug || '').trim());
 	if (!resolved) {
 		return { error: 'Not found', status: HTTP.NOT_FOUND } as const;
 	}
-	if (!card) {
+	if (typeof card !== 'string' || !card) {
 		return { error: 'Missing card', status: HTTP.BAD_REQUEST } as const;
 	}
-	const member = await resolveMemberByCardToken(resolved.server.id, String(card));
+	const member = await resolveMemberByCardToken(resolved.server.id, card);
 	if (!member) {
 		return { error: 'Member not found', status: HTTP.NOT_FOUND } as const;
 	}
@@ -32,8 +32,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const contentType = request.headers.get('content-type') || '';
 
 		if (!contentType.includes('multipart/form-data')) {
-			const body = await request.json().catch(() => null);
-			if (!body) {
+			const body = await readJsonObject(request);
+			if (Object.keys(body).length === 0) {
 				return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
 			}
 
@@ -117,8 +117,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 export const DELETE: RequestHandler = async ({ params, request }) => {
 	try {
-		const body = await request.json().catch(() => null);
-		if (!body) {
+		const body = await readJsonObject(request);
+		if (Object.keys(body).length === 0) {
 			return json({ success: false, error: 'Invalid body' }, { status: HTTP.BAD_REQUEST });
 		}
 

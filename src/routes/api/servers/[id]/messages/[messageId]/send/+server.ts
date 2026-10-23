@@ -4,7 +4,11 @@ import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { serverLanguageLabel } from '$lib/languages.js';
 import { BOT_OFFLINE, callMessageBot, logMessageAction, messagePanelAccess } from '$lib/frontend/serverMessages.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
+
+function idList(value: unknown): string[] {
+	return Array.isArray(value) ? value.filter((id) => typeof id === 'string' || typeof id === 'number').map(String) : [];
+}
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const access = await messagePanelAccess(locals, params.id);
@@ -23,15 +27,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ ok: false, error: 'That message no longer exists. It may have been deleted.' }, { status: HTTP.NOT_FOUND });
 		}
 
-		const body = await request.json().catch(() => null);
+		const body = await readJsonObject(request);
 		const channels = await db.getChannelsForServer(serverId);
 		const channelName = new Map(channels.map((c) => [String(c.discord_channel_id), String(c.name ?? c.discord_channel_id)]));
-		const channelIds = [...new Set<string>((Array.isArray(body?.channel_ids) ? body.channel_ids : []).map(String))].filter((id) => channelName.has(id));
+		const channelIds = [...new Set(idList(body.channel_ids))].filter((id) => channelName.has(id));
 		if (channelIds.length === 0) {
 			return json({ ok: false, error: 'Pick at least one channel to send it to.' }, { status: HTTP.BAD_REQUEST });
 		}
-		const roleIds: string[] = (Array.isArray(body?.role_ids) ? body.role_ids : []).map(String).filter(Boolean);
-		const language = message.content.languages.includes(body?.language) ? String(body.language) : message.content.language;
+		const roleIds = idList(body.role_ids).filter(Boolean);
+		const language = message.content.languages.find((code) => code === body.language) ?? message.content.language;
 
 		const call = await callMessageBot(server, 'server_message_send', { message_id: messageId, channel_ids: channelIds, role_ids: roleIds, language });
 		if (!call.running) {

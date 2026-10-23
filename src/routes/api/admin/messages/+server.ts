@@ -5,7 +5,7 @@ import { logger } from '$lib/utils/index.js';
 import { MAX_SAVED_MESSAGES, MESSAGE_LIMITS, messageDocProblems, messageShownIds, normalizeMessageDoc } from '$lib/messages.js';
 import { messageFileBelongsTo } from '$lib/backend/storage/messageFiles.js';
 import { globalPanelAccess, pruneGlobalMessageFiles } from '$lib/frontend/globalMessages.server.js';
-import { HTTP } from '$lib/http.js';
+import { HTTP, readJsonObject } from '$lib/http.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const access = globalPanelAccess(locals);
@@ -14,20 +14,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 	const { panelId } = access;
 
-	const body = await request.json().catch(() => null);
-	const name = String(body?.name ?? '')
-		.trim()
-		.slice(0, MESSAGE_LIMITS.name);
+	const body = await readJsonObject(request);
+	const name = (typeof body.name === 'string' ? body.name : '').trim().slice(0, MESSAGE_LIMITS.name);
 	if (!name) {
 		return json({ ok: false, error: 'Give the message a name so you can find it later.' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const messageId = body?.id == null ? null : Math.trunc(Number(body.id));
+	const messageId = body.id == null ? null : Math.trunc(Number(body.id));
 	if (messageId !== null && !(messageId > 0)) {
 		return json({ ok: false, error: 'Invalid message ID' }, { status: HTTP.BAD_REQUEST });
 	}
 
-	const content = normalizeMessageDoc(body?.content, (key) => messageFileBelongsTo(key, { scope: 'global', id: panelId }), 'global');
+	const content = normalizeMessageDoc(body.content, (key) => messageFileBelongsTo(key, { scope: 'global', id: panelId }), 'global');
 	const problems = messageDocProblems(content);
 	if (problems.length > 0) {
 		return json({ ok: false, error: problems[0], problems }, { status: HTTP.BAD_REQUEST });
